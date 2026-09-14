@@ -15,6 +15,7 @@ import type {
   LeerplandoelFacetten,
   LeerplandoelFilterQuery,
   LeerplandoelenPagina,
+  MinimumdoelDetail,
   MinimumdoelFacetten,
   MinimumdoelFilterQuery,
   MinimumdoelenPagina,
@@ -40,6 +41,7 @@ export const doelenSleutels = {
 export const minimumdoelSleutels = {
   facetten: (filter: MinimumdoelFilterQuery) => ["minimumdoel-facetten", filter] as const,
   lijst: (filter: MinimumdoelFilterQuery) => ["minimumdoelen", filter] as const,
+  detail: (ref: string) => ["minimumdoel", ref] as const,
 };
 
 function doelenQuery(filter: LeerplandoelFilterQuery): string {
@@ -60,10 +62,18 @@ function doelenQuery(filter: LeerplandoelFilterQuery): string {
 function minimumdoelQuery(filter: MinimumdoelFilterQuery): string {
   return naarQuery({
     zoek: filter.zoek,
+    leeftijd: filter.leeftijd,
     discipline: filter.discipline,
     domein: filter.domein,
     subdomein: filter.domein ? filter.subdomein : undefined,
     jaarFase: filter.jaarFase,
+    // A branch is named from the top (the backend refuses a level without the one above it), so a level is only sent
+    // with its parent, as the subdomein is only sent with its domein.
+    leergebied: filter.zonderOrdening ? undefined : filter.leergebied,
+    rubriek: filter.leergebied && !filter.zonderOrdening ? filter.rubriek : undefined,
+    subrubriek: filter.rubriek && filter.leergebied && !filter.zonderSubrubriek ? filter.subrubriek : undefined,
+    zonderSubrubriek: filter.rubriek && filter.leergebied && filter.zonderSubrubriek ? true : undefined,
+    zonderOrdening: filter.zonderOrdening ? true : undefined,
     overslaan: filter.overslaan,
     aantal: filter.aantal,
   });
@@ -132,6 +142,15 @@ export function useMinimumdoelenPaginas(filter: MinimumdoelFilterQuery) {
       const volgende = laatste.overslaan + laatste.regels.length;
       return laatste.regels.length > 0 && volgende < laatste.totaal ? volgende : undefined;
     },
+  });
+}
+
+/** One minimumdoel with the leerplandoelen that concord to it per jaar/fase (TB-010). */
+export function useMinimumdoel(ref: string | null) {
+  return useQuery({
+    queryKey: minimumdoelSleutels.detail(ref ?? ""),
+    queryFn: () => get<MinimumdoelDetail>(`/api/minimumdoelen/${encodeURIComponent(ref!)}`),
+    enabled: ref !== null && ref.length > 0,
   });
 }
 
@@ -254,6 +273,9 @@ export function useGenereerDoelsuggesties(themaId: string) {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
+      // A doel's detail lists every doelsuggestie on it under "Gebruikt in", and the thema screen opens
+      // that detail from its own rows (TB-016).
+      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }
@@ -269,6 +291,8 @@ export function useBeoordeelSuggestie(themaId: string) {
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
       // Accepting a suggestion can make a leerplandoel covered, so the coverage figures move too.
       void qc.invalidateQueries({ queryKey: ["dekking"] });
+      // And the doel's detail shows the suggestion with its status (TB-016).
+      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }

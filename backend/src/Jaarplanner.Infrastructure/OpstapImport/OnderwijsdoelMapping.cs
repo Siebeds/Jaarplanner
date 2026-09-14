@@ -15,8 +15,14 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <item><term><c>Nr</c></term><description><c>code</c>, which must equal the rest of <c>uniqueCode</c>.</description></item>
 /// <item><term><c>Omschrijving</c></term><description><c>title</c> (the doelzin), then <c>description</c> (the
 /// uitbreiding) on the next line when there is one, both as plain text.</description></item>
+/// <item><term><c>Leergebied</c>, <c>Rubriek</c>, <c>Subrubriek</c></term><description><c>path</c>, split on
+/// <c> &gt; </c>: two or three levels, verbatim (TB-010). Any other shape leaves all three empty.</description></item>
+/// <item><term><c>Soort</c></term><description><c>type</c>, one of the decree's three kinds (TB-010). Any other value
+/// leaves it empty.</description></item>
 /// </list>
-/// A row whose <c>validity.endDate</c> has passed is left out, with a reason.
+/// A row whose <c>validity.endDate</c> has passed is left out, with a reason. <b>An unusable <c>path</c> or <c>type</c>
+/// never refuses a row:</b> they place the minimumdoel in the register, and a decreed eindterm left out for want of a
+/// heading would be the worse loss. The row is imported without them, and the register lists it apart.
 /// </summary>
 internal static partial class OnderwijsdoelMapping
 {
@@ -72,8 +78,9 @@ internal static partial class OnderwijsdoelMapping
 
         var uitbreiding = OpstapHtml.NaarTekst(rij.Description);
         var omschrijving = uitbreiding.Length == 0 ? doelzin : $"{doelzin}\n{uitbreiding}";
+        var (leergebied, rubriek, subrubriek) = Ordening(rij.Path);
 
-        return (new Minimumdoel(rij.UniqueCode!, leeftijd, nr, omschrijving), null);
+        return (new Minimumdoel(rij.UniqueCode!, leeftijd, nr, omschrijving, leergebied, rubriek, subrubriek, Soort(rij.Type)), null);
     }
 
     /// <summary>
@@ -81,6 +88,38 @@ internal static partial class OnderwijsdoelMapping
     /// dotted number). The source uses it to refuse a read with a row it cannot identify (E1-12 round 2).
     /// </summary>
     public static bool IsWelgevormdeRef(string? waarde) => UniqueCodeVorm().IsMatch(waarde ?? string.Empty);
+
+    /// <summary>
+    /// <c>path</c> as the decree's ordering: <c>Nederlands &gt; Lezen &gt; Vlot en vloeiend lezen</c> gives three levels,
+    /// <c>Attitudes &gt; Leren leren</c> two. One level, more than three, an empty level, a level longer than the column,
+    /// or anything that looks like markup gives none: the path is plain text in every row KOV publishes (measured on
+    /// 2026-09-14), so a different shape is a change in the source that should not be guessed at.
+    /// </summary>
+    private static (string? Leergebied, string? Rubriek, string? Subrubriek) Ordening(string? pad)
+    {
+        if (string.IsNullOrWhiteSpace(pad))
+        {
+            return (null, null, null);
+        }
+
+        var niveaus = pad.Split(" > ", StringSplitOptions.TrimEntries);
+        if (niveaus.Length is < 2 or > 3 ||
+            niveaus.Any(n => n.Length == 0 || n.Length > Minimumdoel.MaxOrdeningLengte || n.Contains('<') || n.Contains('>')))
+        {
+            return (null, null, null);
+        }
+
+        return (niveaus[0], niveaus[1], niveaus.Length == 3 ? niveaus[2] : null);
+    }
+
+    /// <summary><c>type</c> as one of the decree's three kinds, or null for anything else.</summary>
+    private static MinimumdoelSoort? Soort(string? type) => type?.Trim() switch
+    {
+        "Te bereiken minimumdoelen op individueel niveau" => MinimumdoelSoort.TeBereikenIndividueel,
+        "Te bereiken minimumdoelen op populatieniveau" => MinimumdoelSoort.TeBereikenPopulatie,
+        "Na te streven minimumdoelen op populatieniveau" => MinimumdoelSoort.NaTeStreven,
+        _ => null,
+    };
 
     private static (Minimumdoel?, MinimumdoelBronProbleem?) Probleem(string sleutel, string reden) =>
         (null, new MinimumdoelBronProbleem(sleutel, reden));
@@ -133,6 +172,14 @@ internal sealed class OnderwijsdoelDto
 
     [JsonPropertyName("description")]
     public string? Description { get; set; }
+
+    /// <summary>The decree's ordering as plain text, e.g. <c>Geschiedenis &gt; Kennis van het verleden &gt; Prehistorie</c>.</summary>
+    [JsonPropertyName("path")]
+    public string? Path { get; set; }
+
+    /// <summary>The decree's kind, e.g. <c>Te bereiken minimumdoelen op populatieniveau</c>.</summary>
+    [JsonPropertyName("type")]
+    public string? Type { get; set; }
 
     [JsonPropertyName("validity")]
     public OnderwijsdoelGeldigheidDto? Validity { get; set; }

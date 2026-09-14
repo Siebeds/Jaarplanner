@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { KlasWeergave, LeerplandoelDetail, MinimumdoelRegel } from "../../lib/types";
+import type { KlasWeergave, LeerplandoelDetail, MinimumdoelDetail, MinimumdoelRegel } from "../../lib/types";
 import { t } from "../../i18n";
 import { ikMet, metIk } from "../../test/rechten";
 import { zetSchermbreedte } from "../../test/setup";
@@ -14,8 +14,10 @@ import { DoelenScherm } from "./DoelenScherm";
  * that klas's leeftijden: a hoofdleerkracht of K3, who needs no klas (I20), with an L1 klas picked would otherwise open
  * a sheet with nothing to press (the E3-06 rule).
  *
- * The doel is opened from the minimumdoelen register, which lists its concorded codes as buttons, on a wide screen so
- * the detail is the column beside the list rather than a sheet.
+ * The doel is opened from the minimumdoelen register, on a wide screen so the detail is the column beside the list
+ * rather than a sheet. *Since TB-010 (merged here before the PR) that register is the decree's tree and a minimumdoel's
+ * detail lists its concorded leerplandoelen, so the way in is: the branch the filter opens, the minimumdoel's row, then
+ * the code in its detail. Until then the rows listed the codes themselves.*
  */
 
 const selectie = vi.hoisted(() => ({ klas: null as unknown }));
@@ -49,16 +51,41 @@ const klasVan = (jaarfase: string): KlasWeergave => ({
   mogelijkeJaarfasen: [],
 });
 
+const REF = "K-2.1";
+
 const REGEL: MinimumdoelRegel = {
-  ref: "K-2.1",
+  ref: REF,
   leeftijd: "K-",
   nr: "2.1",
   omschrijving: "Tellen.",
-  disciplineNummer: "2",
-  disciplineNaam: "Wiskunde",
-  domein: "Getallen",
-  subdomein: "Tellen",
-  leerplandoelCodes: [CODE],
+  leergebied: "Wiskunde",
+  rubriek: "Getallen",
+  subrubriek: "Tellen",
+  aantalLeerplandoelen: 1,
+  jaarFasen: ["K3"],
+  zonderLeerplandoelReden: null,
+  zonderLeerplandoelDoelsets: [],
+};
+
+const MINIMUMDOEL: MinimumdoelDetail = {
+  ref: REF,
+  leeftijd: "K-",
+  nr: "2.1",
+  omschrijving: "Tellen.",
+  leergebied: "Wiskunde",
+  rubriek: "Getallen",
+  subrubriek: "Tellen",
+  soort: "TeBereikenIndividueel",
+  nietMeerInOpstap: false,
+  aantalLeerplandoelen: 1,
+  jaarFasen: [
+    {
+      jaarFase: "K3",
+      leerplandoelen: [
+        { code: CODE, tekst: "Tot tien tellen.", disciplineNaam: "Wiskunde", domein: "Getallen", subdomein: "Tellen", nietMeerInOpstap: false },
+      ],
+    },
+  ],
   zonderLeerplandoelReden: null,
   zonderLeerplandoelDoelsets: [],
 };
@@ -89,13 +116,20 @@ function antwoord(pad: string): unknown {
       return {
         totaalAantalMinimumdoelen: 1,
         aantalTreffers: 1,
-        aantalZonderLeerplandoel: 0,
-        disciplines: [{ nummer: "2", naam: "Wiskunde", aantal: 1 }],
-        domeinen: [],
-        jaarFasen: [],
+        aantalZonderOrdening: 0,
+        leergebieden: [
+          {
+            naam: "Wiskunde",
+            aantal: 1,
+            rubrieken: [{ naam: "Getallen", aantal: 1, aantalZonderSubrubriek: 0, subrubrieken: [{ naam: "Tellen", aantal: 1 }] }],
+          },
+        ],
+        leeftijden: [{ leeftijd: "K-", aantal: 1 }],
       };
     case "/api/minimumdoelen":
       return { regels: [REGEL], totaal: 1, overslaan: 0, aantal: 200 };
+    case `/api/minimumdoelen/${REF}`:
+      return MINIMUMDOEL;
     case "/api/leerplandoelen/facetten":
       return { totaalAantalDoelen: 1, disciplines: [], domeinen: [], doelsoorten: [], jaarFasen: [] };
     case `/api/leerplandoelen/${CODE}`:
@@ -139,7 +173,9 @@ async function openDoel(klasJaarfase: string) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  fireEvent.click(await screen.findByRole("button", { name: CODE }));
+  // The klas's one jaarfase is a filter, so the tree opens its first branch down to the minimumdoelen by itself.
+  fireEvent.click((await screen.findByText(REF)).closest("button")!);
+  fireEvent.click((await screen.findByText(CODE)).closest("button")!);
   await screen.findByText(DETAIL.tekst);
 }
 

@@ -12,11 +12,14 @@
 - **Amends:** [ADR-0011](0011-authn-authz-rbac-gdpr.md). **Supersedes its decision §3** ("ownership-aware
   rules"), which assigned class-scoped content to "the owning teacher" at a time when a subthema still named a
   klas. ADR-0011 §1 (personal login over Microsoft Entra ID), §2 (server-side enforcement driven by one
-  configurable matrix, no scattered role checks) and §4 (no pupil PII) stand unchanged.
+  configurable matrix, no scattered role checks) and §4 (no pupil PII) stand unchanged. *(ADR-0011 §4 was narrowed on 2026-09-14 by ADR-0035, for the K3
+  ontwikkelingsrapport only.)*
 - **Relates to:** [ADR-0022](0022-curriculum-administration-authorisation-seam.md) (the `Curriculumbeheer`
   seam), [ADR-0025](0025-subthema-per-leeftijd.md) (content per leeftijd), [ADR-0031](0031-sessielogin-via-de-api.md)
   (the login mechanism).
 - **Realises:** FR-10, FR-12.2, FA §3.1/§3.2. **Backlog:** E6-01, E6-02, E6-04, E6-08, E6-09, E6-10.
+- **Extended by:** [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) (2026-09-14): a fifth right, Leerlingzorg, and
+  the ontwikkelingsrapport rows of §3, with footnote ⁶. Nothing else in this ADR changes.
 
 > **Revised twice on the day it was written, on its antagonist's findings.**
 > - The first version (`30b7031`) presented several of the recording session's own design choices as numbered owner
@@ -603,7 +606,8 @@ draft before anything is enforced from it."*
 **A row is ratified only as far as the rulings it cites.**
 
 - **Citations count at column level.** Every "Directie" ✓ rests on R3, whatever the row cites, and a "–" grants
-  nothing, so it needs no citation.
+  nothing, so it needs no citation. One row has no directie ✓ at all: the K3 set of the ontwikkelingsrapport
+  (footnote ⁶, ADR-0035 R31).
 - Whatever a row takes from an I-item of §2, or from a lettered question of §4, is a default and is not ratified
   with Art. VI.1.
 - **Every row cites at least one ruling.** The Op.stap row rests on R3; the Exporteren row on R3 and R7, with I9 for
@@ -640,7 +644,7 @@ that this relation alone does not grant the action. It never takes away what ano
 | Op.stap-doelen inladen/vernieuwen (R3; ADR-0022) | ✓ | – | – | – | – | – |
 | Gebruikers, klassen en schooljaren beheren, leerkrachten aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het directierecht toekennen (R2, R3, R16; FA FR-12.2) | ✓ | – | – | – | – | – |
 | Thema, themadoelen, kernwoordenschat aanpassen (R4, R18) | ✓ | ✓ | – | – | – | – |
-| Een thema verwijderen (R3; I26, I27) | ✓ | leeg⁶ | – | – | – | – |
+| Een thema verwijderen (R3; I26, I27) | ✓ | leeg⁷ | – | – | – | – |
 | Thema's en activiteiten importeren, FR-1, met de doelkoppelingen op themadoelen en subdoelen die erin staan (R9, R27, R34) | ✓ | ✓ | – | – | – | – |
 | Bij die import 'menselijke beslissingen verwijderen' aanvinken, voor themadoelen en subdoelen samen (R35) | ✓ | – | – | – | – | – |
 | Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp (R29) | ✓ | ✓ | – | – | – | – |
@@ -659,6 +663,12 @@ that this relation alone does not grant the action. It never takes away what ano
 | Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21) | ✓ | – | – | – | ✓ | – |
 | Jaarplan, agenda en dekking bekijken (R3, R7; I9) | ✓ | lezen | lezen | lezen | ✓ | lezen |
 | Exporteren (R3, R7; I9) | ✓ | lezen⁴ | lezen⁴ | lezen⁴ | ✓ | lezen⁴ |
+| Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen (ADR-0035 R14, R15, R26; D8, D9) | ✓ | – | – | – | ✓⁶ | – |
+| Een ontwikkelingsrapport invullen: gradatie, tekst, besluit, kindtekening, AI-herwerking (ADR-0035 R16, R21, R22, R26) | ✓ | – | – | – | ✓⁶ | – |
+| Een ontwikkelingsrapport lezen (ADR-0035 R16, R17, R18, R26) | ✓ | –⁶ | –⁶ | –⁶ | ✓ | –⁶ |
+| Een ontwikkelingsrapport downloaden als PDF of Word (ADR-0035 R13, R26; D5) | ✓ | – | – | – | ✓ | – |
+| De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6, R31; D4) | –⁶ | – | – | K3⁶ | – | – |
+| De leerlinggegevens van een schooljaar wissen (ADR-0035 R19, R28; D7) | ✓ | – | – | – | – | – |
 
 ¹ R6 names a *leerkracht*. For a gebruiker with no klastoewijzing, including a themabeheer or hoofdleerkracht holder
 who teaches no klas (I20), this ✓ is not ruled; E6-10 decides it with (a).
@@ -679,7 +689,24 @@ for a thema the wizard is building from scratch** (R32). Changing existing subth
 The shape of those actions, when a thema stops being new, and the right to edit and delete what the wizard's own open run created are defaults (I22–I25), narrowed by I27: the wizard does not delete linked content without the goal-link right, and does not move a subthema holding others' work to another leeftijd. **Themabeheer holds no right
 on the ordinary subthema, subdoel and activiteit routes** (I22), which is what the "–" in those rows means, apart from the maker's delete right (R33, the maker² row).
 
-⁶ A default (I26, narrowed by I27): themabeheer deletes a thema only when it holds no subthema, subdoel or activiteit
+⁶ **The ontwikkelingsrapport rows** were added on 2026-09-14 from [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md)
+§3.3. The R-numbers in their labels are ADR-0035's, not this ADR's, and they are ratified by Art. VI.7 as far as they
+cite those rulings. The "Directie" ✓ on them rests on this ADR's R3, as everywhere else in the matrix, **except on the rapportdoelen row**.
+There directie has no ✓: the owner ruled that only the K3 leerkrachten edit the set, and directie views it (ADR-0035
+R31). It is the one exception to R3.
+- **The column definitions widen for these rows only.**
+  - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
+    schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.
+  - "LK leeftijd" covers the one K3 set of rapportdoelen and the scale, and means a klastoewijzing on a klas that grants
+    K3, in a schooljaar that has not ended (ADR-0035 D4).
+- **A seventh relation applies to these rows only: Leerlingzorg**, a right directie gives. It reads every
+  ontwikkelingsrapport and does nothing else (ADR-0035 R18); in particular it does not download (ADR-0035 D5). It has no
+  column because it grants on no other row.
+- I9 does not reach these rows, so TB, HL, "LK leeftijd" and "Ander" read no report (ADR-0035 R17). A gebruiker who
+  holds several relations still holds their union: a hoofdleerkracht who is also a leerkracht of the klas reads that
+  klas's reports as "LK eigen".
+
+⁷ A default (I26, narrowed by I27): themabeheer deletes a thema only when it holds no subthema, subdoel or activiteit
 other than what the thema's own open wizard run created, an activiteit of that run carrying a goal link not counting
 as the run's unless the caller also holds the goal-link right at its leeftijd. Directie deletes any thema. A thema
 placed in a jaarplan is deleted by nobody. *Added 2026-09-14:* §3 had no delete row, and the slice 3 audit found the
@@ -697,6 +724,8 @@ gets 403 rather than a validation 400, and an unknown id gets 404 first. The wiz
 the goal-link right I27 asks) is enforced by the wizard service. Creating an activiteit with goal codes also asks
 the goal-link row (R19), on the ordinary route and in the wizard. A sweep test enumerates every write route from
 the endpoint data source and fails, naming the route, for any that a gebruiker without rights can reach.
+*The ontwikkelingsrapport rows (footnote ⁶), added the same day from ADR-0035, have no policy in `Rechtenmatrix`
+yet: no route serves them until FR-13 is built, and each gets its policy then.*
 
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is
@@ -746,7 +775,10 @@ settled", then "Five are open".*
 - **(e) Zorgcoördinator rights.** FA §3.1 marks them *"eventueel beperkte bewerkrechten, ter beslissing"*, which is
   an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer, and R7 with I9 gives read
   access. Anything beyond that is still open. The default is that such a gebruiker, or anyone holding none of the
-  four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.*
+  four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.* *Since 2026-09-14
+  ([ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) R18) there are five rights: directie may also give a
+  zorgcoördinator Leerlingzorg, which reads every ontwikkelingsrapport and nothing else. The default above then reads
+  "none of the five rights".*
 - **(f) What accepting a doelsuggestie does to other klassen.** *Settled by statement 17 (R14), 2026-09-13.*
   - ~~R8 lets every leerkracht accept a doelsuggestie.~~ A suggestion hangs on a **school-wide thema**, and an
     accepted one counts for dekking in **every klas that plans that thema**. ~~So under R8 one teacher's acceptance

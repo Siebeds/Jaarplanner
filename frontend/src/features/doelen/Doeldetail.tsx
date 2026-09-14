@@ -22,10 +22,16 @@ import { cn } from "../../lib/cn";
 export function Doeldetail({
   code,
   onKies,
+  onKiesMinimumdoel,
   onKoppel,
 }: {
   code: string | null;
   onKies: (code: string) => void;
+  /**
+   * Open the minimumdoel this leerplandoel concords to, in the same place (TB-010). The way back from a leerplandoel
+   * reached through a minimumdoel's detail, and the way into the other register from this one.
+   */
+  onKiesMinimumdoel: (ref: string) => void;
   /**
    * Open the destination sheet for this doel.
    *
@@ -34,13 +40,18 @@ export function Doeldetail({
    * in here stacked on the first, and the phone showed two headers, two close buttons, and none of
    * the destinations. The screen owns both sheets so it can show one at a time.
    *
-   * Absent when the sheet it opens would offer this gebruiker nothing to press, and the button with it (E6-02). The
+   * `null` (TB-016): the thema page opens this detail from a doel it has ALREADY linked, and linking
+   * is the job of the "Doel koppelen" control above that list. With `null` there is no button, rather
+   * than a button that leads nowhere. Required but nullable, not optional, so a caller that forgets it
+   * fails to compile instead of silently losing the register's button.
+   *
+   * The register passes `null` too when the sheet it opens would offer this gebruiker nothing to press (E6-02). The
    * sheet lists the chosen klas's subthema's, so the screen asks `mag.doelKoppelenVoor(klas.jaarFasen)`: themabeheer
    * for the thema level, or the subdoel or goal-link right at one of that klas's leeftijden. *Until fix round 1 this
    * asked whether the gebruiker may link a doel anywhere, which offered a hoofdleerkracht the button with a klas of
    * another leeftijd picked.*
    */
-  onKoppel?: () => void;
+  onKoppel: (() => void) | null;
 }) {
   const { data, isPending, isError } = useLeerplandoel(code);
 
@@ -57,6 +68,8 @@ export function Doeldetail({
   }
 
   if (isError || !data) return <Leegte titel={t("doel.fout")} />;
+
+  const minimumdoel = data.minimumdoel;
 
   return (
     <article className="flex flex-col gap-6">
@@ -81,13 +94,20 @@ export function Doeldetail({
         </p>
       </header>
 
-      {data.minimumdoel ? (
+      {minimumdoel ? (
         <Sectie titel={t("doel.minimumdoel")}>
-          <div className="rounded-kaart border border-lijn bg-vlak/70 p-3">
-            <span className="mono text-[0.6875rem] font-medium text-doelsoort-md">{data.minimumdoel.ref}</span>
+          <button
+            type="button"
+            onClick={() => onKiesMinimumdoel(minimumdoel.ref)}
+            className="flex flex-col gap-1 rounded-kaart border border-lijn bg-vlak/70 p-3 text-left transition-colors duration-150 hover:border-lijn-veld"
+          >
+            <span className="mono text-[0.6875rem] font-medium text-doelsoort-md">{minimumdoel.ref}</span>
             {/* Decreed text with its list items on lines of their own ("\n- "), as the register shows it (E1-22). */}
-            <p className="mt-1 whitespace-pre-line text-body text-inkt">{data.minimumdoel.omschrijving}</p>
-          </div>
+            <span className="whitespace-pre-line text-body text-inkt">{minimumdoel.omschrijving}</span>
+            <span className="mt-1 text-meta text-inkt-zacht underline decoration-lijn-sterk underline-offset-2">
+              {t("doel.bekijkMinimumdoel")}
+            </span>
+          </button>
         </Sectie>
       ) : null}
 
@@ -154,7 +174,8 @@ export function Doeldetail({
   );
 }
 
-function Sectie({ titel, children }: { titel: string; children: ReactNode }) {
+/** A labelled block of a detail. Shared with the minimumdoel detail (TB-010), so both details read alike. */
+export function Sectie({ titel, children }: { titel: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-2">
       <h3 className="text-micro uppercase text-inkt-zwak">{titel}</h3>

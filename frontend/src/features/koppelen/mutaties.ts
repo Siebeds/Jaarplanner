@@ -13,7 +13,7 @@ import type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
  * whichever thema the teacher scrolled to, and a hook cannot be re-created per row. So these
  * invalidate the whole `thema` family instead of one member of it.
  *
- * **They also invalidate the leerplandoel detail, which the thema screen's versions do not.** That
+ * **They also invalidate the leerplandoel detail**, as the thema screen's versions do since TB-016. That
  * query feeds the "Gebruikt in" section the teacher is looking at while they link, since the sheet opens
  * on top of it. Without this line the link lands, the tree updates, and the list underneath still
  * says the doel is used nowhere, which reads as a failed save.

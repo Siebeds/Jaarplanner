@@ -1,3 +1,4 @@
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Infrastructure.OpstapImport;
 
 namespace Jaarplanner.UnitTests.Curriculum;
@@ -15,13 +16,17 @@ public sealed class OnderwijsdoelMappingTests
         string? code = "1.3.9",
         string? title = "<p>De kleuters kunnen actief deelnemen aan mondelinge interactievormen.</p>",
         string? description = null,
-        DateTimeOffset? einde = null) =>
+        DateTimeOffset? einde = null,
+        string? path = "Nederlands > Mondeling taalgebruik > Mondelinge interactievaardigheden",
+        string? type = "Te bereiken minimumdoelen op individueel niveau") =>
         new()
         {
             UniqueCode = uniqueCode,
             Code = code,
             Title = title,
             Description = description,
+            Path = path,
+            Type = type,
             Validity = new OnderwijsdoelGeldigheidDto
             {
                 StartDate = new DateTimeOffset(2025, 9, 1, 0, 0, 0, TimeSpan.Zero),
@@ -155,5 +160,79 @@ public sealed class OnderwijsdoelMappingTests
 
         Assert.Null(probleem);
         Assert.NotNull(doel);
+    }
+
+    /// <summary>TB-010: <c>path</c> is the decree's own ordering, three levels verbatim (a real row of 2026-09-14).</summary>
+    [Fact]
+    public void Het_pad_wordt_de_ordening_van_het_decreet()
+    {
+        var (doel, _) = OnderwijsdoelMapping.Map(
+            Rij("K-5.1.1", "5.1.1", path: "Geschiedenis > Kennis van het verleden > Prehistorie", type: "Na te streven minimumdoelen op populatieniveau"),
+            href: null,
+            Peildatum);
+
+        Assert.Equal("Geschiedenis", doel!.Leergebied);
+        Assert.Equal("Kennis van het verleden", doel.Rubriek);
+        Assert.Equal("Prehistorie", doel.Subrubriek);
+        Assert.Equal(MinimumdoelSoort.NaTeStreven, doel.Soort);
+    }
+
+    /// <summary>A whole rubriek of the decree has no third level; 54 minimumdoelen have a path of two.</summary>
+    [Fact]
+    public void Een_pad_met_twee_niveaus_heeft_geen_subrubriek()
+    {
+        var (doel, _) = OnderwijsdoelMapping.Map(Rij(path: "Attitudes > Leren leren"), href: null, Peildatum);
+
+        Assert.Equal("Attitudes", doel!.Leergebied);
+        Assert.Equal("Leren leren", doel.Rubriek);
+        Assert.Null(doel.Subrubriek);
+    }
+
+    /// <summary>
+    /// A path of another shape leaves the ordering empty and never costs the row: the eindterm is decreed whatever its
+    /// heading, and the register lists it apart.
+    /// </summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Nederlands")]
+    [InlineData("Nederlands > Lezen > Tekstbegrip > Extra")]
+    [InlineData("Nederlands >  > Tekstbegrip")]
+    [InlineData("Nederlands > <b>Lezen</b>")]
+    [InlineData("Nederlands>Lezen")]
+    public void Een_pad_van_een_andere_vorm_laat_de_ordening_leeg_en_weigert_de_rij_niet(string? path)
+    {
+        var (doel, probleem) = OnderwijsdoelMapping.Map(Rij(path: path), href: null, Peildatum);
+
+        Assert.Null(probleem);
+        Assert.NotNull(doel);
+        Assert.Null(doel.Leergebied);
+        Assert.Null(doel.Rubriek);
+        Assert.Null(doel.Subrubriek);
+    }
+
+    [Fact]
+    public void Een_niveau_breder_dan_de_kolom_laat_de_ordening_leeg()
+    {
+        var lang = new string('a', Minimumdoel.MaxOrdeningLengte + 1);
+
+        var (doel, _) = OnderwijsdoelMapping.Map(Rij(path: $"Nederlands > {lang}"), href: null, Peildatum);
+
+        Assert.Null(doel!.Leergebied);
+    }
+
+    [Theory]
+    [InlineData("Te bereiken minimumdoelen op individueel niveau", MinimumdoelSoort.TeBereikenIndividueel)]
+    [InlineData("Te bereiken minimumdoelen op populatieniveau", MinimumdoelSoort.TeBereikenPopulatie)]
+    [InlineData("Na te streven minimumdoelen op populatieniveau", MinimumdoelSoort.NaTeStreven)]
+    [InlineData(" Na te streven minimumdoelen op populatieniveau ", MinimumdoelSoort.NaTeStreven)]
+    [InlineData("Een nieuwe soort", null)]
+    [InlineData(null, null)]
+    public void Het_type_wordt_de_soort_van_het_decreet(string? type, MinimumdoelSoort? soort)
+    {
+        var (doel, probleem) = OnderwijsdoelMapping.Map(Rij(type: type), href: null, Peildatum);
+
+        Assert.Null(probleem);
+        Assert.Equal(soort, doel!.Soort);
     }
 }

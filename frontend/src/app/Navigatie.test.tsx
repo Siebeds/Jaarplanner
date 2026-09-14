@@ -48,7 +48,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useHoekenpaneel.setState({ open: false });
+  useHoekenpaneel.setState({ open: false, soort: "hoeken" });
   vi.unstubAllGlobals();
 });
 
@@ -97,6 +97,8 @@ describe("Navigatie", () => {
     // A hoofdleerkracht with themabeheer and no klas: every right but the planning of a klas.
     rendermetPad("/agenda", ikMet({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: ["K3"] }));
     expect(schakelaar()).not.toBeInTheDocument();
+    // Nor the algemene fiches' switch: every fiche in that list plans one too.
+    expect(screen.queryByRole("button", { name: t("hoekenpaneel.algemeenTitel") })).not.toBeInTheDocument();
   });
 
   it("biedt hem niet aan zolang niet bekend is wie er aangemeld is", () => {
@@ -113,6 +115,28 @@ describe("Navigatie", () => {
 
     expect(useHoekenpaneel.getState().open).toBe(true);
     expect(schakelaar()).toHaveAttribute("aria-pressed", "true");
+  });
+
+  /*
+    TWO SWITCHES, ONE COLUMN (owner, 2026-09-14: "twee secties ... niet gegroepeerd als fiches"). Pressing the other
+    switch swaps the list without closing the column first; pressing the one that is on closes it.
+  */
+  it("heeft een eigen schakelaar voor de algemene fiches, die de lijst wisselt en niet eerst sluit", () => {
+    rendermetPad("/agenda", DIRECTIE);
+    const algemeen = () => screen.getByRole("button", { name: t("hoekenpaneel.algemeenTitel") });
+
+    fireEvent.click(algemeen());
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "algemeen" });
+    expect(algemeen()).toHaveAttribute("aria-pressed", "true");
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(schakelaar()!);
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "hoeken" });
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "true");
+    expect(algemeen()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(schakelaar()!);
+    expect(useHoekenpaneel.getState().open).toBe(false);
   });
 
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {

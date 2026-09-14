@@ -8,7 +8,7 @@ import { useDoelenfilter } from "./doelenfilter";
  * that a restored filter does not get overwritten by the class preset it already accounts for.
  */
 
-const BEGIN = { filter: {}, zoek: "", bron: "leerplandoelen" as const, faseVanKlas: null };
+const BEGIN = { filter: {}, zoek: "", bron: "leerplandoelen" as const, mijlpaal: null, faseVanKlas: null };
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -20,12 +20,14 @@ describe("doelenfilter", () => {
     useDoelenfilter.getState().stelFilter({ domein: "Wiskunde", subdomein: "Getallen" });
     useDoelenfilter.getState().stelZoek("meten");
     useDoelenfilter.getState().stelBron("minimumdoelen");
+    useDoelenfilter.getState().stelMijlpaal("4-");
 
     const bewaard = JSON.parse(sessionStorage.getItem("jaarplanner-doelenfilter") ?? "{}");
     expect(bewaard.state).toMatchObject({
       filter: { domein: "Wiskunde", subdomein: "Getallen" },
       zoek: "meten",
       bron: "minimumdoelen",
+      mijlpaal: "4-",
     });
   });
 
@@ -48,15 +50,17 @@ describe("doelenfilter", () => {
   // The half that makes returning to the screen safe: after "alles wissen" the screen re-renders
   // and compares the class fase again. It must find them equal, or the preset walks straight back
   // in and the button did nothing.
-  it("wist filter en zoekterm, maar blijft de klasfase volgen", () => {
+  it("wist filter, zoekterm en mijlpaal, maar blijft de klasfase volgen", () => {
     useDoelenfilter.getState().volgKlasFase("L3");
     useDoelenfilter.getState().stelFilter({ jaarFase: "L3", domein: "Wiskunde" });
     useDoelenfilter.getState().stelZoek("meten");
+    useDoelenfilter.getState().stelMijlpaal("6-");
 
     useDoelenfilter.getState().wisAlles();
 
     expect(useDoelenfilter.getState().filter).toEqual({});
     expect(useDoelenfilter.getState().zoek).toBe("");
+    expect(useDoelenfilter.getState().mijlpaal).toBeNull();
     expect(useDoelenfilter.getState().faseVanKlas).toBe("L3");
   });
 

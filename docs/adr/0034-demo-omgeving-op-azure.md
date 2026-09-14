@@ -53,6 +53,16 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      the development sign-in is not mapped outside `Ontwikkeling`, which refuses to start outside Development.
      ADR-0030 gives directie every right, so every session this environment can issue has exactly the rights the matrix
      would give it.
+   - *Amended 2026-09-14 (TB-003, owner ruling the same day).* The paragraph above is no longer true of the running
+     environment:
+     - On 2026-09-13 at 19:44 the `azure-demo` session added five non-directie invitations to the demo database:
+       `demo.leerkracht1` to `demo.leerkracht5`, accounts in the owner's tenant, each assigned to the app.
+     - No code path in the repo creates a `Gebruiker` except the bootstrap for an empty table, so they were written
+       outside the app. The coordination log records the session and the time, not the mechanism.
+     - Until E6-02 enforces the ADR-0030 matrix, a session of one of them can do nearly everything directie can.
+     - Asked on 2026-09-14 whether the waiver still holds knowing this, the owner chose *"Ja, en leg het vast"*. The
+       conditions stay as read above, with six test accounts instead of one. E7-11 stays `[!]` for any environment
+       with real school data.
 2. **The services**, all in one resource group `rg-jaarplanner-demo`, in **Belgium Central**.
    - West Europe was the first choice. At the validation before deployment on 2026-09-13 it refused all four resources:
      *"The selected region is currently not accepting new customers"*.
@@ -94,6 +104,25 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      `CREATEROLE`, membership of `azure_pg_admin`). Accepted for a demo that holds only fictional data. **Before any
      environment holds real data** the app needs a role of its own with DML rights only, and the admin credential is kept
      for `migrate-db.ps1`. That is recorded on E7-05.
+   - *Amended 2026-09-14 (TB-003).* A second operator procedure, `infra/seed-demo.ps1`, fills the demo with
+     fictional content through the app's own API. It adds three facts to this decision:
+     - during a seed run the PostgreSQL password is also in the operator's process and in the environment of the
+       local API, of the `az` processes that API starts for Key Vault tokens, of the docker CLI and of each psql
+       container. All of them end with the run; the build runs before the password is read;
+     - the operator gets **Key Vault Crypto User on the Data Protection key** for the run, unless they hold a role that
+       covers it, and the script removes that assignment again;
+     - the local API runs in Development with the development sign-in, against the demo database, as the existing
+       directie. It writes no `Gebruiker`, and it runs with the demo's key setting, so every Data Protection key it
+       could create is wrapped. The script deletes an unwrapped key row that appears anyway, and the run then fails.
+   - *Amended 2026-09-14 (TB-008).* During a migration the password is also in the environment of `dotnet dnx`,
+     dotnet-ef, the two `dotnet msbuild` evaluations dotnet-ef runs, and its design-time host (`dotnet exec`). All of
+     them end with the run.
+     - `migrate-db.ps1` builds before it reads the password, without build servers, and runs dotnet-ef with
+       `--no-build`.
+     - It sets `MSBUILDDISABLENODEREUSE` while the password is set, so dotnet-ef's evaluations cannot run on a reusable
+       MSBuild node, another session's included, that outlives the script.
+     - An `az` command may start an Azure CLI telemetry process that outlives it by a few seconds, with the same
+       environment. For a seed run that includes the `az` processes its local API starts (TB-003 above).
 6. **The network, a demo trade-off.**
    - F1 has no virtual network integration, so PostgreSQL keeps its public endpoint. Its firewall rule
      `AllowAllAzureServicesAndResourcesWithinAzureIps` admits **any Azure-hosted address, in any tenant**, not only
@@ -101,6 +130,9 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
      (`SSL Mode=VerifyFull`).
    - Migrations run from the operator's machine (`infra/migrate-db.ps1`). The script opens the firewall to that
      machine's address for the run and closes it again, also when the migration fails. The app never migrates itself.
+   - *Amended 2026-09-14 (TB-003).* `infra/seed-demo.ps1` opens the firewall the same way, for its own run, and
+     closes it again when the run ends or fails. Closing the window skips that clean-up; `infra/README.md` says how to
+     find a leftover rule.
    - **Not acceptable for production**, where private networking needs at least a Basic plan.
 7. **Entra, in the owner's tenant.**
    - A single-tenant web app registration, with the redirect URIs `https://<host>/api/signin-oidc` and `https://<host>/`.
@@ -141,6 +173,8 @@ Flexible Server B1ms among them, which the owner checked in the portal on 2026-0
 - F1 sleeps, so the first request after a quiet spell takes several seconds, and heavy use can exhaust the 60
   CPU-minutes a day. B1, about €11 a month, is the step up.
 - Only the first directie can sign in until E6-04 lets directie invite others.
+- *Amended 2026-09-14 (TB-003):* the bullet above stopped being true on 2026-09-13, when five leerkracht invitations
+  were added outside the app (decision 1). Their sessions carry nearly directie's rights until E6-02.
 - The AI endpoints answer 500 without configuration; E2-09 records that they should answer 503.
 - The app runs as the database administrator, and the database answers any Azure-hosted address that has the password
   (decisions 5 and 6).

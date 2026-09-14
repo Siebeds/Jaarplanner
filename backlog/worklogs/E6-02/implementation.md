@@ -2485,3 +2485,53 @@ planned thema, predate this slice and go to the owner as tickets. The React warn
   - F10: Bert (HL K3) in the register, doel 9.1.K3.1, "Koppel dit doel", searched "Bladeren", "Nieuwe activiteit", typed a name; directie removed his K3 hoofdleerkracht right (200); "Maak en koppel": `403 POST …/subthemas/…/activiteiten`, `200 /api/ik`. The marked alert "Je hebt geen toegang tot deze actie." is still there and the same element, one alert inserted; "Maak en koppel" and the name field gone, Annuleer present; the subthema link button gone (the new rights arrived); no uncaught exception, no horizontal overflow. Right restored (200).
   - F11: Carla (K3 groen and blauw), "Subthema inplannen", subthema chosen: the preview "Zo komt het te staan" and "Plan 1 activiteit in" present; directie removed groen (200); plan pressed: two 403s, `/api/ik` refetched. Afterwards no select, no date fields, no radiogroup, no preview, no drag handles, no footer; the result alert is the marked element, one alert inserted. Klastoewijzing restored (200).
 - **Branch:** `story/E6-02-frontend`.
+
+## Merge of origin/main before the PR
+
+- **What:** merged `origin/main` at `3ba2391` into `feature/e6-rollen-rechten` at `4ab828a`, so the PR merges cleanly.
+  `main` had moved past the `6051baa` of the trial merge by PR #68 (TB-016) and PR #69 (TB-015); both are in.
+- **Conflicts and how each was resolved** (both sides' behaviour kept in every one):
+  - `CONSTITUTION.md`, ratification log: both sides added rows dated 2026-09-14. All six kept, in commit-time order:
+    I24/I25 (ours), ADR-0035 ontwikkelingsrapport (main), TB-010 minimumdoel ordering (main), I26-I28 (ours), the Q4
+    narrowing (ours), the Q5 clarification (ours). The Art. VI.1 text merged by itself (main's fifth right,
+    Leerlingzorg, beside our I24-I28). No I-item renumbered, and no contradiction in substance found.
+  - `docs/adr/0030-rollen-en-rechten-in-de-app.md`: both sides added a footnote 6. Main's (the ontwikkelingsrapport
+    rows) is cited by the ADR header, the column rule and the TB-005 audits; ours (the thema delete, I26/I27) by one
+    cell. Ours became footnote 7 and follows main's. One sentence added to *How the matrix is enforced*, because "each
+    row is a named policy" became false on merge: the ontwikkelingsrapport rows have no policy in `Rechtenmatrix` yet,
+    and get one when FR-13 is built.
+  - `Navigatie.tsx`: main's two panel switches (Hoekenfiches, Algemene fiches), both behind `opAgenda && magPlannen`.
+  - `Doeldetail.tsx`: main's required-but-nullable `onKoppel` (TB-016) kept, with our paragraph: the register passes
+    `null` when `mag.doelKoppelenVoor` says no. `DoelenScherm.tsx`: main's `detail()` helper, gated the same way.
+  - `Minimumdoelenlijst.tsx` and its test (modify/delete): main replaced the list with `Minimumdoelenboom` (TB-010).
+    Deleted, and our E1-22 carry-forward ported to it: `Laadlink` only with `mag.curriculumbeheer`, pointing at
+    `/inladen?bron=opstap`; both tests ported to `Minimumdoelenboom.test.tsx`.
+  - `Agendascherm.tsx`: main added `verplaatsFichemoment` to the drag message, which ours had replaced with
+    `Agendamelding`, so its error joins `Agendamelding`'s list. Main's two mobile chips and its `onKiesAlgemeneFiche`
+    on the panel kept, both only when `magPlannen`.
+  - `Tijdraster.tsx`: main's aria-label (the onderschrift of a hoek or fiche) with our drag gating.
+    `Tijdraster.test.tsx`: both option sets and every test kept.
+  - `Subthemahoofdstuk.tsx`, `ThemadetailScherm.tsx`: main's `Gekoppelddoel` rows (TB-016), with the unlink only for
+    `magSubdoelen` / `mag.themaBewerken`, as before.
+- **Follow-up fixes where the two sides meet** (in the merge commit):
+  - `Gekoppelddoel.tsx`: `onOntkoppel` optional; without it the row only opens the detail (the E3-06 rule).
+  - `Algemenefichedetailblad.tsx`: an `alleenLezen` mode like `Hoekdetailblad`'s. It drops the delete footer, the
+    moment's day and hour fields, and the sentence about what the delete costs. `Agendascherm` passes `!magPlannen`.
+    Main's fiche blocks open this sheet, and a reader sees the blocks.
+  - Not changed, and why: `Algemeneficheplaatsingblad` and the panel's create tile (TB-015) are reachable only through
+    `Hoekenpaneel`, which a gebruiker who may not plan the klas does not get.
+  - Tests: `Tijdraster.test` has a new case (a reader opens a fiche block and cannot drag it). `Navigatie.test`: main's
+    two-switch test renders as directie, and our "may not plan" test also asserts the Algemene fiches switch is absent.
+    `Gekoppelddoel.test` (main's TB-016) renders as directie, since without an `Ik` no write control is drawn.
+    `DoelenScherm.test` (our F1): fixtures moved to the TB-010 shapes, and the way in is the tree, the minimumdoel's
+    row, then the code in `Minimumdoeldetail`.
+- **Backend:** no conflicts. The model snapshot merged by itself; our `20260914093928_RechtenModel` and
+  `20260914114237_Wizardrun` and main's `20260914124010_MinimumdoelOrdeningEnSoort` coexist, and
+  `has-pending-model-changes` reports none. Main's one new route is a `[HttpGet("{minimumdoelRef}")]` on
+  `MinimumdoelenController`, a read, so `ElkeWijzigendeRouteVraagtEenRechtTests` asks no policy of it; it passes.
+- **Gates:** `dotnet build` 0 warnings, 0 errors. `dotnet test` against the local `jaarplanner-db`: unit 1450 passed,
+  4 skipped; integration 467 passed, 1 skipped. All five skips are the KOV live-API tests (`JAARPLANNER_LIVE_OPSTAP`).
+  `dotnet format --verify-no-changes` clean. `pnpm lint` clean. `pnpm test` 61 files, 552 passed. `pnpm build` ok.
+  One full `pnpm test` run before the fixes timed out a `ThemadetailScherm` test at 5.3 s under load. It passed alone
+  and in the full rerun; noted in case it recurs.
+- **Not audited:** the gating of main's new controls above had no antagonist pass, and no browser pass.

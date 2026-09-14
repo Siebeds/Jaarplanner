@@ -10,6 +10,11 @@
 # relative path would give each worktree a private copy and coordinate nothing.
 .claude/coordination/
 
+# Local data of the AI eval runner (TB-004): real evalsets hold a school's own subthema's and gold links, and the
+# reports quote them. This repository is public, so none of it may be committed. Only the fictional
+# backend/tools/Jaarplanner.Eval/voorbeeld-evalset.json is tracked.
+/eval-data/
+
 # Local secrets / environment — never commit real credentials (Art. VI.4)
 .env
 .env.local

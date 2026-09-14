@@ -61,10 +61,12 @@ public interface IHoekplaatsingService
     /// structure it did not receive.
     /// </para>
     /// </summary>
-    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement, or no such appearance in it.</exception>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
+    /// No such placement, no such appearance in it, or the placement's klas or its schooljaar is gone.
+    /// </exception>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
-    /// The day falls outside the placement's window, the end is not after the start, or that hoek already starts at
-    /// that time on that day.
+    /// The day falls outside the placement's window, the day has no school (a weekend day or a closure, TB-011), the
+    /// end is not after the start, or that hoek already starts at that time on that day.
     /// </exception>
     Task<HoekplaatsingWeergave> VerplaatsMomentAsync(
         Guid plaatsingId,

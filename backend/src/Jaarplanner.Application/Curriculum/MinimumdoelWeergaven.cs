@@ -3,33 +3,25 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.Application.Curriculum;
 
 /// <summary>
-/// One minimumdoel as shown in the Doelen register's "Bekijk minimumdoelen" view: the decreed
-/// fields plus the (discipline, domein, subdomein) bucket it appears in (derived from its concorded
-/// leerplandoelen, since a minimumdoel has no discipline of its own — Art. VII.0 / IX.1).
+/// One minimumdoel as a row of the Doelen register's minimumdoelen view (FR-2.4), in the decree's own ordering (TB-010).
 /// <para>
-/// A minimumdoel may appear in more than one bucket when its concorded leerplandoelen span more than
-/// one (discipline, domein, subdomein) — that is correct and not forced into a single bucket.
-/// </para>
-/// <para>
-/// <b>A minimumdoel no loaded leerplandoel concords is listed too, once, without a bucket</b> (E1-22): its
-/// <see cref="DisciplineNummer"/>, <see cref="Domein"/> and <see cref="Subdomein"/> are null and
-/// <see cref="LeerplandoelCodes"/> is empty. Before E1-22 the register inner-joined the concordance, so such a
-/// minimumdoel was invisible: all 998 right after the minimumdoelen import, and six after the G goals (ADR-0032
-/// decision 5). That null says only that no loaded goal refers to it; it is never a gap the teachers left.
+/// <b>One row per minimumdoel.</b> Until TB-010 a row was a (minimumdoel, bucket) pair, the bucket borrowed from the
+/// (discipline, domein, subdomein) of its concorded leerplandoelen, so a minimumdoel taught in two subdomeinen was listed
+/// twice. The decree's ordering is the minimumdoel's own, so it has exactly one place.
 /// </para>
 /// </summary>
 /// <param name="Ref">The concordance key (stable identity).</param>
 /// <param name="Leeftijd">The minimumdoel leeftijd code: "K-", "4-", or "6-".</param>
 /// <param name="Nr">The decreed minimumdoel number.</param>
 /// <param name="Omschrijving">The decreed description of the eindterm.</param>
-/// <param name="DisciplineNummer">The discipline number this bucket belongs to; null when no loaded goal concords it.</param>
-/// <param name="DisciplineNaam">The discipline name; null without a bucket, or on a defensive lookup miss the FK prevents.</param>
-/// <param name="Domein">The domein of this bucket; null when no loaded goal concords it.</param>
-/// <param name="Subdomein">The subdomein of this bucket; null when no loaded goal concords it.</param>
-/// <param name="LeerplandoelCodes">Codes of the concorded leerplandoelen in this bucket, for cross-reference.</param>
+/// <param name="Leergebied">The decree's first level; null when the ordering is not known.</param>
+/// <param name="Rubriek">The decree's second level; null exactly when <paramref name="Leergebied"/> is.</param>
+/// <param name="Subrubriek">The decree's third level; null for a minimumdoel the decree gives none.</param>
+/// <param name="AantalLeerplandoelen">How many stored leerplandoelen concord to it.</param>
+/// <param name="JaarFasen">The distinct jaar/fasen of those leerplandoelen, kleuter before lager.</param>
 /// <param name="ZonderLeerplandoelReden">
-/// On a row without a bucket only: why no loaded leerplandoel concords it, as the last applied leerplandoelen import
-/// derived it (owner ruling 2026-09-13); null when that is not known. Always null on a row with a bucket.
+/// Only when no stored leerplandoel concords to it: why, as the last applied leerplandoelen import derived it (owner
+/// ruling 2026-09-13); null when that is not known. A stale reason on a minimumdoel that does have a goal is not shown.
 /// </param>
 /// <param name="ZonderLeerplandoelDoelsets">With a reason that names goal sets: KOV's marks, sorted. Empty otherwise.</param>
 public sealed record MinimumdoelRegelWeergave(
@@ -37,17 +29,17 @@ public sealed record MinimumdoelRegelWeergave(
     string Leeftijd,
     string Nr,
     string Omschrijving,
-    string? DisciplineNummer,
-    string? DisciplineNaam,
-    string? Domein,
-    string? Subdomein,
-    IReadOnlyList<string> LeerplandoelCodes,
+    string? Leergebied,
+    string? Rubriek,
+    string? Subrubriek,
+    int AantalLeerplandoelen,
+    IReadOnlyList<string> JaarFasen,
     ZonderLeerplandoelReden? ZonderLeerplandoelReden,
     IReadOnlyList<string> ZonderLeerplandoelDoelsets);
 
 /// <summary>One page of minimumdoelen plus the total the filter matches.</summary>
-/// <param name="Regels">The rows of this page, ordered (discipline, domein, subdomein, leeftijd, nr).</param>
-/// <param name="Totaal">How many rows the filter matches in total, ignoring paging.</param>
+/// <param name="Regels">The rows of this page, in the register's order.</param>
+/// <param name="Totaal">How many minimumdoelen the filter matches in total, ignoring paging.</param>
 /// <param name="Overslaan">The offset this page starts at.</param>
 /// <param name="Aantal">The page size that was applied.</param>
 public sealed record MinimumdoelenPagina(
@@ -58,11 +50,16 @@ public sealed record MinimumdoelenPagina(
 
 /// <summary>
 /// The browse/search criteria for the minimumdoelen register. Every dimension is optional.
-/// <para>
-/// <see cref="Domein"/> and <see cref="Subdomein"/> are one composite dimension (Art. VII.0): a bare
-/// <see cref="Subdomein"/> without a <see cref="Domein"/> is refused at the edge, exactly as on the
-/// leerplandoel register.
-/// </para>
+/// <list type="bullet">
+/// <item><see cref="Zoekterm"/> and <see cref="Leeftijd"/> match the minimumdoel itself.</item>
+/// <item><see cref="Discipline"/>, <see cref="Domein"/>, <see cref="Subdomein"/> and <see cref="JaarFase"/> match through
+/// the concordance: a minimumdoel matches when at least one stored leerplandoel that concords to it matches them all.
+/// They are the leerplandoelen register's filter, which the screen shares between its two views.</item>
+/// <item><see cref="Leergebied"/>, <see cref="Rubriek"/>, <see cref="Subrubriek"/>, <see cref="ZonderSubrubriek"/> and
+/// <see cref="ZonderOrdening"/> select one branch of the tree, for the list only: the facets describe the whole tree.</item>
+/// </list>
+/// <see cref="Domein"/> and <see cref="Subdomein"/> are one composite dimension (Art. VII.0), and a branch names its
+/// levels from the top: both are refused at the edge when a level is missing.
 /// </summary>
 public sealed record MinimumdoelFilter(
     string? Zoekterm = null,
@@ -71,39 +68,92 @@ public sealed record MinimumdoelFilter(
     string? Subdomein = null,
     string? JaarFase = null,
     int Overslaan = 0,
-    int Aantal = MinimumdoelFilter.StandaardPaginaGrootte)
+    int Aantal = MinimumdoelFilter.StandaardPaginaGrootte,
+    string? Leeftijd = null,
+    string? Leergebied = null,
+    string? Rubriek = null,
+    string? Subrubriek = null,
+    bool ZonderSubrubriek = false,
+    bool ZonderOrdening = false)
 {
     /// <summary>Default page size.</summary>
     public const int StandaardPaginaGrootte = 50;
 
     /// <summary>Hard ceiling on a page.</summary>
     public const int MaxPaginaGrootte = 200;
+
+    /// <summary>The leeftijd codes a minimumdoel carries, in the decree's order: einde kleuter, 4e and 6e leerjaar.</summary>
+    public static readonly IReadOnlyList<string> Leeftijden = ["K-", "4-", "6-"];
+
+    /// <summary>The same filter without a branch: what the facets count.</summary>
+    public MinimumdoelFilter ZonderTak() =>
+        this with { Leergebied = null, Rubriek = null, Subrubriek = null, ZonderSubrubriek = false, ZonderOrdening = false };
 }
 
 /// <summary>
-/// The filter vocabulary for the minimumdoelen register. Structurally identical to
-/// <see cref="LeerplandoelFacettenWeergave"/> except that there is no doelsoort dimension (minimumdoelen
-/// do not have one). The counts are scoped per dimension ("the rest of the filter"), the option sets
-/// come from the whole loaded data, and <see cref="TotaalAantalMinimumdoelen"/> is always unfiltered.
-/// <para>
-/// The per-dimension counts are <b>rows</b> (one per minimumdoel and bucket), which is what the register lists under
-/// each heading. How many <b>minimumdoelen</b> the filter matches is <see cref="AantalTreffers"/>: summing the domein
-/// counts double-counts a minimumdoel taught in two subdomeinen and misses one no loaded goal concords (E1-22).
-/// </para>
+/// The shape of the minimumdoelen tree under the filter (TB-010): every leergebied, rubriek and subrubriek with how many
+/// minimumdoelen it holds, in the decree's order. The counts are minimumdoelen, and since each minimumdoel sits in one
+/// branch they add up: the leergebieden plus <see cref="AantalZonderOrdening"/> make <see cref="AantalTreffers"/>.
 /// </summary>
 /// <param name="TotaalAantalMinimumdoelen">Every stored minimumdoel, whatever the filter.</param>
-/// <param name="AantalTreffers">Distinct minimumdoelen the whole filter matches, concorded or not.</param>
-/// <param name="AantalZonderLeerplandoel">
-/// Of those, the ones no loaded leerplandoel concords. Always zero under a discipline, domein or jaar/fase filter, since
-/// those dimensions come from the concorded goals.
-/// </param>
-/// <param name="Disciplines">Per discipline, rows under the rest of the filter.</param>
-/// <param name="Domeinen">Per domein and subdomein, rows under the rest of the filter.</param>
-/// <param name="JaarFasen">Per jaar/fase of the concorded goals, minimumdoelen under the rest of the filter.</param>
+/// <param name="AantalTreffers">The minimumdoelen the filter matches, branch parameters aside.</param>
+/// <param name="AantalZonderOrdening">Of those, the ones whose ordering is not known.</param>
+/// <param name="Leergebieden">The tree, in the decree's order.</param>
+/// <param name="Leeftijden">Per leeftijd code, the minimumdoelen the rest of the filter matches.</param>
 public sealed record MinimumdoelFacettenWeergave(
     int TotaalAantalMinimumdoelen,
     int AantalTreffers,
-    int AantalZonderLeerplandoel,
-    IReadOnlyList<DisciplineFacet> Disciplines,
-    IReadOnlyList<DomeinFacet> Domeinen,
-    IReadOnlyList<JaarFaseFacet> JaarFasen);
+    int AantalZonderOrdening,
+    IReadOnlyList<LeergebiedFacet> Leergebieden,
+    IReadOnlyList<LeeftijdFacet> Leeftijden);
+
+/// <summary>One leergebied of the tree and its rubrieken.</summary>
+public sealed record LeergebiedFacet(string Naam, int Aantal, IReadOnlyList<RubriekFacet> Rubrieken);
+
+/// <summary>
+/// One rubriek, its subrubrieken, and <paramref name="AantalZonderSubrubriek"/>: the minimumdoelen that sit directly
+/// under the rubriek because the decree gives them no third level.
+/// </summary>
+public sealed record RubriekFacet(string Naam, int Aantal, int AantalZonderSubrubriek, IReadOnlyList<SubrubriekFacet> Subrubrieken);
+
+/// <summary>One subrubriek, a leaf branch of the tree.</summary>
+public sealed record SubrubriekFacet(string Naam, int Aantal);
+
+/// <summary>How many minimumdoelen one leeftijd code holds under the rest of the filter.</summary>
+public sealed record LeeftijdFacet(string Leeftijd, int Aantal);
+
+/// <summary>
+/// One minimumdoel in full (TB-010): the decreed fields, its ordering and kind, and the stored leerplandoelen that
+/// concord to it per jaar/fase, which is how a teacher sees where the eindterm is worked out year by year.
+/// </summary>
+/// <param name="JaarFasen">
+/// Every jaar/fase of <see cref="Jaarfasen.Alle"/> in order, with the leerplandoelen of that year (possibly none), then
+/// any other jaar/fase a concorded goal carries. Always the full row, so the screen needs no jaar/fase vocabulary of its
+/// own.
+/// </param>
+public sealed record MinimumdoelDetailWeergave(
+    string Ref,
+    string Leeftijd,
+    string Nr,
+    string Omschrijving,
+    string? Leergebied,
+    string? Rubriek,
+    string? Subrubriek,
+    MinimumdoelSoort? Soort,
+    bool NietMeerInOpstap,
+    int AantalLeerplandoelen,
+    IReadOnlyList<JaarFaseLeerplandoelen> JaarFasen,
+    ZonderLeerplandoelReden? ZonderLeerplandoelReden,
+    IReadOnlyList<string> ZonderLeerplandoelDoelsets);
+
+/// <summary>The leerplandoelen of one jaar/fase that concord to a minimumdoel.</summary>
+public sealed record JaarFaseLeerplandoelen(string JaarFase, IReadOnlyList<GeconcordeerdLeerplandoel> Leerplandoelen);
+
+/// <summary>One leerplandoel as the minimumdoel detail lists it.</summary>
+public sealed record GeconcordeerdLeerplandoel(
+    string Code,
+    string Tekst,
+    string? DisciplineNaam,
+    string Domein,
+    string Subdomein,
+    bool NietMeerInOpstap);

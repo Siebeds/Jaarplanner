@@ -1,7 +1,7 @@
 import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Tijdraster, type Hoekblokje } from "./Tijdraster";
+import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
@@ -50,13 +50,24 @@ const hoek = (begin: string, einde: string): Hoekblokje => ({
   einde,
 });
 
+const fiche = (begin: string, einde: string): Ficheblokje => ({
+  plaatsingId: "fp-1",
+  momentId: "fm-1",
+  naam: "turnen",
+  datum: "2026-09-08",
+  begin,
+  einde,
+});
+
 function toon(
   dagen: Agendadag[],
   opties: {
     hoekmomenten?: Hoekblokje[];
+    fichemomenten?: Ficheblokje[];
     onVoegToe?: (datum: string, begin: number) => void;
     onOpenHoek?: (plaatsingId: string) => void;
     onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
+    onOpenFiche?: (plaatsingId: string, momentId: string) => void;
     magPlannen?: boolean;
   } = {},
 ) {
@@ -65,12 +76,14 @@ function toon(
       <Tijdraster
         dagen={dagen}
         hoekmomenten={opties.hoekmomenten ?? []}
+        fichemomenten={opties.fichemomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
         magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
         onOpen={opties.onOpen ?? (() => {})}
         onOpenHoek={opties.onOpenHoek ?? (() => {})}
+        onOpenFiche={opties.onOpenFiche ?? (() => {})}
         onWijzigTijd={() => {}}
       />
     </DndContext>,
@@ -172,6 +185,32 @@ describe("Tijdraster", () => {
     expect(screen.getByRole("button", { name: /kringgesprek/ })).toHaveAttribute("aria-roledescription");
   });
 
+  // An algemene fiche is the klas's planning too (ADR-0030 §3, R7): a reader opens it and cannot drag it (merge of
+  // E6-02 with the agenda's algemene fiches).
+  it("laat wie deze klas niet mag plannen een algemene fiche openen, niet slepen", () => {
+    const geopend = vi.fn();
+    toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend, magPlannen: false });
+
+    const knop = screen.getByRole("button", { name: /turnen/ });
+    expect(knop).not.toHaveAttribute("aria-roledescription");
+    fireEvent.click(knop);
+    expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
+  });
+
+  it("tekent een algemene fiche als blok met haar eigen onderschrift, en opent dat ene moment", () => {
+    const geopend = vi.fn();
+    toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend });
+
+    const knop = screen.getByRole("button", { name: /turnen/ });
+    expect(plaats(knop).top).toBe(`${630 * (56 / 60)}px`);
+    // Told apart from a hoek and an activiteit by a word, not by a hue (Art. XII): an hour is tall enough to print it.
+    expect(screen.getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
+
+    // The occurrence travels with the placement: its sheet offers that one day's hours without a drag.
+    fireEvent.click(knop);
+    expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
+  });
+
   it("biedt een gesloten dag niets aan en zegt waarom", () => {
     const gevraagd = vi.fn();
     toon([dag([], { isLesdag: false, sluitingsnaam: "Herfstvakantie" })], { onVoegToe: gevraagd });
@@ -212,6 +251,7 @@ describe("Tijdraster", () => {
   const midden = {
     magPlannen: true,
     hoekmomenten: [],
+    fichemomenten: [],
     reeksenPerDag: new Map([
       ["2026-09-10", lopendeReeks],
       ["2026-09-11", lopendeReeks],
@@ -224,6 +264,7 @@ describe("Tijdraster", () => {
     onVoegToe: () => {},
     onOpen: () => {},
     onOpenHoek: () => {},
+    onOpenFiche: () => {},
     onWijzigTijd: () => {},
   };
   const toonRij = (datums: string[]) =>
@@ -287,12 +328,14 @@ describe("Tijdraster", () => {
         <Tijdraster
           dagen={[dag(), dag([], { datum: "2026-09-09" })]}
           hoekmomenten={[]}
+          fichemomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
           magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}
           onOpenHoek={() => {}}
+          onOpenFiche={() => {}}
           onKiesDag={geopend}
           onWijzigTijd={() => {}}
         />
