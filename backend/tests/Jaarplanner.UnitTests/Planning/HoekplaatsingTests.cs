@@ -239,6 +239,12 @@ public sealed class HoekplaatsingTests
         var moment = plaatsing.PlanIn(new DateOnly(2026, 9, 7), HalfTwee, TweeUurTwintig);
         Assert.Throws<ArgumentException>(
             () => plaatsing.VerplaatsMoment(moment.Id, new DateOnly(2027, 1, 12), HalfTwee, TweeUurTwintig, Jaar()));
+
+        // The window rule speaks before the school-day rule: Saturday 19 December is both outside the window and a day
+        // without school, and the teacher is told the first, which is the one she can act on by picking a day inside.
+        var fout = Assert.Throws<ArgumentException>(
+            () => plaatsing.VerplaatsMoment(moment.Id, new DateOnly(2026, 12, 19), HalfTwee, TweeUurTwintig, Jaar()));
+        Assert.Equal("Die dag valt buiten de periode van de hoek.", fout.Message);
     }
 
     /// <summary>
