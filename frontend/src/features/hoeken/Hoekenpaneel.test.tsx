@@ -182,8 +182,46 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
     expect(posts).toEqual([
       { pad: "/api/klassen/k-1/algemene-fiches", body: { naam: "onthaal", omschrijving: null } },
     ]);
-    // The class's first fiche swaps the empty sentence for a list; the tile must survive that swap with its focus.
+  });
+
+  it("houdt de focus op de tegel wanneer de eerste fiche de lege zin vervangt", async () => {
+    // The refetch after the save is held until focus has returned, which is the order a browser gives: there the
+    // network answers long after the frame `sluitNieuw` waits for. In jsdom it would otherwise land first, and the
+    // test could not tell a kept tile from a remounted one.
+    const fiches: object[] = [];
+    const vastgehouden = { los: (_antwoord: Response) => {} };
+    let gepost = false;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_pad: string, init?: RequestInit) => {
+        if (init?.method === "POST") {
+          gepost = true;
+          const nieuw = { id: "n-1", klasId: "k-1", naam: "onthaal", omschrijving: null, aantalPlaatsingen: 0, doelen: [] };
+          fiches.push(nieuw);
+          return Promise.resolve(antwoord(nieuw));
+        }
+        if (gepost) return new Promise<Response>((resolve) => (vastgehouden.los = resolve));
+        return Promise.resolve(antwoord(fiches));
+      }),
+    );
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
+    toon();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("algemeneFiches.toevoegen") }));
+    await screen.findByRole("dialog", { name: t("algemeneFiches.nieuwTitel") });
+    fireEvent.change(screen.getByLabelText(t("algemeneFiches.naam")), { target: { value: "onthaal" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
     await waitFor(() => expect(screen.getByRole("button", { name: t("algemeneFiches.toevoegen") })).toHaveFocus());
+    const tegel = screen.getByRole("button", { name: t("algemeneFiches.toevoegen") });
+    expect(screen.getByText(t("hoekenpaneel.geenAlgemeneFiches"))).toBeInTheDocument();
+
+    vastgehouden.los(antwoord(fiches));
+    expect(await screen.findByRole("button", { name: /onthaal/ })).toBeInTheDocument();
+    // The same node, still focused: a remounted tile would be a different element and would have lost the focus.
+    expect(screen.getByRole("button", { name: t("algemeneFiches.toevoegen") })).toBe(tegel);
+    expect(tegel).toHaveFocus();
   });
 
   it("toont de tegel ook bij een klas zonder hoeken", async () => {

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:23
+bijgewerkt: 2026-09-14 16:32
 opgepakt-door: fiche-plus
 branch: ticket/fiche-plus-in-paneel
 pr:
@@ -30,7 +30,7 @@ link daarheen; zodra er een fiche bestaat, is er in het paneel geen weg meer om 
   Instellingen hetzelfde, en `nl.json` verandert niet.
 - De tegel opent het bestaande formulier (`Hoekformulier` of `Algemeneficheformulier`) als blad, en bewaart met de
   bestaande hooks `useMaakHoek` en `useMaakAlgemeneFiche` voor de klas van de agenda. De lijst ververst zichzelf, dus
-  de nieuwe fiche staat na het bewaren meteen in het paneel, klaar om te slepen.
+  de nieuwe fiche staat na het bewaren in het paneel, klaar om in te plannen.
 - Op een telefoon is het paneel zelf een blad. Het sluit eerst, zoals bij het kiezen van een fiche, zodat ze niet twee
   bladen diep zit, en gaat weer open wanneer het formulier sluit, zodat ze terugkomt bij de lijst.
 - De tegel staat er ook bij een lege lijst. Hij staat er niet zolang de lijst laadt, niet als de lijst niet geladen kon
@@ -39,16 +39,16 @@ link daarheen; zodra er een fiche bestaat, is er in het paneel geen weg meer om 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de hoekenfiches in het zijpaneel, wanneer ze op "Hoek toevoegen" onderaan klikt en een naam bewaart, dan
+- [x] Gegeven de hoekenfiches in het zijpaneel, wanneer ze op "Hoek toevoegen" onderaan klikt en een naam bewaart, dan
   staat de nieuwe hoek in de lijst van het paneel zonder dat ze de agenda verlaat.
-- [ ] Gegeven de algemene fiches in het zijpaneel, wanneer ze op "Fiche toevoegen" onderaan klikt en een naam bewaart,
+- [x] Gegeven de algemene fiches in het zijpaneel, wanneer ze op "Fiche toevoegen" onderaan klikt en een naam bewaart,
   dan staat de nieuwe fiche in de lijst van het paneel.
-- [ ] Gegeven een klas zonder hoeken of zonder algemene fiches, dan toont het paneel de tegel ook, onder de zin die zegt
+- [x] Gegeven een klas zonder hoeken of zonder algemene fiches, dan toont het paneel de tegel ook, onder de zin die zegt
   dat er nog geen zijn.
-- [ ] Gegeven een lijst die niet geladen kon worden, dan toont het paneel geen tegel.
-- [ ] Gegeven een telefoonbreedte (~390px), wanneer ze op de tegel tikt, dan sluit het paneelblad, opent het formulier,
+- [x] Gegeven een lijst die niet geladen kon worden, dan toont het paneel geen tegel.
+- [x] Gegeven een telefoonbreedte (~390px), wanneer ze op de tegel tikt, dan sluit het paneelblad, opent het formulier,
   en na bewaren of annuleren staat ze weer in het paneel.
-- [ ] De tegel is met het toetsenbord bereikbaar, heeft een zichtbare focusring, en is in een echte browser nagekeken
+- [x] De tegel is met het toetsenbord bereikbaar, heeft een zichtbare focusring, en is in een echte browser nagekeken
   op desktop en op ~390px.
 
 ## Buiten scope
@@ -67,3 +67,4 @@ Geen.
 
 - 2026-09-14 16:06 · fiche-plus · aangemaakt (status in-uitvoering)
 - 2026-09-14 16:23 · fiche-plus · Tegel gebouwd, tests en lint groen. Antagonist ronde 1: VIOLATIONS FOUND (0 kritiek, 0 groot, 4 klein, 2 vragen): ticketzin over de server, drie te ruime codecommentaren, randtoken, ontbrekende tests. In behandeling.
+- 2026-09-14 16:32 · fiche-plus · Ronde-1-bevindingen verwerkt (ticketzin, commentaren, rand lijn-veld 3,2:1, vier tests, focus na eerste fiche). Browser (Chrome, wegwerpdatabase): op 1440px en 390px een hoek en twee algemene fiches vanuit het paneel aangemaakt, toetsenbord en focusring nagekeken, paneelblad sluit en komt terug op de telefoon. Criteria afgevinkt; frontend 279/279, lint groen. Antagonist ronde 2 loopt.
