@@ -25,7 +25,9 @@ import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Ac
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
-import { Blok, Doellijst, Doelregel, Feit, Groep, Kop, Ontkoppel } from "./Fiche";
+import { Blok, Doellijst, Feit, Groep, Kop } from "./Fiche";
+import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Doeldetailblad } from "./Doeldetailblad";
 import { themabalans } from "./themabalans";
 import {
   useKoppelActiviteitdoel,
@@ -102,6 +104,8 @@ export function ThemadetailScherm() {
     activiteitId?: string;
   } | null>(null);
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
+  // The leerplandoel whose detail is open (TB-016), from a themadoel or from any subthema's subdoelen.
+  const [getoondDoel, setGetoondDoel] = useState<string | null>(null);
 
   const wijzig = useWijzigThema(id);
   const verwijder = useVerwijderThema();
@@ -299,19 +303,16 @@ export function ThemadetailScherm() {
             ) : (
               <Doellijst>
                 {thema.themadoelen.map((themadoel) => (
-                  <Doelregel key={themadoel.id}>
-                    <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
-                      {themadoel.koppeling.leerplandoelCode}
-                    </span>
-                    <Statusmerk status={themadoel.koppeling.status} className="ml-auto" />
-                    <Ontkoppel
-                      label={t("activiteit.ontkoppel", {
-                        code: themadoel.koppeling.leerplandoelCode,
-                      })}
-                      bezig={ontkoppelThemadoel.isPending}
-                      onClick={() => ontkoppelThemadoel.mutate(themadoel.id)}
-                    />
-                  </Doelregel>
+                  <Gekoppelddoel
+                    key={themadoel.id}
+                    koppeling={themadoel.koppeling}
+                    ontkoppelLabel={t("activiteit.ontkoppel", {
+                      code: themadoel.koppeling.leerplandoelCode,
+                    })}
+                    ontkoppelBezig={ontkoppelThemadoel.isPending}
+                    onOntkoppel={() => ontkoppelThemadoel.mutate(themadoel.id)}
+                    onToon={setGetoondDoel}
+                  />
                 ))}
               </Doellijst>
             )}
@@ -446,6 +447,7 @@ export function ThemadetailScherm() {
             onOntkoppelSubdoel={(subdoelId) =>
               ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
             }
+            onToonDoel={setGetoondDoel}
             // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
             // here shows up there and both invalidate the same query. Removing one stays in the
             // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
@@ -457,6 +459,8 @@ export function ThemadetailScherm() {
         ))}
         </Groep>
       </Schermvlak>
+
+      <Doeldetailblad code={getoondDoel} onSluit={() => setGetoondDoel(null)} />
 
       {bewerkOpen ? (
         <Themaformulier

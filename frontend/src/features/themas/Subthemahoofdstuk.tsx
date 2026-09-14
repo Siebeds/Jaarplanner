@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
@@ -10,7 +9,8 @@ import type { SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
-import { Blok, Doellijst, Doelregel, Ontkoppel, Subkop } from "./Fiche";
+import { Blok, Doellijst, Subkop } from "./Fiche";
+import { Gekoppelddoel } from "./Gekoppelddoel";
 
 /**
  * One age's derivation of a thema: a chapter of the fiche.
@@ -56,6 +56,7 @@ export function Subthemahoofdstuk({
   onKoppelSubdoel,
   onOntkoppelSubdoel,
   onKoppelActiviteitdoel,
+  onToonDoel,
   koppelenBezig,
 }: {
   subthema: SubthemaWeergave;
@@ -67,6 +68,8 @@ export function Subthemahoofdstuk({
   onKoppelSubdoel: (leerplandoelCode: string) => void;
   onOntkoppelSubdoel: (subdoelId: string) => void;
   onKoppelActiviteitdoel: (activiteitId: string, leerplandoelCode: string) => void;
+  /** Open the detail of a subdoel's leerplandoel; the page owns the one sheet it opens in (TB-016). */
+  onToonDoel: (leerplandoelCode: string) => void;
   koppelenBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
@@ -203,17 +206,14 @@ export function Subthemahoofdstuk({
             ) : (
               <Doellijst>
                 {subthema.subdoelen.map((subdoel) => (
-                  <Doelregel key={subdoel.id}>
-                    <span className="mono min-w-0 truncate text-meta text-inkt">
-                      {subdoel.koppeling.leerplandoelCode}
-                    </span>
-                    <Statusmerk status={subdoel.koppeling.status} className="ml-auto" />
-                    <Ontkoppel
-                      label={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
-                      bezig={koppelenBezig}
-                      onClick={() => onOntkoppelSubdoel(subdoel.id)}
-                    />
-                  </Doelregel>
+                  <Gekoppelddoel
+                    key={subdoel.id}
+                    koppeling={subdoel.koppeling}
+                    ontkoppelLabel={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
+                    ontkoppelBezig={koppelenBezig}
+                    onOntkoppel={() => onOntkoppelSubdoel(subdoel.id)}
+                    onToon={onToonDoel}
+                  />
                 ))}
               </Doellijst>
             )}

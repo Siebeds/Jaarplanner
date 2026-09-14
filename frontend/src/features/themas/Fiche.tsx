@@ -306,7 +306,8 @@ export function Ontkoppel({
 }
 
 /**
- * A list of goal links: a code, its status, and the control that takes it off.
+ * A list of goal links, one `Gekoppelddoel` row each: the doel's code and text, its status, and the
+ * control that takes it off.
  *
  * **One frame around the whole list, with the rows divided inside it** (owner, 2026-08-31, about the
  * activiteiten: "zou je de activiteiten volledig kunnen omkaderen ipv wat lijntjes?"). It was a rule
@@ -323,8 +324,4 @@ export function Doellijst({ children }: { children: ReactNode }) {
   return (
     <ul className="divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">{children}</ul>
   );
-}
-
-export function Doelregel({ children }: { children: ReactNode }) {
-  return <li className="flex items-center gap-2 px-3 py-2">{children}</li>;
 }
