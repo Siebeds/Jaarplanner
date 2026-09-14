@@ -2,10 +2,10 @@
 id: TB-012
 titel: Agenda opent op de week, en de dagcellen van de maand krijgen rechte hoeken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:34
+bijgewerkt: 2026-09-14 13:51
 opgepakt-door: kalender-week
 branch: ticket/kalender-week-standaard
 pr:
@@ -28,11 +28,11 @@ De eigenaar vroeg op 2026-09-14 om twee wijzigingen aan de agenda:
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de app, wanneer een leerkracht in het menu op Agenda klikt, dan opent de weekweergave van de week van vandaag (op ~390px: drie dagen vanaf vandaag).
-- [ ] Gegeven de weekweergave, wanneer de leerkracht Maand kiest en de pagina herlaadt, dan blijft de maandweergave staan en naar vorige/volgende gaan blijft in de maand.
-- [ ] Gegeven het planoverzicht (`/plan`), wanneer de leerkracht een periode in de agenda opent, dan opent de week van de eerste dag van die periode.
-- [ ] Gegeven de maandweergave, dan hebben de dagcellen rechte hoeken en worden de stroken bovenaan niet meer door de hoek afgesneden, ook niet bij de cel van vandaag en bij een cel waar een activiteit over gesleept wordt.
-- [ ] De frontend-tests en `pnpm lint` zijn groen, en de agenda is in een echte browser bekeken op desktop en op ~390px.
+- [x] Gegeven de app, wanneer een leerkracht in het menu op Agenda klikt, dan opent de weekweergave van de week van vandaag (op ~390px: drie dagen vanaf vandaag).
+- [x] Gegeven de weekweergave, wanneer de leerkracht Maand kiest en de pagina herlaadt, dan blijft de maandweergave staan en naar vorige/volgende gaan blijft in de maand.
+- [x] Gegeven het overzicht Thema's per periode (`/agenda/periodes`), wanneer de leerkracht een periode in de agenda opent, dan opent de week van de eerste dag van die periode.
+- [x] Gegeven de maandweergave, dan hebben de dagcellen rechte hoeken en worden de stroken bovenaan niet meer door de hoek afgesneden, ook niet bij de cel van vandaag en bij een cel waar een activiteit over gesleept wordt.
+- [x] De frontend-tests en `pnpm lint` zijn groen, en de agenda is in een echte browser bekeken op desktop en op ~390px.
 
 ## Buiten scope
 
@@ -47,3 +47,6 @@ Geen.
 ## Werklog
 
 - 2026-09-14 13:34 · kalender-week · aangemaakt (status in-uitvoering)
+- 2026-09-14 13:44 · kalender-week · gebouwd (a586019); vitest 39 bestanden/264 tests groen, pnpm lint schoon; browsercontrole headless Chrome op wegwerpdatabase: /agenda opent op de week (desktop en 390px), maand blijft staan na herladen en volgende, periodelink opent de week, 35 maandcellen meten 0px hoekradius; alle vijf criteria afgevinkt
+- 2026-09-14 13:51 · kalender-week · ontwerp vooraf met de frontend-design-skill (cel is het raster, wat erin zit houdt zijn afronding); antagonist: VIOLATIONS FOUND, 0 kritiek, 0 groot, 2 klein (twee onjuiste codecommentaren), beide opgelost; lint en 264 tests opnieuw groen. Open vraag voor de eigenaar: het label 'Periode van vandaag' op Thema's per periode opent nu een week
+- 2026-09-14 13:51 · kalender-week · in-uitvoering → klaar: agenda opent op de week, maandcellen rechte hoeken; gates groen

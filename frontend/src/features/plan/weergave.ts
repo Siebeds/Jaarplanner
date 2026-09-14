@@ -11,8 +11,8 @@ export function leesWeergave(waarde: string | null): Weergave {
 }
 
 /**
- * The query string that puts a view in the URL. Empty for the default, so the address of a week is the
- * bare one: the same address the sidebar and every other screen link to.
+ * The query string that puts a view in the URL. Empty for the default, so a week carries no parameter,
+ * like every link into the agenda from elsewhere.
  */
 export function weergaveZoek(weergave: Weergave): string {
   return weergave === "week" ? "" : `?weergave=${weergave}`;

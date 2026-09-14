@@ -18,9 +18,8 @@ import { cn } from "../../lib/cn";
  * A month, as the grid everyone already knows: seven columns starting on Monday.
  *
  * It was the agenda's opening view until the week took that over (TB-012), and it still does more
- * than answer where the work sits. The day number
- * is a button into that day, every activiteit on it is a button into that activiteit, and the cell
- * is a drop target. What it deliberately does NOT try to be is an editor: a 96 pixel cell cannot
+ * than answer where the work sits. The day number is a button into that day, every activiteit on it
+ * is a button into that activiteit, and the cell is a drop target. What it deliberately does NOT try to be is an editor: a 96 pixel cell cannot
  * hold a form, and trying is how month views become unusable.
  *
  * The cell used to be one big button. It cannot stay one: a draggable activiteit is itself a button,
@@ -74,8 +73,8 @@ export function Maandrooster({
   // The column headers come from a whole week, not from the first seven days returned. The server
   // clamps a range to the school year, so a month whose grid starts before the first school day
   // comes back short at the front: reading the headers off the data then labelled Tuesday as Monday
-  // and shifted every cell in the month by one column. Visible on the agenda's opening screen in
-  // september, and by construction invisible in any month that starts mid-year.
+  // and shifted every cell in the month by one column. Visible on the month of september, and
+  // by construction invisible in any month that starts mid-year.
   const eersteMaandag = maandagVan(dagen[0].datum);
   const kopdagen = Array.from({ length: 7 }, (_, i) => verschuif(eersteMaandag, i));
 
