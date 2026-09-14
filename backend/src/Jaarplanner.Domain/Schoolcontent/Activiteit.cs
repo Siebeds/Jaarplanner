@@ -22,13 +22,15 @@ public sealed class Activiteit
         string naam,
         ActiviteitType activiteitType,
         string? hoek = null,
-        string? verwachteUitkomsten = null)
+        string? verwachteUitkomsten = null,
+        Guid? makerId = null)
     {
         SubthemaId = subthemaId;
         Naam = Require(naam, nameof(naam));
         ActiviteitType = Validate(activiteitType);
         Hoek = Optional(hoek);
         VerwachteUitkomsten = Optional(verwachteUitkomsten);
+        MakerId = makerId == Guid.Empty ? null : makerId;
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -36,6 +38,18 @@ public sealed class Activiteit
 
     /// <summary>The owning (age-scoped) subthema.</summary>
     public Guid SubthemaId { get; private set; }
+
+    /// <summary>
+    /// The gebruiker who created this activiteit by hand, or <c>null</c> (Art. IX.2, Art. VI.1, ADR-0030 R25, R26).
+    /// <para>
+    /// <b>It only decides who may delete it:</b> the maker may, while no goal is linked to it, with or without a klas
+    /// at this leeftijd and after the schooljaar (R33). The activiteit stays shared; this is not E6-10's personal
+    /// content. <c>null</c> for an activiteit that predates the rule, for one the FR-1 import created, and for one
+    /// whose maker was removed as a gebruiker (the database sets it to null, I17), all of which are purely shared.
+    /// </para>
+    /// <para>Set once, at creation, and never by the import's overwrite path.</para>
+    /// </summary>
+    public Guid? MakerId { get; private set; }
 
     /// <summary>The activiteit name.</summary>
     public string Naam { get; private set; }

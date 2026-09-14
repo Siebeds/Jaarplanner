@@ -148,7 +148,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5));
         var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         await NieuweService().KoppelSubthemaAanDoelAsync(subA.Id, "NL-001");
-        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
+        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, null, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
 
         var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
@@ -268,7 +268,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
         await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
         var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
-        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
+        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, null, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
         var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
@@ -294,11 +294,11 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
         var subdoelB = await NieuweService().KoppelSubthemaAanDoelAsync(subB.Id, "NL-002");
-        var actB = await NieuweService().MaakActiviteitAsync(subB.Id, new ActiviteitCreatie("Meten (B)", ActiviteitType.Onderzoek));
+        var actB = await NieuweService().MaakActiviteitAsync(subB.Id, null, new ActiviteitCreatie("Meten (B)", ActiviteitType.Onderzoek));
 
         // Mutate class A's subdoel + activiteit set.
         var subdoelA = await NieuweService().KoppelSubthemaAanDoelAsync(subA.Id, "NL-001");
-        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
+        var actA = await NieuweService().MaakActiviteitAsync(subA.Id, null, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
         await NieuweService().OntkoppelSubdoelAsync(subA.Id, subdoelA.Id);
 

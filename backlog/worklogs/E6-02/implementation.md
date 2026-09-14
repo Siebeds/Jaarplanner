@@ -983,3 +983,218 @@ added bullet becomes:
   epic checkboxes.
 
 Unchanged defaults the owner may also confirm: I1, I2 (a reading only), I6, I9, (c), (e).
+
+## Code slice 1 — rights model, rights service, named policies, /api/ik
+
+- **FR / Article:** FR-10, FR-12.2; Art. VI.1 (ratified 2026-09-14), Art. IX.2 (`Activiteit` maker), Art. XII,
+  Art. XIV (graadklas seam); ADR-0030 §2 (I12, I17, I20, I21), §3, §4 (c), (e); ADR-0011 §2; ADR-0022; ADR-0031
+  decision 7.
+- **Branch:** `story/E6-02-fundament`, from `feature/e6-rollen-rechten` at `60020b9`. Not pushed, no PR.
+- **Scope held to slice 1.** No route other than the Op.stap import routes is gated yet (slice 3), no beheer API or
+  screen (slice 2), no wizard write actions (slice 3/E6-05), no frontend gating and no `nl.json` change (slice 4).
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Domain/Toegang/Gebruiker.cs` | `HeeftThemabeheer`; `GeefThemabeheer`/`NeemThemabeheerAf`; `GeefDirectierecht`; `NeemDirectierechtAf(int aantalAndereDirectieleden)` and `BevestigVerwijderbaar(int)`, which throw for the last directie. |
+| `Domain/Toegang/Klastoewijzing.cs` (new) | Gebruiker ↔ klas link row (R15). |
+| `Domain/Toegang/Hoofdleerkrachtaanstelling.cs` (new) | (gebruiker, schooljaar, jaarfase); jaarfase validated with `Jaarfasen.WatIsErMisMet` (R5, I20). |
+| `Domain/Toegang/Leeftijdsrechten.cs` (new) | **The one klas → leeftijden mapping for rights** (R22): the stated jaarfase or nothing (I12). Documented as the opposite-direction sibling of `Klasleeftijden`, not a reuse. |
+| `Domain/Schoolcontent/Activiteit.cs`, `Subthema.cs` | `MakerId` (R26), set only at creation through `VoegActiviteitToe(…, makerId)`. The import passes none. |
+| `Application/Toegang/Rechten.cs` (new) | The result type: raw relations per §3 column. |
+| `Application/Toegang/Rechtenberekening.cs` (new) | Pure computation from facts + `vandaag` (R20, I21, union). |
+| `Application/Toegang/Rechtenmatrix.cs` (new) | §3 as data: `Beleid` name constants, one `Matrixrij` per row, `Kolom` flags, and `StaatToe`, the only evaluator. |
+| `Application/Toegang/Rechtenbronnen.cs` (new) | `IRechtenService`, `IRechtenbronnen`, resource records `Leeftijdsinhoud`, `Klasplanning`, `Activiteitbron`. |
+| `Application/Schoolcontent/Beheer/ISchoolcontentBeheerService.cs`, `SchoolcontentBeheerDtos.cs` | `MaakActiviteitAsync(subthemaId, makerId, creatie)` (maker required, so no hand-create path forgets it); `ActiviteitWeergave.MakerId`. |
+| `Infrastructure/Toegang/RechtenService.cs` (new) | Three reads, then `Rechtenberekening`; per-request memo. |
+| `Infrastructure/Toegang/EfRechtenbronnen.cs` (new) | Projections that build the resources from a route id. |
+| `Infrastructure/Schoolklok.cs` (new) | Today/now on the Brussels wall clock (worklog note from the amendment: not UTC). |
+| `Infrastructure/Dekking/ClosedXmlDekkingExport.cs` | Uses `Schoolklok.Zone` instead of its private copy of the same zone lookup, so the school's zone is resolved in one place. Behaviour unchanged. |
+| `Infrastructure/Persistence/Configurations/{Klastoewijzing,Hoofdleerkrachtaanstelling}Configuration.cs` (new), `GebruikerConfiguration.cs`, `ActiviteitConfiguration.cs`, `AppDbContext.cs` | Tables, FKs, unique indexes (below). |
+| `Infrastructure/Persistence/Migrations/20260914093928_RechtenModel*` + snapshot | The one migration. |
+| `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` | Stores the maker; a maker id with no gebruiker row is stored as null. |
+| `Infrastructure/DependencyInjection.cs` | Registers `IRechtenService`, `IRechtenbronnen`. |
+| `Api/Infrastructure/Autorisatie/Rechtenbeleid.cs` (new) | `AddRechtenbeleid()` registers one policy per row (each `RequireAuthenticatedUser()` + `MatrixVereiste`); `MatrixHandler`; `MagAsync` extension. |
+| `Api/Infrastructure/CurriculumbeheerAutorisatie.cs` | Keeps the constant (now `= Rechtenmatrix.Beleid.Curriculumbeheer`); its registration moved into the matrix, so it is now directie-only. |
+| `Api/Program.cs` | `AddRechtenbeleid()` replaces `AddCurriculumbeheerAutorisatie()`. |
+| `Api/Controllers/AanmeldController.cs` | `GET /api/ik` returns `IkWeergave` with the rights. |
+| `Api/Controllers/SubthemasController.cs` | Passes the signed-in gebruiker as maker on `POST api/subthemas/{id}/activiteiten`. |
+| `frontend/src/lib/aanmelding.ts` + two test fixtures | `Ik` type extended (types only). |
+| Tests (below), `TestAuthenticatie.cs`, `CurriculumbeheerAutorisatieTests.cs`, three unit-test files (new `MaakActiviteitAsync` argument) | |
+
+### The public contract slices 2–4 build on
+
+**Rights service** (`Jaarplanner.Application.Toegang`):
+
+```csharp
+public interface IRechtenService
+{
+    Task<Rechten> HaalRechtenOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+}
+
+public sealed class Rechten
+{
+    Guid GebruikerId; bool IsDirectie; bool HeeftThemabeheer;
+    IReadOnlyList<string> HoofdleerkrachtLeeftijden;   // HL: appointed, schooljaar not ended (today <= Eind, Brussels)
+    IReadOnlyList<string> LeerkrachtLeeftijden;        // LK leeftijd: stated jaarfase of own klassen, schooljaar not ended
+    IReadOnlyList<Guid>   EigenKlasIds;                // LK eigen: every klastoewijzing, no end date
+    bool IsHoofdleerkrachtVan(string leeftijd); bool IsLeerkrachtVanLeeftijd(string leeftijd); bool IsLeerkrachtVanKlas(Guid klasId);
+    static Rechten Geen(Guid gebruikerId);
+}
+```
+
+Relations are raw and not directie-aware; `Rechtenmatrix.StaatToe` adds directie (R3) and the union rule. Leeftijd
+lists hold only the nine codes, in `Jaarfasen.Alle` order.
+
+**Resources and resolver:** `Leeftijdsinhoud(string Leeftijd)`, `Klasplanning(Guid KlasId)`,
+`Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen)`;
+`IRechtenbronnen.VoorSubthemaAsync(subthemaId)` → `Leeftijdsinhoud?`, `VoorActiviteitAsync(activiteitId)` →
+`Activiteitbron?` (null = not found).
+
+**Policies** (`Rechtenmatrix.Beleid.*`, each also requires an authenticated user; directie passes all):
+
+| Policy | §3 row | Columns besides directie | Resource |
+| --- | --- | --- | --- |
+| `Curriculumbeheer` | Op.stap inladen (R3) | none | none (**enforced now**) |
+| `Beheer` | gebruikers/klassen/schooljaren/rechten (R2, R3, R16) | none | none |
+| `ThemaBewerken` | thema, themadoelen, kernwoordenschat (R4, R18) | TB | none |
+| `SchoolcontentImporteren` | FR-1 import (R9, R27, R34) | TB | none |
+| `MenselijkeBeslissingenVerwijderen` | the import option (R35) | none | none (check imperatively when the option is set) |
+| `ThemaOpbouw` | wizard: thema, themadoelen, AI (R29) | TB | none |
+| `DoelsuggestiesMaken` / `DoelsuggestiesBeoordelen` | R14 | TB | none |
+| `SubthemaBeheren` | subthema's (R5, R21; I13: ask at both leeftijden on a re-scope) | HL | `Leeftijdsinhoud` |
+| `StreefwoordenschatAanpassen` | R28 | HL, LK leeftijd | `Leeftijdsinhoud` |
+| `GedeeldeActiviteitBewerken` | create + content (R17, R23) | HL, LK leeftijd | `Leeftijdsinhoud` (create) / `Activiteitbron` (edit) |
+| `ActiviteitVerwijderen` | **both** delete rows (R25, R26, R33) | HL; maker while no goal linked | `Activiteitbron` |
+| `SubdoelenBeheren` | R24 | HL | `Leeftijdsinhoud` |
+| `DoelenKoppelen` | goal links on shared activiteiten (R19) | HL | `Activiteitbron` / `Leeftijdsinhoud` |
+| `ActiviteitVerplaatsen` | move (R19, R23; I19) | HL; LK leeftijd only without links | `Activiteitbron` |
+| `KlasplanningBewerken` | jaarplan, agenda, hoeken, fiches (R7, R15; I21) | LK eigen | `Klasplanning` |
+
+**How a controller applies them.** A resource-free row is `[Authorize(Policy = Rechtenmatrix.Beleid.ThemaBewerken)]`.
+For a resource row:
+
+```csharp
+var bron = await _bronnen.VoorActiviteitAsync(activiteitId, ct);            // IRechtenbronnen
+if (bron is null) return NotFound();                                          // or the service's own 404
+if (!await _autorisatie.MagAsync(User, bron, Rechtenmatrix.Beleid.ActiviteitVerwijderen)) return Forbid();
+```
+
+A resource row in an attribute fails closed: the resource is then the `HttpContext`, and only directie passes.
+
+**`GET /api/ik`:**
+`{ "id", "naam", "email", "isDirectie", "heeftThemabeheer", "hoofdleerkrachtLeeftijden": ["K3"], "leerkrachtLeeftijden": ["K3"], "eigenKlasIds": ["<guid>"] }`.
+Pinned by name in `RechtenEndpointsTests`.
+
+**New tables:**
+
+- `klastoewijzingen` (Id, GebruikerId → gebruikers CASCADE, KlasId → klassen CASCADE; unique (GebruikerId, KlasId)).
+- `hoofdleerkrachtaanstellingen` (Id, GebruikerId → gebruikers CASCADE, SchooljaarId → schooljaren CASCADE,
+  Jaarfase varchar(8); unique (GebruikerId, SchooljaarId, Jaarfase); index (SchooljaarId, Jaarfase)).
+- `gebruikers.HeeftThemabeheer` (bool, default false).
+- `activiteiten.MakerId` (uuid null → gebruikers SET NULL).
+
+**Last-directie guard (for slice 2).** `NeemDirectierechtAf(n)` and `BevestigVerwijderbaar(n)` take the number of
+*other* directieleden and throw at 0. The count must be read in the same transaction as the write (serializable, or
+lock the directie rows), or two directieleden demoting each other at once both succeed.
+
+### Key decisions
+
+- **The matrix is data in Application, the policies are generated from it.** One `Matrixrij` per §3 row, one
+  requirement type, one handler, one evaluator. Changing a row is changing one line, and `RechtenmatrixTests` fails
+  if a row is added without an expectation.
+- **Rows 13 and 14 of §3 are one policy (`ActiviteitVerwijderen`).** They are one action on one route; the resource's
+  maker and link flag tell them apart. The matrix still reads as §3 columns: HL, or the maker while no goal is linked.
+- **"Has goal links" counts every link, whatever its status** (`Activiteitbron.HeeftDoelkoppelingen`). That is the
+  fail-closed reading of R25. It means a `geweigerd` link also blocks the maker's delete. See open question 1.
+- **A maker id with no gebruiker row is stored as null**, not refused: the same state I17 leaves, and the safe
+  direction. It also keeps the default test identity, which has no row, working.
+- **"Today" is the Brussels date** (`Schoolklok`). A Postgres test pins the case where a UTC date would still count:
+  30 June 22:30 UTC.
+- **Rights are memoised per request** in `RechtenService` (scoped). Slice 2 should not read rights through the same
+  instance after writing them in one request.
+- **The test identity is directie.** `TestAuthenticatie` wraps `IRechtenService` so `StandaardGebruikerId` (no row) is
+  directie. Every other id goes to the real service. Existing tests keep testing what they tested, and rights tests use
+  seeded gebruikers.
+- **Development sign-in unchanged.** The rights come from the database for whoever signs in there. The first directie
+  from configuration is directie.
+
+### Tests added
+
+- `UnitTests/Toegang/RechtenberekeningTests` (19): HL in a running year, in a year not yet started, lapsed, and on
+  `Eind` vs. `Eind + 1`; HL without a klastoewijzing; LK leeftijd, including the same four time cases; a lapsed klas
+  still counts as LK eigen (I21); a klas without, or with an unknown, stated jaarfase grants nothing (six cases); a
+  graadklas grants only its stated jaarfase; the union rule; ordering; `Rechten.Geen`; the mapping trims and never
+  widens (contrasted with `Jaarfasen.VoorKlas(0, null)`).
+- `UnitTests/Toegang/RechtenmatrixTests`: every non-activiteit row × 8 relations (112 cases, including HL and LK at
+  another leeftijd, and LK eigen vs. another klas); every row has an expectation; policy names map one-to-one to rows;
+  directie passes every row with any resource or none; a missing or foreign resource fails closed; the union rule;
+  delete (maker with/without links, HL, no maker); move (LK without links, HL with links, maker gets nothing).
+- `UnitTests/Toegang/GebruikerTests` (+7), `KlastoewijzingEnAanstellingTests` (5 facts + theory),
+  `Schoolcontent/ActiviteitMakerTests` (3), and an import assertion that an FR-1 activiteit has no maker.
+- `IntegrationTests/Autorisatie/RechtenbeleidTests` (8): every row is a registered policy that also denies anonymous
+  callers; Curriculumbeheer is the Op.stap row; the handler: no gebruiker claim → no, directie via attribute → yes for
+  every row, leeftijd passthrough, a resource row in an attribute → no for HL, maker, klasplanning; `MagAsync`
+  through the real `IAuthorizationService`.
+- `IntegrationTests/Postgres/RechtenEndpointsTests` (14): `/api/ik` rights and exact JSON names; directie's `/api/ik`;
+  **Curriculumbeheer: TB + HL + klastoewijzing in one gebruiker → 403** on `POST /api/opstap-import` and
+  `GET /api/opstap-import/stand`; a directie row → 400 (reaches the controller); anonymous → 401; maker set on a hand
+  create, null with no gebruiker row; removing a gebruiker sets `MakerId` to null and cascades their toewijzingen and
+  aanstellingen; removing a klas cascades its toewijzingen; both unique indexes (and two HL per jaarfase allowed); the
+  Brussels midnight boundary; a legacy klas with no jaarfase in the database; an unknown gebruiker; `EfRechtenbronnen`.
+  Every Postgres test migrates a fresh database, so the migration applies.
+- `CurriculumbeheerAutorisatieTests`: the "reaches the controller" test is renamed to what it now pins (directie).
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` pointed at the local `jaarplanner-db` (port 5433):
+  - UnitTests: 1301 passed, 4 skipped (the opt-in live KOV contract tests).
+  - IntegrationTests: 381 passed, 1 skipped (the opt-in live Op.stap import).
+- `dotnet format`: applied (it swapped one `Assert.Equal` argument order); `--verify-no-changes`: clean.
+- `dotnet dotnet-ef migrations has-pending-model-changes`: "No changes have been made to the model since the last
+  migration."
+- `cd frontend && pnpm lint`: ✓. `pnpm test`: 33 files, 233 tests passed. `pnpm build`: ✓ (the >500 kB chunk warning
+  predates this change).
+
+### Self-check against slice 1
+
+- Model and one migration: ✓, as above.
+- Rights service with HL / LK leeftijd / LK eigen, R20 via `TimeProvider` in the school's zone, one klas → leeftijden
+  mapping that fails closed, union: ✓, unit and Postgres tests.
+- Named policies in one place, each requiring authentication; resource handlers for HL, LK leeftijd, LK eigen and
+  maker; directie passes all; (c) and (e) fall out (a jaarfase with no HL leaves only directie; a gebruiker with no
+  relation matches no column): ✓.
+- `Curriculumbeheer` bound to directie and enforced: ✓, 403/400/401 pinned.
+- `/api/ik` carries the rights, `Ik` type updated: ✓.
+- Development sign-in and tenant-free integration tests: ✓, both suites green.
+
+### For the test-runner
+
+Backend only; no UI change to look at. Run `dotnet test` with `JAARPLANNER_TEST_POSTGRES` set. By hand, in
+Development:
+
+1. Sign in through `/api/aanmelden/ontwikkeling` as a non-directie gebruiker. The row has to be inserted in the database
+   (slice 2 builds the beheer UI).
+2. `GET /api/ik` shows the rights.
+3. `POST /api/opstap-import` answers 403. Signed in as directie, the same request reaches the controller.
+
+### Open questions / Art. XIV touched
+
+1. **R25, "while no goal is linked":** does a `geweigerd` (or `voorgesteld`) link count as linked? The build counts
+   every link, the fail-closed reading. Activiteit links today are `manueel`, so in practice it does not bite yet.
+2. **§3 rows not expressed in slice 1.**
+   - Row 7, the wizard's own write actions for a thema it builds from scratch: it needs a "new thema" / open-run state
+     (I22, I23, and the I24/I25 defaults the chat says were ratified on `feature/e6-rollen-rechten` after `60020b9`),
+     which the model does not have. Slice 3 / E6-05 adds a resource type and a column for it.
+   - Personal content (R6): E6-10.
+   - Bekijken/exporteren (I9): every signed-in gebruiker today, which the fallback policy gives; narrowing it is the
+     E6-09 seam.
+3. **Docs the orchestrator owns** (not edited here):
+   - ADR-0022 decision 1 still says the policy is registered by `AddCurriculumbeheerAutorisatie()` in its own file;
+     it is now a matrix row registered by `AddRechtenbeleid()`. A status pointer would do.
+   - E7-11's authorisation half is now partly met (the Op.stap routes only).
+   - ADR-0030 §3 could note that the two delete rows are one policy.
+4. **`ActiviteitWeergave.makerId` is in the JSON now**, but the frontend `ActiviteitWeergave` type was not extended.
+   Slice 4 adds it when it gates the delete.

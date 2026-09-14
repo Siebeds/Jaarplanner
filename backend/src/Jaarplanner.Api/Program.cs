@@ -1,6 +1,7 @@
 using Jaarplanner.Api.Configuration;
 using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Infrastructure;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -45,12 +46,12 @@ builder.Services.AddExceptionHandler<OpstapImportExceptionHandler>();
 // placement back to `voorgesteld` (Art. IV.1/IV.2) — to a 400. Planning not-found reuses the school-content 404.
 builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 
-// The single authorisation seam for curriculum reference-data administration (E1-15, Art. VI.1,
-// ADR-0011 §2): one named policy that both Op.stap import sources authorise against, the Excel goal import
-// (E1-15) and the decreed-minimumdoelen import from KOV's API (E1-12). Since E6-01 it requires a signed-in person (ADR-0031 amends
-// ADR-0022 §1); the role half, directie, is E6-02's, and E7-11 stays a deployment gate until then. See
-// CurriculumbeheerAutorisatie for what changes when the role matrix arrives.
-builder.Services.AddCurriculumbeheerAutorisatie();
+// The rights matrix (E6-02, Art. VI.1, ADR-0030 §3, ADR-0011 §2): every row of Rechtenmatrix becomes a named policy
+// that requires a signed-in person plus the row's own rights, decided by one handler over the per-request rights
+// service. Curriculumbeheer, the seam the Op.stap import routes already name (ADR-0022), is one of those rows and is
+// bound to directie. The other rows exist here but are applied to their routes in the next slice of E6-02, so until
+// then E7-11 stays a deployment gate.
+builder.Services.AddRechtenbeleid();
 
 // Personal login (E6-01, ADR-0031): a session cookie issued after an Entra sign-in (or the development sign-in, on a
 // developer's machine), and a fallback policy under which every endpoint needs that session unless it says otherwise.

@@ -1,0 +1,280 @@
+namespace Jaarplanner.Application.Toegang;
+
+/// <summary>
+/// <b>The ADR-0030 §3 matrix, declared once</b> (Art. VI.1: "what each right allows is one matrix … changing a row
+/// there is a code change"; ADR-0011 §2: named policies in one place). Each row is one named policy: the Api registers
+/// every <see cref="Rijen"/> entry under its <see cref="Matrixrij.Beleid"/> name, and <see cref="StaatToe"/> is the
+/// only code that decides whether a gebruiker's <see cref="Rechten"/> satisfy a row.
+/// <para>
+/// <b>How a row is applied.</b> A row whose columns need no resource (directie, TB) goes on a route as
+/// <c>[Authorize(Policy = Rechtenmatrix.Beleid.X)]</c>. A row with an HL, "LK leeftijd", "LK eigen" or maker column is
+/// resource-based: the controller builds the resource (<see cref="Leeftijdsinhoud"/>, <see cref="Klasplanning"/> or
+/// <see cref="Activiteitbron"/>, via <see cref="IRechtenbronnen"/>) and asks
+/// <c>IAuthorizationService.AuthorizeAsync(User, bron, Rechtenmatrix.Beleid.X)</c>. Put such a row in an attribute by
+/// mistake and it fails closed: the resource is then the <c>HttpContext</c>, which matches no column, so only directie
+/// (and TB where the row has it) passes.
+/// </para>
+/// <para>
+/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog):
+/// the wizard's own write actions for a thema it builds from scratch (§3 row 7) need a "new thema" state the model does
+/// not have yet (I22, I23, E6-05); personal content (R6) waits for E6-10's shape; reading and exporting another klas
+/// (I9) is every signed-in gebruiker today, which the fallback policy already gives, and narrowing it is E6-09's seam.
+/// </para>
+/// </summary>
+public static class Rechtenmatrix
+{
+    /// <summary>The policy names, as constants so an attribute can name them.</summary>
+    public static class Beleid
+    {
+        /// <summary>Op.stap-doelen inladen/vernieuwen. Kept at its E1-15 value: the Op.stap routes already name it.</summary>
+        public const string Curriculumbeheer = "Curriculumbeheer";
+
+        public const string Beheer = "Beheer";
+        public const string ThemaBewerken = "ThemaBewerken";
+        public const string SchoolcontentImporteren = "SchoolcontentImporteren";
+        public const string MenselijkeBeslissingenVerwijderen = "MenselijkeBeslissingenVerwijderen";
+        public const string ThemaOpbouw = "ThemaOpbouw";
+        public const string DoelsuggestiesMaken = "DoelsuggestiesMaken";
+        public const string DoelsuggestiesBeoordelen = "DoelsuggestiesBeoordelen";
+        public const string SubthemaBeheren = "SubthemaBeheren";
+        public const string StreefwoordenschatAanpassen = "StreefwoordenschatAanpassen";
+        public const string GedeeldeActiviteitBewerken = "GedeeldeActiviteitBewerken";
+        public const string ActiviteitVerwijderen = "ActiviteitVerwijderen";
+        public const string SubdoelenBeheren = "SubdoelenBeheren";
+        public const string DoelenKoppelen = "DoelenKoppelen";
+        public const string ActiviteitVerplaatsen = "ActiviteitVerplaatsen";
+        public const string KlasplanningBewerken = "KlasplanningBewerken";
+    }
+
+    // --- Resource-free rows: directie, and themabeheer where the row has it. ---
+
+    /// <summary>§3 "Op.stap-doelen inladen/vernieuwen" (R3; ADR-0022). Directie only.</summary>
+    public static readonly Matrixrij Curriculumbeheer = new(
+        Beleid.Curriculumbeheer, "Op.stap-doelen inladen/vernieuwen (R3; ADR-0022)", Kolom.Geen);
+
+    /// <summary>§3 "Gebruikers, klassen en schooljaren beheren …" (R2, R3, R16; FA FR-12.2). Directie only.</summary>
+    public static readonly Matrixrij Beheer = new(
+        Beleid.Beheer,
+        "Gebruikers, klassen en schooljaren beheren, leerkrachten aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het directierecht toekennen (R2, R3, R16)",
+        Kolom.Geen);
+
+    /// <summary>§3 "Thema, themadoelen, kernwoordenschat aanpassen" (R4, R18).</summary>
+    public static readonly Matrixrij ThemaBewerken = new(
+        Beleid.ThemaBewerken, "Thema, themadoelen, kernwoordenschat aanpassen (R4, R18)", Kolom.Themabeheer);
+
+    /// <summary>§3 "Thema's en activiteiten importeren, FR-1 …" (R9, R27, R34).</summary>
+    public static readonly Matrixrij SchoolcontentImporteren = new(
+        Beleid.SchoolcontentImporteren,
+        "Thema's en activiteiten importeren (FR-1), met de doelkoppelingen op themadoelen en subdoelen (R9, R27, R34)",
+        Kolom.Themabeheer);
+
+    /// <summary>§3 "Bij die import 'menselijke beslissingen verwijderen' aanvinken" (R35). Directie only.</summary>
+    public static readonly Matrixrij MenselijkeBeslissingenVerwijderen = new(
+        Beleid.MenselijkeBeslissingenVerwijderen,
+        "Bij de FR-1-import 'menselijke beslissingen verwijderen' aanvinken, voor themadoelen en subdoelen samen (R35)",
+        Kolom.Geen);
+
+    /// <summary>§3 "Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp" (R29).</summary>
+    public static readonly Matrixrij ThemaOpbouw = new(
+        Beleid.ThemaOpbouw, "Thema-opbouwwizard doorlopen: thema, themadoelen en de AI-hulp (R29)", Kolom.Themabeheer);
+
+    /// <summary>§3 "Doelsuggesties laten maken" (R14).</summary>
+    public static readonly Matrixrij DoelsuggestiesMaken = new(
+        Beleid.DoelsuggestiesMaken, "Doelsuggesties laten maken (R14)", Kolom.Themabeheer);
+
+    /// <summary>§3 "Doelsuggesties aanvaarden, weigeren of aanpassen" (R14).</summary>
+    public static readonly Matrixrij DoelsuggestiesBeoordelen = new(
+        Beleid.DoelsuggestiesBeoordelen, "Doelsuggesties aanvaarden, weigeren of aanpassen (R14)", Kolom.Themabeheer);
+
+    // --- Resource-based rows: shared content of one leeftijd. ---
+
+    /// <summary>
+    /// §3 "Subthema's van een jaar aanmaken, aanpassen en verwijderen" (R5, R21; (c), I13, I16). Resource:
+    /// <see cref="Leeftijdsinhoud"/>. A re-scope asks it at both the old and the new leeftijd (I13).
+    /// </summary>
+    public static readonly Matrixrij SubthemaBeheren = new(
+        Beleid.SubthemaBeheren, "Subthema's van een jaar aanmaken, aanpassen en verwijderen (R5, R21)", Kolom.Hoofdleerkracht);
+
+    /// <summary>§3 "Streefwoordenschat van een subthema aanpassen" (R28). Resource: <see cref="Leeftijdsinhoud"/>.</summary>
+    public static readonly Matrixrij StreefwoordenschatAanpassen = new(
+        Beleid.StreefwoordenschatAanpassen,
+        "Streefwoordenschat van een subthema aanpassen (R28)",
+        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijd);
+
+    /// <summary>
+    /// §3 "Gedeelde activiteiten aanmaken en hun inhoud aanpassen" (R17, R23; I15). Resource: <see cref="Leeftijdsinhoud"/>
+    /// of the subthema for a new one, or the <see cref="Activiteitbron"/> for an existing one.
+    /// </summary>
+    public static readonly Matrixrij GedeeldeActiviteitBewerken = new(
+        Beleid.GedeeldeActiviteitBewerken,
+        "Gedeelde activiteiten aanmaken en hun inhoud aanpassen (R17, R23)",
+        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijd);
+
+    /// <summary>
+    /// §3's two delete rows as one policy, because they are one action on one route and the resource tells them apart:
+    /// "Een zelf aangemaakte activiteit zonder doelkoppelingen verwijderen" (R25, R26, R33; I17: maker²) and "Een
+    /// activiteit met doelkoppelingen, of zonder maker, verwijderen" (R25; (c): HL). Resource: <see cref="Activiteitbron"/>.
+    /// </summary>
+    public static readonly Matrixrij ActiviteitVerwijderen = new(
+        Beleid.ActiviteitVerwijderen,
+        "Een activiteit verwijderen: de maker zolang er geen doel aan gekoppeld is, de hoofdleerkracht altijd (R25, R26, R33)",
+        Kolom.Hoofdleerkracht | Kolom.MakerZonderKoppelingen);
+
+    /// <summary>§3 "Subdoelen aanmaken, wijzigen en verwijderen" (R24; (c)). Resource: <see cref="Leeftijdsinhoud"/>.</summary>
+    public static readonly Matrixrij SubdoelenBeheren = new(
+        Beleid.SubdoelenBeheren, "Subdoelen aanmaken, wijzigen en verwijderen (R24)", Kolom.Hoofdleerkracht);
+
+    /// <summary>
+    /// §3 "Doelen met de hand koppelen aan of ontkoppelen van gedeelde activiteiten" (R19; (c)). Resource:
+    /// <see cref="Activiteitbron"/> or <see cref="Leeftijdsinhoud"/>.
+    /// </summary>
+    public static readonly Matrixrij DoelenKoppelen = new(
+        Beleid.DoelenKoppelen,
+        "Doelen met de hand koppelen aan of ontkoppelen van gedeelde activiteiten (R19)",
+        Kolom.Hoofdleerkracht);
+
+    /// <summary>
+    /// §3 "Een activiteit naar een ander thema verplaatsen" (R19, R23; I19: "LK leeftijd" only without goal links³).
+    /// Resource: <see cref="Activiteitbron"/>. A move never crosses a leeftijd (Art. IX.2), so one leeftijd suffices.
+    /// </summary>
+    public static readonly Matrixrij ActiviteitVerplaatsen = new(
+        Beleid.ActiviteitVerplaatsen,
+        "Een activiteit naar een ander thema verplaatsen (R19, R23; I19)",
+        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijdZonderKoppelingen);
+
+    // --- Resource-based row: the planning of one klas. ---
+
+    /// <summary>
+    /// §3 "Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches" (R7, R15; I21). Resource:
+    /// <see cref="Klasplanning"/>.
+    /// </summary>
+    public static readonly Matrixrij KlasplanningBewerken = new(
+        Beleid.KlasplanningBewerken,
+        "Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21)",
+        Kolom.LeerkrachtEigen);
+
+    /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
+    public static IReadOnlyList<Matrixrij> Rijen { get; } =
+    [
+        Curriculumbeheer,
+        Beheer,
+        ThemaBewerken,
+        SchoolcontentImporteren,
+        MenselijkeBeslissingenVerwijderen,
+        ThemaOpbouw,
+        DoelsuggestiesMaken,
+        DoelsuggestiesBeoordelen,
+        SubthemaBeheren,
+        StreefwoordenschatAanpassen,
+        GedeeldeActiviteitBewerken,
+        ActiviteitVerwijderen,
+        SubdoelenBeheren,
+        DoelenKoppelen,
+        ActiviteitVerplaatsen,
+        KlasplanningBewerken,
+    ];
+
+    /// <summary>
+    /// Whether <paramref name="rechten"/> may do what <paramref name="rij"/> describes, on <paramref name="bron"/>.
+    /// <list type="number">
+    /// <item><b>Directie passes every row</b>, with or without a resource (R3).</item>
+    /// <item>Otherwise the gebruiker holds the union of every column that applies (§3): any one column that matches is
+    /// enough, and a column that does not match never takes away what another grants.</item>
+    /// <item>A column that needs a resource matches only a resource of the right type. A missing or foreign resource
+    /// matches nothing, so a mistake fails closed.</item>
+    /// </list>
+    /// </summary>
+    public static bool StaatToe(Rechten rechten, Matrixrij rij, object? bron)
+    {
+        ArgumentNullException.ThrowIfNull(rechten);
+        ArgumentNullException.ThrowIfNull(rij);
+
+        if (rechten.IsDirectie)
+        {
+            return true;
+        }
+
+        var kolommen = rij.Kolommen;
+
+        if (kolommen.HasFlag(Kolom.Themabeheer) && rechten.HeeftThemabeheer)
+        {
+            return true;
+        }
+
+        var leeftijd = bron switch
+        {
+            Leeftijdsinhoud inhoud => inhoud.Leeftijd,
+            Activiteitbron activiteit => activiteit.Leeftijd,
+            _ => null,
+        };
+
+        if (leeftijd is not null)
+        {
+            if (kolommen.HasFlag(Kolom.Hoofdleerkracht) && rechten.IsHoofdleerkrachtVan(leeftijd))
+            {
+                return true;
+            }
+
+            if (kolommen.HasFlag(Kolom.LeerkrachtLeeftijd) && rechten.IsLeerkrachtVanLeeftijd(leeftijd))
+            {
+                return true;
+            }
+        }
+
+        if (bron is Activiteitbron { HeeftDoelkoppelingen: false } zonderKoppelingen)
+        {
+            // Footnote ³ (I19): moving one without links is content, so every leerkracht of that leeftijd may.
+            if (kolommen.HasFlag(Kolom.LeerkrachtLeeftijdZonderKoppelingen)
+                && rechten.IsLeerkrachtVanLeeftijd(zonderKoppelingen.Leeftijd))
+            {
+                return true;
+            }
+
+            // Footnote ² (R25, R33): the maker, whoever they are now, with or without a klas at that leeftijd, and after
+            // the schooljaar. An activiteit without a maker matches no one here.
+            if (kolommen.HasFlag(Kolom.MakerZonderKoppelingen) && zonderKoppelingen.MakerId == rechten.GebruikerId)
+            {
+                return true;
+            }
+        }
+
+        return kolommen.HasFlag(Kolom.LeerkrachtEigen)
+            && bron is Klasplanning planning
+            && rechten.IsLeerkrachtVanKlas(planning.KlasId);
+    }
+}
+
+/// <summary>
+/// One row of the ADR-0030 §3 matrix: its policy name, the action as §3 words it, and the columns (besides directie,
+/// which every row grants) that allow it.
+/// </summary>
+public sealed record Matrixrij(string Beleid, string Actie, Kolom Kolommen);
+
+/// <summary>
+/// The columns of ADR-0030 §3 other than "Directie", which every row grants (R3), and "Ander", which grants no row
+/// that is enforced today.
+/// </summary>
+[Flags]
+public enum Kolom
+{
+    /// <summary>Directie only.</summary>
+    Geen = 0,
+
+    /// <summary>"TB": holds themabeheer. Needs no resource.</summary>
+    Themabeheer = 1,
+
+    /// <summary>"HL": hoofdleerkracht of the resource's leeftijd, in a schooljaar that has not ended.</summary>
+    Hoofdleerkracht = 2,
+
+    /// <summary>"LK leeftijd": a klas whose stated jaarfase is the resource's leeftijd, in a schooljaar that has not ended.</summary>
+    LeerkrachtLeeftijd = 4,
+
+    /// <summary>"LK leeftijd", only on an <see cref="Activiteitbron"/> with no goal links (§3 footnote ³, I19).</summary>
+    LeerkrachtLeeftijdZonderKoppelingen = 8,
+
+    /// <summary>"LK eigen": a klastoewijzing on the <see cref="Klasplanning"/>'s klas, with no end date.</summary>
+    LeerkrachtEigen = 16,
+
+    /// <summary>The maker of an <see cref="Activiteitbron"/> with no goal links, whatever else they hold (§3 footnote ²).</summary>
+    MakerZonderKoppelingen = 32,
+}

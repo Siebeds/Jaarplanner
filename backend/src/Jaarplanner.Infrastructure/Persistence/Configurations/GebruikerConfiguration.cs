@@ -22,6 +22,10 @@ public sealed class GebruikerConfiguration : IEntityTypeConfiguration<Gebruiker>
 
         builder.HasIndex(g => g.Email).IsUnique();
 
+        // E6-02 (ADR-0030 R4). Every gebruiker that predates the column holds no themabeheer, which is what the
+        // migration's default of false gives them.
+        builder.Property(g => g.HeeftThemabeheer).IsRequired();
+
         // PostgreSQL treats NULLs as distinct in a unique index, so every unbound invitation fits under this one and
         // only a second binding of the same account is refused. That refusal is what settles two racing first logins.
         builder.HasIndex(g => new { g.EntraTenantId, g.EntraObjectId }).IsUnique();

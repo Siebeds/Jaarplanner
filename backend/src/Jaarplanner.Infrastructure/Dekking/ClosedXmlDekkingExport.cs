@@ -64,7 +64,7 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
     /// UTC rather than silently meaning something else.
     /// </para>
     /// </summary>
-    private static readonly TimeZoneInfo? SchoolZone = ZoekSchoolZone();
+    private static readonly TimeZoneInfo? SchoolZone = Schoolklok.Zone;
 
     private readonly TimeProvider _tijd;
 
@@ -425,29 +425,4 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
             1 => delen[0],
             _ => $"{string.Join(", ", delen.Take(delen.Count - 1))} en {delen[^1]}",
         };
-
-    /// <summary>
-    /// Resolves the school's time zone once. IANA id, which .NET maps on Windows too since it uses ICU; the Windows
-    /// id is tried as a fallback for a host built with the legacy NLS mapping.
-    /// </summary>
-    private static TimeZoneInfo? ZoekSchoolZone()
-    {
-        foreach (var id in new[] { "Europe/Brussels", "W. Europe Standard Time" })
-        {
-            try
-            {
-                return TimeZoneInfo.FindSystemTimeZoneById(id);
-            }
-            catch (TimeZoneNotFoundException)
-            {
-                // Try the next spelling; a host with neither gets a UTC stamp that says UTC.
-            }
-            catch (InvalidTimeZoneException)
-            {
-                // Corrupt zone data on this host. Same fallback.
-            }
-        }
-
-        return null;
-    }
 }
