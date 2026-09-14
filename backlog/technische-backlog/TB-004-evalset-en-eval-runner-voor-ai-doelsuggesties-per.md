@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 13:38
+bijgewerkt: 2026-09-14 13:44
 opgepakt-door: ai-doelsuggesties
 branch: ticket/ai-doelsuggesties-eval
 pr:
@@ -136,3 +136,4 @@ wordt gecommit, voor de tests van de runner zelf.
 - 2026-09-14 13:26 · ai-doelsuggesties · antagonist ronde 4: 0 major, 2 minor (een fout tijdens een gevraagde stop crashte de runner; 'Bij de kandidaten' had twee betekenissen); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-4.md
 - 2026-09-14 13:29 · ai-doelsuggesties · ADR-0036 staat nu in docs/adr/README.md (index en traceability-matrix); dat blokkeert klaar niet meer. Open blijven criterium 3 (deploy) en de aanvaarding van ADR-0036 door de eigenaar
 - 2026-09-14 13:38 · ai-doelsuggesties · antagonist ronde 5: 0 major, 3 minor (stop na de laatste aanroep, Art. VI.7 in ADR-0036, ADR-bereik in CLAUDE.md); afgehandeld, zie backlog/worklogs/TB-004/antagonist-ronde-5.md
+- 2026-09-14 13:44 · ai-doelsuggesties · antagonist ronde 6: COMPLIANT. Open bij de eigenaar: de go voor de deploy (criterium 3) samen met de bevestiging van de quota (50K tokens per minuut per chatmodel, 100K per embeddingmodel), en de aanvaarding van ADR-0036
