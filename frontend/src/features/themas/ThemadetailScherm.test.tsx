@@ -234,7 +234,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.bekijkAria", { naam: "Gekoppeld spel" }) }));
 
     const blad = await screen.findByRole("dialog");
-    expect(within(blad).getByText(t("activiteit.minuten", { aantal: STANDAARDDUUR }))).toBeInTheDocument();
+    expect(
+      within(blad).getByText(t("activiteit.duurFeit", { lesuren: t("activiteit.eenLesuur"), minuten: STANDAARDDUUR })),
+    ).toBeInTheDocument();
     expect(within(blad).getByText("WO-2")).toBeInTheDocument();
     expect(within(blad).queryByRole("button", { name: t("themabeheer.bewaar") })).toBeNull();
     expect(within(blad).queryByRole("button", { name: t("activiteit.ontkoppel", { code: "WO-2" }) })).toBeNull();

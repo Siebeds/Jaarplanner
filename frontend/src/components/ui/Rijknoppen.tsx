@@ -77,21 +77,27 @@ export function Verwijderknop({
   onClick,
   className,
   omrand,
+  titel,
+  disabled,
 }: {
   label: string;
   onClick: () => void;
   className?: string;
   /** This control acts on the whole card it sits on, rather than on one row inside it. */
   omrand?: boolean;
+  /** The tooltip, when what goes away is not the thing itself (the agenda takes one plaatsing off a day). */
+  titel?: string;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
-      title={t("themabeheer.verwijder")}
+      title={titel ?? t("themabeheer.verwijder")}
       className={cn(
-        "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150",
+        "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150 disabled:opacity-45",
         omrand
           ? "h-raak w-raak border border-lijn-veld bg-kaart text-inkt-zacht"
           : "h-9 w-9 text-inkt-zwak",

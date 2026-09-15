@@ -298,7 +298,7 @@ export function Ontkoppel({
       disabled={bezig}
       aria-label={label}
       onClick={onClick}
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45"
     >
       <span aria-hidden="true" className="block h-[1.5px] w-3.5 bg-current" />
     </button>
