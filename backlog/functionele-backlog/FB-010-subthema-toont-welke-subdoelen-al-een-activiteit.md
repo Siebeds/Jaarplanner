@@ -2,10 +2,10 @@
 id: FB-010
 titel: Subthema toont welke subdoelen al een activiteit hebben en welke nog niet
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:08
+bijgewerkt: 2026-09-15 15:30
 opgepakt-door: themapagina
 branch: ticket/FB-010-subdoelen-in-activiteiten
 pr:
@@ -34,13 +34,13 @@ een activiteit wachten.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema met drie subdoelen, waarvan er twee op een activiteit staan, wanneer ik het subthema open,
+- [x] Gegeven een subthema met drie subdoelen, waarvan er twee op een activiteit staan, wanneer ik het subthema open,
   dan tonen die twee hun activiteiten en is het derde gemarkeerd als "nog geen activiteit", met tekst of icoon.
-- [ ] Gegeven een activiteit met een leerplandoel dat geen subdoel van het subthema is, dan staat dat doel in de aparte
+- [x] Gegeven een activiteit met een leerplandoel dat geen subdoel van het subthema is, dan staat dat doel in de aparte
   groep, met de activiteit erbij.
-- [ ] Gegeven een subdoel dat op twee activiteiten staat, dan toont het beide activiteiten.
-- [ ] Gegeven een ingeklapt subthema, dan toont de samenvatting hoeveel subdoelen al in een activiteit zitten.
-- [ ] Nagekeken in een echte browser op desktop en ~390px; de markering is ook zonder kleur te begrijpen.
+- [x] Gegeven een subdoel dat op twee activiteiten staat, dan toont het beide activiteiten.
+- [x] Gegeven een ingeklapt subthema, dan toont de samenvatting hoeveel subdoelen al in een activiteit zitten.
+- [x] Nagekeken in een echte browser op desktop en ~390px; de markering is ook zonder kleur te begrijpen.
 
 ## Testscenario's
 
@@ -66,3 +66,7 @@ een activiteit wachten.
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 15:08 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt; gestapeld op ticket/FB-011-subthemas-ingeklapt
+- 2026-09-15 15:19 · themapagina · gebouwd (c0cc072) en nagekeken: Vitest 582 groen, lint groen; headless Chrome op echte Op.stap-doelen, desktop en 390px: activiteiten per subdoel, merk 'Nog geen activiteit' (ring en woorden), groep 'Andere doelen in de activiteiten', samenvatting 'x van y'; contrast gemeten 8,0 en 7,58:1; alleen beslist gekoppelde doelen tellen, alleen de gedeelde activiteiten van het subthema (standaard uit de open vraag)
+- 2026-09-15 15:22 · themapagina · contrast gemeten in licht en donker thema (samengestelde achtergronden): merk 'Nog geen activiteit' 9,39 en 8,0:1, regel met activiteiten en samenvatting 6,51 en 7,58:1
+- 2026-09-15 15:30 · themapagina · antagonist: COMPLIANT; de drie kleine bevindingen opgelost: het cijfer telt nu dezelfde subdoelen als de lijst, nieuwe tests voor de gewone telling, een lege groep en een niet-beslist subdoel, commentaar en TB-017 bijgewerkt
+- 2026-09-15 15:30 · themapagina · in-uitvoering → te-testen: subthema toont per subdoel zijn activiteiten of 'Nog geen activiteit', de andere doelen apart, en 'x van y' ingeklapt; Vitest groen, lint groen, browser desktop en 390px, contrast licht en donker gemeten, antagonist COMPLIANT

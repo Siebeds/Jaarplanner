@@ -5,7 +5,7 @@ soort: technisch
 status: nieuw
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 15:07
+bijgewerkt: 2026-09-15 15:27
 opgepakt-door:
 branch:
 pr:
@@ -60,3 +60,4 @@ Geen.
 
 - 2026-09-14 16:31 · themadoel-tekst · aangemaakt (status nieuw)
 - 2026-09-15 15:07 · themapagina · FB-011 (2026-09-15) laat elk subthemahoofdstuk standaard dicht staan: de detailverzoeken per subdoel vallen nu pas bij het openklappen, niet meer bij het laden van de pagina; meet tegen dat gedrag
+- 2026-09-15 15:27 · themapagina · FB-010 (2026-09-15) toont bij een open subthema ook de groep 'Andere doelen in de activiteiten': dat zijn activiteitscodes die via Gekoppelddoel hun detail ophalen, dus AC1 kan pas gehaald worden als de scope ook die rijen omvat (nu staan 'de doelcodes bij activiteiten' onder Buiten scope)
