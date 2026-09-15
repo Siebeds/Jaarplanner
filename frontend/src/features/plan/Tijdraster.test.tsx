@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
+import type { Schooldaguren } from "../schooluren/gegevens";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
 import { t } from "../../i18n";
 
@@ -69,6 +70,7 @@ function toon(
     onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
     onOpenFiche?: (plaatsingId: string, momentId: string) => void;
     magPlannen?: boolean;
+    schooluren?: Schooldaguren[];
   } = {},
 ) {
   return render(
@@ -79,6 +81,7 @@ function toon(
         fichemomenten={opties.fichemomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
+        schooluren={opties.schooluren}
         magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
         onOpen={opties.onOpen ?? (() => {})}
@@ -240,6 +243,72 @@ describe("Tijdraster", () => {
     expect(scroller.scrollTop).toBe(7 * 56);
   });
 
+  /*
+    FB-023: the school's hours. 2026-09-08, the day these tests draw, is a Tuesday, so ISO weekday 2.
+  */
+  const dinsdag: Schooldaguren = {
+    weekdag: 2,
+    begin: "08:30:00",
+    einde: "15:30:00",
+    middagpauzeBegin: "12:00:00",
+    middagpauzeEinde: "13:15:00",
+  };
+
+  it("opent op het hele uur waarin de schooldag begint", () => {
+    const { container } = toon([dag()], { schooluren: [dinsdag] });
+
+    const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scroller.scrollTop).toBe(8 * 56);
+  });
+
+  it("arceert de uren buiten de schooldag en de middagpauze, en zegt met woorden wat ze zijn", () => {
+    const { container } = toon([dag()], { schooluren: [dinsdag] });
+
+    // Never the pattern alone (Art. XII): each stretch says what it is.
+    expect(screen.getByText("begin 8:30")).toBeInTheDocument();
+    expect(screen.getByText(t("schooluren.pauzeRaster"))).toBeInTheDocument();
+    expect(screen.getByText("einde 15:30")).toBeInTheDocument();
+
+    const strook = (soort: string) => container.querySelector(`[data-schooltijd="${soort}"]`) as HTMLElement;
+    expect(strook("voor").style.top).toBe("0px");
+    expect(strook("voor").style.height).toBe(`${510 * (56 / 60)}px`);
+    expect(strook("pauze").style.top).toBe(`${720 * (56 / 60)}px`);
+    expect(strook("pauze").style.height).toBe(`${75 * (56 / 60)}px`);
+    expect(strook("na").style.top).toBe(`${930 * (56 / 60)}px`);
+  });
+
+  it("laat elk uur planbaar, ook op de arcering", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { schooluren: [dinsdag], onVoegToe: gevraagd });
+
+    // The hatch is under the empty column's button and catches nothing, so the invitation is still there.
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(t("periode.voegToeOp", { dag: "dinsdag 8 september" })) }));
+    expect(gevraagd).toHaveBeenCalled();
+  });
+
+  it("arceert niets op een weekdag zonder uren of op een gesloten dag, en opent dan op zeven uur", () => {
+    const woensdagUren = { ...dinsdag, weekdag: 3 };
+    const { container, unmount } = toon([dag()], { schooluren: [woensdagUren] });
+    expect(container.querySelector("[data-schooltijd]")).toBeNull();
+    expect((container.querySelector(".overflow-y-auto") as HTMLElement).scrollTop).toBe(7 * 56);
+    unmount();
+
+    const gesloten = toon([dag([], { isLesdag: false, sluitingsnaam: "Herfstvakantie" })], { schooluren: [dinsdag] });
+    expect(gesloten.container.querySelector("[data-schooltijd]")).toBeNull();
+  });
+
+  it("zegt de schooluren in de dagkop voor wie de arcering niet ziet", () => {
+    toon([dag()], { schooluren: [dinsdag] });
+
+    // The day view has no heading button, so the clause is spoken after the date as sr-only text.
+    expect(
+      screen.getByText((_, el) =>
+        el?.classList.contains("sr-only") === true &&
+        (el.textContent ?? "").includes(", schooldag van 8:30 tot 15:30, middagpauze van 12:00 tot 13:15"),
+      ),
+    ).toBeInTheDocument();
+  });
+
   /**
    * The day and the two bands above it (owner, 2026-09-11).
    *
@@ -254,6 +323,7 @@ describe("Tijdraster", () => {
     magPlannen: true,
     hoekmomenten: [],
     fichemomenten: [],
+    schooluren: undefined,
     reeksenPerDag: new Map([
       ["2026-09-10", lopendeReeks],
       ["2026-09-11", lopendeReeks],
@@ -333,6 +403,7 @@ describe("Tijdraster", () => {
           fichemomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
+          schooluren={undefined}
           magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}

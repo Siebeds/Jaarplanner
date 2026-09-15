@@ -67,6 +67,7 @@ import {
   useVerwijderAlgemeneFicheplaatsing,
 } from "../algemene-fiches/gegevens";
 import { ALGEMENE_FICHE_VOORVOEGSEL, fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
+import { useSchooluren } from "../schooluren/gegevens";
 import { roosterdagen } from "./roosterdagen";
 import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken } from "./themavakken";
@@ -248,6 +249,9 @@ export function Agendascherm() {
   const { data: fichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, van, tot);
   const { data: jaarFichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
   const { data: algemeneFiches } = useAlgemeneFiches(klasId);
+
+  // The school's hours (FB-023), one set for every klas: where the time grid opens and what it shades.
+  const { data: schooluren } = useSchooluren();
   const plaatsFiche = usePlaatsAlgemeneFiche(klasId);
   const verwijderFichePlaatsing = useVerwijderAlgemeneFicheplaatsing();
   const verplaatsFichemoment = useVerplaatsFichemoment();
@@ -833,6 +837,7 @@ export function Agendascherm() {
                 fichemomenten={ficheblokjes}
                 reeksenPerDag={stroken}
                 vakken={vakken}
+                schooluren={schooluren?.dagen}
                 magPlannen={magPlannen}
                 onVoegToe={(datum, tijd, einde) => setKiezer({ datum, begin: tijd, einde })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}

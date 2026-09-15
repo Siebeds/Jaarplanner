@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:52
+bijgewerkt: 2026-09-15 15:16
 opgepakt-door: FB-023
 branch: ticket/FB-023-schooluren
 pr:
@@ -64,3 +64,4 @@ standaard op 7:00 tot 18:00, en dat is alleen weergave, geen gegeven van de scho
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:49 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 14:52 · FB-023 · klaar-voor-bouw → in-uitvoering: opgepakt; eigenaar koos: de agenda toont de schooluren (opent op het begin, lichter buiten de schooldag en de middagpauze), één reeks voor de school
+- 2026-09-15 15:16 · FB-023 · backend klaar: Schooldaguren per weekdag (ma-vr), GET voor iedereen, PUT alleen directie; 25 unittests en 8 integratietests (Postgres) groen; ADR-0038
