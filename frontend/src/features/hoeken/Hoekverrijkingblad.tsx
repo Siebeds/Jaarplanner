@@ -83,7 +83,9 @@ export function Hoekverrijkingblad({
   return (
     <Blad
       open
-      onOpenChange={(open) => !open && onSluit()}
+      // Not while saving: with two windows the second request would still run after the sheet had gone, and a refusal
+      // would then be shown nowhere (antagonist FB-038).
+      onOpenChange={(open) => !open && !bezig && onSluit()}
       titel={hoek.naam}
       voet={
         kanBewaren ? (

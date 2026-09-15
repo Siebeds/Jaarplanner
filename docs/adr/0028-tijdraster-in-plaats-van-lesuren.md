@@ -1,7 +1,9 @@
 # ADR-0028 — The agenda is a time grid: clock times replace numbered lesuren
 
 - **Status:** Accepted (decision 5 superseded in part by [ADR-0038](0038-schooluren-per-weekdag.md): the school's
-  hours are now school data, set by directie, and decide where the grid opens)
+  hours are now school data, set by directie, and decide where the grid opens; decisions 4 and 7 superseded by
+  [ADR-0044](0044-hoekverrijking-in-het-zijpaneel.md): a hoek is no longer placed in the agenda, so no hoek has a time
+  or a block in the grid)
 - **Date:** 2026-09-11
 - **Deciders:** Project owner, in session, after seeing the week view beside his own Outlook calendar. He asked for
   "alle uren van de dag ... met een lijntje van waar we vandaag zitten", for teachers to "zelf de tijdstippen bepalen"

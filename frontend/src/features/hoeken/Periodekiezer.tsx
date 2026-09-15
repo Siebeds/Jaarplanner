@@ -61,7 +61,7 @@ export function Periodekiezer({
   tot,
   loopt,
   alIngepland = [],
-  bezetLabel = t("periodekiezer.alIngepland"),
+  bezetLabel,
   schooljaarVan,
   schooljaarTot,
   onKies,
@@ -71,13 +71,13 @@ export function Periodekiezer({
   tot: string;
   /** The subthema runs to draw, typically those of the visible months. */
   loopt: Loopt[];
-  /** The runs this corner already has, over any months: only the visible days are drawn. */
+  /** The runs this fiche already has, over any months: only the visible days are drawn. */
   alIngepland?: readonly Bezet[];
   /**
-   * What an outlined day says in words. The hoek's sentence by default; an algemene fiche passes its own, because
-   * "de hoek loopt dan al" read out over a turnles is a sentence about the wrong thing.
+   * What an outlined day says in words. Required, so each caller names its own kind: a default sentence about another
+   * kind, read out over a turnles, would be a sentence about the wrong thing.
    */
-  bezetLabel?: string;
+  bezetLabel: string;
   schooljaarVan: string;
   schooljaarTot: string;
   onKies: (van: string, tot: string) => void;

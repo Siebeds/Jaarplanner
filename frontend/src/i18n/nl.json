@@ -1083,8 +1083,7 @@
     "vorigeMaand": "Vorige maand",
     "volgendeMaand": "Volgende maand",
     "loopt": "{van} tot {tot}",
-    "geenSubthema": "In deze maand loopt er geen subthema.",
-    "alIngepland": "de hoek loopt dan al"
+    "geenSubthema": "In deze maand loopt er geen subthema."
   },
   "subthemabalk": {
     "label": "Thema's en subthema's in beeld",

@@ -9,9 +9,9 @@
   welke verrijkingen ik zal doen in welke hoeken"*. Seven rulings the same day, in answer to explicit questions (below,
   and in FB-038).
 - **Supersedes:** [ADR-0041](0041-hoekverrijking-per-subthemaperiode.md) decision 5 (the verrijking written from the
-  subthemabalk's sheet and from the hoek's detail sheet) and its consequence that the subthemabalk carries it. **Ends**
-  the hoekplaatsing in the agenda (owner meeting 2026-08-30, never recorded as an ADR; its hours per
-  [ADR-0028](0028-tijdraster-in-plaats-van-lesuren.md)).
+  subthemabalk's sheet and from the hoek's detail sheet) and its consequence that the subthemabalk carries it;
+  [ADR-0028](0028-tijdraster-in-plaats-van-lesuren.md) decisions 4 (every hoekplaatsing has a time) and 7 (hoeken are
+  drawn in the grid). **Ends** the hoekplaatsing in the agenda (owner meeting 2026-08-30, never recorded as an ADR).
 - **Keeps:** ADR-0041's model (one text per hoek and subthemaperiode) and its decision 3 (a run without a stored window
   stores it on the first save); [ADR-0042](0042-stroken-openen-de-themapagina.md) decision 3 (the subthemabalk is the
   keyboard's way to the themapagina).
