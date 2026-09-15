@@ -32,22 +32,25 @@ public sealed class SchoolurenService : ISchoolurenService
     {
         ArgumentNullException.ThrowIfNull(invoer);
 
+        // These three are English on purpose (Art. II.3): the form always sends a list, weekdays 1 to 5, each once, so
+        // only a malformed request reaches them, and only a developer can act on one. The refusals directie can meet
+        // are the domain's Dutch sentences below.
+        //
         // An absent list is refused rather than read as "no hours": a body that lost its field would otherwise wipe
         // the school's hours. An empty list is an answer, and it clears them.
         if (invoer.Dagen is null)
         {
-            throw new SchoolcontentValidatieFout("Geef de schooluren per weekdag mee.");
+            throw new SchoolcontentValidatieFout("The request has no 'dagen' list.");
         }
 
         if (invoer.Dagen.Any(d => d.Weekdag is < 1 or > 7))
         {
-            throw new SchoolcontentValidatieFout("Onbekende weekdag.");
+            throw new SchoolcontentValidatieFout("'weekdag' must be an ISO weekday number, 1 (Monday) to 7 (Sunday).");
         }
 
         if (invoer.Dagen.GroupBy(d => d.Weekdag).FirstOrDefault(g => g.Count() > 1) is { } dubbel)
         {
-            throw new SchoolcontentValidatieFout(
-                $"{Hoofdletter(Schooldaguren.Dagnaam(AlsWeekdag(dubbel.Key)))} staat twee keer in de schooluren.");
+            throw new SchoolcontentValidatieFout($"Weekday {dubbel.Key} appears more than once in 'dagen'.");
         }
 
         // Every weekday is checked before any row is touched, so one refused day leaves the whole set as it was.
@@ -89,8 +92,6 @@ public sealed class SchoolurenService : ISchoolurenService
     // ISO numbering, as the algemene fiches send theirs: 1 is Monday and 7 is Sunday, which DayOfWeek calls 0. A
     // weekend number passes through so the domain can refuse it with the sentence it owns.
     private static DayOfWeek AlsWeekdag(int nummer) => nummer == 7 ? DayOfWeek.Sunday : (DayOfWeek)nummer;
-
-    private static string Hoofdletter(string woord) => char.ToUpperInvariant(woord[0]) + woord[1..];
 
     // Monday first. The weekend never has a row, so DayOfWeek's own order (Monday = 1 .. Friday = 5) is the week's.
     private static SchoolurenWeergave Weergave(IEnumerable<Schooldaguren> dagen) =>

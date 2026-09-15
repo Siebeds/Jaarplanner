@@ -6,8 +6,11 @@
   (FB-023's *Beslissing*); the agenda shows them, opening at the start of the school day and shading the hours
   outside it; **one set for the school**, not per schooljaar. Both answers were given to FB-023's two open questions.
 - **Supersedes:** [ADR-0028](0028-tijdraster-in-plaats-van-lesuren.md) decision 5 **in part**: its sentence that the
-  grid's constants "are not persisted per school", and its statement that the tool "does not claim to know a school's
-  hours". The rest of decision 5 stands (see *What does not change*).
+  grid's constants "are not persisted per school", its statement that the tool "does not claim to know a school's
+  hours", and, **for a school that has set its hours**, the owner's default of 2026-09-11 in that decision's amendment
+  (*"default moet het wel op 7u-18u staan"*: a window of 7:00-18:00, opening scrolled to 7:00). With hours set, the grid
+  opens at the school's hour instead; without them, that default still holds. The rest of decision 5 stands (see
+  *What does not change*).
 - **Realises:** FB-023; FR-12.1 (the beheerder sets up the school's structure). **Constitution:** Art. VI.1, II.3,
   XII, IV.2, V.1.
 - **Backlog:** FB-023; enables FB-027 (the AI fits a week's activiteiten between these hours).
@@ -60,7 +63,9 @@ whole school, and the agenda uses them now.
 **Positive:** FB-027 has its input; a teacher's agenda opens where the school day starts; directie states the
 school's hours once.
 
-**Negative / trade-offs:** the grid's opening hour now depends on a request; while it loads the grid opens at 7:00 and
+**Negative / trade-offs:** with hours set, the first stretch of the owner's 7:00-18:00 default is out of view when
+the grid opens: a school starting at 8:30 opens at 8:00, and 7:00 is a scroll away. That was the owner's answer to
+FB-023's first open question. The grid's opening hour also depends on a request; while it loads the grid opens at 7:00 and
 moves once to the school's hour when the answer arrives. It moves only when the opening hour changes, so a refetch
 does not pull a teacher back.
 

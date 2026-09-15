@@ -154,14 +154,16 @@ function Dagrij({
       role="group"
       aria-labelledby={dagId}
       aria-describedby={fout ? foutId : undefined}
-      className="grid gap-3 p-4 md:grid-cols-[6.5rem_minmax(0,1fr)_minmax(0,1fr)] md:items-baseline md:gap-4"
+      className="grid gap-3 p-4 md:grid-cols-[6.5rem_minmax(0,1fr)_minmax(0,1fr)] md:items-start md:gap-4"
     >
-      <p id={dagId} className="text-body font-medium text-inkt">
+      {/* The three heads of a row share one height, the tick box's, so from `md` the day, "Schooldag" and
+          "Middagpauze" stand on one line and the two pairs of fields below them start level (seen at 1440). */}
+      <p id={dagId} className="text-body font-medium text-inkt md:flex md:min-h-6 md:items-center">
         {Dagnaam(weekdag)}
       </p>
 
       <div className="flex flex-col gap-1.5">
-        <p id={schooldagId} className="text-meta font-medium text-inkt-zacht">
+        <p id={schooldagId} className="flex min-h-6 items-center text-meta font-medium text-inkt-zacht">
           {t("schooluren.schooldag")}
         </p>
         <Tijdpaar

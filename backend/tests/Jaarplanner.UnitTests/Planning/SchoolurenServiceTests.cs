@@ -76,7 +76,7 @@ public sealed class SchoolurenServiceTests
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() => Service().VervangAsync(
             new SchoolurenInvoer([Dag(3, T(8, 30), T(12)), Dag(3, T(8, 30), T(15, 30))])));
 
-        Assert.Equal("Woensdag staat twee keer in de schooluren.", fout.Message);
+        Assert.Equal("Weekday 3 appears more than once in 'dagen'.", fout.Message);
     }
 
     [Theory]
@@ -87,7 +87,7 @@ public sealed class SchoolurenServiceTests
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => Service().VervangAsync(new SchoolurenInvoer([Dag(weekdag, T(8, 30), T(12))])));
 
-        Assert.Equal("Onbekende weekdag.", fout.Message);
+        Assert.Equal("'weekdag' must be an ISO weekday number, 1 (Monday) to 7 (Sunday).", fout.Message);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class SchoolurenServiceTests
 
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() => Service().VervangAsync(new SchoolurenInvoer(null)));
 
-        Assert.Equal("Geef de schooluren per weekdag mee.", fout.Message);
+        Assert.Equal("The request has no 'dagen' list.", fout.Message);
         Assert.Single((await Service().HaalOpAsync()).Dagen);
     }
 
