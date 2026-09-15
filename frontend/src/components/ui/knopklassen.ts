@@ -11,13 +11,17 @@ import { cn } from "../../lib/cn";
  * The ranking is carried by weight and surface, not by hue. The one accent this interface has is
  * spent on `hoofd` and on four other things, and nothing else (see the note at the top of
  * index.css); everything below `hoofd` steps back rather than picking up a second colour.
+ *
+ * `ai` is not a rank but a kind: the rainbow ring of a control that calls the model (ADR-0039),
+ * whatever its place on the screen. Reach it through `AiKnop`, which puts the wand beside the ring.
  */
-export type Rang = "hoofd" | "rustig" | "stil";
+export type Rang = "hoofd" | "rustig" | "stil" | "ai";
 
 export const RANG: Record<Rang, string> = {
   hoofd: "bg-accent text-accent-op hover:bg-accent-diep active:bg-accent-diep",
   rustig: "bg-kaart text-inkt border border-lijn-veld hover:border-inkt hover:bg-vlak active:bg-vlak-diep",
   stil: "text-inkt-zacht hover:bg-vlak-diep hover:text-inkt active:bg-vlak-diep",
+  ai: "knop-ai text-inkt transition-[background-color,box-shadow]",
 };
 
 export function knopklassen(rang: Rang = "rustig", vol?: boolean): string {

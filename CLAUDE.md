@@ -57,7 +57,7 @@ child. The users are leerkrachten and directie: non-technical, and the UI is Dut
 ### UI work
 Start any new screen, or any change to how one looks, with the **`frontend-design`** skill, and design against this app:
 - **Overzichtelijk beats exhaustive.** The data dominates; explanatory prose is the first thing to cut, and is never repeated per row.
-- **Colour is spoken for.** Art. XII gives six doelsoort hues, and suggestiestatus and dekking use more. The chrome has one accent, `--color-accent` in `frontend/src/index.css`, rationed to the five uses listed above its declaration, plus one attention hue. Check what a new hue collides with before adding it.
+- **Colour is spoken for.** Art. XII gives six doelsoort hues, and suggestiestatus and dekking use more. The chrome has one accent, `--color-accent` in `frontend/src/index.css`, rationed to the five uses listed above its declaration, plus one attention hue. A control that calls the AI is an `AiKnop`, and only such a control wears its rainbow ring ([ADR-0039](docs/adr/0039-ai-knoppen-regenboogring.md)). Check what a new hue collides with before adding it.
 - **Never colour alone:** every state also carries a label or icon (WCAG 2.2 AA).
 - **Measure contrast in a real browser**, compositing alpha; jsdom cannot evaluate colour. Beware opacity on muted text: `text-ink-zacht/80` measures 3.66:1.
 - **No em dashes in user-facing copy:** rewrite the sentence (split it, or use a colon). En dashes in ranges are fine.

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:49
+bijgewerkt: 2026-09-15 17:04
 opgepakt-door: ai-knoppen
 branch: ticket/TB-023-ai-knoppen
 pr:
@@ -57,3 +57,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 16:49 · ai-knoppen · aangemaakt (status in-uitvoering)
+- 2026-09-15 17:04 · ai-knoppen · AiKnop en ADR-0039 gebouwd; pnpm test (777) en pnpm lint groen; licht in de browser gemeten: rand minstens 3,69:1, label 17,78:1

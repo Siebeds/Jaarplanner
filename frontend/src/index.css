@@ -25,6 +25,10 @@
  * make something look nicer, you are about to break the rule the whole design rests on.
  * Reach for weight, size, spacing or elevation instead.
  *
+ * One saturated thing is not a hue but a sweep: the rainbow ring of a control that calls the
+ * model (`AiKnop`, ADR-0039). Its meaning is "what follows is a proposal", it is worn by
+ * nothing else, and it is read as all five stops at once, never as one of them.
+ *
  * Never colour alone (Art. XII, WCAG 2.2 AA): every coloured state also carries a letter,
  * label or icon. The doelsoort swatch is a square AND its letter, never the square alone.
  *
@@ -161,6 +165,23 @@
      graphical control) and for text set in it. */
   --color-gevaar: hsl(0 72% 42%);
   --color-gevaar-zacht: hsl(0 80% 97%);
+
+  /* ── ai - the ring of a control that calls the model (ADR-0039) ────────────────────── */
+  /* Five stops, and every one of them sits near a hue that already means something: oranje by
+     attentie, roze by P and S, paars by manueel, blauw by MD and voorgesteld, cyaan by the
+     accent. They are allowed there for the reason the stars are: they never appear one at a
+     time. The ring is a sweep through all five on the edge of a button, always beside the
+     wand, and no signal in this app is a sweep or sits on a button's edge.
+
+     Only the ring, never the fill: a label on a rainbow could not hold 4.5:1 across every
+     stop, so the label stays ink on the card. Each stop is the edge that identifies the
+     control, so each clears 1.4.11's 3:1 on both grounds a button sits on; the lowest is
+     cyaan on vlak, 3.69:1. */
+  --color-ai-oranje: hsl(22 92% 44%);
+  --color-ai-roze: hsl(335 78% 48%);
+  --color-ai-paars: hsl(275 62% 52%);
+  --color-ai-blauw: hsl(222 85% 54%);
+  --color-ai-cyaan: hsl(190 92% 34%);
 
   /* ── waas - the scrim behind an open sheet ─────────────────────────────────────────── */
   /* A token of its own, alpha included, because it was `inkt/35` and ink is exactly the colour
@@ -331,6 +352,13 @@
       --color-gevaar: hsl(0 80% 70%);
       --color-gevaar-zacht: hsl(0 42% 16%);
 
+      /* Hues kept, lightness raised (rule 2). The lowest is blauw on kaart, 5.87:1. */
+      --color-ai-oranje: hsl(26 95% 60%);
+      --color-ai-roze: hsl(335 85% 70%);
+      --color-ai-paars: hsl(275 80% 76%);
+      --color-ai-blauw: hsl(220 90% 70%);
+      --color-ai-cyaan: hsl(188 72% 52%);
+
       /* Darker and denser than the paper's: slate needs more to recede behind a sheet. */
       --color-waas: hsl(220 40% 3% / 0.6);
 
@@ -432,4 +460,76 @@
 
 @utility blad-in {
   animation: blad-in 220ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/*
+ * The AI ring (ADR-0039), worn only through `AiKnop`.
+ *
+ * Two background layers: the card, clipped to the padding box, over the sweep, clipped to the
+ * border box, so the sweep shows only as the 2px edge. The sweep is drawn twice over, at double
+ * width, which lets the running animation slide it by exactly one repeat and loop without a seam.
+ *
+ * It moves only in answer to a press: while a run is under way (`aria-busy`), the sweep travels
+ * round the edge and a soft glow rises. That is the fourth motion in this app, and the one it
+ * earns by being the only feedback during a wait of several seconds. The reduced-motion block
+ * stops it dead on its last frame, which is the resting ring.
+ *
+ * `:disabled` is overridden while busy on purpose: `Knop` fades every disabled button to 45%, and
+ * a run disables its own button, which would dim the one thing that shows the run is going.
+ */
+@keyframes ai-veeg {
+  from {
+    background-position: 0 0, 0 0;
+  }
+  to {
+    background-position: 0 0, 100% 0;
+  }
+}
+
+@utility knop-ai {
+  --ai-vulling: var(--color-kaart);
+  --ai-gloed:
+    -4px 2px 14px -4px color-mix(in srgb, var(--color-ai-oranje) 60%, transparent),
+    0 4px 14px -4px color-mix(in srgb, var(--color-ai-paars) 50%, transparent),
+    4px -2px 14px -4px color-mix(in srgb, var(--color-ai-cyaan) 60%, transparent);
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--ai-vulling), var(--ai-vulling)),
+    linear-gradient(
+      to right,
+      var(--color-ai-oranje),
+      var(--color-ai-roze),
+      var(--color-ai-paars),
+      var(--color-ai-blauw),
+      var(--color-ai-cyaan),
+      var(--color-ai-oranje),
+      var(--color-ai-roze),
+      var(--color-ai-paars),
+      var(--color-ai-blauw),
+      var(--color-ai-cyaan),
+      var(--color-ai-oranje)
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 200% 100%;
+  background-position: 0 0, 0 0;
+  background-repeat: no-repeat, repeat-x;
+
+  &:hover {
+    --ai-vulling: var(--color-vlak);
+    box-shadow: var(--ai-gloed);
+  }
+
+  &:active {
+    --ai-vulling: var(--color-vlak-diep);
+  }
+
+  &[aria-busy="true"] {
+    box-shadow: var(--ai-gloed);
+    animation: ai-veeg 1.8s linear infinite;
+  }
+
+  &[aria-busy="true"]:disabled {
+    opacity: 1;
+  }
 }
