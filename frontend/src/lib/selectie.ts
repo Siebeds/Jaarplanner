@@ -34,9 +34,10 @@ export function useActieveSelectie() {
     klassen,
     laadt: schooljarenLaden || klassenLaden,
     /**
-     * One of the two lists failed to load the first time, so it has no data at all. `laadt` is false then and that list
-     * reads as empty, so a screen that says "there is no schooljaar" or "no klas" on an empty list must ask this first:
-     * an empty list after a failure proves nothing (FB-001, antagonist round 2).
+     * One of the two lists failed to load the first time, so it has no data at all and reads as empty. The other list
+     * may still be loading, so `laadt` can be true at the same moment. A screen that says "there is no schooljaar" or
+     * "no klas" on an empty list must therefore check `laadt` and then this, before it trusts that list: an empty list
+     * after a failure proves nothing (FB-001, antagonist rounds 2 and 4).
      *
      * **A failed refetch does not count** (`isLoadingError`, not `isError`; antagonist round 3). TanStack keeps the
      * loaded data when a background refetch fails, so the lists are still usable, and a screen that swapped them for a
