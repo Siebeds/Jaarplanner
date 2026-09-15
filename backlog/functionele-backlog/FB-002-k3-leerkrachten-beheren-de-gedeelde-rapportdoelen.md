@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 16:13
+bijgewerkt: 2026-09-15 16:14
 opgepakt-door: kindvolg
 branch: ticket/FB-002-rapportdoelen-sterrenschaal
-pr:
+pr: 80
 geblokkeerd:
 fr: [FR-13.2]
 ---
@@ -101,3 +101,4 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 - 2026-09-15 15:38 · kindvolg · correctie op de regel van 14:50: die browsercheck toonde de subdoelkiezer niet, want de testdatabank had nog geen leerplandoelen; die check volgt in ronde 2 van browsercheck.md
 - 2026-09-15 16:01 · kindvolg · browsercheck ronde 2 op 1440 en 390 met echte K3-subdoelen: kiezen, zoeken, weigering zonder subdoel, ingeklapte lijst; hoofdleerkracht K3 ziet de tab en alleen Rapportdoelen en Sterrenschaal; twee fouten gevonden en hersteld (melding bleef staan na aanvinken, subdoelen te smal op 390); verslag in browsercheck.md
 - 2026-09-15 16:13 · kindvolg · in-uitvoering → te-testen: klaar om te testen: antagonist ronde 2 COMPLIANT, de laatste ronde (eigenaar); bewijs per criterium: 1 en 2 RapportsetEndpointsTests en browsercheck ronde 2; 3 de sterrenschaaltests en browsercheck ronde 1; 4 de lidmaatschaps- en D3-test (geweigerd alleen via het leesfilter, zie 14:07); 5 de rechtentests en de browsercheck (directie, hoofdleerkracht K3, ook via het adres)
+- 2026-09-15 16:14 · kindvolg · PR #80
