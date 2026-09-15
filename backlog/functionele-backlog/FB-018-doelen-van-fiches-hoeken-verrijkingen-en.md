@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:12
+bijgewerkt: 2026-09-15 15:26
 opgepakt-door: FB-018
 branch: ticket/FB-018-doelen-info-icoon
 pr:
@@ -39,13 +39,13 @@ apart weekoverzicht.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een algemene fiche met twee doelen in de zijbalk, wanneer ik op haar info-icoon klik, dan zie ik die twee
+- [x] Gegeven een algemene fiche met twee doelen in de zijbalk, wanneer ik op haar info-icoon klik, dan zie ik die twee
   doelen, en er opent geen plaatsingsblad.
-- [ ] Gegeven een ingeplande activiteit op het tijdraster, wanneer ik op haar info-icoon klik, dan zie ik haar doelen
+- [x] Gegeven een ingeplande activiteit op het tijdraster, wanneer ik op haar info-icoon klik, dan zie ik haar doelen
   zonder dat het activiteitblad opent of het blok verschuift.
-- [ ] Gegeven een blok zonder doelen, dan zegt het venster dat er nog geen doelen gekoppeld zijn.
-- [ ] Gegeven het venster, wanneer ik een doel aanklik, dan opent het detail van dat doel.
-- [ ] Het icoon is met het toetsenbord bereikbaar, heeft een doel van minstens 24 bij 24 pixels, en is in een echte
+- [x] Gegeven een blok zonder doelen, dan zegt het venster dat er nog geen doelen gekoppeld zijn.
+- [x] Gegeven het venster, wanneer ik een doel aanklik, dan opent het detail van dat doel.
+- [x] Het icoon is met het toetsenbord bereikbaar, heeft een doel van minstens 24 bij 24 pixels, en is in een echte
   browser nagekeken op desktop en ~390px.
 
 ## Testscenario's
@@ -66,6 +66,10 @@ apart weekoverzicht.
 
 - Een kort blok (een kwartier) heeft weinig ruimte. Waar staat het icoon dan: in het blok, of alleen in het blad?
   Te beslissen in de ontwerpstap.
+  - **Beslist in de ontwerpstap (2026-09-15):** het icoon staat in het blok vanaf een half uur. Een blok van een half
+    uur is 28 pixels hoog en past een doel van 24 bij 24; een kwartier is 14 pixels en past niets dat een vinger raakt.
+    Een korter blok toont zijn doelen alleen in het blad dat het opent: het activiteitblad deed dat al, en het blad van
+    een algemene fiche kreeg daarvoor een sectie Doelen.
 
 ## Werklog
 
@@ -73,3 +77,4 @@ apart weekoverzicht.
 - 2026-09-15 14:52 · eigenaar · nieuw → klaar-voor-bouw: eigenaar vroeg in sessie om FB-018 op te nemen, zonder op FB-017 te wachten
 - 2026-09-15 14:53 · FB-018 · klaar-voor-bouw → in-uitvoering: opgepakt; de activiteitkaarten uit FB-017 krijgen het icoon van wie als tweede merget (eigenaar, 2026-09-15)
 - 2026-09-15 15:12 · FB-018 · info-icoon met doelvenster gebouwd: op tijdrasterblokken vanaf een half uur (activiteit, algemene fiche) en op de kaarten van algemene fiches in de zijbalk; kortere blokken tonen hun doelen in hun blad, daarvoor kreeg het fichedetailblad een doelensectie; lint en 588 frontendtests groen
+- 2026-09-15 15:26 · FB-018 · browsercontrole op wegwerpdatabank jp_fb018 (headless Chrome, 1440 en 390 px): alle vijf acceptatiecriteria gezien, icoon 24x24, contrast 5,97 tot 6,51:1, focus keert terug naar het icoon; open vraag beslist: icoon vanaf een half uur, korter blok toont doelen in zijn blad

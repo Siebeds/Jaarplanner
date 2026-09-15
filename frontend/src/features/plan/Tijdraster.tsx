@@ -870,16 +870,23 @@ function Blok({
             infodoelen && "pr-7",
           )}
         >
-          <span className="flex min-w-0 items-baseline gap-1">
+          {/* Clipped at its own edge, so in a block narrowed by a neighbour the time stops before the info icon rather
+              than running under it (seen in the FB-018 browser pass). */}
+          <span className="flex min-w-0 items-baseline gap-1 overflow-hidden">
             {blok.doel.soort === "hoek" ? (
               <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
             <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
-            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped. */}
+            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped.
+                Not on a phone when the block also carries the info icon: a column there is about a hundred pixels,
+                and the name was left one letter wide. The hour gutter still says when it starts, and so does the
+                block's accessible name. */}
             {toont === "tijd" ? (
-              <span className="mono shrink-0 text-[0.625rem] text-inkt-zacht">{toonTijd(blok.begin)}</span>
+              <span className={cn("mono shrink-0 text-[0.625rem] text-inkt-zacht", infodoelen && "max-sm:hidden")}>
+                {toonTijd(blok.begin)}
+              </span>
             ) : null}
           </span>
 

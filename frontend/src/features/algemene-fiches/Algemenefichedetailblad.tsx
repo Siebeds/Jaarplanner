@@ -119,20 +119,10 @@ export function Algemenefichedetailblad({
           </div>
         </div>
 
-        {moment && !alleenLezen ? (
-          // Keyed on the moment's saved values, so a refetch after a save (or a drag in another view) refills the
-          // fields instead of leaving the old answer in them.
-          <Momentvorm
-            key={`${moment.id}-${moment.datum}-${moment.begin}-${moment.einde}`}
-            plaatsing={plaatsing}
-            moment={moment}
-            vergrendeld={bezig}
-          />
-        ) : null}
-
         {/* THE FICHE'S GOALS, for everyone who can open the sheet (FB-018). A block too short to hold the info icon keeps
-            its goals here, so this is the one place they are reachable from every block. A goal opens its detail on
-            top of this sheet, and closing that brings her back to it. */}
+            its goals here, so this is the one place they are reachable from every block. With the period and the
+            hours, above the one day's fields: what the fiche is comes before what she can change about one day of it.
+            A goal opens its detail on top of this sheet, and closing that brings her back to it. */}
         {doelen ? (
           <div>
             <div className="flex items-baseline justify-between gap-2">
@@ -148,6 +138,17 @@ export function Algemenefichedetailblad({
             )}
             <Doeldetailblad code={doel?.code ?? null} terugNaar={doel?.knop} onSluit={() => setDoel(null)} />
           </div>
+        ) : null}
+
+        {moment && !alleenLezen ? (
+          // Keyed on the moment's saved values, so a refetch after a save (or a drag in another view) refills the
+          // fields instead of leaving the old answer in them.
+          <Momentvorm
+            key={`${moment.id}-${moment.datum}-${moment.begin}-${moment.einde}`}
+            plaatsing={plaatsing}
+            moment={moment}
+            vergrendeld={bezig}
+          />
         ) : null}
 
         {enigePeriodeMetDoelen && !alleenLezen ? <p className="text-meta text-inkt-zacht">{t("fichedetail.laatstePeriode")}</p> : null}
