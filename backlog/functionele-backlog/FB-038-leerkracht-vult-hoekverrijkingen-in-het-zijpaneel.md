@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:59
+bijgewerkt: 2026-09-15 22:08
 opgepakt-door: hoeken-zijpaneel
 branch: ticket/FB-038-hoeken-zijpaneel
-pr:
+pr: 104
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -111,3 +111,4 @@ Geen.
 - 2026-09-15 21:59 · hoeken-zijpaneel · antagonist COMPLIANT, 4 kleine bevindingen: 3 opgelost (b34a071), 1 genoteerd (focus op telefoon, zoals de tegel van TB-015); backlog/worklogs/FB-038/antagonist.md
 - 2026-09-15 21:59 · hoeken-zijpaneel · browsercontrole geslaagd (headless Chrome, 1440 en 390, licht en donker, wegwerpdatabank jp_fb038): 30/30, contrast 4,64 tot 16,58:1, console leeg; criteria afgevinkt; backlog/worklogs/FB-038/verification.md
 - 2026-09-15 21:59 · hoeken-zijpaneel · in-uitvoering → te-testen: klaar om te testen: gates groen (lint, Vitest 952, unit 1801, Postgres 32, dotnet format), antagonist COMPLIANT, browser 30/30
+- 2026-09-15 22:08 · hoeken-zijpaneel · PR #104
