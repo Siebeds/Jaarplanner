@@ -119,10 +119,12 @@
 
   /* ── ster - the gradaties of the K3 ontwikkelingsrapport (FB-002, owner 2026-09-15) ──── */
   /* A FIXED PALETTE OF SIX, chosen by the owner from a proposal that showed them next to what the app already means
-     by green and orange (aanvaard, gedekt, doelsoort +, attentie, doelsoort A). They were allowed to share those hues
-     because a star never stands where those signals do: those are a dot, a square and a wash, this is a star, it
-     always carries its label (Art. XII), and the invulscherm of FB-003 shows no status dot beside a subdoel (owner,
-     same ruling). The parents' report carries no other signal at all.
+     by green and orange (aanvaard, gedekt, doelsoort +, attentie, doelsoort A). Red and blue share hues too: red with
+     gevaar, geweigerd and niet gedekt (hue 0), blue with doelsoort MD and voorgesteld (hue 217). The proposal did not
+     show those two; the owner was asked about them separately and kept both (2026-09-15, after FB-002's antagonist
+     round 1). All six may share those hues because a star never stands where those signals do: those are a dot, a
+     square and a wash, this is a star, it always carries its label (Art. XII), and the invulscherm of FB-003 shows no
+     status dot beside a subdoel (owner, same ruling). The parents' report carries no other signal at all.
 
      Each is a fill and a deeper edge. The edge is what clears 1.4.11's 3:1 on white, since a yellow or orange fill
      alone does not; the fill is what a teacher and a parent recognise. */

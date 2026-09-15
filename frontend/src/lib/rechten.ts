@@ -130,7 +130,9 @@ function zelfdeId(a: string, b: string): boolean {
  */
 export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolean {
   if (!ik) return false;
-  if (ik.isDirectie && !ZONDER_DIRECTIE.has(rij)) return true;
+  // R31 as the owner read it (2026-09-15, "Nooit wie directie heeft"): a ZONDER_DIRECTIE row is closed to directie
+  // outright, even with a K3 klas of its own, because directie assigns klassen and could otherwise open it for itself.
+  if (ik.isDirectie) return !ZONDER_DIRECTIE.has(rij);
 
   const kolommen = RECHTENMATRIX[rij];
 
@@ -270,6 +272,13 @@ export interface Mag {
   /** Changing the one K3 set of rapportdoelen and the sterrenschaal: a K3 leerkracht in a running schooljaar, never
    * directie (R6, R31, D4). */
   rapportsetBewerken: boolean;
+  /**
+   * Whether the Ontwikkelingsrapport destination is offered in the navigation (ADR-0035 D18, widened by the owner on
+   * 2026-09-15): whoever may read a report (`ontwikkelingsrapportZien`), and a hoofdleerkracht of K3, who manages the
+   * K3 subdoelen the set is made of and may view the set and the scale, though not the children. Anyone else can still
+   * open the set and the scale by address (FB-002 AC5); the tab is not offered to them.
+   */
+  ontwikkelingsrapportTab: boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -321,6 +330,12 @@ export function magVoor(ik: Ik | undefined): Mag {
       !rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
     // Deliberately no `isDirectie` short-circuit here, unlike some answers above: this is the row directie does not pass.
     rapportsetBewerken: rij("RapportsetBewerken"),
+    ontwikkelingsrapportTab:
+      ik?.isDirectie === true ||
+      (ik?.rapportklasIds ?? []).length > 0 ||
+      // "K3" is the leeftijd of a hoofdleerkracht's appointment, not a klas's jaarfase, so this is no klas→leeftijden
+      // mapping (that stays the server's, `Leeftijdsrechten.VoorKlas`).
+      hoofdleerkrachtLeeftijden.includes("K3"),
   };
 }
 

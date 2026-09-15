@@ -31,9 +31,10 @@ public sealed class RapportdoelTests
     }
 
     [Fact]
-    public void Een_rapportdoel_zonder_subdoelen_mag_terwijl_het_bewerkt_wordt()
+    public void Het_domein_kent_een_rapportdoel_zonder_subdoelen()
     {
-        // A default, not a ruling: a teacher may name it first and add its subdoelen after (see RapportsetService).
+        // The entity allows it, because a delete elsewhere (D3) can empty one through the cascade. Saving one empty is
+        // refused by the service (owner, 2026-09-15: at least one subdoel), which `RapportsetEndpointsTests` pins.
         Assert.Empty(new Rapportdoel("Luisteren en spreken", 1, []).Subdoelen);
     }
 

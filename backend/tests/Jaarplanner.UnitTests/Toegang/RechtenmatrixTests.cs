@@ -398,15 +398,18 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_rapportset_als_die_leerkracht()
+    public void Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_rapportset_toch_niet()
     {
-        // The union rule (§3): R31 takes the directie column away from this row, not the K3 leerkracht column. A directie
-        // who teaches a K3 klas in a running schooljaar is a K3 leerkracht, and passes as one.
+        // R31 as the owner read it on 2026-09-15 ("Nooit wie directie heeft"): the union rule does not reach this row for
+        // directie. The same klastoewijzing makes a plain gebruiker a K3 leerkracht who passes, which the second assert
+        // pins, so the refusal comes from the directie right and not from the klas.
         var vandaag = new DateOnly(2026, 9, 15);
-        var rechten = Rechtenberekening.Bereken(
-            Ik, true, false, [new KlastoewijzingFeit(EigenKlas, "K3", new DateOnly(2027, 6, 30))], [], vandaag);
+        var toewijzing = new KlastoewijzingFeit(EigenKlas, "K3", new DateOnly(2027, 6, 30));
+        var directeur = Rechtenberekening.Bereken(Ik, true, false, [toewijzing], [], vandaag);
+        var leerkracht = Rechtenberekening.Bereken(Ik, false, false, [toewijzing], [], vandaag);
 
-        Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.False(Rechtenmatrix.StaatToe(directeur, Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.True(Rechtenmatrix.StaatToe(leerkracht, Rechtenmatrix.RapportsetBewerken, bron: null));
     }
 
     private static bool Verwijderen(Rechten rechten, Guid? maker, bool koppelingen) =>

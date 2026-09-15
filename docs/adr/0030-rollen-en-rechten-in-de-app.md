@@ -737,7 +737,9 @@ the endpoint data source and fails, naming the route, for any that a gebruiker w
 *The ontwikkelingsrapport rows (footnote ⁶), added the same day from ADR-0035, have no policy in `Rechtenmatrix`
 yet: no route serves them until FR-13 is built, and each gets its policy then.* *Since FB-001 (2026-09-15) two have:
 `OntwikkelingsrapportLezen` and `LeerlingenBeheren`; the other four get theirs with FB-002, FB-003, FB-006 and FB-007.*
-*Since FB-002 (2026-09-15) the rapportdoelen row has its policy too: `RapportsetBewerken`, the one row directie does not pass (R31).*
+*Since FB-002 (2026-09-15) the rapportdoelen row has its policy too: `RapportsetBewerken`, the one row directie does not pass (R31).
+The owner read R31 as "never a person holding directie" on 2026-09-15: a directeur who also has a K3 klastoewijzing still
+does not edit the set or the scale.*
 
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is

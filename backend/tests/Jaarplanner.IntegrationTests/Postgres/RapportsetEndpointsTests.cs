@@ -171,18 +171,18 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
         var rekenen = await MaakRapportdoelAsync(blauw, "Rekenen", inhoud.Tellen);
         Assert.Equal(2, rekenen.Volgorde);
 
-        // A titel alone while it is being built (a default, see RapportsetService), with or without the list.
-        using (var leeg = await blauw.PostAsJsonAsync(Rapportdoelen, new { titel = "Nog te vullen" }))
-        {
-            Assert.Equal(HttpStatusCode.Created, leeg.StatusCode);
-            using var json = JsonDocument.Parse(await leeg.Content.ReadAsStringAsync());
-            Assert.Equal(["id", "subdoelen", "titel", "volgorde"], json.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
-            Assert.Equal(0, json.RootElement.GetProperty("subdoelen").GetArrayLength());
-        }
+        // At least one subdoel (owner, 2026-09-15): a titel alone is refused, with or without the list, and nothing is made.
+        await VerwachtAsync(blauw.PostAsJsonAsync(Rapportdoelen, new { titel = "Nog te vullen" }), "Kies minstens één subdoel.");
+        await VerwachtAsync(
+            blauw.PostAsJsonAsync(Rapportdoelen, new { titel = "Nog te vullen", subdoelIds = Array.Empty<Guid>() }), "Kies minstens één subdoel.");
+        // The last subdoel cannot be taken out either; the rapportdoel is deleted instead.
+        await VerwachtAsync(
+            blauw.PutAsJsonAsync($"{Rapportdoelen}/{rekenen.Id}", new { titel = "Rekenen", subdoelIds = Array.Empty<Guid>() }), "Kies minstens één subdoel.");
 
         // One set for all of K3 (R4).
         var gezien = await RapportdoelenAsync(groen);
-        Assert.Equal(["Luisteren en spreken", "Rekenen", "Nog te vullen"], gezien.Select(r => r.Titel));
+        Assert.Equal(["Luisteren en spreken", "Rekenen"], gezien.Select(r => r.Titel));
+        Assert.Equal([inhoud.Tellen], gezien[1].Subdoelen.Select(s => s.Id));
         Assert.Equal([inhoud.Luisteren, inhoud.Vertellen], gezien[0].Subdoelen.Select(s => s.Id));
 
         // The other leerkracht changes it: another titel, one subdoel out, one in, sorted Herfst first.
@@ -194,13 +194,12 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
             Assert.Equal([inhoud.Tellen, inhoud.Luisteren], gewijzigd.Subdoelen.Select(s => s.Id));
         }
 
-        var leegId = gezien[2].Id;
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            blauw.PutAsJsonAsync($"{Rapportdoelen}/volgorde", new { ids = new[] { rekenen.Id, leegId, luisteren.Id } })));
-        Assert.Equal(["Rekenen", "Nog te vullen", "Luisteren"], (await RapportdoelenAsync(groen)).Select(r => r.Titel));
+            blauw.PutAsJsonAsync($"{Rapportdoelen}/volgorde", new { ids = new[] { rekenen.Id, luisteren.Id } })));
+        Assert.Equal(["Rekenen", "Luisteren"], (await RapportdoelenAsync(groen)).Select(r => r.Titel));
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(blauw.DeleteAsync($"{Rapportdoelen}/{leegId}")));
-        Assert.Equal(["Rekenen", "Luisteren"], (await RapportdoelenAsync(blauw)).Select(r => r.Titel));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(blauw.DeleteAsync($"{Rapportdoelen}/{rekenen.Id}")));
+        Assert.Equal(["Luisteren"], (await RapportdoelenAsync(blauw)).Select(r => r.Titel));
 
         await using var context = _db.MaakContext();
         Assert.Equal(2, await context.RapportdoelSubdoelen.CountAsync(rs => rs.RapportdoelId == luisteren.Id));
@@ -387,13 +386,15 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_set_als_die_leerkracht()
+    public async Task Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_set_toch_niet()
     {
-        // The union rule (ADR-0030 §3): R31 closes the directie column of this row, not the K3 leerkracht column.
+        // R31 as the owner read it on 2026-09-15 ("Nooit wie directie heeft"): not even with a running K3 klastoewijzing.
         var school = await _opzet.SchoolAsync();
         using var directeurMetKlas = _opzet.Als(await _opzet.GebruikerAsync(school, directie: true, klassen: [school.K3Blauw]));
 
-        Assert.Equal(3, (await MaakGradatieAsync(directeurMetKlas, "Bijna", "Geel")).Volgorde);
+        await RechtenTestOpzet.VerwachtAsync(
+            directeurMetKlas.PostAsJsonAsync(Gradaties, new { label = "Bijna", kleur = "Geel" }), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        Assert.Equal(2, (await GradatiesAsync(directeurMetKlas)).Count);
     }
 
     // --- The teacher's sentences (Art. II.3) and the 404s. ---
@@ -441,7 +442,9 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
             blauw.PutAsJsonAsync($"{Rapportdoelen}/{onbekend}", new { titel = "Luisteren" }), HttpStatusCode.NotFound, "Dit rapportdoel is niet gevonden.");
         await RechtenTestOpzet.VerwachtAsync(blauw.DeleteAsync($"{Rapportdoelen}/{onbekend}"), HttpStatusCode.NotFound, "Dit rapportdoel is niet gevonden.");
 
-        var luisteren = await MaakRapportdoelAsync(blauw, new string('a', 120));
+        // A rapportdoel always holds a subdoel (owner, 2026-09-15), so the one that is 120 characters long gets one.
+        var inhoud = await InhoudAsync();
+        var luisteren = await MaakRapportdoelAsync(blauw, new string('a', 120), inhoud.Luisteren);
         await VerwachtAsync(
             blauw.PutAsJsonAsync($"{Rapportdoelen}/volgorde", new { ids = new[] { luisteren.Id, onbekend } }), "De volgorde moet elk rapportdoel één keer bevatten.");
     }

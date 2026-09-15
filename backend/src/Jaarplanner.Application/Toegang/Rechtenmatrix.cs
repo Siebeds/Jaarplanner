@@ -273,8 +273,10 @@ public static class Rechtenmatrix
     /// Whether <paramref name="rechten"/> may do what <paramref name="rij"/> describes, on <paramref name="bron"/>.
     /// <list type="number">
     /// <item><b>Directie passes every row but one</b>, with or without a resource (R3). The exception is a row marked
-    /// <see cref="Matrixrij.ZonderDirectie"/>, <see cref="RapportsetBewerken"/> only (ADR-0035 R31): there directie is
-    /// judged by its columns like anyone else, so a directie who also teaches a K3 klas passes it as that leerkracht.</item>
+    /// <see cref="Matrixrij.ZonderDirectie"/>, <see cref="RapportsetBewerken"/> only (ADR-0035 R31), which <b>no one
+    /// holding directie passes, not even as a leerkracht of a K3 klas</b> (owner, 2026-09-15, "Nooit wie directie heeft").
+    /// Directie maintains the klastoewijzingen, so letting the union rule apply here would make R31 a switch directie
+    /// could flip for itself. <i>The first version applied the union rule; the owner ruled it out.</i></item>
     /// <item>Otherwise the gebruiker holds the union of every column that applies (§3): any one column that matches is
     /// enough, and a column that does not match never takes away what another grants.</item>
     /// <item>A column that needs a resource matches only a resource of the right type. A missing or foreign resource
@@ -286,9 +288,10 @@ public static class Rechtenmatrix
         ArgumentNullException.ThrowIfNull(rechten);
         ArgumentNullException.ThrowIfNull(rij);
 
-        if (rechten.IsDirectie && !rij.ZonderDirectie)
+        if (rechten.IsDirectie)
         {
-            return true;
+            // R31, as the owner read it: a ZonderDirectie row is closed to directie outright, whatever else it holds.
+            return !rij.ZonderDirectie;
         }
 
         var kolommen = rij.Kolommen;

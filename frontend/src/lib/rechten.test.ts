@@ -128,8 +128,10 @@ describe("de rechtenmatrix van de frontend", () => {
     expect([...ZONDER_DIRECTIE]).toEqual(["RapportsetBewerken"]);
     expect(staatToe(RELATIES.Directie, "RapportsetBewerken")).toBe(false);
     expect(magVoor(RELATIES.Directie).rapportsetBewerken).toBe(false);
-    // Directie with a running K3 klas of its own is a K3 leerkracht too, and passes as one (the union rule).
-    expect(staatToe(ik({ isDirectie: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(true);
+    // Not even with a running K3 klas of its own (owner, 2026-09-15, "Nooit wie directie heeft"); the same klas makes a
+    // plain gebruiker pass, so the refusal comes from the directie right.
+    expect(staatToe(ik({ isDirectie: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(false);
+    expect(staatToe(ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(true);
   });
 
   it("faalt dicht zonder of met de verkeerde bron, en voor niemand", () => {
@@ -316,6 +318,16 @@ describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
     expect(magVoor(RELATIES.Directie).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
     // Someone who cannot read the klas at all is not "reading only".
     expect(magVoor(RELATIES["LK rapport voorbij"]).rapportAlleenNogLezen(ANDERE_KLAS)).toBe(false);
+  });
+
+  it("biedt de bestemming ook een hoofdleerkracht van K3 aan, en geen hoofdleerkracht van een andere leeftijd", () => {
+    expect(magVoor(RELATIES.HL).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.HL).ontwikkelingsrapportZien).toBe(false);
+    expect(magVoor(RELATIES["HL andere leeftijd"]).ontwikkelingsrapportTab).toBe(false);
+    expect(magVoor(RELATIES["LK rapport voorbij"]).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.Directie).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.TB).ontwikkelingsrapportTab).toBe(false);
+    expect(magVoor(undefined).ontwikkelingsrapportTab).toBe(false);
   });
 
   it("faalt dicht op een /api/ik-antwoord zonder de twee lijsten", () => {

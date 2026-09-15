@@ -99,30 +99,10 @@ export function RapportdoelenScherm() {
           ) : (
             <ol className="divide-y divide-lijn rounded-kaart border border-lijn bg-kaart">
               {lijst.map((rapportdoel, index) => (
-                <li key={rapportdoel.id} className="flex items-start justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="break-words text-body font-medium text-inkt">{rapportdoel.titel}</p>
-                    {rapportdoel.subdoelen.length === 0 ? (
-                      <p className="mt-0.5 text-meta text-inkt-zacht">{t("ontwikkelingsrapport.geenSubdoelen")}</p>
-                    ) : (
-                      <details className="mt-0.5">
-                        <summary className="cursor-pointer text-meta text-inkt-zacht hover:text-inkt">
-                          {telWoord(
-                            rapportdoel.subdoelen.length,
-                            "ontwikkelingsrapport.eenSubdoel",
-                            "ontwikkelingsrapport.aantalSubdoelen",
-                          )}
-                        </summary>
-                        <ul className="mt-2 flex flex-col gap-2">
-                          {rapportdoel.subdoelen.map((subdoel) => (
-                            <li key={subdoel.id}>
-                              <Subdoelregel subdoel={subdoel} />
-                            </li>
-                          ))}
-                        </ul>
-                      </details>
-                    )}
-                  </div>
+                // The titel and the row buttons share the first line; the subdoelen span the whole row below them.
+                // Beside the buttons the unfolded list squeezed into a column a word wide at 390px.
+                <li key={rapportdoel.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-4 py-3">
+                  <p className="break-words text-body font-medium text-inkt">{rapportdoel.titel}</p>
                   {magBewerken ? (
                     <div className="flex shrink-0 items-center gap-0.5">
                       <Verschuifknop
@@ -150,6 +130,26 @@ export function RapportdoelenScherm() {
                       />
                     </div>
                   ) : null}
+                  {rapportdoel.subdoelen.length === 0 ? (
+                    <p className="col-span-full mt-0.5 text-meta text-inkt-zacht">{t("ontwikkelingsrapport.geenSubdoelen")}</p>
+                  ) : (
+                    <details className="col-span-full mt-0.5">
+                      <summary className="cursor-pointer text-meta text-inkt-zacht hover:text-inkt">
+                        {telWoord(
+                          rapportdoel.subdoelen.length,
+                          "ontwikkelingsrapport.eenSubdoel",
+                          "ontwikkelingsrapport.aantalSubdoelen",
+                        )}
+                      </summary>
+                      <ul className="mt-2 flex flex-col gap-2">
+                        {rapportdoel.subdoelen.map((subdoel) => (
+                          <li key={subdoel.id}>
+                            <Subdoelregel subdoel={subdoel} />
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
                 </li>
               ))}
             </ol>
@@ -222,6 +222,8 @@ function Rapportdoelblad({ rapportdoel, onSluit }: { rapportdoel?: Rapportdoel; 
   const groepen = useMemo(() => groepeer(kandidaten.data ?? [], zoek), [kandidaten.data, zoek]);
 
   function wissel(id: string) {
+    // "Kies minstens één subdoel." stops being true the moment one is ticked, so it goes; a titel error stays.
+    setFout((vorig) => (vorig === t("ontwikkelingsrapport.subdoelVerplicht") ? null : vorig));
     setGekozen((vorig) => {
       const nieuw = new Set(vorig);
       if (nieuw.has(id)) nieuw.delete(id);
@@ -235,6 +237,12 @@ function Rapportdoelblad({ rapportdoel, onSluit }: { rapportdoel?: Rapportdoel; 
     const schoon = titel.trim();
     if (schoon === "") {
       setFout(t("ontwikkelingsrapport.titelVerplicht"));
+      return;
+    }
+    // At least one subdoel, on a new rapportdoel and on an existing one (owner, 2026-09-15). The server refuses it in
+    // the same words; this only saves the round trip.
+    if (gekozen.size === 0) {
+      setFout(t("ontwikkelingsrapport.subdoelVerplicht"));
       return;
     }
     setFout(null);
@@ -299,7 +307,7 @@ function Rapportdoelblad({ rapportdoel, onSluit }: { rapportdoel?: Rapportdoel; 
                             type="checkbox"
                             checked={gekozen.has(subdoel.id)}
                             onChange={() => wissel(subdoel.id)}
-                            className="mt-1 h-4 w-4 shrink-0 accent-[var(--color-accent)]"
+                            className="mt-1 h-4 w-4 shrink-0 accent-inkt"
                           />
                           <span className="flex min-w-0 items-start gap-2">
                             <Doelsoortmerk soort={subdoel.doelsoort} className="mt-0.5" />
@@ -335,7 +343,8 @@ function groepeer(kandidaten: readonly Rapportsubdoel[], zoek: string) {
 
   const groepen: { sleutel: string; thema: string; subthema: string; subdoelen: Rapportsubdoel[] }[] = [];
   for (const subdoel of kandidaten.filter(past)) {
-    const sleutel = `${subdoel.themaNaam} ${subdoel.subthemaNaam}`;
+    // The pair as JSON, so no separator character can collide with a name and no control byte sits in the source.
+    const sleutel = JSON.stringify([subdoel.themaNaam, subdoel.subthemaNaam]);
     const laatste = groepen[groepen.length - 1];
     if (laatste?.sleutel === sleutel) laatste.subdoelen.push(subdoel);
     else groepen.push({ sleutel, thema: subdoel.themaNaam, subthema: subdoel.subthemaNaam, subdoelen: [subdoel] });

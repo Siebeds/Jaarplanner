@@ -17,6 +17,43 @@
   - The same ruling: on FB-003's invulscherm the subdoelen carry no status dot, so a green star never stands beside a
     green "Aanvaard". This is recorded for FB-003; this ticket shows no status dot anywhere either.
 
+## Owner rulings after antagonist round 1, 2026-09-15
+
+The round-1 report is `antagonist-ronde-1.md`. The owner answered its MAJOR and its questions:
+
+- **A rapportdoel always has at least one subdoel** ("Altijd minstens één (Aanbevolen)"), on create and on update. The
+  last subdoel cannot be taken out; the teacher deletes the rapportdoel instead. The server refuses it with
+  "Kies minstens één subdoel." and the sheet checks it before sending. The domain still allows an empty rapportdoel,
+  because D3's cascade can empty one when someone else deletes a subdoel.
+- **R31 means "never a person holding directie"** ("Nooit wie directie heeft"): a directeur with a running K3
+  klastoewijzing still does not edit the set or the scale. `Rechtenmatrix.StaatToe` and `lib/rechten.ts` `staatToe`
+  now return `!rij.ZonderDirectie` for directie, whatever other column they hold.
+- **The tab also shows to a hoofdleerkracht of K3** ("Ook hoofdleerkracht K3 (Aanbevolen)"). They see Rapportdoelen and
+  Sterrenschaal, not Kinderen. The new `mag.ontwikkelingsrapportTab` drives the sidebar tab and the phone link in
+  Instellingen; `mag.ontwikkelingsrapportZien` still decides who reads reports. ADR-0035 D18 carries a dated note.
+- **Red and blue keep their hues** ("Ja, zo laten (Aanbevolen)"). The owner was shown that red shares its hue with
+  gevaar, geweigerd and niet gedekt, and blue with doelsoort MD and voorgesteld. The `ster` token comment records it.
+
+## Fix round 1
+
+- **MAJOR (empty rapportdoel):** `RapportsetService.GeenSubdoel`, refused in `KeurSubdoelenAsync`; the pre-check in
+  `RapportdoelenScherm.bewaar()` with `ontwikkelingsrapport.subdoelVerplicht`; tests on the server (POST without the
+  list, POST with an empty list, PUT that empties) and in the sheet (nothing is sent). `geenSubdoelen` now reads
+  "Geen subdoelen.", because "Nog geen" promised a state the app no longer lets a teacher reach.
+- **MINOR (NUL byte):** the group key is `JSON.stringify([themaNaam, subthemaNaam])`; the file is text to `grep -I`.
+- **MINOR (hue record):** the `ster` token comment names red and blue and the owner's answer.
+- **MINOR (browser pass of the picker):** see `browsercheck.md`, round 2.
+- **QUESTION (accent on the checkbox):** the picker's checkbox is drawn in ink (`accent-inkt`), so the accent's ration of
+  five uses stays as it was.
+- **QUESTION (R31) and QUESTION (D18):** the owner's rulings above.
+- **Found in the browser pass of round 2, and fixed:**
+  - "Kies minstens één subdoel." stayed on screen after a subdoel was ticked, beside "1 gekozen". Ticking now clears
+    that sentence (a titel error stays), and `RapportdoelenScherm.test.tsx` asserts it.
+  - At 390px the unfolded subdoelen sat beside the four row buttons, in a column about 140px wide, and words broke in
+    the middle. The row is now a grid: the titel and the buttons share the first line, and the subdoelen span the whole
+    row below them. The markup keeps the titel, the buttons and the list in that order, so the focus order matches what
+    the eye sees.
+
 ## Design (frontend-design step)
 
 - **The destination gains parts, each at its own address:** `/ontwikkelingsrapport/kinderen`, `/rapportdoelen` and

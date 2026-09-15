@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 14:50
+bijgewerkt: 2026-09-15 16:01
 opgepakt-door: kindvolg
 branch: ticket/FB-002-rapportdoelen-sterrenschaal
 pr:
@@ -93,3 +93,10 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 - 2026-09-15 14:07 · kindvolg · eigenaar 2026-09-15: de schaal start met zijn voorbeeld (groen 'Volledig bereikt', oranje 'Nog niet volledig'); vaste kleurenlijst van zes (groen, lichtgroen, geel, oranje, rood, blauw), elk met een donkerdere rand; op het invulscherm (FB-003) geen statusbolletje naast de subdoelen
 - 2026-09-15 14:07 · kindvolg · let op: geen enkele weg in de app zet vandaag een subdoel op geweigerd (alle schrijfacties maken manueel), dus testscenario 6 kan niet via de app; D11 wordt gedekt door het filter bij het lezen, en een subdoel dat verwijderd wordt, verlaat elk rapportdoel
 - 2026-09-15 14:50 · kindvolg · browsercheck geslaagd op 1440 en 390: startschaal van de eigenaar, gradatie toevoegen (zonder kleur geweigerd), verschuiven, rapportdoel met alleen een titel, directie ziet alles zonder knoppen; sterranden halen 3:1 in licht en donker; verslag in backlog/worklogs/FB-002/browsercheck.md
+- 2026-09-15 15:36 · kindvolg · antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 3 MINOR, 3 QUESTION); verslag in backlog/worklogs/FB-002/antagonist-ronde-1.md
+- 2026-09-15 15:36 · kindvolg · eigenaar 2026-09-15: een rapportdoel heeft altijd minstens één subdoel, bij aanmaken en bij wijzigen; het laatste subdoel haal je er niet uit, dan verwijder je het rapportdoel
+- 2026-09-15 15:37 · kindvolg · eigenaar 2026-09-15: R31 betekent 'nooit wie directie heeft'; een directeur met een eigen K3-klas past de set en de schaal ook niet aan
+- 2026-09-15 15:37 · kindvolg · eigenaar 2026-09-15: de tab Ontwikkelingsrapport staat ook bij een hoofdleerkracht van K3, met alleen Rapportdoelen en Sterrenschaal (D18 verruimd)
+- 2026-09-15 15:38 · kindvolg · eigenaar 2026-09-15: rood en blauw blijven zoals voorgesteld; hij zag dat rood de tint deelt met geweigerd, niet gedekt en gevaar, en blauw met doelsoort MD en voorgesteld
+- 2026-09-15 15:38 · kindvolg · correctie op de regel van 14:50: die browsercheck toonde de subdoelkiezer niet, want de testdatabank had nog geen leerplandoelen; die check volgt in ronde 2 van browsercheck.md
+- 2026-09-15 16:01 · kindvolg · browsercheck ronde 2 op 1440 en 390 met echte K3-subdoelen: kiezen, zoeken, weigering zonder subdoel, ingeklapte lijst; hoofdleerkracht K3 ziet de tab en alleen Rapportdoelen en Sterrenschaal; twee fouten gevonden en hersteld (melding bleef staan na aanvinken, subdoelen te smal op 390); verslag in browsercheck.md

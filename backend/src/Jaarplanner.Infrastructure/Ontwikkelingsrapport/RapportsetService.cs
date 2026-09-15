@@ -31,6 +31,7 @@ public sealed class RapportsetService : IRapportsetService
     internal const string GeenLabel = "Vul een label in.";
     internal const string OnbekendeKleur = "Kies een kleur uit de lijst.";
     internal const string GeenTitel = "Vul een titel in.";
+    internal const string GeenSubdoel = "Kies minstens één subdoel.";
     internal const string GradatievolgordeOnvolledig = "De volgorde moet elke gradatie één keer bevatten.";
     internal const string RapportdoelvolgordeOnvolledig = "De volgorde moet elk rapportdoel één keer bevatten.";
 
@@ -217,10 +218,11 @@ public sealed class RapportsetService : IRapportsetService
     /// The submitted ids, each once, when every one is a candidate; otherwise the one refusal. Unknown ids get the same
     /// sentence as undecided or non-K3 ones, so the answer reveals nothing about which ids exist.
     /// <para>
-    /// <b>An empty list is allowed, and that is a default, not a ruling.</b> R3 rules out a rapportdoel that is only a
-    /// titel as a <i>kind</i> of rapportdoel; it does not say a teacher cannot name one first and add its subdoelen after.
-    /// Refusing it would also make the last subdoel of a rapportdoel impossible to take out, while a delete elsewhere
-    /// (D3) or a refusal (D11) can empty one anyway. What a report does with an empty rapportdoel is FB-003's.
+    /// <b>At least one, on create and on update</b> (owner, 2026-09-15, "Altijd minstens één", after antagonist round 1):
+    /// a rapportdoel that is only a titel is the "Vrije titel, geen koppeling" R3 rejected, and FB-002 puts it out of
+    /// scope. So the last subdoel cannot be taken out; the rapportdoel is deleted instead. A delete elsewhere (D3) or a
+    /// refusal (D11) can still empty one, which the list then shows. <i>The first version allowed an empty list as a
+    /// default; the owner ruled it out.</i>
     /// </para>
     /// </summary>
     private async Task<List<Guid>> KeurSubdoelenAsync(IReadOnlyList<Guid>? subdoelIds, CancellationToken cancellationToken)
@@ -228,7 +230,7 @@ public sealed class RapportsetService : IRapportsetService
         var ids = (subdoelIds ?? []).Distinct().ToList();
         if (ids.Count == 0)
         {
-            return ids;
+            throw new SchoolcontentValidatieFout(GeenSubdoel);
         }
 
         var gevonden = await Kandidaten().CountAsync(sd => ids.Contains(sd.Id), cancellationToken);

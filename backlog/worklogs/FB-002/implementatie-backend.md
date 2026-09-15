@@ -69,14 +69,19 @@
   - **No route sets a subdoel to `Geweigerd` today.** The read filter carries D11 for when one exists; the service doc
     says that such a route must also delete the join rows, as the re-scope does, or a subdoel accepted again would come
     back unasked.
-  - **An empty `subdoelIds` is allowed (a default, flagged in a comment).** R3 rules out a titel-only *kind* of
+  - **An empty `subdoelIds` was allowed (a default, flagged in a comment).** R3 rules out a titel-only *kind* of
     rapportdoel; it does not stop a teacher naming one first. Refusing it would also make the last subdoel impossible
     to remove, while D3 and D11 can empty a rapportdoel anyway. What a report does with an empty rapportdoel is FB-003's.
+    *Overruled by the owner on 2026-09-15, after antagonist round 1 ("Altijd minstens één"):* create and update both
+    refuse an empty list with `RapportsetService.GeenSubdoel`, "Kies minstens één subdoel.". The last subdoel cannot be
+    taken out; the teacher deletes the rapportdoel. The domain still allows an empty one, for D3's cascade.
   - **The column is `LopendeRapportklasIds.Count > 0`**, not `IsLeerkrachtVanLeeftijd("K3")`, so the graadklas decision
     (Art. XIV) moves the set's editors together with the leerlingen and reports (the D9 function).
-  - **A directie who also holds a running K3 klastoewijzing passes the row as that leerkracht.** `ZonderDirectie`
-    removes the directie column, and ADR-0030 §3's union rule keeps every other column. Pinned in a unit and an
-    integration test. See the open questions.
+  - **A directie who also held a running K3 klastoewijzing passed the row as that leerkracht.** `ZonderDirectie`
+    removed the directie column, and ADR-0030 §3's union rule kept every other column. *Overruled by the owner on
+    2026-09-15, after antagonist round 1 ("Nooit wie directie heeft"):* `StaatToe` returns `!rij.ZonderDirectie` for
+    directie, whatever other column they hold, so a directeur with a K3 klas does not edit the set or the scale. The
+    unit and integration tests now assert the refusal.
   - **Seeded by `InsertData` in the migration, not `HasData`**, so the rows belong to the school once inserted. With
     `HasData`, a later edit of the seed would generate an `UpdateData` over what the teachers made of it.
   - **The kleur binds as a string** and is parsed by name, ignoring case like the JSON converter (`"geel"` is accepted,
@@ -154,9 +159,10 @@
 - **Open questions / Art. XIV touched:**
   - **A directie who also teaches a K3 klas edits the set** (the union rule). R31 reads "Alleen de K3-leerkrachten",
     and such a directie is one. If the owner means "never directie, even as a leerkracht", the fix is one line in
-    `StaatToe` and two tests.
+    `StaatToe` and two tests. *Answered 2026-09-15: the owner means that, and the fix is in.*
   - **The graadklas (Art. XIV)**: the column goes through the D9 function, so a menggroep recorded as K2 gives its
     leerkracht no edit right on the set, as it gives no leerlingen.
   - **The empty rapportdoel default** (above): the owner may want a titel-only rapportdoel refused on save.
+    *Answered 2026-09-15: refused, on create and on update.*
   - **D11 on a future status route**: whoever builds a route that sets a subdoel to `Geweigerd` must delete the join
     rows there. The service doc says so.

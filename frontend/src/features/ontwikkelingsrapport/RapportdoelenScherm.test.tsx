@@ -160,6 +160,26 @@ describe("RapportdoelenScherm, voor een K3-leerkracht", () => {
     expect(within(blad).getByText(t("ontwikkelingsrapport.geenZoekresultaat"))).toBeInTheDocument();
   });
 
+  it("weigert een rapportdoel zonder subdoel zonder iets te versturen (eigenaar, 2026-09-15)", async () => {
+    const verzoeken = toon(K3_LEERKRACHT);
+    await screen.findByText("Luisteren en spreken");
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.rapportdoelToevoegen") }));
+
+    const blad = await screen.findByRole("dialog");
+    fireEvent.change(within(blad).getByRole("textbox", { name: t("ontwikkelingsrapport.titelVeld") }), {
+      target: { value: "Samen spreken" },
+    });
+    await within(blad).findByRole("checkbox", { name: /NL\.1/ });
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(within(blad).getByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.subdoelVerplicht"));
+    expect(verzoeken.some((verzoek) => verzoek.methode === "POST")).toBe(false);
+
+    // Once a subdoel is ticked the sentence is no longer true, so it goes.
+    fireEvent.click(within(blad).getByRole("checkbox", { name: /NL\.1/ }));
+    expect(within(blad).queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("zegt het als er nog geen beslist K3-subdoel is om te kiezen", async () => {
     toon(K3_LEERKRACHT, []);
     await screen.findByText("Luisteren en spreken");

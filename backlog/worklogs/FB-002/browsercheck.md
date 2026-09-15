@@ -79,11 +79,61 @@ was measured with `data-weergave="donker"`.
 
 The screen's text pairs use the same tokens that FB-001's pass measured (`browsercheck.md` there).
 
+## Round 2, after antagonist round 1 (2026-09-15)
+
+- **What ran:** the same worktree with fix round 1 applied (not yet committed). The API was rebuilt into `bin-run` and
+  restarted on port 5186 against `jp_fb001`; Vite stayed on port 5178.
+- **Data added to `jp_fb001`**, all through the API as directie:
+  - the Op.stap Excel of discipline 1 (`assets/opstap-xlsx/Nederlands en communicatie.xlsx`), 358 goals, 63 of them
+    K3 G. The Excel route was still open, because `jp_fb001` never had an API import;
+  - two invented thema's: "Herfst in het bos" with the K3 subthema's Paddenstoelen and Bladeren, and "Op straat" with
+    the K3 subthema Oversteken;
+  - two K3 G leerplandoelen per subthema as subdoelen (`Manueel`, so decided), picked for long texts (198 to 314
+    characters);
+  - Bram, until now only a leerkracht of K2 rood, appointed hoofdleerkracht of K3 in 2026-2027.
+- **API:** `GET /api/rapportdoelen/kandidaten` as Lotte gives the six subdoelen. A `PUT` that empties the old
+  titel-only "Luisteren en spreken" gets 400 "Kies minstens één subdoel.".
+
+### Lotte, 1440 × 900
+
+- The row made in round 1 now reads "Geen subdoelen." under its titel.
+- **The picker sheet** shows the pool in three groups ("Herfst in het bos › Bladeren", "… › Paddenstoelen",
+  "Op straat › Oversteken"). Each row is a checkbox, the G mark, the code and the full text, which wraps under the code
+  and not under the checkbox.
+- **Bewaren with a titel and no subdoel** shows "Kies minstens één subdoel." and sends nothing.
+- **Searching "groeten"** leaves only 1.4.GK3.12, under its group heading.
+- **Found and fixed:** after ticking it, the refusal stayed beside "1 gekozen". Ticking now clears that sentence; seen
+  live after the fix, when ticking 1.4.GK3.7 took it away.
+- **Saving "Natuur ontdekken"** with 1.4.GK3.12 and 1.4.GK3.7 closes the sheet. The row reads "2 subdoelen", folded.
+  Unfolded, each subdoel shows its G mark, code and text, with "thema › subthema" under it.
+- The console holds no errors or warnings.
+
+### Lotte, 390 × 844
+
+- **Found and fixed:** unfolded, the subdoelen sat beside the four row buttons, in a column about 140px wide, and a word
+  broke in the middle ("interactiestrategieë n"). After the fix the titel and the buttons share the first line and the
+  subdoelen use the whole row width. No horizontal scroll (`scrollWidth` equals `clientWidth`, before and after).
+- The picker opens as a bottom sheet. The texts wrap cleanly, and Bewaren and Annuleren stay in the footer.
+
+### Bram, hoofdleerkracht of K3 without a K3 klas (the owner's widening of D18)
+
+- **390:** Instellingen shows the "Ontwikkelingsrapport" link at the top. The bare `/ontwikkelingsrapport` opens
+  Rapportdoelen. The switch offers Rapportdoelen and Sterrenschaal, not Kinderen. The list has no buttons and no
+  "Rapportdoel toevoegen", and it says "Je kan de rapportdoelen bekijken, maar niet aanpassen."
+- **1440:** the sidebar lists Doelen, Thema's, Agenda, Dekking, Ontwikkelingsrapport, Instellingen, with the report
+  above Instellingen. This was read from the DOM: two screenshots at this width timed out while the full test suites
+  were running on the same machine.
+- **`/ontwikkelingsrapport/kinderen` by address** shows "Je hebt geen toegang tot het ontwikkelingsrapport." under the
+  same two-part switch, and the page sends no request to `/api/leerlingen`.
+- The console holds no errors or warnings.
+
+### Not rerun in round 2
+
+- **Directie with its own running K3 klas** (the owner's reading of R31) was not set up in the browser. The unit test
+  `Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_rapportset_toch_niet`, the integration test of the same name
+  (403 on a write, and nothing changed) and `rechten.test.ts` cover it. Plain directie was seen in round 1.
+
 ## Not covered here
 
-- **Picking subdoelen in the browser.** `jp_fb001` holds no leerplandoelen, so no decided K3 subdoel exists to pick. The
-  picker's behaviour is covered elsewhere:
-  - `RapportdoelenScherm.test.tsx` covers choosing, searching, the empty pool and editing.
-  - The backend's `RapportsetEndpointsTests` covers the read filter, D3, D11 and D12 on real PostgreSQL.
 - **Scenario 6 of the ticket** (refusing a subdoel's goal) cannot be run through the app, because no path sets a
   subdoel to `geweigerd`. See the ticket Werklog.
