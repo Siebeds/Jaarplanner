@@ -269,6 +269,7 @@
     "dagGeenThema": "nog geen thema in deze periode",
     "hoekenfiches": "Hoekenfiches",
     "algemeneFiches": "Algemene fiches",
+    "activiteiten": "Activiteiten",
     "dagHoek": "hoek {naam}",
     "dagHoeken": "hoeken {namen}"
   },
@@ -767,7 +768,29 @@
     "naarInstellingen": "Hoeken instellen",
     "geenAlgemeneFiches": "Deze klas heeft nog geen algemene fiches.",
     "naarAlgemeneFiches": "Algemene fiches instellen",
+    "activiteitenTitel": "Activiteiten",
+    "activiteitenSluiten": "Activiteiten sluiten",
     "mislukt": "Deze lijst kon niet geladen worden. Probeer het later opnieuw."
+  },
+  "activiteitenpaneel": {
+    "subthema": "Subthema",
+    "kiesSubthema": "Kies een subthema",
+    "subthemaLeeftijd": "{naam} ({leeftijd})",
+    "looptInWeek": "Loopt in week {nummer}",
+    "geenLopendInWeek": "In week {nummer} loopt er geen subthema.",
+    "geenSubthemas": "Voor de leeftijd van deze klas zijn er nog geen subthema's.",
+    "naarThemas": "Naar de thema's",
+    "geenActiviteiten": "Dit subthema heeft nog geen activiteiten."
+  },
+  "activiteitplaatsing": {
+    "titel": "{naam} inplannen",
+    "dag": "Dag",
+    "van": "Van",
+    "tot": "Tot",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
+    "plaats": "Inplannen",
+    "bezig": "Bezig met inplannen",
+    "mislukt": "Inplannen is niet gelukt."
   },
   "ficheplaatsing": {
     "titel": "{naam} inplannen",

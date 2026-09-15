@@ -450,6 +450,18 @@ export interface ThemaWeergave {
   subthemas: SubthemaWeergave[];
 }
 
+/**
+ * A subthema at an age this klas teaches, named with its thema (`GET /api/subthemas/voor-klas/{klasId}`). A thin row
+ * for a picker, not a subtree: the agenda's activiteiten list offers these and loads the chosen one's activiteiten.
+ */
+export interface SubthemaBestemming {
+  id: string;
+  naam: string;
+  leeftijd: string;
+  themaId: string;
+  themaNaam: string;
+}
+
 export interface ThemaBibliotheekItem {
   id: string;
   naam: string;

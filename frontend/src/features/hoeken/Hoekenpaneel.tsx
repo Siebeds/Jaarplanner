@@ -3,7 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonFiche, IcoonHoek, IcoonKruis, IcoonPlus } from "../../components/Iconen";
+import { IcoonActiviteit, IcoonFiche, IcoonHoek, IcoonKruis } from "../../components/Iconen";
 import { useHoekenpaneel, type Paneelsoort } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
@@ -14,6 +14,14 @@ import { useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gege
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
 import { Hoekformulier } from "../instellingen/Hoekformulier";
 import { Algemeneficheformulier } from "../instellingen/Algemeneficheformulier";
+import {
+  Activiteitensectie,
+  Paneelactiviteitformulier,
+  type Activiteitbestemming,
+  type Activiteitenweek,
+  type GekozenActiviteit,
+} from "../plan/Activiteitensectie";
+import { Toevoegtegel } from "./Toevoegtegel";
 
 /**
  * The side panel beside the agenda: the corners this class has, or its algemene fiches, while she plans (owner,
@@ -23,7 +31,9 @@ import { Algemeneficheformulier } from "../instellingen/Algemeneficheformulier";
  * side bar, hoekenfiches en algemene fiches, niet gegroepeerd als fiches"). A first version grouped both under one
  * "Fiches" panel with two headings; he found that not overzichtelijk. So the store says which list is showing
  * (`soort`), the navigation has a switch for each, and this component draws the one that is on, under that list's own
- * name and glyph.
+ * name and glyph. **A third list, the activiteiten, since 2026-09-15** (owner, FB-017): the same column, cards and tile,
+ * with a subthema to choose above its cards, because an activiteit belongs to a subthema and a klas has many
+ * (`Activiteitensectie`).
  *
  * **Two shapes for one panel, because the app has two.** From `lg` it is a column standing in the space the
  * navigation's labels were using, which is why the navigation collapses to an icon rail when this opens. On a phone
@@ -49,6 +59,9 @@ export function Hoekenpaneel({
   klasId,
   onKies,
   onKiesAlgemeneFiche,
+  magPlannen,
+  activiteitenWeek,
+  onKiesActiviteit,
 }: {
   klasId: string | null;
   /**
@@ -58,13 +71,23 @@ export function Hoekenpaneel({
   onKies: (hoekId: string) => void;
   /** The same, for an algemene fiche. */
   onKiesAlgemeneFiche: (ficheId: string) => void;
+  /**
+   * Whether this gebruiker may plan the klas. The two fiche lists are only for whoever may (every fiche in them plans
+   * one); the activiteiten list is for everyone who reads the agenda, and without the right its cards plan nothing
+   * (owner, 2026-09-15, FB-017).
+   */
+  magPlannen: boolean;
+  /** The week the agenda stands in, which the activiteiten list opens on. */
+  activiteitenWeek: Activiteitenweek;
+  /** An activiteit card was chosen rather than dragged; the agenda asks the day and the hours. */
+  onKiesActiviteit: (activiteit: GekozenActiviteit) => void;
 }) {
   const open = useHoekenpaneel((s) => s.open);
   const soort = useHoekenpaneel((s) => s.soort);
   const zet = useHoekenpaneel((s) => s.zet);
   const breed = useMediaQuery(BREED);
-  const hoeken = useHoeken(open && soort === "hoeken" ? klasId : null);
-  const algemeneFiches = useAlgemeneFiches(open && soort === "algemeen" ? klasId : null);
+  const hoeken = useHoeken(open && magPlannen && soort === "hoeken" ? klasId : null);
+  const algemeneFiches = useAlgemeneFiches(open && magPlannen && soort === "algemeen" ? klasId : null);
   const maakHoek = useMaakHoek(klasId);
   const maakFiche = useMaakAlgemeneFiche(klasId);
 
@@ -75,6 +98,8 @@ export function Hoekenpaneel({
    * form must not depend on anything the closed panel still says.
    */
   const [nieuw, setNieuw] = useState<Paneelsoort | null>(null);
+  // The activiteit's form needs more than which kind: the subthema it is made in.
+  const [nieuweActiviteit, setNieuweActiviteit] = useState<Activiteitbestemming | null>(null);
   const tegelRef = useRef<HTMLButtonElement>(null);
 
   // On a phone this panel is a sheet over the calendar and the placement sheet is about to open on top of it, so it
@@ -86,15 +111,21 @@ export function Hoekenpaneel({
 
   // The same rule for the create form, with one difference: she came here to add to THIS list, so on a phone the
   // panel comes back when the form closes, saved or not, and she is back at the list she came from.
-  function openNieuw(welke: Paneelsoort) {
+  function openNieuw(welke: "hoeken" | "algemeen") {
     if (!breed) zet(false);
     if (welke === "hoeken") maakHoek.reset();
     else maakFiche.reset();
     setNieuw(welke);
   }
 
+  function openNieuweActiviteit(bestemming: Activiteitbestemming) {
+    if (!breed) zet(false);
+    setNieuweActiviteit(bestemming);
+  }
+
   function sluitNieuw() {
     setNieuw(null);
+    setNieuweActiviteit(null);
     if (!breed) {
       zet(true);
       return;
@@ -105,7 +136,8 @@ export function Hoekenpaneel({
     requestAnimationFrame(() => tegelRef.current?.focus());
   }
 
-  const lijst: Lijst =
+  // The two fiche lists share one shape; the activiteiten are drawn by their own component, below.
+  const lijst: Lijst | null =
     soort === "hoeken"
       ? {
           titel: t("hoekenpaneel.titel"),
@@ -125,7 +157,8 @@ export function Hoekenpaneel({
           onKies: (id) => kies(onKies, id),
           onNieuw: () => openNieuw("hoeken"),
         }
-      : {
+      : soort === "algemeen"
+        ? {
           titel: t("hoekenpaneel.algemeenTitel"),
           sluiten: t("hoekenpaneel.algemeenSluiten"),
           Icoon: IcoonFiche,
@@ -142,13 +175,37 @@ export function Hoekenpaneel({
           toevoegen: t("algemeneFiches.toevoegen"),
           onKies: (id) => kies(onKiesAlgemeneFiche, id),
           onNieuw: () => openNieuw("algemeen"),
-        };
+        }
+        : null;
+
+  const kop = lijst ?? {
+    titel: t("hoekenpaneel.activiteitenTitel"),
+    sluiten: t("hoekenpaneel.activiteitenSluiten"),
+    Icoon: IcoonActiviteit,
+  };
 
   const inhoud =
     klasId === null ? (
       <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
-    ) : (
+    ) : lijst ? (
       <Fichelijst lijst={lijst} sleepbaar={breed} tegelRef={tegelRef} />
+    ) : open ? (
+      <Activiteitensectie
+        klasId={klasId}
+        week={activiteitenWeek}
+        magPlannen={magPlannen}
+        sleepbaar={breed && magPlannen}
+        tegelRef={tegelRef}
+        onKies={(activiteit) => {
+          // As a fiche does: on a phone the panel's sheet closes before the agenda's sheet opens over it.
+          if (!breed) zet(false);
+          onKiesActiviteit(activiteit);
+        }}
+        onNieuw={openNieuweActiviteit}
+      />
+    ) : (
+      // Closed, the column only fades: the list stops asking, as the fiche lists do, and the fade shows loading rows.
+      <Laadlijst rijen={3} />
     );
 
   /*
@@ -175,12 +232,18 @@ export function Hoekenpaneel({
         onSluit={sluitNieuw}
         onBewaar={(invoer) => maakFiche.mutate(invoer, { onSuccess: sluitNieuw })}
       />
+    ) : nieuweActiviteit ? (
+      <Paneelactiviteitformulier bestemming={nieuweActiviteit} onSluit={sluitNieuw} />
     ) : null;
+
+  // A fiche list for someone who may not plan the klas: nothing to draw. The navigation closes such a panel as soon as
+  // the rights say no; this covers the render before it does.
+  if (!magPlannen && soort !== "activiteiten") return null;
 
   if (!breed) {
     return (
       <>
-        <Blad open={open} onOpenChange={zet} titel={lijst.titel}>
+        <Blad open={open} onOpenChange={zet} titel={kop.titel}>
           {inhoud}
         </Blad>
         {formulier}
@@ -198,7 +261,7 @@ export function Hoekenpaneel({
   return (
     <>
       <aside
-        aria-label={lijst.titel}
+        aria-label={kop.titel}
         aria-hidden={!open}
         inert={!open}
         className={cn(
@@ -209,13 +272,13 @@ export function Hoekenpaneel({
       >
         <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-6">
           <h2 className="flex items-center gap-2 text-micro uppercase text-inkt-zwak">
-            <lijst.Icoon aria-hidden="true" className="h-4 w-4" />
-            {lijst.titel}
+            <kop.Icoon aria-hidden="true" className="h-4 w-4" />
+            {kop.titel}
           </h2>
           <button
             type="button"
             onClick={() => zet(false)}
-            aria-label={lijst.sluiten}
+            aria-label={kop.sluiten}
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt"
           >
             <IcoonKruis aria-hidden="true" className="h-4 w-4" />
@@ -321,43 +384,6 @@ function Fichelijst({
           count only the fiches. */}
       {tegel}
     </div>
-  );
-}
-
-/**
- * The empty slot at the end of the stack: the shape of a fiche, drawn as an outline.
- *
- * **Dashed and unfilled, so it reads as a place for a fiche rather than one more fiche.** The fiches above it are
- * filled cards with a solid edge; this one keeps their width, padding and corner, so the stack ends in the same
- * rhythm, and gives up their fill. No colour of its own: the accent it takes on hover is the one every fiche above it
- * takes, and the plus with the words says what it does without it.
- *
- * **Its edge is `lijn-veld`, darker than the line the fiches use**, because without a fill the edge is the only thing
- * drawing the tile, and `index.css` keeps `lijn-veld` for an edge that carries a control: on this white panel
- * `lijn-sterk` measures 1.61:1 (antagonist, TB-015 round 1).
- */
-function Toevoegtegel({
-  ref,
-  label,
-  onKies,
-}: {
-  ref: Ref<HTMLButtonElement>;
-  label: string;
-  onKies: () => void;
-}) {
-  return (
-    <button
-      ref={ref}
-      type="button"
-      onClick={onKies}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-veld border border-dashed border-lijn-veld px-3 py-2.5 text-left",
-        "text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-inkt",
-      )}
-    >
-      <IcoonPlus aria-hidden="true" className="h-4 w-4 shrink-0" />
-      {label}
-    </button>
   );
 }
 

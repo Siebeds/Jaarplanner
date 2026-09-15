@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
@@ -101,6 +101,17 @@ function antwoord(pad: string): unknown {
       return [TURNEN];
     case "/api/klassen/klas-1/algemene-fiches":
       return [{ id: "f-1", klasId: "klas-1", naam: "turnen", omschrijving: null, aantalPlaatsingen: 1, doelen: [] }];
+    // The activiteiten list of the side panel (FB-017): one K3 subthema with one activiteit of one lesuur.
+    case "/api/subthemas/voor-klas/klas-1":
+      return [{ id: "s-1", naam: "De eekhoorn", leeftijd: "K3", themaId: "t-1", themaNaam: "Herfst" }];
+    case "/api/themas/t-1/voor-klas/klas-1":
+      return {
+        id: "t-1", naam: "Herfst", duurWeken: 6, invalshoeken: null, kernwoordenschat: [], rijkeWoordenschat: [],
+        heeftVoldoendeThemadoelen: true, themadoelen: [],
+        subthemas: [{ id: "s-1", themaId: "t-1", naam: "De eekhoorn", duurWeken: 2, leeftijd: "K3", onderzoeksvragen: [],
+          subdoelen: [], activiteiten: [{ id: "a-1", naam: "Eikels rapen", activiteitType: "Kring", hoek: null,
+            verwachteUitkomsten: null, onderzoeksvraagId: null, kleur: null, lengteInLesuren: 1, doelkoppelingen: [] }] }],
+      };
     default:
       return null;
   }
@@ -113,7 +124,11 @@ beforeEach(() => {
   useHoekenpaneel.setState({ open: true, soort: "hoeken" });
   vi.stubGlobal(
     "fetch",
-    vi.fn(async (pad: string) => {
+    vi.fn(async (pad: string, init?: RequestInit) => {
+      // Every write succeeds: what a test of a write checks is what was sent, which the mock's calls record.
+      if (init?.method === "POST") {
+        return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       const inhoud = antwoord(String(pad));
       return inhoud === null
         ? new Response("{}", { status: 404 })
@@ -124,7 +139,7 @@ beforeEach(() => {
 
 afterEach(() => {
   zetSchermbreedte(false);
-  useHoekenpaneel.setState({ open: false, soort: "hoeken" });
+  useHoekenpaneel.setState({ open: false, soort: "hoeken", subthemaKeuze: null });
   vi.unstubAllGlobals();
 });
 
@@ -142,6 +157,7 @@ function toon(ik: Ik) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 const chip = (label: string) => screen.queryByRole("button", { name: label });
@@ -161,6 +177,8 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
     expect(await screen.findByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeInTheDocument();
     expect(chip(t("periode.hoekenfiches"))).toBeNull();
     expect(chip(t("periode.algemeneFiches"))).toBeNull();
+    // The activiteiten are for everyone who reads the agenda; their cards then plan nothing (owner, 2026-09-15).
+    expect(chip(t("periode.activiteiten"))).not.toBeNull();
     expect(paneel()).toBeNull();
 
     const blad = await openTurnen();
@@ -177,10 +195,90 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
     expect(screen.queryByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeNull();
     expect(chip(t("periode.hoekenfiches"))).not.toBeNull();
     expect(chip(t("periode.algemeneFiches"))).not.toBeNull();
+    expect(chip(t("periode.activiteiten"))).not.toBeNull();
     expect(paneel()).not.toBeNull();
 
     const blad = await openTurnen();
     expect(within(blad).getByRole("button", { name: t("fichedetail.verwijder") })).toBeInTheDocument();
     expect(within(blad).getByLabelText(t("fichedetail.dag"))).toBeInTheDocument();
+  });
+});
+
+describe("Agendascherm: een activiteit uit het zijpaneel inplannen (FB-017)", () => {
+  // The agenda opens on Tuesday 8 September, so the week a choice is kept for starts on Monday the 7th.
+  const KEUZE = { subthemaId: "s-1", klasId: "klas-1", week: "2026-09-07" };
+  const PLANNER = ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] });
+
+  /** The week's runs never arrive, or fail; everything else answers as in `antwoord`. */
+  function weekplanningAntwoordt(hoe: "nooit" | "fout") {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (pad: string) => {
+        const url = new URL(String(pad), "http://localhost");
+        if (url.pathname === "/api/klassen/klas-1/jaarplan/weekplanning") {
+          return hoe === "nooit" ? new Promise<Response>(() => {}) : new Response("{}", { status: 500 });
+        }
+        const inhoud = antwoord(String(pad));
+        return inhoud === null
+          ? new Response("{}", { status: 404 })
+          : new Response(JSON.stringify(inhoud), { status: 200, headers: { "Content-Type": "application/json" } });
+      }),
+    );
+  }
+
+  // Antagonist FB-017, rounds 1 and 2: "no subthema runs" is a claim only a read that succeeded can make.
+  it("zegt niets over de week zolang de agenda de subthema's van die week nog leest", async () => {
+    weekplanningAntwoordt("nooit");
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten" });
+    const client = toon(PLANNER);
+
+    await waitFor(() =>
+      expect(client.getQueryState(["thema-bibliotheek", "bestemmingen", "klas-1"])?.status).toBe("success"),
+    );
+    expect(screen.queryByText(/loopt er geen subthema/)).toBeNull();
+    expect(screen.queryByLabelText(t("activiteitenpaneel.subthema"))).toBeNull();
+  });
+
+  it("zegt minder, en niets anders, wanneer de agenda de week niet kon lezen", async () => {
+    weekplanningAntwoordt("fout");
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten" });
+    toon(PLANNER);
+
+    expect(await screen.findByLabelText(t("activiteitenpaneel.subthema"))).toHaveValue("");
+    expect(screen.queryByText(/loopt er geen subthema/)).toBeNull();
+  });
+
+  it("toont wie de klas alleen mag inkijken de kaarten, en niets om mee te plannen", async () => {
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten", subthemaKeuze: KEUZE });
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-2"] }));
+
+    expect(await screen.findByText("Eikels rapen")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Eikels rapen/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("activiteit.toevoegen") })).toBeNull();
+    // The fiche lists stay the planners'.
+    expect(paneel()).toBeNull();
+  });
+
+  it("vraagt bij een aangeklikte kaart de dag en de uren, en plant ze in", async () => {
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten", subthemaKeuze: KEUZE });
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
+
+    fireEvent.click(await screen.findByRole("button", { name: /Eikels rapen/ }));
+
+    const blad = await screen.findByRole("dialog", { name: t("activiteitplaatsing.titel", { naam: "Eikels rapen" }) });
+    // A click names no day, so the sheet starts on the day the agenda stands on.
+    expect(within(blad).getByLabelText(t("activiteitplaatsing.dag"))).toHaveValue("2026-09-08");
+
+    fireEvent.click(within(blad).getByRole("button", { name: t("activiteitplaatsing.plaats") }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    const post = vi
+      .mocked(fetch)
+      .mock.calls.find(([, init]) => (init as RequestInit | undefined)?.method === "POST");
+    expect(post).toBeDefined();
+    expect(JSON.parse(String((post![1] as RequestInit).body))).toMatchObject({
+      activiteitId: "a-1",
+      datum: "2026-09-08",
+    });
   });
 });

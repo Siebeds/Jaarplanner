@@ -1,6 +1,6 @@
 import type { Dagweergave, Subthemaperiode } from "../../lib/types";
 import { t } from "../../i18n";
-import { datumsTussen, valtBinnen, weekdagIndex } from "../../lib/datum";
+import { datumsTussen, maandagVan, valtBinnen, verschuif, weekdagIndex } from "../../lib/datum";
 
 /**
  * The stretch of days one subthema runs over, inside one themaperiode.
@@ -123,6 +123,47 @@ export function reeksenPerDag(reeksen: readonly Subthemareeks[]): Map<string, Su
   }
 
   return perDag;
+}
+
+/**
+ * The range the subthema runs are read over: the days on screen and the whole week of the anchored day, widened to
+ * every themaperiode they touch.
+ *
+ * **Whole periodes**, because a run is measured over its periode: measured over the visible month, a run that began in
+ * the last week of september would be reported as starting on 1 october (see `subthemareeksen`).
+ *
+ * **And the whole week of the anchored day** (FB-017), because the activiteiten list speaks about that week. A day
+ * view, or a phone's three days, loads less than a week, and a day outside every periode loads only itself, so a run
+ * later that week would go unread and the list would say that nothing runs (antagonist FB-017, round 2).
+ */
+export function reeksbereik(
+  van: string,
+  tot: string,
+  anker: string,
+  blokken: readonly { start: string; eind: string }[],
+): [string, string] {
+  if (van.length === 0) return ["", ""];
+  const maandag = maandagVan(anker);
+  const zondag = verschuif(maandag, 6);
+  const begin = van < maandag ? van : maandag;
+  const einde = tot > zondag ? tot : zondag;
+  const raken = blokken.filter((blok) => blok.start <= einde && blok.eind >= begin);
+  return [
+    [begin, ...raken.map((blok) => blok.start)].reduce((a, b) => (a < b ? a : b)),
+    [einde, ...raken.map((blok) => blok.eind)].reduce((a, b) => (a > b ? a : b)),
+  ];
+}
+
+/**
+ * The subthema's whose runs touch the week that starts on `maandag`, once each, in the order they start (FB-017).
+ *
+ * What the agenda's activiteiten list opens on. From the runs the calendar draws, so the list cannot open on a
+ * subthema the strips beside it do not show, and a run that started the Friday before still counts: it is running.
+ */
+export function subthemasInWeek(reeksen: readonly Subthemareeks[], maandag: string): string[] {
+  const zondag = verschuif(maandag, 6);
+  const ids = reeksen.filter((reeks) => reeks.van <= zondag && reeks.tot >= maandag).map((reeks) => reeks.subthemaId);
+  return [...new Set(ids)];
 }
 
 /**

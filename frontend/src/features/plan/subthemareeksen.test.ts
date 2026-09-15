@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
+import {
+  reeksbereik,
+  reeksenPerDag,
+  subthemareeksen,
+  subthemasInWeek,
+  voorstelReeks,
+  type Subthemareeks,
+} from "./subthemareeksen";
 import type { Dagweergave, GeplandeActiviteit, Subthemaperiode } from "../../lib/types";
 
 /**
@@ -194,5 +201,58 @@ describe("subthemareeksen met bewaarde vensters", () => {
     const leeg = subthemareeksen([dag("2026-09-01", "s1"), dag("2026-09-03", "s1")], september, []);
 
     expect(leeg).toEqual(zonder);
+  });
+});
+
+describe("subthemasInWeek (FB-017)", () => {
+  const reeks = (subthemaId: string, van: string, tot: string): Subthemareeks => ({
+    subthemaId,
+    subthemaNaam: subthemaId,
+    van,
+    tot,
+    aantalDagen: 1,
+  });
+  const reeksen = [
+    reeks("vorige", "2026-09-01", "2026-09-11"),
+    reeks("over-het-weekend", "2026-09-11", "2026-09-15"),
+    reeks("deze", "2026-09-16", "2026-09-25"),
+    reeks("volgende", "2026-09-21", "2026-10-02"),
+    reeks("deze", "2026-10-05", "2026-10-09"),
+  ];
+
+  it("geeft de subthema's die in die week lopen, ook een die de vrijdag ervoor begon", () => {
+    expect(subthemasInWeek(reeksen, "2026-09-14")).toEqual(["over-het-weekend", "deze"]);
+  });
+
+  it("noemt een subthema dat in die week twee keer loopt maar één keer", () => {
+    expect(subthemasInWeek([...reeksen, reeks("deze", "2026-09-14", "2026-09-14")], "2026-09-14")).toEqual([
+      "over-het-weekend",
+      "deze",
+    ]);
+  });
+
+  it("geeft niets voor een week zonder lopend subthema", () => {
+    expect(subthemasInWeek(reeksen, "2026-11-09")).toEqual([]);
+  });
+});
+
+describe("reeksbereik", () => {
+  const blokken = [
+    { start: "2026-09-01", eind: "2026-09-11" },
+    { start: "2026-09-16", eind: "2026-10-23" },
+  ];
+
+  it("leest een week over de hele themaperiodes die ze raakt", () => {
+    expect(reeksbereik("2026-09-21", "2026-09-27", "2026-09-22", blokken)).toEqual(["2026-09-16", "2026-10-23"]);
+  });
+
+  it("leest in de dagweergave de hele week, ook een dag buiten elke periode (FB-017)", () => {
+    // Monday the 14th sits between two periodes. The day alone would load only itself, and a subthema starting on
+    // Wednesday the 16th, in the same week, would go unread.
+    expect(reeksbereik("2026-09-14", "2026-09-14", "2026-09-14", blokken)).toEqual(["2026-09-14", "2026-10-23"]);
+  });
+
+  it("leest niets zolang het bereik op het scherm niet bekend is", () => {
+    expect(reeksbereik("", "", "2026-09-14", blokken)).toEqual(["", ""]);
   });
 });
