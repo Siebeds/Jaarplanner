@@ -2,10 +2,10 @@
 id: FB-023
 titel: Directie stelt de schooluren per weekdag in
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
+bijgewerkt: 2026-09-15 14:49
 opgepakt-door:
 branch:
 pr:
@@ -62,3 +62,4 @@ standaard op 7:00 tot 18:00, en dat is alleen weergave, geen gegeven van de scho
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 14:49 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
