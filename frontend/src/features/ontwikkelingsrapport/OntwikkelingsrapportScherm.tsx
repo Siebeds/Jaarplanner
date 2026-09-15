@@ -135,7 +135,8 @@ function Kinderen({ klas }: { klas: KlasWeergave }) {
         <h2 id="kinderen-titel" className="font-display text-hoofdstuk text-inkt">
           {t("ontwikkelingsrapport.kinderen")}
         </h2>
-        {lijst.isSuccess ? (
+        {/* Not at nought: the empty list below already says there are none, and "0 kinderen" beside it says it twice. */}
+        {lijst.isSuccess && kinderen.length > 0 ? (
           <p className="text-meta text-inkt-zacht">
             {telWoord(kinderen.length, "ontwikkelingsrapport.eenKind", "ontwikkelingsrapport.aantalKinderen")}
           </p>
