@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:48
+bijgewerkt: 2026-09-15 17:03
 opgepakt-door: fichetekst
 branch: ticket/FB-022-fiche-dagtekst
 pr: 85
@@ -70,3 +70,4 @@ algemene fiche.
 - 2026-09-15 16:38 · fichetekst · browsercontrole desktop en 390px geslaagd, alle vijf acceptatiecriteria afgevinkt (bewijs: backlog/worklogs/FB-022/verification.md); antagonist COMPLIANT, twee MINOR testpunten worden meegenomen
 - 2026-09-15 16:41 · fichetekst · in-uitvoering → te-testen: gebouwd: per ingepland moment van een algemene fiche een tekst voor die dag (in het blad, op het blok waar plaats is, blijft bij verplaatsen, alleen lezen voor wie de klas niet mag plannen), bevestiging met aantal bij weghalen van een periode met teksten; gates groen, browser desktop en 390px, antagonist COMPLIANT
 - 2026-09-15 16:48 · fichetekst · PR #85
+- 2026-09-15 17:03 · fichetekst · main samengevoegd voor PR #85; migratie opnieuw gegenereerd na de twee nieuwe migraties van main; alle tests opnieuw groen (1630 unit, 497 integratie, 782 frontend)

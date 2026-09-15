@@ -23,6 +23,17 @@ Both were fixed rather than listed:
 
 The antagonist's QUESTION (warn softly when a day text contains a name of a child of the klas) is left to the owner.
 
+## After merging main (PR #85)
+
+`main` had gained two migrations since this branch started (`AddLeerlingen`, `AddRapportdoelenEnGradaties`), so this branch, merging second, regenerated its own: `20260915141553_AlgemeneFichemomentTekst` became `20260915144921_AlgemeneFichemomentTekst` on top of main's snapshot. Its `Up` only adds the nullable `Tekst` column; the snapshot differs from main's by that column alone.
+
+| Gate | Result |
+| --- | --- |
+| Backend unit tests (all) | 1630 passed, 4 skipped |
+| Integration tests on PostgreSQL (all) | 497 passed, 1 skipped (live KOV import) |
+| Frontend `pnpm test` | 76 files, 782 tests passed |
+| `pnpm lint`, `dotnet format` | clean, no changes |
+
 ## Browser pass
 
 Headless Chrome driven over the DevTools protocol (the Chrome extension and the Playwright MCP were not connected), against Vite on 5179 → API on 5186 → throwaway database `jaarplanner_fb022` with the demo seed. Setup: algemene fiche "Wero" in the demo klas, every school day of the week of 14 September, 13:15–14:00.
