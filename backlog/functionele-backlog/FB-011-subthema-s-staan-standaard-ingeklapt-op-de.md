@@ -2,10 +2,10 @@
 id: FB-011
 titel: Subthema's staan standaard ingeklapt op de themapagina
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:47
+bijgewerkt: 2026-09-15 15:08
 opgepakt-door: themapagina
 branch: ticket/FB-011-subthemas-ingeklapt
 pr:
@@ -29,12 +29,12 @@ pagina lang, en wie één subthema zoekt, moet ver scrollen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met meerdere subthema's, wanneer ik de themapagina open, dan zijn alle subthema's ingeklapt en
+- [x] Gegeven een thema met meerdere subthema's, wanneer ik de themapagina open, dan zijn alle subthema's ingeklapt en
   toont elk zijn samenvatting.
-- [ ] Gegeven een ingeklapt subthema, wanneer ik erop klik of het met Enter of Spatie activeer, dan klapt het open, en
+- [x] Gegeven een ingeklapt subthema, wanneer ik erop klik of het met Enter of Spatie activeer, dan klapt het open, en
   bij een tweede keer weer in.
-- [ ] Gegeven een ander thema, wanneer ik dat open, dan zijn ook daar alle subthema's ingeklapt.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een ander thema, wanneer ik dat open, dan zijn ook daar alle subthema's ingeklapt.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -58,3 +58,6 @@ Niets.
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 14:47 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 15:01 · themapagina · gebouwd en nagekeken: Vitest 574 groen, lint groen; headless Chrome op desktop en 390px: dicht bij aankomst, klik en Enter/Spatie klappen open en dicht, ander thema weer dicht, geen horizontaal scrollen, geen consolefouten
+- 2026-09-15 15:08 · themapagina · antagonist: COMPLIANT; de kleine bevinding over de testhulp is opgelost (die controleert nu dat beide hoofdstukken open zijn), TB-017 kreeg een werklogregel
+- 2026-09-15 15:08 · themapagina · in-uitvoering → te-testen: subthema's staan standaard ingeklapt; Vitest 574 groen, lint groen, browser desktop en 390px nagekeken, antagonist COMPLIANT

@@ -5,7 +5,7 @@ soort: technisch
 status: nieuw
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 16:31
+bijgewerkt: 2026-09-15 15:07
 opgepakt-door:
 branch:
 pr:
@@ -59,3 +59,4 @@ Geen.
 ## Werklog
 
 - 2026-09-14 16:31 · themadoel-tekst · aangemaakt (status nieuw)
+- 2026-09-15 15:07 · themapagina · FB-011 (2026-09-15) laat elk subthemahoofdstuk standaard dicht staan: de detailverzoeken per subdoel vallen nu pas bij het openklappen, niet meer bij het laden van de pagina; meet tegen dat gedrag

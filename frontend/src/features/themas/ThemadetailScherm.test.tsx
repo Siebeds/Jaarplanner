@@ -131,6 +131,9 @@ async function openHoofdstukken() {
   await screen.findByText("Bladeren");
   fireEvent.click(hoofdstuk("Bladeren", false));
   fireEvent.click(hoofdstuk("Rekenen", false));
+  // The guard: `getByRole` throws unless both are open now, so no absence check below can pass on a shut chapter.
+  hoofdstuk("Bladeren", true);
+  hoofdstuk("Rekenen", true);
 }
 
 afterEach(() => {
