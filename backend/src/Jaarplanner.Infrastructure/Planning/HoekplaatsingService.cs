@@ -141,6 +141,25 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task VerwijderMomentAsync(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
+
+        if (!plaatsing.VerwijderMoment(momentId))
+        {
+            throw new SchoolcontentNietGevondenFout($"Hoekmoment {momentId} is niet gevonden.");
+        }
+
+        // The last day takes the run along: one with no day left is drawn nowhere, yet it would still count as the hoek
+        // standing in the agenda, and that count is what refuses deleting the hoek in Instellingen.
+        if (plaatsing.Momenten.Count == 0)
+        {
+            _db.Hoekplaatsingen.Remove(plaatsing);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<HoekplaatsingWeergave> VerplaatsMomentAsync(
         Guid plaatsingId,
         Guid momentId,

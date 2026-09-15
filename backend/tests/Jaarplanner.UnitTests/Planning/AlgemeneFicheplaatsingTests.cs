@@ -201,6 +201,20 @@ public sealed class AlgemeneFicheplaatsingTests
         Assert.Equal(AlgemeneFichemoment.MaxTekstLengte, maandag.Tekst!.Length);
     }
 
+    /// <summary>TB-030: one day out of a run, from the agenda's right-click menu. The other days stay.</summary>
+    [Fact]
+    public void Een_losse_dag_kan_weg_zonder_de_rest_mee_te_nemen()
+    {
+        var plaatsing = new AlgemeneFicheplaatsing(Guid.NewGuid(), Guid.NewGuid(), Start, Eind);
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 9, 14), HalfElf, TwintigOverElf);
+        plaatsing.PlanIn(new DateOnly(2026, 9, 15), HalfElf, TwintigOverElf);
+
+        Assert.True(plaatsing.VerwijderMoment(maandag.Id));
+        Assert.False(plaatsing.VerwijderMoment(maandag.Id));
+
+        Assert.Equal(new DateOnly(2026, 9, 15), Assert.Single(plaatsing.Momenten).Datum);
+    }
+
     [Fact]
     public void Een_periode_die_eindigt_voor_ze_begint_bestaat_niet()
     {

@@ -50,6 +50,15 @@ public sealed class HoekplaatsingenController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Takes ONE appearance out of the timetable (TB-030). The last one takes its placement along.</summary>
+    [HttpDelete("/api/hoekplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Hoekplaatsing, "plaatsingId")]
+    public async Task<IActionResult> VerwijderMoment(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken)
+    {
+        await _service.VerwijderMomentAsync(plaatsingId, momentId, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>
     /// Moves or resizes ONE appearance of a placed hoek (owner, 2026-08-31; clock times since ADR-0027).
     /// <para>

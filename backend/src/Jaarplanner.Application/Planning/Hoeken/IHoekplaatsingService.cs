@@ -51,6 +51,16 @@ public interface IHoekplaatsingService
     Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Takes ONE appearance out of the timetable (TB-030). The last appearance takes the placement along: a run with no
+    /// day left is drawn nowhere, and it would still be counted as the hoek standing in the agenda, which is what stops
+    /// the hoek from being deleted.
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
+    /// No such placement, or no such appearance in it.
+    /// </exception>
+    Task VerwijderMomentAsync(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Moves or resizes one appearance: another day, another time, or both (owner, 2026-08-31; clock times since
     /// ADR-0027).
     /// <para>

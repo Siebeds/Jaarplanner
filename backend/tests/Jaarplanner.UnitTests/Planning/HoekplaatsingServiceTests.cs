@@ -67,6 +67,45 @@ public sealed class HoekplaatsingServiceTests
     private HoekplaatsingInvoer EersteWeek() =>
         new(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Begin, Einde);
 
+    /// <summary>TB-030: one day taken off leaves the rest of the run.</summary>
+    [Fact]
+    public async Task Een_dag_weghalen_laat_de_andere_dagen_van_de_hoek_staan()
+    {
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 1));
+
+        await Service().VerwijderMomentAsync(plaatsing.Id, dinsdag.Id);
+
+        await using var context = new AppDbContext(_options);
+        var bewaard = await context.Hoekplaatsingen.Include(p => p.Momenten).SingleAsync();
+        Assert.Equal(
+            [new DateOnly(2026, 9, 2), new DateOnly(2026, 9, 3), new DateOnly(2026, 9, 4)],
+            bewaard.Momenten.Select(m => m.Datum).Order());
+    }
+
+    /// <summary>
+    /// TB-030: the last day takes the run along, so the hoek no longer counts as standing in the agenda and can be
+    /// deleted in Instellingen.
+    /// </summary>
+    [Fact]
+    public async Task De_laatste_dag_weghalen_neemt_de_plaatsing_mee_en_een_onbekend_moment_is_niet_gevonden()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), Begin, Einde));
+        var moment = Assert.Single(plaatsing.Momenten);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().VerwijderMomentAsync(plaatsing.Id, Guid.NewGuid()));
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().VerwijderMomentAsync(Guid.NewGuid(), moment.Id));
+
+        await Service().VerwijderMomentAsync(plaatsing.Id, moment.Id);
+
+        await using var context = new AppDbContext(_options);
+        Assert.False(await context.Hoekplaatsingen.AnyAsync());
+    }
+
     [Fact]
     public async Task Een_plaatsing_bewaart_de_periode_en_de_naam_van_de_hoek()
     {

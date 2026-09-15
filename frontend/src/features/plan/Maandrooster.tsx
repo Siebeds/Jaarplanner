@@ -1,4 +1,5 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { Blokmenu } from "./Blokmenu";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import type { Agendadag } from "./roosterdagen";
@@ -41,6 +42,7 @@ export function Maandrooster({
   magPlannen,
   onKiesDag,
   onOpen,
+  onVanDag,
   onVoegToe,
 }: {
   dagen: Agendadag[];
@@ -68,6 +70,8 @@ export function Maandrooster({
   magPlannen: boolean;
   onKiesDag: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
+  /** The right-click menu's bin on an activiteit (TB-030): take it off this day. */
+  onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
   onVoegToe: (datum: string) => void;
 }) {
@@ -114,6 +118,7 @@ export function Maandrooster({
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
               onOpen={onOpen}
+              onVanDag={onVanDag}
             />
           </li>
         ))}
@@ -136,6 +141,7 @@ function Maandcel({
   onKiesDag,
   onVoegToe,
   onOpen,
+  onVanDag,
 }: {
   dag: Agendadag;
   buitenMaand: boolean;
@@ -147,6 +153,7 @@ function Maandcel({
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
+  onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag || !magPlannen });
 
@@ -295,7 +302,13 @@ function Maandcel({
           <ul className="pointer-events-none relative z-10 hidden flex-1 flex-col justify-end gap-0.5 overflow-hidden sm:flex">
             {dag.activiteiten.slice(0, 2).map((activiteit) => (
               <li key={activiteit.plaatsingId}>
-                <Maandchip activiteit={activiteit} datum={dag.datum} magPlannen={magPlannen} onOpen={onOpen} />
+                <Maandchip
+                  activiteit={activiteit}
+                  datum={dag.datum}
+                  magPlannen={magPlannen}
+                  onOpen={onOpen}
+                  onVanDag={onVanDag}
+                />
               </li>
             ))}
             {dag.activiteiten.length > 2 ? (
@@ -315,12 +328,14 @@ function Maandchip({
   datum,
   magPlannen,
   onOpen,
+  onVanDag,
 }: {
   activiteit: GeplandeActiviteit;
   datum: string;
-  /** Without it the chip only opens; dnd-kit's "draggable" attributes are left off with the drag. */
+  /** Without it the chip only opens; dnd-kit's "draggable" attributes are left off with the drag, and so is the menu. */
   magPlannen: boolean;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
+  onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: activiteit.plaatsingId,
@@ -330,32 +345,41 @@ function Maandchip({
   const kleur = activiteit.kleur;
 
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      onClick={() => onOpen(activiteit, datum)}
-      // The colour is the teacher's own and means nothing the application reads, but it still may not
-      // be carried by hue alone: at this size there is no room for the name beside it, so it travels
-      // in the accessible name instead. The visible text is inside it, per SC 2.5.3.
-      aria-label={
-        kleur
-          ? t("periode.activiteitMetKleur", { naam: activiteit.activiteitNaam, kleur: t(kleurSleutel(kleur)) })
-          : undefined
-      }
-      {...(magPlannen ? listeners : {})}
-      {...(magPlannen ? attributes : {})}
-      className={cn(
-        "pointer-events-auto block w-full truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt",
-        magPlannen && "cursor-grab touch-none active:cursor-grabbing",
-        // The wash takes the FILL. The left border is already spoken for: attentie there means the
-        // activiteit falls outside its own themaperiode, and a teacher-chosen hue on the same edge
-        // would overwrite that. Listed before the border classes so tailwind-merge keeps the border.
-        kleur && KLEURVLAK[kleur],
-        activiteit.valtBuitenThemaperiode ? "border-attentie" : "border-accent",
-        isDragging && "opacity-40",
-      )}
+    // The same right-click menu as a block of the time grid (TB-030). An activiteit loses nothing but itself, so its
+    // bin never asks first.
+    <Blokmenu
+      naam={activiteit.activiteitNaam}
+      magPlannen={magPlannen}
+      onBewerk={() => onOpen(activiteit, datum)}
+      onVanDag={() => onVanDag(activiteit, datum)}
     >
-      {activiteit.activiteitNaam}
-    </button>
+      <button
+        ref={setNodeRef}
+        type="button"
+        onClick={() => onOpen(activiteit, datum)}
+        // The colour is the teacher's own and means nothing the application reads, but it still may not
+        // be carried by hue alone: at this size there is no room for the name beside it, so it travels
+        // in the accessible name instead. The visible text is inside it, per SC 2.5.3.
+        aria-label={
+          kleur
+            ? t("periode.activiteitMetKleur", { naam: activiteit.activiteitNaam, kleur: t(kleurSleutel(kleur)) })
+            : undefined
+        }
+        {...(magPlannen ? listeners : {})}
+        {...(magPlannen ? attributes : {})}
+        className={cn(
+          "pointer-events-auto block w-full truncate rounded border-l-2 bg-vlak px-1 py-0.5 text-left text-[0.625rem] text-inkt",
+          magPlannen && "cursor-grab touch-none active:cursor-grabbing",
+          // The wash takes the FILL. The left border is already spoken for: attentie there means the
+          // activiteit falls outside its own themaperiode, and a teacher-chosen hue on the same edge
+          // would overwrite that. Listed before the border classes so tailwind-merge keeps the border.
+          kleur && KLEURVLAK[kleur],
+          activiteit.valtBuitenThemaperiode ? "border-attentie" : "border-accent",
+          isDragging && "opacity-40",
+        )}
+      >
+        {activiteit.activiteitNaam}
+      </button>
+    </Blokmenu>
   );
 }

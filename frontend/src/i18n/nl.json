@@ -1049,6 +1049,15 @@
     "bezig": "Bezig met inplannen",
     "mislukt": "Inplannen is niet gelukt."
   },
+  "blokmenu": {
+    "bewerk": "Bewerken",
+    "vanDag": "Van deze dag halen",
+    "bevestigTitel": "{naam} van {dag} halen?",
+    "bevestigLabel": "Van deze dag halen",
+    "tekstGaatMee": "De tekst bij deze dag gaat mee verloren.",
+    "laatsteDag": "Het is de laatste dag van deze periode, dus de hele periode verdwijnt uit de agenda.",
+    "enigePeriode": "Het is de enige periode van deze fiche in de agenda, dus de fiche telt dan niet meer mee voor de dekking."
+  },
   "fichedetail": {
     "periode": "Periode",
     "doelen": "Doelen",
