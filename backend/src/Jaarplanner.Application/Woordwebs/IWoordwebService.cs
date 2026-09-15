@@ -36,8 +36,8 @@ public interface IWoordwebService
 public sealed record WoordwebWoordWeergave(Guid Id, string Woord, string Status, string? AiMotivatie);
 
 /// <summary>
-/// One woordweb as the screen reads it: whose it is, and its words in the order they were added. Every status is sent,
-/// so the owner sees her open proposals; the screen shows a rejected word to nobody.
+/// One woordweb as the screen reads it: whose it is, and its words in the order they were added. Its owner gets every
+/// status, so she sees her open proposals; anyone else gets only the words that stand in it (ADR-0041 D7).
 /// </summary>
 public sealed record WoordwebWeergave(
     Guid Id,

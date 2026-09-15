@@ -253,6 +253,8 @@ public sealed class WoordwebService : IWoordwebService
         namen.TryGetValue(web.EigenaarId, out var naam) ? naam : string.Empty,
         web.EigenaarId == gebruikerId,
         web.Woorden
+            // D7: another person's open proposals and rejected words stay hers, so only the owner is sent them.
+            .Where(w => web.EigenaarId == gebruikerId || w.StaatInWeb)
             .OrderBy(w => w.Volgnummer)
             .Select(w => new WoordwebWoordWeergave(w.Id, w.Woord, w.Status.ToString(), w.AiMotivatie))
             .ToList());

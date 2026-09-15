@@ -137,6 +137,12 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         Assert.Equal("Voorgesteld", gelezen.Woorden.Single(w => w.Woord == "modder").Status);
         // wind, the five of the first request, and modder.
         Assert.Equal(7, gelezen.Woorden.Count);
+
+        // D7: a colleague is sent only the words that stand in the web, not An's open proposals or her rejected word.
+        using var bo = Opzet.Als(await PersoonAsync("Leerkracht Bo"));
+        var voorBo = Assert.Single(await LeesAsync(bo, subthemaId));
+        Assert.Equal(["wind", "wolk"], voorBo.Woorden.Select(w => w.Woord));
+        Assert.All(voorBo.Woorden, w => Assert.Contains(w.Status, new[] { "Manueel", "Aanvaard" }));
     }
 
     [PostgresFact]
@@ -210,6 +216,15 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
             $"{RechtenTestOpzet.Wizard}/{zonderWeb.Id}/subthemas", new { naam = "Wind", duurWeken = 2, leeftijd = "K3" }));
 
         Assert.Equal(HttpStatusCode.Forbidden, await RechtenTestOpzet.StatusAsync(themabeheer.DeleteAsync($"/api/themas/{metWeb.ThemaId}")));
+
+        // Nor in two steps: the wizard's own subthema delete refuses a subthema that holds a woordweb (I25), so the thema
+        // cannot be emptied first, and the web is still there afterwards.
+        await RechtenTestOpzet.VerwachtAsync(
+            themabeheer.DeleteAsync($"{RechtenTestOpzet.Wizard}/{metWeb.Id}/subthemas/{subthemaId}"),
+            HttpStatusCode.Forbidden,
+            "Op dit subthema houdt iemand een woordweb bij. Dat zou mee verdwijnen, dus de wizard verwijdert het niet.");
+        Assert.Equal(HttpStatusCode.Forbidden, await RechtenTestOpzet.StatusAsync(themabeheer.DeleteAsync($"/api/themas/{metWeb.ThemaId}")));
+        Assert.Equal(["storm"], Assert.Single(await LeesAsync(an, subthemaId)).Woorden.Select(w => w.Woord));
         using var controle = await themabeheer.DeleteAsync($"/api/themas/{zonderWeb.ThemaId}");
         Assert.True(controle.IsSuccessStatusCode, $"The control delete answered {(int)controle.StatusCode}.");
     }
