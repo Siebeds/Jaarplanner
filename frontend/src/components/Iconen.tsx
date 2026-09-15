@@ -85,6 +85,22 @@ export function IcoonFiche(props: IconProps) {
 }
 
 /**
+ * Activiteit: one sheet of the thema's stack (FB-017).
+ *
+ * `IcoonThemas` draws a thema as stacked sheets, a stack of subthema's and activiteiten, so one activiteit is one of
+ * those sheets, lying on its own with a line of what it holds. It stands beside the hoek and the algemene fiche in the
+ * side panel's switches, where the three need to be told apart without a hue.
+ */
+export function IcoonActiviteit(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4 12 12 8l8 4-8 4z" />
+      <path d="M10 12h4" />
+    </Icoon>
+  );
+}
+
+/**
  * Instellingen: two rails with a knob on each, not a cog.
  *
  * A cog says "machinery", and nothing behind this destination is machinery: it is where the school
@@ -272,6 +288,22 @@ export function IcoonGreep(props: IconProps) {
   return (
     <Icoon {...props}>
       <path d="M5 9.5h14M5 14.5h14" />
+    </Icoon>
+  );
+}
+
+/**
+ * Info: a circle with an i, the mark a teacher already reads as "tell me more about this" (FB-018).
+ *
+ * In the agenda it opens what a block or a fiche works on, its goals, without opening the thing itself. Not the Doelen
+ * target: that one is a destination in the navigation, and this goes nowhere.
+ */
+export function IcoonInfo(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="7.9" r="0.6" fill="currentColor" />
     </Icoon>
   );
 }

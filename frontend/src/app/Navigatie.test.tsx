@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Navigatie } from "./Navigatie";
@@ -99,6 +99,25 @@ describe("Navigatie", () => {
     expect(schakelaar()).not.toBeInTheDocument();
     // Nor the algemene fiches' switch: every fiche in that list plans one too.
     expect(screen.queryByRole("button", { name: t("hoekenpaneel.algemeenTitel") })).not.toBeInTheDocument();
+    // The activiteiten's is there (owner, 2026-09-15, FB-017): its cards are read-only for whoever may not plan.
+    expect(screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") })).toBeInTheDocument();
+  });
+
+  it("sluit een fichelijst voor wie de klas niet mag plannen, maar laat de activiteiten open", async () => {
+    // The selection answers, with no klas chosen, so the rights and the klas are both known and say no.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200 })));
+    const kijker = ikMet({ leerkrachtLeeftijden: ["K3"] });
+
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten" });
+    const { unmount } = rendermetPad("/agenda", kijker);
+    await screen.findByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(useHoekenpaneel.getState().open).toBe(true);
+    unmount();
+
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    rendermetPad("/agenda", kijker);
+    await waitFor(() => expect(useHoekenpaneel.getState().open).toBe(false));
   });
 
   it("biedt hem niet aan zolang niet bekend is wie er aangemeld is", () => {
@@ -136,6 +155,19 @@ describe("Navigatie", () => {
     expect(algemeen()).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(schakelaar()!);
+    expect(useHoekenpaneel.getState().open).toBe(false);
+  });
+
+  it("heeft een derde schakelaar voor de activiteiten, in dezelfde kolom (FB-017)", () => {
+    rendermetPad("/agenda", DIRECTIE);
+    const activiteiten = () => screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
+
+    fireEvent.click(activiteiten());
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "activiteiten" });
+    expect(activiteiten()).toHaveAttribute("aria-pressed", "true");
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(activiteiten());
     expect(useHoekenpaneel.getState().open).toBe(false);
   });
 

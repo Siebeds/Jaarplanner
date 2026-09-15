@@ -270,6 +270,7 @@
     "dagGeenThema": "nog geen thema in deze periode",
     "hoekenfiches": "Hoekenfiches",
     "algemeneFiches": "Algemene fiches",
+    "activiteiten": "Activiteiten",
     "dagHoek": "hoek {naam}",
     "dagHoeken": "hoeken {namen}"
   },
@@ -388,6 +389,7 @@
     "schooljaar": "Schooljaar",
     "hoeken": "Hoeken",
     "algemeneFiches": "Algemene fiches",
+    "schooluren": "Schooluren",
     "sluiten": "Instellingen sluiten"
   },
   "weergave": {
@@ -396,6 +398,27 @@
     "licht": "Licht",
     "donker": "Donker",
     "dezeBrowser": "Geldt alleen in deze browser."
+  },
+  "schooluren": {
+    "uitleg": "Deze uren gelden voor alle klassen. De agenda opent op het begin van de schooldag en arceert de uren daarbuiten.",
+    "schooldag": "Schooldag",
+    "middagpauze": "Middagpauze",
+    "van": "van",
+    "tot": "tot",
+    "bewaar": "Schooluren bewaren",
+    "bewaard": "De schooluren zijn bewaard.",
+    "bewaarMislukt": "De schooluren zijn niet bewaard.",
+    "laadFout": "De schooluren konden niet geladen worden.",
+    "onvolledig": "Vul op {dag} een begin en een einde in, of laat allebei leeg.",
+    "pauzeOnvolledig": "Vul op {dag} het begin en het einde van de middagpauze in, of vink de middagpauze uit.",
+    "nietIngesteld": "Niet ingesteld",
+    "geenPauze": "Geen middagpauze",
+    "pauzeLijst": "Middagpauze {bereik}",
+    "beginRaster": "begin {tijd}",
+    "eindeRaster": "einde {tijd}",
+    "pauzeRaster": "middagpauze",
+    "dagZin": ", schooldag van {begin} tot {einde}",
+    "pauzeZin": ", middagpauze van {begin} tot {einde}"
   },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",
@@ -785,6 +808,12 @@
     "algemeneFiche": "algemene fiche",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },
+  "doelinfo": {
+    "open": "Doelen van {naam}",
+    "geen": "Nog geen doelen gekoppeld.",
+    "eenDoel": "1 doel",
+    "aantalDoelen": "{aantal} doelen"
+  },
   "hoeken": {
     "toevoegen": "Hoek toevoegen",
     "klas": "Klas",
@@ -850,7 +879,29 @@
     "naarInstellingen": "Hoeken instellen",
     "geenAlgemeneFiches": "Deze klas heeft nog geen algemene fiches.",
     "naarAlgemeneFiches": "Algemene fiches instellen",
+    "activiteitenTitel": "Activiteiten",
+    "activiteitenSluiten": "Activiteiten sluiten",
     "mislukt": "Deze lijst kon niet geladen worden. Probeer het later opnieuw."
+  },
+  "activiteitenpaneel": {
+    "subthema": "Subthema",
+    "kiesSubthema": "Kies een subthema",
+    "subthemaLeeftijd": "{naam} ({leeftijd})",
+    "looptInWeek": "Loopt in week {nummer}",
+    "geenLopendInWeek": "In week {nummer} loopt er geen subthema.",
+    "geenSubthemas": "Voor de leeftijd van deze klas zijn er nog geen subthema's.",
+    "naarThemas": "Naar de thema's",
+    "geenActiviteiten": "Dit subthema heeft nog geen activiteiten."
+  },
+  "activiteitplaatsing": {
+    "titel": "{naam} inplannen",
+    "dag": "Dag",
+    "van": "Van",
+    "tot": "Tot",
+    "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
+    "plaats": "Inplannen",
+    "bezig": "Bezig met inplannen",
+    "mislukt": "Inplannen is niet gelukt."
   },
   "ficheplaatsing": {
     "titel": "{naam} inplannen",
@@ -874,6 +925,7 @@
   },
   "fichedetail": {
     "periode": "Periode",
+    "doelen": "Doelen",
     "uurrooster": "In het uurrooster",
     "opUur": "{periode}, op {dagen}",
     "eenSchooldag": "1 schooldag",

@@ -1,13 +1,11 @@
 # Transient agent worktrees (created by the build orchestrator)
 .claude/worktrees/
 
-# Live coordination state for parallel sessions (the groepschat: chat log, claims, session
-# files, BOARD.md). See .claude/skills/groepschat/SKILL.md, which IS tracked — the protocol is
-# project convention, the state is not. Deliberately ignored for two reasons: a chat log
-# committed across 8 concurrent branches would conflict on every append, and the durable record
-# already has homes (backlog/, backlog/worklogs/<story>/, docs/adr/). Always reach it by the
-# absolute path C:\source\Jaarplanner\.claude\coordination — worktrees sit below it, so a
-# relative path would give each worktree a private copy and coordinate nothing.
+# Local state for tooling: tools/backlog-board/tickets.mjs reserves a new ticket number in
+# .claude/coordination/claims/ for the instant it writes the ticket file, and the deploy-demo skill keeps its
+# deploy-azure-demo lock there. Reached by the absolute path
+# C:\source\Jaarplanner\.claude\coordination, because worktrees sit below it. (The directory also held the
+# groepschat, retired by ADR-0037.)
 .claude/coordination/
 
 # Local data of the AI eval runner (TB-004): real evalsets hold a school's own subthema's and gold links, and the

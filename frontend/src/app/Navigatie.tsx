@@ -3,7 +3,7 @@ import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, RAPPORT, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
-import { IcoonFiche, IcoonHoek } from "../components/Iconen";
+import { IcoonActiviteit, IcoonFiche, IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useActieveSelectie } from "../lib/selectie";
 import { useRechten } from "../lib/rechten";
@@ -62,17 +62,20 @@ import { cn } from "../lib/cn";
  *
  * **Since 2026-09-14 there are two switches** (owner: "ik wil twee secties in het meest linkse side bar, hoekenfiches
  * en algemene fiches, niet gegroepeerd als fiches"): Hoekenfiches and Algemene fiches, one under the other over the
- * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`.
+ * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`. A third, Activiteiten, joined
+ * them on 2026-09-15 (FB-017), for the same column. It is the one switch for everyone who reads the agenda: whoever
+ * may not plan the klas gets its cards to read and nothing to plan with (owner, 2026-09-15).
  *
  * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the panel is
  * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
  * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
  * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
  *
- * **The switches are only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
- * the panel plans a hoek or an algemene fiche, and `Agendascherm` renders no panel for anyone else. For the same reason as the reset
- * above, the panel is closed once the rights and the klas are known and say no: a picker switched to a colleague's
- * klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders.
+ * **The fiche switches are only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
+ * the panel plans a hoek or an algemene fiche, and `Hoekenpaneel` draws neither list for anyone else. For the same reason as
+ * the reset above, a fiche panel is closed once the rights and the klas are known and say no: a picker switched to a
+ * colleague's klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders. An
+ * activiteiten panel stays open, since its cards are for everyone who reads the agenda.
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
@@ -104,8 +107,9 @@ export function Navigatie() {
   */
   const magNiet = !rechtenLaden && !selectieLaadt && !magPlannen;
   useLayoutEffect(() => {
-    if ((!opAgenda || magNiet) && paneelOpen) zetPaneel(false);
-  }, [opAgenda, magNiet, paneelOpen, zetPaneel]);
+    // The activiteiten list stays for whoever may only read the klas (FB-017); the fiche lists do not.
+    if (paneelOpen && (!opAgenda || (magNiet && paneelSoort !== "activiteiten"))) zetPaneel(false);
+  }, [opAgenda, magNiet, paneelOpen, paneelSoort, zetPaneel]);
 
   return (
     <nav
@@ -145,21 +149,33 @@ export function Navigatie() {
 
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
             with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
-        {opAgenda && magPlannen ? (
+        {/* Once the rights are known, so the fiche switches do not appear above the activiteiten one a moment later. */}
+        {opAgenda && !rechtenLaden ? (
           <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-0.5 lg:border-t lg:border-lijn lg:pt-2">
+            {magPlannen ? (
+              <>
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.titel")}
+                  Icoon={IcoonHoek}
+                  aan={paneelOpen && paneelSoort === "hoeken"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("hoeken")}
+                />
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.algemeenTitel")}
+                  Icoon={IcoonFiche}
+                  aan={paneelOpen && paneelSoort === "algemeen"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("algemeen")}
+                />
+              </>
+            ) : null}
             <Paneelschakelaar
-              naam={t("hoekenpaneel.titel")}
-              Icoon={IcoonHoek}
-              aan={paneelOpen && paneelSoort === "hoeken"}
+              naam={t("hoekenpaneel.activiteitenTitel")}
+              Icoon={IcoonActiviteit}
+              aan={paneelOpen && paneelSoort === "activiteiten"}
               smal={smal}
-              onWissel={() => kiesPaneel("hoeken")}
-            />
-            <Paneelschakelaar
-              naam={t("hoekenpaneel.algemeenTitel")}
-              Icoon={IcoonFiche}
-              aan={paneelOpen && paneelSoort === "algemeen"}
-              smal={smal}
-              onWissel={() => kiesPaneel("algemeen")}
+              onWissel={() => kiesPaneel("activiteiten")}
             />
           </li>
         ) : null}

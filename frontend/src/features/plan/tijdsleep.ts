@@ -51,12 +51,34 @@ function onthoud(gebeurtenis: PointerEvent) {
  */
 export function beginSleep(gebeurtenis: DragStartEvent) {
   const activator = gebeurtenis.activatorEvent;
-  const start = gebeurtenis.active.rect.current.initial;
+  const boven = activator instanceof PointerEvent ? bovenkant(activator, gebeurtenis) : null;
 
   laatsteY = activator instanceof PointerEvent ? activator.clientY : null;
-  greep = activator instanceof PointerEvent && start ? activator.clientY - start.top : 0;
+  greep = activator instanceof PointerEvent && boven !== null ? activator.clientY - boven : 0;
 
   window.addEventListener("pointermove", onthoud, { passive: true });
+}
+
+/**
+ * The top edge of the thing that was picked up, in viewport pixels, or null when it cannot be found.
+ *
+ * **Measured from the pressed element, not read from dnd-kit** (FB-017). dnd-kit hands `onDragStart` a ref to the
+ * active rectangles and fills that ref in a layout effect that runs AFTER `onDragStart` (core.esm.js, `activeRects`), so
+ * `active.rect.current.initial` is null on every `onDragStart` (it waits for the drag to be initialised). The grab
+ * offset was therefore always 0, and a block landed with its top under the pointer: lower than the card the teacher was
+ * carrying by exactly the height at which she had picked it up. For a fiche out of the panel the sheet asked the hour
+ * again, so it hid; an activiteit card is planned on the drop, so it could not.
+ *
+ * Every draggable in the agenda spreads dnd-kit's `attributes`, which mark it `aria-roledescription`, so the press is
+ * walked up to that element whatever its tag. A node that was unmounted in the pixels before the drag started measures
+ * as a rectangle at 0, so it only counts while still in the document. dnd-kit's rectangle is read after that only in
+ * case a later version fills it before `onDragStart`; 6.3.1 never does, so a press outside any draggable falls back to
+ * an offset of 0.
+ */
+function bovenkant(activator: PointerEvent, gebeurtenis: DragStartEvent): number | null {
+  const gegrepen = activator.target instanceof Element ? activator.target.closest("[aria-roledescription]") : null;
+  if (gegrepen?.isConnected) return gegrepen.getBoundingClientRect().top;
+  return gebeurtenis.active.rect.current.initial?.top ?? null;
 }
 
 /** Stops following. Called on both drag end and drag cancel, so the listener never outlives a drag. */

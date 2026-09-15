@@ -56,6 +56,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
 
     /// <summary>
+    /// The school's hours, one row per weekday that has them (FB-023, ADR-0038). School data rather than a schooljaar's:
+    /// the owner ruled on 2026-09-15 that the hours are one set for the school.
+    /// </summary>
+    public DbSet<Schooldaguren> Schooldaguren => Set<Schooldaguren>();
+
+    /// <summary>
     /// The per-class year plans with their thema placements (Art. IX.3, E3-01). A placement stores the
     /// planningsblok's <b>start date</b> + tier, never an ordinal (ADR-0020 §3) — and, as with the schooljaar,
     /// there is deliberately no <c>Planningsblokken</c> set: the grid stays derived (ADR-0013).

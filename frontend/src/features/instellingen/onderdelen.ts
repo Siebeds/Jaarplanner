@@ -21,6 +21,9 @@ export const ONDERDELEN = [
   // school has, and who teaches them (E6-04). Directie only (ADR-0030 §3): nobody else sees the
   // link, and a direct visit lands on the first part they can use (`Onderdeelpoort`).
   { deel: "gebruikers", labelSleutel: "instellingen.gebruikers", alleenDirectie: true },
+  // The school's hours (FB-023): school organisation like the two above, so it stands with them. Not directie only:
+  // every agenda draws these hours, so everyone may read them, and the screen offers the fields to directie alone.
+  { deel: "schooluren", labelSleutel: "instellingen.schooluren" },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
   { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
   // Last because it is the least often touched: a teacher sets light or dark once, if ever, while

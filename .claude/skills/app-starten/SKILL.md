@@ -20,7 +20,6 @@ Recipe for bringing up the Jaarplanner **for the owner to look at**: the API on 
 |---|---|---|
 | PostgreSQL | Windows service `postgresql-x64-17` | Docker container `jaarplanner-db`, host port 5433 |
 | pnpm | only through `corepack pnpm` | `corepack pnpm`; also installed globally in `%APPDATA%\npm` |
-| `.claude/coordination/` | exists | did not exist on 2026-09-13 |
 
 ```bash
 powershell -NoProfile -Command "Get-Service postgresql-x64-17 -ErrorAction SilentlyContinue | Select Status"
@@ -33,7 +32,6 @@ Use **Bash** (Git Bash) for everything except where PowerShell is named. Report 
 
 ```bash
 REPO=/c/source/Jaarplanner
-COORD=$REPO/.claude/coordination
 LOGS=<your scratchpad directory>   # never the repo
 ```
 
@@ -43,23 +41,17 @@ Defaults: **API 5184** (the `http` launch profile, and Vite's default proxy targ
 (`strictPort` in `frontend/vite.config.ts`, so it fails rather than drifting to another port).
 
 ```bash
-for p in 5184 5185 5177; do printf '%s http=%s claim=%s\n' "$p" \
-  "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$p/)" \
-  "$(sed -n 's/^owner: //p' $COORD/claims/port-$p.md 2>/dev/null)"; done
+for p in 5184 5185 5177; do printf '%s http=%s\n' "$p" \
+  "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:$p/)"; done
 ```
 
-- `http=000` and no claim: the port is free. Anything else: already served, or claimed.
+- `http=000`: the port is free. Anything else: already served.
 - **Is it already running?** If 5177 answers 200 and `/api/klassen` through it answers **401**, the app is up.
   Every route needs a session since E6-01, so 401 is the healthy answer without one, and 200 there means an
   API from before E6-01.
   Tell the owner the URL and stop here.
-- **A claimed port is not yours, even if its claim is stale.** Only the technical lead breaks a claim. Pick
-  the next free port for the API (5185, 5186, …) and point Vite at it in step 5. That is all it costs.
-
-Join the groepschat and claim what you use (protocol: `.claude/skills/groepschat/SKILL.md`):
-`port-<api>`, `port-5177`, and `maintree` only while you run a git command that moves HEAD. If `$COORD` does
-not exist, no session on this machine has joined the groepschat yet: the claim column above stays empty
-and there is nobody to collide with.
+- **A port that answers is not yours unless you started it**: another session may be using it. Pick the next
+  free port for the API (5185, 5186, …) and point Vite at it in step 5. That is all it costs.
 
 **Run it from the tree that holds the code the owner wants to see.** Usually the main tree on `main` (or the
 branch he is working on). Check with `git -C $REPO status -sb` before starting; switching branches later
@@ -201,8 +193,7 @@ Use your own `--user-data-dir` so you never touch the owner's Chrome profile.
   environment, wrong database).
 
 Tell the owner, in Dutch: the URL **http://localhost:5177**, which branch/commit it serves, which database,
-and on which port the API runs. Update your session file and post an `INFO` in the groepschat naming the two
-ports, so no other session kills or reuses them.
+and on which port the API runs.
 
 ## 7. When a server dies on its own
 
@@ -251,6 +242,5 @@ foreach ($p in 5185, 5177) {
 }
 ```
 
-Check each port answers `000` with curl (netstat's PID attribution can be stale), then release your
-`port-*` claims with the groepschat `release` helper and set your session file to `done`. **Leave the
-servers running if the owner is still looking.** Say so instead, and keep the claims.
+Check each port answers `000` with curl (netstat's PID attribution can be stale). **Leave the servers running
+if the owner is still looking.** Say so instead.

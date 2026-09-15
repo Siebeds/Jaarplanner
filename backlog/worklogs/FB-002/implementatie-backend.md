@@ -26,7 +26,10 @@
     `rapportdoel_subdoelen` (composite PK; FK to `rapportdoelen` Cascade; FK to `subdoelen.Id` Cascade, with no
     navigation on the `Subdoel` side).
   - `src/Jaarplanner.Infrastructure/Persistence/AppDbContext.cs`: `Gradaties`, `Rapportdoelen`, `RapportdoelSubdoelen`.
-  - `src/Jaarplanner.Infrastructure/Persistence/Migrations/20260915122050_AddRapportdoelenEnGradaties(.Designer).cs`
+  - `src/Jaarplanner.Infrastructure/Persistence/Migrations/20260915141929_AddRapportdoelenEnGradaties(.Designer).cs`.
+    It was first generated as `20260915122050_…`. PR #80 then landed in FB-001's branch instead of `main`, and `main`
+    had meanwhile gained `20260915130401_Schooluren`. So the migration was regenerated on top of main's snapshot, and
+    the hand-written seed of the two gradaties was carried over unchanged.
     and the model snapshot: generated with `dotnet ef migrations add`. It holds only the three tables, their keys, the
     two FKs and the `SubdoelId` index. The seed was added by hand: an `InsertData` of the two starting gradaties with
     fixed ids. The snapshot diff is the three entities and nothing else.

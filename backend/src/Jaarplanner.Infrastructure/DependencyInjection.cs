@@ -182,6 +182,10 @@ public static class DependencyInjection
         // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
         services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
 
+        // The school's hours per weekday (FB-023, ADR-0038). Beside the schooljaar because it is the same kind of fact,
+        // school organisation that directie sets, and apart from it because it belongs to the school and not to a year.
+        services.AddScoped<ISchoolurenService, SchoolurenService>();
+
         // The derived planning grid as a read model (E3-06). The calendar must render EMPTY periods and the
         // vacation gaps between them, which JaarplanWeergave cannot express — it returns placements only. Kept
         // server-side on purpose: re-deriving the grid in TypeScript would duplicate the ADR-0013 seam and

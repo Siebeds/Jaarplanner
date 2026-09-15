@@ -590,6 +590,36 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("klassen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooldaguren", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeOnly>("Begin")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly>("Einde")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("MiddagpauzeBegin")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<TimeOnly?>("MiddagpauzeEinde")
+                        .HasColumnType("time without time zone");
+
+                    b.Property<string>("Weekdag")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Weekdag")
+                        .IsUnique();
+
+                    b.ToTable("schooldaguren", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Schooljaar", b =>
                 {
                     b.Property<Guid>("Id")

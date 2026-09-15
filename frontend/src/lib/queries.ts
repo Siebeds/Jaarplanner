@@ -20,6 +20,7 @@ import type {
   MinimumdoelFilterQuery,
   MinimumdoelenPagina,
   SchooljaarSamenvatting,
+  SubthemaBestemming,
   ThemaBibliotheekItem,
   ThemaWeergave,
   Weekplanning,
@@ -450,6 +451,19 @@ export function usePlaatsSubthemaperiode(klasId: string | null) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["weekplanning"] });
     },
+  });
+}
+
+/**
+ * Every subthema at an age this klas teaches, each named with its thema (FB-017): what the agenda's activiteiten list
+ * offers to choose from. Under the `thema-bibliotheek` family on purpose: a new, renamed or deleted subthema goes
+ * through `useSchoolcontentMutatie`, which invalidates that family, so the list cannot go on offering one that is gone.
+ */
+export function useSubthemaBestemmingen(klasId: string | null) {
+  return useQuery({
+    queryKey: [...themaSleutels.bibliotheek(), "bestemmingen", klasId],
+    queryFn: () => get<SubthemaBestemming[]>(`/api/subthemas/voor-klas/${klasId}`),
+    enabled: Boolean(klasId),
   });
 }
 
