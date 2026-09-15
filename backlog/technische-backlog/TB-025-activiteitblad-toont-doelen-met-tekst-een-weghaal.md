@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:06
+bijgewerkt: 2026-09-15 18:12
 opgepakt-door: activiteit-bewerken
 branch: ticket/activiteit-bewerken
-pr:
+pr: 91
 geblokkeerd:
 fr: []
 ---
@@ -64,3 +64,4 @@ Geen.
 - 2026-09-15 18:01 · activiteit-bewerken · Gebouwd en getest: Vitest 810/810, lint groen; browsercontrole op een wegwerpdatabase (1440 en 390 px): doelen met tekst en detail, duurknoppen in lesuren (2x2 op 390), vuilbakicoon in de dagsectie.
 - 2026-09-15 18:04 · activiteit-bewerken · Criterium 3 in de browser gecontroleerd: een nieuwe activiteit toont een gekozen doel met zijn tekst, zonder status tot Bewaren. Wegwerpdatabase en testservers opgeruimd.
 - 2026-09-15 18:06 · activiteit-bewerken · in-uitvoering → klaar: Antagonist: COMPLIANT, 0 CRITICAL/MAJOR. De 4 MINOR opgelost: label van het vuilbakicoon noemt de dag, afhaalknop gedimd tijdens bezig, spatie in de naam van de duurknoppen, duuruitleg geldt voor iedereen. Vitest 810/810, lint groen.
+- 2026-09-15 18:12 · activiteit-bewerken · PR #91
