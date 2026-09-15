@@ -306,7 +306,10 @@ export interface Mag {
    * Only then does an empty list of such klassen mean the schooljaar has none; anyone else reads only their own.
    */
   alleRapportklassenLezen: boolean;
-  /** Reading this klas's children and reports: directie, and the klas's own K3 leerkrachten, also after its year (R26). */
+  /**
+   * Reading this klas's children and reports: directie, the klas's own K3 leerkrachten, also after its year (R26), and
+   * Leerlingzorg, on every klas (R18, FB-008).
+   */
   ontwikkelingsrapportLezen: (klasId: string) => boolean;
   /** Adding, renaming and deleting this klas's children: directie, and its K3 leerkrachten during its year (R26, D8). */
   leerlingenBeheren: (klasId: string) => boolean;

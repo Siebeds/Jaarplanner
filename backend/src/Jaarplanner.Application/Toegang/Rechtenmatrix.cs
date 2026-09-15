@@ -236,7 +236,7 @@ public static class Rechtenmatrix
     /// leerkracht of another klas, a hoofdleerkracht and themabeheer read none of it (R17). <b>Leerlingzorg</b> (R18, FB-008)
     /// reads every klas's reports, of every schooljaar, as a column of its own. This is the only row that column is on:
     /// Leerlingzorg fills in nothing, asks for no rewrite and downloads nothing (D5), so the rows of FB-004 and FB-006 must
-    /// not take it.
+    /// not take it, and no route but the two reads may declare this row (<c>RapportleesrijTests</c> pins both).
     /// </summary>
     public static readonly Matrixrij OntwikkelingsrapportLezen = new(
         Beleid.OntwikkelingsrapportLezen,

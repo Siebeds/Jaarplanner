@@ -126,6 +126,21 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Een_hoofdleerkracht_van_K3_zonder_klas_krijgt_geen_rapportklas_R17()
+    {
+        var school = await _opzet.SchoolAsync();
+        using var directie = _opzet.Directie();
+        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+
+        using var hl = _opzet.Als(await _opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+
+        // The report's own list is empty for them, though the planning's list holds every K3 klas (ADR-0040 Z2).
+        Assert.Empty(await RapportklasIdsAsync(hl));
+        Assert.Contains(school.K3Blauw, await RechtenTestOpzet.KlasIdsAsync(hl));
+        await Verwacht403Async(hl.GetAsync(Rapport(fien, 1)));
+    }
+
+    [PostgresFact]
     public async Task Na_het_afnemen_van_leerlingzorg_weigert_de_app_de_rapporten_bij_het_volgende_verzoek()
     {
         var school = await _opzet.SchoolAsync();

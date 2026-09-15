@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 18:55
+bijgewerkt: 2026-09-15 19:07
 opgepakt-door: leerlingzorg
 branch: ticket/FB-008-leerlingzorg
 pr:
@@ -77,3 +77,6 @@ Geen.
 - 2026-09-15 18:44 · leerlingzorg · recht Leerlingzorg gebouwd: kolom op de leesrij van het rapport, vinkje in het Rechtenblad, eigen lijst /api/rapportklassen; unittests groen (1702)
 - 2026-09-15 18:46 · leerlingzorg · frontend groen: pnpm lint en Vitest (81 bestanden, 889 tests)
 - 2026-09-15 18:55 · leerlingzorg · backend groen: unittests 1702, integratietests op PostgreSQL 523 geslaagd (1 live-KOV overgeslagen), incl. sweep met een gebruiker met alleen Leerlingzorg; dotnet format schoon
+- 2026-09-15 18:59 · leerlingzorg · browserpas: geen browser beschikbaar voor de sessie (Playwright bezet, Chrome-extensie niet verbonden); de eigenaar loopt de testscenario's zelf door op een wegwerpdatabank
+- 2026-09-15 19:03 · leerlingzorg · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR, waarvan twee opgelost (commentaar, test hoofdleerkracht K3)
+- 2026-09-15 19:07 · leerlingzorg · derde MINOR als test opgelost: RapportleesrijTests laat de leesrij van het rapport alleen op de twee leesroutes toe, zodat FB-006 er geen download mee kan openen (D5)
