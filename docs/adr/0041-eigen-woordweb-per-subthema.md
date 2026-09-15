@@ -49,6 +49,14 @@ Six defaults, not ruled, which the build follows until the owner changes one (FB
   made it. The resolver knows no caller, so it fails closed.
 - **D6.** A word the teacher takes out of her web is gone, and the AI may propose it again. Only a word she
   **rejected** is kept, as `geweigerd`, so it stays out.
+- **D7.** Every signed-in gebruiker reads every woordweb, not only a leerkracht (W2 speaks of colleagues), and only
+  its standing words: another person's open proposals and rejected words stay hers, and the server does not send them.
+  Whether the wizard (E6-05) shows the woordweb too is left to that story.
+
+**The wizard deletes no one's woordweb.** The wizard's own subthema delete may remove only what its run created (I25),
+and a woordweb is never the run's, so a subthema that holds one is refused there, the way a colleague's subdoel or
+activiteit is. Without this, themabeheer could remove a colleague's web, and get around D5, by deleting the subthema in
+the wizard first and the thema after.
 
 ## How it is built
 
