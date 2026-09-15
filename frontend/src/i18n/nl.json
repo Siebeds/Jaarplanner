@@ -383,6 +383,28 @@
     "volgendWoord": "Nog een woord",
     "haalWeg": "{woord} weghalen"
   },
+  "woordweb": {
+    "titel": "Woordweb",
+    "eigenLabel": "Jouw woordweb bij {naam}",
+    "invoerLabel": "Woord toevoegen aan je woordweb",
+    "invoerLeeg": "Typ een woord",
+    "invoerVolgend": "Nog een woord",
+    "haalWeg": "{woord} uit het woordweb halen",
+    "voorstellen": "Stel woorden voor",
+    "voorstellenBezig": "Woorden zoeken…",
+    "eerstZelf": "Zet eerst zelf een woord in je woordweb.",
+    "geenNieuwe": "De AI vond geen nieuwe woorden.",
+    "aiOngeldig": "Het antwoord van de AI was onbruikbaar. Vraag het opnieuw.",
+    "aiMislukt": "Woorden voorstellen lukte niet.",
+    "bewaarMislukt": "Bewaren lukte niet.",
+    "aanvaardAria": "{woord} aanvaarden",
+    "weigerAria": "{woord} weigeren",
+    "collegas": "Van collega's",
+    "vanCollega": "Woordweb van {naam}",
+    "laadFout": "De woordwebs konden niet geladen worden.",
+    "verwijderGevolgEen": "Ook 1 woordweb gaat verloren.",
+    "verwijderGevolgMeer": "Ook {aantal} woordwebs gaan verloren."
+  },
   "themabeheer": {
     "nieuwTitel": "Nieuw thema",
     "wijzigTitel": "Thema bewerken",

@@ -78,10 +78,13 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   RapportInvullen: ["Directie", "LK rapport"],
   // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
   RapportsetBewerken: ["LK rapport"],
+  // FB-036 (ADR-0041): on someone else's woordweb only directie; her own web is its own case below.
+  WoordwebBewerken: ["Directie"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
 function bronVoor(rij: Rij): Rechtbron | undefined {
+  if (rij === "WoordwebBewerken") return { soort: "woordweb", eigenaarId: ANDERE_PERSOON };
   if (rij === "KlasplanningBekijken") return { soort: "klasinzage", klasId: EIGEN_KLAS, leeftijden: [LEEFTIJD] };
   if (rij === "KlasplanningBewerken") return { soort: "klas", klasId: EIGEN_KLAS };
   if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren" || rij === "RapportInvullen") {
@@ -113,8 +116,19 @@ describe("de rechtenmatrix van de frontend", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
     // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set
-    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row.
-    expect(rijen).toHaveLength(23);
+    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row.
+    expect(rijen).toHaveLength(24);
+  });
+
+  it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0041)", () => {
+    const eigen: Rechtbron = { soort: "woordweb", eigenaarId: IK };
+    for (const relatie of Object.values(RELATIES)) expect(staatToe(relatie, "WoordwebBewerken", eigen)).toBe(true);
+    // The woordweb resource opens no other row.
+    expect(staatToe(RELATIES.Ander, "SubthemaBeheren", eigen)).toBe(false);
+    expect(magVoor(RELATIES.Ander).woordwebBewerken(IK)).toBe(true);
+    expect(magVoor(RELATIES.TB).woordwebBewerken(ANDERE_PERSOON)).toBe(false);
+    expect(magVoor(RELATIES.Directie).woordwebBewerken(ANDERE_PERSOON)).toBe(true);
+    expect(magVoor(undefined).woordwebBewerken(IK)).toBe(false);
   });
 
   it("geeft een leerkracht de kinderen van een andere K3-klas niet, en de klasplanning geen rapport (R17)", () => {

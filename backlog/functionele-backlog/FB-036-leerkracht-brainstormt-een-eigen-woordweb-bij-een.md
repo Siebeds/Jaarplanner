@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:27
+bijgewerkt: 2026-09-15 19:12
 opgepakt-door: woordweb
 branch: ticket/FB-036-woordweb
 pr:
@@ -37,15 +37,15 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema, wanneer leerkracht A woorden toevoegt, dan staan ze in haar eigen woordweb; leerkracht B ziet
+- [x] Gegeven een subthema, wanneer leerkracht A woorden toevoegt, dan staan ze in haar eigen woordweb; leerkracht B ziet
   dat web bij hetzelfde subthema met de naam van A, zonder het te kunnen wijzigen.
-- [ ] Gegeven een leeg eigen woordweb, dan kan de leerkracht nog geen AI-voorstellen vragen; na het eerste eigen woord
+- [x] Gegeven een leeg eigen woordweb, dan kan de leerkracht nog geen AI-voorstellen vragen; na het eerste eigen woord
   wel.
-- [ ] Gegeven een AI-vraag, dan krijgt de leerkracht hoogstens vijf woorden, elk als voorstel met een motivatie en elk
+- [x] Gegeven een AI-vraag, dan krijgt de leerkracht hoogstens vijf woorden, elk als voorstel met een motivatie en elk
   apart te aanvaarden of te weigeren; een aanvaard woord staat in het web, een geweigerd woord wordt niet opnieuw
   voorgesteld, en de beslissing is bewaard.
-- [ ] Gegeven een woordweb, dan verandert geen enkel dekkingscijfer als er woorden bijkomen of verdwijnen.
-- [ ] De AI-logica is getest met een nep-AI-client, en een modelantwoord dat niet aan het afgesproken formaat voldoet,
+- [x] Gegeven een woordweb, dan verandert geen enkel dekkingscijfer als er woorden bijkomen of verdwijnen.
+- [x] De AI-logica is getest met een nep-AI-client, en een modelantwoord dat niet aan het afgesproken formaat voldoet,
   wordt niet getoond en niet bewaard.
 
 ## Testscenario's
@@ -94,3 +94,4 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 - 2026-09-15 18:20 · eigenaar · nieuw → klaar-voor-bouw: eigenaar wil het meteen samen oppakken
 - 2026-09-15 18:22 · woordweb · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-15 18:27 · woordweb · eigenaar: overnemen naar streefwoordenschat uit scope (eigen ticket na E10-01); AI mag vrij woorden voorstellen, met uitzondering in Art. IV.4
+- 2026-09-15 19:12 · woordweb · gebouwd: woordweb per gebruiker en subthema, AI-voorstellen (max 5, motivatie, aanvaard/weiger), recht WoordwebBewerken, migratie Woordwebs; gates groen behalve de flaky Z1_Z6 (los van dit ticket); browsercontrole 19/19 op 1440 en 390px, zie worklogs/FB-036

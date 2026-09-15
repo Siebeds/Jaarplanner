@@ -42,6 +42,32 @@ export const DOELSOORTEN: Doelsoort[] = [
 
 export type KoppelingStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manueel";
 
+/** One word of a woordweb (FB-036, ADR-0041): typed (`Manueel`), or proposed by the AI and then decided (Art. IV.2). */
+export interface WoordwebWoord {
+  id: string;
+  woord: string;
+  status: KoppelingStatus;
+  aiMotivatie: string | null;
+}
+
+/** One gebruiker's woordweb on one subthema, with every word in every status. `isEigen`: the signed-in gebruiker's. */
+export interface WoordwebWeergave {
+  id: string;
+  subthemaId: string;
+  eigenaarId: string;
+  eigenaarNaam: string;
+  isEigen: boolean;
+  woorden: WoordwebWoord[];
+}
+
+/** What an AI request did: the web afterwards and how many words it proposed. */
+export interface WoordwebVoorstelResultaat {
+  isGeslaagd: boolean;
+  woordweb: WoordwebWeergave | null;
+  aantalVoorgesteld: number;
+  fout: string | null;
+}
+
 /**
  * Which content layer a register link lives in. For `AlgemeneFiche` there is no thema: `themaNaam` carries the
  * fiche's name and `onderdeel` its klas (server contract, 2026-09-11).

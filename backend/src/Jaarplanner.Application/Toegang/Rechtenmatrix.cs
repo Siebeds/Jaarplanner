@@ -23,7 +23,8 @@ namespace Jaarplanner.Application.Toegang;
 /// dekking declares it, and <c>GET /api/klassen</c> filters its list by it.
 /// </para>
 /// <para>
-/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
+/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal activiteiten and subdoelen (R6) wait for
+/// E6-10's shape (the one personal content that exists, a woordweb, is <see cref="WoordwebBewerken"/>, ADR-0041);
 /// and two of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), downloading a report and
 /// wiping a schooljaar, which get their policies with FB-006 and FB-007, since no route serves them before. The other
 /// four have one: <see cref="OntwikkelingsrapportLezen"/> and <see cref="LeerlingenBeheren"/> (FB-001),
@@ -73,6 +74,7 @@ public static class Rechtenmatrix
         public const string LeerlingenBeheren = "LeerlingenBeheren";
         public const string RapportInvullen = "RapportInvullen";
         public const string RapportsetBewerken = "RapportsetBewerken";
+        public const string WoordwebBewerken = "WoordwebBewerken";
     }
 
     // --- Resource-free rows: directie, and themabeheer where the row has it. ---
@@ -277,6 +279,18 @@ public static class Rechtenmatrix
         Kolom.Rapportsetleerkracht,
         ZonderDirectie: true);
 
+    // --- Resource-based row: personal content (FB-036). ---
+
+    /// <summary>
+    /// "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen" (ADR-0041 W2; D3). Its owner, and directie
+    /// (R3). Resource: <see cref="Woordwebbron"/>. Keeping a woordweb at all needs no row (D2): the route that adds the
+    /// first word creates the caller's own web, never another's, and reading every web needs only a session.
+    /// </summary>
+    public static readonly Matrixrij WoordwebBewerken = new(
+        Beleid.WoordwebBewerken,
+        "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen: de eigenaar (ADR-0041 W2; D3)",
+        Kolom.Eigenaar);
+
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
     public static IReadOnlyList<Matrixrij> Rijen { get; } =
     [
@@ -303,6 +317,7 @@ public static class Rechtenmatrix
         LeerlingenBeheren,
         RapportInvullen,
         RapportsetBewerken,
+        WoordwebBewerken,
     ];
 
     /// <summary>
@@ -431,6 +446,13 @@ public static class Rechtenmatrix
             }
         }
 
+        // ADR-0041 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
+        // and that resource matches no other column.
+        if (kolommen.HasFlag(Kolom.Eigenaar) && bron is Woordwebbron woordweb && woordweb.EigenaarId == rechten.GebruikerId)
+        {
+            return true;
+        }
+
         return kolommen.HasFlag(Kolom.LeerkrachtEigen)
             && bron is Klasplanning planning
             && rechten.IsLeerkrachtVanKlas(planning.KlasId);
@@ -514,4 +536,9 @@ public enum Kolom
 
     /// <summary>"LK eigen" on the read row: a klastoewijzing on the <see cref="Klasinzage"/>'s klas, with no end date (I21).</summary>
     LeerkrachtEigenLezen = 4096,
+
+    /// <summary>
+    /// The owner of a <see cref="Woordwebbron"/> (ADR-0041 W2): her own woordweb, whatever other right she holds or lacks.
+    /// </summary>
+    Eigenaar = 8192,
 }

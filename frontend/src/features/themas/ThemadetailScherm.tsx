@@ -31,6 +31,7 @@ import { Gekoppelddoel } from "./Gekoppelddoel";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { themabalans } from "./themabalans";
+import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
   useKoppelSubdoel,
@@ -112,6 +113,9 @@ export function ThemadetailScherm() {
   // would allow the state where both are true.
   const [subthemaBlad, setSubthemaBlad] = useState<{ subthema?: SubthemaWeergave } | null>(null);
   const [teVerwijderenSubthema, setTeVerwijderenSubthema] = useState<SubthemaWeergave | null>(null);
+  // The woordwebs a subthema delete takes with it (ADR-0041 D4), read only while the confirmation is open. Until they
+  // have arrived the sentence names only what the thema's own read guarantees.
+  const { data: teVerwijderenWoordwebs } = useWoordwebs(teVerwijderenSubthema?.id ?? null);
   const [activiteitBlad, setActiviteitBlad] = useState<{
     subthemaId: string;
     activiteitId?: string;
@@ -616,10 +620,17 @@ export function ThemadetailScherm() {
       <Bevestiging
         open={teVerwijderenSubthema !== null}
         titel={t("subthemabeheer.verwijderTitel", { naam: teVerwijderenSubthema?.naam ?? "" })}
-        gevolg={t("subthemabeheer.verwijderGevolg", {
-          activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
-          doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
-        })}
+        gevolg={[
+          t("subthemabeheer.verwijderGevolg", {
+            activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
+            doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
+          }),
+          teVerwijderenWoordwebs && teVerwijderenWoordwebs.length > 0
+            ? telWoord(teVerwijderenWoordwebs.length, "woordweb.verwijderGevolgEen", "woordweb.verwijderGevolgMeer")
+            : null,
+        ]
+          .filter((zin) => zin !== null)
+          .join(" ")}
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijderSubthema.isPending}
         onSluit={() => setTeVerwijderenSubthema(null)}

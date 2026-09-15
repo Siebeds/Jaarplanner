@@ -78,9 +78,12 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
         var openRun = run is not null && run.IsOpen(_tijd.GetUtcNow()) ? run : null;
         bool VanDeOpenRun(Wizarditemsoort soort, Guid id) => openRun?.HeeftAangemaakt(soort, id) == true;
 
+        // ADR-0041 D5: a woordweb is someone's personal content, and it goes with its subthema. This resolver knows no
+        // caller, so any woordweb under the thema counts, whoever made it: the fail-closed reading.
         var andermans = subthemaIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Subthema, id))
             || subdoelIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Subdoel, id))
-            || activiteitIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Activiteit, id));
+            || activiteitIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Activiteit, id))
+            || await _context.Woordwebs.AsNoTracking().AnyAsync(w => subthemaIds.Contains(w.SubthemaId), cancellationToken);
 
         // Q4 (a): the run's own activiteiten that carry a goal link, by leeftijd. Someone else's already count above.
         var gekoppeld = await (
@@ -145,6 +148,18 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
             .SingleOrDefaultAsync(cancellationToken);
 
         return gevonden is { } klasId ? new Rapportklas(klasId) : null;
+    }
+
+    /// <summary>The woordweb's owner, read as an id only (FB-036).</summary>
+    public async Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default)
+    {
+        var eigenaar = await _context.Woordwebs
+            .AsNoTracking()
+            .Where(w => w.Id == woordwebId)
+            .Select(w => (Guid?)w.EigenaarId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return eigenaar is { } eigenaarId ? new Woordwebbron(woordwebId, eigenaarId) : null;
     }
 
     /// <summary>The klas of the one row the query selects, as a planning resource, or <c>null</c> when there is none.</summary>

@@ -13,6 +13,7 @@ import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { Blok, Doellijst, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
+import { Woordweb } from "./Woordweb";
 
 /**
  * One age's derivation of a thema: a chapter of the fiche.
@@ -199,6 +200,11 @@ export function Subthemahoofdstuk({
               ))}
             </ul>
           ) : null}
+
+          {/* THE BRAINSTORM COMES BEFORE THE WORK (FB-036): step 3 of the method, so between the question the chapter asks
+              and the activiteiten that answer it. Mounted only while the chapter is open, so a folded page asks for no
+              woordwebs at all. */}
+          <Woordweb subthemaId={subthema.id} naam={subthema.naam} />
 
           <Subkop
             titel={t("thema.activiteitenTitel")}

@@ -41,6 +41,9 @@ public enum Rechtbron
 
     /// <summary>The ontwikkelingsrapport of the klas a leerling is in (FB-001).</summary>
     Leerling,
+
+    /// <summary>A woordweb with its owner (<see cref="Application.Toegang.Woordwebbron"/>, FB-036).</summary>
+    Woordweb,
 }
 
 /// <summary>
@@ -157,6 +160,9 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
                 // (antagonist round 1: it also answers an id that never existed, and a caller with no right at all).
                 return await bronnen.VoorLeerlingAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout("Dit kind is niet gevonden.");
+            case Rechtbron.Woordweb:
+                return await bronnen.VoorWoordwebAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit woordweb bestaat niet meer.");
             default:
                 throw new InvalidOperationException($"No resource resolver for {Bron}.");
         }
