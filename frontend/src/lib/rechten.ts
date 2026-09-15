@@ -38,6 +38,7 @@ export type Rij =
   | "DoelenKoppelen"
   | "ActiviteitVerplaatsen"
   | "KlasplanningBewerken"
+  | "KlasplanningBekijken"
   | "OntwikkelingsrapportLezen"
   | "LeerlingenBeheren"
   | "RapportInvullen"
@@ -54,7 +55,10 @@ export type Kolom =
   | "ThemabeheerZonderAndermansInhoud"
   | "LeerkrachtRapportLezen"
   | "LeerkrachtRapportInvullen"
-  | "Rapportsetleerkracht";
+  | "Rapportsetleerkracht"
+  | "HoofdleerkrachtLezen"
+  | "LeerkrachtLeeftijdLezen"
+  | "LeerkrachtEigenLezen";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -83,6 +87,11 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   DoelenKoppelen: ["Hoofdleerkracht"],
   ActiviteitVerplaatsen: ["Hoofdleerkracht", "LeerkrachtLeeftijdZonderKoppelingen"],
   KlasplanningBewerken: ["LeerkrachtEigen"],
+  // Reading a klas's planning (FB-013, ADR-0040): themabeheer every klas; a hoofdleerkracht and a leerkracht the klassen
+  // of their jaarfase; a klastoewijzing its own klas. Columns of their own, as on the server. No screen asks it about one
+  // klas: the server filters `GET /api/klassen` by it, and the klas→leeftijden mapping lives there. The screens ask the
+  // resource-free part only (`alleKlassenInzien`, `geenKlasInzien`).
+  KlasplanningBekijken: ["Themabeheer", "HoofdleerkrachtLezen", "LeerkrachtLeeftijdLezen", "LeerkrachtEigenLezen"],
   // The ontwikkelingsrapport rows (ADR-0030 footnote ⁶, ADR-0035 §3.3; FB-001). "LK eigen" here means a klas that
   // grants K3, and it fills in only during the klas's schooljaar (R26), so both columns read their own list from
   // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg joins the read row with FB-008.
@@ -119,7 +128,9 @@ export type Rechtbron =
    */
   | { soort: "thema"; leeg: boolean }
   /** A klas as the ontwikkelingsrapport rows ask about it: the server's `Rapportklas`. */
-  | { soort: "rapportklas"; klasId: string };
+  | { soort: "rapportklas"; klasId: string }
+  /** A klas as reading its planning asks about it: the server's `Klasinzage`, with the leeftijden the server mapped it to. */
+  | { soort: "klasinzage"; klasId: string; leeftijden: readonly string[] };
 
 /** GUIDs from System.Text.Json are lowercase on every route, so this is equality; the fold only guards a future one. */
 function zelfdeId(a: string, b: string): boolean {
@@ -169,6 +180,19 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     }
     // Footnote ² (R25, R33): the maker, whatever else they hold. An activiteit without a maker matches no one here.
     if (kolommen.includes("MakerZonderKoppelingen") && bron.makerId !== null && zelfdeId(bron.makerId, ik.id)) {
+      return true;
+    }
+  }
+
+  if (bron?.soort === "klasinzage") {
+    // FB-013: HL and "LK leeftijd" on a klas of one of their leeftijden, "LK eigen" on their own klas.
+    if (kolommen.includes("HoofdleerkrachtLezen") && bron.leeftijden.some((l) => ik.hoofdleerkrachtLeeftijden.includes(l))) {
+      return true;
+    }
+    if (kolommen.includes("LeerkrachtLeeftijdLezen") && bron.leeftijden.some((l) => ik.leerkrachtLeeftijden.includes(l))) {
+      return true;
+    }
+    if (kolommen.includes("LeerkrachtEigenLezen") && ik.eigenKlasIds.some((klasId) => zelfdeId(klasId, bron.klasId))) {
       return true;
     }
   }
@@ -257,6 +281,18 @@ export interface Mag {
   /** Everything that writes a klas's planning: jaarplan, agenda, hoeken, algemene fiches (R7, R15; I21). */
   klasplanningBewerken: (klasId: string | null) => boolean;
   /**
+   * Whether this gebruiker reads every klas: directie or themabeheer, the part of `KlasplanningBekijken` that needs no
+   * klas (FB-013). Only then does an empty klassen list mean the schooljaar has none; for anyone else the server offers
+   * only the klassen they may read.
+   */
+  alleKlassenInzien: boolean;
+  /**
+   * Whether this gebruiker holds no relation that opens any klas: no directie, no themabeheer, no hoofdleerkracht
+   * appointment, no klastoewijzing (FB-013, ADR-0040 Z4). False until `/api/ik` has answered with a gebruiker, so a
+   * screen never says "you have no right" on a failed answer.
+   */
+  geenKlasInzien: boolean;
+  /**
    * Whether the Ontwikkelingsrapport destination is offered at all (ADR-0035 D18): directie, or a leerkracht of a klas
    * that grants K3. Leerlingzorg joins it with FB-008. Anyone else would find a screen with nothing they may see.
    */
@@ -325,6 +361,16 @@ export function magVoor(ik: Ik | undefined): Mag {
       ),
     klasplanningBewerken: (klasId) =>
       ik?.isDirectie === true || (klasId !== null && rij("KlasplanningBewerken", { soort: "klas", klasId })),
+    // Without a klas the row passes only on its resource-free columns: directie and themabeheer.
+    alleKlassenInzien: rij("KlasplanningBekijken"),
+    // `?? []`: an answer without the lists (an older API, a test that stubs every request alike) must not crash every
+    // screen that asks for rights. It then reads as "no relation", which only a known gebruiker turns into a sentence.
+    geenKlasInzien:
+      ik !== undefined &&
+      !rij("KlasplanningBekijken") &&
+      (ik.hoofdleerkrachtLeeftijden ?? []).length === 0 &&
+      (ik.leerkrachtLeeftijden ?? []).length === 0 &&
+      (ik.eigenKlasIds ?? []).length === 0,
     ontwikkelingsrapportZien: ik?.isDirectie === true || (ik?.rapportklasIds ?? []).length > 0,
     ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
     leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
@@ -361,6 +407,19 @@ export function useRechten(): { mag: Mag; laadt: boolean; bekend: boolean } {
   const { data, isPending } = useIk();
   const mag = useMemo(() => magVoor(data), [data]);
   return { mag, laadt: isPending, bekend: data !== undefined };
+}
+
+/**
+ * What an empty klassen list means for the signed-in gebruiker, as one sentence (FB-013, ADR-0040). The server offers
+ * only the klassen a gebruiker may read, so "this schooljaar has no klassen" is true only for whoever reads them all:
+ * - no relation that opens any klas (known from `/api/ik`): that, in plain words;
+ * - directie or themabeheer: `alleKlassenZin`, the screen's own sentence;
+ * - anyone else, and anyone while `/api/ik` has not answered: no klas they may read, which the server's list guarantees.
+ */
+export function useGeenKlassenZin(alleKlassenZin: string): string {
+  const { mag, bekend } = useRechten();
+  if (bekend && mag.geenKlasInzien) return t("context.geenInzage");
+  return mag.alleKlassenInzien ? alleKlassenZin : t("context.geenKlassenInzage");
 }
 
 /** Whether a failed request was the server refusing the action for want of a right (ADR-0030, E6-02 slice 3). */

@@ -1,5 +1,7 @@
 using Jaarplanner.Api.Infrastructure;
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Curriculum;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,26 +35,21 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class LeerplandoelenController : ControllerBase
 {
     /// <summary>
-    /// The one place the link-visibility decision is taken (E1-16, Art. XIV seam).
-    /// <para>
-    /// <b>This value records the present no-authentication reality; it is not a ruling on FR-10.2</b>
-    /// ("teacher visibility: school-wide / per graad / narrower", still open). There is no authenticated user
-    /// (E6-01, gated by E7-11), so the API cannot know which klas the reader teaches, and narrowing to "your
-    /// klas" would narrow to no klas at all: a doel used by one class's activiteit would be reported as used
-    /// nowhere, which is a false statement a teacher would act on. Every class-scoped row therefore names its
-    /// klas instead, so nothing reads as school-wide.
-    /// </para>
-    /// <para>
-    /// When the role matrix lands (E6-02), this constant becomes the place the decision is applied: change the
-    /// value, or bind it from configuration the way <c>Opstap:DisciplineSelectie</c> / ADR-0019 isolates the
-    /// disciplines-first choice. Nothing else in the query has to move.
-    /// </para>
+    /// Which <b>shared</b> link layers the detail shows: all of them. Themadoelen and doelsuggesties are school-wide, and
+    /// subdoelen and activiteit links are shared per leeftijd (Art. IX.2); none is one klas's planning, and each
+    /// per-leeftijd row names its leeftijd. The one klas-scoped layer, a klas's algemene fiches, follows the reader's
+    /// right on that klas instead (<see cref="Detail"/>, FB-013, ADR-0040).
     /// </summary>
     private const Koppelingzichtbaarheid Zichtbaarheid = Koppelingzichtbaarheid.Alles;
 
     private readonly ILeerplandoelenQuery _query;
+    private readonly IRechtenService _rechten;
 
-    public LeerplandoelenController(ILeerplandoelenQuery query) => _query = query;
+    public LeerplandoelenController(ILeerplandoelenQuery query, IRechtenService rechten)
+    {
+        _query = query;
+        _rechten = rechten;
+    }
 
     /// <summary>
     /// One page of leerplandoelen (E1-16 clause 1/2). Every filter is optional; the page is ordered
@@ -134,9 +131,10 @@ public sealed class LeerplandoelenController : ControllerBase
     /// leerplandoel carries is a <b>404</b>, so a stale or mistyped deep link gets an honest answer rather than
     /// an empty detail pane.
     /// <para>
-    /// The link visibility is passed explicitly from <see cref="Zichtbaarheid"/> — the single place that
-    /// decision is taken. Read its documentation before changing it: it records today's absence of
-    /// authentication and is not an answer to FR-10.2.
+    /// <b>An algemene fiche is its klas's planning</b>, so it shows only when the reader may read that klas: the row
+    /// <c>KlasplanningBekijken</c>, asked through <see cref="Rechtenmatrix.StaatToe"/> on the fiche's
+    /// <see cref="Klasinzage"/>, the same question every planning route and <c>GET /api/klassen</c> ask (FB-013,
+    /// ADR-0040). The rights are read once for the request.
     /// </para>
     /// </summary>
     [HttpGet("{code}")]
@@ -144,7 +142,15 @@ public sealed class LeerplandoelenController : ControllerBase
         string code,
         CancellationToken cancellationToken)
     {
-        var doel = await _query.HaalDetailAsync(code, Zichtbaarheid, cancellationToken);
+        var rechten = Aanmelding.GebruikerId(User) is { } gebruikerId
+            ? await _rechten.HaalRechtenOpAsync(gebruikerId, cancellationToken)
+            : Rechten.Geen(Guid.Empty);
+
+        var doel = await _query.HaalDetailAsync(
+            code,
+            Zichtbaarheid,
+            klas => Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.KlasplanningBekijken, klas),
+            cancellationToken);
 
         return doel is null ? NotFound() : Ok(doel);
     }

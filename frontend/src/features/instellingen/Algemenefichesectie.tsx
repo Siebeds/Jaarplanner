@@ -7,7 +7,7 @@ import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { IcoonKruis, IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { useActieveSelectie } from "../../lib/selectie";
-import { useRechten } from "../../lib/rechten";
+import { useGeenKlassenZin, useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
@@ -77,6 +77,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
 
   // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights (fix round 1, F3).
   const { mag, bekend: rechtenBekend } = useRechten();
+  const geenKlassenZin = useGeenKlassenZin(t("klasbeheer.geenKlassen"));
   const magBewerken = mag.klasplanningBewerken(klasId);
 
   return (
@@ -127,7 +128,8 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
       ) : klassen.length === 0 ? (
-        <p className="text-body text-inkt-zacht">{t("algemeneFiches.geenKlassen")}</p>
+        // Only directie makes klassen; anyone else is told what the list means for them (FB-013).
+        <p className="text-body text-inkt-zacht">{mag.beheer ? t("algemeneFiches.geenKlassen") : geenKlassenZin}</p>
       ) : (fiches ?? []).length === 0 ? (
         <p className="text-body text-inkt-zacht">{t("algemeneFiches.geenFiches")}</p>
       ) : (

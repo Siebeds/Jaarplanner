@@ -7,8 +7,8 @@ namespace Jaarplanner.UnitTests.Toegang;
 /// The ADR-0030 §3 matrix as <see cref="Rechtenmatrix"/> declares it, row by row and column by column (E6-02, Art.
 /// VI.1): each row allows exactly the relations §3 gives it, on a resource of that row's kind, and nothing else.
 /// Directie passes every row (R3) except <c>RapportsetBewerken</c> (ADR-0035 R31); a missing or foreign resource fails
-/// closed. Three of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001 and
-/// one since FB-002; the other three get their tests with their policies (FB-003, FB-006, FB-007).
+/// closed. Four of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001,
+/// one since FB-002 and one since FB-003; the other two get their tests with their policies (FB-006, FB-007).
 /// </summary>
 public sealed class RechtenmatrixTests
 {
@@ -57,6 +57,10 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.StreefwoordenschatAanpassen] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.KlasplanningBewerken] = ["Directie", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
+        // FB-013 (ADR-0040 Z1-Z5): reading a K3 klas is for its own leerkracht, every leerkracht and hoofdleerkracht of
+        // K3, themabeheer and directie. Not for another leeftijd, and not for a gebruiker without a right (Z4).
+        [Rechtenmatrix.Beleid.KlasplanningBekijken] =
+            ["Directie", "TB", "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
         // Footnote ⁶ (ADR-0035 R16, R17, R26): the klas's K3 leerkracht reads with no end date and keeps the leerlingen
         // only during the schooljaar. Nobody else but directie, not HL, TB or "LK leeftijd" (R17).
         [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen"],
@@ -129,6 +133,8 @@ public sealed class RechtenmatrixTests
             new object(),
             new Leeftijdsinhoud("L6"),
             new Klasplanning(AndereKlas),
+            Klasinzage.Voor(AndereKlas, "L6"),
+            Klasinzage.Voor(AndereKlas, gesteldeJaarfase: null),
             new Rapportklas(AndereKlas),
             new Activiteitbron(Guid.NewGuid(), "L6", MakerId: null, HeeftDoelkoppelingen: true),
         ];
@@ -166,6 +172,51 @@ public sealed class RechtenmatrixTests
     {
         Assert.False(Rechtenmatrix.StaatToe(
             Relaties["LK eigen"], Rechtenmatrix.KlasplanningBewerken, new Klasplanning(AndereKlas)));
+    }
+
+    // --- Reading a klas's planning (FB-013, ADR-0040): the klas's jaarfase decides, through the one mapping. ---
+
+    [Fact]
+    public void Een_klas_van_een_andere_jaarfase_leest_alleen_themabeheer_en_directie_Z1_Z2_Z3()
+    {
+        var k2 = Klasinzage.Voor(AndereKlas, "K2");
+
+        foreach (var relatie in new[] { "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen", "Ander" })
+        {
+            Assert.False(Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.KlasplanningBekijken, k2));
+        }
+
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.KlasplanningBekijken, k2));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.KlasplanningBekijken, k2));
+        // A leerkracht with a klas in each jaarfase reads both.
+        var beide = new Rechten(Ik, false, false, [], ["K2", Leeftijd], [EigenKlas]);
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.KlasplanningBekijken, k2));
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.KlasplanningBekijken, Klasinzage.Voor(AndereKlas, Leeftijd)));
+    }
+
+    [Fact]
+    public void Een_klas_zonder_gestelde_jaarfase_staat_voor_geen_leeftijd_en_leest_alleen_haar_eigen_leerkracht()
+    {
+        // Leeftijdsrechten.VoorKlas fails closed (I12): a klas that states no jaarfase belongs to no jaarfase's readers.
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["LK leeftijd"], Rechtenmatrix.KlasplanningBekijken, Klasinzage.Voor(AndereKlas, null)));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.KlasplanningBekijken, Klasinzage.Voor(AndereKlas, "  ")));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["LK eigen"], Rechtenmatrix.KlasplanningBekijken, Klasinzage.Voor(EigenKlas, null)));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.KlasplanningBekijken, Klasinzage.Voor(AndereKlas, null)));
+    }
+
+    [Fact]
+    public void Een_leesbron_opent_geen_andere_rij_en_een_andere_bron_opent_de_leesrij_niet()
+    {
+        var alles = new Rechten(Ik, false, false, [Leeftijd], [Leeftijd], [EigenKlas]);
+        var inzage = Klasinzage.Voor(EigenKlas, Leeftijd);
+
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.KlasplanningBewerken, inzage));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.SubthemaBeheren, inzage));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.GedeeldeActiviteitBewerken, inzage));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.OntwikkelingsrapportLezen, inzage));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.KlasplanningBekijken, new Klasplanning(EigenKlas)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.KlasplanningBekijken, new Leeftijdsinhoud(Leeftijd)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.KlasplanningBekijken, bron: null));
     }
 
     // --- The union rule (§3): one matching relation is enough, and none takes away another's grant. ---
@@ -429,6 +480,7 @@ public sealed class RechtenmatrixTests
     {
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportLezen) || rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportInvullen) =>
             new Rapportklas(EigenKlas),
+        _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtEigenLezen) => Klasinzage.Voor(EigenKlas, Leeftijd),
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtEigen) => new Klasplanning(EigenKlas),
         _ when rij.Kolommen.HasFlag(Kolom.Hoofdleerkracht) || rij.Kolommen.HasFlag(Kolom.LeerkrachtLeeftijd) =>
             new Leeftijdsinhoud(Leeftijd),

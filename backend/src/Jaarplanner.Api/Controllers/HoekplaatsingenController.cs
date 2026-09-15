@@ -23,6 +23,7 @@ public sealed class HoekplaatsingenController : ControllerBase
 
     /// <summary>Every placement overlapping the range, so the calendar can draw the days on screen.</summary>
     [HttpGet("/api/klassen/{klasId:guid}/hoekplaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<IReadOnlyList<HoekplaatsingWeergave>>> Lijst(
         Guid klasId,
         [FromQuery] DateOnly van,

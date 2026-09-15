@@ -23,6 +23,7 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
     public AlgemeneFicheplaatsingenController(IAlgemeneFicheplaatsingService service) => _service = service;
 
     [HttpGet("/api/klassen/{klasId:guid}/algemene-ficheplaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<IReadOnlyList<AlgemeneFicheplaatsingWeergave>>> Lijst(
         Guid klasId,
         [FromQuery] DateOnly van,

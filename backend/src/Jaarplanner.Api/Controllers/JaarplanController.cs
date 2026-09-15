@@ -84,6 +84,7 @@ public sealed class JaarplanController : ControllerBase
     /// motivation and lock. A class that has not been generated for yet yields an empty plan, not a 404.
     /// </summary>
     [HttpGet]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> Detail(Guid klasId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalJaarplanAsync(klasId, cancellationToken));
 
@@ -256,6 +257,7 @@ public sealed class JaarplanController : ControllerBase
     /// </para>
     /// </summary>
     [HttpGet("parameters")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<JaarplanGeneratieParameters>> Parameters(
         Guid klasId,
         CancellationToken cancellationToken) =>

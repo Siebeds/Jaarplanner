@@ -172,7 +172,7 @@ async function openTurnen() {
 
 describe("Agendascherm: de planning van een klas die je alleen mag bekijken", () => {
   it("toont geen fichechips en geen zijpaneel, en opent een algemene fiche alleen om te lezen", async () => {
-    // A leerkracht of K3, of another klas: she reads this klas's agenda (I9) and plans only her own.
+    // A leerkracht of K3, of another klas: she reads this klas's agenda (a klas of her jaarfase, FB-013) and plans only her own.
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-2"] }));
 
     expect(await screen.findByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeInTheDocument();

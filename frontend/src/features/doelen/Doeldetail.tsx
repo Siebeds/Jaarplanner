@@ -8,6 +8,7 @@ import { Knop } from "../../components/ui/Knop";
 import { IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { useRechten } from "../../lib/rechten";
 
 /**
  * Everything Op.stap holds about one leerplandoel, plus where this school already uses it.
@@ -54,6 +55,9 @@ export function Doeldetail({
   onKoppel: (() => void) | null;
 }) {
   const { data, isPending, isError } = useLeerplandoel(code);
+  // A klas's algemene fiches reach this list only for a reader who may read that klas (FB-013), so "used nowhere" is
+  // the school's fact only for whoever reads every klas.
+  const { mag } = useRechten();
 
   if (!code) return <Leegte titel={t("doel.kies")} />;
 
@@ -152,7 +156,9 @@ export function Doeldetail({
           full one is the place a teacher checks before adding a fourth. */}
       <Sectie titel={t("doel.gebruiktIn")}>
         {data.koppelingen.length === 0 ? (
-          <p className="text-meta text-inkt-zwak">{t("doel.nergensGebruikt")}</p>
+          <p className="text-meta text-inkt-zwak">
+            {mag.alleKlassenInzien ? t("doel.nergensGebruikt") : t("doel.nergensGebruiktInzage")}
+          </p>
         ) : (
           <ul className="flex flex-col gap-1.5">
             {data.koppelingen.map((koppeling, index) => (

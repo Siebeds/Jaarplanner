@@ -10,8 +10,8 @@ namespace Jaarplanner.Api.Controllers;
 /// <see cref="ILeerlingBeheerService"/>. Shaped like <see cref="AlgemeneFichesController"/>: the klas in the route for the
 /// list and the create, the leerling alone after that.
 /// <para>
-/// <b>Rights (ADR-0030 §3 footnote ⁶, ADR-0035 §3.3).</b> <b>The read is gated too</b>, unlike every other GET in the app:
-/// I9 does not reach a child (R17), so the list is <c>OntwikkelingsrapportLezen</c> (directie, and the klas's own K3
+/// <b>Rights (ADR-0030 §3 footnote ⁶, ADR-0035 §3.3).</b> <b>The read is gated more strictly than a klas's planning</b>:
+/// reading a klas (<c>KlasplanningBekijken</c>) does not reach a child (R17), so the list is <c>OntwikkelingsrapportLezen</c> (directie, and the klas's own K3
 /// leerkrachten with no end date). Every write is <c>LeerlingenBeheren</c> (directie, and those leerkrachten only during
 /// the klas's schooljaar, R26). Both resolve the klas before the check, so an unknown klas or child is a 404 first.
 /// </para>

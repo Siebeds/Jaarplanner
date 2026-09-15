@@ -1,3 +1,5 @@
+using Jaarplanner.Application.Toegang;
+
 namespace Jaarplanner.Application.Curriculum;
 
 /// <summary>
@@ -37,13 +39,18 @@ public interface ILeerplandoelenQuery
     /// is case-insensitive: the code arrives from a URL a teacher may have typed or copied.
     /// </summary>
     /// <param name="zichtbaarheid">
-    /// Which link layers may be surfaced. <b>Required rather than defaulted on purpose:</b> Art. IX.2 scopes
-    /// subdoelen and activiteit links per klas and FR-10.2 is an open Art. XIV decision, so a caller must
-    /// state its choice instead of inheriting one silently. See <see cref="Koppelingzichtbaarheid"/>.
+    /// Which shared link layers may be surfaced. <b>Required rather than defaulted on purpose:</b> a caller states its
+    /// choice instead of inheriting one silently. See <see cref="Koppelingzichtbaarheid"/>.
+    /// </param>
+    /// <param name="klasLeesbaar">
+    /// Whether the reader may read a klas's planning, asked for the klas of each algemene fiche that links to the code:
+    /// a fiche of any other klas is left out (FB-013, ADR-0040). The caller answers it from
+    /// <c>Rechtenmatrix.KlasplanningBekijken</c>, so the register and the planning routes cannot disagree.
     /// </param>
     Task<LeerplandoelDetailWeergave?> HaalDetailAsync(
         string code,
         Koppelingzichtbaarheid zichtbaarheid,
+        Func<Klasinzage, bool> klasLeesbaar,
         CancellationToken cancellationToken = default);
 
     /// <summary>
