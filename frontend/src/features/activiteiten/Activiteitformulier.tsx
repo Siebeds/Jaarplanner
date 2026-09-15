@@ -291,7 +291,7 @@ export function Activiteitformulier({
                     >
                       <span className="text-body font-medium">
                         {telWoord(aantal, "activiteit.eenLesuur", "activiteit.lesuren")}
-                      </span>
+                      </span>{" "}
                       <span className={cn("mono text-micro", gekozen ? "text-accent-op" : "text-inkt-zacht")}>
                         {t("activiteit.minutenKort", { aantal: aantal * STANDAARDDUUR })}
                       </span>

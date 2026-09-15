@@ -107,8 +107,8 @@ describe("Activiteitblad, de dag", () => {
 
     const blad = screen.getByRole("dialog");
     expect(within(blad).queryByRole("button", { name: "Haal weg" })).toBeNull();
-    const bak = within(blad).getByRole("button", { name: t("periode.uitAgendaAria", { naam: "Bladerslinger" }) });
-    expect(bak).toHaveAttribute("title", t("periode.uitAgenda"));
+    const bak = within(blad).getByRole("button", { name: t("periode.vanDagAria", { naam: "Bladerslinger" }) });
+    expect(bak).toHaveAttribute("title", t("periode.vanDag"));
 
     fireEvent.click(bak);
     expect(verwijder).toHaveBeenCalledTimes(1);
@@ -117,7 +117,7 @@ describe("Activiteitblad, de dag", () => {
   it("toont het icoon niet aan wie de klas niet mag plannen", () => {
     render(<Blad qc={client()} magPlannen={false} fout={null} />);
 
-    expect(screen.queryByRole("button", { name: t("periode.uitAgendaAria", { naam: "Bladerslinger" }) })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("periode.vanDagAria", { naam: "Bladerslinger" }) })).toBeNull();
   });
 });
 

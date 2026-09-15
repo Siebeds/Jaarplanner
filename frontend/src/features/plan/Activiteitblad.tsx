@@ -220,7 +220,8 @@ function Dagfout({ fout }: { fout: string }) {
  * is why the section takes all three rather than only the day it used to.
  *
  * **Taking it off the day is a bin on the section's own heading** (TB-025), bordered because it acts on the whole
- * plaatsing. Its label says the activiteit leaves the agenda, since the activiteit itself stays in its subthema.
+ * plaatsing. Its label names the day: it takes off this one plaatsing, while the same activiteit may stay on other days
+ * (ADR-0028) and always stays in its subthema.
  */
 function Dagsectie({
   naam,
@@ -263,8 +264,8 @@ function Dagsectie({
         <h3 className="text-micro uppercase text-inkt-zwak">{t("periode.opDezeDag")}</h3>
         <Verwijderknop
           omrand
-          label={t("periode.uitAgendaAria", { naam })}
-          titel={t("periode.uitAgenda")}
+          label={t("periode.vanDagAria", { naam })}
+          titel={t("periode.vanDag")}
           disabled={bezig}
           onClick={onVerwijder}
         />
