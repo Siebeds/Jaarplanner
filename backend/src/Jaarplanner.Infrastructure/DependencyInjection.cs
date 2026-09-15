@@ -176,6 +176,8 @@ public static class DependencyInjection
         // because both belong to the ontwikkelingsrapport.
         services.AddScoped<IRapportsetService, RapportsetService>();
         services.AddScoped<IOntwikkelingsrapportService, OntwikkelingsrapportService>();
+        services.AddScoped<IKindtekeningService, KindtekeningService>();
+        services.AddSingleton<ITekeningHerwerker, SkiaTekeningHerwerker>();
 
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —

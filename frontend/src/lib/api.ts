@@ -116,6 +116,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   return (await response.json()) as T;
 }
 
+/**
+ * The full address of an API path, for what the browser fetches itself rather than through `apiFetch`: an `<img>` or a
+ * link. The session cookie goes along as for any same-origin request.
+ */
+export function apiAdres(path: string): string {
+  return `${BASE_URL}${path}`;
+}
+
 export const get = <T>(path: string) => apiFetch<T>(path);
 export const post = <T>(path: string, body?: unknown) =>
   apiFetch<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) });

@@ -592,7 +592,21 @@
     "rapportLaadFout": "Het rapport kon niet geladen worden. Herlaad de pagina.",
     "geenToegangRapport": "Je hebt geen toegang tot dit rapport.",
     "rapportZonderDoelen": "Er zijn nog geen rapportdoelen. De K3-leerkrachten maken ze aan bij Rapportdoelen.",
-    "schaalLeeg": "De sterrenschaal is nog leeg. Je kan wel al een tekst schrijven."
+    "schaalLeeg": "De sterrenschaal is nog leeg. Je kan wel al een tekst schrijven.",
+    "tekening": "Tekening",
+    "tekeningVan": "Tekening van {naam}",
+    "nogGeenTekening": "Nog geen tekening.",
+    "tekeningUitleg": "Fotografeer alleen de tekening: geen kinderen en geen geschreven naam. JPEG of PNG, tot {mb} MB.",
+    "tekeningToevoegen": "Tekening toevoegen",
+    "tekeningVervangen": "Tekening vervangen",
+    "tekeningVerwijderen": "Tekening verwijderen",
+    "tekeningOpenen": "Tekening openen",
+    "tekeningVerwijderTitel": "Tekening verwijderen?",
+    "tekeningVerwijderGevolg": "De tekening verdwijnt uit dit rapport. Dat is niet terug te draaien.",
+    "tekeningNietBewaard": "De tekening is niet bewaard.",
+    "tekeningGeenJpegOfPng": "Kies een foto of scan als JPEG- of PNG-bestand.",
+    "tekeningTeGroot": "Dit bestand is groter dan {mb} MB. Kies een kleinere foto of scan.",
+    "tekeningLaadFout": "De tekening kon niet geladen worden. Herlaad de pagina."
   },
   "gebruikers": {
     "uitnodigen": "Gebruiker uitnodigen",
