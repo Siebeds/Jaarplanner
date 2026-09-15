@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:10
+bijgewerkt: 2026-09-15 16:16
 opgepakt-door: themapagina
 branch: ticket/FB-009-doelen-per-leeftijd
-pr:
+pr: 83
 geblokkeerd:
 fr: [FR-2.3, FR-9.3]
 ---
@@ -86,3 +86,4 @@ thema subthema's heeft).
 - 2026-09-15 16:07 · themapagina · antagonist: een MAJOR (een aanvaarde doelsuggestie stond als 'themadoel', terwijl ze dat niet is, Art. IX.2): opgelost met een eigen plaats 'aanvaarde doelsuggestie' en een verbeterde test; de kleine bevindingen ook (HTTP-integratietest 200/404, test voor 'geen minimumdoel', commentaar); unit 7, integratie 6, Vitest 60 groen, lint en format schoon
 - 2026-09-15 16:08 · themapagina · in-uitvoering → te-testen: thema toont per leeftijd de leerplandoelen en de minimumdoelen die ze bereiken, via een nieuw endpoint; browser desktop en 390px op echte Op.stap-doelen, contrast licht en donker gemeten, antagonist-MAJOR opgelost
 - 2026-09-15 16:10 · themapagina · tweede controle antagonist, alleen op de MAJOR: opgelost, COMPLIANT, geen nieuwe blokkerende bevinding
+- 2026-09-15 16:16 · themapagina · PR #83
