@@ -2,12 +2,12 @@
 id: FB-005
 titel: Leerkracht voegt per evaluatiemoment een kindtekening toe aan het rapport
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 18:24
+opgepakt-door: kindtekening
+branch: ticket/FB-005-kindtekening
 pr:
 geblokkeerd:
 fr: [FR-13.5]
@@ -76,3 +76,5 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 18:24 · eigenaar · nieuw → klaar-voor-bouw: eigenaar geeft de bouw vrij in de sessie
+- 2026-09-15 18:24 · kindtekening · klaar-voor-bouw → in-uitvoering: opgepakt
