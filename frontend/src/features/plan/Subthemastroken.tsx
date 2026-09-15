@@ -26,8 +26,7 @@ import { themapaginaPad } from "../themas/themapagina";
  *
  * **A pointer's shortcut to the subthema** (FB-037, ADR-0042). A strip that names a run is a link to its chapter on the
  * thema's page, on every day it covers; the count that stands in for the runs that did not fit names none, so it opens
- * none. Out of the tab order, for the reason above: the keyboard's route is the subthemabalk above the grid, one link
- * per run instead of one per day.
+ * none. Out of the tab order, for the reason above: the keyboard's route is the menu Thema's (FB-039).
  */
 export function Subthemastroken({
   reeksen,

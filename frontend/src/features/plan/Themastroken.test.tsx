@@ -32,7 +32,7 @@ describe("Themastroken (FB-037)", () => {
     const link = container.querySelector("a");
     expect(link).toHaveAttribute("href", themapaginaPad("t-herfst"));
     expect(link).toHaveAttribute("tabindex", "-1");
-    // The day's own button speaks the thema; the keyboard reaches its page from the subthemabalk.
+    // The day's own button speaks the thema; the keyboard reaches its page through the menu Thema's.
     expect(screen.queryByRole("link")).toBeNull();
   });
 

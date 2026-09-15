@@ -89,7 +89,7 @@ describe("Subthemastroken: naar het subthema op de themapagina (FB-037)", () => 
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", themapaginaPad("t-klas", "de speelhoek"));
     expect(links[0]).toHaveAttribute("tabindex", "-1");
-    // The day's own button speaks the subthema; the keyboard reaches its page from the subthemabalk.
+    // The day's own button speaks the subthema; the keyboard reaches its page through the menu Thema's.
     expect(screen.queryByRole("link")).toBeNull();
   });
 
