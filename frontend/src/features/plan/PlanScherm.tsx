@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Klaskiezer } from "../../app/Klaskiezer";
-import { Knop } from "../../components/ui/Knop";
+import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Blad } from "../../components/ui/Blad";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
@@ -146,9 +146,9 @@ export function PlanScherm() {
                   </Link>
                 ) : null}
                 {magPlannen ? (
-                  <Knop rang="hoofd" className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
+                  <AiKnop className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
                     {t("plan.genereer")}
-                  </Knop>
+                  </AiKnop>
                 ) : null}
               </div>
             </div>
@@ -275,16 +275,16 @@ export function PlanScherm() {
             <Knop rang="rustig" onClick={() => setGeneratieOpen(false)}>
               {t("plan.annuleer")}
             </Knop>
-            <Knop
-              rang="hoofd"
+            <AiKnop
               vol
+              bezig={generatie.isPending}
               disabled={generatie.isPending}
               onClick={() => {
                 generatie.mutate(undefined, { onSettled: () => setGeneratieOpen(false) });
               }}
             >
               {generatie.isPending ? t("plan.bezig") : t("plan.genereerNu")}
-            </Knop>
+            </AiKnop>
           </div>
         }
       >
