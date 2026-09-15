@@ -126,3 +126,19 @@
   - Leerlingzorg (FB-008) is not on `OntwikkelingsrapportLezen` yet.
   - No `Cache-Control: no-store` on the list GET. §3.6 asks it for the kindtekening only, and the JSON carries no
     validator that invites heuristic caching. The orchestrator may want it anyway, for pupil data.
+
+## Note added by the orchestrator, 2026-09-15 (after antagonist round 1)
+
+This worklog describes the implementer's hand-back, and three things in it stopped being true afterwards. They are
+corrected here rather than rewritten above:
+
+- **"Nothing committed"**: the orchestrator committed the backend and the frontend together as `2285acd` (the first
+  version, `acecf2e`, was amended because it tracked a stray `dotnet` workload log; see the antagonist report).
+- **"No `Cache-Control: no-store`"**: the orchestrator added `[ResponseCache(NoStore = true)]` to the list GET before
+  that commit, and since fix round 1 every 200 list read in `LeerlingEndpointsTests` asserts it.
+- **The 404 sentence** "Dit kind bestaat niet meer. Iemand anders heeft het verwijderd." is now "Dit kind is niet
+  gevonden." (round 1, finding 2): it also answers an id that never existed.
+
+Fix round 1 also added `KanLeerlingenHebben` to `KlasWeergave` (finding 1), computed by
+`Leerling.KlasKanLeerlingenHebben`, so the frontend no longer compares a jaarfase to "K3". The frontend half is in
+`implementatie-frontend.md`.

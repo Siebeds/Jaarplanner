@@ -17,7 +17,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 public sealed class LeerlingEndpointsTests : IAsyncLifetime
 {
     private const string GeenK3 = "Alleen een klas van de derde kleuter kan kinderen hebben.";
-    private const string KindWeg = "Dit kind bestaat niet meer. Iemand anders heeft het verwijderd.";
+    private const string KindWeg = "Dit kind is niet gevonden.";
 
     private PostgresTestDatabase _db = null!;
     private PostgresApiFactory _factory = null!;
@@ -155,6 +155,25 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
 
         Assert.Empty(await LijstAsync(directie, school.K2Rood));
     }
+
+    /// <summary>
+    /// The klas list says which klassen can hold children, from the same function the create asks
+    /// (<c>Leerling.KlasKanLeerlingenHebben</c>), so the screen needs no mapping of its own (antagonist round 1).
+    /// </summary>
+    [PostgresFact]
+    public async Task De_klassenlijst_zegt_welke_klas_kinderen_kan_hebben()
+    {
+        var school = await _opzet.SchoolAsync();
+        using var directie = _opzet.Directie();
+
+        var klassen = (await directie.GetFromJsonAsync<List<KlasKort>>("/api/klassen"))!;
+
+        Assert.True(klassen.Single(k => k.Id == school.K3Blauw).KanLeerlingenHebben);
+        Assert.True(klassen.Single(k => k.Id == school.K3Groen).KanLeerlingenHebben);
+        Assert.False(klassen.Single(k => k.Id == school.K2Rood).KanLeerlingenHebben);
+    }
+
+    private sealed record KlasKort(Guid Id, bool KanLeerlingenHebben);
 
     // --- After the schooljaar: the leerkracht reads, directie still does everything (R26). ---
 
@@ -331,6 +350,9 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     {
         using var antwoord = await client.GetAsync($"/api/klassen/{klasId}/leerlingen");
         Assert.True(antwoord.StatusCode == HttpStatusCode.OK, $"Expected 200, got {(int)antwoord.StatusCode}: {await antwoord.Content.ReadAsStringAsync()}");
+        // Every list a test reads is pupil data, so every one of them must tell a browser and a proxy to keep no copy
+        // (antagonist round 1: the attribute was the only guard, and nothing failed if it went).
+        Assert.True(antwoord.Headers.CacheControl?.NoStore == true, $"Expected Cache-Control: no-store, got '{antwoord.Headers.CacheControl}'");
         return (await antwoord.Content.ReadFromJsonAsync<List<LeerlingDto>>())!;
     }
 

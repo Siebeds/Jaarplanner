@@ -25,6 +25,7 @@ const klasVan = (id: string, naam: string, jaarfase: string): KlasWeergave => ({
   jaarFasen: [jaarfase],
   jaarfase,
   mogelijkeJaarfasen: [],
+  kanLeerlingenHebben: jaarfase === "K3",
 });
 const BLAUW = klasVan("k3-blauw", "K3 blauw", "K3");
 const GROEN = klasVan("k3-groen", "K3 groen", "K3");
@@ -36,15 +37,20 @@ vi.mock("../../lib/selectie", () => ({
     klasId: null,
     schooljaar: { id: "jaar-1", naam: "2026-2027", start: "2026-09-01", eind: "2027-06-30" },
     schooljaren: [{ id: "jaar-1", naam: "2026-2027", start: "2026-09-01", eind: "2027-06-30" }],
-    // Spelled out rather than referring to the constants above: `vi.mock` is hoisted above them.
-    klassen: ["k2-rood", "k3-blauw", "k3-groen"].map((id) => ({
-      id,
+    // Spelled out rather than referring to the constants above: `vi.mock` is hoisted above them. The fourth is a
+    // menggroep stated as K2 that the server nevertheless says can hold children, as it would once directie decides the
+    // graadklas question (Art. XIV): the screen must follow the server's answer, not the jaarfase.
+    klassen: [
+      { id: "k2-rood", naam: "K2 rood", jaarfase: "K2", kanLeerlingenHebben: false },
+      { id: "k3-blauw", naam: "K3 blauw", jaarfase: "K3", kanLeerlingenHebben: true },
+      { id: "k3-groen", naam: "K3 groen", jaarfase: "K3", kanLeerlingenHebben: true },
+      { id: "menggroep", naam: "Menggroep", jaarfase: "K2", kanLeerlingenHebben: true },
+    ].map((klas) => ({
+      ...klas,
       schooljaarId: "jaar-1",
-      naam: id === "k2-rood" ? "K2 rood" : id === "k3-blauw" ? "K3 blauw" : "K3 groen",
       leerjaar: 0,
       aantalSubthemas: 0,
-      jaarFasen: [id === "k2-rood" ? "K2" : "K3"],
-      jaarfase: id === "k2-rood" ? "K2" : "K3",
+      jaarFasen: [klas.jaarfase],
       mogelijkeJaarfasen: [],
     })),
     laadt: false,
@@ -224,14 +230,20 @@ describe("OntwikkelingsrapportScherm, wie wat mag", () => {
     expect(screen.queryByRole("button", { name: t("ontwikkelingsrapport.verwijderKind", { naam: "Fien Proefmans" }) })).not.toBeInTheDocument();
   });
 
-  it("laat directie elke K3-klas beheren, en zegt niet dat het schooljaar voorbij is", async () => {
+  it("laat directie elke klas beheren die kinderen kan hebben, en zegt niet dat het schooljaar voorbij is", async () => {
     toon(DIRECTIE);
 
     expect(await screen.findByText(kind("Fien Proefmans"))).toBeInTheDocument();
     expect(voornaam()).toBeInTheDocument();
     expect(screen.queryByText(t("ontwikkelingsrapport.alleenLezen"))).not.toBeInTheDocument();
     const keuze = screen.getByRole("combobox", { name: t("context.klas") });
-    expect(within(keuze).getAllByRole("option").map((optie) => optie.textContent)).toEqual([BLAUW.naam, GROEN.naam]);
+    // The server's answer decides, not the jaarfase: K2 rood is left out, and the menggroep stated as K2 that the
+    // server says can hold children is offered (antagonist round 1, finding 1).
+    expect(within(keuze).getAllByRole("option").map((optie) => optie.textContent)).toEqual([
+      BLAUW.naam,
+      GROEN.naam,
+      "Menggroep",
+    ]);
   });
 
   it("zegt wie geen rapport mag lezen voor wie het is, en vraagt geen kinderen op (R17)", async () => {

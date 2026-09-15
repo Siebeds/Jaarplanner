@@ -697,6 +697,11 @@ R31). It is the one exception to R3.
 - **The column definitions widen for these rows only.**
   - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
     schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.
+    *Added 2026-09-15 (FB-001, antagonist round 1):* §3 has no read row of its own for a klas's leerlingen, and reading
+    that list follows the row "Een ontwikkelingsrapport lezen" (`OntwikkelingsrapportLezen`), because a child's name
+    is the first thing a report shows. So whoever holds that row reads the klas's name list too; once FB-008 puts
+    Leerlingzorg on it, Leerlingzorg reads every K3 klas's names, which follows from R18 ("alle
+    ontwikkelingsrapporten lezen").
   - "LK leeftijd" covers the one K3 set of rapportdoelen and the scale, and means a klastoewijzing on a klas that grants
     K3, in a schooljaar that has not ended (ADR-0035 D4).
 - **A seventh relation applies to these rows only: Leerlingzorg**, a right directie gives. It reads every

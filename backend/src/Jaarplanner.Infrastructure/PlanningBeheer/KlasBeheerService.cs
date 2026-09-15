@@ -53,7 +53,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
                 TelVoor(k, perLeeftijd),
                 JaarFasenVoor(k),
                 k.Jaarfase,
-                MogelijkeJaarfasenVoor(k)))
+                MogelijkeJaarfasenVoor(k),
+                Leerling.KlasKanLeerlingenHebben(k.Jaarfase)))
             .ToList();
     }
 
@@ -64,7 +65,15 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var aantal = await TelSubthemasAsync(klas, cancellationToken);
 
         return new KlasWeergave(
-            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
+            klas.Id,
+            klas.SchooljaarId,
+            klas.Naam,
+            klas.Leerjaar,
+            aantal,
+            JaarFasenVoor(klas),
+            klas.Jaarfase,
+            MogelijkeJaarfasenVoor(klas),
+            Leerling.KlasKanLeerlingenHebben(klas.Jaarfase));
     }
 
     /// <inheritdoc />
@@ -109,7 +118,8 @@ public sealed class KlasBeheerService : IKlasBeheerService
             AantalSubthemas: 0,
             JaarFasenVoor(klas),
             klas.Jaarfase,
-            MogelijkeJaarfasenVoor(klas));
+            MogelijkeJaarfasenVoor(klas),
+            Leerling.KlasKanLeerlingenHebben(klas.Jaarfase));
     }
 
     /// <inheritdoc />
@@ -145,7 +155,15 @@ public sealed class KlasBeheerService : IKlasBeheerService
         var aantal = await TelSubthemasAsync(klas, cancellationToken);
 
         return new KlasWeergave(
-            klas.Id, klas.SchooljaarId, klas.Naam, klas.Leerjaar, aantal, JaarFasenVoor(klas), klas.Jaarfase, MogelijkeJaarfasenVoor(klas));
+            klas.Id,
+            klas.SchooljaarId,
+            klas.Naam,
+            klas.Leerjaar,
+            aantal,
+            JaarFasenVoor(klas),
+            klas.Jaarfase,
+            MogelijkeJaarfasenVoor(klas),
+            Leerling.KlasKanLeerlingenHebben(klas.Jaarfase));
     }
 
     /// <inheritdoc />

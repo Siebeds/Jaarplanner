@@ -141,6 +141,12 @@ public sealed record KlasCreatie(string Naam, string? Jaarfase = null);
 /// field that cannot be corrected.
 /// </para>
 /// </param>
+/// <param name="KanLeerlingenHebben">
+/// Whether this klas can hold children in the ontwikkelingsrapport (FB-001, ADR-0035 D9), as
+/// <c>Leerling.KlasKanLeerlingenHebben</c> answers it through the one klas→leeftijden mapping (Art. VI.1). From the
+/// server for the same reason as <paramref name="JaarFasen"/>: a screen that compared the jaarfase to "K3" itself would
+/// be a second answer, and directie's graadklas decision (Art. XIV) would then have to change two places.
+/// </param>
 public sealed record KlasWeergave(
     Guid Id,
     Guid SchooljaarId,
@@ -149,4 +155,5 @@ public sealed record KlasWeergave(
     int AantalSubthemas,
     IReadOnlyList<string> JaarFasen,
     string? Jaarfase = null,
-    IReadOnlyList<string>? MogelijkeJaarfasen = null);
+    IReadOnlyList<string>? MogelijkeJaarfasen = null,
+    bool KanLeerlingenHebben = false);

@@ -24,6 +24,7 @@ const K3: KlasWeergave = {
   jaarFasen: ["K3"],
   jaarfase: "K3",
   mogelijkeJaarfasen: [],
+  kanLeerlingenHebben: true,
 };
 const OUD: KlasWeergave = { ...K3, id: "klas-oud", naam: "Oude klas", jaarFasen: ["JK", "K2", "K3"], jaarfase: null };
 

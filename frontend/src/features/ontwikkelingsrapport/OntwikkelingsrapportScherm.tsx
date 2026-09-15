@@ -25,9 +25,11 @@ import {
 /**
  * The K3 ontwikkelingsrapport (FR-13, ADR-0035), starting where it starts: the children of the klas (FR-13.1, FB-001).
  *
- * **Only a klas that grants K3, and only one this gebruiker may read.** The klas choice here lists exactly those: a
- * klas whose stated jaarfase is K3 (the fact the server's one klas→leeftijden mapping reads, D9), that the gebruiker
- * teaches or, for directie, any. It is not the header's Klaskiezer, which lists every klas, because a colleague's klas
+ * **Only a klas that can hold children, and only one this gebruiker may read.** The klas choice here lists exactly
+ * those: a klas the server says can hold children (`kanLeerlingenHebben`, from its one klas→leeftijden mapping, D9),
+ * that the gebruiker teaches or, for directie, any. The screen never compares a jaarfase to "K3" itself: that would be
+ * a second mapping, and directie's graadklas decision (Art. XIV) would then have to change this file as well
+ * (antagonist round 1). It is not the header's Klaskiezer, which lists every klas, because a colleague's klas
  * here would be a klas whose children this person may not see (R17). Choosing one still sets the app's one klas, so
  * the agenda opens on it afterwards.
  *
@@ -46,7 +48,7 @@ export function OntwikkelingsrapportScherm() {
   const { schooljaar, schooljaren, klassen, klasId, laadt, kiesSchooljaar, kiesKlas } = useActieveSelectie();
 
   const rapportklassen = klassen.filter(
-    (kandidaat) => kandidaat.jaarfase === "K3" && mag.ontwikkelingsrapportLezen(kandidaat.id),
+    (kandidaat) => kandidaat.kanLeerlingenHebben && mag.ontwikkelingsrapportLezen(kandidaat.id),
   );
   const klas = rapportklassen.find((kandidaat) => kandidaat.id === klasId) ?? rapportklassen[0] ?? null;
   const toegang = bekend && mag.ontwikkelingsrapportZien;
@@ -101,9 +103,12 @@ export function OntwikkelingsrapportScherm() {
           </p>
         ) : !mag.ontwikkelingsrapportZien ? (
           <Leegte titel={t("ontwikkelingsrapport.geenToegang")} />
+        ) : schooljaren.length === 0 ? (
+          // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).
+          <Leegte titel={t("ontwikkelingsrapport.geenSchooljaar")} />
         ) : klas === null ? (
-          // Directie reads every K3 klas, so for directie an empty list means the year has none. Anyone else reads only
-          // their own, so for them it means they teach none this year.
+          // Directie reads every klas that can hold children, so for directie an empty list means the year has none.
+          // Anyone else reads only their own, so for them it means they teach none this year.
           <Leegte
             titel={mag.beheer ? t("ontwikkelingsrapport.geenK3Klas") : t("ontwikkelingsrapport.geenEigenK3Klas")}
           />
@@ -203,7 +208,7 @@ function Kinderen({ klas }: { klas: KlasWeergave }) {
 
       <Bevestiging
         open={teVerwijderen !== null}
-        titel={t("klasbeheer.verwijderTitel", { naam: teVerwijderen ? naamVan(teVerwijderen) : "" })}
+        titel={t("ontwikkelingsrapport.verwijderTitel", { naam: teVerwijderen ? naamVan(teVerwijderen) : "" })}
         gevolg={t("ontwikkelingsrapport.verwijderGevolg")}
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijder.isPending}
@@ -430,7 +435,10 @@ function naamVan(kind: LeerlingInvoer): string {
   return `${kind.voornaam} ${kind.achternaam}`;
 }
 
-/** The first empty name, with the sentence for it; the server refuses the same two in the same words. */
+/**
+ * The first empty name, with the sentence for it. The server refuses an empty name too, with its own sentence, which
+ * `foutzin` shows if one ever gets past this check.
+ */
 function ontbrekend(invoer: LeerlingInvoer): { veld: "voornaam" | "achternaam"; zin: Vertaalsleutel } | null {
   if (invoer.voornaam === "") return { veld: "voornaam", zin: "ontwikkelingsrapport.voornaamVerplicht" };
   if (invoer.achternaam === "") return { veld: "achternaam", zin: "ontwikkelingsrapport.achternaamVerplicht" };

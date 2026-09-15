@@ -20,8 +20,11 @@ public sealed class LeerlingBeheerService : ILeerlingBeheerService
     /// <summary>D9's refusal, for directie: a leerkracht of a klas that grants no K3 is refused by the matrix first.</summary>
     internal const string GeenK3Klas = "Alleen een klas van de derde kleuter kan kinderen hebben.";
 
-    /// <summary>The child is gone. The same sentence as the route's own lookup (<c>RechtOpAttribute</c>).</summary>
-    internal const string KindBestaatNiet = "Dit kind bestaat niet meer. Iemand anders heeft het verwijderd.";
+    /// <summary>
+    /// No child has this id. The same sentence as the route's own lookup (<c>RechtOpAttribute</c>), and no more than
+    /// the lookup proves: not that the child existed, nor who removed it.
+    /// </summary>
+    internal const string KindBestaatNiet = "Dit kind is niet gevonden.";
 
     /// <summary>
     /// Voornaam first, then achternaam, as a teacher calls the roll. Ignoring case, and invariant rather than ordinal so

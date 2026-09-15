@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 11:25
+bijgewerkt: 2026-09-15 13:59
 opgepakt-door: kindvolg
 branch: ticket/FB-001-kinderen-van-de-klas
 pr:
@@ -101,3 +101,4 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 - 2026-09-15 10:48 · kindvolg · klaar-voor-bouw → in-uitvoering: opgepakt; ontwerpkeuzes eigenaar: laptop boven Instellingen, telefoon via Instellingen
 - 2026-09-15 11:06 · kindvolg · frontend gebouwd: tab onderaan de zijbalk boven Instellingen (vanaf lg), op de telefoon via Instellingen, scherm Kinderen per K3-klas; pnpm lint groen, schermtests groen; backend loopt nog
 - 2026-09-15 11:25 · kindvolg · browsercheck geslaagd op 1440 en 390 (K3-leerkracht tijdens en na het schooljaar, K2-leerkracht, directie); '0 kinderen' naast de lege lijst weggehaald; verslag in backlog/worklogs/FB-001/browsercheck.md
+- 2026-09-15 13:59 · kindvolg · antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 9 MINOR, 1 vraag); de eigenaar besliste de vraag (een K3-klas met kinderen blijft K3); fixronde 1 geschreven: klassenlijst zegt zelf welke klas kinderen kan hebben, zinnen scherper, no-store getest; verslag in backlog/worklogs/FB-001/

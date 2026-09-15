@@ -320,6 +320,12 @@ export interface KlasWeergave {
    * answer to "what may this class teach?". Same rule as `jaarFasen` itself.
    */
   mogelijkeJaarfasen: string[];
+  /**
+   * Whether this klas can hold children in the ontwikkelingsrapport (FB-001, ADR-0035 D9). From the server's one
+   * klas→leeftijden mapping, for the same reason as the two above: comparing `jaarfase` to "K3" here would be a
+   * second mapping, and directie's graadklas decision (Art. XIV) would then have to change it too.
+   */
+  kanLeerlingenHebben: boolean;
 }
 
 export interface SchooljaarSamenvatting {

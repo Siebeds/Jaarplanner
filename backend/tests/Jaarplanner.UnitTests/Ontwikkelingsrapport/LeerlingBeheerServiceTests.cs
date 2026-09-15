@@ -123,7 +123,7 @@ public sealed class LeerlingBeheerServiceTests
             () => Service().WijzigLeerlingAsync(onbekend, new LeerlingInvoer("Fien", "Proefmans")));
         var verwijder = await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => Service().VerwijderLeerlingAsync(onbekend));
 
-        Assert.Equal("Dit kind bestaat niet meer. Iemand anders heeft het verwijderd.", wijzig.Message);
+        Assert.Equal("Dit kind is niet gevonden.", wijzig.Message);
         Assert.Equal(wijzig.Message, verwijder.Message);
     }
 

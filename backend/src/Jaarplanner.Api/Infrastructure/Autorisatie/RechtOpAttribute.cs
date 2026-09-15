@@ -147,8 +147,10 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
                     ?? throw new SchoolcontentNietGevondenFout($"Klas {id} is niet gevonden.");
             case Rechtbron.Leerling:
                 // Names no child and no id: this sentence can reach a log (ADR-0035 §3.8), and it is the service's own.
+                // It says only what the lookup proves: no child has this id. Not that one existed, nor who removed it
+                // (antagonist round 1: it also answers an id that never existed, and a caller with no right at all).
                 return await bronnen.VoorLeerlingAsync(id, cancellationToken)
-                    ?? throw new SchoolcontentNietGevondenFout("Dit kind bestaat niet meer. Iemand anders heeft het verwijderd.");
+                    ?? throw new SchoolcontentNietGevondenFout("Dit kind is niet gevonden.");
             default:
                 throw new InvalidOperationException($"No resource resolver for {Bron}.");
         }

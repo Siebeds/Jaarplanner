@@ -25,8 +25,17 @@ const K3: KlasWeergave = {
   jaarFasen: ["K3"],
   jaarfase: "K3",
   mogelijkeJaarfasen: [],
+  kanLeerlingenHebben: true,
 };
-const L1: KlasWeergave = { ...K3, id: "klas-l1", naam: "L1 blauw", leerjaar: 1, jaarFasen: ["L1"], jaarfase: "L1" };
+const L1: KlasWeergave = {
+  ...K3,
+  id: "klas-l1",
+  naam: "L1 blauw",
+  leerjaar: 1,
+  jaarFasen: ["L1"],
+  jaarfase: "L1",
+  kanLeerlingenHebben: false,
+};
 
 vi.mock("../../lib/selectie", () => ({
   useActieveSelectie: () => ({
