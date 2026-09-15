@@ -363,4 +363,51 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
       within(hoofdstuk("Bladeren", false)).getByText(t("thema.subdoelenInActiviteit", { aantal: 2, totaal: 3 })),
     ).toBeInTheDocument();
   });
+
+  it("geeft een subthema zonder subdoelen de gewone telling", async () => {
+    toon(DIRECTIE, { thema: { ...THEMA, subthemas: [{ ...THEMA.subthemas[0], subdoelen: [] }] } });
+    await screen.findByText("Bladeren");
+
+    expect(
+      within(hoofdstuk("Bladeren", false)).getByText(telWoord(0, "thema.eenSubdoel", "thema.subdoelen")),
+    ).toBeInTheDocument();
+  });
+
+  it("toont geen groep andere doelen wanneer elk doel van een activiteit een subdoel is", async () => {
+    const alleenSubdoelen: ThemaWeergave = {
+      ...MET_DRAGERS,
+      subthemas: [
+        {
+          ...MET_DRAGERS.subthemas[0],
+          activiteiten: [activiteit("a-1", "Tellen met bladeren", { doelkoppelingen: [koppeling("WIS-1")] })],
+        },
+      ],
+    };
+    toon(DIRECTIE, { thema: alleenSubdoelen });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    // The chapter is open: its subdoelen are on screen, and only the other group is absent.
+    expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: t("thema.andereDoelenTitel") })).toBeNull();
+  });
+
+  it("markeert een subdoel dat nog niet beslist is niet als gat", async () => {
+    const voorgesteld: ThemaWeergave = {
+      ...MET_DRAGERS,
+      subthemas: [
+        {
+          ...MET_DRAGERS.subthemas[0],
+          subdoelen: [{ id: "sd-v", leeftijd: "K3", koppeling: { ...koppeling("WIS-7"), status: "Voorgesteld" } }],
+          activiteiten: [],
+        },
+      ],
+    };
+    toon(DIRECTIE, { thema: voorgesteld });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    const regel = rij(groep(t("thema.subdoelenTitel")), "WIS-7");
+    expect(regel).not.toHaveTextContent(t("thema.nogGeenActiviteit"));
+  });
 });

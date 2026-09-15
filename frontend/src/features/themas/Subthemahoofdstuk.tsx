@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
@@ -140,20 +140,20 @@ export function Subthemahoofdstuk({
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
             {/* The subdoelen figure says how many of them an activiteit already works out (FB-010), so a fold can be
-                scanned for the chapter that still needs one. It counts decided subdoelen only; with none of those it
-                falls back to the plain count, which is all the data then supports. On a phone the facts stack: wrapped
-                on one line they left a separator dangling at the end of each row. */}
+                scanned for the chapter that still needs one. It counts the same subdoelen the chapter lists; with none it
+                is the plain count. On a phone the facts stack: wrapped on one line they left a separator dangling at the
+                end of each row. */}
             {open ? null : (
               <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
                 <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
                 <Punt />
                 <span>
-                  {balans.beslisteSubdoelen > 0
+                  {subthema.subdoelen.length > 0
                     ? t(
-                        balans.beslisteSubdoelen === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
-                        { aantal: balans.beslistInActiviteit, totaal: balans.beslisteSubdoelen },
+                        subthema.subdoelen.length === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
+                        { aantal: balans.subdoelenInActiviteit, totaal: subthema.subdoelen.length },
                       )
-                    : telWoord(subthema.subdoelen.length, "thema.eenSubdoel", "thema.subdoelen")}
+                    : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
                 </span>
                 {zonderDoel > 0 ? (
                   <>
@@ -256,12 +256,10 @@ export function Subthemahoofdstuk({
                     ontkoppelBezig={koppelenBezig}
                     onOntkoppel={magSubdoelen ? () => onOntkoppelSubdoel(subdoel.id) : undefined}
                     onToon={onToonDoel}
-                    voet={
-                      <Subdoelvoet
-                        dragers={balans.dragersPerSubdoel.get(subdoel.id) ?? []}
-                        beslist={beslist(subdoel.koppeling.status)}
-                      />
-                    }
+                    voet={subdoelvoet(
+                      balans.dragersPerSubdoel.get(subdoel.id) ?? [],
+                      beslist(subdoel.koppeling.status),
+                    )}
                   />
                 ))}
               </Doellijst>
@@ -436,10 +434,12 @@ function Punt() {
  * The gap is marked only on a decided subdoel, since an undecided one is not yet a subdoel to work out. It uses the
  * shape and hue of `Doelmerk`'s "Nog geen doel": the same kind of knelpunt, one level up, so a teacher meets one sign
  * for "nothing works this out yet". The hollow ring and the words carry it without the colour (Art. XII).
+ *
+ * Returns nothing at all when there is nothing to say, so the row adds no empty line under its text.
  */
-function Subdoelvoet({ dragers, beslist }: { dragers: Drager[]; beslist: boolean }) {
+function subdoelvoet(dragers: Drager[], isBeslist: boolean): ReactNode {
   if (dragers.length > 0) return <Dragers dragers={dragers} />;
-  if (!beslist) return null;
+  if (!isBeslist) return undefined;
 
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-attentie/40 bg-attentie-zacht py-0.5 pl-1.5 pr-2 text-[0.6875rem] font-medium text-attentie-inkt">

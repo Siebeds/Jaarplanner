@@ -42,8 +42,7 @@ describe("subthemabalans (FB-010)", () => {
       subthema([koppeling("A"), koppeling("B"), koppeling("C")], [activiteit("1", koppeling("A")), activiteit("2", koppeling("B"))]),
     );
 
-    expect(balans.beslisteSubdoelen).toBe(3);
-    expect(balans.beslistInActiviteit).toBe(2);
+    expect(balans.subdoelenInActiviteit).toBe(2);
     expect(balans.dragersPerSubdoel.get("sd-1")).toEqual([{ id: "1", naam: "Activiteit 1" }]);
     expect(balans.dragersPerSubdoel.get("sd-3")).toEqual([]);
   });
@@ -68,19 +67,18 @@ describe("subthemabalans (FB-010)", () => {
       subthema([koppeling("A")], [activiteit("1", koppeling("A", "Voorgesteld"), koppeling("X", "Geweigerd"))]),
     );
 
-    expect(balans.beslistInActiviteit).toBe(0);
+    expect(balans.subdoelenInActiviteit).toBe(0);
     expect(balans.dragersPerSubdoel.get("sd-1")).toEqual([]);
     expect(balans.andereDoelen).toEqual([]);
   });
 
-  it("telt een subdoel dat nog niet beslist is niet mee in het cijfer", () => {
+  it("telt elk subdoel dat de lijst toont, ook een dat nog niet beslist is", () => {
     const balans = subthemabalans(
       subthema([koppeling("A"), koppeling("B", "Voorgesteld")], [activiteit("1", koppeling("B"))]),
     );
 
-    expect(balans.beslisteSubdoelen).toBe(1);
-    expect(balans.beslistInActiviteit).toBe(0);
-    // Its dragers are still listed, and the activiteit's doel is not "another" doel: it is on the subthema's list.
+    expect(balans.subdoelenInActiviteit).toBe(1);
+    // Its dragers are listed, and the activiteit's doel is not "another" doel: it is on the subthema's list.
     expect(balans.dragersPerSubdoel.get("sd-2")).toEqual([{ id: "1", naam: "Activiteit 1" }]);
     expect(balans.andereDoelen).toEqual([]);
   });
