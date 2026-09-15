@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 19:17
+bijgewerkt: 2026-09-15 19:39
 opgepakt-door: kindtekening
 branch: ticket/FB-005-kindtekening
-pr:
+pr: 96
 geblokkeerd:
 fr: [FR-13.5]
 ---
@@ -81,3 +81,4 @@ Geen.
 - 2026-09-15 18:56 · kindtekening · backend en scherm gebouwd: SkiaSharp 4.152.0 (MIT) herwerkt elk beeld, grenzen 20 MB en 40 miljoen pixels, bewaard op hoogstens 2400 px; backend- en frontendtests groen
 - 2026-09-15 19:03 · kindtekening · criteria afgevinkt: integratie-, unit- en schermtests groen; in de browser gecontroleerd (GPS-foto rechtop en zonder metagegevens, PDF en 21 MB geweigerd, 401 zonder sessie, vervangen, verwijderen, 390px)
 - 2026-09-15 19:17 · kindtekening · in-uitvoering → te-testen: gebouwd: tekening per rapport, herwerkt zonder metagegevens (SkiaSharp), 20 MB en 40 miljoen pixels; antagonist COMPLIANT, drie kleine punten opgelost; tests, lint en format groen; open vraag voor de eigenaar over de licenties in de native bibliotheek (werklog)
+- 2026-09-15 19:39 · kindtekening · PR #96
