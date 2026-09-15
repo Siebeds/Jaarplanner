@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Navigatie } from "./Navigatie";
@@ -99,6 +99,25 @@ describe("Navigatie", () => {
     expect(schakelaar()).not.toBeInTheDocument();
     // Nor the algemene fiches' switch: every fiche in that list plans one too.
     expect(screen.queryByRole("button", { name: t("hoekenpaneel.algemeenTitel") })).not.toBeInTheDocument();
+    // The activiteiten's is there (owner, 2026-09-15, FB-017): its cards are read-only for whoever may not plan.
+    expect(screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") })).toBeInTheDocument();
+  });
+
+  it("sluit een fichelijst voor wie de klas niet mag plannen, maar laat de activiteiten open", async () => {
+    // The selection answers, with no klas chosen, so the rights and the klas are both known and say no.
+    vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200 })));
+    const kijker = ikMet({ leerkrachtLeeftijden: ["K3"] });
+
+    useHoekenpaneel.setState({ open: true, soort: "activiteiten" });
+    const { unmount } = rendermetPad("/agenda", kijker);
+    await screen.findByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
+    await new Promise((r) => setTimeout(r, 50));
+    expect(useHoekenpaneel.getState().open).toBe(true);
+    unmount();
+
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    rendermetPad("/agenda", kijker);
+    await waitFor(() => expect(useHoekenpaneel.getState().open).toBe(false));
   });
 
   it("biedt hem niet aan zolang niet bekend is wie er aangemeld is", () => {
@@ -139,6 +158,19 @@ describe("Navigatie", () => {
     expect(useHoekenpaneel.getState().open).toBe(false);
   });
 
+  it("heeft een derde schakelaar voor de activiteiten, in dezelfde kolom (FB-017)", () => {
+    rendermetPad("/agenda", DIRECTIE);
+    const activiteiten = () => screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
+
+    fireEvent.click(activiteiten());
+    expect(useHoekenpaneel.getState()).toMatchObject({ open: true, soort: "activiteiten" });
+    expect(activiteiten()).toHaveAttribute("aria-pressed", "true");
+    expect(schakelaar()).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(activiteiten());
+    expect(useHoekenpaneel.getState().open).toBe(false);
+  });
+
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {
     useHoekenpaneel.setState({ open: true });
     rendermetPad("/agenda", DIRECTIE);
@@ -162,5 +194,48 @@ describe("Navigatie", () => {
   it("staat voluit op een scherm zonder tweede kolom", () => {
     rendermetPad("/doelen");
     expect(screen.getByRole("link", { name: t("navigatie.doelen") })).not.toHaveAttribute("title");
+  });
+});
+
+/*
+  The Ontwikkelingsrapport destination (FB-001; ADR-0035 R32, D17, D18). Where it sits (bottom of the sidebar, above
+  Instellingen, `lg` only) is a browser pass: jsdom sees no `hidden lg:block`. What is testable is who is offered it.
+*/
+describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
+  const rapport = () => screen.queryByRole("link", { name: t("navigatie.ontwikkelingsrapport") });
+
+  it("staat er voor een leerkracht van een K3-klas, en leidt naar het rapport", () => {
+    rendermetPad("/doelen", ikMet({ eigenKlasIds: ["k3"], rapportklasIds: ["k3"], lopendeRapportklasIds: ["k3"] }));
+    expect(rapport()).toHaveAttribute("href", "/ontwikkelingsrapport");
+  });
+
+  it("staat er ook na het schooljaar, want die leerkracht leest de rapporten nog (R26)", () => {
+    rendermetPad("/doelen", ikMet({ eigenKlasIds: ["k3"], rapportklasIds: ["k3"] }));
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er voor directie", () => {
+    rendermetPad("/doelen", DIRECTIE);
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K3", () => {
+    rendermetPad(
+      "/doelen",
+      ikMet({
+        eigenKlasIds: ["k2"],
+        leerkrachtLeeftijden: ["K2"],
+        heeftThemabeheer: true,
+        hoofdleerkrachtLeeftijden: ["K3"],
+      }),
+    );
+    expect(rapport()).not.toBeInTheDocument();
+    // Instellingen is still there, so the report's absence did not take the group with it.
+    expect(screen.getByRole("link", { name: t("navigatie.instellingen") })).toBeInTheDocument();
+  });
+
+  it("staat er niet zolang niet bekend is wie er aangemeld is", () => {
+    rendermetPad("/doelen");
+    expect(rapport()).not.toBeInTheDocument();
   });
 });

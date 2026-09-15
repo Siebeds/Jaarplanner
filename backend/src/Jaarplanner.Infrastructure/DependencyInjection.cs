@@ -4,6 +4,7 @@ using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Dekking;
+using Jaarplanner.Application.Ontwikkelingsrapport;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.AlgemeneFiches;
 using Jaarplanner.Application.Planning.Beheer;
@@ -19,6 +20,7 @@ using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.Dekking;
 using Jaarplanner.Infrastructure.Demo;
+using Jaarplanner.Infrastructure.Ontwikkelingsrapport;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
@@ -166,12 +168,20 @@ public static class DependencyInjection
         services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();
         services.AddScoped<IAlgemeneFicheplaatsingService, AlgemeneFicheplaatsingService>();
 
+        // The children of a K3 klas, for the ontwikkelingsrapport (FB-001, Art. VI.7). Beside the other per-klas beheer
+        // services because a leerling hangs off a klas directly; it is the one pupil-data service, and it logs nothing.
+        services.AddScoped<ILeerlingBeheerService, LeerlingBeheerService>();
+
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —
         // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update
         // or delete: editing vakanties reshapes the derived grid and must raise a review signal rather than move a
         // placement (directie 2026-07-28); full schooljaarbeheer stays E6-03.
         services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
+
+        // The school's hours per weekday (FB-023, ADR-0038). Beside the schooljaar because it is the same kind of fact,
+        // school organisation that directie sets, and apart from it because it belongs to the school and not to a year.
+        services.AddScoped<ISchoolurenService, SchoolurenService>();
 
         // The derived planning grid as a read model (E3-06). The calendar must render EMPTY periods and the
         // vacation gaps between them, which JaarplanWeergave cannot express — it returns placements only. Kept

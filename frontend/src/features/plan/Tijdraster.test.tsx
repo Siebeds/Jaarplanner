@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
+import type { Schooldaguren } from "../schooluren/gegevens";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
 import { t } from "../../i18n";
 
@@ -69,6 +70,7 @@ function toon(
     onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
     onOpenFiche?: (plaatsingId: string, momentId: string) => void;
     magPlannen?: boolean;
+    schooluren?: Schooldaguren[];
   } = {},
 ) {
   return render(
@@ -79,6 +81,7 @@ function toon(
         fichemomenten={opties.fichemomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
+        schooluren={opties.schooluren}
         magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
         onOpen={opties.onOpen ?? (() => {})}
@@ -100,7 +103,7 @@ describe("Tijdraster", () => {
   it("tekent een blok op de hoogte van zijn eigen uren", () => {
     toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])]);
 
-    const knop = screen.getByRole("button", { name: /kringgesprek/ });
+    const knop = screen.getByRole("button", { name: /^kringgesprek/ });
     // The grid draws from midnight and an hour is 56 pixels: 9:00 is nine hours down, and 50 minutes is 46.67 of them.
     expect(plaats(knop).top).toBe(`${540 * (56 / 60)}px`);
     expect(plaats(knop).height).toBe(`${50 * (56 / 60)}px`);
@@ -123,11 +126,11 @@ describe("Tijdraster", () => {
       ]),
     ]);
 
-    expect(plaats(screen.getByRole("button", { name: /kring/ })).width).toBe("50%");
-    expect(plaats(screen.getByRole("button", { name: /lezen/ })).left).toBe("50%");
+    expect(plaats(screen.getByRole("button", { name: /^kring/ })).width).toBe("50%");
+    expect(plaats(screen.getByRole("button", { name: /^lezen/ })).left).toBe("50%");
     // The afternoon touches neither of them, so it gets its column back: drawing it half width would make the day
     // look busier than it is.
-    expect(plaats(screen.getByRole("button", { name: /turnen/ })).width).toBe("100%");
+    expect(plaats(screen.getByRole("button", { name: /^turnen/ })).width).toBe("100%");
   });
 
   it("vraagt om een activiteit op het uur waar de leerkracht drukt", () => {
@@ -171,7 +174,7 @@ describe("Tijdraster", () => {
     ).not.toBeInTheDocument();
     expect(container.querySelector("[data-rekgreep]")).toBeNull();
 
-    const blok = screen.getByRole("button", { name: /kringgesprek/ });
+    const blok = screen.getByRole("button", { name: /^kringgesprek/ });
     expect(blok).not.toHaveAttribute("aria-roledescription");
     fireEvent.click(blok);
     expect(geopend).toHaveBeenCalled();
@@ -184,7 +187,7 @@ describe("Tijdraster", () => {
       screen.getByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) }),
     ).toBeInTheDocument();
     expect(container.querySelector("[data-rekgreep]")).not.toBeNull();
-    expect(screen.getByRole("button", { name: /kringgesprek/ })).toHaveAttribute("aria-roledescription");
+    expect(screen.getByRole("button", { name: /^kringgesprek/ })).toHaveAttribute("aria-roledescription");
   });
 
   // An algemene fiche is the klas's planning too (ADR-0030 §3, R7): a reader opens it and cannot drag it (merge of
@@ -193,7 +196,7 @@ describe("Tijdraster", () => {
     const geopend = vi.fn();
     toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend, magPlannen: false });
 
-    const knop = screen.getByRole("button", { name: /turnen/ });
+    const knop = screen.getByRole("button", { name: /^turnen/ });
     expect(knop).not.toHaveAttribute("aria-roledescription");
     fireEvent.click(knop);
     expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
@@ -203,7 +206,7 @@ describe("Tijdraster", () => {
     const geopend = vi.fn();
     toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend });
 
-    const knop = screen.getByRole("button", { name: /turnen/ });
+    const knop = screen.getByRole("button", { name: /^turnen/ });
     expect(plaats(knop).top).toBe(`${630 * (56 / 60)}px`);
     // Told apart from a hoek and an activiteit by a word, not by a hue (Art. XII): an hour is tall enough to print it.
     expect(screen.getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
@@ -232,12 +235,78 @@ describe("Tijdraster", () => {
     expect(screen.getByText("0:00")).toBeInTheDocument();
     expect(screen.getByText("23:00")).toBeInTheDocument();
     expect(screen.queryByText("24:00")).not.toBeInTheDocument();
-    expect(plaats(screen.getByRole("button", { name: /uitstap/ })).top).toBe(`${390 * (56 / 60)}px`);
+    expect(plaats(screen.getByRole("button", { name: /^uitstap/ })).top).toBe(`${390 * (56 / 60)}px`);
 
     // And what a teacher sees of it before scrolling is 7:00 downwards. jsdom lays nothing out, so the scroll
     // position is the only half of "default 7u-18u" it can check; the height of the window is the browser pass.
     const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
     expect(scroller.scrollTop).toBe(7 * 56);
+  });
+
+  /*
+    FB-023: the school's hours. 2026-09-08, the day these tests draw, is a Tuesday, so ISO weekday 2.
+  */
+  const dinsdag: Schooldaguren = {
+    weekdag: 2,
+    begin: "08:30:00",
+    einde: "15:30:00",
+    middagpauzeBegin: "12:00:00",
+    middagpauzeEinde: "13:15:00",
+  };
+
+  it("opent op het hele uur waarin de schooldag begint", () => {
+    const { container } = toon([dag()], { schooluren: [dinsdag] });
+
+    const scroller = container.querySelector(".overflow-y-auto") as HTMLElement;
+    expect(scroller.scrollTop).toBe(8 * 56);
+  });
+
+  it("arceert de uren buiten de schooldag en de middagpauze, en zegt met woorden wat ze zijn", () => {
+    const { container } = toon([dag()], { schooluren: [dinsdag] });
+
+    // Never the pattern alone (Art. XII): each stretch says what it is.
+    expect(screen.getByText("begin 8:30")).toBeInTheDocument();
+    expect(screen.getByText(t("schooluren.pauzeRaster"))).toBeInTheDocument();
+    expect(screen.getByText("einde 15:30")).toBeInTheDocument();
+
+    const strook = (soort: string) => container.querySelector(`[data-schooltijd="${soort}"]`) as HTMLElement;
+    expect(strook("voor").style.top).toBe("0px");
+    expect(strook("voor").style.height).toBe(`${510 * (56 / 60)}px`);
+    expect(strook("pauze").style.top).toBe(`${720 * (56 / 60)}px`);
+    expect(strook("pauze").style.height).toBe(`${75 * (56 / 60)}px`);
+    expect(strook("na").style.top).toBe(`${930 * (56 / 60)}px`);
+  });
+
+  it("laat elk uur planbaar, ook op de arcering", () => {
+    const gevraagd = vi.fn();
+    toon([dag()], { schooluren: [dinsdag], onVoegToe: gevraagd });
+
+    // The hatch is under the empty column's button and catches nothing, so the invitation is still there.
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(t("periode.voegToeOp", { dag: "dinsdag 8 september" })) }));
+    expect(gevraagd).toHaveBeenCalled();
+  });
+
+  it("arceert niets op een weekdag zonder uren of op een gesloten dag, en opent dan op zeven uur", () => {
+    const woensdagUren = { ...dinsdag, weekdag: 3 };
+    const { container, unmount } = toon([dag()], { schooluren: [woensdagUren] });
+    expect(container.querySelector("[data-schooltijd]")).toBeNull();
+    expect((container.querySelector(".overflow-y-auto") as HTMLElement).scrollTop).toBe(7 * 56);
+    unmount();
+
+    const gesloten = toon([dag([], { isLesdag: false, sluitingsnaam: "Herfstvakantie" })], { schooluren: [dinsdag] });
+    expect(gesloten.container.querySelector("[data-schooltijd]")).toBeNull();
+  });
+
+  it("zegt de schooluren in de dagkop voor wie de arcering niet ziet", () => {
+    toon([dag()], { schooluren: [dinsdag] });
+
+    // The day view has no heading button, so the clause is spoken after the date as sr-only text.
+    expect(
+      screen.getByText((_, el) =>
+        el?.classList.contains("sr-only") === true &&
+        (el.textContent ?? "").includes(", schooldag van 8:30 tot 15:30, middagpauze van 12:00 tot 13:15"),
+      ),
+    ).toBeInTheDocument();
   });
 
   /**
@@ -254,6 +323,7 @@ describe("Tijdraster", () => {
     magPlannen: true,
     hoekmomenten: [],
     fichemomenten: [],
+    schooluren: undefined,
     reeksenPerDag: new Map([
       ["2026-09-10", lopendeReeks],
       ["2026-09-11", lopendeReeks],
@@ -333,6 +403,7 @@ describe("Tijdraster", () => {
           fichemomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
+          schooluren={undefined}
           magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}
@@ -601,5 +672,57 @@ describe("Tijdraster onder de muis", () => {
     // Into the next quarter, and the stretch appears: both quarters, 9:00 to 9:30.
     fireEvent.pointerMove(kolom(), { clientY: y(9 * 60 + 20), buttons: 1 });
     expect(screen.getByText(toonBereik(9 * 60, 9 * 60 + 30))).toBeInTheDocument();
+  });
+});
+
+/**
+ * The info icon on a block (FB-018): the goals one press away, without opening the block or moving it. From half an hour
+ * up, where the 24-pixel target fits; below that the sheet the block opens lists them. The goals themselves, their text
+ * and the detail they open, are `Doelinfo.test.tsx`; these blocks carry none, so no row needs a query client.
+ */
+describe("Tijdraster: doelen van een blok", () => {
+  const info = (naam: string) => ({ name: t("doelinfo.open", { naam }) });
+
+  it("zet een info-icoon op een blok van een half uur of langer, en niet op een korter", () => {
+    toon([dag([activiteit("kringgesprek", "09:00:00", "09:30:00"), activiteit("kort", "11:00:00", "11:20:00")])]);
+
+    expect(screen.getByRole("button", info("kringgesprek"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", info("kort"))).not.toBeInTheDocument();
+  });
+
+  it("toont de doelen zonder het blok te openen", () => {
+    const geopend = vi.fn();
+    toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], { onOpen: geopend });
+
+    fireEvent.click(screen.getByRole("button", info("kringgesprek")));
+
+    const venster = screen.getByRole("dialog", { name: "kringgesprek" });
+    expect(venster).toHaveTextContent(t("doelinfo.geen"));
+    expect(geopend).not.toHaveBeenCalled();
+  });
+
+  it("geeft ook wie de klas alleen mag bekijken het icoon, want doelen lezen is geen plannen", () => {
+    toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], { magPlannen: false });
+
+    expect(screen.getByRole("button", info("kringgesprek"))).toBeInTheDocument();
+  });
+
+  it("zet geen icoon op een hoek, want een hoek heeft nog geen doelen", () => {
+    toon([dag()], { hoekmomenten: [hoek("13:30:00", "14:20:00")] });
+
+    expect(screen.queryByRole("button", info("bouwhoek"))).not.toBeInTheDocument();
+  });
+
+  it("zet een icoon op een algemene fiche met haar doelen, en niet zolang die doelen er niet zijn", () => {
+    toon([dag()], {
+      fichemomenten: [
+        fiche("10:30:00", "11:30:00"),
+        { ...fiche("13:00:00", "14:00:00"), momentId: "fm-2", naam: "onthaal", doelen: [] },
+      ],
+    });
+
+    // Without the fiche list there is nothing true to say about its goals, so there is no icon to say it.
+    expect(screen.queryByRole("button", info("turnen"))).not.toBeInTheDocument();
+    expect(screen.getByRole("button", info("onthaal"))).toBeInTheDocument();
   });
 });

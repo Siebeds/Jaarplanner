@@ -1,9 +1,9 @@
 import { useLayoutEffect, type ReactNode, type SVGProps } from "react";
 import { NavLink, useMatch } from "react-router-dom";
-import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
+import { BESTEMMINGEN, ONDERAAN, RAPPORT, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
-import { IcoonFiche, IcoonHoek } from "../components/Iconen";
+import { IcoonActiviteit, IcoonFiche, IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useActieveSelectie } from "../lib/selectie";
 import { useRechten } from "../lib/rechten";
@@ -44,6 +44,12 @@ import { cn } from "../lib/cn";
  * no bottom to push it to, so it is simply the last tab: five fit, and the alternative is a
  * destination that exists on a laptop and not on a phone.
  *
+ * **The ontwikkelingsrapport has a section of its own at the bottom, above Instellingen** (FR-13.10; ADR-0035 R32,
+ * D17; owner, 2026-09-15). It takes the push to the bottom edge and a rule of its own, so Instellingen follows it over
+ * a second rule and stays last before the sign-in row. It is `lg` only: on a phone the bar keeps its five tabs and the
+ * report is reached from the top of Instellingen (`Instellingenindeling`), which is the owner's choice over a sixth tab.
+ * It shows only to whoever may read a report (D18), since for anyone else it would lead to nothing.
+ *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
  * it never takes the accent bar that stands for `aria-current`, and its open state is a neutral tint
@@ -54,17 +60,20 @@ import { cn } from "../lib/cn";
  *
  * **Since 2026-09-14 there are two switches** (owner: "ik wil twee secties in het meest linkse side bar, hoekenfiches
  * en algemene fiches, niet gegroepeerd als fiches"): Hoekenfiches and Algemene fiches, one under the other over the
- * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`.
+ * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`. A third, Activiteiten, joined
+ * them on 2026-09-15 (FB-017), for the same column. It is the one switch for everyone who reads the agenda: whoever
+ * may not plan the klas gets its cards to read and nothing to plan with (owner, 2026-09-15).
  *
  * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the panel is
  * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
  * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
  * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
  *
- * **The switches are only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
- * the panel plans a hoek or an algemene fiche, and `Agendascherm` renders no panel for anyone else. For the same reason as the reset
- * above, the panel is closed once the rights and the klas are known and say no: a picker switched to a colleague's
- * klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders.
+ * **The fiche switches are only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
+ * the panel plans a hoek or an algemene fiche, and `Hoekenpaneel` draws neither list for anyone else. For the same reason as
+ * the reset above, a fiche panel is closed once the rights and the klas are known and say no: a picker switched to a
+ * colleague's klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders. An
+ * activiteiten panel stays open, since its cards are for everyone who reads the agenda.
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
@@ -75,6 +84,7 @@ export function Navigatie() {
   const { klasId, laadt: selectieLaadt } = useActieveSelectie();
   const { mag, laadt: rechtenLaden } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
+  const toonRapport = mag.ontwikkelingsrapportZien;
 
   /*
     The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
@@ -95,8 +105,9 @@ export function Navigatie() {
   */
   const magNiet = !rechtenLaden && !selectieLaadt && !magPlannen;
   useLayoutEffect(() => {
-    if ((!opAgenda || magNiet) && paneelOpen) zetPaneel(false);
-  }, [opAgenda, magNiet, paneelOpen, zetPaneel]);
+    // The activiteiten list stays for whoever may only read the klas (FB-017); the fiche lists do not.
+    if (paneelOpen && (!opAgenda || (magNiet && paneelSoort !== "activiteiten"))) zetPaneel(false);
+  }, [opAgenda, magNiet, paneelOpen, paneelSoort, zetPaneel]);
 
   return (
     <nav
@@ -136,23 +147,44 @@ export function Navigatie() {
 
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
             with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
-        {opAgenda && magPlannen ? (
+        {/* Once the rights are known, so the fiche switches do not appear above the activiteiten one a moment later. */}
+        {opAgenda && !rechtenLaden ? (
           <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-0.5 lg:border-t lg:border-lijn lg:pt-2">
+            {magPlannen ? (
+              <>
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.titel")}
+                  Icoon={IcoonHoek}
+                  aan={paneelOpen && paneelSoort === "hoeken"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("hoeken")}
+                />
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.algemeenTitel")}
+                  Icoon={IcoonFiche}
+                  aan={paneelOpen && paneelSoort === "algemeen"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("algemeen")}
+                />
+              </>
+            ) : null}
             <Paneelschakelaar
-              naam={t("hoekenpaneel.titel")}
-              Icoon={IcoonHoek}
-              aan={paneelOpen && paneelSoort === "hoeken"}
+              naam={t("hoekenpaneel.activiteitenTitel")}
+              Icoon={IcoonActiviteit}
+              aan={paneelOpen && paneelSoort === "activiteiten"}
               smal={smal}
-              onWissel={() => kiesPaneel("hoeken")}
-            />
-            <Paneelschakelaar
-              naam={t("hoekenpaneel.algemeenTitel")}
-              Icoon={IcoonFiche}
-              aan={paneelOpen && paneelSoort === "algemeen"}
-              smal={smal}
-              onWissel={() => kiesPaneel("algemeen")}
+              onWissel={() => kiesPaneel("activiteiten")}
             />
           </li>
+        ) : null}
+
+        {/* From `lg` only, and only for whoever may read a report: the phone keeps its five tabs. */}
+        {toonRapport ? (
+          <Tab
+            bestemming={RAPPORT}
+            smal={smal}
+            className="hidden lg:mt-auto lg:block lg:border-t lg:border-lijn lg:pt-2"
+          />
         ) : null}
 
         {ONDERAAN.map((bestemming, index) => (
@@ -160,9 +192,14 @@ export function Navigatie() {
             key={bestemming.pad}
             bestemming={bestemming}
             smal={smal}
-            // Only the first of the group takes the push and the rule, so a second settings
-            // destination would sit under this one instead of starting a third group.
-            className={index === 0 ? "lg:mt-auto lg:border-t lg:border-lijn lg:pt-2" : undefined}
+            // Only the first of the group takes the rule, so a second settings destination would sit under this one
+            // instead of starting a third group. It takes the push to the bottom edge too, unless the report above it
+            // already has it: then the two stand together at the bottom, each over its own rule.
+            className={
+              index === 0
+                ? cn(toonRapport ? "lg:mt-2" : "lg:mt-auto", "lg:border-t lg:border-lijn lg:pt-2")
+                : undefined
+            }
           />
         ))}
 

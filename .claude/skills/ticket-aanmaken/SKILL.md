@@ -29,11 +29,9 @@ CLI's commands and options are English.
 ## 1. Get to the right place
 
 - **FB:** `git switch main`, then `git pull --ff-only`. `git status` must be clean; if it is not, stop and ask what the
-  changes are. Never create an FB ticket on another branch. If you are in the shared checkout
-  `C:\source\Jaarplanner` while other sessions run, claim `maintree` first (groepschat skill); in the functional
-  architect's own clone this does not apply.
+  changes are. Never create an FB ticket on another branch.
 - **TB:** you must be on the work branch, never on `main`. No branch yet? Create it from an up-to-date `main` first
-  (a worktree when other sessions run, per the groepschat skill), for example `ticket/<korte-slug>`.
+  (in its own worktree under `.claude/worktrees/` when other sessions run), for example `ticket/<korte-slug>`.
 
 ## 2. Check that it does not exist already
 

@@ -16,11 +16,14 @@ import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
+import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import type { Agendadag } from "./roosterdagen";
+import type { Schooldaguren } from "../schooluren/gegevens";
+import { openingsminuut, urenOp } from "../schooluren/schooluren";
 import {
   DAGBEGIN,
   DAGEINDE,
@@ -53,8 +56,13 @@ export interface Hoekblokje {
 /**
  * One occurrence of a planned algemene fiche, in the same shape: a fiche moment is a row a teacher can move on its
  * own, exactly like a hoek's, and only the endpoint that saves it differs.
+ *
+ * Plus the fiche's goals, for the block's info icon (FB-018). Absent while the fiche list has not arrived, which draws
+ * no icon rather than one that would say the fiche has no goals.
  */
-export type Ficheblokje = Hoekblokje;
+export interface Ficheblokje extends Hoekblokje {
+  doelen?: readonly Infodoel[];
+}
 
 /** What a resize asks the screen to save. The three kinds live behind three endpoints; the grid knows which is which. */
 export type Tijddoel =
@@ -69,6 +77,11 @@ type Rasterblok = Blokje & {
   onder: string;
   doel: Tijddoel;
   activiteit?: GeplandeActiviteit;
+  /**
+   * The goals the block works on, for its info icon (FB-018). Absent for a kind that has none to show: a hoek, until
+   * FB-019 gives hoeken goals of their own.
+   */
+  doelen?: readonly Infodoel[];
 };
 
 /**
@@ -101,6 +114,7 @@ export function Tijdraster({
   fichemomenten,
   reeksenPerDag,
   vakken,
+  schooluren,
   magPlannen,
   onVoegToe,
   onOpen,
@@ -119,6 +133,11 @@ export function Tijdraster({
   reeksenPerDag: Map<string, Subthemareeks[]>;
   /** The themaperiode each day sits in, for the same band. */
   vakken: readonly Themavak[];
+  /**
+   * The school's hours per weekday (FB-023), or undefined while they load or when none are set. Required, like
+   * `magPlannen`, so a caller cannot forget them: a grid without them opens at 7:00 and shades nothing.
+   */
+  schooluren: readonly Schooldaguren[] | undefined;
   /** Whether this gebruiker may change this klas's planning (`mag.klasplanningBewerken`). Required, so no caller forgets. */
   magPlannen: boolean;
   /**
@@ -141,8 +160,9 @@ export function Tijdraster({
   );
   // The whole day, always. What a teacher sees of it is the scroller below; see `HEEL_DE_DAG`. `bereik` is an alias,
   // not a seam: it is kept because it is the origin every position in the grid is measured from, and because
-  // `tijdsleep` reads it back off the DOM. A school that later configures its own hours would have to narrow this AND
-  // restore the two range guards on the now-line, which are deleted below precisely because nothing can fall outside
+  // `tijdsleep` reads it back off the DOM. The school's own hours (FB-023) deliberately do NOT narrow it: they move
+  // where the grid opens and shade what lies outside them, and a teacher can still plan the 7:45 opvang. Narrowing it
+  // would also mean restoring the two range guards on the now-line, which are gone because nothing can fall outside
   // a whole day.
   const bereik = HEEL_DE_DAG;
   const hoogte = (bereik.tot - bereik.van) * PX_PER_MINUUT;
@@ -151,13 +171,19 @@ export function Tijdraster({
   const vandaagIso = vandaag();
   const toontVandaag = dagen.some((dag) => dag.datum === vandaagIso);
 
-  // WHERE THE GRID OPENS. Scrolled to 7:00, in a box exactly the 7:00-18:00 the owner asked to see by default. The
-  // hours outside it are drawn and a scroll away, which is what makes an 8:00 opvang or a 19:30 oudercontact
-  // plannable without a control that has to be found first.
+  // WHERE THE GRID OPENS. At the whole hour in which the earliest school day on screen begins (FB-023: "openen op het
+  // begin van de schooldag"), so a day starting at 8:30 opens at 8:00 with its first half hour shaded above the start.
+  // Without school hours, at 7:00, in a box exactly the 7:00-18:00 the owner asked to see by default. The hours outside
+  // the box are drawn and a scroll away, which is what makes an early opvang or a 19:30 oudercontact plannable without
+  // a control that has to be found first.
+  //
+  // It moves the scroll only when the opening hour itself changes: when the hours first arrive, or when another week
+  // starts earlier. A refetch that answers the same hours does not pull a teacher back from where she scrolled.
+  const opening = openingsminuut(schooluren, dagen) ?? DAGBEGIN;
   const scrollvak = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
-    if (scrollvak.current) scrollvak.current.scrollTop = (DAGBEGIN - bereik.van) * PX_PER_MINUUT;
-  }, [bereik.van]);
+    if (scrollvak.current) scrollvak.current.scrollTop = (opening - bereik.van) * PX_PER_MINUUT;
+  }, [opening, bereik.van]);
 
   return (
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
@@ -181,6 +207,7 @@ export function Tijdraster({
               isVandaag={dag.datum === vandaagIso}
               reeksen={dag.buitenSchooljaar ? LEEG : (reeksenPerDag.get(dag.datum) ?? LEEG)}
               vak={dag.buitenSchooljaar ? undefined : vakOpDag(vakken, dag.datum)}
+              uren={dag.isLesdag ? urenOp(schooluren, dag.datum) : undefined}
               // A band drops its label only when a day ON THIS ROW is carrying it, and the day that carries it is
               // Monday (`naamOpDezeDag`, and the same rule in `Themastroken`). So the question is whether a Monday is
               // rendered, not how many days are: the day view is one non-Monday, and the phone week view is three
@@ -253,6 +280,7 @@ export function Tijdraster({
                 key={dag.datum}
                 dag={dag}
                 blokken={blokken.filter((blok) => blok.datum === dag.datum)}
+                uren={dag.isLesdag ? urenOp(schooluren, dag.datum) : undefined}
                 bereik={bereik}
                 magPlannen={magPlannen}
                 onVoegToe={onVoegToe}
@@ -282,6 +310,65 @@ export function Tijdraster({
 const LEEG: Subthemareeks[] = [];
 
 /**
+ * The stretches of one day outside the school day and in its middagpauze, hatched (FB-023, ADR-0038).
+ *
+ * **A hatch in ink, not a hue** (Art. XII): the accent is rationed to five uses and this is none of them. It is also a
+ * different mark from the flat tint of a closed day, so "no school today" and "no school at this hour" do not read as
+ * one thing. Each stretch carries its own words (begin 8:30, middagpauze, einde 15:30), so the meaning never rests on
+ * the pattern alone.
+ *
+ * **It never catches a click.** Every hour stays plannable (ADR-0028), so a 7:45 opvang is placed on the hatch exactly
+ * as on any other hour.
+ */
+function Schooltijdlagen({ uren, rasterVan }: { uren: Schooldaguren; rasterVan: number }) {
+  const begin = minuten(uren.begin);
+  const einde = minuten(uren.einde);
+  const pauze =
+    uren.middagpauzeBegin && uren.middagpauzeEinde
+      ? { begin: minuten(uren.middagpauzeBegin), einde: minuten(uren.middagpauzeEinde) }
+      : null;
+  const strook = (van: number, tot: number) => ({
+    top: (van - rasterVan) * PX_PER_MINUUT,
+    height: (tot - van) * PX_PER_MINUUT,
+    backgroundImage: ARCERING,
+  });
+
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+      {/* The label sits at the bottom of the morning stretch and the top of the others: against the edge where the
+          school day starts or stops, which is the part of each stretch a teacher actually has on screen. */}
+      <div data-schooltijd="voor" className={STROOK} style={strook(HEEL_DE_DAG.van, begin)}>
+        <span className={cn(STROOKLABEL, "bottom-0.5")}>{t("schooluren.beginRaster", { tijd: toonTijd(begin) })}</span>
+      </div>
+      {pauze ? (
+        <div data-schooltijd="pauze" className={STROOK} style={strook(pauze.begin, pauze.einde)}>
+          <span className={cn(STROOKLABEL, "top-0.5")}>{t("schooluren.pauzeRaster")}</span>
+        </div>
+      ) : null}
+      <div data-schooltijd="na" className={STROOK} style={strook(einde, HEEL_DE_DAG.tot)}>
+        <span className={cn(STROOKLABEL, "top-0.5")}>{t("schooluren.eindeRaster", { tijd: toonTijd(einde) })}</span>
+      </div>
+    </div>
+  );
+}
+
+const STROOK = "absolute inset-x-0 overflow-hidden bg-vlak/70";
+// On a solid chip of the ground colour, so the words are measured against one colour and not against the hatch.
+const STROOKLABEL =
+  "absolute left-1 max-w-[calc(100%-0.5rem)] truncate rounded-sm bg-vlak px-1 text-[0.625rem] leading-4 text-inkt-zacht";
+// Hairlines in the rule colour, so the pattern follows the theme: the tokens are redefined for dark mode.
+const ARCERING = "repeating-linear-gradient(135deg, var(--color-lijn-sterk) 0 1px, transparent 1px 7px)";
+
+/** The school's hours as the day heading says them to a screen reader, as a clause after the date. */
+function urenZin(uren: Schooldaguren | undefined): string {
+  if (!uren) return "";
+  const dag = t("schooluren.dagZin", { begin: toonTijd(uren.begin), einde: toonTijd(uren.einde) });
+  return uren.middagpauzeBegin && uren.middagpauzeEinde
+    ? dag + t("schooluren.pauzeZin", { begin: toonTijd(uren.middagpauzeBegin), einde: toonTijd(uren.middagpauzeEinde) })
+    : dag;
+}
+
+/**
  * The hour every row starts on, computed once: the range is a constant, so a `useMemo` per grid would be ceremony.
  *
  * The last boundary gets neither a line nor a label. A line on the very last pixel is the card's own bottom edge, and
@@ -308,6 +395,8 @@ function bouwBlokken(
         onder: activiteit.subthemaNaam,
         doel: { soort: "activiteit", plaatsingId: activiteit.plaatsingId },
         activiteit,
+        // Codes only: the weekplanning row carries no goal text, and the info window fetches it when it opens.
+        doelen: activiteit.doelcodes.map((code) => ({ code })),
       });
     }
   }
@@ -336,6 +425,7 @@ function bouwBlokken(
       naam: moment.naam,
       onder: t("tijdraster.algemeneFiche"),
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
+      doelen: moment.doelen,
     });
   }
 
@@ -365,6 +455,7 @@ function Dagkop({
   isVandaag,
   reeksen,
   vak,
+  uren,
   altijdNaam,
   onKiesDag,
 }: {
@@ -372,6 +463,8 @@ function Dagkop({
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
   vak: Themavak | undefined;
+  /** The school's hours on this day, for the sentence a screen reader hears; the hatch itself is `aria-hidden`. */
+  uren: Schooldaguren | undefined;
   /** No row of days to carry a name instead, so the bands say what they are on this day too. */
   altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
@@ -395,7 +488,7 @@ function Dagkop({
   // date, and the day view has no button at all. That was survivable while the bands were blank; now that they carry
   // the only copy of "which subthema runs today", it is not. Only on a teaching day, which is the only day they are
   // drawn on.
-  const watErLooptZin = dag.isLesdag ? themaZin(vak) + subthemaZin(reeksen) : "";
+  const watErLooptZin = dag.isLesdag ? themaZin(vak) + subthemaZin(reeksen) + urenZin(uren) : "";
 
   return (
     <div
@@ -444,6 +537,7 @@ function Dagkop({
 function Dagkolom({
   dag,
   blokken,
+  uren,
   bereik,
   magPlannen,
   onVoegToe,
@@ -454,6 +548,8 @@ function Dagkolom({
 }: {
   dag: Agendadag;
   blokken: Rasterblok[];
+  /** The school's hours on this day, or undefined on a closed day or a weekday without hours: then nothing is shaded. */
+  uren: Schooldaguren | undefined;
   bereik: { van: number; tot: number };
   magPlannen: boolean;
   onVoegToe: (datum: string, begin: number, einde?: number) => void;
@@ -484,6 +580,9 @@ function Dagkolom({
 
           Only for whoever may plan this klas; for anyone else the empty hours are just empty. Every gesture of
           `useLegePlek` is on this button, so without it no quarter lights up and no stretch is drawn either. */}
+      {/* THE HOURS OUTSIDE THE SCHOOL DAY, before the button in the DOM so the transparent button lies over them and
+          a press on the hatch still plans (FB-023). */}
+      {uren ? <Schooltijdlagen uren={uren} rasterVan={bereik.van} /> : null}
       {dag.isLesdag && magPlannen ? (
         <button
           type="button"
@@ -802,6 +901,14 @@ function Blok({
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
+  /*
+    THE INFO ICON FROM HALF AN HOUR UP (FB-018). A half-hour block is 28 pixels tall, which holds the 24-pixel target
+    WCAG 2.2 AA asks for; a quarter is 14, which holds nothing a finger can hit. Below half an hour the goals are in the
+    sheet the block opens, which lists them for an activiteit and an algemene fiche alike, so no block's goals are out of
+    reach. Measured on the saved length, not on an edge being pulled, so the icon does not blink in and out mid-resize.
+  */
+  const infodoelen = blok.doelen && blok.einde - blok.begin >= 30 ? blok.doelen : null;
+
   return (
     <div
       // Above its neighbours while its edge is being pulled, so the end-time tag hanging below it is never covered.
@@ -844,18 +951,29 @@ function Blok({
           className={cn(
             "block h-full w-full px-2 py-1 text-left",
             magPlannen && "cursor-grab touch-none active:cursor-grabbing",
+            // Room for the info icon in the corner, so the name and the time stop before it instead of under it.
+            infodoelen && "pr-7",
           )}
         >
-          <span className="flex min-w-0 items-baseline gap-1">
+          {/* Clipped at its own edge, so in a block narrowed by a neighbour the time stops before the info icon rather
+              than running under it (seen in the FB-018 browser pass). */}
+          <span className="flex min-w-0 items-baseline gap-1 overflow-hidden">
             {blok.doel.soort === "hoek" ? (
               <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
             <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
-            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped. */}
+            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped.
+                Not on a phone when the block also carries the info icon: a column there is about a hundred pixels,
+                and the name was left one letter wide. What that costs is the start time for a sighted phone user: the
+                hour gutter prints whole hours only, so a block at 9:15 shows its quarter nowhere on the grid. Accepted,
+                because a name one letter wide says nothing at all; the time stays in the block's accessible name and
+                in the sheet it opens. */}
             {toont === "tijd" ? (
-              <span className="mono shrink-0 text-[0.625rem] text-inkt-zacht">{toonTijd(blok.begin)}</span>
+              <span className={cn("mono shrink-0 text-[0.625rem] text-inkt-zacht", infodoelen && "max-sm:hidden")}>
+                {toonTijd(blok.begin)}
+              </span>
             ) : null}
           </span>
 
@@ -868,6 +986,16 @@ function Blok({
             </>
           ) : null}
         </button>
+
+        {/* A sibling of the block's button, above it in the corner: pressing it opens the goals and nothing else. For
+            everyone who can see the block, since reading what a block works on is not planning.
+
+            ABOVE THE RESIZE GRIP (z-20 over its z-10). On a half-hour block the grip's 8-pixel strip runs across the
+            bottom of the 24-pixel icon, and as the later sibling at the same z it painted over it and took the press:
+            the icon's lower third started a resize instead (antagonist, FB-018). The grip keeps the rest of the edge. */}
+        {infodoelen ? (
+          <Doelinfo naam={blok.naam} doelen={infodoelen} className="absolute right-0.5 top-0.5 z-20" />
+        ) : null}
 
         {magPlannen ? (
           <Rekgreep

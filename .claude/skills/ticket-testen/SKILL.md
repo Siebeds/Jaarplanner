@@ -22,8 +22,8 @@ git pull --ff-only
 git status   # must be clean
 ```
 
-In the shared checkout `C:\source\Jaarplanner`, with other sessions running, claim `maintree` first (groepschat
-skill) before the switch and the pull.
+Other sessions work in their own worktrees, so this does not disturb them; only a dev server running from
+`C:\source\Jaarplanner` itself sees the change.
 
 ## 2. Pick a ticket
 

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
-/** Which list the agenda's side panel shows: the hoekenfiches, or the algemene fiches. */
-export type Paneelsoort = "hoeken" | "algemeen";
+/** Which list the agenda's side panel shows: the hoekenfiches, the algemene fiches, or the activiteiten (FB-017). */
+export type Paneelsoort = "hoeken" | "algemeen" | "activiteiten";
 
 interface HoekenpaneelState {
   open: boolean;
@@ -17,6 +17,25 @@ interface HoekenpaneelState {
    * the other switch while the panel is open swaps the list without closing it first.
    */
   kies: (soort: Paneelsoort) => void;
+  /**
+   * The subthema the activiteiten list shows because she chose it, or null to follow the subthema running in the week
+   * on screen (FB-017). Here rather than in the list, because on a phone the list is a sheet that closes when she taps
+   * a card, and the choice has to be there when she opens it again.
+   *
+   * **It holds only for the klas and the week she chose it in.** Another week or another klas opens on its own running
+   * subthema again: a choice that followed her across the year would stop the list from ever meaning "this week"
+   * (antagonist FB-017, finding 3), and a parallel klas of the same leeftijd shares the subthema's, so the klas alone
+   * would not end it.
+   */
+  subthemaKeuze: Subthemakeuze | null;
+  kiesSubthema: (keuze: Subthemakeuze | null) => void;
+}
+
+/** A subthema chosen in the activiteiten list, with the klas and the week (its Monday) it was chosen for. */
+export interface Subthemakeuze {
+  subthemaId: string;
+  klasId: string;
+  week: string;
 }
 
 /**
@@ -45,4 +64,6 @@ export const useHoekenpaneel = create<HoekenpaneelState>((set) => ({
   soort: "hoeken",
   zet: (open) => set({ open }),
   kies: (soort) => set((s) => (s.open && s.soort === soort ? { open: false } : { open: true, soort })),
+  subthemaKeuze: null,
+  kiesSubthema: (subthemaKeuze) => set({ subthemaKeuze }),
 }));

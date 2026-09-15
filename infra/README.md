@@ -109,10 +109,10 @@ pnpm. Run the commands from the repo root.
 - A new migration: run `migrate-db.ps1` **before** deploying the code that needs it.
 - Agent sessions deploy with the skill [`deploy-demo`](../.claude/skills/deploy-demo/SKILL.md), which adds the checks
   before and after and two shell traps of the owner's PC. This README wins where the two disagree.
-- While other sessions may be running, every write to the demo first takes the groepschat claim `deploy-azure-demo`
-  ([`groepschat`](../.claude/skills/groepschat/SKILL.md)), so no two of them run against the demo at once. That
-  includes starting, stopping or restarting the app or the database (see *Costs* below), and so `deploy-app.ps1`,
-  `migrate-db.ps1` and `seed-demo.ps1`.
+- While other sessions may be running, every write to the demo first takes the lock `deploy-azure-demo`, a file in
+  `C:\source\Jaarplanner\.claude\coordination\claims\` created atomically (the `deploy-demo` skill, step 1), so no two
+  of them run against the demo at once. That includes starting, stopping or restarting the app or the database (see
+  *Costs* below), and so `deploy-app.ps1`, `migrate-db.ps1` and `seed-demo.ps1`.
 
 ## Demo data
 

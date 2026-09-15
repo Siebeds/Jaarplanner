@@ -85,6 +85,22 @@ export function IcoonFiche(props: IconProps) {
 }
 
 /**
+ * Activiteit: one sheet of the thema's stack (FB-017).
+ *
+ * `IcoonThemas` draws a thema as stacked sheets, a stack of subthema's and activiteiten, so one activiteit is one of
+ * those sheets, lying on its own with a line of what it holds. It stands beside the hoek and the algemene fiche in the
+ * side panel's switches, where the three need to be told apart without a hue.
+ */
+export function IcoonActiviteit(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M4 12 12 8l8 4-8 4z" />
+      <path d="M10 12h4" />
+    </Icoon>
+  );
+}
+
+/**
  * Instellingen: two rails with a knob on each, not a cog.
  *
  * A cog says "machinery", and nothing behind this destination is machinery: it is where the school
@@ -120,6 +136,23 @@ export function IcoonDekking(props: IconProps) {
       <path d="M5.5 19.5V13" strokeWidth={2.4} />
       <path d="M12 19.5V6.5" strokeWidth={2.4} />
       <path d="M18.5 19.5v-4" strokeWidth={2.4} />
+    </Icoon>
+  );
+}
+
+/**
+ * Ontwikkelingsrapport: a sheet with a star on it.
+ *
+ * The star is what the report is made of: a child is rated on each rapportdoel with a star from the one K3 scale
+ * (ADR-0035 R5). A sheet alone would be any document, and a face or a child would put a pupil where this app draws
+ * only the work about one.
+ */
+export function IcoonRapport(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <rect x="5" y="3" width="14" height="18" rx="2.5" />
+      <path d="M12 6.8 13.06 9.54 15.99 9.7 13.71 11.56 14.47 14.4 12 12.8 9.53 14.4 10.29 11.56 8.01 9.7 10.94 9.54z" />
+      <path d="M9 17.5h6" />
     </Icoon>
   );
 }
@@ -255,6 +288,22 @@ export function IcoonGreep(props: IconProps) {
   return (
     <Icoon {...props}>
       <path d="M5 9.5h14M5 14.5h14" />
+    </Icoon>
+  );
+}
+
+/**
+ * Info: a circle with an i, the mark a teacher already reads as "tell me more about this" (FB-018).
+ *
+ * In the agenda it opens what a block or a fiche works on, its goals, without opening the thing itself. Not the Doelen
+ * target: that one is a destination in the navigation, and this goes nowhere.
+ */
+export function IcoonInfo(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="7.9" r="0.6" fill="currentColor" />
     </Icoon>
   );
 }

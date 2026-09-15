@@ -26,6 +26,13 @@ export interface Ik {
   leerkrachtLeeftijden: string[];
   /** "LK eigen": every klas they teach, whose planning they edit (R7, R15). */
   eigenKlasIds: string[];
+  /**
+   * "LK eigen" for the ontwikkelingsrapport (ADR-0030 footnote ⁶, ADR-0035): the klassen they teach that grant K3,
+   * whatever the schooljaar. They read these klassen's children and reports, also after the schooljaar (R26).
+   */
+  rapportklasIds: string[];
+  /** The same klassen while their schooljaar has not ended: here they also add, rename and delete children (R26). */
+  lopendeRapportklasIds: string[];
 }
 
 /**

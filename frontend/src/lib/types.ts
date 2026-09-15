@@ -320,6 +320,12 @@ export interface KlasWeergave {
    * answer to "what may this class teach?". Same rule as `jaarFasen` itself.
    */
   mogelijkeJaarfasen: string[];
+  /**
+   * Whether this klas can hold children in the ontwikkelingsrapport (FB-001, ADR-0035 D9). From the server's one
+   * klas→leeftijden mapping, for the same reason as the two above: comparing `jaarfase` to "K3" here would be a
+   * second mapping, and directie's graadklas decision (Art. XIV) would then have to change it too.
+   */
+  kanLeerlingenHebben: boolean;
 }
 
 export interface SchooljaarSamenvatting {
@@ -491,6 +497,18 @@ export interface LeeftijdDoelen {
 export interface ThemaDoelenoverzicht {
   themaId: string;
   leeftijden: LeeftijdDoelen[];
+}
+
+/**
+ * A subthema at an age this klas teaches, named with its thema (`GET /api/subthemas/voor-klas/{klasId}`). A thin row
+ * for a picker, not a subtree: the agenda's activiteiten list offers these and loads the chosen one's activiteiten.
+ */
+export interface SubthemaBestemming {
+  id: string;
+  naam: string;
+  leeftijd: string;
+  themaId: string;
+  themaNaam: string;
 }
 
 export interface ThemaBibliotheekItem {

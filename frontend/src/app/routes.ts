@@ -1,5 +1,5 @@
 import type { ComponentType, SVGProps } from "react";
-import { IcoonDekking, IcoonDoelen, IcoonInstellingen, IcoonPlan, IcoonThemas } from "../components/Iconen";
+import { IcoonDekking, IcoonDoelen, IcoonInstellingen, IcoonPlan, IcoonRapport, IcoonThemas } from "../components/Iconen";
 import type { Vertaalsleutel } from "../i18n";
 
 /**
@@ -36,6 +36,20 @@ export const BESTEMMINGEN: Bestemming[] = [
  * It is one destination today. It stays an array because a settings screen grows sections and the
  * second one to earn its own destination should not have to reshape the navigation to get there.
  */
+/**
+ * The K3 ontwikkelingsrapport (FR-13.10; ADR-0035 R32, D17, D18), a destination of its own.
+ *
+ * Not in `ONDERAAN`: that group means setting the school up, and every entry in it is a phone tab too. The report is
+ * neither. From `lg` it sits in a section of its own at the bottom of the sidebar, above Instellingen, and only for
+ * whoever may read a report; on a phone the bar keeps its five tabs and the report is reached from Instellingen
+ * (owner, 2026-09-15). `Navigatie` and `Instellingenindeling` render it, each for its own viewport.
+ */
+export const RAPPORT: Bestemming = {
+  pad: "/ontwikkelingsrapport",
+  labelSleutel: "navigatie.ontwikkelingsrapport",
+  Icoon: IcoonRapport,
+};
+
 export const ONDERAAN: Bestemming[] = [
   { pad: "/instellingen", labelSleutel: "navigatie.instellingen", Icoon: IcoonInstellingen },
 ];
