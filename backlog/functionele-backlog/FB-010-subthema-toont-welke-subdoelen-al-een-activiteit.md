@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:30
+bijgewerkt: 2026-09-15 16:15
 opgepakt-door: themapagina
 branch: ticket/FB-010-subdoelen-in-activiteiten
-pr:
+pr: 82
 geblokkeerd:
 fr: [FR-3.2, FR-4.4]
 ---
@@ -70,3 +70,4 @@ een activiteit wachten.
 - 2026-09-15 15:22 · themapagina · contrast gemeten in licht en donker thema (samengestelde achtergronden): merk 'Nog geen activiteit' 9,39 en 8,0:1, regel met activiteiten en samenvatting 6,51 en 7,58:1
 - 2026-09-15 15:30 · themapagina · antagonist: COMPLIANT; de drie kleine bevindingen opgelost: het cijfer telt nu dezelfde subdoelen als de lijst, nieuwe tests voor de gewone telling, een lege groep en een niet-beslist subdoel, commentaar en TB-017 bijgewerkt
 - 2026-09-15 15:30 · themapagina · in-uitvoering → te-testen: subthema toont per subdoel zijn activiteiten of 'Nog geen activiteit', de andere doelen apart, en 'x van y' ingeklapt; Vitest groen, lint groen, browser desktop en 390px, contrast licht en donker gemeten, antagonist COMPLIANT
+- 2026-09-15 16:15 · themapagina · PR #82
