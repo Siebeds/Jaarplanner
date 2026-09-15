@@ -345,6 +345,7 @@ export function Agendascherm() {
         begin: moment.begin,
         einde: moment.einde,
         doelen: doelenPerFiche.get(plaatsing.algemeneFicheId),
+        tekst: moment.tekst,
       })),
     );
   }, [fichePlaatsingen, algemeneFiches]);

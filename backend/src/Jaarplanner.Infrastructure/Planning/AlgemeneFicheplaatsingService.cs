@@ -158,13 +158,45 @@ public sealed class AlgemeneFicheplaatsingService : IAlgemeneFicheplaatsingServi
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var naam = await _db.AlgemeneFiches
+        return Weergave(plaatsing, await FicheNaamAsync(plaatsing, cancellationToken));
+    }
+
+    public async Task<AlgemeneFicheplaatsingWeergave> ZetMomenttekstAsync(
+        Guid plaatsingId,
+        Guid momentId,
+        string? tekst,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await _db.AlgemeneFicheplaatsingen
+            .Include(p => p.Momenten)
+            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {plaatsingId} is niet gevonden.");
+
+        bool gevonden;
+        try
+        {
+            gevonden = plaatsing.ZetTekst(momentId, tekst);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        if (!gevonden)
+        {
+            throw new SchoolcontentNietGevondenFout($"Moment {momentId} is niet gevonden.");
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Weergave(plaatsing, await FicheNaamAsync(plaatsing, cancellationToken));
+    }
+
+    private async Task<string> FicheNaamAsync(AlgemeneFicheplaatsing plaatsing, CancellationToken cancellationToken) =>
+        await _db.AlgemeneFiches
             .Where(f => f.Id == plaatsing.AlgemeneFicheId)
             .Select(f => f.Naam)
             .FirstOrDefaultAsync(cancellationToken) ?? string.Empty;
-
-        return Weergave(plaatsing, naam);
-    }
 
     /// <summary>
     /// ISO weekday numbers to <see cref="DayOfWeek"/>. An unknown number is refused here rather than cast, because a
@@ -196,6 +228,6 @@ public sealed class AlgemeneFicheplaatsingService : IAlgemeneFicheplaatsingServi
             plaatsing.Momenten
                 .OrderBy(m => m.Datum)
                 .ThenBy(m => m.Begin)
-                .Select(m => new AlgemeneFichemomentWeergave(m.Id, m.Datum, m.Begin, m.Einde))
+                .Select(m => new AlgemeneFichemomentWeergave(m.Id, m.Datum, m.Begin, m.Einde, m.Tekst))
                 .ToList());
 }
