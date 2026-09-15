@@ -469,8 +469,8 @@
  * border box, so the sweep shows only as the 2px edge. The sweep is drawn twice over, at double
  * width, which lets the running animation slide it by exactly one repeat and loop without a seam.
  *
- * It moves only in answer to a press: while a run is under way (`aria-busy`), the sweep travels
- * round the edge and a soft glow rises. That is the fourth motion in this app, and the one it
+ * It moves only in answer to a press: while a run is under way (`aria-busy`), the sweep slides
+ * sideways along the edge and a soft glow rises. That is the fourth motion in this app, and the one it
  * earns by being the only feedback during a wait of several seconds. The reduced-motion block
  * stops it dead on its last frame, which is the resting ring.
  *

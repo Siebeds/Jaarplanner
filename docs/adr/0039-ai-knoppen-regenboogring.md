@@ -32,8 +32,8 @@ voorgesteld, cyaan near the accent.
    sits on, in the light and the dark palette.
 3. **The stops may sit near signal hues because they never appear one at a time.** No signal in this app is a sweep,
    and none sits on the edge of a button, the same reasoning that let the K3 stars share hues (FB-002).
-4. **It moves only while a run is under way.** `bezig` sets `aria-busy`; the sweep then travels round the edge and a
-   soft glow rises, and a disabled busy button stays at full strength so the one sign of the run is not dimmed. At
+4. **It moves only while a run is under way.** `bezig` sets `aria-busy`; the sweep then slides sideways along the
+   edge and a soft glow rises, and a disabled busy button stays at full strength so the one sign of the run is not dimmed. At
    rest the ring is still; on hover the glow appears. Reduced motion stops the sweep.
 5. **What the AI returns keeps its own colours.** A suggested link is still shown in the suggestiestatus hues of
    Art. XII; the ring marks the control that asks, never the proposal.
@@ -60,6 +60,6 @@ is marked by its ring rather than by the accent fill. There is one more animatio
 | Claim | Where it is enforced |
 | --- | --- |
 | The ring never stands alone: the wand is always beside it (Art. XII) | `AiKnop` in `Knop.tsx`; `Knop.test.tsx` |
-| The AI buttons wear it, others do not | `PlanScherm.tsx`, `ThemadetailScherm.tsx`; `ThemadetailScherm.test.tsx`, `Knop.test.tsx` |
+| The AI buttons wear it, others do not | `ThemadetailScherm.tsx`: `ThemadetailScherm.test.tsx`; `PlanScherm.tsx` has no test file and was checked in a browser (TB-023's Werklog); an ordinary `Knop`: `Knop.test.tsx` |
 | Every stop has a dark value (ADR-0027) | `--color-ai-*` in both blocks of `index.css`; `weergave.test.ts` |
 | 3:1 for each stop, 4.5:1 for the label | measured in a browser, recorded in TB-023's Werklog |
