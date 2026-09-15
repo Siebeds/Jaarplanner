@@ -73,6 +73,14 @@ text (from line 1477), and IJG, libpng, zlib and FreeType's FTL. D16 names "MIT,
 package's own licence or everything compiled into the native library is the owner's reading. Practical exposure is low:
 a GIF is refused before any decoding, and the app is hosted, not distributed.
 
+## Merge with main before the PR
+
+`origin/main` had taken FB-020 with its migration `HoekverrijkingPerSubthemaperiode`. Merging second, this branch
+regenerated its own: the old `AddKindtekeningen` files were removed, the model snapshot taken from main, and
+`20260915172737_AddKindtekeningen` added again (it creates only `kindtekeningen`). After the merge: backend unit 1699
+passed and 4 skipped; integration 526 passed, 1 skipped and 1 failed, the same order-dependent FB-013 test as before;
+frontend 880/880; `pnpm lint` and `dotnet format --verify-no-changes` exit 0.
+
 ## Choices the owner may want to revisit
 
 - **The limits**: 20 MB, 40 megapixels, and scaling to 2400 px. A modern phone photo (12 to 50 MP) is accepted up to 40
