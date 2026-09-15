@@ -132,4 +132,14 @@ Decisions:
 The antagonist's follow-up belongs to another ticket and is passed to the owner, not built here. Five other screens say
 "no klassen" on an empty list without checking whether the load failed.
 
-**Gates (2026-09-15, fix round 3):** see the ticket Werklog line of this round.
+**Gates (2026-09-15, fix round 3):**
+
+- frontend oxlint and `tsc` clean;
+- vitest 66 files, 653 tests passed;
+- the antagonist reproduced both in round 4, and caught five mutations of the hook with the new test.
+
+## Fix round 4 (antagonist round 4, `antagonist-ronde-4.md`: 0 MAJOR, 1 MINOR)
+
+| Finding | Change |
+| --- | --- |
+| I | The doc comment of `fout` no longer claims `laadt` is false. It says the failed list reads as empty, that the other list may still be loading (`laadt` true), and that a screen must check `laadt` and then `fout` before trusting an empty list. Comment only; the screen already checks in that order. |

@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 14:32
+bijgewerkt: 2026-09-15 14:43
 opgepakt-door: kindvolg
 branch: ticket/FB-001-kinderen-van-de-klas
 pr:
@@ -104,3 +104,4 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 - 2026-09-15 13:59 · kindvolg · antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 9 MINOR, 1 vraag); de eigenaar besliste de vraag (een K3-klas met kinderen blijft K3); fixronde 1 geschreven: klassenlijst zegt zelf welke klas kinderen kan hebben, zinnen scherper, no-store getest; verslag in backlog/worklogs/FB-001/
 - 2026-09-15 14:20 · kindvolg · antagonist ronde 2: MAJOR opgelost, 5 MINOR; fixronde 2: test pint 'volg de server' in beide richtingen, een mislukte lading zegt niet meer 'geen schooljaar', contrast gemeten in licht en donker (alles haalt de norm), browseraddendum en controle-uitslagen vastgelegd; frontend 65 bestanden, 649 tests groen
 - 2026-09-15 14:32 · kindvolg · antagonist ronde 3: 3 MINOR; fixronde 3: 'fout' geldt alleen voor een mislukte eerste lading (een mislukte herlading houdt de lijsten en de getypte naam), zin zegt minder, eigen test voor de hook, verouderde regel in het browserverslag doorgehaald; oxlint en tsc schoon, 66 bestanden en 653 tests groen
+- 2026-09-15 14:43 · kindvolg · antagonist ronde 4: F, G en H opgelost (met mutatietests nagegaan), 1 MINOR in een codecommentaar; fixronde 4 past die ene bijzin aan (geen codewijziging)
