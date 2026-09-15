@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:48
+bijgewerkt: 2026-09-15 21:51
 opgepakt-door: rechtermuismenu
 branch: ticket/TB-030-agenda-rechtermuismenu
-pr:
+pr: 103
 geblokkeerd:
 fr: []
 ---
@@ -84,3 +84,4 @@ Geen.
 - 2026-09-15 21:40 · rechtermuismenu · Antagonist ronde 1: COMPLIANT, 4 MINOR; rechtensweep op Postgres 4/4 groen met de nieuwe routes; ADR-0024 kreeg een amendement voor het contextmenu
 - 2026-09-15 21:47 · rechtermuismenu · Criteria afgevinkt: browser (fiche, hoek, Shift+F10, bevestiging bij dagtekst en laatste dag, focus terug) en Vitest; activiteit alleen via Vitest, testdata had geen geplande activiteit
 - 2026-09-15 21:48 · rechtermuismenu · in-uitvoering → klaar: Klaar: menu op blokken (week, dag, maand), een dag weghalen voor fiche en hoek, bevestiging alleen bij verlies, focus terug naar het blok; gates groen, antagonist COMPLIANT, browserpas desktop en 390px
+- 2026-09-15 21:51 · rechtermuismenu · PR #103
