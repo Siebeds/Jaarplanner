@@ -2,10 +2,10 @@
 id: TB-007
 titel: Thema-matching stuurt niet langer de hele doelencatalogus mee
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 19:31
+bijgewerkt: 2026-09-15 19:38
 opgepakt-door: prompt-begrenzing
 branch: ticket/TB-007-prompt-begrenzing
 pr: 93
@@ -95,3 +95,5 @@ Beantwoord door de eigenaar op 2026-09-15:
 - 2026-09-15 19:23 · prompt-begrenzing · gates: 1701 unit + 55 integratietests op PostgreSQL (doelsuggesties, thema-opbouw, rechten, referentiedata), 878 frontend-tests, dotnet format en pnpm lint schoon; RechtenAfdwinging faalde één keer en slaagde daarna twee keer 28/28, de wisselvallige teardown van E7-14, los van dit ticket
 - 2026-09-15 19:26 · prompt-begrenzing · browsercontrole op een wegwerpkopie van de dev-databank (volledige Op.stap-import), 1440 en 390 px, licht en donker: thema met K3-subthema duidt alleen K3 aan en de server rekent 535 doelen, ongeveer 23.619 tokens (compacte vorm); thema zonder subthema's: knop uit met hint, na K2 aan, lege aanvraag geeft 400 'Kies eerst ...'; met een testgrens van 1.000 weigert de server met de Nederlandse melding; contrast tekst 5,51 tot 17,78:1, rand van de aangeduide leeftijd 4,21:1 (donker 6,84:1); geen overloop, geen consolefouten. Een geslaagde AI-aanroep is niet in de browser gedaan (Foundry geblokkeerd, zie TB-004); de resultaatregel is met Vitest gedekt
 - 2026-09-15 19:31 · prompt-begrenzing · PR #93
+- 2026-09-15 19:38 · prompt-begrenzing · antagonist: COMPLIANT, geen CRITICAL of MAJOR; de vijf MINOR's opgelost: de weigering zonder jargon en met een verwijzing naar wie de server beheert, oude leeftijdnotatie (3K) genormaliseerd, AsSplitQuery bij het laden van het thema, het statusgebied blijft staan voor schermlezers, en de grens wordt bij het opstarten gecontroleerd; gates opnieuw groen (1701 unit, 55 integratie op PostgreSQL, 39 frontend, format en lint)
+- 2026-09-15 19:38 · prompt-begrenzing · in-uitvoering → klaar: gebouwd: kandidaten per jaarfase, compacte doelenlijst, promptgrens van 50.000 tokens als instelling, leeftijdkeuze op het themascherm; alle gates groen, antagonist COMPLIANT

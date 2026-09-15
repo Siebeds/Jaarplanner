@@ -462,7 +462,7 @@ public sealed class DoelsuggestiePromptgrensTests : IClassFixture<DoelsuggestieP
 
         Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
         var probleem = await post.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("en de grens is 10.", probleem!.Detail, StringComparison.Ordinal);
+        Assert.Contains("de grens is 10)", probleem!.Detail, StringComparison.Ordinal);
         Assert.Equal(0, _factory.AantalAiAanroepen);
 
         var na = await client.GetFromJsonAsync<List<JsonElement>>($"/api/themas/{themaId}/doelsuggesties");

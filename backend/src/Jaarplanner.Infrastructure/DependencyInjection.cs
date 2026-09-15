@@ -212,8 +212,12 @@ public static class DependencyInjection
         services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
 
         // The ceiling on a prompt's size (TB-007), shared by the matching and the thema-opbouw assist. Bound from the
-        // `AiPrompt` section so it changes without a code change; a value under 1 fails on first use.
-        services.Configure<AiPromptOptions>(configuration.GetSection(AiPromptOptions.SectionName));
+        // `AiPrompt` section so it changes without a code change; a value under 1 stops the app at startup, where a
+        // deploy sees it, rather than on the first AI request.
+        services.AddOptions<AiPromptOptions>()
+            .Bind(configuration.GetSection(AiPromptOptions.SectionName))
+            .Validate(o => o.MaxTokens >= 1, "AiPrompt:MaxTokens must be at least 1.")
+            .ValidateOnStart();
         services.AddSingleton(sp => new Promptbegrenzing(
             sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiPromptOptions>>().Value.MaxTokens));
 

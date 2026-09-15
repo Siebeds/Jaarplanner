@@ -126,11 +126,12 @@ public sealed class DoelMatchingService
         return resultaat with { JaarFasen = jaarFasen };
     }
 
-    // The thema's own leeftijden, in the order of the vocabulary (JK first). A leeftijd outside the nine codes, which an
-    // older import can hold, matches no leerplandoel, so it is left out rather than sent as a filter that finds nothing.
+    // The thema's own leeftijden in the canonical form (3K is K3, as the wizard's step 6 reads it) and in the order of the
+    // vocabulary (JK first). A leeftijd that is still none of the nine codes, which an older import can hold, matches no
+    // leerplandoel, so it is left out rather than sent as a filter that finds nothing.
     private static IReadOnlyList<string> LeeftijdenVan(Thema thema)
     {
-        var leeftijden = thema.Subthemas.Select(s => s.Leeftijd.Trim()).ToHashSet(StringComparer.Ordinal);
+        var leeftijden = thema.Subthemas.Select(s => Jaarfasen.Normaliseer(s.Leeftijd)).ToHashSet(StringComparer.Ordinal);
         return Jaarfasen.Alle.Where(leeftijden.Contains).ToList();
     }
 

@@ -423,11 +423,11 @@ export function ThemadetailScherm() {
               </p>
             ) : null}
 
-            {genereer.isSuccess ? (
-              <p role="status" className="mt-3 text-meta text-inkt-zacht">
-                {resultaatZin(genereer.data)}
-              </p>
-            ) : null}
+            {/* Mounted before any run, with only its text swapped: several screen readers do not announce a live region
+                that appears with its content already in it (WCAG 4.1.3). */}
+            <p role="status" className={genereer.isSuccess ? "mt-3 text-meta text-inkt-zacht" : "sr-only"}>
+              {genereer.isSuccess ? resultaatZin(genereer.data) : null}
+            </p>
 
             {/* Open suggestions, when there are any. They keep a white surface where the rest of
                 this screen has none, and that is the point: everything else here is a fact to

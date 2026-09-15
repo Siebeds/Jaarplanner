@@ -64,14 +64,17 @@ public sealed class Promptbegrenzing
         var aantalLeeftijden = kandidaten.Select(d => d.JaarFase).Distinct(StringComparer.Ordinal).Count();
 
         var doelen = aantalDoelen == 1 ? "1 doel" : string.Create(Nederlands, $"{aantalDoelen:N0} doelen");
+        // "Beheer" is the directie's right in this app, and the ceiling is no in-app setting, so the one-leeftijd advice
+        // names whoever runs the server rather than sending directie to look for a setting it cannot find. The plain
+        // clause comes first; the token figures follow in brackets for whoever does change it.
         var raad = aantalLeeftijden > 1
             ? "Kies minder leeftijden."
-            : "Vraag wie de app beheert om de grens te verhogen.";
+            : "Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.";
 
         throw new PromptTeGrootFout(
             string.Create(
                 Nederlands,
-                $"Deze aanvraag is te groot voor de AI: {doelen}, ongeveer {tokens:N0} tokens, en de grens is {MaxTokens:N0}. {raad}"),
+                $"Deze aanvraag is te groot voor de AI: de tekst van {doelen} is meer dan één aanvraag mag bevatten (ongeveer {tokens:N0} tokens, de grens is {MaxTokens:N0}). {raad}"),
             tokens,
             MaxTokens);
     }

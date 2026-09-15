@@ -260,7 +260,8 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
   });
 
   it("toont de Nederlandse weigering van de server", async () => {
-    const weigering = "Deze aanvraag is te groot voor de AI: 1.742 doelen, ongeveer 91.000 tokens, en de grens is 50.000. Kies minder leeftijden.";
+    const weigering =
+      "Deze aanvraag is te groot voor de AI: de tekst van 1.742 doelen is meer dan één aanvraag mag bevatten (ongeveer 91.000 tokens, de grens is 50.000). Kies minder leeftijden.";
     toon(DIRECTIE, { genereer: () => json({ title: "Ongeldige aanvraag", detail: weigering }, 400) });
 
     await leeftijden();

@@ -48,7 +48,7 @@ public sealed class PromptbegrenzingTests
             () => new Promptbegrenzing(1_000).Bewaak(Request(4_001), [Doel("A", "K2"), Doel("B", "K3")]));
 
         Assert.Equal(
-            "Deze aanvraag is te groot voor de AI: 2 doelen, ongeveer 1.001 tokens, en de grens is 1.000. Kies minder leeftijden.",
+            "Deze aanvraag is te groot voor de AI: de tekst van 2 doelen is meer dan één aanvraag mag bevatten (ongeveer 1.001 tokens, de grens is 1.000). Kies minder leeftijden.",
             fout.Message);
         Assert.Equal(1_001, fout.GeschatteTokens);
         Assert.Equal(1_000, fout.MaxTokens);
@@ -62,7 +62,7 @@ public sealed class PromptbegrenzingTests
             () => new Promptbegrenzing(1_000).Bewaak(Request(4_001), [Doel("A", "K3")]));
 
         Assert.Equal(
-            "Deze aanvraag is te groot voor de AI: 1 doel, ongeveer 1.001 tokens, en de grens is 1.000. Vraag wie de app beheert om de grens te verhogen.",
+            "Deze aanvraag is te groot voor de AI: de tekst van 1 doel is meer dan één aanvraag mag bevatten (ongeveer 1.001 tokens, de grens is 1.000). Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.",
             fout.Message);
     }
 }
