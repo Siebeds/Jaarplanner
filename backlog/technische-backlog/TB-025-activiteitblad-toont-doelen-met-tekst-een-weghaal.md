@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:42
+bijgewerkt: 2026-09-15 18:04
 opgepakt-door: activiteit-bewerken
 branch: ticket/activiteit-bewerken
 pr:
@@ -39,15 +39,15 @@ Alleen frontend, geen API- of datamodelwijziging.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een activiteit met gekoppelde doelen, wanneer ik ze bewerk of bekijk, dan zie ik per doel de doeltekst,
+- [x] Gegeven een activiteit met gekoppelde doelen, wanneer ik ze bewerk of bekijk, dan zie ik per doel de doeltekst,
   niet enkel de code.
-- [ ] Gegeven dat blad, wanneer ik op een doel klik, dan opent het doeldetail, en bij sluiten sta ik terug in het
+- [x] Gegeven dat blad, wanneer ik op een doel klik, dan opent het doeldetail, en bij sluiten sta ik terug in het
   activiteitblad.
-- [ ] Gegeven een nieuwe activiteit waar ik een doel aan toevoeg, dan zie ik ook dat doel met zijn tekst.
-- [ ] Gegeven de duurkeuze, dan lees ik "1 lesuur", "2 lesuren", "3 lesuren", "4 lesuren", met eronder de minuten.
-- [ ] Gegeven een ingeplande activiteit in de agenda, dan staat rechts in "In de agenda" een vuilbakicoon dat de
+- [x] Gegeven een nieuwe activiteit waar ik een doel aan toevoeg, dan zie ik ook dat doel met zijn tekst.
+- [x] Gegeven de duurkeuze, dan lees ik "1 lesuur", "2 lesuren", "3 lesuren", "4 lesuren", met eronder de minuten.
+- [x] Gegeven een ingeplande activiteit in de agenda, dan staat rechts in "In de agenda" een vuilbakicoon dat de
   activiteit van die dag haalt, en er is geen knop "Haal weg" meer.
-- [ ] Gecontroleerd in de echte app, op desktop en op ongeveer 390 px.
+- [x] Gecontroleerd in de echte app, op desktop en op ongeveer 390 px.
 
 ## Buiten scope
 
@@ -61,3 +61,5 @@ Geen.
 ## Werklog
 
 - 2026-09-15 17:42 · activiteit-bewerken · aangemaakt (status in-uitvoering)
+- 2026-09-15 18:01 · activiteit-bewerken · Gebouwd en getest: Vitest 810/810, lint groen; browsercontrole op een wegwerpdatabase (1440 en 390 px): doelen met tekst en detail, duurknoppen in lesuren (2x2 op 390), vuilbakicoon in de dagsectie.
+- 2026-09-15 18:04 · activiteit-bewerken · Criterium 3 in de browser gecontroleerd: een nieuwe activiteit toont een gekozen doel met zijn tekst, zonder status tot Bewaren. Wegwerpdatabase en testservers opgeruimd.
