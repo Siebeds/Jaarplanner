@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:24
+bijgewerkt: 2026-09-15 14:29
 opgepakt-door: wensen-tickets
 branch: ticket/mcp-json-in-repo
-pr:
+pr: 74
 geblokkeerd:
 fr: []
 ---
@@ -49,3 +49,4 @@ bestand van `main` over te nemen. Ze is gelijk aan wat hier gecommit wordt, dus 
 
 - 2026-09-15 14:11 · wensen-tickets · aangemaakt (status in-uitvoering)
 - 2026-09-15 14:24 · wensen-tickets · in-uitvoering → klaar: .mcp.json toegevoegd, byte voor byte gelijk aan de kopie uit de gedeelde checkout (cmp), geen geheimen, versie vastgepind; geen broncode, dus geen tests of antagonist; criteria afgevinkt
+- 2026-09-15 14:29 · wensen-tickets · PR #74
