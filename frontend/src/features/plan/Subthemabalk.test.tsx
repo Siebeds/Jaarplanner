@@ -150,9 +150,10 @@ describe("Subthemabalk: de weg naar de themapagina met het toetsenbord (FB-037)"
     ]);
   });
 
-  it("toont het thema ook als er in beeld nog geen subthema loopt", () => {
+  it("toont het thema ook als er in beeld nog geen subthema loopt, en noemt de lijst dan naar wat ze toont", () => {
     toon({ reeksen: [] });
 
+    expect(screen.getByRole("list", { name: t("subthemabalk.labelThemas") })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: t("subthemabalk.naarThema", { naam: "Seizoenen" }) })).toBeInTheDocument();
   });
 

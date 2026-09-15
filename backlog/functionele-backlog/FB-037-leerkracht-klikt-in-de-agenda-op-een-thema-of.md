@@ -2,10 +2,10 @@
 id: FB-037
 titel: Leerkracht klikt in de agenda op een thema of subthema en komt op de themapagina
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:57
+bijgewerkt: 2026-09-15 20:08
 opgepakt-door: stroken-doorklik
 branch: ticket/FB-037-stroken-doorklik
 pr:
@@ -83,3 +83,5 @@ Geen.
 - 2026-09-15 19:30 · stroken-doorklik · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-15 19:47 · stroken-doorklik · gebouwd: thema- en subthemastroken zijn links (muis en aanraking, zonder tabstop), subthemabalk met themalink en subthemalink per rij ook boven de maand, themapagina opent het gevraagde subthema; ADR-0042 vervangt ADR-0026 beslissing 5 deels; lint schoon, Vitest 884/884 groen
 - 2026-09-15 19:57 · stroken-doorklik · browsercontrole geslaagd (headless Chrome over CDP, wegwerpdatabank jp_fb037, 1440 en 390, licht en donker): 35 van 35 controles groen, klik in week, dag en maand, toetsenbord via de subthemabalk, terugknop, lege periode, contrast 5,02 tot 10,82:1, console leeg; criteria afgevinkt; verslag in backlog/worklogs/FB-037/verification.md; antagonist loopt
+- 2026-09-15 20:08 · stroken-doorklik · antagonist: COMPLIANT, 0 kritiek, 0 groot, 4 klein; alle vier opgelost (lijstnaam volgt wat de balk toont, themasInBereik als pure functie met test, geen focus op een strooklink na een klik, E10-01 noemt de link); verslag in backlog/worklogs/FB-037/antagonist.md; lint schoon, Vitest 887/887, browserpas opnieuw 35/35
+- 2026-09-15 20:08 · stroken-doorklik · in-uitvoering → te-testen: gebouwd: thema- en subthemastroken openen de themapagina (subthema opengeklapt en in beeld) in week, dag en maand; toetsenbord via de subthemabalk, nu ook boven de maand; ADR-0042; antagonist COMPLIANT, 4 kleine bevindingen opgelost; gates groen: lint, Vitest 887, browser 1440 en 390 licht en donker 35/35; geen backendwijziging

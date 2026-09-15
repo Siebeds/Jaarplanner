@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
+import { themaIdsOpDag, themasInBereik, themavakken, vakOpDag } from "./themavakken";
 
 /**
  * The bug these pin, in one sentence: the agenda described the themaperiode of ONE anchored day over
@@ -22,6 +22,29 @@ const PLAATSINGEN = [
 
 const namen = (vak: { themas: readonly { naam: string }[] } | undefined) =>
   (vak?.themas ?? []).map((thema) => thema.naam);
+
+describe("themasInBereik (FB-037)", () => {
+  // A second placement of "Ik en mijn klas", in november, so a range over both periodes meets it twice.
+  const vakken = themavakken(BLOKKEN, [
+    ...PLAATSINGEN,
+    { blokStart: "2026-11-09", themaId: "t-klas", themaNaam: "Ik en mijn klas", status: "Manueel" },
+  ]);
+  const namenIn = (van: string, tot: string) => themasInBereik(vakken, van, tot).map((thema) => thema.naam);
+
+  it("noemt elk thema van de periodes die het bereik raakt, één keer, in de volgorde van de periodes", () => {
+    // Every periode is touched; the empty october one adds nothing, and "Ik en mijn klas" twice is once.
+    expect(namenIn("2026-09-28", "2026-11-11")).toEqual(["Ik en mijn klas", "TR Schoon"]);
+  });
+
+  it("noemt ook het thema van een periode die maar één dag van het bereik raakt", () => {
+    // September's periode ends on 1 october, the first day of this range: its band is on screen, so is its thema.
+    expect(namenIn("2026-10-01", "2026-10-07")).toEqual(["Ik en mijn klas"]);
+  });
+
+  it("noemt niets tussen twee periodes", () => {
+    expect(namenIn("2026-11-02", "2026-11-08")).toEqual([]);
+  });
+});
 
 describe("themavakken", () => {
   it("geeft elke periode een vak, ook een periode zonder thema", () => {

@@ -55,7 +55,11 @@ export function Subthemabalk({
   if (groepen.length === 0) return null;
 
   return (
-    <ul aria-label={t("subthemabalk.label")} className="mb-3 flex flex-wrap items-stretch gap-2">
+    // Named for what it holds: with no run in view it holds only thema's, and says so.
+    <ul
+      aria-label={t(reeksen.length > 0 ? "subthemabalk.label" : "subthemabalk.labelThemas")}
+      className="mb-3 flex flex-wrap items-stretch gap-2"
+    >
       {groepen.flatMap(({ thema, runs }) => [
         <li key={`thema-${thema.id}`} className="flex w-full items-center sm:w-auto">
           <Link

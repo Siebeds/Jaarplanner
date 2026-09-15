@@ -121,6 +121,21 @@ export function themaLabel(vak: Themavak): string {
 }
 
 /**
+ * The thema's of the periodes touching the days from `van` to `tot`, once each, in the order their periodes come.
+ *
+ * What the subthemabalk lists (FB-037). The balk is the keyboard's route to the pages the bands in the grid open, so it
+ * must name every thema a band on those days can open (ADR-0042): the same periodes, the same thema's, none dropped
+ * because it covers only the edge of the range.
+ */
+export function themasInBereik(vakken: readonly Themavak[], van: string, tot: string): { id: string; naam: string }[] {
+  const perId = new Map<string, { id: string; naam: string }>();
+  for (const vak of vakken.filter((v) => v.van <= tot && v.tot >= van)) {
+    for (const thema of vak.themas) if (!perId.has(thema.id)) perId.set(thema.id, thema);
+  }
+  return [...perId.values()];
+}
+
+/**
  * Which thema's a given DAY may offer, as ids.
  *
  * The activiteit picker used to ask this of the anchored day's period while being opened for a

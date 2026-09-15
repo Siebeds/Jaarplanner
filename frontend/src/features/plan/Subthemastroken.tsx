@@ -126,7 +126,8 @@ function Strook({
   const inhoud = vervolg && dicht ? null : <span className={cn("truncate", vervolg && "xl:hidden")}>{tekst}</span>;
 
   return naar ? (
-    <Link to={naar} tabIndex={-1} draggable={false} className={klassen}>
+    // No focus from a press, as on the thema band: a ctrl- or middle-click would leave it on a link nobody can hear.
+    <Link to={naar} tabIndex={-1} draggable={false} onMouseDown={(e) => e.preventDefault()} className={klassen}>
       {inhoud}
     </Link>
   ) : (

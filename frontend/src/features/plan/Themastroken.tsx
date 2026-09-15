@@ -96,6 +96,8 @@ export function Themastroken({
           to={themapaginaPad(genoemd.id)}
           tabIndex={-1}
           draggable={false}
+          // No focus from a press: a ctrl- or middle-click opens a tab and would leave focus on a link nobody can hear.
+          onMouseDown={(e) => e.preventDefault()}
           // One step further into the ink on hover, and the name underlined: no accent, which here means "starts".
           className={cn(
             band,

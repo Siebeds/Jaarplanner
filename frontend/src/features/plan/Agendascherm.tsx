@@ -93,7 +93,7 @@ import {
   voorstelReeks,
   type Subthemareeks,
 } from "./subthemareeksen";
-import { themaIdsOpDag, themavakken } from "./themavakken";
+import { themaIdsOpDag, themasInBereik, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
@@ -448,15 +448,8 @@ export function Agendascherm() {
     () => themavakken(rooster?.blokken ?? [], plan?.plaatsingen ?? []),
     [rooster, plan],
   );
-  // The thema's of the periodes touching the days on screen, once each, for the subthemabalk (FB-037): the bands in the
-  // grid name them, and the balk is where a keyboard reaches their page.
-  const themasInBeeld = useMemo(() => {
-    const perId = new Map<string, { id: string; naam: string }>();
-    for (const vak of vakken.filter((v) => v.van <= tot && v.tot >= van)) {
-      for (const thema of vak.themas) if (!perId.has(thema.id)) perId.set(thema.id, thema);
-    }
-    return [...perId.values()];
-  }, [vakken, van, tot]);
+  // The thema's the bands on screen can open, for the subthemabalk (FB-037): it is where a keyboard reaches their page.
+  const themasInBeeld = useMemo(() => themasInBereik(vakken, van, tot), [vakken, van, tot]);
 
   // The thema's running in this period are what the activity picker may offer.
   const themaIdsInPeriode = useMemo(() => {

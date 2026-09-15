@@ -1096,6 +1096,7 @@
   },
   "subthemabalk": {
     "label": "Thema's en subthema's in beeld",
+    "labelThemas": "Thema's in beeld",
     "verrijktEen": "1 hoek:",
     "verrijktAantal": "{aantal} hoeken:",
     "invullen": "Hoekverrijking invullen",
