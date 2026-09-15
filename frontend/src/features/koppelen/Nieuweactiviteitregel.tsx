@@ -3,6 +3,7 @@ import { Knop } from "../../components/ui/Knop";
 import { Invoer, Keuze, Veld } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
 import { ACTIVITEIT_TYPES, type ActiviteitType } from "../../lib/types";
+import { geenToegangZin } from "../../lib/rechten";
 import { t } from "../../i18n";
 import { useMaakActiviteitMetDoel } from "./mutaties";
 
@@ -29,11 +30,18 @@ export function Nieuweactiviteitregel({
   subthemaNaam,
   code,
   klasId,
+  magMaken,
 }: {
   subthemaId: string;
   subthemaNaam: string;
   code: string;
   klasId: string | null;
+  /**
+   * The create right and the goal-link right at this subthema's leeftijd (R17, R19), as the rights stand now. The regel
+   * shows only with them, or while it holds a failure: a refusal refetches the rights, and a regel that went with them
+   * would take the reason along (E6-02 slice 4, the mini-fix after audit round 4, F10).
+   */
+  magMaken: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [naam, setNaam] = useState("");
@@ -49,6 +57,9 @@ export function Nieuweactiviteitregel({
     setLesuren(1);
     maak.reset();
   }
+
+  // The failure before the rights, as `Activiteitrij` does: see `magMaken`.
+  if (!magMaken && !maak.isError) return null;
 
   if (!open) {
     return (
@@ -92,69 +103,78 @@ export function Nieuweactiviteitregel({
         );
       }}
     >
-      <Veld label={t("koppelen.activiteitNaam")}>
-        {(id) => (
-          <Invoer
-            id={id}
-            value={naam}
-            autoFocus
-            disabled={maak.isPending}
-            onChange={(e) => setNaam(e.target.value)}
-            placeholder={t("koppelen.activiteitNaamVoorbeeld")}
-          />
-        )}
-      </Veld>
-
-      <div className="grid grid-cols-2 gap-3">
-        <Veld label={t("koppelen.activiteitType")}>
-          {(id) => (
-            <Keuze id={id} value={type} disabled={maak.isPending} onChange={(e) => setType(e.target.value as ActiviteitType)}>
-              {ACTIVITEIT_TYPES.map((waarde) => (
-                <option key={waarde} value={waarde}>
-                  {t(`activiteitsoort.${waarde}`)}
-                </option>
-              ))}
-            </Keuze>
-          )}
-        </Veld>
-
-        <Veld label={t("koppelen.activiteitLesuren")}>
+      {/* Without the right any more, only the failure and the way out: the fields and "Maak en koppel" would feed a
+          create the server refuses (the E3-06 rule). Each is left out in its own slot, so the failure keeps its place
+          and stays the same element (F10). */}
+      {magMaken ? (
+        <Veld label={t("koppelen.activiteitNaam")}>
           {(id) => (
             <Invoer
               id={id}
-              type="number"
-              min={1}
-              max={20}
-              value={lesuren}
+              value={naam}
+              autoFocus
               disabled={maak.isPending}
-              onChange={(e) => setLesuren(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              onChange={(e) => setNaam(e.target.value)}
+              placeholder={t("koppelen.activiteitNaamVoorbeeld")}
             />
           )}
         </Veld>
-      </div>
+      ) : null}
+
+      {magMaken ? (
+        <div className="grid grid-cols-2 gap-3">
+          <Veld label={t("koppelen.activiteitType")}>
+            {(id) => (
+              <Keuze id={id} value={type} disabled={maak.isPending} onChange={(e) => setType(e.target.value as ActiviteitType)}>
+                {ACTIVITEIT_TYPES.map((waarde) => (
+                  <option key={waarde} value={waarde}>
+                    {t(`activiteitsoort.${waarde}`)}
+                  </option>
+                ))}
+              </Keuze>
+            )}
+          </Veld>
+
+          <Veld label={t("koppelen.activiteitLesuren")}>
+            {(id) => (
+              <Invoer
+                id={id}
+                type="number"
+                min={1}
+                max={20}
+                value={lesuren}
+                disabled={maak.isPending}
+                onChange={(e) => setLesuren(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              />
+            )}
+          </Veld>
+        </div>
+      ) : null}
 
       {/* The class the activiteit will belong to, stated before it is made rather than discovered
           after. An activiteit inherits its subthema's klas and leeftijd (Art. IX.2), and a teacher
           who switched class in the shell three screens ago has no other way to see which one that is. */}
-      {klasId === null ? (
+      {magMaken && klasId === null ? (
         <p className="text-meta text-attentie-inkt">{t("koppelen.geenKlas")}</p>
       ) : null}
 
       {maak.isError ? (
         <p role="alert" className="text-meta text-dekking-niet-gedekt">
-          {t("koppelen.maakMislukt")}
+          {geenToegangZin(maak.error) ?? t("koppelen.maakMislukt")}
         </p>
       ) : null}
 
       <div className="flex gap-2">
-        <Knop
-          type="submit"
-          rang="hoofd"
-          className="h-9 min-h-9 px-3 text-meta"
-          disabled={!naamIngevuld || maak.isPending || klasId === null}
-        >
-          {maak.isPending ? t("koppelen.bezigMaken") : t("koppelen.maakEnKoppel")}
-        </Knop>
+        {magMaken ? (
+          <Knop
+            type="submit"
+            rang="hoofd"
+            className="h-9 min-h-9 px-3 text-meta"
+            disabled={!naamIngevuld || maak.isPending || klasId === null}
+          >
+            {maak.isPending ? t("koppelen.bezigMaken") : t("koppelen.maakEnKoppel")}
+          </Knop>
+        ) : null}
         <Knop rang="stil" type="button" className="h-9 min-h-9 px-3 text-meta" disabled={maak.isPending} onClick={sluit}>
           {t("koppelen.annuleer")}
         </Knop>

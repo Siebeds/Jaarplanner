@@ -34,7 +34,7 @@
 
     Needs: the Azure CLI signed in to the subscription, the .NET SDK from global.json, Docker (psql runs in a
     container), and a clean working tree unless -AllowDirty is passed. Run it from the commit that is deployed, after
-    migrate-db.ps1: it refuses when the database's newest migration differs from the checkout's.
+    migrate-db.ps1: it refuses when the database lacks any migration of the checkout, or holds one the checkout lacks.
 
 .EXAMPLE
     ./infra/seed-demo.ps1 -ServerName pg-jaarplanner-demo-ertren -VaultName kv-jpdemo-ertren -AppName jaarplanner-demo-ertren
@@ -198,8 +198,12 @@ if (-not $AllowDirty) {
     if ($dirty) { throw 'The working tree has uncommitted changes, and the API is built from it. Commit them, or pass -AllowDirty.' }
 }
 
-$newestMigration = (Get-ChildItem $migrationsFolder -Filter '2*.cs' |
-    Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object Name | Select-Object -Last 1).BaseName
+# Every migration this checkout carries, by the id EF writes to __EFMigrationsHistory (the file name without .cs). The
+# whole set, not the newest: migrations from parallel branches interleave by timestamp, so a database that holds the
+# newest one can still lack an older one that was merged after it.
+$checkoutMigrations = @(Get-ChildItem $migrationsFolder -Filter '2*.cs' |
+    Where-Object { $_.Name -notlike '*.Designer.cs' } | Sort-Object Name | ForEach-Object { $_.BaseName })
+if ($checkoutMigrations.Count -eq 0) { throw "No migrations found in $migrationsFolder." }
 
 Write-Host 'Building the API (before any secret is read, and without build servers).'
 dotnet build $apiProject --nologo --verbosity quiet --disable-build-servers
@@ -245,9 +249,14 @@ try {
     $firewallOpen = $true
     Write-Host "Firewall open for $ip."
 
-    $databaseMigration = (Invoke-Psql 'select max("MigrationId") from "__EFMigrationsHistory";') | Select-Object -First 1
-    if ($databaseMigration -ne $newestMigration) {
-        throw "The demo database is at migration $databaseMigration, this checkout at $newestMigration. Seed from the commit that is deployed, after migrate-db.ps1."
+    $databaseMigrations = @(Invoke-Psql 'select "MigrationId" from "__EFMigrationsHistory" order by "MigrationId";')
+    $missing = @($checkoutMigrations | Where-Object { $databaseMigrations -notcontains $_ })
+    if ($missing.Count -gt 0) {
+        throw "The demo database lacks migration(s) $($missing -join ', ') from this checkout. Seed from the commit that is deployed, after migrate-db.ps1."
+    }
+    $unknown = @($databaseMigrations | Where-Object { $checkoutMigrations -notcontains $_ })
+    if ($unknown.Count -gt 0) {
+        throw "The demo database holds migration(s) $($unknown -join ', ') that this checkout does not. Seed from the commit that is deployed."
     }
 
     $escapedEmail = $directieEmail.Trim().ToLowerInvariant().Replace("'", "''")

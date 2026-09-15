@@ -8,9 +8,10 @@ import { Leegte } from "../../components/ui/Leegte";
 import { IcoonKruis, IcoonZoek } from "../../components/Iconen";
 import { useLeerplandoel, useThemabibliotheek, useThemasVoorKlas } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useRechten } from "../../lib/rechten";
 import { cn } from "../../lib/cn";
 import { t, telWoord } from "../../i18n";
-import { filterBestemmingen, telBestemmingen } from "./bestemmingen";
+import { filterBestemmingen, telBestemmingen, themasMetKoppelactie } from "./bestemmingen";
 import { Themarij } from "./Themarij";
 
 /**
@@ -43,6 +44,7 @@ export function Bestemmingsblad({
   onOpenChange: (open: boolean) => void;
 }) {
   const { klasId, klas } = useActieveSelectie();
+  const { mag } = useRechten();
   const { data: doel } = useLeerplandoel(open ? code : null);
   const { data: bibliotheek, isPending: bibliotheekLaadt } = useThemabibliotheek();
 
@@ -60,14 +62,23 @@ export function Bestemmingsblad({
    * the tree visibly springs back to its unfiltered self on the way.
    */
   const [vorigOpen, setVorigOpen] = useState(open);
+  // The rights the list below is decided with, taken as the sheet opens (fix round 3, F9): a refusal inside the sheet
+  // refetches the rights, and a list that followed them would drop the row holding the refusal's alert.
+  const [magBijOpenen, setMagBijOpenen] = useState(mag);
   if (open !== vorigOpen) {
     setVorigOpen(open);
-    if (open) setZoek("");
+    if (open) {
+      setZoek("");
+      setMagBijOpenen(mag);
+    }
   }
 
+  // Only the thema's with something this gebruiker could press when the sheet opened (fix rounds 2 and 3), before the
+  // search, so the search and its count work on the list the gebruiker actually sees.
+  const metKoppelactie = useMemo(() => themasMetKoppelactie(themas, magBijOpenen), [themas, magBijOpenen]);
   const takken = useMemo(
-    () => (code ? filterBestemmingen(themas, code, zoek) : []),
-    [themas, code, zoek],
+    () => (code ? filterBestemmingen(metKoppelactie, code, zoek) : []),
+    [metKoppelactie, code, zoek],
   );
 
   /**
@@ -166,11 +177,22 @@ export function Bestemmingsblad({
             <Laadvlak className="h-14" />
             <Laadvlak className="h-14" />
           </div>
+        ) : themas.length > 0 && metKoppelactie.length === 0 ? (
+          // Thema's exist, and none has a control for this gebruiker. "Nog geen thema's" would be false here, so the
+          // sentence says only what this branch knows.
+          <Leegte titel={t("koppelen.nietsTeKoppelen")} />
         ) : takken.length === 0 ? (
           gezocht ? (
             <Leegte titel={t("koppelen.geenTreffers")} />
           ) : (
-            <Leegte titel={t("koppelen.geenThemas")} actie={<p className="text-meta text-inkt-zacht">{t("koppelen.geenThemasActie")}</p>} />
+            // "Maak eerst een thema aan" only for whoever may (R4); a hoofdleerkracht without themabeheer is told
+            // there are none and nothing more.
+            <Leegte
+              titel={t("koppelen.geenThemas")}
+              actie={
+                mag.themaBewerken ? <p className="text-meta text-inkt-zacht">{t("koppelen.geenThemasActie")}</p> : undefined
+              }
+            />
           )
         ) : code === null ? null : (
           <ul className="flex flex-col gap-2">

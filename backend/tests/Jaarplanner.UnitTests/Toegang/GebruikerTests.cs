@@ -75,4 +75,75 @@ public sealed class GebruikerTests
         Assert.Throws<ArgumentException>(() => gebruiker.KoppelAanEntra(Tenant, Guid.Empty, naam: null));
         Assert.False(gebruiker.IsGekoppeld);
     }
+
+    // --- The rights on the gebruiker itself (E6-02, ADR-0030 R4, R16; ADR-0031 decision 7). ---
+
+    [Fact]
+    public void Een_nieuwe_gebruiker_heeft_geen_themabeheer()
+    {
+        Assert.False(new Gebruiker("an@school.be", "An", isDirectie: false).HeeftThemabeheer);
+    }
+
+    [Fact]
+    public void Themabeheer_wordt_gegeven_en_afgenomen()
+    {
+        var gebruiker = new Gebruiker("an@school.be", "An", isDirectie: false);
+
+        gebruiker.GeefThemabeheer();
+        gebruiker.GeefThemabeheer();
+        Assert.True(gebruiker.HeeftThemabeheer);
+
+        gebruiker.NeemThemabeheerAf();
+        Assert.False(gebruiker.HeeftThemabeheer);
+    }
+
+    [Fact]
+    public void Directie_kan_het_directierecht_aan_iemand_anders_geven()
+    {
+        var ict = new Gebruiker("ict@school.be", "ICT", isDirectie: false);
+
+        ict.GeefDirectierecht();
+
+        Assert.True(ict.IsDirectie);
+    }
+
+    [Fact]
+    public void De_laatste_directie_verliest_het_directierecht_niet()
+    {
+        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+
+        Assert.Throws<InvalidOperationException>(() => directie.NeemDirectierechtAf(aantalAndereDirectieleden: 0));
+        Assert.True(directie.IsDirectie);
+    }
+
+    [Fact]
+    public void Met_een_andere_directie_kan_het_directierecht_afgenomen_worden()
+    {
+        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+
+        directie.NeemDirectierechtAf(aantalAndereDirectieleden: 1);
+
+        Assert.False(directie.IsDirectie);
+    }
+
+    [Fact]
+    public void Afnemen_bij_wie_geen_directie_is_verandert_niets()
+    {
+        var an = new Gebruiker("an@school.be", "An", isDirectie: false);
+
+        an.NeemDirectierechtAf(aantalAndereDirectieleden: 0);
+
+        Assert.False(an.IsDirectie);
+    }
+
+    [Fact]
+    public void De_laatste_directie_is_niet_verwijderbaar_een_leerkracht_wel()
+    {
+        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+        var an = new Gebruiker("an@school.be", "An", isDirectie: false);
+
+        Assert.Throws<InvalidOperationException>(() => directie.BevestigVerwijderbaar(aantalAndereDirectieleden: 0));
+        directie.BevestigVerwijderbaar(aantalAndereDirectieleden: 1);
+        an.BevestigVerwijderbaar(aantalAndereDirectieleden: 0);
+    }
 }

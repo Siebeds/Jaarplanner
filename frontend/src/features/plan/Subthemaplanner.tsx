@@ -10,6 +10,7 @@ import { Segment } from "../../components/ui/Segment";
 import { Veld, Keuze, Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { knopklassen } from "../../components/ui/knopklassen";
+import { useInBeeld } from "../../components/ui/inBeeld";
 import { useThemasVoorKlas } from "../../lib/queries";
 import type { Dagweergave, ThemaWeergave } from "../../lib/types";
 import { dagMaand } from "../../lib/datum";
@@ -52,6 +53,8 @@ export function Subthemaplanner({
   open,
   klasId,
   klasNaam,
+  magSubthemaMaken,
+  magPlannen,
   themaIds,
   dagen,
   bezig,
@@ -63,6 +66,16 @@ export function Subthemaplanner({
   klasId: string | null;
   /** Named in the empty state, because which klas is selected is exactly what makes it empty. */
   klasNaam: string | null;
+  /**
+   * Whether this gebruiker may make a subthema for this klas's leeftijd (E6-02: R5, R21). The empty state's
+   * instruction to go and make one, and its links, are only for them.
+   */
+  magSubthemaMaken: boolean;
+  /**
+   * Whether this gebruiker may plan this klas (R7, R15). The planner opens only then; after a refusal the refetched
+   * rights can say otherwise while it is open, and its plan button goes (fix round 3, the E3-06 rule).
+   */
+  magPlannen: boolean;
   themaIds: string[];
   dagen: Dagweergave[];
   bezig: boolean;
@@ -156,8 +169,9 @@ export function Subthemaplanner({
       titel={t("periode.planSubthema")}
       voet={
         // No footer when the period has nothing to plan: the sheet then says why, and a button
-        // that can never become enabled is a button that should not be there.
-        subthemas.length === 0 ? undefined : (
+        // that can never become enabled is a button that should not be there. Nor once this gebruiker
+        // may not plan the klas: the button would only be refused (fix round 3).
+        subthemas.length === 0 || !magPlannen ? undefined : (
           <Knop
             rang="hoofd"
             vol
@@ -186,67 +200,78 @@ export function Subthemaplanner({
       {laadt ? (
         <Laadlijst rijen={4} />
       ) : subthemas.length === 0 ? (
-        <Nietsomteplannen klasNaam={klasNaam} themas={themas} />
+        <Nietsomteplannen klasNaam={klasNaam} themas={themas} magSubthemaMaken={magSubthemaMaken} />
       ) : (
         <div className="flex flex-col gap-4">
-          <Veld label={t("periode.subthema")}>
-            {(id) => (
-              <Keuze id={id} value={subthemaId} onChange={(e) => {
-                  setSubthemaId(e.target.value);
-                  setVolgorde(null);
-                }}>
-                <option value="">{t("periode.kiesSubthema")}</option>
-                {subthemas.map((sub) => (
-                  <option key={sub.id} value={sub.id}>
-                    {sub.themaNaam} / {sub.naam} ({sub.activiteiten.length})
-                  </option>
-                ))}
-              </Keuze>
-            )}
-          </Veld>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Veld label={t("periode.eersteDag")}>
+          {/* WITHOUT THE RIGHT TO PLAN, ONLY THE RESULT (E6-02 slice 4, the mini-fix after audit round 4, F11; the
+              E3-06 and E5-03 rules). After a refusal the refetched rights can say this klas may not be planned: every
+              field here would feed a plan button that is gone, and the preview and its advice to widen the window
+              would promise a plan. Each is left out in its own slot, so the result keeps its place and stays the same
+              element, not announced again. */}
+          {magPlannen ? (
+            <Veld label={t("periode.subthema")}>
               {(id) => (
-                <Invoer
-                  id={id}
-                  type="date"
-                  min={lesdagen[0]}
-                  max={laatsteDag}
-                  value={eersteDag}
-                  onChange={(e) => setStartdag(e.target.value)}
-                />
+                <Keuze id={id} value={subthemaId} onChange={(e) => {
+                    setSubthemaId(e.target.value);
+                    setVolgorde(null);
+                  }}>
+                  <option value="">{t("periode.kiesSubthema")}</option>
+                  {subthemas.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.themaNaam} / {sub.naam} ({sub.activiteiten.length})
+                    </option>
+                  ))}
+                </Keuze>
               )}
             </Veld>
+          ) : null}
 
-            <Veld label={t("periode.laatsteDag")}>
-              {(id) => (
-                <Invoer
-                  id={id}
-                  type="date"
-                  min={eersteDag}
-                  max={lesdagen[lesdagen.length - 1]}
-                  value={laatsteDag}
-                  onChange={(e) => setEinddag(e.target.value)}
-                />
-              )}
-            </Veld>
-          </div>
+          {magPlannen ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Veld label={t("periode.eersteDag")}>
+                {(id) => (
+                  <Invoer
+                    id={id}
+                    type="date"
+                    min={lesdagen[0]}
+                    max={laatsteDag}
+                    value={eersteDag}
+                    onChange={(e) => setStartdag(e.target.value)}
+                  />
+                )}
+              </Veld>
+
+              <Veld label={t("periode.laatsteDag")}>
+                {(id) => (
+                  <Invoer
+                    id={id}
+                    type="date"
+                    min={eersteDag}
+                    max={lesdagen[lesdagen.length - 1]}
+                    value={laatsteDag}
+                    onChange={(e) => setEinddag(e.target.value)}
+                  />
+                )}
+              </Veld>
+            </div>
+          ) : null}
 
           {/* Not wrapped in Veld: that renders a <label for=...>, and a radiogroup has no single
               form control for a label to point at. The radiogroup names itself instead. */}
-          <Segment
-            label={t("periode.verdeling")}
-            waarde={verdeling}
-            onKies={setVerdeling}
-            className="w-full"
-            opties={[
-              { waarde: "achterElkaar", label: t("periode.achterElkaar") },
-              { waarde: "verspreid", label: t("periode.verspreid") },
-            ]}
-          />
+          {magPlannen ? (
+            <Segment
+              label={t("periode.verdeling")}
+              waarde={verdeling}
+              onKies={setVerdeling}
+              className="w-full"
+              opties={[
+                { waarde: "achterElkaar", label: t("periode.achterElkaar") },
+                { waarde: "verspreid", label: t("periode.verspreid") },
+              ]}
+            />
+          ) : null}
 
-          {gekozen ? (
+          {magPlannen && gekozen ? (
             <section className="flex flex-col gap-2">
               <h3 className="text-micro uppercase text-inkt-zwak">{t("periode.voorbeeld")}</h3>
 
@@ -299,28 +324,13 @@ export function Subthemaplanner({
           ) : null}
 
           {/* What actually happened, after the fact. It names the rows that failed with the reason
-              the server gave, and it never says everything worked when some of it did not. */}
-          {resultaat ? (
-            <section className="flex flex-col gap-2">
-              <p className="text-meta text-inkt-zacht">
-                {t("periode.deelsGelukt", { gelukt: resultaat.gelukt, totaal: resultaat.totaal })}
-              </p>
-              {resultaat.fouten.length > 0 ? (
-                <ul className="flex flex-col gap-1">
-                  {resultaat.fouten.map((fout) => (
-                    <li
-                      key={fout}
-                      className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
-                    >
-                      {fout}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ) : null}
+              the server gave, and it never says everything worked when some of it did not.
 
-          {gekozen && beschikbaar.length > 0 ? (
+              An alert (E6-02 slice 4, fix round 2, F7; WCAG 4.1.3): the planner stays open when a row failed and is
+              a modal dialog, so the agenda's own strip does not show a refusal that arrives while it is open. */}
+          {resultaat ? <Resultaat resultaat={resultaat} /> : null}
+
+          {magPlannen && gekozen && beschikbaar.length > 0 ? (
             <p className="text-meta text-inkt-zwak">
               {telWoord(beschikbaar.length, "periode.eenLesdag", "periode.aantalLesdagen")}
             </p>
@@ -347,8 +357,21 @@ export function Subthemaplanner({
  *
  * A period holding no thema at all is a third state, and it says so rather than being folded into the
  * second: there is no thema to make a subthema under, so the way out is a different screen.
+ *
+ * **The way out is only drawn for whoever can take it** (E6-02): making a subthema is directie's and that leeftijd's
+ * hoofdleerkrachten' (R5, R21). A leerkracht is told the klas has none and nothing more, since "Maak er een" would ask
+ * her for something the server refuses. That is the "say less" branch: the sentence about why is dropped with it,
+ * because it ends in the same instruction.
  */
-function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; themas: ThemaWeergave[] }) {
+function Nietsomteplannen({
+  klasNaam,
+  themas,
+  magSubthemaMaken,
+}: {
+  klasNaam: string | null;
+  themas: ThemaWeergave[];
+  magSubthemaMaken: boolean;
+}) {
   if (themas.length === 0) {
     return (
       <div className="flex flex-col items-start gap-3">
@@ -374,11 +397,13 @@ function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; thema
           ? t("periode.geenSubthemaVoorKlasEen", { klas, thema: themas[0].naam })
           : t("periode.geenSubthemaVoorKlasMeer", { klas })}
       </p>
-      <p className="text-meta text-inkt-zacht">{t("periode.subthemaHoortBijLeeftijd")}</p>
+      {magSubthemaMaken ? (
+        <>
+          <p className="text-meta text-inkt-zacht">{t("periode.subthemaHoortBijLeeftijd")}</p>
 
-      {/* A destination, so a link and not a Knop: it goes in the address bar and takes a middle
-          click. One per thema, because the subthema has to be made under one of them. */}
-      <ul className="mt-1 flex flex-col gap-2">
+          {/* A destination, so a link and not a Knop: it goes in the address bar and takes a middle
+              click. One per thema, because the subthema has to be made under one of them. */}
+          <ul className="mt-1 flex flex-col gap-2">
         {themas.map((thema) => (
           <li key={thema.id}>
             <Link
@@ -390,7 +415,9 @@ function Nietsomteplannen({ klasNaam, themas }: { klasNaam: string | null; thema
             </Link>
           </li>
         ))}
-      </ul>
+          </ul>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -428,6 +455,30 @@ function Voorstelregel({ voorstel }: { voorstel: Voorstel }) {
         {dagMaand(voorstel.datum)} {toonTijd(voorstel.begin)}
       </span>
     </li>
+  );
+}
+
+/** The planner's result as an alert, brought into the sheet's view when it appears (fix round 2, F7). */
+function Resultaat({ resultaat }: { resultaat: { gelukt: number; totaal: number; fouten: string[] } }) {
+  const ref = useInBeeld<HTMLElement>();
+  return (
+    <section ref={ref} role="alert" className="flex flex-col gap-2">
+      <p className="text-meta text-inkt-zacht">
+        {t("periode.deelsGelukt", { gelukt: resultaat.gelukt, totaal: resultaat.totaal })}
+      </p>
+      {resultaat.fouten.length > 0 ? (
+        <ul className="flex flex-col gap-1">
+          {resultaat.fouten.map((fout) => (
+            <li
+              key={fout}
+              className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
+            >
+              {fout}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

@@ -66,7 +66,9 @@ function toon(
     fichemomenten?: Ficheblokje[];
     onVoegToe?: (datum: string, begin: number) => void;
     onOpenHoek?: (plaatsingId: string) => void;
+    onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
     onOpenFiche?: (plaatsingId: string, momentId: string) => void;
+    magPlannen?: boolean;
   } = {},
 ) {
   return render(
@@ -77,8 +79,9 @@ function toon(
         fichemomenten={opties.fichemomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
+        magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
-        onOpen={() => {}}
+        onOpen={opties.onOpen ?? (() => {})}
         onOpenHoek={opties.onOpenHoek ?? (() => {})}
         onOpenFiche={opties.onOpenFiche ?? (() => {})}
         onWijzigTijd={() => {}}
@@ -149,6 +152,53 @@ describe("Tijdraster", () => {
     expect(geopend).toHaveBeenCalledWith("hp-1");
   });
 
+  /*
+    E6-02: the grid's four gestures are the klas's planning (ADR-0030 §3, R7). A gebruiker who may not plan this klas
+    reads it: blocks still open, and nothing invites a placement, stretches or drags. The drag semantics matter as much
+    as the pixels, because dnd-kit's attributes tell a screen reader a block is "draggable". The lit-up quarter and the
+    dragged-out stretch (TB-014) live on the empty column's button, the one "Tijdraster onder de muis" presses, so its
+    absence here is what withholds them too.
+  */
+  it("biedt wie deze klas niet mag plannen geen toevoegen, rekken of slepen, maar opent een blok wel", () => {
+    const geopend = vi.fn();
+    const { container } = toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], {
+      magPlannen: false,
+      onOpen: geopend,
+    });
+
+    expect(
+      screen.queryByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) }),
+    ).not.toBeInTheDocument();
+    expect(container.querySelector("[data-rekgreep]")).toBeNull();
+
+    const blok = screen.getByRole("button", { name: /kringgesprek/ });
+    expect(blok).not.toHaveAttribute("aria-roledescription");
+    fireEvent.click(blok);
+    expect(geopend).toHaveBeenCalled();
+  });
+
+  it("geeft wie de klas mag plannen de greep en het toevoegen", () => {
+    const { container } = toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])]);
+
+    expect(
+      screen.getByRole("button", { name: t("periode.voegToeOp", { dag: "dinsdag 8 september" }) }),
+    ).toBeInTheDocument();
+    expect(container.querySelector("[data-rekgreep]")).not.toBeNull();
+    expect(screen.getByRole("button", { name: /kringgesprek/ })).toHaveAttribute("aria-roledescription");
+  });
+
+  // An algemene fiche is the klas's planning too (ADR-0030 §3, R7): a reader opens it and cannot drag it (merge of
+  // E6-02 with the agenda's algemene fiches).
+  it("laat wie deze klas niet mag plannen een algemene fiche openen, niet slepen", () => {
+    const geopend = vi.fn();
+    toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend, magPlannen: false });
+
+    const knop = screen.getByRole("button", { name: /turnen/ });
+    expect(knop).not.toHaveAttribute("aria-roledescription");
+    fireEvent.click(knop);
+    expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
+  });
+
   it("tekent een algemene fiche als blok met haar eigen onderschrift, en opent dat ene moment", () => {
     const geopend = vi.fn();
     toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend });
@@ -201,6 +251,7 @@ describe("Tijdraster", () => {
     { subthemaId: "s1", subthemaNaam: "de speelhoek", van: "2026-09-07", tot: "2026-09-18", aantalDagen: 4 },
   ];
   const midden = {
+    magPlannen: true,
     hoekmomenten: [],
     fichemomenten: [],
     reeksenPerDag: new Map([
@@ -282,6 +333,7 @@ describe("Tijdraster", () => {
           fichemomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
+          magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}
           onOpenHoek={() => {}}

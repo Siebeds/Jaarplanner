@@ -24,11 +24,10 @@ namespace Jaarplanner.Api.Controllers;
 /// correcting one of them is when you are least likely to check the next.</i>
 /// </para>
 /// <para>
-/// <b>Unauthenticated, like every other read surface here, and that is debt rather than a decision.</b> This adds one
-/// more anonymous read of any class's planning data. FA §3.2 lets all three roles <i>view</i> dekking (another class
-/// as "lezen"), so the role matrix demands no gate here — but it does demand a signed-in user, and there is none:
-/// <b>E7-11</b> owns that app-wide gap and is blocked on E6-01/E6-02. Noted on this controller rather than left
-/// implicit, because "12 of 13 controllers are already open" is an explanation and not a justification.
+/// <b>Who may read it.</b> Every route here needs a session since E6-01 (ADR-0031), and a signed-in gebruiker reads
+/// every klas's dekking: ADR-0030 §3 gates no read, and how far a gebruiker sees beyond their own klas is default I9,
+/// which directie may narrow behind the E6-09 seam. <i>Until E6-02 slice 3 (fix round 1) this paragraph called the read
+/// unauthenticated debt, blocked on E6-01 and E6-02; the first half ended with E6-01, and the second is answered by I9.</i>
 /// </para>
 /// <para>
 /// <b>The payload is the whole in-scope curriculum, unpaged, with each goal's full text.</b> That is a deliberate
@@ -175,10 +174,12 @@ public sealed class DekkingController : ControllerBase
     /// is stated <i>inside</i> the document as well as beside the link, because the file outlives the screen.
     /// </para>
     /// <para>
-    /// <b>Unauthenticated, like every other read here, and that is debt rather than a decision</b> (E7-11, blocked on
-    /// E6-01/E6-02). Worth one extra sentence on this route specifically: it hands out a whole class's planning and
-    /// coverage as a single file to anyone who can guess a klas id, which is a larger blast radius than the JSON read
-    /// beside it even though it exposes not one field more.
+    /// <b>Who may download it:</b> like every read here, any signed-in gebruiker, for any klas (a session since E6-01;
+    /// the reach is default I9). Worth one extra sentence on this route specifically: it hands out a whole class's
+    /// planning and coverage as a single file, which is a larger blast radius than the JSON read beside it even though it
+    /// exposes not one field more, so a narrowing of I9 behind the E6-09 seam must cover this route too.
+    /// <i>Until E6-02 slice 3 (fix round 1) this said "unauthenticated … to anyone who can guess a klas id", which stopped
+    /// being true with E6-01.</i>
     /// </para>
     /// </summary>
     /// <param name="klasId">The class.</param>

@@ -99,7 +99,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Plassen meten", ActiviteitType.Waarneming));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Plassen meten", ActiviteitType.Waarneming));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
 
         await NieuweService().VerwijderThemaAsync(thema.Id);
@@ -339,7 +339,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
 
         await NieuweService().VerwijderSubthemaAsync(subthema.Id);
@@ -400,7 +400,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie(
             "Plassen meten", ActiviteitType.Waarneming, Hoek: "ontdektafel"));
 
         Assert.Equal("Plassen meten", activiteit.Naam);
@@ -413,7 +413,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
         var tweede = await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
@@ -431,7 +431,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
             () => NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "BESTAAT-NIET"));
@@ -449,7 +449,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie(
             "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "WIS-001"]));
 
         Assert.Equal(["NL-001", "WIS-001"], activiteit.Doelkoppelingen.Select(k => k.LeerplandoelCode));
@@ -467,8 +467,8 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
-        var zonder = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
-        var leeg = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+        var zonder = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var leeg = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie(
             "Wegen", ActiviteitType.Onderzoek, LeerplandoelCodes: []));
 
         Assert.Empty(zonder.Doelkoppelingen);
@@ -481,7 +481,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie(
             "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "NL-001"]));
 
         Assert.Equal(["NL-001"], activiteit.Doelkoppelingen.Select(k => k.LeerplandoelCode));
@@ -496,7 +496,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
 
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie(
+            () => NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie(
                 "Meten", ActiviteitType.Onderzoek, LeerplandoelCodes: ["NL-001", "BESTAAT-NIET"])));
 
         Assert.Empty((await NieuweService().HaalThemaOpAsync(thema.Id)).Subthemas.Single().Activiteiten);
@@ -508,7 +508,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         var k1 = await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
 
@@ -524,7 +524,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         var gewijzigd = await NieuweService().WijzigActiviteitAsync(activiteit.Id, new ActiviteitWijzigingInvoer(
             "Plassen meten", ActiviteitType.Waarneming, VerwachteUitkomsten: "kind meet waterhoogte"));
@@ -539,7 +539,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "NL-001");
 
         await NieuweService().VerwijderActiviteitAsync(activiteit.Id);
@@ -575,7 +575,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Planten", 2, "K3"));
         var ov = await NieuweService().VoegOnderzoeksvraagToeAsync(subthema.Id, new OnderzoeksvraagCreatie("Hoe zuigen planten water op?"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, new ActiviteitCreatie("Planten observeren", ActiviteitType.Waarneming));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Planten observeren", ActiviteitType.Waarneming));
 
         // Link
         var actNa = await NieuweService().KoppelActiviteitAanOnderzoeksvraagAsync(activiteit.Id, ov.Id);
@@ -593,7 +593,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         var subthemaA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var subthemaB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Ijs", 2, "K2"));
         var ovB = await NieuweService().VoegOnderzoeksvraagToeAsync(subthemaB.Id, new OnderzoeksvraagCreatie("Wanneer bevriest water?"));
-        var activiteit = await NieuweService().MaakActiviteitAsync(subthemaA.Id, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
+        var activiteit = await NieuweService().MaakActiviteitAsync(subthemaA.Id, null, new ActiviteitCreatie("Meten", ActiviteitType.Onderzoek));
 
         // Activiteit belongs to subthemaA, but ovB belongs to subthemaB — must be refused.
         await Assert.ThrowsAsync<SchoolcontentValidatieFout>(

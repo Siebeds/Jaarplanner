@@ -588,6 +588,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasDefaultValue(1)
                         .HasColumnName("lengte_in_lesuren");
 
+                    b.Property<Guid?>("MakerId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Naam")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -603,6 +606,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("MakerId");
 
                     b.HasIndex("OnderzoeksvraagId");
 
@@ -774,6 +779,39 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("themadoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Wizardrun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("AfgerondOp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("GeslotenOp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("GestartDoorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("GestartOp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LaatsteSchrijfactieOp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ThemaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("GestartDoorId");
+
+                    b.HasIndex("ThemaId")
+                        .IsUnique();
+
+                    b.ToTable("wizardruns", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Toegang.Gebruiker", b =>
                 {
                     b.Property<Guid>("Id")
@@ -789,6 +827,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("EntraTenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("HeeftThemabeheer")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsDirectie")
                         .HasColumnType("boolean");
@@ -807,6 +848,53 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("gebruikers", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Toegang.Hoofdleerkrachtaanstelling", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GebruikerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Jaarfase")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<Guid>("SchooljaarId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SchooljaarId", "Jaarfase");
+
+                    b.HasIndex("GebruikerId", "SchooljaarId", "Jaarfase")
+                        .IsUnique();
+
+                    b.ToTable("hoofdleerkrachtaanstellingen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Toegang.Klastoewijzing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("GebruikerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KlasId");
+
+                    b.HasIndex("GebruikerId", "KlasId")
+                        .IsUnique();
+
+                    b.ToTable("klastoewijzingen", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.DataProtection.EntityFrameworkCore.DataProtectionKey", b =>
@@ -1126,6 +1214,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
                 {
+                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
+                        .WithMany()
+                        .HasForeignKey("MakerId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", null)
                         .WithMany()
                         .HasForeignKey("OnderzoeksvraagId")
@@ -1404,6 +1497,79 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Koppeling")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Wizardrun", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
+                        .WithMany()
+                        .HasForeignKey("GestartDoorId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                        .WithMany()
+                        .HasForeignKey("ThemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsMany("Jaarplanner.Domain.Schoolcontent.Wizardrunitem", "Aangemaakt", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("ItemId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<string>("Soort")
+                                .IsRequired()
+                                .HasMaxLength(16)
+                                .HasColumnType("character varying(16)");
+
+                            b1.Property<Guid>("WizardrunId")
+                                .HasColumnType("uuid");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("WizardrunId", "ItemId")
+                                .IsUnique();
+
+                            b1.ToTable("wizardrunitems", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("WizardrunId");
+                        });
+
+                    b.Navigation("Aangemaakt");
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Toegang.Hoofdleerkrachtaanstelling", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
+                        .WithMany()
+                        .HasForeignKey("GebruikerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Schooljaar", null)
+                        .WithMany()
+                        .HasForeignKey("SchooljaarId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Toegang.Klastoewijzing", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
+                        .WithMany()
+                        .HasForeignKey("GebruikerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

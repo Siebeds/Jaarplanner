@@ -28,6 +28,9 @@ import { Ontkoppel } from "./Fiche";
  * button covers the row, so the empty space beside the text opens the detail too; the remove
  * control is lifted above that layer and stays a separate target, because removing a doel is the one
  * thing on this row that must never happen by accident.
+ *
+ * **The remove control only for whoever holds the link's row of the matrix** (E6-02, ADR-0030 §3): the caller passes
+ * `onOntkoppel` only then, and without it the row still opens the detail and has nothing else to press.
  */
 export function Gekoppelddoel({
   koppeling,
@@ -39,7 +42,8 @@ export function Gekoppelddoel({
   koppeling: DoelKoppelingWeergave;
   ontkoppelLabel: string;
   ontkoppelBezig?: boolean;
-  onOntkoppel: () => void;
+  /** Absent without the right to remove this link: the row then only opens the detail. */
+  onOntkoppel?: () => void;
   /** `knop` is this row's button, which gets focus back when the detail closes. */
   onToon: (leerplandoelCode: string, knop: HTMLElement) => void;
 }) {
@@ -81,9 +85,11 @@ export function Gekoppelddoel({
         ) : null}
       </button>
 
-      <span className="relative z-10 -my-1.5 flex">
-        <Ontkoppel label={ontkoppelLabel} bezig={ontkoppelBezig} onClick={onOntkoppel} />
-      </span>
+      {onOntkoppel ? (
+        <span className="relative z-10 -my-1.5 flex">
+          <Ontkoppel label={ontkoppelLabel} bezig={ontkoppelBezig} onClick={onOntkoppel} />
+        </span>
+      ) : null}
     </li>
   );
 }

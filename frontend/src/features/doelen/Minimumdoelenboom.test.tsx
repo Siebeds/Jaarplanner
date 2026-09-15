@@ -3,7 +3,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { t, telWoord } from "../../i18n";
+import type { Ik } from "../../lib/aanmelding";
 import type { MinimumdoelFacetten, MinimumdoelRegel } from "../../lib/types";
+import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import { Minimumdoelenboom } from "./Minimumdoelenboom";
 
 /**
@@ -92,6 +94,8 @@ function toon(opties: {
   gekozenRef?: string | null;
   onKies?: (ref: string) => void;
   onWisFilters?: () => void;
+  /** Who is looking; directie unless a test says otherwise (E6-02: the Laadlink is directie's). */
+  ik?: Ik;
 }) {
   paden = [];
   vi.stubGlobal(
@@ -117,7 +121,7 @@ function toon(opties: {
     }),
   );
 
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), opties.ik ?? DIRECTIE);
   return render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
@@ -227,7 +231,20 @@ describe("Minimumdoelenboom", () => {
     toon({ facetten: facetten({ totaalAantalMinimumdoelen: 0, aantalTreffers: 0, aantalZonderOrdening: 0, leergebieden: [] }) });
 
     expect(await screen.findByText(t("doelen.geenMinimumdoelenTitel"))).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: t("doelen.laadIn") })).toHaveAttribute("href", "/inladen");
+    // Straight to the Op.stap section, since that is what "laad ze in" means (E6-02).
+    expect(screen.getByRole("link", { name: t("doelen.laadIn") })).toHaveAttribute("href", "/inladen?bron=opstap");
+  });
+
+  // The E1-22 carry-forward closed by E6-02: loading Op.stap is directie's (R3), so for anyone else "Laad ze in bij
+  // Inladen" would point at something they cannot do. Themabeheer loads thema's, not goals.
+  it("wijst alleen directie naar Inladen: themabeheer ziet de lege lijst zonder link", async () => {
+    toon({
+      facetten: facetten({ totaalAantalMinimumdoelen: 0, aantalTreffers: 0, aantalZonderOrdening: 0, leergebieden: [] }),
+      ik: ikMet({ heeftThemabeheer: true }),
+    });
+
+    expect(await screen.findByText(t("doelen.geenMinimumdoelenTitel"))).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: t("doelen.laadIn") })).not.toBeInTheDocument();
   });
 
   it("zegt bij een filter zonder treffers dat het aan de filters ligt, niet dat er geen minimumdoelen zijn", async () => {

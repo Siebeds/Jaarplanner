@@ -1,5 +1,7 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Dekking;
 using Jaarplanner.Application.Planning.Generatie;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.AspNetCore.Mvc;
 
@@ -131,6 +133,7 @@ public sealed class JaarplanController : ControllerBase
     /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     [HttpPost("generatie")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(
         Guid klasId,
         [FromBody] JaarplanGeneratieParameters? parameters,
@@ -201,6 +204,7 @@ public sealed class JaarplanController : ControllerBase
     /// as on the whole-plan run. It changes nothing about the generation.
     /// </param>
     [HttpPost("periodes/{blokStart}/generatie")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanGeneratieResultaat>> GenereerPeriode(
         Guid klasId,
         DateOnly blokStart,
@@ -273,6 +277,7 @@ public sealed class JaarplanController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPost("plaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> VoegPlaatsingToe(
         Guid klasId,
         [FromBody] HandmatigePlaatsing plaatsing,
@@ -285,6 +290,7 @@ public sealed class JaarplanController : ControllerBase
     /// (manueel). The persisted status survives a reload and a regeneration.
     /// </summary>
     [HttpPut("plaatsingen/{plaatsingId:guid}/status")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> WijzigStatus(
         Guid klasId,
         Guid plaatsingId,
@@ -297,6 +303,7 @@ public sealed class JaarplanController : ControllerBase
     /// generation today and extended by E4's per-period regeneration.
     /// </summary>
     [HttpPut("plaatsingen/{plaatsingId:guid}/vergrendeling")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> WijzigVergrendeling(
         Guid klasId,
         Guid plaatsingId,
@@ -335,6 +342,7 @@ public sealed class JaarplanController : ControllerBase
     /// </para>
     /// </summary>
     [HttpPut("plaatsingen/{plaatsingId:guid}/blok")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> VerplaatsPlaatsing(
         Guid klasId,
         Guid plaatsingId,
@@ -359,6 +367,7 @@ public sealed class JaarplanController : ControllerBase
     /// </para>
     /// </summary>
     [HttpDelete("plaatsingen/{plaatsingId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<JaarplanWeergave>> VerwijderPlaatsing(
         Guid klasId,
         Guid plaatsingId,

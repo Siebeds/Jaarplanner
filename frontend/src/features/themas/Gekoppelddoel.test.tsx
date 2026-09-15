@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import type { DoelMatchSuggestie, LeerplandoelDetail, ThemaWeergave } from "../../lib/types";
+import { DIRECTIE, metIk } from "../../test/rechten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -110,7 +111,9 @@ afterEach(() => {
 });
 
 function toon() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // As directie, who holds every right on this page: the unlink and the verdict buttons are drawn only for whoever
+  // holds their row of the ADR-0030 matrix (E6-02), and these tests are about what they do, not about who sees them.
+  const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), DIRECTIE);
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={["/themas/t-1"]}>

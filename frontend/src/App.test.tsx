@@ -13,8 +13,38 @@ import { t } from "./i18n";
  *
  * The network is stubbed with a promise that never settles, so every screen stays in its loading
  * state and nothing here depends on what an API would answer.
+ *
+ * **Except who is signed in** (E6-04). A part of Instellingen may be directie only, and its gate
+ * waits for `useIk` before it shows the screen or sends the person elsewhere; with a network that
+ * never answers it would wait forever. So `useIk` is replaced by a switch each test sets. Not by a
+ * stubbed `/api/ik`: `App` keeps one query client for the whole file and `ik` never goes stale, so
+ * the first answer would be the answer for every test after it.
  */
+const aangemeld = vi.hoisted(() => ({ isDirectie: true }));
+
+vi.mock("./lib/aanmelding", async (importOriginal) => {
+  const echt = await importOriginal<typeof import("./lib/aanmelding")>();
+  return {
+    ...echt,
+    useIk: () => ({
+      data: {
+        id: "ik-1",
+        naam: "Test",
+        email: "test@school.be",
+        isDirectie: aangemeld.isDirectie,
+        heeftThemabeheer: false,
+        hoofdleerkrachtLeeftijden: [],
+        leerkrachtLeeftijden: [],
+        eigenKlasIds: [],
+      },
+      isPending: false,
+      isError: false,
+    }),
+  };
+});
+
 beforeEach(() => {
+  aangemeld.isDirectie = true;
   vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
 });
 
@@ -47,7 +77,14 @@ describe("App", () => {
   // One assertion per part, so a part that loses its screen fails here rather than falling into the
   // `*` route and redirecting to the agenda, which looks like a working app. Driven off `ONDERDELEN`
   // itself: a fifth part is covered the moment it is added, and cannot arrive untested the way
-  // Weergave did.
+  // Weergave did. As directie, who may see every part, Gebruikers included (E6-04).
+  it("stuurt wie geen directie is van Gebruikers naar het eerste onderdeel", async () => {
+    aangemeld.isDirectie = false;
+    openOp("/instellingen/gebruikers");
+    await waitFor(() => expect(window.location.pathname).toBe("/instellingen/klassen"));
+    expect(screen.queryByRole("heading", { level: 1, name: t("instellingen.gebruikers") })).not.toBeInTheDocument();
+  });
+
   it.each(ONDERDELEN.map(({ deel, labelSleutel }) => [deel, labelSleutel] as const))(
     "toont het onderdeel %s op zijn eigen adres",
     async (deel, labelSleutel) => {

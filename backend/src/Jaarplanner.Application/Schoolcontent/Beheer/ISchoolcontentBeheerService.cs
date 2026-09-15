@@ -77,7 +77,12 @@ public interface ISchoolcontentBeheerService
 
     // --- Activiteit (age-scoped, through its subthema). ---
 
-    Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default);
+    /// <summary>
+    /// Creates an activiteit by hand under a subthema. <paramref name="makerId"/> is the gebruiker creating it (ADR-0030
+    /// R26), required on purpose so no hand-create path can forget it; a maker who does not exist (any more) is stored
+    /// as none, which is what their removal would have left anyway (I17).
+    /// </summary>
+    Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, Guid? makerId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default);
 
     Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default);
 

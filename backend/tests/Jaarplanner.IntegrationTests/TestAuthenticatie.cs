@@ -1,8 +1,10 @@
 using System.Text.Encodings.Web;
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Application.Toegang;
+using Jaarplanner.Infrastructure.Toegang;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -36,7 +38,10 @@ public static class TestAuthenticatie
     /// <summary>Who a request is when it says nothing. No row exists for it, so <c>/api/ik</c> answers 401.</summary>
     public static readonly Guid StandaardGebruikerId = Guid.Parse("7e57a000-0000-4000-8000-000000000001");
 
-    /// <summary>Registers the scheme and makes it the default for everything the cookie was the default for.</summary>
+    /// <summary>
+    /// Registers the scheme and makes it the default for everything the cookie was the default for. Also makes
+    /// <see cref="StandaardGebruikerId"/> directie (see <see cref="StandaardIsDirectie"/>).
+    /// </summary>
     public static void Registreer(IServiceCollection services)
     {
         services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, Handler>(Schema, _ => { });
@@ -47,6 +52,29 @@ public static class TestAuthenticatie
             o.DefaultChallengeScheme = Schema;
             o.DefaultForbidScheme = Schema;
         });
+
+        services.RemoveAll<IRechtenService>();
+        services.AddScoped<RechtenService>();
+        services.AddScoped<IRechtenService>(sp => new StandaardIsDirectie(sp.GetRequiredService<RechtenService>()));
+    }
+
+    /// <summary>
+    /// <b>The default identity is directie</b> (E6-02), as this stand-in's principal has always said. The 152 call sites
+    /// that send no header test something other than rights, and a directie is the one gebruiker every matrix row
+    /// admits, so they keep testing what they tested. No row exists for it, so this answers without the database,
+    /// which the in-memory hosts do not have. Every other id, sent through <see cref="GebruikerHeader"/>, goes to the
+    /// real <see cref="RechtenService"/>: the rights tests seed gebruikers and use those.
+    /// </summary>
+    private sealed class StandaardIsDirectie : IRechtenService
+    {
+        private readonly IRechtenService _echt;
+
+        public StandaardIsDirectie(IRechtenService echt) => _echt = echt;
+
+        public Task<Rechten> HaalRechtenOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default) =>
+            gebruikerId == StandaardGebruikerId
+                ? Task.FromResult(new Rechten(gebruikerId, isDirectie: true, heeftThemabeheer: false, [], [], []))
+                : _echt.HaalRechtenOpAsync(gebruikerId, cancellationToken);
     }
 
     private sealed class Handler : AuthenticationHandler<AuthenticationSchemeOptions>
@@ -72,5 +100,12 @@ public static class TestAuthenticatie
                 Schema);
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Schema)));
         }
+
+        /// <summary>
+        /// A rights refusal answers exactly as the cookie does in production (E6-02 slice 3, fix round 1), so a test can
+        /// tell an authorisation 403 from any other 403 (the anti-forgery check, a wizard run's state) by its detail.
+        /// </summary>
+        protected override Task HandleForbiddenAsync(AuthenticationProperties properties) =>
+            Aanmelding.SchrijfGeenToegangAsync(Context);
     }
 }

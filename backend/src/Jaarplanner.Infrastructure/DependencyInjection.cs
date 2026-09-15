@@ -12,6 +12,7 @@ using Jaarplanner.Application.Planning.Hoeken;
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Schoolcontent.Wizard;
 using Jaarplanner.Application.Toegang;
 using Jaarplanner.Infrastructure.Ai;
 using Jaarplanner.Infrastructure.AiAuthoring;
@@ -216,6 +217,13 @@ public static class DependencyInjection
         // auto-applied (Art. IV.1/IV.2); the wizard persists an accepted suggestion via the beheer path.
         services.AddScoped<IThemaOpbouwAssistService, ThemaOpbouwAssistService>();
 
+        // --- E6-02 slice 3: the thema-opbouw wizard's own write actions (ADR-0030 R32, I22–I25). ---
+        // Beside the wizard's AI assist rather than with the rights services, because it is the wizard's write path: it
+        // records which thema a run built and what it created, and writes through ISchoolcontentBeheerService so every
+        // rule of a hand write applies. Scoped, sharing the request's DbContext, which its one transaction needs.
+        services.AddScoped<IWizardrunService, WizardrunService>();
+        // --- end E6-02 slice 3 ---
+
         // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
         // the service itself depends only on IAiClient (E2-01), IPlanningsblokIndeling (E3-05) and this port, so
         // the whole flow runs against fakes with no network and no database in tests (Art. IV.6). It is reachable
@@ -260,6 +268,11 @@ public static class DependencyInjection
         // decides; nothing here knows about OpenID Connect.
         services.AddScoped<IToegangService, ToegangService>();
 
+        // What a signed-in gebruiker may do (E6-02, ADR-0030 §3). The rights are read per request, never from the
+        // cookie; the resolver turns a route's id into the resource a matrix row is checked against. Both are read-only.
+        services.AddScoped<IRechtenService, RechtenService>();
+        services.AddScoped<IRechtenbronnen, EfRechtenbronnen>();
+
         // The keys that encrypt the session cookie live in this database (ADR-0031 decision 5), so a restart or a
         // second instance keeps everyone signed in. The Api adds Key Vault protection of them in the cloud.
         services.AddDataProtection()
@@ -276,6 +289,11 @@ public static class DependencyInjection
                 eersteDirectie.Trim(),
                 sp.GetRequiredService<ILogger<EersteDirectieBootstrap>>()));
         }
+
+        // --- E6-04: directie's beheer of gebruikers and their rights (ADR-0030 §3, directie only). ---
+        // Invite, themabeheer and the directie right, klastoewijzingen, hoofdleerkracht appointments, removal. The Api
+        // puts the Beheer policy on every route over it; the service holds the last-directie rule (ADR-0031 decision 7).
+        services.AddScoped<IGebruikerBeheerService, GebruikerBeheerService>();
 
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only
         // inside the service, so an environment that does not ask for it never registers a hosted service

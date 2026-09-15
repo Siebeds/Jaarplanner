@@ -18,6 +18,7 @@ import {
   useThema,
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
+import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
@@ -82,6 +83,16 @@ import {
  * **Nothing here claims anything about dekking.** A doel is gedekt when it is linked AND the thema
  * is placed in a plan (Art. V.1), and this screen knows nothing about any plan. The margin counts
  * links and the copy says "gekoppeld".
+ *
+ * **Each control is drawn only for whoever holds its row of the ADR-0030 §3 matrix** (E6-02 slice 4), decided in
+ * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are directie's and themabeheer's. Deleting the
+ * thema is directie's, and themabeheer's while the thema is empty (I26). The server also lets themabeheer delete a
+ * thema holding only its own open wizard run's items, but this read does not carry a run's items, so that case waits
+ * for E6-05. Each chapter asks about its own leeftijd.
+ * Everyone reads the whole fiche. No sentence explains a missing control: on this screen most visitors read, and a
+ * hint repeated per block is the prose this interface cuts first. Open doelsuggesties are shown only to whoever may
+ * decide them, since for anyone else they are proposals waiting on somebody else (owner, 2026-09-14: kept hidden).
+ * *Until fix round 1 this said no read carries the delete's fact at all; the empty thema is one it does carry.*
  */
 export function ThemadetailScherm() {
   const { themaId } = useParams<{ themaId: string }>();
@@ -92,6 +103,7 @@ export function ThemadetailScherm() {
   const genereer = useGenereerDoelsuggesties(id);
   const beoordeel = useBeoordeelSuggestie(id);
   const navigeer = useNavigate();
+  const { mag } = useRechten();
 
   const [bewerkOpen, setBewerkOpen] = useState(false);
   const [verwijderOpen, setVerwijderOpen] = useState(false);
@@ -167,6 +179,38 @@ export function ThemadetailScherm() {
           | undefined) ?? undefined)
       : undefined;
 
+  /*
+    A refusal from a control on this page that has no error line of its own: the goal links at three levels, a verdict
+    on a doelsuggestie, and the two deletes behind a confirmation. It can only happen when the page went stale, since
+    none of these is drawn without its right; the query client then refetches (`lib/queryClient.ts`), so the control
+    goes, and this says why nothing happened. The forms and "Vraag suggesties" show their own.
+  */
+  /*
+    The subthema form stays open only while this gebruiker may still use it: at least one leeftijd to make a subthema
+    at, or the right at the one being edited. After a 403 the rights are refetched, and a form left open with no
+    leeftijd to offer would be a Bewaren that can only be refused (fix round 1, F4). It then closes, like the agenda's
+    pickers, and its refusal moves to the line below.
+  */
+  const magSubthemaBlad =
+    subthemaBlad !== null &&
+    (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
+
+  const geweigerd = [
+    koppelThemadoel,
+    ontkoppelThemadoel,
+    koppelSubdoel,
+    ontkoppelSubdoel,
+    koppelActiviteitdoel,
+    ontkoppelActiviteitdoel,
+    beoordeel,
+    verwijder,
+    verwijderSubthema,
+    // The form shows its own refusal while it is open; once the rights closed it, this line does.
+    ...(magSubthemaBlad ? [] : [maakSubthema, wijzigSubthema]),
+  ]
+    .map((mutatie) => geenToegangZin(mutatie.error))
+    .find((zin) => zin !== null);
+
   return (
     <>
       {/* THE THEMA'S TWO CONTROLS ARE NOT UP HERE ANY MORE (owner, 2026-08-31: "het edit potloodje
@@ -188,24 +232,30 @@ export function ThemadetailScherm() {
           figuur={thema.duurWeken}
           onder={t(thema.duurWeken === 1 ? "themas.weekEen" : "themas.weekMeer")}
           acties={
-            <>
-              <Bewerkknop
-                omrand
-                label={t("themabeheer.bewerkAria", { naam: thema.naam })}
-                onClick={() => {
-                  wijzig.reset();
-                  setBewerkOpen(true);
-                }}
-              />
-              <Verwijderknop
-                omrand
-                label={t("themabeheer.verwijderAria", { naam: thema.naam })}
-                onClick={() => {
-                  verwijder.reset();
-                  setVerwijderOpen(true);
-                }}
-              />
-            </>
+            mag.themaBewerken || mag.themaVerwijderen(thema) ? (
+              <>
+                {mag.themaBewerken ? (
+                  <Bewerkknop
+                    omrand
+                    label={t("themabeheer.bewerkAria", { naam: thema.naam })}
+                    onClick={() => {
+                      wijzig.reset();
+                      setBewerkOpen(true);
+                    }}
+                  />
+                ) : null}
+                {mag.themaVerwijderen(thema) ? (
+                  <Verwijderknop
+                    omrand
+                    label={t("themabeheer.verwijderAria", { naam: thema.naam })}
+                    onClick={() => {
+                      verwijder.reset();
+                      setVerwijderOpen(true);
+                    }}
+                  />
+                ) : null}
+              </>
+            ) : undefined
           }
         >
           <dl className="flex flex-col gap-2">
@@ -279,25 +329,31 @@ export function ThemadetailScherm() {
             titel={t("thema.themadoelen")}
             icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />}
             acties={
-              <>
-                <Doelkoppelaar
-                  onKies={(code) => koppelThemadoel.mutate(code)}
-                  bezig={koppelThemadoel.isPending}
-                  alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
-                />
-                {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
-                    legible: this does not add a themadoel, it asks the model for candidates that a
-                    teacher then has to accept one by one (Art. IV). */}
-                <Knop
-                  rang="stil"
-                  className="h-9 min-h-9 px-2.5 text-meta"
-                  disabled={genereer.isPending}
-                  onClick={() => genereer.mutate()}
-                >
-                  <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
-                  {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-                </Knop>
-              </>
+              mag.themaBewerken || mag.doelsuggestiesMaken ? (
+                <>
+                  {mag.themaBewerken ? (
+                    <Doelkoppelaar
+                      onKies={(code) => koppelThemadoel.mutate(code)}
+                      bezig={koppelThemadoel.isPending}
+                      alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+                    />
+                  ) : null}
+                  {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
+                      legible: this does not add a themadoel, it asks the model for candidates that a
+                      teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
+                  {mag.doelsuggestiesMaken ? (
+                    <Knop
+                      rang="stil"
+                      className="h-9 min-h-9 px-2.5 text-meta"
+                      disabled={genereer.isPending}
+                      onClick={() => genereer.mutate()}
+                    >
+                      <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
+                      {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
+                    </Knop>
+                  ) : null}
+                </>
+              ) : undefined
             }
           >
             {thema.themadoelen.length === 0 ? (
@@ -312,7 +368,7 @@ export function ThemadetailScherm() {
                       code: themadoel.koppeling.leerplandoelCode,
                     })}
                     ontkoppelBezig={ontkoppelThemadoel.isPending}
-                    onOntkoppel={() => ontkoppelThemadoel.mutate(themadoel.id)}
+                    onOntkoppel={mag.themaBewerken ? () => ontkoppelThemadoel.mutate(themadoel.id) : undefined}
                     onToon={toonDoel}
                   />
                 ))}
@@ -329,8 +385,13 @@ export function ThemadetailScherm() {
 
             {/* Open suggestions, when there are any. They keep a white surface where the rest of
                 this screen has none, and that is the point: everything else here is a fact to
-                read, and these are the only objects on the page waiting for a decision. */}
-            {openSuggesties.length > 0 ? (
+                read, and these are the only objects on the page waiting for a decision.
+
+                Only for whoever may make that decision (R14: directie and themabeheer). For anyone
+                else a card waiting on somebody else's verdict is noise, and a card without its two
+                buttons would read as a themadoel that is not one. Kept hidden by the owner's ruling
+                (owner, 2026-09-14), asked after the slice 4 audit. */}
+            {mag.doelsuggestiesBeoordelen && openSuggesties.length > 0 ? (
               <>
                 <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
                   {t("thema.suggesties")}
@@ -401,13 +462,16 @@ export function ThemadetailScherm() {
           <Kop
             titel={t("thema.subthemasTitel")}
             acties={
-              <Toevoegknop
-                label={t("subthemabeheer.toevoegen")}
-                onClick={() => {
-                  maakSubthema.reset();
-                  setSubthemaBlad({});
-                }}
-              />
+              // At SOME leeftijd; the form then offers only the leeftijden this gebruiker may use.
+              mag.subthemaToevoegen ? (
+                <Toevoegknop
+                  label={t("subthemabeheer.toevoegen")}
+                  onClick={() => {
+                    maakSubthema.reset();
+                    setSubthemaBlad({});
+                  }}
+                />
+              ) : undefined
             }
           >
             {subthemas.length === 0 ? (
@@ -420,6 +484,7 @@ export function ThemadetailScherm() {
           <Subthemahoofdstuk
             key={subthema.id}
             subthema={subthema}
+            mag={mag}
             koppelenBezig={
               koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
             }
@@ -499,10 +564,16 @@ export function ThemadetailScherm() {
         }
       />
 
-      {subthemaBlad ? (
+      {subthemaBlad && magSubthemaBlad ? (
         <Subthemaformulier
           open
           subthema={subthemaBlad.subthema}
+          // A new subthema at any leeftijd this gebruiker holds; an existing one only to a leeftijd where they hold the
+          // right too, since a re-scope needs it at both ends (I13).
+          magLeeftijd={(leeftijd) => {
+            const huidige = subthemaBlad.subthema?.leeftijd;
+            return huidige === undefined ? mag.subthemaBeheren(leeftijd) : mag.subthemaHerschikken(huidige, leeftijd);
+          }}
           bezig={subthemaBlad.subthema ? wijzigSubthema.isPending : maakSubthema.isPending}
           fout={
             subthemaBlad.subthema
@@ -513,7 +584,12 @@ export function ThemadetailScherm() {
                 ? maakSubthema.error
                 : undefined
           }
-          onSluit={() => setSubthemaBlad(null)}
+          // A refusal the form showed is left behind with it, so the line below does not repeat it after a close.
+          onSluit={() => {
+            maakSubthema.reset();
+            wijzigSubthema.reset();
+            setSubthemaBlad(null);
+          }}
           onBewaar={(invoer) => {
             const bestaand = subthemaBlad.subthema;
             if (bestaand) {
@@ -550,6 +626,10 @@ export function ThemadetailScherm() {
         <Activiteitformulier
           open
           activiteit={bladActiviteit}
+          // The facts rather than the form for a gebruiker who may not change this leeftijd's activiteiten; the goal
+          // section for whoever may link goals there (R19), on an existing activiteit and on a new one's create.
+          alleenLezen={bladActiviteit !== undefined && !mag.activiteitBewerken(bladSubthema.leeftijd)}
+          magDoelen={mag.doelenKoppelen(bladSubthema.leeftijd)}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
@@ -616,16 +696,19 @@ export function ThemadetailScherm() {
 
       {/* The one refusal a teacher will actually hit: an activiteit that is still on a day. The
           server's sentence names how many days, which is why it is shown instead of a catalogue
-          line. */}
-      {verwijderActiviteit.isError ? (
+          line. The same place carries a refused action from a control without an error line of
+          its own (`geweigerd`, above), so the two can never stack on top of each other. */}
+      {verwijderActiviteit.isError || geweigerd ? (
         <div
           role="alert"
           className="fixed inset-x-4 bottom-24 z-50 rounded-veld border border-attentie/40 bg-attentie-zacht p-3 shadow-zweef sm:inset-x-auto sm:right-6 sm:w-96"
         >
           <p className="text-meta font-medium text-attentie-inkt">
-            {verwijderActiviteit.error instanceof ApiError && verwijderActiviteit.error.detail
-              ? verwijderActiviteit.error.detail
-              : t("themabeheer.bewaarMislukt")}
+            {verwijderActiviteit.isError
+              ? verwijderActiviteit.error instanceof ApiError && verwijderActiviteit.error.detail
+                ? verwijderActiviteit.error.detail
+                : t("themabeheer.bewaarMislukt")
+              : geweigerd}
           </p>
         </div>
       ) : null}

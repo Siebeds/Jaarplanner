@@ -6,12 +6,26 @@ import { get, post } from "./api";
  * not school data: it belongs to the session, and nothing a teacher edits ever invalidates it.
  */
 
-/** The person behind the session, as `GET /api/ik` returns them. */
+/**
+ * The person behind the session, as `GET /api/ik` returns them, with the rights they hold today
+ * (E6-02, ADR-0030 §3). These are the raw relations, not per-action answers: directie may do
+ * everything whatever the lists say, and a person holds the union of all of them. The frontend
+ * uses them only to hide what someone cannot do; the server decides every action itself.
+ */
 export interface Ik {
   id: string;
   naam: string;
   email: string;
+  /** "Directie": every action (R3). */
   isDirectie: boolean;
+  /** "TB": thema's, the FR-1 import, the wizard and doelsuggesties (R4, R14). */
+  heeftThemabeheer: boolean;
+  /** "HL": the jaarfasen they are hoofdleerkracht of in a schooljaar that has not ended (R5, R20). */
+  hoofdleerkrachtLeeftijden: string[];
+  /** "LK leeftijd": the stated jaarfasen of their klassen in a schooljaar that has not ended (R17, R22). */
+  leerkrachtLeeftijden: string[];
+  /** "LK eigen": every klas they teach, whose planning they edit (R7, R15). */
+  eigenKlasIds: string[];
 }
 
 /**

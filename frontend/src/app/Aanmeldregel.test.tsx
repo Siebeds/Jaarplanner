@@ -3,14 +3,23 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Aanmeldregel } from "./Aanmeldregel";
-import { afmeldNavigatie } from "../lib/aanmelding";
+import { afmeldNavigatie, type Ik } from "../lib/aanmelding";
 import { t } from "../i18n";
 
 /**
  * The signed-in row (E6-01). Behaviour only: where it sits and how it looks is a browser pass, since
  * jsdom applies no stylesheet.
  */
-const IK = { id: "7e57a000-0000-4000-8000-000000000001", naam: "An Peeters", email: "an@school.be", isDirectie: false };
+const IK: Ik = {
+  id: "7e57a000-0000-4000-8000-000000000001",
+  naam: "An Peeters",
+  email: "an@school.be",
+  isDirectie: false,
+  heeftThemabeheer: false,
+  hoofdleerkrachtLeeftijden: [],
+  leerkrachtLeeftijden: [],
+  eigenKlasIds: [],
+};
 const ENTRA_AFMELDING = "https://login.voorbeeld.test/logout";
 
 function json(inhoud: unknown, status = 200) {

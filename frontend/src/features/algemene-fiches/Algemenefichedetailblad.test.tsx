@@ -51,7 +51,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function toon({ momentId = null, enige = false }: { momentId?: string | null; enige?: boolean } = {}) {
+function toon({
+  momentId = null,
+  enige = false,
+  alleenLezen = false,
+}: { momentId?: string | null; enige?: boolean; alleenLezen?: boolean } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -60,6 +64,7 @@ function toon({ momentId = null, enige = false }: { momentId?: string | null; en
         plaatsing={turnen}
         momentId={momentId}
         enigePeriodeMetDoelen={enige}
+        alleenLezen={alleenLezen}
         bezig={false}
         onVerwijder={() => {}}
         onSluit={() => {}}
@@ -70,6 +75,29 @@ function toon({ momentId = null, enige = false }: { momentId?: string | null; en
 
 const opUur = (begin: string, einde: string, dagen: string) =>
   t("fichedetail.opUur", { periode: toonBereik(begin, einde), dagen });
+
+/*
+  E6-02: a planned algemene fiche is the klas's planning (ADR-0030 §3, R7). A gebruiker who may read the agenda and not
+  plan the klas opens the same sheet from a block and gets what the run is, with nothing that would change it: the
+  same shape as `Hoekdetailblad`'s reader case.
+*/
+describe("Algemenefichedetailblad voor wie de klas alleen mag bekijken", () => {
+  it("toont periode en uren, zonder verwijderen, zonder dagvelden en zonder de zin over wat verwijderen kost", () => {
+    // Opened from a block (a moment) on the fiche's only period with goals: every write-side part would show here.
+    toon({ momentId: "m-2", enige: true, alleenLezen: true });
+
+    expect(
+      screen.getByText(opUur("10:30:00", "11:20:00", t("fichedetail.aantalSchooldagen", { aantal: 3 }))),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("fichedetail.verwijder") })).toBeNull();
+    expect(screen.queryByLabelText(t("fichedetail.dag"))).toBeNull();
+    expect(screen.queryByLabelText(t("fichedetail.van"))).toBeNull();
+    expect(screen.queryByLabelText(t("fichedetail.tot"))).toBeNull();
+    expect(screen.queryByRole("button", { name: t("fichedetail.bewaren") })).toBeNull();
+    // The cost of a delete she cannot make is not hers to weigh.
+    expect(screen.queryByText(t("fichedetail.laatstePeriode"))).toBeNull();
+  });
+});
 
 describe("Algemenefichedetailblad", () => {
   it("zegt per groep uren op hoeveel schooldagen, in plaats van de eerste dag voor allemaal te laten spreken", () => {

@@ -44,6 +44,12 @@ export function Doeldetail({
    * is the job of the "Doel koppelen" control above that list. With `null` there is no button, rather
    * than a button that leads nowhere. Required but nullable, not optional, so a caller that forgets it
    * fails to compile instead of silently losing the register's button.
+   *
+   * The register passes `null` too when the sheet it opens would offer this gebruiker nothing to press (E6-02). The
+   * sheet lists the chosen klas's subthema's, so the screen asks `mag.doelKoppelenVoor(klas.jaarFasen)`: themabeheer
+   * for the thema level, or the subdoel or goal-link right at one of that klas's leeftijden. *Until fix round 1 this
+   * asked whether the gebruiker may link a doel anywhere, which offered a hoofdleerkracht the button with a klas of
+   * another leeftijd picked.*
    */
   onKoppel: (() => void) | null;
 }) {

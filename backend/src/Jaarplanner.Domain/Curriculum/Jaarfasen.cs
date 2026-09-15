@@ -93,6 +93,35 @@ public static class Jaarfasen
     public static bool IsBekend(string? code) => code is not null && Alle.Contains(code, StringComparer.Ordinal);
 
     /// <summary>
+    /// <b>The rule for a leeftijd in a request body, and for <see cref="WatIsErMisMet"/></b>: trimmed, then exactly one of
+    /// the nine codes. Returns the code in the form it is stored, or <c>null</c> when it is none.
+    /// <para>
+    /// No case folding and no reordering: <see cref="Normaliseer"/> is for what an Op.stap source writes, not for what a
+    /// teacher types, so <c>k3</c> and <c>3K</c> are refused here.
+    /// </para>
+    /// <para>
+    /// Its callers share it so they cannot accept different sets, and each keeps its own refusal sentence:
+    /// <list type="bullet">
+    /// <item>the subthema create and re-scope (<c>SchoolcontentBeheerService.VereisLeeftijd</c>);</item>
+    /// <item>the rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>, E6-02);</item>
+    /// <item><see cref="WatIsErMisMet"/>, which validates a klas's jaarfase (<c>Klas</c>, the klas beheer service) and a
+    /// hoofdleerkracht appointment's jaarfase (<c>Hoofdleerkrachtaanstelling</c>).</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>Not the FR-1 import.</b> <c>SchoolcontentImportService</c> tests a file's leeftijd with its own inline copy of
+    /// this test (<see cref="IsBekend"/> on the trimmed value, in its subthema leeftijd check and in <c>LeeftijdVoor</c>).
+    /// It accepts the same set today, but a change here does not reach it. No rights check depends on it, because the
+    /// import is gated as a whole (ADR-0030 R27).
+    /// </para>
+    /// </summary>
+    public static string? LeesLeeftijd(string? invoer)
+    {
+        var code = invoer?.Trim();
+        return IsBekend(code) ? code : null;
+    }
+
+    /// <summary>
     /// The jaar/fase codes a class should be measured against: its OWN recorded jaar/fase when it has one, and
     /// otherwise whatever its <c>Leerjaar</c> ordinal can say (owner ruling, 2026-08-25).
     /// <para>
@@ -113,31 +142,6 @@ public static class Jaarfasen
     /// <param name="jaarfase">Its recorded jaar/fase, or null when the school has not stated one.</param>
     public static IReadOnlyList<string>? VoorKlas(int leerjaar, string? jaarfase) =>
         IsBekend(jaarfase) ? [jaarfase!] : VoorLeerjaar(leerjaar);
-
-    /// <summary>
-    /// What is wrong with a class claiming <paramref name="jaarfase"/>, in Dutch, or null when nothing is.
-    /// <para>
-    /// <b>Blank is now an error, and the contradiction check is gone</b> (owner ruling, 2026-08-30). Both changes
-    /// follow from the same thing: the jaar/fase is the only level a class states, and <c>Leerjaar</c> is derived
-    /// from it. There is nothing left for it to contradict, and "the school has not said" stopped being a state a
-    /// new or edited class may be in.
-    /// </para>
-    /// <para>
-    /// <b>The rule lives here so both layers can apply it without restating it.</b> The idiom this codebase already
-    /// uses (see <c>WeekplanningService</c>) is that the aggregate refuses programmer error and the service refuses
-    /// teacher input, which means the check happens twice; what must not happen twice is the RULE. So the domain
-    /// throws on this sentence and the beheerservice raises a mapped 400 with it, and a change here reaches both.
-    /// </para>
-    /// <para>
-    /// ~~Blank is not an error: it means the school has not said, which is the normal state of every class that
-    /// existed before this field did.~~ <b>Struck 2026-08-31.</b> It contradicts the first paragraph of this very
-    /// comment, four lines up, which records the owner's ruling that blank IS an error. Both were true in turn and
-    /// the amendment kept the older one; struck rather than deleted, because a reader who has seen the old rule
-    /// needs to know which way it went. What remains true of it: rows that predate the field can still hold no
-    /// jaar/fase, which is why <see cref="VoorKlas"/> falls back to the <c>Leerjaar</c> ordinal rather than
-    /// refusing. That is a state the database may be in, not one a new or edited class may be put in.
-    /// </para>
-    /// </summary>
 
     /// <summary>
     /// The <c>Leerjaar</c> ordinal a jaar/fase code implies: <c>0</c> for the three kleuter jaren, 1 to 6 for L1
@@ -169,6 +173,34 @@ public static class Jaarfasen
             : throw new ArgumentException($"'{jaarfase}' is geen bekende jaar/fase.", nameof(jaarfase));
     }
 
+    /// <summary>
+    /// What is wrong with a class claiming <paramref name="jaarfase"/>, in Dutch, or null when nothing is.
+    /// <para>
+    /// <b>Blank is now an error, and the contradiction check is gone</b> (owner ruling, 2026-08-30). Both changes
+    /// follow from the same thing: the jaar/fase is the only level a class states, and <c>Leerjaar</c> is derived
+    /// from it. There is nothing left for it to contradict, and "the school has not said" stopped being a state a
+    /// new or edited class may be in.
+    /// </para>
+    /// <para>
+    /// <b>The rule lives here so both layers can apply it without restating it.</b> The idiom this codebase already
+    /// uses (see <c>WeekplanningService</c>) is that the aggregate refuses programmer error and the service refuses
+    /// teacher input, which means the check happens twice; what must not happen twice is the RULE. So the domain
+    /// throws on this sentence and the beheerservice raises a mapped 400 with it, and a change here reaches both.
+    /// </para>
+    /// <para>
+    /// ~~Blank is not an error: it means the school has not said, which is the normal state of every class that
+    /// existed before this field did.~~ <b>Struck 2026-08-31.</b> It contradicts the first paragraph of this very
+    /// comment, four lines up, which records the owner's ruling that blank IS an error. Both were true in turn and
+    /// the amendment kept the older one; struck rather than deleted, because a reader who has seen the old rule
+    /// needs to know which way it went. What remains true of it: rows that predate the field can still hold no
+    /// jaar/fase, which is why <see cref="VoorKlas"/> falls back to the <c>Leerjaar</c> ordinal rather than
+    /// refusing. That is a state the database may be in, not one a new or edited class may be put in.
+    /// </para>
+    /// <para>
+    /// <i>Reattached 2026-09-14 (E6-02 slice 1, fix round 3):</i> this block was separated from this method by a
+    /// blank line and sat above <see cref="LeerjaarVoor"/>, so tooling attached it there.
+    /// </para>
+    /// </summary>
     public static string? WatIsErMisMet(string? jaarfase)
     {
         if (string.IsNullOrWhiteSpace(jaarfase))
@@ -176,7 +208,7 @@ public static class Jaarfasen
             return "Kies een leeftijd: JK, K2, K3 of L1 tot L6.";
         }
 
-        return IsBekend(jaarfase.Trim())
+        return LeesLeeftijd(jaarfase) is not null
             ? null
             : $"'{jaarfase.Trim()}' is geen bekende leeftijd. Kies JK, K2, K3 of L1 tot L6.";
     }

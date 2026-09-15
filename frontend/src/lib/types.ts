@@ -413,6 +413,12 @@ export interface ActiviteitWeergave {
    */
   lengteInLesuren?: number;
   doelkoppelingen: DoelKoppelingWeergave[];
+  /**
+   * Who created it, or null: imported, older than the rule, or its maker was removed (ADR-0030 R26, I17). It decides
+   * one thing, the maker's delete while no goal is linked (R25, R33), which `lib/rechten.ts` compares with `/api/ik`.
+   * Optional because a fixture or an older server may leave it out; absent reads as no maker, the safe direction.
+   */
+  makerId?: string | null;
 }
 
 export interface SubthemaWeergave {

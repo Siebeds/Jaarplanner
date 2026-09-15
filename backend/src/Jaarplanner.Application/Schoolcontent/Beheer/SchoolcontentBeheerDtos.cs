@@ -43,21 +43,27 @@ public sealed record ThemaWijziging(
 /// class that teaches it, so a caller that knew which class it was creating for no longer has anything to say
 /// about it.
 /// </para>
+/// <para>
+/// <see cref="Leeftijd"/> is <b>nullable at binding on purpose</b> (E6-02 slice 3, fix round 1). Required in meaning,
+/// but a non-nullable property makes ASP.NET Core refuse a missing one with its own English 400 before the controller
+/// runs, so the Dutch refusal the write and the rights check share never gets to answer. Null is refused like blank.
+/// </para>
 /// </summary>
 public sealed record SubthemaCreatie(
     string Naam,
     int DuurWeken,
-    string Leeftijd,
+    string? Leeftijd,
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>
 /// Update payload for a <see cref="Subthema"/> — the age scope may be re-pointed but never cleared.
 /// Re-pointing it moves the subthema between classes, because a class reaches it through the age it teaches.
 /// </summary>
+/// <remarks><c>Leeftijd</c> is nullable at binding for the reason <see cref="SubthemaCreatie"/> gives.</remarks>
 public sealed record SubthemaWijzigingInvoer(
     string Naam,
     int DuurWeken,
-    string Leeftijd,
+    string? Leeftijd,
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>Create payload for an <see cref="Activiteit"/> (inherits its subthema's age scope, Art. IX.2).</summary>
@@ -114,7 +120,10 @@ public sealed record ThemadoelWeergave(Guid Id, DoelKoppelingWeergave Koppeling)
 /// <summary>Read view of a subdoel (class/age-scoped; owns one goal link).</summary>
 public sealed record SubdoelWeergave(Guid Id, string Leeftijd, DoelKoppelingWeergave Koppeling);
 
-/// <summary>Read view of an activiteit with its (zero or more) goal links.</summary>
+/// <summary>
+/// Read view of an activiteit with its (zero or more) goal links. <paramref name="MakerId"/> is who created it, or
+/// null (ADR-0030 R26): the frontend compares it with <c>GET /api/ik</c>'s id to offer the maker's delete (R33).
+/// </summary>
 public sealed record ActiviteitWeergave(
     Guid Id,
     string Naam,
@@ -124,7 +133,8 @@ public sealed record ActiviteitWeergave(
     Guid? OnderzoeksvraagId,
     Activiteitkleur? Kleur,
     int LengteInLesuren,
-    IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen);
+    IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen,
+    Guid? MakerId = null);
 
 /// <summary>Read view of a subthema with its subdoelen + activiteiten.</summary>
 public sealed record SubthemaWeergave(

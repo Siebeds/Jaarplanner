@@ -28,6 +28,10 @@ import {
  * fiche carries goals, taking it out stops the fiche counting for dekking (Art. V.1 as amended), and the sheet says
  * so before she presses. It says nothing about whether a goal stays gedekt: a thema may carry the same goal, which
  * this sheet cannot see.
+ *
+ * **`alleenLezen` is the same sheet for a gebruiker who may not plan this klas** (E6-02, ADR-0030 §3, R7), as in
+ * `Hoekdetailblad`: the period and the hours as they are, with the delete, the moment's fields and the sentence about
+ * what the delete costs left out, since all three are about changing the plan.
  */
 export function Algemenefichedetailblad({
   open,
@@ -36,6 +40,7 @@ export function Algemenefichedetailblad({
   enigePeriodeMetDoelen,
   bezig,
   fout,
+  alleenLezen = false,
   onVerwijder,
   onSluit,
 }: {
@@ -47,6 +52,8 @@ export function Algemenefichedetailblad({
   enigePeriodeMetDoelen: boolean;
   bezig: boolean;
   fout?: unknown;
+  /** The gebruiker may read this klas's planning and not change it. */
+  alleenLezen?: boolean;
   onVerwijder: () => void;
   onSluit: () => void;
 }) {
@@ -59,7 +66,9 @@ export function Algemenefichedetailblad({
       open={open}
       onOpenChange={(o) => !o && onSluit()}
       titel={plaatsing.ficheNaam}
+      // No footer for a reader: its one button would be "Sluiten", the sheet's own close control a second time.
       voet={
+        alleenLezen ? undefined : (
         <div className="flex flex-wrap items-center gap-2">
           {/* The house style for a destructive confirm, as in `Hoekdetailblad`: ink fill, not a danger hue. */}
           <Knop
@@ -75,6 +84,7 @@ export function Algemenefichedetailblad({
             {t("fichedetail.sluiten")}
           </Knop>
         </div>
+        )
       }
     >
       <div className="flex flex-col gap-5">
@@ -99,7 +109,7 @@ export function Algemenefichedetailblad({
           </div>
         </div>
 
-        {moment ? (
+        {moment && !alleenLezen ? (
           // Keyed on the moment's saved values, so a refetch after a save (or a drag in another view) refills the
           // fields instead of leaving the old answer in them.
           <Momentvorm
@@ -110,7 +120,7 @@ export function Algemenefichedetailblad({
           />
         ) : null}
 
-        {enigePeriodeMetDoelen ? <p className="text-meta text-inkt-zacht">{t("fichedetail.laatstePeriode")}</p> : null}
+        {enigePeriodeMetDoelen && !alleenLezen ? <p className="text-meta text-inkt-zacht">{t("fichedetail.laatstePeriode")}</p> : null}
 
         {fout ? (
           <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">

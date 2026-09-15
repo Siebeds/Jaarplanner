@@ -44,6 +44,11 @@ import type { OnderzoeksvraagInvoer, SubthemaInvoer } from "./mutaties";
  * **Onderzoeksvragen are edited as a whole list.** The API takes them as part of the subthema payload
  * rather than one at a time, so a removed row is removed by saving the subthema. Adding a row that
  * only exists after a save would be a control that lies about when it took effect.
+ *
+ * **Only the leeftijden this gebruiker may use are offered** (E6-02, ADR-0030 §3 and I13). A subthema at a leeftijd
+ * is directie's and that leeftijd's hoofdleerkrachten', and moving one needs the right at the old and the new leeftijd,
+ * so the caller passes `magLeeftijd` and the list is filtered by it. When one leeftijd is left it is stated rather than
+ * offered: a select with a single option is a control that does nothing.
  */
 const GEWONE_DUUR = [1, 2, 3];
 
@@ -54,6 +59,7 @@ export function Subthemaformulier({
   onSluit,
   bezig,
   fout,
+  magLeeftijd,
 }: {
   open: boolean;
   /** The subthema being changed, or undefined when making a new one under this thema. */
@@ -62,9 +68,14 @@ export function Subthemaformulier({
   onSluit: () => void;
   bezig: boolean;
   fout?: unknown;
+  /**
+   * Whether this gebruiker may put the subthema at `leeftijd`: `mag.subthemaBeheren` for a new one, and for an existing
+   * one `mag.subthemaHerschikken(huidige, leeftijd)`, the right at both ends (I13).
+   */
+  magLeeftijd: (leeftijd: string) => boolean;
 }) {
   const id = useId();
-  const { data: jaarfasen } = useJaarfasen();
+  const { data: jaarfasen, isError: jaarfasenFout } = useJaarfasen();
   const [naam, setNaam] = useState(subthema?.naam ?? "");
   const [duur, setDuur] = useState(subthema?.duurWeken ?? 2);
   const [andereDuur, setAndereDuur] = useState(
@@ -83,12 +94,20 @@ export function Subthemaformulier({
 
   const weken = anders ? Number.parseInt(andereDuur, 10) : duur;
 
-  const fasen = jaarfasen ?? [];
+  const fasen = (jaarfasen ?? []).filter(magLeeftijd);
+  // Two different empties (fix round 1, F4): the list did not arrive, or it arrived and this gebruiker may use none of
+  // it. Only the first is a loading problem. The second happens when rights are lost while the form is open; the thema
+  // screen then closes the form, and this component on its own says nothing rather than blame the loading.
+  const geladen = jaarfasen !== undefined;
+  const nietsToegestaan = geladen && fasen.length === 0;
+  // One leeftijd left is the answer, not a question: it is used without being picked. Derived rather than written
+  // into state, because the list can arrive after the sheet opened.
+  const gekozenLeeftijd = leeftijd !== "" ? leeftijd : fasen.length === 1 ? fasen[0] : "";
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
     const naamLeeg = naam.trim().length === 0;
-    const scopeLeeg = leeftijd.trim().length === 0;
+    const scopeLeeg = gekozenLeeftijd.trim().length === 0;
     setNaamFout(naamLeeg);
     setScopeFout(scopeLeeg);
     if (naamLeeg || scopeLeeg || !Number.isFinite(weken) || weken < 1) return;
@@ -96,7 +115,7 @@ export function Subthemaformulier({
     onBewaar({
       naam: naam.trim(),
       duurWeken: weken,
-      leeftijd: leeftijd.trim(),
+      leeftijd: gekozenLeeftijd.trim(),
       // A row whose question was emptied is a row the teacher deleted by clearing it.
       onderzoeksvragen: vragen
         .filter((vraag) => vraag.vraag.trim().length > 0)
@@ -220,22 +239,33 @@ export function Subthemaformulier({
             form in. She reaches this sheet from a class she already chose, so the age is settled
             before she starts typing and asking it first put a field she will not touch above the one
             she came here for. It stays required and it stays visible; it just stops going first. */}
+        {nietsToegestaan ? null : (
         <fieldset className="rounded-veld bg-vlak-diep/60 p-3">
           <legend className="px-1 text-micro uppercase text-inkt-zwak">
             {t("subthemabeheer.voorWie")}
           </legend>
           <div className="min-w-48">
-            <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
-              {t("subthemabeheer.leeftijd")}
-            </label>
-            {fasen.length === 0 ? (
-              <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
-                {t("klasbeheer.leeftijdenOnbekend")}
-              </p>
+            {fasen.length === 1 ? (
+              <>
+                <p className="text-meta font-medium text-inkt">{t("subthemabeheer.leeftijd")}</p>
+                <p className="mt-1.5 text-body text-inkt">{fasen[0]}</p>
+              </>
+            ) : (
+              <label htmlFor={`${id}-leeftijd`} className="text-meta font-medium text-inkt">
+                {t("subthemabeheer.leeftijd")}
+              </label>
+            )}
+            {fasen.length === 1 ? null : fasen.length === 0 ? (
+              // Not loaded (the only empty that reaches here): the sentence only once the read failed, not while it runs.
+              jaarfasenFout ? (
+                <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                  {t("klasbeheer.leeftijdenOnbekend")}
+                </p>
+              ) : null
             ) : (
               <Keuze
                 id={`${id}-leeftijd`}
-                value={leeftijd}
+                value={gekozenLeeftijd}
                 disabled={bezig}
                 onChange={(e) => {
                   setLeeftijd(e.target.value);
@@ -258,6 +288,7 @@ export function Subthemaformulier({
             </p>
           ) : null}
         </fieldset>
+        )}
 
         <section className="border-t border-lijn pt-5">
           <div className="flex items-baseline justify-between gap-2">

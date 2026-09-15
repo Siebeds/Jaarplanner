@@ -164,8 +164,7 @@ public static class Aanmelding
 
         o.Events.OnRedirectToLogin = context => SchrijfProbleemAsync(
             context.HttpContext, StatusCodes.Status401Unauthorized, Probleemtitels.NietAangemeld, "Meld je aan om verder te gaan.");
-        o.Events.OnRedirectToAccessDenied = context => SchrijfProbleemAsync(
-            context.HttpContext, StatusCodes.Status403Forbidden, Probleemtitels.GeenToegang, "Je hebt geen toegang tot deze actie.");
+        o.Events.OnRedirectToAccessDenied = context => SchrijfGeenToegangAsync(context.HttpContext);
         o.Events.OnValidatePrincipal = ValideerSessieAsync;
     }
 
@@ -297,4 +296,15 @@ public static class Aanmelding
             ProblemDetails = new ProblemDetails { Status = status, Title = titel, Detail = detail },
         });
     }
+
+    /// <summary>The detail of an authorisation refusal: the one sentence every rights 403 carries.</summary>
+    public const string GeenToegangDetail = "Je hebt geen toegang tot deze actie.";
+
+    /// <summary>
+    /// The 403 of an authorisation refusal, in the shape and sentence the cookie answers with (E6-02). Public so the
+    /// integration tests' stand-in scheme answers identically, which lets E6-02's sweep tell a rights refusal from any
+    /// other 403 (the anti-forgery check, a wizard run's state) by its detail.
+    /// </summary>
+    public static Task SchrijfGeenToegangAsync(HttpContext context) =>
+        SchrijfProbleemAsync(context, StatusCodes.Status403Forbidden, Probleemtitels.GeenToegang, GeenToegangDetail);
 }

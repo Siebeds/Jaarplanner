@@ -57,12 +57,17 @@ import {
  * **Taking ONE day out of the timetable is deliberately not here**, though the aggregate has the verb
  * and the endpoint exists. There is no way to put a day back, so it would be a one way door, and this
  * sheet exists because of a one way door. The pair is worth building; half of it is not.
+ *
+ * **`alleenLezen` is the same sheet for a gebruiker who may not plan this klas** (E6-02, ADR-0030 §3, R7): the
+ * period, the hours and the verrijking as they are, with every button that would change them left out. That includes
+ * the doubled-day sentence, which is an instruction for changing the hours.
  */
 export function Hoekdetailblad({
   open,
   plaatsing,
   bezig,
   fout,
+  alleenLezen = false,
   onVerwijder,
   onSluit,
 }: {
@@ -70,6 +75,8 @@ export function Hoekdetailblad({
   plaatsing: HoekplaatsingWeergave;
   bezig: boolean;
   fout?: unknown;
+  /** The gebruiker may read this klas's planning and not change it. */
+  alleenLezen?: boolean;
   onVerwijder: () => void;
   onSluit: () => void;
 }) {
@@ -220,25 +227,30 @@ export function Hoekdetailblad({
       open={open}
       onOpenChange={(o) => !o && onSluit()}
       titel={plaatsing.hoekNaam}
+      // No footer for a reader: its one button would be "Sluiten", the sheet's own close control a second time.
       voet={
+        alleenLezen ? undefined : (
         <div className="flex flex-wrap items-center gap-2">
           {/* The widest undo, in the house style for a destructive confirm: ink fill, not a danger hue,
               exactly as `Bevestiging` does it. There is no second "are you sure" over this one, because
               this sheet already shows the thing that would be lost, and the label now says how much of
               it that is. */}
-          <Knop
-            rang="stil"
-            type="button"
-            onClick={onVerwijder}
-            disabled={drukBezig}
-            className="bg-inkt text-inkt-op hover:bg-inkt active:bg-inkt"
-          >
-            {bezig ? t("hoekdetail.verwijderBezig") : t("hoekdetail.verwijder")}
-          </Knop>
+          {alleenLezen ? null : (
+            <Knop
+              rang="stil"
+              type="button"
+              onClick={onVerwijder}
+              disabled={drukBezig}
+              className="bg-inkt text-inkt-op hover:bg-inkt active:bg-inkt"
+            >
+              {bezig ? t("hoekdetail.verwijderBezig") : t("hoekdetail.verwijder")}
+            </Knop>
+          )}
           <Knop rang="stil" type="button" onClick={onSluit} disabled={drukBezig}>
             {t("hoekdetail.sluiten")}
           </Knop>
         </div>
+        )
       }
     >
       <div className="flex flex-col gap-5">
@@ -347,8 +359,9 @@ export function Hoekdetailblad({
               ))}
 
               {/* A doubled day blocks new hours (owner, 2026-09-11), so the reason stands here, where she reads the
-                  hours, in place of a button that would open a form she cannot save. */}
-              {dubbeleZin ? (
+                  hours, in place of a button that would open a form she cannot save. Neither for a reader: both
+                  are about changing the hours. */}
+              {alleenLezen ? null : dubbeleZin ? (
                 <p
                   id={`${id}-dubbel`}
                   tabIndex={-1}
@@ -378,15 +391,17 @@ export function Hoekdetailblad({
           {plaatsing.verrijkingen.length === 0 && bewerkt !== "nieuw" ? (
             <div className="mt-1 flex flex-col items-start gap-2">
               <p className="text-body text-inkt-zacht">{t("hoekdetail.geenVerrijking")}</p>
-              <Knop
-                rang="stil"
-                type="button"
-                disabled={drukBezig}
-                onClick={() => beginBewerken("nieuw", "")}
-              >
-                <IcoonPlus aria-hidden="true" className="mr-1.5 h-4 w-4" />
-                {t("hoekdetail.verrijkingToevoegen")}
-              </Knop>
+              {alleenLezen ? null : (
+                <Knop
+                  rang="stil"
+                  type="button"
+                  disabled={drukBezig}
+                  onClick={() => beginBewerken("nieuw", "")}
+                >
+                  <IcoonPlus aria-hidden="true" className="mr-1.5 h-4 w-4" />
+                  {t("hoekdetail.verrijkingToevoegen")}
+                </Knop>
+              )}
             </div>
           ) : null}
 
@@ -413,6 +428,7 @@ export function Hoekdetailblad({
                   ) : (
                     <>
                       <p className="mt-0.5 whitespace-pre-line text-body text-inkt">{verrijking.tekst}</p>
+                      {alleenLezen ? null : (
                       <div className="mt-2 flex flex-wrap gap-2">
                         <Knop
                           rang="stil"
@@ -439,6 +455,7 @@ export function Hoekdetailblad({
                           {t("hoekdetail.verrijkingWeg")}
                         </Knop>
                       </div>
+                      )}
                     </>
                   )}
                 </li>
@@ -468,8 +485,9 @@ export function Hoekdetailblad({
         </div>
 
         {/* Said only where it is true. A placement with no verrijking loses nothing a teacher typed,
-            and warning about it anyway would train her to ignore the warning. */}
-        {plaatsing.verrijkingen.length > 0 ? (
+            and warning about it anyway would train her to ignore the warning. Not for a reader, who has
+            no delete for it to be a consequence of. */}
+        {!alleenLezen && plaatsing.verrijkingen.length > 0 ? (
           <p className="text-meta text-inkt-zacht">
             {telWoord(
               plaatsing.verrijkingen.length,

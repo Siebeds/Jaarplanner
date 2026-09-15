@@ -11,6 +11,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { ACTIVITEITKLEUREN, KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "./kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
+import { Feit } from "../themas/Fiche";
 import { Doelkoppelaar } from "./Doelkoppelaar";
 
 /**
@@ -64,6 +65,12 @@ export interface ActiviteitInvoer {
  * so the caller commits them as they are chosen and this form is honest about that: the list under
  * "Doelen" changes the moment you touch it, and the Bewaren button says nothing about it. That is why
  * linking is offered only on an activiteit that already exists.
+ *
+ * **Two rights meet here, and each branch shows only what its reader holds** (E6-02, ADR-0030 §3). The fields are the
+ * activiteit's content (R17, R23; I15); the goals are R19's, which only directie and that leeftijd's hoofdleerkrachten
+ * hold, also when a new activiteit carries codes on its create. So `magDoelen` gates the goal section in both branches,
+ * and `alleenLezen` replaces the form with the facts for a gebruiker who may not change the content. A reader opening
+ * an activiteit gets what it is, not a form whose Bewaren the server would refuse.
  */
 export function Activiteitformulier({
   open,
@@ -77,6 +84,8 @@ export function Activiteitformulier({
   onOntkoppel,
   koppelenBezig,
   extra,
+  alleenLezen = false,
+  magDoelen = false,
 }: {
   open: boolean;
   /** The activiteit being changed, or undefined when making a new one. */
@@ -93,6 +102,16 @@ export function Activiteitformulier({
   koppelenBezig?: boolean;
   /** A section of the caller's own, rendered below the fields and above the goal links. */
   extra?: ReactNode;
+  /**
+   * The gebruiker may not change this activiteit's content (`mag.activiteitBewerken`): show what it is instead of a
+   * form. Only for an existing activiteit; a new one is only ever opened by someone who may make it.
+   */
+  alleenLezen?: boolean;
+  /**
+   * The gebruiker may link goals at this activiteit's leeftijd (`mag.doelenKoppelen`, R19). Off by default, so a
+   * caller that forgets it offers no picker rather than one the server refuses.
+   */
+  magDoelen?: boolean;
 }) {
   const id = useId();
   const [naam, setNaam] = useState(activiteit?.naam ?? "");
@@ -128,209 +147,227 @@ export function Activiteitformulier({
       lengteInLesuren: lengte,
       // Left off entirely while editing rather than sent empty: the update endpoint has no such field,
       // and an empty list there would read like "remove every goal" to the next person who adds one.
-      ...(activiteit ? {} : { leerplandoelCodes: nieuweCodes }),
+      // Left off too for a gebruiker without the goal-link right, who was offered no picker (R19).
+      ...(activiteit || !magDoelen ? {} : { leerplandoelCodes: nieuweCodes }),
     });
   }
 
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
   const koppelingen = activiteit?.doelkoppelingen ?? [];
 
+  // ONE DIALOG FOR BOTH STATES (E6-02 slice 4, fix round 3, F8). A refusal refetches the rights, and a gebruiker who
+  // loses the content right with it turns this from the form into the facts while the sheet is open. Two dialogs
+  // remounted the sheet, moved focus, and announced and scrolled a refusal in `extra` a second time. One dialog with
+  // the same slots keeps the caller's section, and what is in it, as the same elements. What switches is the title,
+  // the footer, the block above that section and the goals below it.
+  const fiche = alleenLezen && activiteit ? activiteit : null;
+
   return (
     <Blad
       open={open}
       onOpenChange={(o) => !o && onSluit()}
       maat="breed"
-      titel={activiteit ? t("activiteit.wijzigTitel") : t("activiteit.nieuwTitel")}
+      titel={fiche ? fiche.naam : activiteit ? t("activiteit.wijzigTitel") : t("activiteit.nieuwTitel")}
+      // No footer on the facts: with nothing to save, the sheet's own close control is the only action, and a second
+      // "Sluiten" beside it would be the same control twice under the same name.
       voet={
-        <div className="flex items-center gap-2">
-          <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
-            {bezig ? t("themabeheer.bewaarBezig") : t("themabeheer.bewaar")}
-          </Knop>
-          <Knop rang="stil" type="button" onClick={onSluit} disabled={bezig}>
-            {t("themabeheer.annuleer")}
-          </Knop>
-        </div>
+        fiche ? undefined : (
+          <div className="flex items-center gap-2">
+            <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
+              {bezig ? t("themabeheer.bewaarBezig") : t("themabeheer.bewaar")}
+            </Knop>
+            <Knop rang="stil" type="button" onClick={onSluit} disabled={bezig}>
+              {t("themabeheer.annuleer")}
+            </Knop>
+          </div>
+        )
       }
     >
-      <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
-        <div>
-          <label htmlFor={`${id}-naam`} className="text-meta font-medium text-inkt">
-            {t("themabeheer.naam")}
-          </label>
-          <Invoer
-            id={`${id}-naam`}
-            value={naam}
-            disabled={bezig}
-            aria-invalid={naamFout || undefined}
-            onChange={(e) => {
-              setNaam(e.target.value);
-              if (naamFout) setNaamFout(false);
-            }}
-            className="mt-1.5"
-          />
-          {naamFout ? (
-            <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
-              {t("activiteit.naamVerplicht")}
-            </p>
-          ) : null}
-        </div>
-
-        <div className="flex flex-col gap-4 @md:flex-row @md:items-start">
-          <div className="min-w-48 flex-1">
-            <label htmlFor={`${id}-soort`} className="text-meta font-medium text-inkt">
-              {t("activiteit.soort")}
-            </label>
-            <Keuze
-              id={`${id}-soort`}
-              value={soort}
-              disabled={bezig}
-              onChange={(e) => {
-                const nieuw = e.target.value as ActiviteitType;
-                setSoort(nieuw);
-                // Cleared rather than kept: see the note in the component docstring.
-                if (nieuw !== "Hoek") setHoek("");
-              }}
-              className="mt-1.5"
-            >
-              {ACTIVITEIT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {t(`activiteitsoort.${type}`)}
-                </option>
-              ))}
-            </Keuze>
-          </div>
-
-          {isHoek ? (
-            <div className="min-w-48 flex-1">
-              <label htmlFor={`${id}-hoek`} className="text-meta font-medium text-inkt">
-                {t("activiteit.hoek")}
+      <div className="flex flex-col gap-5">
+        {fiche ? (
+          <Feiten activiteit={fiche} onderzoeksvragen={onderzoeksvragen} />
+        ) : (
+          <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
+            <div>
+              <label htmlFor={`${id}-naam`} className="text-meta font-medium text-inkt">
+                {t("themabeheer.naam")}
               </label>
               <Invoer
-                id={`${id}-hoek`}
-                value={hoek}
+                id={`${id}-naam`}
+                value={naam}
                 disabled={bezig}
-                onChange={(e) => setHoek(e.target.value)}
+                aria-invalid={naamFout || undefined}
+                onChange={(e) => {
+                  setNaam(e.target.value);
+                  if (naamFout) setNaamFout(false);
+                }}
+                className="mt-1.5"
+              />
+              {naamFout ? (
+                <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                  {t("activiteit.naamVerplicht")}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-4 @md:flex-row @md:items-start">
+              <div className="min-w-48 flex-1">
+                <label htmlFor={`${id}-soort`} className="text-meta font-medium text-inkt">
+                  {t("activiteit.soort")}
+                </label>
+                <Keuze
+                  id={`${id}-soort`}
+                  value={soort}
+                  disabled={bezig}
+                  onChange={(e) => {
+                    const nieuw = e.target.value as ActiviteitType;
+                    setSoort(nieuw);
+                    // Cleared rather than kept: see the note in the component docstring.
+                    if (nieuw !== "Hoek") setHoek("");
+                  }}
+                  className="mt-1.5"
+                >
+                  {ACTIVITEIT_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {t(`activiteitsoort.${type}`)}
+                    </option>
+                  ))}
+                </Keuze>
+              </div>
+
+              {isHoek ? (
+                <div className="min-w-48 flex-1">
+                  <label htmlFor={`${id}-hoek`} className="text-meta font-medium text-inkt">
+                    {t("activiteit.hoek")}
+                  </label>
+                  <Invoer
+                    id={`${id}-hoek`}
+                    value={hoek}
+                    disabled={bezig}
+                    onChange={(e) => setHoek(e.target.value)}
+                    className="mt-1.5"
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <fieldset>
+              <legend className="text-meta font-medium text-inkt">{t("activiteit.duur")}</legend>
+              {/*
+                THE DEFAULT LENGTH, IN MINUTES SINCE ADR-0028, and the reason it is four buttons rather than a field.
+
+                The answer is almost always the first or the second, and a stepper made the common case as much work
+                as the rare one. What the agenda then does with it is a starting point: the block lands this long and
+                the teacher drags its bottom edge to whatever that Thursday actually needs.
+
+                **It is still stored as a count of 50-minute units** (`lengteInLesuren`), which is why the four values
+                are multiples rather than free minutes. Renaming that column is owed and is written down in ADR-0028
+                decision 2; the label here says minutes because that is what a teacher now plans in.
+              */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {[1, 2, 3, 4].map((aantal) => {
+                  const gekozen = lengte === aantal;
+                  return (
+                    <button
+                      key={aantal}
+                      type="button"
+                      disabled={bezig}
+                      aria-pressed={gekozen}
+                      onClick={() => setLengte(aantal)}
+                      className={cn(
+                        "mono h-raak rounded-veld border px-3 text-body font-medium transition-colors duration-150",
+                        gekozen
+                          ? "border-accent bg-accent text-accent-op"
+                          : "border-lijn-veld bg-kaart text-inkt hover:border-inkt",
+                      )}
+                    >
+                      {aantal * STANDAARDDUUR}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-1.5 text-meta text-inkt-zacht">
+                {t("activiteit.duurUitleg", { aantal: lengte * STANDAARDDUUR })}
+              </p>
+            </fieldset>
+
+            <fieldset>
+              <legend className="text-meta font-medium text-inkt">{t("activiteit.kleur")}</legend>
+              {/* Six swatches and a way back to none. The name is in the accessible label of every
+                  swatch, so the choice is never carried by hue alone (Art. XII). */}
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={bezig}
+                  aria-pressed={kleur === null}
+                  onClick={() => setKleur(null)}
+                  className={cn(
+                    "h-raak rounded-veld border px-3 text-meta font-medium transition-colors duration-150",
+                    kleur === null
+                      ? "border-inkt bg-vlak-diep text-inkt"
+                      : "border-lijn-veld bg-kaart text-inkt-zacht hover:border-inkt hover:text-inkt",
+                  )}
+                >
+                  {t("activiteit.geenKleur")}
+                </button>
+                {ACTIVITEITKLEUREN.map((optie) => (
+                  <button
+                    key={optie}
+                    type="button"
+                    disabled={bezig}
+                    aria-pressed={kleur === optie}
+                    aria-label={t(kleurSleutel(optie))}
+                    onClick={() => setKleur(optie)}
+                    className={cn(
+                      "flex h-raak w-raak items-center justify-center rounded-veld border transition-colors duration-150",
+                      kleur === optie ? "border-inkt" : "border-lijn-veld hover:border-inkt",
+                    )}
+                  >
+                    <span aria-hidden="true" className={cn("h-6 w-6 rounded", KLEURSTAAL[optie])} />
+                  </button>
+                ))}
+              </div>
+              {kleur ? <p className="mt-1.5 text-meta text-inkt-zacht">{t(kleurSleutel(kleur))}</p> : null}
+            </fieldset>
+
+            <div>
+              <label htmlFor={`${id}-uitkomsten`} className="text-meta font-medium text-inkt">
+                {t("activiteit.uitkomsten")}
+              </label>
+              <Invoer
+                id={`${id}-uitkomsten`}
+                value={uitkomsten}
+                disabled={bezig}
+                onChange={(e) => setUitkomsten(e.target.value)}
                 className="mt-1.5"
               />
             </div>
-          ) : null}
-        </div>
 
-        <fieldset>
-          <legend className="text-meta font-medium text-inkt">{t("activiteit.duur")}</legend>
-          {/*
-            THE DEFAULT LENGTH, IN MINUTES SINCE ADR-0028, and the reason it is four buttons rather than a field.
-
-            The answer is almost always the first or the second, and a stepper made the common case as much work
-            as the rare one. What the agenda then does with it is a starting point: the block lands this long and
-            the teacher drags its bottom edge to whatever that Thursday actually needs.
-
-            **It is still stored as a count of 50-minute units** (`lengteInLesuren`), which is why the four values
-            are multiples rather than free minutes. Renaming that column is owed and is written down in ADR-0028
-            decision 2; the label here says minutes because that is what a teacher now plans in.
-          */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            {[1, 2, 3, 4].map((aantal) => {
-              const gekozen = lengte === aantal;
-              return (
-                <button
-                  key={aantal}
-                  type="button"
+            {/* Only offered when the subthema has questions: a picker with one empty option is a control
+                that does nothing, and the way to get a question is to edit the subthema. */}
+            {onderzoeksvragen.length > 0 ? (
+              <div>
+                <label htmlFor={`${id}-vraag`} className="text-meta font-medium text-inkt">
+                  {t("activiteit.onderzoeksvraag")}
+                </label>
+                <Keuze
+                  id={`${id}-vraag`}
+                  value={vraagId}
                   disabled={bezig}
-                  aria-pressed={gekozen}
-                  onClick={() => setLengte(aantal)}
-                  className={cn(
-                    "mono h-raak rounded-veld border px-3 text-body font-medium transition-colors duration-150",
-                    gekozen
-                      ? "border-accent bg-accent text-accent-op"
-                      : "border-lijn-veld bg-kaart text-inkt hover:border-inkt",
-                  )}
+                  onChange={(e) => setVraagId(e.target.value)}
+                  className="mt-1.5"
                 >
-                  {aantal * STANDAARDDUUR}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1.5 text-meta text-inkt-zacht">
-            {t("activiteit.duurUitleg", { aantal: lengte * STANDAARDDUUR })}
-          </p>
-        </fieldset>
-
-        <fieldset>
-          <legend className="text-meta font-medium text-inkt">{t("activiteit.kleur")}</legend>
-          {/* Six swatches and a way back to none. The name is in the accessible label of every
-              swatch, so the choice is never carried by hue alone (Art. XII). */}
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={bezig}
-              aria-pressed={kleur === null}
-              onClick={() => setKleur(null)}
-              className={cn(
-                "h-raak rounded-veld border px-3 text-meta font-medium transition-colors duration-150",
-                kleur === null
-                  ? "border-inkt bg-vlak-diep text-inkt"
-                  : "border-lijn-veld bg-kaart text-inkt-zacht hover:border-inkt hover:text-inkt",
-              )}
-            >
-              {t("activiteit.geenKleur")}
-            </button>
-            {ACTIVITEITKLEUREN.map((optie) => (
-              <button
-                key={optie}
-                type="button"
-                disabled={bezig}
-                aria-pressed={kleur === optie}
-                aria-label={t(kleurSleutel(optie))}
-                onClick={() => setKleur(optie)}
-                className={cn(
-                  "flex h-raak w-raak items-center justify-center rounded-veld border transition-colors duration-150",
-                  kleur === optie ? "border-inkt" : "border-lijn-veld hover:border-inkt",
-                )}
-              >
-                <span aria-hidden="true" className={cn("h-6 w-6 rounded", KLEURSTAAL[optie])} />
-              </button>
-            ))}
-          </div>
-          {kleur ? <p className="mt-1.5 text-meta text-inkt-zacht">{t(kleurSleutel(kleur))}</p> : null}
-        </fieldset>
-
-        <div>
-          <label htmlFor={`${id}-uitkomsten`} className="text-meta font-medium text-inkt">
-            {t("activiteit.uitkomsten")}
-          </label>
-          <Invoer
-            id={`${id}-uitkomsten`}
-            value={uitkomsten}
-            disabled={bezig}
-            onChange={(e) => setUitkomsten(e.target.value)}
-            className="mt-1.5"
-          />
-        </div>
-
-        {/* Only offered when the subthema has questions: a picker with one empty option is a control
-            that does nothing, and the way to get a question is to edit the subthema. */}
-        {onderzoeksvragen.length > 0 ? (
-          <div>
-            <label htmlFor={`${id}-vraag`} className="text-meta font-medium text-inkt">
-              {t("activiteit.onderzoeksvraag")}
-            </label>
-            <Keuze
-              id={`${id}-vraag`}
-              value={vraagId}
-              disabled={bezig}
-              onChange={(e) => setVraagId(e.target.value)}
-              className="mt-1.5"
-            >
-              <option value="">{t("activiteit.geenVraag")}</option>
-              {onderzoeksvragen.map((vraag) => (
-                <option key={vraag.id} value={vraag.id}>
-                  {vraag.vraag}
-                </option>
-              ))}
-            </Keuze>
-          </div>
-        ) : null}
+                  <option value="">{t("activiteit.geenVraag")}</option>
+                  {onderzoeksvragen.map((vraag) => (
+                    <option key={vraag.id} value={vraag.id}>
+                      {vraag.vraag}
+                    </option>
+                  ))}
+                </Keuze>
+              </div>
+            ) : null}
+          </form>
+        )}
 
         {extra ? <section className="border-t border-lijn pt-5">{extra}</section> : null}
 
@@ -340,8 +377,10 @@ export function Activiteitformulier({
             with the create request, which the server links inside the same save.
             The explaining line therefore differs per branch. It has to: one of them would be false in the
             other, and a sentence may only assert what its own branch guarantees. */}
-        {activiteit ? (
-          onKoppel && onOntkoppel ? (
+        {fiche ? (
+          <Feitdoelen activiteit={fiche} />
+        ) : activiteit ? (
+          magDoelen && onKoppel && onOntkoppel ? (
             <section className="border-t border-lijn pt-5">
               <Doelenkop aantal={koppelingen.length} uitleg={t("activiteit.doelenDirect")} />
 
@@ -375,7 +414,7 @@ export function Activiteitformulier({
               </div>
             </section>
           ) : null
-        ) : (
+        ) : magDoelen ? (
           <section className="border-t border-lijn pt-5">
             <Doelenkop aantal={nieuweCodes.length} uitleg={t("activiteit.doelenBijBewaren")} />
 
@@ -408,21 +447,26 @@ export function Activiteitformulier({
               />
             </div>
           </section>
-        )}
+        ) : null}
 
+        {/* A refusal that arrived while this was the form stays: after the refetched rights turn it into the facts,
+            this is still the same element in the same dialog. */}
         {fout ? (
           <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
             <p className="text-body font-medium text-attentie-inkt">{t("themabeheer.bewaarMislukt")}</p>
             {serverReden ? <p className="mt-1 text-meta text-attentie-inkt">{serverReden}</p> : null}
           </div>
         ) : null}
-      </form>
+      </div>
     </Blad>
   );
 }
 
-/** The heading of the doelen section: what it is, how many, and when they are saved. */
-function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg: string }) {
+/**
+ * The heading of the doelen section: what it is, how many, and when they are saved. No `uitleg` where nothing is
+ * saved from here, which is the read-only view.
+ */
+function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg?: string }) {
   return (
     <>
       <div className="flex items-baseline justify-between gap-2">
@@ -430,8 +474,68 @@ function Doelenkop({ aantal, uitleg }: { aantal: number; uitleg: string }) {
         <span className="mono shrink-0 text-micro text-inkt-zwak">{aantal}</span>
       </div>
       {/* Said once, above the list, because when these are written is the one thing the layout cannot show. */}
-      <p className="mt-1 text-meta text-inkt-zacht">{uitleg}</p>
+      {uitleg ? <p className="mt-1 text-meta text-inkt-zacht">{uitleg}</p> : null}
     </>
+  );
+}
+
+/**
+ * An activiteit for a gebruiker who may read it and not change it (E6-02): the same facts the form holds, as facts.
+ *
+ * Shown in the form's own sheet, at its width and under its labels, so the two read as one object in two states. Every
+ * fact is printed only when it has a value. What the caller adds (`extra`: the agenda's day and hours, for a gebruiker
+ * who may plan the klas) still sits below.
+ */
+function Feiten({
+  activiteit,
+  onderzoeksvragen,
+}: {
+  activiteit: ActiviteitMetKleur;
+  onderzoeksvragen: OnderzoeksvraagWeergave[];
+}) {
+  const vraag = onderzoeksvragen.find((kandidaat) => kandidaat.id === activiteit.onderzoeksvraagId);
+
+  return (
+    <dl className="flex flex-col gap-2">
+      <Feit label={t("activiteit.soort")}>{t(`activiteitsoort.${activiteit.activiteitType}`)}</Feit>
+      {activiteit.activiteitType === "Hoek" && activiteit.hoek ? (
+        <Feit label={t("activiteit.hoek")}>{activiteit.hoek}</Feit>
+      ) : null}
+      <Feit label={t("activiteit.duur")}>
+        {t("activiteit.minuten", { aantal: (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR })}
+      </Feit>
+      {activiteit.kleur ? <Feit label={t("activiteit.kleur")}>{t(kleurSleutel(activiteit.kleur))}</Feit> : null}
+      {activiteit.verwachteUitkomsten ? (
+        <Feit label={t("activiteit.uitkomsten")}>{activiteit.verwachteUitkomsten}</Feit>
+      ) : null}
+      {vraag ? <Feit label={t("activiteit.onderzoeksvraag")}>{vraag.vraag}</Feit> : null}
+    </dl>
+  );
+}
+
+/** The facts' goals: listed, without a way to add or remove one. */
+function Feitdoelen({ activiteit }: { activiteit: ActiviteitMetKleur }) {
+  return (
+    <section className="border-t border-lijn pt-5">
+      <Doelenkop aantal={activiteit.doelkoppelingen.length} />
+      {activiteit.doelkoppelingen.length === 0 ? (
+        <p className="mt-2 text-meta text-inkt-zacht">{t("activiteit.geenDoel")}</p>
+      ) : (
+        <ul className="mt-2 flex flex-col gap-1">
+          {activiteit.doelkoppelingen.map((koppeling) => (
+            <li
+              key={koppeling.id}
+              className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
+            >
+              <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
+                {koppeling.leerplandoelCode}
+              </span>
+              <Statusmerk status={koppeling.status} className="ml-auto" />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

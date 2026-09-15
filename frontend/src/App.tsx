@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { maakQueryClient } from "./lib/queryClient";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Schil } from "./app/Schil";
 import { DoelenScherm } from "./features/doelen/DoelenScherm";
@@ -14,6 +15,8 @@ import { KlassenScherm } from "./features/instellingen/KlassenScherm";
 import { HoekenScherm } from "./features/instellingen/HoekenScherm";
 import { AlgemeneFichesScherm } from "./features/instellingen/AlgemeneFichesScherm";
 import { WeergaveScherm } from "./features/instellingen/WeergaveScherm";
+import { GebruikersScherm } from "./features/instellingen/GebruikersScherm";
+import { Onderdeelpoort } from "./features/instellingen/Onderdeelpoort";
 import { ONDERDELEN, type Deel } from "./features/instellingen/onderdelen";
 import type { ComponentType } from "react";
 
@@ -23,22 +26,13 @@ import type { ComponentType } from "react";
  */
 const INSTELLINGEN: Record<Deel, ComponentType> = {
   klassen: KlassenScherm,
+  gebruikers: GebruikersScherm,
   hoeken: HoekenScherm,
   "algemene-fiches": AlgemeneFichesScherm,
   weergave: WeergaveScherm,
 };
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // Reference data changes when someone runs an import, not while a teacher browses. Plan and
-      // dekking are refetched by their own mutations rather than by a shorter stale time.
-      staleTime: 60_000,
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = maakQueryClient();
 
 export default function App() {
   return (
@@ -64,9 +58,20 @@ export default function App() {
                 opens the first part, so the navigation item and every old link still land somewhere. */}
             <Route path="instellingen" element={<Instellingenindeling />}>
               <Route index element={<Navigate to={ONDERDELEN[0].deel} replace />} />
+              {/* Every part goes through the gate; only a directie-only one is ever turned away. */}
               {ONDERDELEN.map(({ deel }) => {
                 const Scherm = INSTELLINGEN[deel];
-                return <Route key={deel} path={deel} element={<Scherm />} />;
+                return (
+                  <Route
+                    key={deel}
+                    path={deel}
+                    element={
+                      <Onderdeelpoort deel={deel}>
+                        <Scherm />
+                      </Onderdeelpoort>
+                    }
+                  />
+                );
               })}
             </Route>
             {/* Not in the bottom bar: see the note in ImportScherm. Reached from Doelen and Thema's. */}

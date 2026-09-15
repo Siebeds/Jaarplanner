@@ -56,6 +56,15 @@ public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activitei
             .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // The maker (E6-02, ADR-0030 R26). SetNull, never Cascade: removing a gebruiker must not remove what they made.
+        // Their activiteiten become purely shared, deletable only by a hoofdleerkracht or directie (I17).
+        builder.Property(a => a.MakerId);
+        builder.HasOne<Jaarplanner.Domain.Toegang.Gebruiker>()
+            .WithMany()
+            .HasForeignKey(a => a.MakerId)
+            .IsRequired(false)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Zero or more goal links — owned collection in its own table.
         builder.OwnsMany(a => a.Doelkoppelingen, DoelKoppelingMapping.Configure);
         builder.Navigation(a => a.Doelkoppelingen)

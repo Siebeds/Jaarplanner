@@ -22,7 +22,9 @@ import { Minimumdoeldetail } from "./Minimumdoeldetail";
 import { Mijlpaalkeuze } from "./Mijlpaalkeuze";
 import { Filterblad } from "./Filterblad";
 import { useActieveSelectie } from "../../lib/selectie";
+import { useRechten } from "../../lib/rechten";
 import { useDoelenfilter } from "../../state/doelenfilter";
+import { magInladen } from "../import/secties";
 import { Doelsoortbalk } from "./Doelsoortbalk";
 
 /**
@@ -99,6 +101,13 @@ export function DoelenScherm() {
 
   const breed = useMediaQuery(BREED);
 
+  // What this gebruiker may do from the register (E6-02): open Inladen at all, load Op.stap from an empty state, and
+  // link a doel somewhere. Each control below asks; none is shown while `/api/ik` is still answering.
+  const { mag } = useRechten();
+  // The destination sheet lists the chosen klas's subthema's, so "Koppel dit doel" asks about exactly those leeftijden
+  // (fix round 1, F1): a hoofdleerkracht of K3 with an L1 klas picked would otherwise open a sheet with nothing to press.
+  const magKoppelen = mag.doelKoppelenVoor(klas?.jaarFasen ?? []);
+
   // Debounced rather than applied per keystroke: every character would otherwise be a request, and
   // on a phone keyboard that is a request per thumb press.
   useEffect(() => {
@@ -157,7 +166,7 @@ export function DoelenScherm() {
         code={gekozenCode}
         onKies={kiesLeerplandoel}
         onKiesMinimumdoel={kiesMinimumdoel}
-        onKoppel={() => setKoppelenOpen(true)}
+        onKoppel={magKoppelen ? () => setKoppelenOpen(true) : null}
       />
     );
 
@@ -166,9 +175,13 @@ export function DoelenScherm() {
       <Schermkop
         titel={t("doelen.titel")}
         rechts={
-          <Link to="/inladen" className={cn(knopklassen(), "h-9 min-h-9 px-3 text-meta")}>
-            {t("navigatie.inladen")}
-          </Link>
+          // Only for whoever can use a section of Inladen (the E1-22 carry-forward). From here it asks for the
+          // Op.stap section; a themabeheer holder, who may not load Op.stap, lands on the thema's instead.
+          magInladen(mag) ? (
+            <Link to="/inladen?bron=opstap" className={cn(knopklassen(), "h-9 min-h-9 px-3 text-meta")}>
+              {t("navigatie.inladen")}
+            </Link>
+          ) : undefined
         }
         onder={
           <div className="flex gap-2">
@@ -253,7 +266,7 @@ export function DoelenScherm() {
           <div className="min-w-0">
             {bron === "leerplandoelen" ? (
               leegRegister ? (
-                <Leegte titel={t("doelen.leegTitel")} actie={<Laadlink />} />
+                <Leegte titel={t("doelen.leegTitel")} actie={mag.curriculumbeheer ? <Laadlink /> : undefined} />
               ) : geenTreffers ? (
                 <Leegte
                   titel={t("doelen.geenTreffersTitel")}

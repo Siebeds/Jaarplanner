@@ -299,13 +299,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(creatie);
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        VereisLeeftijd(creatie.Leeftijd);
+        // Nullable at binding (E6-02 slice 3 fix round 1), so a missing leeftijd reaches the Dutch refusal as a blank one.
+        var leeftijd = creatie.Leeftijd ?? string.Empty;
+        VereisLeeftijd(leeftijd);
 
         Subthema subthema;
         try
         {
             // The domain ctor enforces the structural scope: a non-blank leeftijd (Art. IX.2).
-            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, creatie.Leeftijd);
+            subthema = thema.VoegSubthemaToe(creatie.Naam, creatie.DuurWeken, leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -329,14 +331,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     {
         ArgumentNullException.ThrowIfNull(wijziging);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
-        VereisLeeftijd(wijziging.Leeftijd);
+        // Nullable at binding, as on the create: a missing leeftijd is refused as a blank one.
+        var leeftijd = wijziging.Leeftijd ?? string.Empty;
+        VereisLeeftijd(leeftijd);
 
         try
         {
             subthema.WijzigNaam(wijziging.Naam);
             subthema.WerkBasisGegevensBij(wijziging.DuurWeken);
             // Re-scoping stays structural: a subthema can never become ageless (Art. IX.2).
-            subthema.WijzigScope(wijziging.Leeftijd);
+            subthema.WijzigScope(leeftijd);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -449,16 +453,25 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     // --- Activiteit (age-scoped, through its subthema). ---
 
-    public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
+    public async Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, Guid? makerId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(creatie);
         VereisGeldigeLengte(creatie.LengteInLesuren);
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
 
+        // A maker who does not exist is stored as none rather than refused: the session check has already passed, so
+        // this is a gebruiker removed a moment ago (or a test identity with no row), and none is what their removal
+        // leaves on every other activiteit they made (I17). The direction is safe: no maker means only a hoofdleerkracht
+        // or directie may delete it.
+        var maker = makerId is { } id && await _context.Gebruikers.AnyAsync(g => g.Id == id, cancellationToken)
+            ? makerId
+            : null;
+
         Activiteit activiteit;
         try
         {
-            activiteit = subthema.VoegActiviteitToe(creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten);
+            activiteit = subthema.VoegActiviteitToe(
+                creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten, maker);
             activiteit.KiesKleur(creatie.Kleur);
             activiteit.StelLengteIn(creatie.LengteInLesuren);
         }
@@ -880,22 +893,22 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         return code;
     }
 
-    /// <summary>Verifies the klas exists; class scoping is structural for a subthema (Art. IX.2).</summary>
     /// <summary>
-    /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes.
+    /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes. The rule is
+    /// <see cref="Jaarfasen.LeesLeeftijd"/>, which the rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>)
+    /// shares, so the two cannot drift apart.
     /// <para>
-    /// <b>This validation is new and it is what replaced the foreign key.</b> While a subthema named its klas,
-    /// a nonsense leeftijd was merely untidy: the KlasId still said whose it was. Now the leeftijd is the entire
-    /// scope, so a subthema stored as "5-6" is not a subthema with an odd label, it is a subthema no class can
-    /// ever reach. Refusing it at the door is the only place that costs nothing.
+    /// <b>This validation is what replaced the foreign key.</b> While a subthema named its klas, a nonsense leeftijd
+    /// was merely untidy: the KlasId still said whose it was. Now the leeftijd is the entire scope, so a subthema
+    /// stored as "5-6" is not a subthema with an odd label, it is a subthema no class can ever reach. Refusing it at
+    /// the door is the only place that costs nothing.
     /// </para>
     /// </summary>
     private static void VereisLeeftijd(string leeftijd)
     {
-        if (!Jaarfasen.IsBekend(leeftijd?.Trim()))
+        if (Jaarfasen.LeesLeeftijd(leeftijd) is null)
         {
-            throw new SchoolcontentValidatieFout(
-                $"'{leeftijd}' is geen geldige leeftijd. Kies er een uit: {string.Join(", ", Jaarfasen.Alle)}.");
+            throw SchoolcontentValidatieFout.OngeldigeLeeftijd(leeftijd);
         }
     }
 
@@ -978,7 +991,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         activiteit.OnderzoeksvraagId,
         activiteit.Kleur,
         activiteit.LengteInLesuren,
-        activiteit.Doelkoppelingen.Select(MapKoppeling).ToList());
+        activiteit.Doelkoppelingen.Select(MapKoppeling).ToList(),
+        activiteit.MakerId);
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>
         new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status, koppeling.AiMotivatie);

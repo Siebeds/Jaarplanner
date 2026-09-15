@@ -983,3 +983,1623 @@ added bullet becomes:
   epic checkboxes.
 
 Unchanged defaults the owner may also confirm: I1, I2 (a reading only), I6, I9, (c), (e).
+
+## Code slice 1 — rights model, rights service, named policies, /api/ik
+
+- **FR / Article:** FR-10, FR-12.2; Art. VI.1 (ratified 2026-09-14), Art. IX.2 (`Activiteit` maker), Art. XII,
+  Art. XIV (graadklas seam); ADR-0030 §2 (I12, I17, I20, I21), §3, §4 (c), (e); ADR-0011 §2; ADR-0022; ADR-0031
+  decision 7.
+- **Branch:** `story/E6-02-fundament`, from `feature/e6-rollen-rechten` at `60020b9`. Not pushed, no PR.
+- **Scope held to slice 1.** No route other than the Op.stap import routes is gated yet (slice 3), no beheer API or
+  screen (slice 2), no wizard write actions (slice 3/E6-05), no frontend gating and no `nl.json` change (slice 4).
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Domain/Toegang/Gebruiker.cs` | `HeeftThemabeheer`; `GeefThemabeheer`/`NeemThemabeheerAf`; `GeefDirectierecht`; `NeemDirectierechtAf(int aantalAndereDirectieleden)` and `BevestigVerwijderbaar(int)`, which throw for the last directie. |
+| `Domain/Toegang/Klastoewijzing.cs` (new) | Gebruiker ↔ klas link row (R15). |
+| `Domain/Toegang/Hoofdleerkrachtaanstelling.cs` (new) | (gebruiker, schooljaar, jaarfase); jaarfase validated with `Jaarfasen.WatIsErMisMet` (R5, I20). |
+| `Domain/Toegang/Leeftijdsrechten.cs` (new) | **The one klas → leeftijden mapping for rights** (R22): the stated jaarfase or nothing (I12). Documented as the opposite-direction sibling of `Klasleeftijden`, not a reuse. |
+| `Domain/Schoolcontent/Activiteit.cs`, `Subthema.cs` | `MakerId` (R26), set only at creation through `VoegActiviteitToe(…, makerId)`. The import passes none. |
+| `Application/Toegang/Rechten.cs` (new) | The result type: raw relations per §3 column. |
+| `Application/Toegang/Rechtenberekening.cs` (new) | Pure computation from facts + `vandaag` (R20, I21, union). |
+| `Application/Toegang/Rechtenmatrix.cs` (new) | §3 as data: `Beleid` name constants, one `Matrixrij` per row, `Kolom` flags, and `StaatToe`, the only evaluator. |
+| `Application/Toegang/Rechtenbronnen.cs` (new) | `IRechtenService`, `IRechtenbronnen`, resource records `Leeftijdsinhoud`, `Klasplanning`, `Activiteitbron`. |
+| `Application/Schoolcontent/Beheer/ISchoolcontentBeheerService.cs`, `SchoolcontentBeheerDtos.cs` | `MaakActiviteitAsync(subthemaId, makerId, creatie)` (maker required, so no hand-create path forgets it); `ActiviteitWeergave.MakerId`. |
+| `Infrastructure/Toegang/RechtenService.cs` (new) | Three reads, then `Rechtenberekening`; per-request memo. |
+| `Infrastructure/Toegang/EfRechtenbronnen.cs` (new) | Projections that build the resources from a route id. |
+| `Infrastructure/Schoolklok.cs` (new) | Today/now on the Brussels wall clock (worklog note from the amendment: not UTC). |
+| `Infrastructure/Dekking/ClosedXmlDekkingExport.cs` | Uses `Schoolklok.Zone` instead of its private copy of the same zone lookup, so the school's zone is resolved in one place. Behaviour unchanged. |
+| `Infrastructure/Persistence/Configurations/{Klastoewijzing,Hoofdleerkrachtaanstelling}Configuration.cs` (new), `GebruikerConfiguration.cs`, `ActiviteitConfiguration.cs`, `AppDbContext.cs` | Tables, FKs, unique indexes (below). |
+| `Infrastructure/Persistence/Migrations/20260914093928_RechtenModel*` + snapshot | The one migration. |
+| `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` | Stores the maker; a maker id with no gebruiker row is stored as null. |
+| `Infrastructure/DependencyInjection.cs` | Registers `IRechtenService`, `IRechtenbronnen`. |
+| `Api/Infrastructure/Autorisatie/Rechtenbeleid.cs` (new) | `AddRechtenbeleid()` registers one policy per row (each `RequireAuthenticatedUser()` + `MatrixVereiste`); `MatrixHandler`; `MagAsync` extension. |
+| `Api/Infrastructure/CurriculumbeheerAutorisatie.cs` | Keeps the constant (now `= Rechtenmatrix.Beleid.Curriculumbeheer`); its registration moved into the matrix, so it is now directie-only. |
+| `Api/Program.cs` | `AddRechtenbeleid()` replaces `AddCurriculumbeheerAutorisatie()`. |
+| `Api/Controllers/AanmeldController.cs` | `GET /api/ik` returns `IkWeergave` with the rights. |
+| `Api/Controllers/SubthemasController.cs` | Passes the signed-in gebruiker as maker on `POST api/subthemas/{id}/activiteiten`. |
+| `frontend/src/lib/aanmelding.ts` + two test fixtures | `Ik` type extended (types only). |
+| Tests (below), `TestAuthenticatie.cs`, `CurriculumbeheerAutorisatieTests.cs`, three unit-test files (new `MaakActiviteitAsync` argument) | |
+
+### The public contract slices 2–4 build on
+
+**Rights service** (`Jaarplanner.Application.Toegang`):
+
+```csharp
+public interface IRechtenService
+{
+    Task<Rechten> HaalRechtenOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+}
+
+public sealed class Rechten
+{
+    Guid GebruikerId; bool IsDirectie; bool HeeftThemabeheer;
+    IReadOnlyList<string> HoofdleerkrachtLeeftijden;   // HL: appointed, schooljaar not ended (today <= Eind, Brussels)
+    IReadOnlyList<string> LeerkrachtLeeftijden;        // LK leeftijd: stated jaarfase of own klassen, schooljaar not ended
+    IReadOnlyList<Guid>   EigenKlasIds;                // LK eigen: every klastoewijzing, no end date
+    bool IsHoofdleerkrachtVan(string leeftijd); bool IsLeerkrachtVanLeeftijd(string leeftijd); bool IsLeerkrachtVanKlas(Guid klasId);
+    static Rechten Geen(Guid gebruikerId);
+}
+```
+
+Relations are raw and not directie-aware; `Rechtenmatrix.StaatToe` adds directie (R3) and the union rule. Leeftijd
+lists hold only the nine codes, in `Jaarfasen.Alle` order.
+
+**Resources and resolver:** `Leeftijdsinhoud(string Leeftijd)`, `Klasplanning(Guid KlasId)`,
+`Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen)`;
+`IRechtenbronnen.VoorSubthemaAsync(subthemaId)` → `Leeftijdsinhoud?`, `VoorActiviteitAsync(activiteitId)` →
+`Activiteitbron?` (null = not found).
+
+**Policies** (`Rechtenmatrix.Beleid.*`, each also requires an authenticated user; directie passes all):
+
+| Policy | §3 row | Columns besides directie | Resource |
+| --- | --- | --- | --- |
+| `Curriculumbeheer` | Op.stap inladen (R3) | none | none (**enforced now**) |
+| `Beheer` | gebruikers/klassen/schooljaren/rechten (R2, R3, R16) | none | none |
+| `ThemaBewerken` | thema, themadoelen, kernwoordenschat (R4, R18) | TB | none |
+| `SchoolcontentImporteren` | FR-1 import (R9, R27, R34) | TB | none |
+| `MenselijkeBeslissingenVerwijderen` | the import option (R35) | none | none (check imperatively when the option is set) |
+| `ThemaOpbouw` | wizard: thema, themadoelen, AI (R29) | TB | none |
+| `DoelsuggestiesMaken` / `DoelsuggestiesBeoordelen` | R14 | TB | none |
+| `SubthemaBeheren` | subthema's (R5, R21; I13: ask at both leeftijden on a re-scope) | HL | `Leeftijdsinhoud` |
+| `StreefwoordenschatAanpassen` | R28 | HL, LK leeftijd | `Leeftijdsinhoud` |
+| `GedeeldeActiviteitBewerken` | create + content (R17, R23) | HL, LK leeftijd | `Leeftijdsinhoud` (create) / `Activiteitbron` (edit) |
+| `ActiviteitVerwijderen` | **both** delete rows (R25, R26, R33) | HL; maker while no goal linked | `Activiteitbron` |
+| `SubdoelenBeheren` | R24 | HL | `Leeftijdsinhoud` |
+| `DoelenKoppelen` | goal links on shared activiteiten (R19) | HL | `Activiteitbron` / `Leeftijdsinhoud` |
+| `ActiviteitVerplaatsen` | move (R19, R23; I19) | HL; LK leeftijd only without links | `Activiteitbron` |
+| `KlasplanningBewerken` | jaarplan, agenda, hoeken, fiches (R7, R15; I21) | LK eigen | `Klasplanning` |
+
+**How a controller applies them.** A resource-free row is `[Authorize(Policy = Rechtenmatrix.Beleid.ThemaBewerken)]`.
+For a resource row:
+
+```csharp
+var bron = await _bronnen.VoorActiviteitAsync(activiteitId, ct);            // IRechtenbronnen
+if (bron is null) return NotFound();                                          // or the service's own 404
+if (!await _autorisatie.MagAsync(User, bron, Rechtenmatrix.Beleid.ActiviteitVerwijderen)) return Forbid();
+```
+
+A resource row in an attribute fails closed: the resource is then the `HttpContext`, and only directie passes.
+
+**`GET /api/ik`:**
+`{ "id", "naam", "email", "isDirectie", "heeftThemabeheer", "hoofdleerkrachtLeeftijden": ["K3"], "leerkrachtLeeftijden": ["K3"], "eigenKlasIds": ["<guid>"] }`.
+Pinned by name in `RechtenEndpointsTests`.
+
+**New tables:**
+
+- `klastoewijzingen` (Id, GebruikerId → gebruikers CASCADE, KlasId → klassen CASCADE; unique (GebruikerId, KlasId)).
+- `hoofdleerkrachtaanstellingen` (Id, GebruikerId → gebruikers CASCADE, SchooljaarId → schooljaren CASCADE,
+  Jaarfase varchar(8); unique (GebruikerId, SchooljaarId, Jaarfase); index (SchooljaarId, Jaarfase)).
+- `gebruikers.HeeftThemabeheer` (bool, default false).
+- `activiteiten.MakerId` (uuid null → gebruikers SET NULL).
+
+**Last-directie guard (for slice 2).** `NeemDirectierechtAf(n)` and `BevestigVerwijderbaar(n)` take the number of
+*other* directieleden and throw at 0. The count must be read in the same transaction as the write (serializable, or
+lock the directie rows), or two directieleden demoting each other at once both succeed.
+
+### Key decisions
+
+- **The matrix is data in Application, the policies are generated from it.** One `Matrixrij` per §3 row, one
+  requirement type, one handler, one evaluator. Changing a row is changing one line, and `RechtenmatrixTests` fails
+  if a row is added without an expectation.
+- **Rows 13 and 14 of §3 are one policy (`ActiviteitVerwijderen`).** They are one action on one route; the resource's
+  maker and link flag tell them apart. The matrix still reads as §3 columns: HL, or the maker while no goal is linked.
+- **"Has goal links" counts every link, whatever its status** (`Activiteitbron.HeeftDoelkoppelingen`). That is the
+  fail-closed reading of R25. It means a `geweigerd` link also blocks the maker's delete. See open question 1.
+- **A maker id with no gebruiker row is stored as null**, not refused: the same state I17 leaves, and the safe
+  direction. It also keeps the default test identity, which has no row, working.
+- **"Today" is the Brussels date** (`Schoolklok`). A Postgres test pins the case where a UTC date would still count:
+  30 June 22:30 UTC.
+- **Rights are memoised per request** in `RechtenService` (scoped). Slice 2 should not read rights through the same
+  instance after writing them in one request.
+- **The test identity is directie.** `TestAuthenticatie` wraps `IRechtenService` so `StandaardGebruikerId` (no row) is
+  directie. Every other id goes to the real service. Existing tests keep testing what they tested, and rights tests use
+  seeded gebruikers.
+- **Development sign-in unchanged.** The rights come from the database for whoever signs in there. The first directie
+  from configuration is directie.
+
+### Tests added
+
+- `UnitTests/Toegang/RechtenberekeningTests` (19): HL in a running year, in a year not yet started, lapsed, and on
+  `Eind` vs. `Eind + 1`; HL without a klastoewijzing; LK leeftijd, including the same four time cases; a lapsed klas
+  still counts as LK eigen (I21); a klas without, or with an unknown, stated jaarfase grants nothing (six cases); a
+  graadklas grants only its stated jaarfase; the union rule; ordering; `Rechten.Geen`; the mapping trims and never
+  widens (contrasted with `Jaarfasen.VoorKlas(0, null)`).
+- `UnitTests/Toegang/RechtenmatrixTests`: every non-activiteit row × 8 relations (112 cases, including HL and LK at
+  another leeftijd, and LK eigen vs. another klas); every row has an expectation; policy names map one-to-one to rows;
+  directie passes every row with any resource or none; a missing or foreign resource fails closed; the union rule;
+  delete (maker with/without links, HL, no maker); move (LK without links, HL with links, maker gets nothing).
+- `UnitTests/Toegang/GebruikerTests` (+7), `KlastoewijzingEnAanstellingTests` (5 facts + theory),
+  `Schoolcontent/ActiviteitMakerTests` (3), and an import assertion that an FR-1 activiteit has no maker.
+- `IntegrationTests/Autorisatie/RechtenbeleidTests` (8): every row is a registered policy that also denies anonymous
+  callers; Curriculumbeheer is the Op.stap row; the handler: no gebruiker claim → no, directie via attribute → yes for
+  every row, leeftijd passthrough, a resource row in an attribute → no for HL, maker, klasplanning; `MagAsync`
+  through the real `IAuthorizationService`.
+- `IntegrationTests/Postgres/RechtenEndpointsTests` (14): `/api/ik` rights and exact JSON names; directie's `/api/ik`;
+  **Curriculumbeheer: TB + HL + klastoewijzing in one gebruiker → 403** on `POST /api/opstap-import` and
+  `GET /api/opstap-import/stand`; a directie row → 400 (reaches the controller); anonymous → 401; maker set on a hand
+  create, null with no gebruiker row; removing a gebruiker sets `MakerId` to null and cascades their toewijzingen and
+  aanstellingen; removing a klas cascades its toewijzingen; both unique indexes (and two HL per jaarfase allowed); the
+  Brussels midnight boundary; a legacy klas with no jaarfase in the database; an unknown gebruiker; `EfRechtenbronnen`.
+  Every Postgres test migrates a fresh database, so the migration applies.
+- `CurriculumbeheerAutorisatieTests`: the "reaches the controller" test is renamed to what it now pins (directie).
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` pointed at the local `jaarplanner-db` (port 5433):
+  - UnitTests: 1301 passed, 4 skipped (the opt-in live KOV contract tests).
+  - IntegrationTests: 381 passed, 1 skipped (the opt-in live Op.stap import).
+- `dotnet format`: applied (it swapped one `Assert.Equal` argument order); `--verify-no-changes`: clean.
+- `dotnet dotnet-ef migrations has-pending-model-changes`: "No changes have been made to the model since the last
+  migration."
+- `cd frontend && pnpm lint`: ✓. `pnpm test`: 33 files, 233 tests passed. `pnpm build`: ✓ (the >500 kB chunk warning
+  predates this change).
+
+### Self-check against slice 1
+
+- Model and one migration: ✓, as above.
+- Rights service with HL / LK leeftijd / LK eigen, R20 via `TimeProvider` in the school's zone, one klas → leeftijden
+  mapping that fails closed, union: ✓, unit and Postgres tests.
+- Named policies in one place, each requiring authentication; resource handlers for HL, LK leeftijd, LK eigen and
+  maker; directie passes all; (c) and (e) fall out (a jaarfase with no HL leaves only directie; a gebruiker with no
+  relation matches no column): ✓.
+- `Curriculumbeheer` bound to directie and enforced: ✓, 403/400/401 pinned.
+- `/api/ik` carries the rights, `Ik` type updated: ✓.
+- Development sign-in and tenant-free integration tests: ✓, both suites green.
+
+### For the test-runner
+
+Backend only; no UI change to look at. Run `dotnet test` with `JAARPLANNER_TEST_POSTGRES` set. By hand, in
+Development:
+
+1. Sign in through `/api/aanmelden/ontwikkeling` as a non-directie gebruiker. The row has to be inserted in the database
+   (slice 2 builds the beheer UI).
+2. `GET /api/ik` shows the rights.
+3. `POST /api/opstap-import` answers 403. Signed in as directie, the same request reaches the controller.
+
+### Open questions / Art. XIV touched
+
+1. **R25, "while no goal is linked":** does a `geweigerd` (or `voorgesteld`) link count as linked? The build counts
+   every link, the fail-closed reading. Activiteit links today are `manueel`, so in practice it does not bite yet.
+2. **§3 rows not expressed in slice 1.**
+   - Row 7, the wizard's own write actions for a thema it builds from scratch: it needs a "new thema" / open-run state
+     (I22, I23, and the I24/I25 defaults the chat says were ratified on `feature/e6-rollen-rechten` after `60020b9`),
+     which the model does not have. Slice 3 / E6-05 adds a resource type and a column for it.
+   - Personal content (R6): E6-10.
+   - Bekijken/exporteren (I9): every signed-in gebruiker today, which the fallback policy gives; narrowing it is the
+     E6-09 seam.
+3. **Docs the orchestrator owns** (not edited here):
+   - ADR-0022 decision 1 still says the policy is registered by `AddCurriculumbeheerAutorisatie()` in its own file;
+     it is now a matrix row registered by `AddRechtenbeleid()`. A status pointer would do.
+   - E7-11's authorisation half is now partly met (the Op.stap routes only).
+   - ADR-0030 §3 could note that the two delete rows are one policy.
+4. **`ActiviteitWeergave.makerId` is in the JSON now**, but the frontend `ActiviteitWeergave` type was not extended.
+   Slice 4 adds it when it gates the delete.
+
+### Fix round 1
+
+- **Input:**
+  - the test-runner, PASS: `backlog/worklogs/E6-02/test-report.md`, recorded by the orchestrator and committed here
+    unedited;
+  - the antagonist, 0 CRITICAL, 0 MAJOR, 5 MINOR, 1 QUESTION: "Code slice 1 — audit round 1" in
+    `backlog/worklogs/E6-02/antagonist.md`, also committed unedited.
+- **Branch:** `story/E6-02-fundament`, on top of `d6460ef`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MINOR: E7-11 says every signed-in person can still run the curriculum import | **Fixed in place.** In `backlog/E7-niet-functioneel.md` the false clause is struck, not deleted, with a dated annotation (2026-09-14, E6-02 slice 1, `d6460ef`): the Op.stap routes are directie-only and pinned 403/400/401, and every other matrix row reaches its routes in slice 3. The entry stays `[!]`. |
+| 2 | MINOR: ADR-0022 describes `AddCurriculumbeheerAutorisatie()` and a policy body that no longer exist | **Fixed by a status pointer.** `docs/adr/0022-…` now says: `Curriculumbeheer` is the ADR-0030 §3 Op.stap row, directie only, declared as `Rechtenmatrix.Curriculumbeheer` and registered by `Rechtenbeleid.AddRechtenbeleid()`. The method and body described in decision 1 are gone, the constant's name and value are unchanged, and decision 1's rule stands. Decision 1's text is left as written. |
+| 3 | MINOR: the E7-06 processing register misses the new staff data | **Fixed.** New E6-02 slice 1 carry-forward on E7-06 for `gebruikers.HeeftThemabeheer`, `klastoewijzingen` and `hoofdleerkrachtaanstellingen`. Retention as coded: removed with the gebruiker (all three), with the klas (toewijzing) or with the schooljaar (aanstelling); nothing ends them earlier. A past year's appointment stops granting rights (R20) but stays stored. |
+| 4 | MINOR: `Schoolklok` claimed its callers "say so" on the UTC fallback, but `RechtenService` did not | **Fixed where the fallback happens.** `Schoolklok.Nu` and `Vandaag` now take the caller's `ILogger` (required) and log one warning per process when the zone is missing. `RechtenService` injects `ILogger<RechtenService>`. The export takes an optional `ILogger<ClosedXmlDekkingExport>` (DI supplies it) and now converts through `Schoolklok.Nu`, not its own copy. The class comment states what happens: UTC plus one warning, the export also labels "(UTC)", and the rights path does **not** fail closed. The fallback is testable through an internal overload that takes the zone and the once-only state. |
+| 5 | MINOR: nothing turns a body leeftijd into a `Leeftijdsinhoud` (slice 3's subthema create and I13 re-scope) | **Fixed.** `Leeftijdsinhoud.UitInvoer(string?)` trims and validates with `Jaarfasen.WatIsErMisMet`. It returns the canonical code, or `null` for what the write would refuse; the caller answers null with the service's 400 and never skips the check on it. The record's doc says which way in is for which source. Slice 3 must use it for every body leeftijd, including both ends of an I13 re-scope (the old end comes from `IRechtenbronnen`). |
+| 6 | Test-runner gap: no automated test that removing a schooljaar removes its aanstellingen | **Fixed.** `Een_schooljaar_verwijderen_ruimt_zijn_hoofdleerkrachtaanstellingen_op` in `RechtenEndpointsTests`, next to the klas test. It uses a tracked removal so the owned closures go as in a real delete, and checks that another year's aanstelling and the gebruiker survive. |
+| Q | R25: do `geweigerd` and `voorgesteld` links block the maker's delete? | **Unchanged, as instructed.** The strict reading stays. The orchestrator carries it forward in the E6 epic file and puts it to the owner. |
+
+**Tests added this round:**
+- `UnitTests/Toegang/LeeftijdsinhoudTests` (11 cases): four padded and canonical inputs are accepted and trimmed,
+  agreeing with `WatIsErMisMet`; seven are refused (null, blank, `L7`, `3K`, `k3`, `F1`), also agreeing; and a K3
+  hoofdleerkracht passes `SubthemaBeheren` on a `" K3"` body.
+- `UnitTests/Toegang/SchoolklokTests` (2): with the zone, 30 June 22:30 UTC is 1 July and nothing is logged; without the
+  zone, UTC with exactly one warning over two calls.
+- The Postgres schooljaar-cascade test above.
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format`, then `--verify-no-changes`: clean.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`):
+  - UnitTests: 1315 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 382 passed, 1 skipped (live Op.stap opt-in).
+- No frontend file changed, so the pnpm gates did not apply.
+
+### Fix round 2
+
+- **Input:**
+  - "Code slice 1 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 5 MINOR, all about the wording of round-1
+    fixes;
+  - "Round 2" of `test-report.md`: PASS.
+
+  Both are the orchestrator's and are committed unedited.
+- **Branch:** `story/E6-02-fundament`, on top of `138a605`.
+- **Split of work (orchestrator's instruction):** `backlog/E7-niet-functioneel.md` and `docs/adr/README.md` are
+  claimed by another session (kindrapport, TB-005) and were **not** edited. The E7-06 half of MINOR 2, the E7-11
+  wording half of MINOR 4, and all of MINOR 3 (the ADR index) are the orchestrator's.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | `UitInvoer`'s doc named `Jaarfasen.WatIsErMisMet`, while the subthema write validates with `VereisLeeftijd`; the tests checked `UitInvoer` only against itself | **One rule now.** New `Jaarfasen.LeesLeeftijd(string?)` (trim, then exactly one of the nine codes, or null). Three callers share it: `VereisLeeftijd` (subthema create and re-scope), `Leeftijdsinhoud.UitInvoer`, and the accept branch of `WatIsErMisMet`. The accept set was already identical, so no Dutch sentence and no HTTP status changed. Both docs now name the real rule. **New `UnitTests/Schoolcontent/SubthemaLeeftijdInvoerTests`:** it runs 12 inputs through the real `MaakSubthemaAsync` and `WijzigSubthemaAsync` and asserts each is accepted iff `UitInvoer` is non-null, in the same stored form; a third test pins the write's refusal sentence. `LeeftijdsinhoudTests` now asserts fixed expected values instead of comparing with the function it is built from. |
+| 2 | The schooljaar cascade test said "the way a real delete would take them", but no route deletes a schooljaar | **Code half fixed.** The comment now says no route deletes a schooljaar yet, and that a tracked removal is how a future delete (E6-03) will take the owned closures. The E7-06 half is the orchestrator's. |
+| 3 | The ADR index still presents the ADR-0022 seam as a no-op | **Not mine:** `docs/adr/README.md` is claimed; the orchestrator does it. |
+| 4 | E7-11 says `RechtenEndpointsTests` covers every Op.stap route | **Code half fixed.** New reflection test `Elke_controller_onder_de_opstap_importroute_noemt_het_curriculumbeheerbeleid` in `CurriculumbeheerAutorisatieTests`. It finds every controller whose `[Route]` is under `api/opstap-import`, requires exactly the four (named), and requires each to carry `[Authorize(Policy = Curriculumbeheer)]`, with no `[AllowAnonymous]` on the class or any action. With the existing endpoint-metadata test, which already enumerates the seven endpoints, all seven are now pinned from both sides. The E7-11 wording is the orchestrator's. |
+| 5 | The R25 carry-forward sits under a story that will close, and nothing points to it from where the question becomes live | **Fixed.** `backlog/E8-fast-follow.md`, E8-07, now has a pointer: the owner's answer on R25 link status is owed before it lands, because it creates the first non-`Manueel` activiteit links. The `Activiteitbron.HeeftDoelkoppelingen` doc now points at the R25 carry-forward under E6-02 in `backlog/E6-beheer-rollen-samenwerking.md`, not the worklog. *That carry-forward is `ef6468b` on `feature/e6-rollen-rechten`; it reaches this branch at the merge.* |
+| nit | `LeeftijdsinhoudTests` has 12 cases, not 11 | **Noted here:** fix round 1's "(11 cases)" should read 12 (four accepted, seven refused, one rights check). The round-1 text is kept as the audited record. |
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format`, then `--verify-no-changes`: clean.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`):
+  - UnitTests: 1340 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 383 passed, 1 skipped (live Op.stap opt-in).
+- No frontend file changed.
+
+### Fix round 3
+
+- **Input:** "Code slice 1 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 4 MINOR, all wording, plus nits.
+  The test-runner passed round 3; the orchestrator committed both in `5245dbe`.
+- **Branch:** `story/E6-02-fundament`, on top of `5245dbe`.
+- **Scope, per the orchestrator:** slice 1 is already merged into `feature/e6-rollen-rechten` (`0073bd7`), and slices
+  2 and 3 run from there. So this round changes doc comments, test comments and docs only, kept local to the blocks
+  named. **No executable line changed:** a diff filter over every changed `.cs` line found none that is not a comment
+  or blank. The FR-1 import is deliberately **not** routed through `LeesLeeftijd`; B took the "narrow the headline"
+  option instead.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| A | `UitInvoer` offered "let the write refuse it" without saying why that is safe, and the test named the wrong consequence of a drift | The `<returns>` of `Leeftijdsinhoud.UitInvoer` now says deferring to the write is safe **only because the write refuses exactly these inputs**: it uses the same function (`Jaarfasen.LeesLeeftijd`), pinned by `SubthemaLeeftijdInvoerTests`. Otherwise a null could send an input the write accepts past the rights check. The test summary now states the stakes: if the rights check refused what the write accepts, a caller deferring to the write would let the write through with no rights check at all; the other drift refuses a hoofdleerkracht on their own leeftijd. It also calls itself a tripwire, not a proof over every input. |
+| B | `LeesLeeftijd` called itself "the one rule" for a leeftijd from outside the database | The headline is narrowed to "the rule for a leeftijd in a request body, and for `WatIsErMisMet`". The doc lists `WatIsErMisMet`'s callers, including the hoofdleerkracht appointment (`Hoofdleerkrachtaanstelling`). It names the FR-1 import's own inline copy (`IsBekend` on the trimmed value, in `SchoolcontentImportService`'s subthema leeftijd check and in `LeeftijdVoor`): same set today, not reached by a change here, and no rights check depends on it (R27). |
+| C | The ADR index said the ADR-0022 seam was a no-op until 2026-09-14, and still listed it as depending on an open Art. XIV decision | Both places in `docs/adr/README.md` now give the two steps: a no-op until E6-01 made it require a session (ADR-0031, 2026-09-11), then bound to the directie row by E6-02 slice 1 (2026-09-14). The open-decisions paragraph says the question was settled by the Art. VI.1 ratification of 2026-09-14, and keeps ADR-0022 as the example of what a seam does not buy you. |
+| D | E8-07 said a `geweigerd`/`voorgesteld` link blocks the maker's delete "today", though no route applies that row yet | `backlog/E8-fast-follow.md` now describes the declared rule: `ActiviteitVerwijderen`, as declared in slice 1, counts every link (`EfRechtenbronnen`), whatever its status. So once slice 3 applies it to `DELETE api/activiteiten/{id}`, such a link withholds the maker's delete. |
+| nit | `VereisLeeftijd` had two stacked `<summary>` blocks and a stale, unattached "Verifies the klas exists" one | Merged into one summary (the rule, then the "what replaced the foreign key" paragraph, with "is new" dropped). The stale klas summary is removed: no method verifies a klas there, and a subthema has had no klas scope since ADR-0025. |
+| nit | `WatIsErMisMet`'s doc block sat above `LeerjaarVoor`, separated by a blank line | Moved onto `WatIsErMisMet`, text unchanged, with a one-line note saying it was reattached. |
+| nit | E7-11 claimed 403/400/401 on both Op.stap routes | `backlog/E7-niet-functioneel.md` now says exactly what is pinned: 403 on both `POST /api/opstap-import` and `GET /api/opstap-import/stand`, and 400 and 401 on the `POST` only. |
+| nit | "will" for E6-03's future delete | Changed to "may" in the schooljaar cascade test comment. |
+
+**Gates:**
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: clean.
+- UnitTests, full suite: 1340 passed, 4 skipped (live KOV opt-in).
+- IntegrationTests, filtered to the two touched suites (`RechtenEndpointsTests`, `CurriculumbeheerAutorisatieTests`)
+  against the local `jaarplanner-db`: 21 passed.
+- No migration or frontend file changed.
+## Code slice 3 — enforcement on every route, wizard write actions
+
+- **FR / Article:** FR-3.1, FR-4.3, FR-7.2, FR-10, FR-12.1/12.2; Art. VI.1 (ratified 2026-09-14) with defaults I9, I13,
+  I15–I25; Art. IX.2 (`Activiteit` maker; a move keeps its links and stays at its leeftijd); Art. IV.1, IV.8;
+  ADR-0030 §2, §3 (footnotes ¹–⁵), §4 (b), (c), (e); ADR-0011 §2.
+- **Branch:** `story/E6-02-afdwingen`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held:** no file under `frontend/`, no `nl.json`, no gebruikers/klastoewijzing/aanstelling endpoints (slice 2),
+  nothing personal (R6, E6-10). One EF migration, `20260914114237_Wizardrun`.
+
+### How a route names its row
+
+- **Resource-free row** (directie, themabeheer): `[Authorize(Policy = Rechtenmatrix.Beleid.X)]`, as slice 1 set out.
+- **Resource row**: `[RechtOp(Rechtenmatrix.Beleid.X, Rechtbron.Y, "routeId")]`
+  (`Api/Infrastructure/Autorisatie/RechtOpAttribute.cs`). It is slice 1's `IRechtenbronnen` + `MagAsync` + `Forbid()`,
+  run as an MVC authorisation filter instead of inside the action.
+  - **Why, a deliberate deviation from the brief's wording:** MVC binds and validates a body before an action runs.
+    A check inside the action therefore answers a caller without the right with a 400 for a malformed body, and the
+    validation result is what they learn. As a filter it runs before binding, like the `[Authorize]` rows. It also
+    puts each route's row on the route, where the sweep and a reader can see it.
+- **A resource taken from the body** is checked inside the action, after binding. There are three:
+  - the body leeftijd of a subthema create;
+  - the new leeftijd of a re-scope;
+  - the goal codes of an activiteit create.
+- **A body leeftijd** goes through `Leeftijdsinhoud.UitInvoer`. A `null` is refused before the check, with the write's
+  own 400 and sentence: `SchoolcontentValidatieFout.OngeldigeLeeftijd`, the one sentence that `VereisLeeftijd` now
+  throws too. It never reaches the write unchecked, and it never skips the check (slice-1 audit round 3, finding A;
+  round 4 note). The wizard's two leeftijd inputs do the same before the run is read.
+
+### 404 vs 403 (documented choice)
+
+- **Resource row: 404 before 403.** Resource lookup first, then authorisation (slice 1's pattern). The answer depends
+  on the resource, so it cannot be given for one that does not exist. `RechtOp` throws the service's own
+  `SchoolcontentNietGevondenFout` with the service's own sentence, so the shape and wording match.
+- **Resource-free row: 403 before any lookup,** because its answer does not depend on the resource. A non-TB caller
+  deleting a thema id that does not exist gets 403.
+- **Body-derived resource:** the body's 400 comes first when the resource cannot be built, then 403. A missing parent
+  (the thema of a subthema create) is the service's 404 after that, because that row's answer does not depend on it.
+- **Wizard:** 403 for a caller outside the row, then a body leeftijd's 400, then:
+  - 404 for a run that does not exist;
+  - 403 for a run that has ended;
+  - 404 for an item that does not exist;
+  - 403 for an item the run did not create.
+- Anonymous callers still get 401 from the fallback policy before any of this (`ElkeRouteVraagtEenSessieTests`
+  unchanged and green).
+
+### Route → row table (every endpoint in the endpoint data source)
+
+**Writes.** "Attr" = `[Authorize(Policy)]`; "RechtOp(kind)" = resource filter on that kind; "in action" = checked after
+binding.
+
+| Route | §3 row (policy) | How |
+| --- | --- | --- |
+| `POST api/schooljaren` | Beheer (R2, R3, R16) | Attr |
+| `POST api/schooljaren/{schooljaarId}/klassen` | Beheer | Attr |
+| `PUT api/klassen/{klasId}` (the klaskiezer's jaarfase travels here) | Beheer | Attr |
+| `DELETE api/klassen/{klasId}` | Beheer | Attr |
+| `POST api/opstap-import`, `…/voorbeeld`, `…/minimumdoelen(/voorbeeld)`, `…/leerplandoelen(/voorbeeld)`; `GET api/opstap-import/stand` | Curriculumbeheer (R3; ADR-0022) | Attr, slice 1, unchanged |
+| `POST api/themas`; `PUT`, `DELETE api/themas/{themaId}` | ThemaBewerken (R4, R18) | Attr (delete: see "not clean" 1) |
+| `POST api/themas/{themaId}/themadoelen`; `DELETE …/themadoelen/{themadoelId}` | ThemaBewerken | Attr |
+| `POST api/schoolcontent-import/voorbeeld`, `POST api/schoolcontent-import` | SchoolcontentImporteren (R9, R27, R34), plus MenselijkeBeslissingenVerwijderen (R35) when the form option is true | Attr + in action, before the file is read |
+| `POST api/themas/{themaId}/doelsuggesties/genereer` | DoelsuggestiesMaken (R14) | Attr |
+| `PUT api/themas/{themaId}/doelsuggesties/{id}/status`, `…/{id}/leerplandoel` | DoelsuggestiesBeoordelen (R14) | Attr |
+| `POST api/thema-opbouw/themadoel-suggesties`, `…/subdoel-suggesties` | ThemaOpbouw (R29) | Attr |
+| `POST api/thema-opbouw/wizardruns`; `POST …/{runId}/afronden`, `…/{runId}/sluiten` | ThemaOpbouw (R29) | Attr + run state (service) |
+| `POST …/wizardruns/{runId}/subthemas`; `PUT`, `DELETE …/{runId}/subthemas/{subthemaId}`; `POST …/subthemas/{subthemaId}/subdoelen`; `DELETE …/subdoelen/{subdoelId}`; `POST …/subthemas/{subthemaId}/activiteiten`; `PUT`, `DELETE …/{runId}/activiteiten/{activiteitId}` | **Wizardinhoud** (new row: R29, R32; I18, I22–I25) | Attr + run state (service); activiteit create with goal codes also DoelenKoppelen, in action |
+| `POST api/themas/{themaId}/subthemas` | SubthemaBeheren (R5, R21) at the body leeftijd | in action (UitInvoer, then MagAsync) |
+| `PUT api/subthemas/{subthemaId}` | SubthemaBeheren at the stored and at the new leeftijd (I13); every field of the payload is this row (I16) | RechtOp(Subthema) + in action |
+| `DELETE api/subthemas/{subthemaId}` | SubthemaBeheren | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/onderzoeksvragen`; `PUT`, `DELETE …/onderzoeksvragen/{ovId}` | SubthemaBeheren (I16) | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/doelkoppelingen` (creates a subdoel); `DELETE …/subdoelen/{subdoelId}` | SubdoelenBeheren (R24) | RechtOp(Subthema) |
+| `POST api/subthemas/{subthemaId}/activiteiten` | GedeeldeActiviteitBewerken (R17, R23); plus DoelenKoppelen (R19) when the create carries goal codes | RechtOp(Subthema) + in action |
+| `PUT api/activiteiten/{activiteitId}`; `PUT …/{activiteitId}/onderzoeksvraag` | GedeeldeActiviteitBewerken (I15) | RechtOp(Activiteit) |
+| `DELETE api/activiteiten/{activiteitId}` | ActiviteitVerwijderen (R25, R26, R33) | RechtOp(Activiteit) |
+| `PUT api/activiteiten/{activiteitId}/subthema` (move) | ActiviteitVerplaatsen (R19, R23; I19); same leeftijd kept by the domain | RechtOp(Activiteit) |
+| `POST api/activiteiten/{activiteitId}/doelkoppelingen`; `DELETE …/doelkoppelingen/{koppelingId}` | DoelenKoppelen (R19) | RechtOp(Activiteit) |
+| `POST api/klassen/{klasId}/jaarplan/generatie`, `…/periodes/{blokStart}/generatie`, `…/plaatsingen`; `PUT …/plaatsingen/{id}/status`, `…/vergrendeling`, `…/blok`; `DELETE …/plaatsingen/{id}` (the five E3-07 routes as one unit, plus period regeneration and hand placement). Generatieparameters are saved through `POST …/generatie`: there is no route of their own. | KlasplanningBewerken (R7, R15; I21) | RechtOp(Klas) |
+| `POST api/klassen/{klasId}/jaarplan/weekplanning`; `PUT …/weekplanning/{plaatsingId}/dag`; `DELETE …/weekplanning/{plaatsingId}`; `POST api/klassen/{klasId}/jaarplan/subthemaperiodes` | KlasplanningBewerken | RechtOp(Klas) |
+| `POST api/klassen/{klasId}/hoeken`, `…/hoeken/overnemen` | KlasplanningBewerken | RechtOp(Klas) (overnemen writes into the route's klas only) |
+| `PUT`, `DELETE api/hoeken/{hoekId}` | KlasplanningBewerken | RechtOp(Hoek → its klas) |
+| `POST api/klassen/{klasId}/hoekplaatsingen` | KlasplanningBewerken | RechtOp(Klas) |
+| `DELETE api/hoekplaatsingen/{plaatsingId}`; `PUT …/momenten/{momentId}`, `…/uren`; `POST …/verrijkingen`; `PUT`, `DELETE …/verrijkingen/{verrijkingId}` | KlasplanningBewerken | RechtOp(Hoekplaatsing → its klas) |
+| `POST api/klassen/{klasId}/algemene-fiches` | KlasplanningBewerken | RechtOp(Klas) |
+| `PUT`, `DELETE api/algemene-fiches/{ficheId}`; `POST …/doelkoppelingen`; `DELETE …/doelkoppelingen/{koppelingId}` | KlasplanningBewerken (the fiche and its links are one klas's; see "not clean" 3) | RechtOp(AlgemeneFiche → its klas) |
+| `POST api/klassen/{klasId}/algemene-ficheplaatsingen` | KlasplanningBewerken | RechtOp(Klas) |
+| `DELETE api/algemene-ficheplaatsingen/{plaatsingId}`; `PUT …/momenten/{momentId}` | KlasplanningBewerken | RechtOp(AlgemeneFicheplaatsing → its klas) |
+| `POST api/afmelden` | anonymous (ADR-0031) | pinned by the session sweep |
+
+**Every child id under a klas route is scoped to that klas by its service**, so authorising on the route's klas is
+sound. Checked in the code:
+
+- `JaarplanGeneratieService` and `WeekplanningService` find a plaatsing only in `LaadJaarplanAsync(klasId)`.
+- `HoekplaatsingService` and `AlgemeneFicheplaatsingService` refuse a hoek or fiche of another klas.
+
+**Reads**, open to every signed-in gebruiker (I9 for plans, agenda, dekking and exports; school content, goals and
+reference data stay readable):
+
+- `GET api/ik`, `api/jaarfasen`;
+- `api/klassen(/{id})`, `api/schooljaren(/{id}, /{id}/rooster)`;
+- `api/themas(/{id}, /bibliotheek, /{id}/voor-klas/{klasId})`, `api/themas/{id}/doelsuggesties`,
+  `api/subthemas/voor-klas/{klasId}`;
+- `api/klassen/{id}/jaarplan(/parameters, /weekplanning)`, `…/dekking(/voortgang, /export)`, `…/hoeken`,
+  `…/hoekplaatsingen`, `…/algemene-fiches`, `…/algemene-ficheplaatsingen`;
+- `api/leerplandoelen(/facetten, /{code})`, `api/minimumdoelen(/facetten)`, the ongekoppelde-doelen list;
+- `api/schoolcontent-import/sjabloon` (a blank template);
+- `api/thema-opbouw/wizardruns/{runId}`.
+
+**Rows without a route.** `StreefwoordenschatAanpassen` (R28) has none: the streefwoordenschat is not yet a field of a
+subthema (E10-01 adds it). So no subthema update is "only the streefwoordenschat", and every `PUT api/subthemas/{id}`
+is the subthema row (I16).
+
+**Deliberately open writes: none.** §3 opens no write to every gebruiker. The one row that grants "Ander" a write is
+personal content (R6, unbuilt). The sweep's `OpenVoorIedereen` list is therefore empty, with that reason.
+
+### The wizard's write actions (R29, R32; I18, I22–I25) — contract
+
+- **Entity** `Domain/Schoolcontent/Wizardrun.cs`, stored in the tables `wizardruns` and `wizardrunitems`. Fields:
+  - `ThemaId`: unique, cascades with the thema;
+  - `GestartDoorId`: null when there is no row; SetNull when the gebruiker is removed;
+  - `GestartOp` and `LaatsteSchrijfactieOp`;
+  - `AfgerondOp` and `GeslotenOp`;
+  - `Aangemaakt`: an owned list of `(Soort: Subthema|Subdoel|Activiteit, ItemId)`, unique per run and id, with no FK
+    to the items (one column names three tables; a stale id can never match again).
+- **Open** = not finished, not closed, and `now < LaatsteSchrijfactieOp + 14 days`, read from `TimeProvider` on each
+  request. No background job. The fourteen days are a span between instants, so the school's zone does not enter it.
+  Every successful create, edit or delete moves `LaatsteSchrijfactieOp`.
+- **Routes** (`Api/Controllers/WizardrunsController.cs`, base `api/thema-opbouw/wizardruns`):
+
+  | Method + route | Body | Answer |
+  | --- | --- | --- |
+  | `POST /` | `ThemaCreatie` | 201 `WizardrunWeergave`; creates the thema and the run; starter = caller |
+  | `GET /{runId}` | – | 200 `WizardrunWeergave` (read) |
+  | `POST /{runId}/subthemas` | `SubthemaCreatie` (any leeftijd) | 201 `SubthemaWeergave` |
+  | `PUT /{runId}/subthemas/{subthemaId}` | `SubthemaWijzigingInvoer` | 200; only an item this run created (I25), re-scope included |
+  | `DELETE /{runId}/subthemas/{subthemaId}` | – | 204; refused (403) while the subthema holds a subdoel or activiteit the run did not create |
+  | `POST /{runId}/subthemas/{subthemaId}/subdoelen` | `{ leerplandoelCode }` | 200 `SubdoelWeergave`; subthema must be under the run's thema |
+  | `DELETE /{runId}/subthemas/{subthemaId}/subdoelen/{subdoelId}` | – | 204; own item only |
+  | `POST /{runId}/subthemas/{subthemaId}/activiteiten` | `ActiviteitCreatie` | 201 `ActiviteitWeergave`, maker = caller (I18); with goal codes also DoelenKoppelen |
+  | `PUT /{runId}/activiteiten/{activiteitId}` | `ActiviteitWijzigingInvoer` | 200; own item only |
+  | `DELETE /{runId}/activiteiten/{activiteitId}` | – | 204; own item only |
+  | `POST /{runId}/afronden`, `POST /{runId}/sluiten` | – | 200 `WizardrunWeergave` (`isOpen: false`) |
+
+  `WizardrunWeergave` = `{ id, themaId, gestartDoorId, gestartOp, laatsteSchrijfactieOp, sluitUiterlijkOp, afgerondOp,
+  geslotenOp, isOpen, aangemaakt: [{ soort, id }] }`.
+- **Refusals** are a `WizardrunWeigering`, answered 403 by `WizardrunExceptionHandler` with the title "Geen toegang"
+  and these Dutch details:
+  - "Deze wizard is afgelopen." (finished, closed and fourteen silent days share it; the sentence says only what all
+    three guarantee);
+  - "Dit subthema hoort niet bij het thema van deze wizard.";
+  - "Dit is niet in deze wizard aangemaakt.";
+  - the subthema-with-foreign-content sentence.
+
+  These refusals hold for directie too: the wizard action does not exist outside an open run, and directie does the
+  same on the ordinary routes.
+- **Writes go through `ISchoolcontentBeheerService`**, so every rule and sentence of a hand write applies. Each write
+  and the run's bookkeeping share one transaction (`WizardrunService`).
+- **Themabeheer on the ordinary subthema, subdoel and activiteit routes: 403** (I22), pinned. The maker's delete
+  right (R33) is not wizard-specific: `ActiviteitVerwijderen` admits the maker, themabeheer or not.
+- **No screen calls these yet.** E6-05 builds the wizard UI.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Domain/Schoolcontent/Wizardrun.cs` (new) | The run, its items, `Wizarditemsoort`. |
+| `Application/Schoolcontent/Wizard/IWizardrunService.cs` (new) | Service contract, `WizardrunWeergave`, `WizardrunWeigering`. |
+| `Application/Schoolcontent/Beheer/SchoolcontentBeheerExceptions.cs` | `SchoolcontentValidatieFout.OngeldigeLeeftijd`, the one leeftijd refusal sentence. |
+| `Application/Toegang/Rechtenbronnen.cs` | `IRechtenbronnen` gains `VoorKlasAsync`, `VoorHoekAsync`, `VoorHoekplaatsingAsync`, `VoorAlgemeneFicheAsync`, `VoorAlgemeneFicheplaatsingAsync`. The `UitInvoer` doc block is untouched. |
+| `Application/Toegang/Rechtenmatrix.cs` | Row `Wizardinhoud`; "not expressed" paragraph updated (row 7 is now split into rights row + run state). |
+| `Infrastructure/Toegang/EfRechtenbronnen.cs` | The five klas resolvers (read-only projections). |
+| `Infrastructure/SchoolcontentBeheer/WizardrunService.cs` (new) | The wizard's writes. |
+| `Infrastructure/SchoolcontentBeheer/SchoolcontentBeheerService.cs` | `VereisLeeftijd` body throws the shared sentence (doc blocks untouched). |
+| `Infrastructure/Persistence/Configurations/WizardrunConfiguration.cs` (new), `AppDbContext.cs` | Mapping, `DbSet<Wizardrun>`. |
+| `Infrastructure/Persistence/Migrations/20260914114237_Wizardrun*` + snapshot | The one migration. |
+| `Infrastructure/DependencyInjection.cs` | `IWizardrunService`, in its own marked block beside the wizard's AI assist. |
+| `Api/Infrastructure/Autorisatie/RechtOpAttribute.cs` (new) | The resource-row filter and `Rechtbron`. |
+| `Api/Infrastructure/WizardrunExceptionHandler.cs` (new), `Api/Program.cs` | 403 mapping; stale "next slice" comment updated. |
+| `Api/Controllers/*` | Themas, Subthemas, Activiteiten, Doelsuggesties, ThemaOpbouw, SchoolcontentImport, Schooljaren, Klassen, Jaarplan, Weekplanning, Hoeken, Hoekplaatsingen, AlgemeneFiches, AlgemeneFicheplaatsingen: each write names its row. `WizardrunsController` (new). The weekplanning "unauthenticated" paragraph is struck and replaced. |
+| Tests | See below. |
+
+### Tests added
+
+- **`IntegrationTests/Postgres/ElkeWijzigendeRouteVraagtEenRechtTests`: the sweep.**
+  - Enumerates every non-anonymous POST/PUT/PATCH/DELETE from the endpoint data source and fills every route id with a
+    seeded resource: klas, schooljaar, thema, subthema, activiteit, hoek, hoekplaatsing, fiche, ficheplaatsing and
+    wizard run.
+  - Calls each as a seeded gebruiker with no right and expects 403.
+  - `OpenVoorIedereen` is empty, with its reason. `Lichamen` holds the one body-derived route.
+  - A stale entry in either list fails the test, and it requires at least 70 requests.
+  - The failure message names the route, both declarations, the planning row for agenda-like routes, and what a 404
+    means.
+  - **Proved to fail:** with `[RechtOp]` removed from `DELETE …/weekplanning/{plaatsingId}` it failed and named that
+    route. Restored after.
+- **`IntegrationTests/Postgres/RechtenAfdwingingTests`** (17): per §3 row, the allowed relation through and the nearest
+  denied one 403.
+  - Beheer: every non-directie relation at once, including the klaskiezer's jaarfase PUT.
+  - Thema: themabeheer vs hoofdleerkracht.
+  - Import: themabeheer 400 (reached) vs hoofdleerkracht 403; R35 as themabeheer 403 on preview and on apply;
+    directie reaches both.
+  - Doelsuggesties and the wizard AI: hoofdleerkracht 403 on all five; themabeheer reaches the service (404).
+  - Subthema create: HL K3 201, HL K2, LK K3 and themabeheer 403.
+  - A leeftijd that is no leeftijd: the write's 400 and sentence, for HL and for a no-rights caller; a padded
+    `" K3 "` accepted.
+  - I13 re-scope: HL of K3 alone 403, of K2 alone 403, of both 200.
+  - Onderzoeksvragen and subthema delete follow the subthema row.
+  - Subdoelen: LK 403, HL 200/204.
+  - Shared activiteit: LK K3 creates (maker set) and edits; LK K2 and themabeheer 403.
+  - Goal codes on create: LK 403, HL 201.
+  - Maker delete: a colleague of the same leeftijd 403; the maker 204 without a link and 403 with one; HL 204.
+  - Goal links on an activiteit: LK 403, HL 200/204.
+  - Move: LK without links 200, with links 403, HL 200.
+  - Planning: the LK of K3 blauw edits K3 shared content 200 and plans in blauw (201, and a 404 from the service),
+    but gets 403 on groen's hoeken, fiches, generation and plaatsing, and on groen's hoek by hoek id. HL of K3 plans
+    in no klas (403).
+  - 404 before 403 for resource rows; 403 first for the thema row.
+  - Reads of another klas: 200.
+- **`IntegrationTests/Postgres/WizardrunEndpointsTests`** (10):
+  - the full build flow (create, edit, delete; maker = themabeheer; the item list);
+  - themabeheer 403 on the ordinary routes but 201 in its open run;
+  - hoofdleerkracht 403 on the wizard;
+  - 13 days still open and the write moves the window; 14 days + 1 minute gives 403 "Deze wizard is afgelopen.",
+    for directie too;
+  - I25: another run's item 403, another thema's subthema 403, an HL's subthema under the run's thema 403, a missing
+    item 404;
+  - a subthema holding an LK's activiteit is not deleted (403, still in the database);
+  - finish and close end it for directie too; afterwards themabeheer 403 and HL 200 on the ordinary route (I23);
+  - a leeftijd that is no leeftijd gives the write's 400;
+  - goal codes on a wizard activiteit: themabeheer 403, themabeheer + HL 201;
+  - a missing run gives 404.
+- **`UnitTests/Schoolcontent/WizardrunTests`** (7): open/closed boundary at exactly 14 days, the window moving,
+  finish/close, no write after the end, items per kind, forgetting, guards.
+- **`UnitTests/Toegang/RechtenmatrixTests`:** a `Wizardinhoud` expectation (Directie, TB) × 8 relations.
+- **`IntegrationTests/Postgres/RechtenEndpointsTests`:** two slice-1 tests created content as a gebruiker with no right,
+  which slice 3 now refuses. They seed a builder (themabeheer + HL of the leeftijd) through a new `BewaarBouwerAsync`.
+  Their assertions and comments are unchanged.
+- **Shared seeding:** `IntegrationTests/Postgres/RechtenTestOpzet.cs`.
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: ✓ (no output).
+- `dotnet dotnet-ef migrations has-pending-model-changes` (with a build): "No changes have been made to the model since
+  the last migration."
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (port 5433):
+  - UnitTests: 1355 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 411 passed, 1 skipped (live Op.stap opt-in).
+  - The ~150 tests on the default directie identity pass unchanged.
+- No frontend file changed.
+
+### Self-check against slice 3
+
+- Every endpoint enumerated from the endpoint data source and mapped (table above) ✓; enforced server-side ✓.
+- Doelsuggesties R14, the thema-opbouw routes R29, and the import with R35 on preview and apply ✓.
+- Subthema create via `UitInvoer`; re-scope at both leeftijden; I16 ✓.
+- Subdoelen, activiteit content/create/delete/move, and goal links ✓.
+- The five jaarplan writes as one unit, plus period regeneration, hand placement, weekplanning, hoeken, fiches and
+  their placements ✓.
+- Schooljaar and klas routes directie-only ✓.
+- (c) and (e) fall out of the rules with no special case: a jaar with no HL leaves the HL rows to directie; a gebruiker
+  with no relation matches no column.
+- 404-vs-403 chosen and documented ✓.
+- Wizard entity, one migration, endpoints, I22–I25 ✓. No screen calls them yet.
+- Sweep ✓, per-row tests ✓, existing tests green ✓.
+
+### For the test-runner
+
+- Backend only. Run `dotnet test` with `JAARPLANNER_TEST_POSTGRES` set. The three new Postgres classes are the evidence.
+- By hand, in Development:
+  1. Insert gebruikers with rights (slice 2 builds the beheer screen).
+  2. Sign in through `/api/aanmelden/ontwikkeling`.
+  3. As a leerkracht of one klas, `POST /api/klassen/{otherKlas}/hoeken` gives 403 with "Geen toegang".
+  4. As themabeheer, `POST /api/thema-opbouw/wizardruns` gives 201, then `POST /api/thema-opbouw/wizardruns/{id}/subthemas`
+     gives 201, while `POST /api/themas/{themaId}/subthemas` gives 403.
+- No Playwright pass is meaningful yet: slice 4 hides the controls. Until then a teacher's screen will show controls
+  that now answer 403.
+
+### Routes that did not map cleanly, and open questions
+
+1. **`DELETE api/themas/{id}` → ThemaBewerken.**
+   - §3 has no thema-delete row, and the delete takes its subthema's, subdoelen and activiteiten at every leeftijd
+     along. By hand those are the hoofdleerkrachten's (R21).
+   - I read "Thema … aanpassen" as covering the thema's lifecycle, as R21 does for subthema's. The service already
+     refuses a thema that any klas has planned.
+   - The owner may want directie only, or the HL right at every leeftijd it holds.
+2. **An activiteit create that carries goal codes also needs DoelenKoppelen (R19)**, on the ordinary and the wizard
+   route. The alternative, letting a leerkracht link goals by creating, would empty R19. The create form offers the
+   goal picker today, so slice 4 must hide it for anyone who is not directie or HL.
+3. **Algemene fiche goal links → KlasplanningBewerken.** §3's planning row names algemene fiches. A fiche is one klas's
+   and its links count only for that klas's dekking, so R19 (goal links on *shared* activiteiten) does not reach them.
+   A leerkracht therefore links goals to their own klas's fiche but not to a shared activiteit. Consistent, but worth
+   the owner knowing.
+4. **The wizard's run state binds directie too** (403 on an ended run or a foreign item). Directie does the same on the
+   ordinary routes. Read as: the wizard action does not exist outside an open run.
+5. **I25 "and nothing else" read strictly for a subthema delete.** It is refused while the subthema holds content the
+   run did not create, which the delete would take along.
+6. **I25 read literally for an activiteit** the run created that an HL later linked a goal to: the wizard may delete it,
+   and the link goes with it. Owner to confirm, or the wizard delete could also require "no links".
+7. **Thema, themadoel and kernwoordenschat edits during a run** go through the ordinary `ThemaBewerken` routes, which
+   themabeheer holds. They do not count as the run's write actions and do not move its fourteen days. E6-05 may want
+   wizard-flavoured routes for them (a default to choose with the wizard UI).
+8. **Any themabeheer holder may continue a run, not only its starter.** I22–I25 do not limit it; the starter is
+   recorded.
+9. **A subdoel has no edit** in the model (it is a link), so I25's "edit" reaches subthema's and activiteiten only.
+10. **Ordering nuance:** in the wizard a body leeftijd's 400 comes before the run's 404/403, because it is checked
+    before the run is read. Harmless: the request is refused either way.
+11. **`GET api/schoolcontent-import/sjabloon` stays open to every gebruiker** (a blank template, a read).
+12. **Stale code comment, not edited:** `DekkingController`'s class doc still calls the read routes unauthenticated
+    debt blocked on E6-01/E6-02. Reads are open by I9, so the sentence is now wrong in fact rather than in rule.
+    Offered for the next touch of that file.
+
+### Docs the orchestrator owns (not edited here)
+
+- **ADR-0030 §3** could note two things:
+  - row 7 is enforced as a rights row (`Wizardinhoud`) plus run state in `IWizardrunService`;
+  - the activiteit create with goal codes needs R19's row too.
+- **E6-02 backlog:** the E2, E3-01 and E3-07 carry-forwards are now met (every route; the five jaarplan writes as one
+  unit, pinned by the sweep).
+- **E7-11:** its authorisation half is now enforced on every write route, not only the Op.stap ones.
+
+### What the frontend (slice 4) must now hide
+
+The server enforces all of this; without slice 4 these controls answer 403.
+
+- **Directie only:**
+  - schooljaar create;
+  - klas create, edit and delete, including the **klaskiezer's jaarfase field** (`PUT /api/klassen/{id}`);
+  - the import's "menselijke beslissingen verwijderen" option;
+  - the E1-22 Op.stap `Laadlink`s (Curriculumbeheer).
+- **Directie + themabeheer:**
+  - the thema form, themadoelen and kernwoordenschat;
+  - the FR-1 import section;
+  - doelsuggestie generate, accept, reject and adjust (`frontend/src/features/themas/ThemadetailScherm.tsx`);
+  - the thema-opbouw AI assist and the wizard (E6-05).
+- **Directie + HL of that leeftijd:**
+  - the subthema form (create, edit, delete, onderzoeksvragen; a re-scope needs HL at both leeftijden);
+  - subdoel controls;
+  - goal-link controls on activiteiten, including the goal picker on the activiteit create form;
+  - moving an activiteit that has links.
+- **Directie + HL + leerkracht of that leeftijd:**
+  - activiteit create (without goals) and content edit;
+  - moving one without links.
+- **Delete an activiteit:** HL, or its maker while no goal is linked. `ActiviteitWeergave.makerId` is in the JSON; the
+  frontend type still lacks it.
+- **Directie + leerkracht of that klas:** every planning control. That is:
+  - generation and period regeneration, hand placement, status, lock, drag and delete of plaatsingen;
+  - the weekplanning and subthemaperiodes;
+  - hoeken and taking them over;
+  - hoekplaatsingen and their moments, hours and verrijkingen;
+  - algemene fiches with their goal links and plaatsingen.
+
+  A hoofdleerkracht alone plans no klas.
+- **A 403 from the server** now carries the ProblemDetails title "Geen toegang". For wizard refusals a Dutch detail
+  comes with it.
+
+### Fix round 1
+
+- **Input:** "# E6-02 slice 3 — Test report (round 1)" in `test-report.md` (FAIL: D1 MAJOR, D2 MINOR) and "## Code
+  slice 3 — audit round 1" in `antagonist.md` (VIOLATIONS FOUND: 2 MAJOR, 5 MINOR, 3 QUESTION). Both are the
+  orchestrator's and are committed unedited.
+- **Owner rulings of 2026-09-14 on the three questions**, which the orchestrator records as defaults I26–I28 on
+  `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic file were **not** edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `d85c0a5`. **No new migration:** no entity or mapping changed, and
+  `has-pending-model-changes` is clean.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| A (MAJOR) | `DELETE api/themas/{id}` let themabeheer delete content made by hand | **I26.** New row `ThemaVerwijderen`, a resource row. Column `ThemabeheerZonderAndermansInhoud`; resource `Themabron(ThemaId, HeeftAndermansInhoud)` from `IRechtenbronnen.VoorThemaAsync`; `[RechtOp(…, Rechtbron.Thema, "themaId")]`. Directie always. Themabeheer only while every subthema, subdoel and activiteit under the thema was created by the thema's own run **and that run is open** (after the run its items are ordinary content, I23). The planned/scheduled refusal stays in the service, for everyone. "Its own open wizard run" is read as the run that built the thema (one per thema), not as a run of the caller; see open question 1. Tests: themabeheer on a thema holding an HL's subthema 403 (full detail), directie 204; themabeheer on an empty thema 204; themabeheer on a thema holding only its open run's subthema, subdoel and activiteit 204; the same after the run is finished: themabeheer 403, directie 204. The matrix unit test covers the column for all eight relations, and the resource-less case fails closed. |
+| B (MAJOR) | The wizard's edit and delete reached content its run did not create | **I27, three paths, in `WizardrunService`:** (1) a leeftijd change of a run-created subthema is refused while it holds a subdoel or activiteit the run did not create; the same edit at the same leeftijd is still allowed. (2) A wizard delete of an activiteit a goal is linked to needs `DoelenKoppelen` at its leeftijd. (3) A wizard delete of a subthema whose activiteiten carry any link needs the same. The rights question is asked inside the transaction, through `IRechtenService` and `Rechtenmatrix.StaatToe` (the one evaluator), with the caller's id passed by the controller. It is not a controller-side `MagAsync` like `MaakActiviteit`'s, because it depends on state the delete itself reads. Tests, allowed and refused on each path: re-scope 403 / same-leeftijd edit 200; linked activiteit themabeheer 403, themabeheer+HL 204; subthema with a linked activiteit themabeheer 403, themabeheer+HL 204. The build-flow test keeps the allowed re-scope with only the run's own items. |
+| C (MINOR) | A moved activiteit stayed editable and deletable through the wizard | The wizard's activiteit edit and delete check that its **current** subthema is under the run's thema. The refusal is "Deze activiteit staat niet meer onder het thema van deze wizard." Test: directie moves it to another thema; the wizard's PUT and DELETE get 403 with that sentence. |
+| D1 / D (MAJOR / MINOR) | The sweep accepted any 403 | (1) `Aanmelding.SchrijfGeenToegangAsync` now writes the authorisation 403 (title "Geen toegang", detail "Je hebt geen toegang tot deze actie."), and the test scheme's `HandleForbiddenAsync` calls the same writer. The sweep asserts that detail, so a 403 from a run's state or from the anti-forgery check no longer counts. (2) The sweep seeds a subthema, subdoel and activiteit **through the seeded run** and sends the wizard item routes those ids. **Proved:** with `Wizardinhoud` removed from each wizard DELETE route in turn (`…/subthemas/{subthemaId}`, `…/subdoelen/{subdoelId}`, `…/activiteiten/{activiteitId}`), the sweep failed and named that route each time ("answered 204"). The file was restored from a copy, diffed identical, and rebuilt. |
+| D2 (MINOR) | A null leeftijd got ASP.NET Core's English 400 | `SubthemaCreatie.Leeftijd` and `SubthemaWijzigingInvoer.Leeftijd` are `string?`; the wizard uses the same DTOs. The service passes `?? string.Empty` to `VereisLeeftijd`, whose signature and doc blocks are untouched. `OngeldigeLeeftijd` has a sentence of its own for blank or null: "Een subthema heeft een leeftijd nodig. Kies er een uit: JK, K2, K3, L1, L2, L3, L4, L5, L6." (the probe had shown `'' is geen geldige leeftijd`). Tests send `null` and an omitted leeftijd. An HL gets that Dutch 400 on create and edit; so does themabeheer on both wizard routes. A caller without the right gets 403 wherever the right is asked before binding: the ordinary edit (stored leeftijd) and both wizard routes (resource-free rows). **One exception, by design:** on the ordinary create the resource *is* the body leeftijd, so without one there is nothing to ask a right about. A no-rights caller therefore gets the write's Dutch 400 there, before the check and never instead of it. Pinned in `Een_ontbrekende_leeftijd_…`. |
+| E (MINOR) | Wizard sentences unguarded; "bestaat niet meer" for an id that never existed | Reworded to "Deze wizard is niet gevonden.". Every wizard sentence is asserted in full over HTTP, with an em-dash check, through `RechtenTestOpzet.VerwachtAsync`, and a plain fact checks the list has no em dash. Covered: not found, afgelopen, not this thema, the moved activiteit, not in this wizard, the foreign-content delete and re-scope, the two goal-link refusals, and the blank-leeftijd sentence. The item 404s ("Dit subthema bestaat niet meer. …") are the ordinary routes' sentences, shared on purpose, and were left as they are. |
+| F (MINOR) | The run's starter was missing from the processing register | E7-06 carry-forward in `backlog/E7-niet-functioneel.md`: `wizardruns.GestartDoorId`, returned by `GET …/wizardruns/{runId}`; retention SetNull on gebruiker removal, and the row goes with its thema. Only that carry-forward was added. |
+| G (MINOR, code half) | `DekkingController` called its reads unauthenticated | Both paragraphs rewritten: a session since E6-01, reach by default I9, narrowing behind E6-09 must cover the export too. The old wording is kept in a dated note. The doc halves (E6 epic, ADR-0030 §3, E7-11) are the orchestrator's. |
+| Q1–Q3 | Questions | Ruled I26 and I27, handled above. **I28 (the 14-day window):** kept as built; only the wizard's own routes move `LaatsteSchrijfactieOp`. |
+
+**Files changed this round:**
+
+- Api:
+  - `ThemasController` (delete → `ThemaVerwijderen` + doc), `WizardrunsController` (caller passed to both deletes);
+  - `RechtOpAttribute` (`Rechtbron.Thema`);
+  - `Aanmelding` (`SchrijfGeenToegangAsync`, `GeenToegangDetail`);
+  - `DekkingController` (docs).
+- Application:
+  - `Rechtenmatrix` (row, column, `StaatToe` branch);
+  - `Rechtenbronnen` (`VoorThemaAsync`, `Themabron`);
+  - `IWizardrunService` (signatures, docs);
+  - `SchoolcontentBeheerDtos` (nullable leeftijd);
+  - `SchoolcontentBeheerExceptions` (blank sentence).
+- Infrastructure:
+  - `EfRechtenbronnen` (now takes a `TimeProvider`, and `VoorThemaAsync`);
+  - `WizardrunService` (I27, C, sentences, `IRechtenService`);
+  - `SchoolcontentBeheerService` (the two leeftijd call sites only).
+- Tests:
+  - `TestAuthenticatie` (forbid answers like the cookie);
+  - `RechtenTestOpzet` (wizard start, `IdAsync`, `DetailAsync`, `VerwachtAsync`, sentence constants);
+  - the sweep; `WizardrunEndpointsTests`; `RechtenAfdwingingTests` (+4, and the 404 test now uses the thema edit for the resource-free case);
+  - `RechtenmatrixTests` (+I26);
+  - `RechtenEndpointsTests` (the `EfRechtenbronnen` constructor line only).
+- Backlog: the E7-06 carry-forward.
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433):
+  - UnitTests: 1364 passed, 4 skipped (live KOV opt-in).
+  - IntegrationTests: 419 passed, 1 skipped (live Op.stap opt-in).
+- Guard-removal probes: three failures, each naming its route; the file restored and rebuilt afterwards.
+- No frontend file changed.
+
+**Open questions:**
+
+1. **I26, "its own open wizard run".** I read it as the run that built the thema, which any themabeheer holder may
+   continue (the slice-3 reading the audit judged compliant). If the owner meant the caller's own run, the column needs
+   the starter as well.
+2. **Slice 4 must hide more:**
+   - the thema delete control for themabeheer on a thema holding someone else's content;
+   - the wizard's leeftijd select for a subthema holding someone else's content;
+   - the wizard delete of a linked activiteit, or of a subthema with linked activiteiten, for a caller without the
+     goal-link right.
+
+### Fix round 2
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 2)": PASS, with notes on one flaky Entra test and two small test gaps;
+  - "## Code slice 3 — audit round 2": 0 CRITICAL, 0 MAJOR, 3 MINOR, 1 QUESTION.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner ruling on Q4, 2026-09-14: option (a), a goal link protects.** The orchestrator records it in the I26/I27
+  text on `feature/e6-rollen-rechten`. The constitution, the ADR and the E6 epic were not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `afe46bc`. No new migration: `Themabron` is not an entity, and no
+  mapping changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| Q4 (a) | An HL's goal link on a run-created activiteit left with a themabeheer thema delete (I26) or a wizard re-scope (I27) | **Thema delete:** `Themabron` gains `GekoppeldeLeeftijden`, the leeftijden of the open run's own activiteiten that carry a goal link, computed in `EfRechtenbronnen.VoorThemaAsync`. The resolver knows no caller, so it reports rather than decides. The `ThemaVerwijderen` branch of `StaatToe` then requires, for each of those leeftijden, `StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))`: the one goal-link rule, called, not copied. Directie passes as always. **Wizard re-scope:** when a run-created subthema's leeftijd changes and any activiteit under it carries a goal link, the caller needs `DoelenKoppelen` at **both** the old and the new leeftijd. The ruling says "its leeftijd", but a re-scope gives the link a second one: it moves into the new leeftijd's dekking. Asking at both ends is I13's logic applied to R19, and I chose the stricter reading. The caller's id now travels to `WijzigSubthemaAsync`. Its refusal has a sentence of its own, "Aan activiteiten onder dit subthema zijn doelen gekoppeld. Die mag je niet naar een andere leeftijd meenemen, dus de wizard verandert de leeftijd niet.", because "niet in deze wizard aangemaakt" would be false for the run's own activiteit (the E5-03 rule). **Tests:** the thema delete (themabeheer 403, themabeheer+HL of K3 204, directie 204), and the matrix unit test (the Q4 cases, two leeftijden, HL without themabeheer). The re-scope: themabeheer 403; themabeheer+HL of K3 only 403; themabeheer+HL of K3 and K2 200. The same-leeftijd edit is allowed, and the database shows K3 before and K2 after. |
+| MINOR 1 | `ThemaVerwijderen` cited R4 | Doc and label now cite "(R3; I26)". The doc says the directie column rests on R3 and the themabeheer column is a default (I26, followed under R37), and it records the old citation. |
+| MINOR 2 | Docs made incomplete by I27 and C | `Rechtenmatrix`: the class doc now defines a resource row as any row with a column that needs a resource (including I26's), names `Themabron`, and says the Api asks through `[RechtOp]` or in the action. The wizard paragraph says a run's rules are state plus one relation (I27 with Q4, `DoelenKoppelen` through `StaatToe`). The `Wizardinhoud` doc and label cite I22–I27 and say I27 narrows it. `WizardrunsController`: "Rights" lists all four conditions, and "Order of answers" adds the two 403s (activiteit no longer under the thema; I27). The re-scope, subthema-delete and activiteit-delete summaries cite I27 (and Q4), and the activiteit edit summary names the thema check. |
+| MINOR 3 | "verwijdert ze niet" read as the goals | "… dus de wizard verwijdert deze activiteit niet." in the service and in the test constant. |
+| Test gaps | Test-runner and antagonist notes | **Planned thema:** an empty thema placed in K3 blauw's jaarplan (by hand, at the rooster's first block) is refused to themabeheer with the service's 400 ("staat nog 1 keer in een jaarplan"). **Subthema with links:** after themabeheer's refused delete, the subthema and its activiteit are still in the database. **I28:** an ordinary thema PUT and a themadoel POST by themabeheer leave the run's stored `LaatsteSchrijfactieOp` exactly unchanged. |
+| Nit | `WizardrunService` overstated what READ COMMITTED guarantees | The summary now says the rights question reads the rows as committed just before the write and takes no lock. A link another request adds in between is not seen: the same narrow window the filter-side checks accept, the thema delete's included. |
+| Left, as instructed | The item 404 sentences ("… bestaat niet meer") | Unchanged: a codebase-wide pattern, out of scope. |
+
+**Files changed:**
+
+- Application: `Rechtenmatrix` (docs, labels, the `StaatToe` branch, the column doc), `Rechtenbronnen` (`Themabron`),
+  `IWizardrunService` (re-scope signature and doc).
+- Infrastructure: `EfRechtenbronnen` (`VoorThemaAsync`), `WizardrunService` (Q4 re-scope, sentences, doc).
+- Api: `WizardrunsController` (docs; the caller passed to the re-scope).
+- Tests: `RechtenmatrixTests`, `RechtenAfdwingingTests` (+2), `WizardrunEndpointsTests` (+2, one assertion added).
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db`, using the container's own password
+  (the one in `docs/dev-setup-secrets.md` does not match; that doc was not edited):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped.
+- No frontend file changed.
+
+**Open, for the orchestrator:**
+
+1. The Q4 re-scope asks the goal-link right at both leeftijden (the stricter reading, above). If the owner meant the
+   old leeftijd only, it is one condition to drop.
+2. **Slice 4 must also hide** the thema delete for themabeheer when a run activiteit carries a link at a leeftijd where
+   they may not link goals, and the wizard's leeftijd select in the same case.
+
+### Fix round 3
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 3)": PASS;
+  - "## Code slice 3 — audit round 3": 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION, plus non-blocking nits.
+
+  Both are the orchestrator's and are committed unedited.
+- **Owner answer on Q5, 2026-09-14: both leeftijden.** A wizard re-scope of a subthema whose run activiteiten carry a
+  goal link needs `DoelenKoppelen` at the old and the new leeftijd, as built. It is ratified in I27's text on
+  `feature/e6-rollen-rechten` (`8c95c57`: "When the wizard changes a subthema's leeftijd, that right is needed at both
+  the old and the new leeftijd."). The constitution was not edited here.
+- **Branch:** `story/E6-02-afdwingen`, on top of `e83a875`. No new migration. Nothing else was changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| MINOR 1 | The old-leeftijd half of the Q4 re-scope check was untested | `…verhuist_alleen_mee_voor_wie_op_beide_leeftijden_mag_koppelen_Q4` gains the missing case: themabeheer + HL of **K2 only** re-scoping K3→K2 gets 403 with `GekoppeldVerhuist` in full, and the database still holds K3 (asserted right after the refusals). **Mutation proof:** with `MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, …)` changed to read `nieuw` (one line), the test **failed** ("Expected 403 …, got 200"). On the real code it passes. The file was restored from a copy, diffed identical, and rebuilt. |
+| Nit | `Themabron.GekoppeldeLeeftijden` defaulted to null, read as "none" | Required, with no default and no `?? []` in `StaatToe`: a second producer that forgets it is now a compile error, not a silent allow. The two unit-test constructions pass `[]`. |
+| Nit | Class-level summaries missed the Q4 leeftijd-change-with-link case | `IWizardrunService` (the fourth bullet), `WizardrunService` (the order of questions) and the `WizardrunWeigering` doc now name it: "remove a goal link or carry one to another leeftijd without the caller's goal-link right there". |
+| Nit | `Wizardinhoud` cited "I22–I27", which includes I26 (the thema delete) | Doc and label cite "I22–I25, I27", and the doc says why I26 is left out. |
+| Nit | The re-scope rule was cited without the ratified wording | Quoted as "at both the old and the new leeftijd" with the Q5 answer in: the `Rechtenmatrix` class doc, the `Wizardinhoud` doc, the `IWizardrunService` class and method docs, the `WizardrunService` re-scope comment, and the `WizardrunsController` "Rights" item and re-scope summary. |
+| Nit | The `ThemaVerwijderen` label's "het" read as the thema | "… themabeheer alleen als het thema niets anders bevat dan wat de eigen open wizard van dat thema aanmaakte, en geen doelkoppeling die de themabeheerder niet mag ontkoppelen (R3; I26)". |
+| Nit | The planned-thema test matched its 400 by substring | Pinned by value through `VerwachtAsync`, with the thema's name read back: "Thema '…' staat nog 1 keer in een jaarplan en kan niet verwijderd worden. Verwijder het thema eerst uit die jaarplannen." |
+
+**Gates:**
+
+- `dotnet build`: ✓, 0 warnings.
+- `dotnet format --verify-no-changes`: exit 0.
+- `has-pending-model-changes`: none.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (the container's password):
+  - UnitTests: 1364 passed, 4 skipped.
+  - IntegrationTests: 423 passed, 1 skipped. The new case extends an existing test, so the count is unchanged.
+- Mutation probe: failed as required, then restored.
+- No frontend file changed.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "# E6-02 slice 3 — Test report (round 4)": PASS;
+  - "## Code slice 3 — audit round 4": 0 CRITICAL, 0 MAJOR, 1 MINOR.
+
+  Both are the orchestrator's and are committed unedited. The three fix rounds were used up; the owner approved this
+  one extra fix, limited to that finding.
+- **The MINOR:** two doc comments in `Rechtenmatrix.cs` dropped the goal-link condition from the re-scope rule: the
+  class doc's wizard paragraph and the `Wizardinhoud` doc. The code asks `DoelenKoppelen` at both leeftijden only
+  while an activiteit under the subthema carries a goal link (`WizardrunService.WijzigSubthemaAsync`). A
+  themabeheer-only re-scope of an unlinked run subthema is pinned at 200.
+- **Fix:** both now say the rule is for "a subthema whose activiteiten carry a goal link". Only those two comment
+  blocks changed. No executable line, test or other source file.
+- **Proof:** `git diff -U0 -- backend`, filtered for changed lines that are neither blank nor start with `//`, `///`
+  or `*`, gives **0 lines**. The only changed lines are the `///` lines of those two blocks.
+- **Gates:**
+  - `dotnet build`: ✓, 0 warnings;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - `Toegang` unit tests: 209 passed.
+## Code slice 2 — E6-04 beheer
+
+- **FR / Article:** FA FR-12.2, FR-10; Art. VI.1 (ratified 2026-09-14: directie maintains gebruikers and rights, may
+  give the directie right to someone else), Art. VI.2 (staff data only), Art. II.3/II.5 (Dutch in `nl.json`, server
+  Dutch only where directie acts on it, no em dash); ADR-0030 §2 I12, I17, I20, I21 and §3 row "Gebruikers, klassen en
+  schooljaren beheren …" (directie only); ADR-0031 decision 3 (invite by UPN, the unbound state) and decision 7 (the
+  last directie cannot be removed or demoted); ADR-0024 (Inkt en Signaal), ADR-0017 (WCAG 2.2 AA).
+- **Branch:** `story/E6-04-beheer`, from `feature/e6-rollen-rechten` at `0073bd7`. Not pushed, no PR.
+- **Scope held to slice 2.** No existing controller's authorisation changed (slice 3), no migration (none needed: the
+  slice 1 tables carry everything), DI in one separate block.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `Application/Toegang/IGebruikerBeheerService.cs` (new) | The use cases, the DTOs (`GebruikersOverzicht`, `GebruikerBeheerWeergave`, `KlastoewijzingBeheerWeergave`, `AanstellingBeheerWeergave`, `GebruikerUitnodiging`) and the faults (404 / 400 / 409, the 409s being `GebruikerBestaatAlFout` and `LaatsteDirectieFout`). |
+| `Infrastructure/Toegang/GebruikerBeheerService.cs` (new) | EF implementation. The last-directie guard locks the directie rows (`SELECT … FOR UPDATE`, id order) inside the writing transaction. "Counts for shared content" uses `Rechtenberekening.TeltNog` on `Schoolklok` and `Leeftijdsrechten.VoorKlas`, the rights' own rules. |
+| `Infrastructure/DependencyInjection.cs` | One registration, in its own commented block after the first-directie bootstrap. |
+| `Api/Controllers/GebruikersController.cs` (new) | Thin; `[Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]` on the class. |
+| `Api/Infrastructure/GebruikerbeheerExceptionHandler.cs` (new), `Program.cs`, `Probleemtitels.cs` | Faults to ProblemDetails (404, 400, 409 "Niet doorgevoerd"); one registration line in `Program.cs`. |
+| `IntegrationTests/Postgres/GebruikerbeheerEndpointsTests.cs` (new) | 27 cases, below. |
+| `frontend/src/features/instellingen/gebruikerbeheer.ts` (new) | Types, the overview query (enabled only for directie), the invite, one rights mutation (PUT gives, DELETE takes), removal; writes go into the cache before the refetch and invalidate `ik`. |
+| `…/instellingen/GebruikersScherm.tsx` (new) | The part: schooljaar picker, "Gebruiker uitnodigen", the per-jaarfase hoofdleerkracht block, the ended-year notice, one row per person, removal behind `Bevestiging`. |
+| `…/instellingen/Rechtenblad.tsx` (new) | The one "Rechten" sheet: directie and themabeheer, klassen of the chosen year, hoofdleerkracht jaarfasen of the chosen year; every tick saves at once; the server's refusal shown above the boxes. |
+| `…/instellingen/Uitnodigingsblad.tsx` (new) | Microsoft sign-in name + naam; on success the new person's Rechten sheet opens. |
+| `…/instellingen/Onderdeelpoort.tsx` (new), `onderdelen.ts`, `Instellingenindeling.tsx`, `App.tsx` | Gebruikers is `alleenDirectie`; `useZichtbareOnderdelen` feeds the column and the phone switch; the gate sends a non-directie direct visit to the first visible part. `Record<Deel, ComponentType>` kept. |
+| `…/instellingen/KlassenScherm.tsx` | Read-only for non-directie (no add/edit/delete); directie sees each klas's leerkrachten by name; the missing-leeftijd callout also says the klas gives its leerkrachten no rights on shared activiteiten (I12), in the same callout. |
+| `frontend/src/i18n/nl.json` | `instellingen.gebruikers`, a `gebruikers` group, four `klasbeheer` keys. |
+| Tests: `GebruikersScherm.test.tsx`, `KlassenScherm.test.tsx` (new), `Instellingenindeling.test.tsx`, `App.test.tsx` | Below. `App.test` now controls `useIk` with a hoisted mock: its one query client would otherwise cache the first `/api/ik` answer for every later test. |
+
+### The API contract (all under the `Beheer` policy: directie only; 401 without a session, 403 for anyone else)
+
+| Route | Body | Answer |
+| --- | --- | --- |
+| `GET /api/gebruikers` | | `{ gebruikers: GebruikerBeheerWeergave[], voorbijeSchooljaarIds: guid[] }` |
+| `GET /api/gebruikers/{id}` | | `GebruikerBeheerWeergave`; 404 |
+| `POST /api/gebruikers` | `{ email, naam, isDirectie?, heeftThemabeheer? }` | 201 + `GebruikerBeheerWeergave`; 400 no single UPN; 409 duplicate |
+| `DELETE /api/gebruikers/{id}` | | 204; 409 last directie; 404 |
+| `PUT` / `DELETE /api/gebruikers/{id}/directierecht` | | 200 + gebruiker; DELETE 409 last directie |
+| `PUT` / `DELETE /api/gebruikers/{id}/themabeheer` | | 200 + gebruiker |
+| `PUT` / `DELETE /api/gebruikers/{id}/klassen/{klasId}` | | 200 + gebruiker; PUT 404 unknown klas |
+| `PUT` / `DELETE /api/gebruikers/{id}/hoofdleerkracht/{schooljaarId}/{jaarfase}` | | 200 + gebruiker; 400 unknown jaarfase; PUT 404 unknown schooljaar |
+
+`GebruikerBeheerWeergave` = `{ id, naam, email, isDirectie, heeftThemabeheer, isAangemeld, klastoewijzingen:
+[{ klasId, klasNaam, jaarfase (nullable), schooljaarId, teltVoorGedeeldeInhoud }], hoofdleerkrachtaanstellingen:
+[{ schooljaarId, jaarfase, teltVoorGedeeldeInhoud }] }`. Every write is idempotent and answers the gebruiker as they are
+afterwards. Refusals carry Dutch `detail` sentences for directie (Art. II.3), pinned by value in the tests.
+
+### Key decisions
+
+- **The guard's transaction boundary is a row lock, not SERIALIZABLE.** Both writes that can take the directie right
+  away lock every directie row in id order, then read the gebruiker, then write, then commit. A concurrent demotion
+  waits, and re-reads the locked set after the first commits, so it counts what is true then. Deterministic (no 40001
+  retry to map) and deadlock-free, because every caller locks in the same order. **Shown to be necessary:** with
+  `FOR UPDATE` removed, the race test fails (200 where 409 belongs); with it, the test passes.
+- **`teltVoorGedeeldeInhoud` is exactly what the rights service grants today.** For an appointment: its year has not
+  ended (R20). For a klastoewijzing: its year has not ended **and** the klas states a jaarfase (R22, I12); `jaarfase:
+  null` in the payload tells the screen which reason applies. `voorbijeSchooljaarIds` covers every schooljaar, so the
+  screen can say a year has ended before anything in it is ticked, and never compares dates in the browser.
+- **Every tick saves at once, one request each.** A save button over a dozen boxes would send a dozen requests that
+  can half fail, and the last-directie refusal belongs beside the box that caused it. The sheet says so once.
+- **The (c) sentence is conditioned on what it claims (the E5-03 rule).** An appointment counts until its year ends,
+  next year's included, so a jaarfase with nobody *this* year may still have a hoofdleerkracht today. That line says
+  "Niemand in dit schooljaar"; only a jaarfase with no appointment that counts anywhere says "Geen hoofdleerkracht",
+  and only then does "Zonder hoofdleerkracht past alleen de directie de subthema's van die leeftijd aan." appear.
+- **The invitation asks for "Microsoft-aanmeldnaam"**, with one line saying it can differ from the e-mail address
+  (ADR-0031 decision 3). Rights are set in the Rechten sheet, which opens straight after the invite.
+- **"Nog niet aangemeld" is text in the row and in the sheet.** The sheet adds the one sentence that states the
+  residual risk as a fact: "Wie zich als eerste met deze aanmeldnaam aanmeldt, krijgt deze rechten."
+- **Checkboxes are ink (`accent-inkt`), not the accent.** Accent uses on these screens: the primary action
+  ("Gebruiker uitnodigen", "Uitnodigen"), the active destination, the focus ring. No new hue.
+- **Removal from the sheet closes the sheet and opens `Bevestiging`**; a refusal lands under the list, as the klas
+  delete already does.
+
+### Tests added
+
+- **Backend, `GebruikerbeheerEndpointsTests` (27, Postgres):**
+  - 403 on all twelve routes for themabeheer, hoofdleerkracht, leerkracht, all three at once, and no right (theory ×5),
+    with nothing changed afterwards; 401 on all twelve without a session; a directie row is allowed.
+  - The overview: JSON names, order, `isAangemeld`, the R20 and I12 flags per item (running, ended and not-yet-started
+    year; a klas without jaarfase) and `voorbijeSchooljaarIds`.
+  - Invite: normalises the UPN and applies the flags; a duplicate differing only in case and spaces is 409 with its
+    exact Dutch sentence; four bad UPNs are 400 with their exact sentence (theory ×4).
+  - Themabeheer and directie granted and revoked, idempotent; revoking from a non-holder is a no-op.
+  - **Last directie:** demote → 409 and remove → 409, each with its exact Dutch value and no em dash. A directie may
+    remove themselves while another remains.
+  - **The race:** a second transaction holds the lock and has demoted Bert without committing. An's demotion must still
+    be waiting after one second, and after that commit it answers 409, with exactly one directie left.
+  - Klastoewijzing: link (idempotent, co-teacher allowed) and unlink (idempotent); the new link shows in that person's
+    `/api/ik` on the next request; 404 for an unknown klas or gebruiker.
+  - Hoofdleerkracht: two on one (year, K3), no klas needed (I20, visible in `/api/ik`), withdrawal; `K7`, `k3`, `3K`
+    refused with `Jaarfasen.WatIsErMisMet`'s sentence (theory ×3); an unknown schooljaar → 404.
+  - **Removal** leaves the activiteit they made with `MakerId` null and removes their klastoewijzingen and aanstellingen
+    (I17, cascade).
+- **Frontend (Vitest, 19 new cases, plus the per-part `App.test` case the new part gets automatically: 233 → 253):**
+  - `GebruikersScherm.test` (10): "nog niet aangemeld" only on the unbound row; rights as words with only the chosen
+    year's klassen and jaarfasen; ticking a klas sends one PUT on that link and stays ticked; ticking a jaarfase
+    appoints; **the last-directie refusal is shown in the server's words and the box stays ticked**; the removal
+    refusal is shown and the row stays; "Geen hoofdleerkracht" vs "Niemand in dit schooljaar", with the (c) sentence
+    only when earned; the ended-year notice once; after an invite the new person's Rechten sheet opens, and the body
+    was trimmed.
+  - `KlassenScherm.test` (3): read-only for a non-directie, with no `/api/gebruikers` request; the I12 sentence in the
+    same callout; directie sees the buttons and the leerkrachten.
+  - `Instellingenindeling.test` (+5): **the part is hidden for a non-directie** (even with TB, HL and a klas), shown to
+    directie in both shapes, hidden while `ik` is pending; the gate redirects a non-directie and keeps directie.
+  - `App.test` (+1): a non-directie opening `/instellingen/gebruikers` through the real route table lands on
+    `/instellingen/klassen`.
+
+### Gates
+
+- `cd backend && dotnet build`: ✓, 0 warnings. `dotnet format`: nothing to change; `--verify-no-changes` exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` on the local `jaarplanner-db` (port 5433): UnitTests 1340 passed,
+  4 skipped; IntegrationTests 410 passed, 1 skipped (383 before, plus 27 new).
+- `cd frontend && pnpm lint`: ✓ (oxlint exit 0, `tsc` exit 0). `pnpm test`: 35 files, 253 tests passed.
+  `pnpm build`: ✓ (the >500 kB chunk warning predates this change).
+
+### Browser pass (headless Chrome over the DevTools protocol, 1440×1000 and 390×844, dark and light)
+
+The API ran in Development on **port 5395** against a throwaway database, **`jp_spotcheck_e604`**, created and dropped on
+the local server (port 5433). Vite ran on **port 5185**, proxying to it. Seeded over the API:
+- schooljaren: 2026-2027 (running) and 2025-2026 (ended);
+- klassen: K3 groen, L1 blauw, L2 rood (jaarfase set to null by SQL, as on a legacy row), K3 vorig jaar;
+- gebruikers: An (themabeheer, K3 groen, HL K3; bound by SQL), Bert (K3 groen, L1 blauw, K3 vorig jaar), Carla (HL K3
+  and L1 in the ended year), Dirk (a long name, L2 rood), plus the configured first directie.
+
+What the pass showed:
+- **Directie, list:** Gebruikers is in the column and the phone switch; the rows read as intended; "Nog niet aangemeld"
+  is on every unbound row and not on An's; the hoofdleerkracht block shows K3 An Peeters, and L1 "Geen hoofdleerkracht"
+  with the (c) sentence.
+- **Directie, sheet:** ticking L1 blauw for An saved and the row updated. Unticking Directie on the only directie showed
+  "directie@jaarplanner.local is de enige met het directierecht. Geef het directierecht eerst aan iemand anders." and the
+  box stayed ticked.
+- **The ended year (2025-2026):** the notice, Carla as hoofdleerkracht of K3 and L1, and Bert's past klas.
+- **Invite:** "Eva.Janssens@School.be" was stored as `eva.janssens@school.be` and "Rechten van Eva Janssens" opened.
+- **Klassen as directie:** "Leerkrachten: An Peeters, Bert Claes"; L2 rood's callout carries the I12 line.
+- **Bert (not directie):** no Gebruikers link, no klas buttons, no leerkracht names; a direct visit to
+  `/instellingen/gebruikers` lands on `/instellingen/klassen`.
+- **390:** no horizontal overflow on the list or the invite sheet; the Rechten sheet is a bottom sheet with Klaar and
+  Gebruiker verwijderen in the footer; the long name wraps.
+- **Contrast**, measured in the browser with alpha composited:
+  - light: row meta, uitleg, dd, the (c) sentence and the stil "Gebruiker verwijderen" 6.51:1; "Nog niet aangemeld"
+    17.78:1; white on the accent button 6.10:1; the ended-year notice on `vlak-diep` 5.51:1, the lowest;
+  - dark: meta 7.58:1; the refusal alert and the I12 callout 8.00:1; the notice 8.97:1.
+- **A false alarm:** a full-page capture of the desktop sheet looked clipped on the right. The dialog's bounding box at
+  1440 is x=1024, width 416 (26rem), and a viewport-only capture shows it whole, so the clip was the capture mode, not
+  the layout.
+
+### Self-check against the brief
+
+- **Invite, rights, links, removal:** ✓, in the API, the UI and the tests.
+  - Directie invites by UPN (`NormaliseerEmail`; a duplicate is refused in Dutch).
+  - It grants and revokes themabeheer and the directie right.
+  - It links and unlinks klassen, unique per pair.
+  - It appoints and withdraws hoofdleerkrachten per (year, jaarfase), several allowed, validated by the one leeftijd
+    rule.
+  - It removes a gebruiker, with I17 and the cascades.
+- **The last directie** can be neither demoted nor removed. The count is read under a lock in the writing transaction,
+  and the race is tested and shown to need that lock: ✓.
+- **The list** shows naam, UPN, rights as words, whether the invitation is bound, klassen and appointments, and whether
+  each counts (R20): ✓. The per-jaarfase hoofdleerkracht line says it in words when a jaarfase has none: ✓.
+- **Gebruikers is for directie only:** the link is hidden, the address is redirected, and `Record<Deel, ComponentType>`
+  is kept: ✓.
+- **Klassen** is read-only for a non-directie, shows the leerkrachten by name to directie, and puts I12 in the same
+  callout: ✓.
+- **Copy and design:** every string is in `nl.json` with no em dash (the catalogue guards are green), the accent is
+  used only for its uses, and the screens work at 390 and from `lg`: ✓.
+- **Not claimed:** the *Done when* of E6-04 as a whole also needs slice 3 (the server refusing the klas routes to a
+  non-directie) and slice 4. This slice does not claim the story.
+
+### For the test-runner
+
+- **Automated:** `dotnet test` with `JAARPLANNER_TEST_POSTGRES`, filtered on `GebruikerbeheerEndpointsTests` for this
+  slice; `pnpm test` in `frontend`.
+- **By hand, setup:** run the API in Development against a throwaway database; the development sign-in is
+  `/api/aanmelden/ontwikkeling`. Seed a running and an ended schooljaar with klassen (one with its `Jaarfase` set to
+  null by SQL), and invite three or four people over the screen or the API.
+- **As the configured first directie, at `/instellingen/gebruikers`:**
+  1. Invite someone, then open their Rechten.
+  2. Tick a klas and a jaarfase.
+  3. Untick Directie on the only directie: the refusal appears.
+  4. Switch to the ended year: the notice appears.
+  5. Remove someone who made an activiteit: it stays, with maker null.
+- **As a non-directie:** Gebruikers is in neither the column nor the phone switch, `/instellingen/gebruikers` lands on
+  `/instellingen/klassen`, and there are no buttons there.
+- Check at 1440 and 390.
+
+### Open questions / Art. XIV touched
+
+1. **The Klassen part is read-only for a non-directie in the UI only.** The klas routes still admit any session until
+   slice 3 puts the `Beheer` policy on them. That follows from the split; it is noted so the merge order is clear.
+2. **No UI edits a gebruiker's name or UPN.** Neither the brief nor E6-04 asks for it. A typo in a UPN means remove and
+   invite again, which is safe only before the first login. If directie wants an edit, it needs a rule for a bound row,
+   because the UPN no longer identifies the person once the invitation is bound.
+3. **Removing yourself** (allowed while another directie remains) ends your session on the next request. The screen
+   warns no further than the `Bevestiging` text; a sentence could be added if the owner wants one.
+4. **Graadklas (Art. XIV):** untouched. A klas still grants its one stated jaarfase, through `Leeftijdsrechten`.
+
+### Fix round 1
+
+- **Input:** "Code slice 2 — audit round 1" in `backlog/worklogs/E6-02/antagonist.md` (0 CRITICAL, 1 MAJOR, 5 MINOR,
+  1 QUESTION) and "E6-04 slice 2 — Test report (round 1)" in `test-report.md` (PASS, with four notes). Both are the
+  orchestrator's, committed unedited with this fix. QUESTION 7 was decided by the orchestrator (confirm before giving up
+  your own directie right; name the consequence of removing yourself).
+- **Branch:** `story/E6-04-beheer`, on top of `224815f`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MAJOR: the last-directie guard counted unbound invitations | **Fixed.** `LeesAndereDirectieOnderSlotAsync` still locks every directie row (`FOR UPDATE`, id order) in the writing transaction, and now reads whether each is bound (`"EntraObjectId" IS NOT NULL`). Only another directie who can sign in counts. When other directieleden exist but none has signed in, the refusal says so: "{naam} is de enige met het directierecht die zich al heeft aangemeld. De anderen met het directierecht hebben zich nog niet aangemeld, dus het directierecht kan nog niet weg." For removal: "… die zich al heeft aangemeld, en kan niet verwijderd worden. De anderen met het directierecht hebben zich nog niet aangemeld." Both are pinned by value. **Development:** the development sign-in binds nobody, so under it no directie is ever bound and the production rule would make every directie undemotable. `GebruikerbeheerOpties.OngekoppeldeDirectieKanAanmelden` (Application) is `false` by default, which is the production rule. `Program.cs` sets it to `true` only when `Authenticatie:Modus` is `Ontwikkeling`, a mode the Api refuses to start with outside Development, and nothing else sets it. The reasoning is that in that mode an unbound directie really can sign in, by being picked, so the rule's meaning ("another directie who can sign in") is unchanged. **Integration tests:** the test host starts in Development with the development sign-in, so `GebruikerbeheerEndpointsTests` runs every request through a host that sets the flag back to `false` (`_productie`), and seeds directieleden bound by default. One test runs the development rule on purpose, and a `[Fact]` pins the mapping (Entra → false, Ontwikkeling → true, default false). |
+| 2 | MINOR: the E7-06 register said no route removes a gebruiker | **Fixed** in `backlog/E7-niet-functioneel.md`, the E6-02 slice 1 carry-forward's retention paragraph only. The false clause is struck with a dated note. A list now says: removal is by directie, by hand, only while another directie who can sign in remains, never automatic; it erases the row (naam, UPN, Entra tenant and object id, themabeheer and directie flags; the session stops on the next request); it cascades to klastoewijzingen and aanstellingen; it nulls `Activiteit.MakerId` (I17); the schooljaar delete is still E6-03's; `GET /api/gebruikers` is read by directie only, and anyone else sees only their own rights through `/api/ik`. |
+| 3 | MINOR: the (c) sentence claimed more than its condition, and "die leeftijd" had no referent | **Fixed.** Now "Bij een leeftijd zonder hoofdleerkracht beheert alleen de directie de subthema's en subdoelen.": it says less, and its referent is inside the sentence. New catalogue case in `catalogus.test.ts` ("het gebruikersbeheer (E6-04)"): the sentence names "leeftijd zonder hoofdleerkracht", and mentions neither "die leeftijd" nor activiteiten. |
+| 4 | MINOR: two length sentences unpinned; a dead copy of the jaarfase sentence | **Fixed.** `Een_te_lange_naam_of_aanmeldnaam_wordt_in_het_Nederlands_geweigerd` pins "Een naam is hoogstens 256 tekens lang." and "Een aanmeldnaam is hoogstens 320 tekens lang." and checks nothing was stored. `LeesJaarfase` throws `Jaarfasen.WatIsErMisMet(jaarfase)!`, which is non-null for exactly the inputs `LeesLeeftijd` refuses, so the sentence exists once, in the domain. |
+| 5 | MINOR (suspicion): disabling every box during a save throws focus out | **Confirmed and fixed.** Boxes now wait as `aria-disabled` and ignore input, and stay focusable. Browser keyboard pass (CDP key events): Space on "L1 blauw" kept focus on it during the save (`aria-disabled=true`, `activeElement` the box) and after it; a second Space unticked it, focus still there. New Vitest: during a held save the box is `aria-disabled`, not disabled, keeps focus and shows the requested state; a second tick is ignored (one write); after the save it still has focus. |
+| 6 | MINOR: a delete racing a link gave 500 | **Fixed.** `BewaarIdempotentAsync` maps 23503 to `GebruikerbeheerNietGevondenFout` with a Dutch sentence ("De gebruiker of de klas bestaat niet meer.", or "… het schooljaar …"). New Postgres test, deterministic: another transaction deletes the klas without committing, and the link's foreign-key check waits on it. After the commit the answer is 404 with that sentence. |
+| 7 | QUESTION, decided: self-demotion and self-removal | **Built.** Unticking your **own** Directie box opens `Bevestiging` over the sheet: "Je eigen directierecht afgeven?", with "Je ziet het scherm Gebruikers dan niet meer, en je kunt het directierecht niet zelf terugzetten." and "Directierecht afgeven". The consequence says nothing about who else can restore it, because the dialog shows before the server knows whether another directie exists. Someone else's box saves at once, as before. Removing yourself shows "Je wordt meteen afgemeld en kunt je daarna niet meer aanmelden. …". **No false error flash:** after your own demotion or removal only `ik` is refetched, not the overview, and the list's failure branch shows only when there is no data. Browser: after confirming, the page went to `/instellingen/klassen` with the error text never seen in 60 polls, and no Gebruikers link. Vitest covers cancel (no request), confirm (one DELETE, `ik` refetched, the overview not, no error text), someone else's right (no dialog), and the self-removal text. |
+| TR | Notes: removal race untested; five parts past the edge at 390 | **Race:** `Een_directie_verwijderen_terwijl_een_andere_wordt_afgezet_laat_er_een_over` holds the lock with Bert demoted and uncommitted, and removing An waits, then answers 409; exactly one directie is left. **Phone switch (design judgement):** it keeps scrolling, since five labels cannot fit at 390 without shrinking type or wrapping the segment into two rows. The edge where parts are hidden now fades into the row's own background (`vlak-diep`, no new hue), and the active part is scrolled into view when the row appears. Measured: on Gebruikers only the right edge fades, on Weergave only the left (the part fully visible), and with four parts (a leerkracht, 6px over) none. The tolerance is the row's padding, so a fade never dims a part that is fully in view. |
+| + | Audit summary: `KlassenScherm`'s comment said "the server refuses them" | **Fixed.** The comment now says the matrix gives those buttons to directie alone and the server refuses them once slice 3 puts the row on the klas routes; until then the routes admit any session. |
+
+**Tests added this round:**
+- **Backend** (`GebruikerbeheerEndpointsTests`, 27 → 36): unbound-only directie → both refusals by value; allowed after the second directie is bound (demote; remove); an unbound directie invitation may itself be demoted and removed while a bound one remains; the development rule counts an unbound directie; the option's mapping; the removal race; the FK race; the length sentences.
+- **Frontend** (253 → 258): focus during a save; self-demotion confirm, cancel and no error flash; someone else's directie right without a dialog; the self-removal text; the catalogue case.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433): UnitTests 1340 passed, 4 skipped; IntegrationTests 419 passed, 1 skipped (410 + 9 new).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604b` (created, migrated, seeded over the API, then dropped); Vite on 5185; headless Chrome at 1440 and 390, light. It covered the keyboard pass, self-demotion with its confirmation and redirect, the new (c) sentence, and the switch fades above.
+
+### Fix round 2
+
+- **Input:**
+  - "Code slice 2 — audit round 2" in `antagonist.md`: 0 CRITICAL, 0 MAJOR (MAJOR 1 resolved), 5 MINOR.
+  - "E6-04 slice 2 — Test report (round 2)" in `test-report.md`: FAIL, on one MINOR defect (the phone switch fade); everything else passed, including a mutation run.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Branch:** `story/E6-04-beheer`, on top of `3e4ee04`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | MINOR: the (c) sentence still said "alleen de directie" | **Fixed.** New wording: "Bij een leeftijd zonder hoofdleerkracht doet de directie wat een hoofdleerkracht zou doen." It claims nothing about who else may act (themabeheer through the wizard, I25–I27; the FR-1 import's subdoel links; the leerkrachten of that leeftijd on the activiteiten and the streefwoordenschat). The catalogue case now refuses any "alleen" in this key, and still refuses "die leeftijd" and "activiteit". |
+| 2 | MINOR: E7-06 said only a cascade ends these rows | **Fixed**, my paragraph only. "Nothing ends them earlier" and the "only" are gone. A new bullet says directie can end each fact by hand at any time (unticking a klas or a jaarfase deletes that row, `HaalKlasWegAsync`, `TrekAanstellingInAsync`; unticking themabeheer or directie clears the flag), and that no history is kept. The opening sentence now reads "stays stored until directie ends it by hand or its klas, schooljaar or gebruiker is removed". |
+| 3 | MINOR: server sentences | **Fixed.** (a) "… Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld." in both "enige met het directierecht" refusals. (b) The number-neutral "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, …" in both "die zich al heeft aangemeld" refusals. The pinned backend tests and the two mocked sentences in `GebruikersScherm.test.tsx` follow. (c) "De gebruiker of het schooljaar bestaat niet meer." is pinned by value in a new deterministic test: another transaction deletes the schooljaar without committing, the appointment's FK check waits on it, and after the commit the answer is 404 with that sentence. |
+| 4 | MINOR: a save that loses its row to a concurrent removal gave 500 | **Mapped to a Dutch 404**, not an idempotent 204. `BewaarWijzigingAsync` wraps every tracked gebruiker save (both directie writes, both themabeheer writes, the removal) and turns `DbUpdateConcurrencyException` into `GebruikerbeheerNietGevondenFout("Deze gebruiker is intussen verwijderd.")`. No concurrency token is configured on `gebruikers`, so zero rows can only mean the row is gone, and the sentence asserts exactly that. A 404 matches what a request arriving after the removal already gets; a 204 would claim a removal this request did not do. New deterministic tests: another transaction deletes An without committing, the tracked UPDATE or DELETE waits on the row lock (asserted still pending after 1 s), and after the commit the answer is 404 with that sentence. That is a theory over `PUT …/themabeheer`, `PUT …/directierecht` and `DELETE …/{id}`, plus a fact for `DELETE …/themabeheer`. |
+| 5 | MINOR (audit) = the test-runner's defect: the fade covered the active label | **Fixed and measured.** The row now has `scroll-px-9` (scroll-padding-inline 36px), a little wider than the 32px fade: with exactly 32px it still touched the fade by 0.3px, because the fade starts a pixel inside the row's border. `scrollIntoView` "nearest" therefore stops the active part clear of both fades; at either end of the row the other edge has nothing hidden, so it has no fade. The antagonist's optional font-swap note is also taken: once `document.fonts.ready` resolves, the active part is placed and measured again. Measurements are in the table below. |
+| TR | Note: the "allowed after binding" removal test did not first assert the refusal | **Added:** it asserts 409 before the bind, then 204 after it. |
+
+**Phone switch measurements**, headless Chrome, signed in as directie (five parts), each part opened fresh as the landing route. Pixel positions are viewport x; "fades" are the drawn fade overlays. Every case: **overlap 0px, active part fully inside the row**; the label's contrast is 17.78:1 light and 13.12:1 dark.
+
+| Width | Part | Scroll | Active part | Fades |
+| --- | --- | --- | --- | --- |
+| 390 | Klassen | 0/97 | [21,94] | right [341,373] |
+| 390 | Gebruikers | 0/97 | [94,185] | right [341,373] |
+| 390 | Hoeken | 0/97 | [185,257] | right [341,373] |
+| 390 | Algemene fiches | 44/97 | [213,337] | left [17,49], right [341,373] |
+| 390 | Weergave | 97/97 | [284,369] | left [17,49] |
+| 360 | Klassen | 0/127 | [21,94] | right [311,343] |
+| 360 | Gebruikers | 0/127 | [94,185] | right [311,343] |
+| 360 | Hoeken | 0/127 | [185,257] | right [311,343] |
+| 360 | Algemene fiches | 74/127 | [183,307] | left [17,49], right [311,343] |
+| 360 | Weergave | 127/127 | [254,339] | left [17,49] |
+
+Light and dark gave identical geometry. Before the fix, the test-runner measured Algemene fiches at [249,373] at 390, its last 19.3px under the right fade. With `scroll-px-8`, this pass measured [217,341], touching the fade by 0.3px, which is why the padding is 36px.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 424 passed, 1 skipped (419 + 5 new). After the last test-only edit (the 409 before the bind), `GebruikerbeheerEndpointsTests` alone: 41 passed.
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 258 passed. `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604c` (created, migrated, seeded over the API, dropped); Vite on 5185. It ran the measurements above, and the reworded (c) sentence rendered.
+
+### Fix round 3
+
+- **Input:**
+  - "Code slice 2 — audit round 3" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR; all five round-2 findings resolved.
+  - "E6-04 slice 2 — Test report (round 3)" in `test-report.md`: FAIL on 1 MINOR, plus one LOW note. The round-2 fade defect is fixed (20/20).
+
+  Both are the orchestrator's and are committed unedited with this fix. Nothing was changed beyond the three items below.
+- **Branch:** `story/E6-04-beheer`, on top of `02394a3`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR: after a 404 the screen still showed the removed gebruiker, with a live sheet whose next tick answered "Gebruiker <guid> is niet gevonden." | **Fixed.** A 404 from either beheer write (`useRechtWijziging`, `useVerwijderGebruiker`) now refetches the overview, the klassen and the schooljaren (`bijNietGevonden`): the boxes are built from all three, and a 404 can mean any one of them is gone. `GebruikersScherm` remembers whose sheet is open, by id and name. When the loaded list no longer holds that person, the sheet (which renders only for someone in the list) closes, and a list-level alert says "{naam} is intussen verwijderd en staat niet meer in de lijst." That condition proves the person was listed when the sheet opened and is not now. A 404 about a klas or schooljaar leaves the person listed, so the sheet stays open with the server's sentence, and the refetch drops the gone box. **The not-found sentence names no raw id:** "Deze gebruiker bestaat niet (meer).", worded that way because that branch cannot tell a removed gebruiker from an id that never existed. It is pinned by value for a GET and a toggle after a removal (the second-tab path). **New Vitest:** a 404 on a klas tick refetches the list, closes the sheet, shows the list-level alert, and the person's row is gone while the other stays. |
+| 2 | Test-runner MINOR: the late-font re-placement scrolled a keyboard-focused link out of view (WCAG 2.4.7, 2.4.11) | **Fixed.** In the `document.fonts.ready` callback, if focus is inside the row and not on the active link, the **focused** link is brought into view ("nearest") and the fades are re-measured; the active part is left alone. Otherwise the active part is placed as before. **New Vitest** (mocked `document.fonts.ready` and `scrollIntoView`): with focus on Weergave while Klassen is active, the font's arrival calls `scrollIntoView` on Weergave and never on Klassen, and Weergave keeps focus. Without focus in the row, it places the active part. **Browser, fonts held back 3 s** (CDP `Fetch` interception, cache disabled), real Tab presses: see the table below. |
+| 3 | Test-runner LOW (folded into 1): DELETE `…/directierecht` racing a removal answered "Gebruiker {guid} is niet gevonden." | **Fixed, and tested.** The two writes that take the directie lock (demotion, removal) first check the gebruiker exists (the plain not-found for an id that never existed). They then read it after the lock with `VindNaSlotAsync`, which answers "Deze gebruiker is intussen verwijderd." if the row vanished while the request waited, which is exactly when that sentence is true. **New race theory** `Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500`: `/directierecht` and removal of a directie, each held on the lock by an uncommitted delete (pending after 1 s), then 404 with that sentence. The concurrency path in `BewaarWijzigingAsync` uses the same `IntussenVerwijderd()`. |
+
+**Keyboard repro with the fonts held back 3 s**, directie, five parts. Positions are viewport x; the row's visible span is its inner edge. In every case the fonts were loading when Tab reached the link and loaded at the second measurement.
+
+| Width | Landing, keys | Before the font | After the font |
+| --- | --- | --- | --- |
+| 390 | Klassen, Tab 4× to Weergave | [284,369] of [17,373], in view, 0px under a fade, focused | [284,369], in view, 0px under a fade, focused |
+| 390 | Weergave, Tab 12× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+| 360 | Klassen, Tab 4× to Weergave | [254,339] of [17,343], in view, 0px, focused | [254,339], in view, 0px, focused |
+| 360 | Weergave, Tab 11× to Klassen | [21,91], in view, 0px, focused | [21,94], in view, 0px, focused |
+
+In round 3's repro, Weergave had ended at [381,466], outside the row. **The 20 landings** (5 parts × 390/360 × light/dark), re-run: identical to fix round 2's table, 0px overlap and the active part fully in the row in every case; label contrast 17.78:1 light, 13.12:1 dark.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (424 + 2 new race cases).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 261 passed (258 + 3 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+**Browser pass:** API in Development on port 5395 against throwaway `jp_spotcheck_e604d` (created, migrated, seeded over the API, dropped); Vite on 5185; headless Chrome.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Input:**
+  - "Code slice 2 — audit round 4" in `antagonist.md`: 0 CRITICAL, 0 MAJOR, 1 MINOR, 1 QUESTION.
+  - The round-4 test report in `test-report.md`: PASS, with LOW notes.
+
+  Both are the orchestrator's and are committed unedited with this fix.
+- **Why this is not a fix round:** the three fix rounds were used up. The owner explicitly approved this extra fix and **waived the antagonist review for it**, so no audit round follows. The evidence is the diff, the tests and the browser check below. Only the three items below were changed.
+- **Branch:** `story/E6-04-beheer`, on top of `ef4d23c`.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| 1 | Audit MINOR (comments only) in `GebruikersScherm.tsx` | **Fixed.** The removal-refusal comment now covers both refusals that end under the list: a 409 for the last directie, after which the row stays on screen, and a 404 for a person someone else removed first, after which the refetch (`bijNietGevonden`) has dropped the row and the sentence is what is left. The `verdwenen` comment presents a 404 from the sheet as the usual path, and says any refetch without the person (such as after a successful tick) reveals the same removal; the condition proves only that the person was listed when the sheet opened and is not now. |
+| 2 | Audit QUESTION, the owner chose to fix: klas and schooljaar not-found sentences showed a raw GUID | **Fixed.** Now "Deze klas bestaat niet (meer)." and "Dit schooljaar bestaat niet (meer).", in the gebruiker sentence's style, with no id and no em dash. Both are pinned by value in `GebruikerbeheerEndpointsTests`: `Koppelen_aan_een_onbekende_klas_of_gebruiker_is_404` and `Aanstellen_in_een_onbekend_schooljaar_is_404`, with ids that do not exist. No other not-found sentence in `GebruikerBeheerService` carries an id; the gebruiker ones were reworded in fix round 3, and the two FK race sentences never had one. |
+| 3 | Test-runner LOW notes: an alert appearing after its sheet closes can render off screen at 390, and focus falls to `body` | **Fixed** with one component, `Aandachtsmelding`, used for the list-level "{naam} is intussen verwijderd …" and for the removal's refusal under the list. It has `tabIndex={-1}` and focuses itself once, on mount, deferred one task so a closing Radix dialog's own focus return cannot land after it. Focusing scrolls it into view. It never focuses on a re-render, so it cannot take focus in any other situation. **New Vitest:** a 404 on a tick closes the sheet, and the list-level alert receives focus and has `tabindex="-1"`. The existing removal-refusal test now also asserts that its alert receives focus. |
+
+**Backend diff check:** `git diff -- backend` shows exactly the two sentences in `GebruikerBeheerService.cs` and the two `Assert.Equal` pins (plus one comment line each) in `GebruikerbeheerEndpointsTests.cs`. Nothing else in the backend changed.
+
+**Browser check at 390** (headless Chrome, light). API in Development on port 5395 against throwaway `jp_spotcheck_e604e` (created, migrated, seeded over the API plus twelve extra people named to sort last, then dropped); Vite on 5185. The page was 3162px tall and the target rows sat low in it (row button at `scrollY` 2318).
+- **404 on a tick:** "Zz Persoon 12" was removed in the database while its sheet was open, then a klas was ticked. The sheet closed, and the alert "Zz Persoon 12 is intussen verwijderd en staat niet meer in de lijst." was focused (`tabindex=-1`), at [396,448] in an 844px viewport, fully in view; the page scrolled to it.
+- **404 on a removal:** "Zz Persoon 11" was removed in the database, then "Gebruiker verwijderen" was confirmed. The row was gone, and the refusal "Deze gebruiker bestaat niet (meer)." under the list was focused, at [573,607], fully in view.
+- **No focus theft:** before any of this, focus was on `body` with no alert. An ordinary tick afterwards kept focus on its box; the earlier refusal, still on screen, did not take focus again.
+
+**Gates:**
+- `dotnet build`: 0 warnings, 0 errors. `dotnet format --verify-no-changes`: exit 0.
+- `dotnet test` with `JAARPLANNER_TEST_POSTGRES` (local `jaarplanner-db`, port 5433, the container's own password): UnitTests 1340 passed, 4 skipped; IntegrationTests 426 passed, 1 skipped (the same count as before: the two pins are assertions added to existing tests).
+- `pnpm lint`: exit 0. `pnpm test`: 35 files, 262 passed (261 + 1 new). `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+
+## Code slice 4 — rights-gated controls
+
+- **FR / Article:** FR-10, FR-12.2, FR-1, FR-2, FR-3, FR-4, FR-6, FR-7; Art. VI.1 (ratified 2026-09-14) with defaults I9,
+  I13, I19, I22, I26, I27; Art. II.3/II.5 (Dutch in `nl.json`, no em dash); Art. XII and ADR-0024 (no new hue); ADR-0017
+  (WCAG 2.2 AA); ADR-0030 §3 (the matrix and footnotes ², ³, ⁵, ⁶); the E3-06 rule and the E5-03 rule.
+- **Branch:** `story/E6-02-frontend`, from `feature/e6-rollen-rechten` at `b0a193f`. Not pushed, no PR.
+- **Scope held:** frontend only. No backend file changed: both thema reads map activiteiten through `MapActiviteit`,
+  which already carries `MakerId` and every goal link whatever its status, the same fact `EfRechtenbronnen` decides on.
+
+### The one place: `frontend/src/lib/rechten.ts`
+
+- `RECHTENMATRIX` is the server's `Rechtenmatrix` row for row: the same eighteen policy names, the same columns
+  (`Themabeheer`, `Hoofdleerkracht`, `LeerkrachtLeeftijd`, `LeerkrachtLeeftijdZonderKoppelingen`, `LeerkrachtEigen`,
+  `MakerZonderKoppelingen`, `ThemabeheerZonderAndermansInhoud`). `staatToe(ik, rij, bron)` is `StaatToe` clause for
+  clause: directie passes every row; any matching column is enough (union); a resource column only matches its own kind
+  of resource, so a missing one fails closed. Resources: `leeftijd`, `activiteit` (leeftijd, makerId, has links), `klas`.
+- **There is no thema resource,** so the I26 column never matches in the frontend. That is the server's own fail-closed
+  behaviour for a resource row without its resource, and it makes the thema delete **directie only** in the UI (see
+  decisions).
+- `magVoor(ik)` builds the answers screens ask for (`mag.themaBewerken`, `mag.subthemaBeheren(leeftijd)`,
+  `mag.subthemaHerschikken(van, naar)`, `mag.activiteitVerwijderen({ leeftijd, makerId, doelkoppelingen })`,
+  `mag.klasplanningBewerken(klasId)`, `mag.ergensDoelKoppelen`, …). `useRechten()` returns `{ mag, laadt }` from
+  `/api/ik`; while it loads or when it failed, `mag` holds nothing.
+- `isGeenToegang(fout)` and `geenToegangZin(fout)`: the server's Dutch 403 detail ("Je hebt geen toegang tot deze
+  actie.") or the catalogue twin `rechten.geenToegang`, null for any other failure.
+- Slice 2's three readers of `isDirectie` (`onderdelen.ts`, `Onderdeelpoort`, `KlassenScherm`) now ask `mag.beheer`.
+
+### Control → row
+
+| Control | Screen | Row | Shown to |
+| --- | --- | --- | --- |
+| Jaarfase field | Klaskiezer | Beheer | directie |
+| Gebruikers part; klas add, edit, delete (slice 2, now through `mag.beheer`) | Instellingen | Beheer | directie |
+| "Inladen" in the header | Thema's (`/inladen`), Doelen (`/inladen?bron=opstap`) | a section of `INLAADSECTIES` | directie, TB |
+| `Laadlink` "Laad ze in bij Inladen" (both empty states) | Doelen | Curriculumbeheer | directie |
+| School section | Inladen | SchoolcontentImporteren | directie, TB |
+| Op.stap section | Inladen | Curriculumbeheer | directie |
+| "Verwijder die koppelingen" opt-in | Inladen, school | MenselijkeBeslissingenVerwijderen | directie; TB reads "Die koppelingen blijven staan." |
+| Nieuw thema (header and empty state) | Thema's | ThemaBewerken | directie, TB |
+| Thema bewerken | Thema fiche | ThemaBewerken | directie, TB |
+| Thema verwijderen | Thema fiche | ThemaVerwijderen (no `Themabron`) | directie |
+| Themadoel koppelen, ontkoppelen | Thema fiche | ThemaBewerken | directie, TB |
+| Vraag suggesties | Thema fiche | DoelsuggestiesMaken | directie, TB |
+| Open doelsuggesties with Aanvaard, Weiger | Thema fiche | DoelsuggestiesBeoordelen | directie, TB |
+| Subthema toevoegen | Thema fiche | SubthemaBeheren at ≥ 1 leeftijd | directie, HL |
+| Subthema bewerken, verwijderen (onderzoeksvragen are in the form) | chapter | SubthemaBeheren(leeftijd) | directie, HL of that leeftijd |
+| Leeftijd options in the subthema form | Subthemaformulier | SubthemaBeheren(new); an edit asks both ends (I13) | only allowed leeftijden; one left is stated, not offered |
+| Subdoel koppelen, ontkoppelen | chapter | SubdoelenBeheren(leeftijd) | directie, HL |
+| Activiteit toevoegen | chapter | GedeeldeActiviteitBewerken(leeftijd) | directie, HL, LK leeftijd |
+| An activiteit opens as the form, or as its facts | chapter, agenda | GedeeldeActiviteitBewerken(leeftijd) | form for the row's holders, facts for everyone else |
+| Goal picker on an activiteit: row "+", sheet, and on a create | chapter, sheets, agenda | DoelenKoppelen(leeftijd) (R19) | directie, HL |
+| Activiteit verwijderen | chapter | ActiviteitVerwijderen | directie, HL, the maker while no goal is linked |
+| "Koppel dit doel" | Doelen detail | ThemaBewerken, or SubdoelenBeheren/DoelenKoppelen at some leeftijd | directie, TB, HL |
+| Destination sheet: thema, subthema, activiteit, new activiteit with the doel | Themarij | ThemaBewerken; SubdoelenBeheren; DoelenKoppelen; GedeeldeActiviteitBewerken ∧ DoelenKoppelen | per level |
+| Add to a day (empty column, month plus), drag, resize grip, drop targets | Tijdraster, Maandrooster | KlasplanningBewerken(klas) | directie, LK eigen |
+| Subthema inplannen; hoekenfiches chip, sidebar switch and panel | Agenda, Navigatie | KlasplanningBewerken | directie, LK eigen |
+| "Nieuwe activiteit maken" in the picker, and the subthema's it offers | Activiteitkiezer, Nieuweactiviteitblad | GedeeldeActiviteitBewerken(sub.leeftijd) | directie, HL, LK leeftijd |
+| Day section of an opened activiteit (move, haal weg) | Activiteitblad | KlasplanningBewerken | directie, LK eigen |
+| Hours, verrijking and delete of a placed hoek | Hoekdetailblad | KlasplanningBewerken | read-only sheet otherwise |
+| "Maak er een" instruction and links in the planner's empty state | Subthemaplanner | SubthemaBeheren(klas leeftijd) | directie, HL |
+| Genereren, Thema toevoegen, verdict, lock, move, delete of a placement | Thema's per periode | KlasplanningBewerken | directie, LK eigen |
+| Hoek toevoegen, overnemen, bewerken, verwijderen | Instellingen, Hoeken | KlasplanningBewerken(picked klas) | directie, LK eigen |
+| Fiche toevoegen, bewerken, verwijderen, goal links | Instellingen, Algemene fiches | KlasplanningBewerken(picked klas) | directie, LK eigen |
+
+**Rows with no control to gate, because no screen offers the action:** ActiviteitVerplaatsen (no move panel;
+`useVerplaatsActiviteit` has no caller), StreefwoordenschatAanpassen (no editor, E10-01), ThemaOpbouw and Wizardinhoud
+(no wizard screen, E6-05), the doelsuggestie "aanpassen" route (no UI), algemene ficheplaatsingen (no UI), schooljaar
+create (no UI, E6-03). The rights helper answers all of them, so the screens that come can ask.
+
+### Files changed
+
+| File | Why |
+| --- | --- |
+| `frontend/src/lib/rechten.ts` (new) | The matrix, `staatToe`, `magVoor`, `useRechten`, the 403 helpers. |
+| `frontend/src/lib/queryClient.ts` (new), `App.tsx` | The app's query client; a mutation's 403 refetches every active query, `ik` included. |
+| `frontend/src/lib/types.ts` | `ActiviteitWeergave.makerId`. |
+| `frontend/src/i18n/nl.json` | Group `rechten` (4 keys), `importeren.geenRecht`, `importeren.school.blijvenStaan`, `activiteit.minuten`, `activiteit.bekijkAria`. |
+| `features/import/secties.ts` (new), `ImportScherm.tsx`, `Schoolcontentimport.tsx` | Sections by right, `?bron=`, the R35 opt-in. |
+| `features/instellingen/onderdelen.ts`, `Onderdeelpoort.tsx`, `KlassenScherm.tsx` | Slice 2's gating through `mag.beheer`; a struck stale clause in the `KlassenScherm` doc. |
+| `features/instellingen/Hoekensectie.tsx`, `Algemenefichesectie.tsx` | Planning controls per picked klas; one quiet line. |
+| `app/Klaskiezer.tsx`, `app/Navigatie.tsx` | Jaarfase field; hoekenfiches switch and the panel reset. |
+| `features/doelen/DoelenScherm.tsx`, `Minimumdoelenlijst.tsx`, `Doeldetail.tsx` | Inladen, `Laadlink`, "Koppel dit doel". |
+| `features/themas/ThemasScherm.tsx`, `ThemadetailScherm.tsx`, `Subthemahoofdstuk.tsx`, `Subthemaformulier.tsx` | The thema fiche per row and leeftijd; the 403 line. |
+| `features/activiteiten/Activiteitformulier.tsx` | `alleenLezen` (the facts view) and `magDoelen` (the goal section, on edit and on create). |
+| `features/koppelen/Themarij.tsx`, `Nieuweactiviteitregel.tsx`, `Bestemmingsblad.tsx` | Each level per its row; a 403 named as one. |
+| `features/plan/Agendascherm.tsx`, `Tijdraster.tsx`, `Maandrooster.tsx`, `Activiteitblad.tsx`, `Activiteitkiezer.tsx`, `Nieuweactiviteitblad.tsx`, `Subthemaplanner.tsx`, `PlanScherm.tsx`, `Plaatsingkaart.tsx` | The planning of a klas. |
+| `features/hoeken/Hoekdetailblad.tsx` | `alleenLezen`. |
+| `frontend/src/test/rechten.ts` (new) | `ikMet`, `DIRECTIE`, `metIk`: who is looking, for a test. |
+
+### Key decisions
+
+1. **The thema delete is directie's in the frontend.** I26 gives themabeheer the delete only while the thema holds
+   nothing but its own open wizard run's items, and no read the frontend makes carries a run's state or its item list.
+   Offering the bin to themabeheer would offer it on every thema built by hand, where the server refuses. So the
+   `ThemabeheerZonderAndermansInhoud` column fails closed, as on the server without a `Themabron`. E6-05 can widen it
+   once its screen reads `WizardrunWeergave`.
+2. **Open doelsuggesties are shown only to whoever may decide them** (R14). For anyone else a card waiting on somebody
+   else's verdict is noise, and without its two buttons it would read as a themadoel that is not one.
+3. **A reader gets facts, not a form.** An activiteit row still opens for everyone: the form for whoever may change the
+   content, `Activiteitfiche` (inside `Activiteitformulier`) for anyone else. The agenda's day section appears only for
+   whoever may plan the klas, so the four combinations of the two rights each render truthfully. A placed hoek opens
+   `Hoekdetailblad` with `alleenLezen`. Neither read-only sheet has a footer: its one button would repeat the sheet's
+   own "Sluiten".
+4. **The goal section of the activiteit sheet asks R19 on a create too**, and the create sends no `leerplandoelCodes`
+   field when no picker was offered. `magDoelen` is off by default, so a caller that forgets it offers no picker.
+5. **403, two halves.** (a) `maakQueryClient` refetches every active query after a 403, `ik` included, so a stale
+   control goes away. (b) What the teacher reads: screens that already show the server's `detail` show its Dutch 403
+   sentence unchanged. The ones that failed silently or with "probeer opnieuw" now say it: the thema fiche (one fixed
+   line for its nine inline mutations), Thema's per periode (placement actions and adding a thema), Themarij and
+   Nieuweactiviteitregel (no retry after a refusal), and the klaskiezer. The two pickers without an error line of their
+   own (Activiteitkiezer, Themakiezer) close once the refetched rights say no. The browser pass found the picker left
+   open over the refusal.
+6. **Quiet lines, four, each once per screen and only when true** (the rights answered and the right is absent):
+   the agenda and Thema's per periode ("De planning van {klas} kan je alleen bekijken."), Hoeken and Algemene fiches
+   ("De hoeken / algemene fiches van {klas} kan je alleen bekijken."). They name the klas because the picker is what
+   made the controls go. The thema fiche has none: most of its visitors read, and a per-block hint is the prose this
+   interface cuts first. `text-meta text-inkt-zacht`, no new hue.
+7. **Inladen is gated per section, not per route** (2026-08-03 ruling). `INLAADSECTIES` + `magInladen` are the marker
+   the old frontend had (`magBeheerder` plus a section constant); every link to `/inladen` asks it. A typed address with
+   no allowed section shows "Je hebt geen recht om iets in te laden." `?bron=opstap` asks for the Op.stap section, which
+   the `Laadlink` and the Doelen header now do; a section the gebruiker may not use is never shown.
+8. **Loading state:** `mag` holds nothing while `/api/ik` answers, and the quiet lines wait for `laadt` to be false,
+   so nothing flashes and no false line appears.
+
+### Tests added (262 → 452; 45 files)
+
+- `lib/rechten.test.ts`: the server's `Relaties` × `Verwacht` table, 16 rows × 8 relations; every server row has an
+  expectation (18); directie passes everything; fail closed; union; both activiteit rows (maker with and without links,
+  a colleague, no maker, HL, HL of another leeftijd; move for LK with and without links, HL, never the maker); the
+  helpers (`subthemaHerschikken` I13, `subthemaToevoegen`, `ergensDoelKoppelen`, `klasplanningBewerken`); nothing while
+  loading; `geenToegangZin`.
+- `lib/queryClient.test.ts`: a 403 invalidates everything; a 400 or a network error does not.
+- `features/themas/ThemadetailScherm.test.tsx` (6): LK of K3, HL of K3, TB, directie, a reader opening an activiteit
+  as facts, a refused verdict shown as an alert.
+- `features/themas/ThemasScherm.test.tsx` (4, with the Doelen header), `Subthemaformulier.test.tsx` (3),
+  `features/activiteiten/Activiteitformulier.test.tsx` (4), `features/plan/Plaatsingkaart.test.tsx` (2),
+  `app/Klaskiezer.test.tsx` (2), `features/import/ImportScherm.test.tsx` (5, with the R35 opt-in after a preview),
+  `features/instellingen/Hoekensectie.test.tsx` (2).
+- Extended: `Tijdraster.test.tsx` (+2: no add, no grip, no drag attributes for a reader; all three for a planner),
+  `Themarij.test.tsx` (+4: a 403 named without retry; LK, TB and HL of another leeftijd per level),
+  `Minimumdoelenlijst.test.tsx` (+1, and the link's new `?bron=opstap`), `Algemenefichesectie.test.tsx` (+2),
+  `Hoekdetailblad.test.tsx` (+1), `Navigatie.test.tsx` (+2; the others now say who is signed in).
+
+### Gates
+
+- `cd frontend && pnpm lint`: exit 0 (oxlint and `tsc`).
+- `pnpm test`: 45 files, 452 passed.
+- `pnpm build`: exit 0 (the >500 kB chunk warning predates this).
+- No backend file changed, so no dotnet gate applies. The API was built only to run it for the browser pass.
+
+### Browser pass (headless Chrome over CDP, 1440×1000 and 390×844, dark and light)
+
+- API in Development on **5395** against the throwaway database **`jp_spotcheck_e602f`** on the 5433 server (created,
+  migrated with the repo's `dotnet-ef`, seeded over the API, then dropped); Vite on **5185** proxying to it. The owner's
+  dev database was not touched.
+- Seed: schooljaar 2026-2027; K3 groen, K3 blauw, L1 rood; An (themabeheer), Bert (HL K3), Carla (LK of K3 groen), Dirk
+  (no right), and the configured directie; thema Herfst with a K3 subthema (Bladeren sorteren by directie, Carla's
+  kring by Carla) and an L1 subthema; Herfst placed in both K3 klassen, a weekplanning block, a bouwhoek placed for a
+  week, an algemene fiche.
+- **Directie:** every control on every screen; the klaskiezer shows Leeftijd; the Doelen register shows the `Laadlink`.
+- **Themabeheer (An):** thema pencil (no bin), Doel koppelen, Vraag suggesties; activiteiten open as "bekijken"; no
+  Subthema toevoegen; Inladen shows only the thema's section, no switch; Doelen header has Inladen, no `Laadlink`;
+  agenda, plan, hoeken and fiches read-only with the quiet line; klaskiezer without Leeftijd.
+- **Hoofdleerkracht K3 (Bert):** the K3 chapter in full (subthema pencil and bin, Activiteit toevoegen, "+" and bin on
+  every K3 activiteit, subdoel koppelen); the L1 activiteit as "bekijken"; no thema controls; Inladen says
+  "Je hebt geen recht om iets in te laden."; no Inladen link on Doelen; the subthema form states "K3" with no select;
+  planning read-only (a hoofdleerkracht plans no klas).
+- **Leerkracht of K3 groen (Carla):** Activiteit toevoegen in K3 only; content of K3 activiteiten; the bin on "Carla's
+  kring" only; no goal links; the agenda of groen with add, drag, grip, Subthema inplannen and hoekenfiches; Thema's
+  per periode with every control; fiches of groen with controls. Her agenda on **K3 blauw**: no add, drag, grip,
+  planner or hoekenfiches, and "De planning van K3 blauw kan je alleen bekijken."
+- **No right (Dirk):** reads everything; every activiteit opens as facts (Soort, duur "50 minuten", Doelen, one
+  "Sluiten"); a placed hoek opens read-only (period, hours, verrijking, one "Sluiten"); Thema's per periode shows the
+  card without controls and "Nog geen thema" for empty periods.
+- **Live 403:** with Carla's agenda of groen open (7 add buttons), directie removed her klastoewijzing over the API; she
+  then planned "Bladeren sorteren" on a Wednesday. Result: "Je hebt geen toegang tot deze actie." on the page, the
+  picker closed, 0 add buttons, the quiet line shown. The first run found the picker left open over the refusal; fixed
+  (decision 5) and replayed. The klastoewijzing was restored afterwards.
+- **390:** no horizontal overflow on the thema fiche, the agenda or the read-only activiteit sheet for any persona.
+- **Contrast** of the quiet line, measured with alpha composited: 8.44:1 dark, 6.08:1 light (agenda and fiches).
+- Headless Chrome followed the device's dark scheme for the persona pass; the light pass used emulated
+  `prefers-color-scheme: light`.
+
+### Self-check against slice 4
+
+- One place decides, row for row with the server, directie passes all, union holds, nothing while loading, unit-tested
+  against §3: ✓ (`rechten.ts`, `rechten.test.ts`).
+- Every control named in the brief gated per its row: ✓ (table above), with the rows that have no control listed.
+- Slice 3's list: thema delete (directie only, decision 1) ✓; subthema leeftijd select (only allowed leeftijden, one is
+  stated) ✓; Doelen "Inladen" ✓; the agenda's create path and its goal picker (R19 on create) ✓; `makerId` on
+  `ActiviteitWeergave`, links from `doelkoppelingen` ✓; a Dutch 403 ✓.
+- Say less: no disabled buttons with tooltips, no empty toolbars (a card's `acties` and a section's `acties` are
+  `undefined` when empty), four quiet lines, no em dash (catalogue guards green): ✓.
+- The server stays the authority; a 403 shows Dutch and refetches: ✓.
+- **Not claimed:** the *Done when* of E6-02 and E6-04 as wholes; verification is a separate gate.
+
+### For the test-runner
+
+- Automated: `cd frontend && pnpm test` (the files above). No backend change.
+- By hand (Playwright or CDP): run the API in Development on a throwaway database, sign in through
+  `/api/aanmelden/ontwikkeling/{gebruikerId}?terugNaar=/themas`, and seed as above (the scripts used are
+  `seed.mjs`, `browser.mjs`, `browser2.mjs`, `browser3.mjs` in the session scratchpad, not in the repo). Check per
+  persona: `/themas`, `/themas/{id}`, `/agenda/dag/2026-09-15?weergave=week`, `/agenda/periodes`, `/inladen`,
+  `/inladen?bron=opstap`, `/doelen`, `/instellingen/hoeken`, `/instellingen/algemene-fiches`, the klaskiezer sheet, at
+  1440 and 390. For the 403: take a leerkracht's klastoewijzing away while her agenda is open and let her plan.
+
+### Open questions / for the orchestrator
+
+1. **Open doelsuggesties are hidden from non-reviewers** (decision 2). If directie wants leerkrachten to see what the
+   model proposed, they can be shown read-only; that is a small change.
+2. **Hoeken in Instellingen still opens on the first klas**, not the klas in the header picker (pre-existing; Algemene
+   fiches uses the header's klas). A leerkracht therefore lands on a colleague's room and meets the quiet line first.
+   Aligning the two is a one-line change, out of this slice's scope.
+3. **Pre-existing, not rights-related:** a refused thema delete that is not a 403 (a thema still placed in a jaarplan,
+   the service's 400) is still silent on the thema fiche; directie is the only one offered the delete now.
+4. **E6-05 inherits** the wizard-only controls: its leeftijd select on a run subthema holding someone else's subdoel or
+   activiteit (I27), and on one whose run activiteiten carry a goal link, which needs the goal-link right at both
+   leeftijden (Q4/Q5); deleting a run activiteit that carries a goal link, or a run subthema whose activiteiten carry
+   one, without the goal-link right (I27); the thema delete for themabeheer during its own open run (I26, decision 1);
+   the thema-opbouw AI assist (ThemaOpbouw). `lib/rechten.ts` has the rows; the run state is E6-05's to read.
+5. **The `frontend-design` skill** could not be invoked from this agent (no skill tool). The change adds no screen; it
+   follows ADR-0024's idiom (no new hue, one quiet line per screen in an existing token pair, measured in a browser).
+
+### Fix round 1
+
+- **Input:** "## Code slice 4 — audit round 1" in `antagonist.md` (1 MAJOR, 5 MINOR, 1 QUESTION) and "# E6-02 slice 4 —
+  Test report (round 1)" in `test-report.md` (PASS, one minor a11y defect), with the orchestrator's `frontend-design`
+  pass under it. Both are the orchestrator's and are committed unedited with this fix.
+- **Owner ruling on Q1 (2026-09-14):** option (A), open doelsuggesties stay hidden from anyone who cannot decide them.
+  Unchanged; the code comment on that condition and the `ThemadetailScherm` doc block now say "(owner, 2026-09-14)".
+- **F6** was resolved by the orchestrator's design pass: no change beyond item 6 below.
+- **Branch:** `story/E6-02-frontend`, on top of `d859a10`. Frontend only; no backend file changed.
+
+| # | Finding | Resolution |
+| --- | --- | --- |
+| F1 (MAJOR) | "Koppel dit doel" held for a hoofdleerkracht of any leeftijd, while the sheet lists only the chosen klas's subthema's | `mag.ergensDoelKoppelen` is replaced by `mag.doelKoppelenVoor(leeftijden)`: themabeheer (the thema level needs no leeftijd), or `SubdoelenBeheren`/`DoelenKoppelen` at one of the given leeftijden. `DoelenScherm` asks it with the chosen klas's `jaarFasen`, at both `Doeldetail` call sites. `Doeldetail`'s doc says so, with a dated note on what it said before. Tests: `DoelenScherm.test.tsx` opens a doel from the register as an HL of K3, no "Koppel dit doel" with an L1 klas and the button with a K3 klas; `rechten.test.ts` pins the helper per relation. |
+| F2 (MINOR) | The empty thema is one the server lets themabeheer delete, and the UI withheld it | New resource `{ soort: "thema"; leeg: boolean }`. `staatToe` lets the `ThemabeheerZonderAndermansInhoud` column match it when `leeg`, which is the server's `Themabron` with no one else's content and no linked leeftijd. `mag.themaVerwijderen(thema)` passes `leeg: thema.subthemas.length === 0`: `useThema` reads every leeftijd's chapters, and subdoelen and activiteiten hang under a subthema. The case of a thema holding only its open run's items stays closed until E6-05 reads the run. The comment above `RECHTENMATRIX.ThemaVerwijderen` and the `ThemadetailScherm` doc block are corrected, each with a dated note. Tests: the server's I26 cases in `rechten.test.ts` (themabeheer on an empty thema passes and on one with content does not; directie passes; the six other relations do not; no resource or another kind fails closed); `ThemadetailScherm.test.tsx`: themabeheer gets the bin on an empty thema (and still not on a full one, the existing case). |
+| F3 (MINOR) | After a failed `/api/ik`, `laadt` is false, and five sentences told directie they lack a right | `useRechten()` also returns `bekend` (`data !== undefined`), with the difference documented. The quiet lines on the agenda, Thema's per periode, Hoeken and Algemene fiches wait for `bekend`, and so does Inladen's "Je hebt geen recht om iets in te laden." (with `/api/ik` failed, the screen shows neither a section nor that sentence). The controls stay fail-closed. The Navigatie panel reset keeps `!laadt`: closing a panel that no longer renders is right on a failure too. Tests: `ImportScherm.test.tsx` and `Hoekensectie.test.tsx` with `/api/ik` answering 500 wait for the query's error, then assert no sentence and no control. |
+| F4 (MINOR) | The subthema form blamed the loading when rights had filtered every leeftijd out | `Subthemaformulier` tells the two empties apart. A list that did not arrive shows `klasbeheer.leeftijdenOnbekend`, and only once the read failed, no longer during it. A list that arrived with nothing allowed omits the "Voor wie" section and says nothing about loading. `ThemadetailScherm` also closes the form once no leeftijd is left (`mag.subthemaToevoegen` for a new one, the right at the current leeftijd for an edit), as the agenda's pickers do. The form's own refusal then moves to the page's fixed line, and closing the form by hand resets both subthema mutations so that line does not repeat a refusal the form already showed. Tests: `Subthemaformulier.test.tsx` (nothing allowed: no loading sentence, no select; a failed read: the sentence); `ThemadetailScherm.test.tsx` (an HL of K3 opens the form, loses the right, the form closes, no loading sentence). |
+| F5 (MINOR) | "koppelingen die jij zelf gezet hebt" reached themabeheer, and the list counts every decided link | `importeren.school.bedreigd` is "{aantal} vastgelegde koppelingen staan niet in dit bestand", with a singular `bedreigdEen` ("1 vastgelegde koppeling staat niet in dit bestand") chosen by `telWoord`. The test that pinned the old text uses the singular now. No em dash. |
+| TR / design | The agenda's 403 sentence was a plain `<p>` below the fold, unannounced, with focus lost (WCAG 4.1.3) | `Aandachtsmelding` moved to `components/ui/Aandachtsmelding.tsx`, and `GebruikersScherm` imports it. The agenda's strip is now `features/plan/Agendamelding.tsx`: a refusal renders as an `Aandachtsmelding`; every other failure keeps the strip it was, since that control is still where the teacher is. The activity picker closes on the 403 itself (`onError`), so the alert, mounted in the same render, can take focus once no dialog holds it. **The browser pass found one more gap:** at 1440×1000 the focused alert still ended 5 px below the fold, because the quiet line appears above the grid after the rights refetch and pushes it down. `Aandachtsmelding` now focuses with `preventScroll` and scrolls itself to the centre, or as far as the page allows, which leaves the screen's bottom padding as slack. Test: `Agendamelding.test.tsx` (a 403 is an alert with `tabindex=-1` that receives focus; another failure is the plain strip; a browser-decided refusal still wins; nothing without an error). |
+
+**Note on the centred scroll:** it also applies to slice 2's two alerts on Gebruikers. It can only bring an alert
+further into view than the old "nearest" scroll did; that screen was not re-measured in the browser this round.
+
+**Files changed:** `lib/rechten.ts`, `lib/rechten.test.ts`; `components/ui/Aandachtsmelding.tsx` (new);
+`features/instellingen/GebruikersScherm.tsx`, `Hoekensectie.tsx` and `.test.tsx`, `Algemenefichesectie.tsx`;
+`features/plan/Agendamelding.tsx` and `.test.tsx` (new), `Agendascherm.tsx`, `PlanScherm.tsx`;
+`features/themas/ThemadetailScherm.tsx` and `.test.tsx`, `Subthemaformulier.tsx` and `.test.tsx`;
+`features/doelen/DoelenScherm.tsx`, `DoelenScherm.test.tsx` (new), `Doeldetail.tsx`;
+`features/import/ImportScherm.tsx` and `.test.tsx`, `Schoolcontentimport.tsx`; `i18n/nl.json`; the two reports.
+
+**Tests:** 452 → 472 (47 files). New: `rechten.test.ts` I26 block (9), `DoelenScherm.test.tsx` (2),
+`Agendamelding.test.tsx` (3), `ThemadetailScherm.test.tsx` (+2), `Subthemaformulier.test.tsx` (+2),
+`ImportScherm.test.tsx` (+1), `Hoekensectie.test.tsx` (+1). The F1 helper test in `rechten.test.ts` was rewritten.
+
+**Gates:**
+- `cd frontend && pnpm lint`: exit 0. The first run caught three imports left unused in `GebruikersScherm` by the move;
+  removed.
+- `pnpm test`: 47 files, 472 passed.
+- `pnpm build`: exit 0.
+
+**Browser pass** (headless Chrome over CDP, 1440×1000 and 390×844):
+- Setup: API on 5395 against the throwaway database `jp_spotcheck_e602f1` on the 5433 server (created, migrated,
+  a test discipline and one K3 and one L1 leerplandoel inserted by SQL, the rest seeded over the API, then dropped);
+  Vite on 5185.
+- **F1:** Bert, hoofdleerkracht of K3 with no klas, opens a doel in the register. With L1 rood picked there is no
+  "Koppel dit doel"; with K3 groen it is there. Same at both widths.
+- **F2:** An (themabeheer) on "Leeg thema" gets the pencil and the bin; on "Herfst" (a K3 subthema) the pencil only.
+  Same at both widths.
+- **Item 6:** Carla on K3 groen's agenda, klastoewijzing removed over the API, then she plans an activiteit. At 1440:
+  "Je hebt geen toegang tot deze actie." has focus, is fully in view (932–966 of 1000; 971–1005 before the centred
+  scroll), the picker is closed, 7 → 0 add buttons, the quiet line present. At 390 (day view): focus, in view
+  (616–650 of 844), picker closed, 34 → 0 add buttons. The klastoewijzing was restored after each run.
+
+**Out of scope, as the coordinator decided:** Hoeken opening on the first klas, and the silent 400 on deleting a
+planned thema, predate this slice and go to the owner as tickets. The React warning the test-runner saw on a first
+`/doelen` visit (`DoelenScherm` updating the doelenfilter store during render) also predates this slice.
+
+### Fix round 2
+
+- **Findings resolved:** antagonist round 2 MINOR **F7** (WCAG 4.1.3; the E5-03 rule on comments) and test-runner round 2 **item 2** (info, the E3-06 rule). Base `5b4eb4a`. No finding disputed.
+- **F7, option chosen: A**, the agenda alert only while no agenda sheet is open, and every in-sheet failure an alert of its own. Implemented as a disposition decided when a failure *arrives* (`Agendamelding`, new props `kiezerOpen` and `bladOpen`, computed in `Agendascherm` from what renders: `magPlannen && kiezer !== null`, and `nieuw !== null || geopend !== null || plannerOpen`):
+  - arrives with the new-activiteit sheet, the activiteit sheet or the planner open: that sheet announces it; the page never shows it, not after the sheet closes either (no second, focus-taking announcement of a refusal already read, and no race with Radix's focus return on unmount);
+  - arrives with the picker open (it has no error line): it waits and mounts once the picker has closed. Waiting rather than dropping, because the order in which the picker's `onError` close and the mutation's error reach a render is not something this code controls;
+  - otherwise: at once, as in round 1.
+  An alert already on the page when a sheet opens stays mounted, so closing that sheet neither refocuses it nor scrolls the page again. The comment at `Agendamelding.tsx` 12-17 is rewritten to what the render condition guarantees (it no longer says the causing control "has gone" for every path).
+- **In-sheet alerts:** `Nieuweactiviteitblad` `planFout` is `role="alert"` (new `Planfout`), and it also replaces "geen subthema" in the `!actief` branch, which a refusal plus refetched rights can reach while that sentence would be false. `Activiteitblad`'s day failure moved out of `Dagsectie` into `Dagfout`, `role="alert"`, in the same tree slot, so when the refetched rights remove the day section the alert stays as the same node (not announced twice) and says why; for a gebruiker without the day section it shows only a failure asked from this sheet (`gevraagd`; the sheet is keyed per plaatsing and `fout` is agenda-wide). `Subthemaplanner`'s result section is `role="alert"` (`Resultaat`).
+- **Beyond the letter of the brief, flagged for adjudication:** the browser check showed the 390 bottom sheet announcing the refusal at 866-918 of 844, below the sheet's visible area. A mount-only `scrollIntoView({ block: "nearest" })` without focus (`components/ui/inBeeld.ts`, `useInBeeld`) now brings each in-sheet alert into the sheet's view: 723-775 in a scroll area of 195-775 afterwards. It is three `ref`s and one hook; dropping it reverts to announced-but-below-the-fold.
+- **Item 2:** `themasMetKoppelactie(themas, mag)` in `bestemmingen.ts` keeps a thema only when the gebruiker can press something in it, mirroring `Themarij`: themabeheer or directie (thema level, R4), or a subthema where `subdoelenBeheren` (R24), or `doelenKoppelen` with activiteiten to link or `activiteitBewerken` for a new one (R19, R17). `Bestemmingsblad` filters before the search, so the search and its count see the same list. New empty state `koppelen.nietsTeKoppelen` ("Je kan dit doel hier nergens aan koppelen.") when thema's exist but none qualifies; "Nog geen thema's" stays for no thema's at all.
+- **Files changed:** `frontend/src/features/plan/Agendamelding.tsx` (disposition, comment), `Agendascherm.tsx` (passes the open sheets), `Nieuweactiviteitblad.tsx` (`Planfout`), `Activiteitblad.tsx` (`Dagfout`, `gevraagd`), `Subthemaplanner.tsx` (`Resultaat`), `frontend/src/components/ui/inBeeld.ts` (new), `frontend/src/features/koppelen/bestemmingen.ts` (`themasMetKoppelactie`), `Bestemmingsblad.tsx` (filter, empty state), `frontend/src/i18n/nl.json` (`koppelen.nietsTeKoppelen`).
+- **Tests added (+14; 47 files / 472 tests to 51 / 486):** `Agendamelding.test.tsx` +3 (refusal arriving in a sheet stays the sheet's, also after close; refusal arriving with the picker open mounts and takes focus once it closes; an alert already shown is the same node after a sheet opens and closes). `Nieuweactiviteitblad.test.tsx` (new, 2): with the sheet open a 403 from the plan is `role=alert` inside the dialog and it is the only alert in the document, hidden ones included, and none appears after close; with no subthema left after the refetch the refusal shows instead of "geen subthema". `Activiteitblad.test.tsx` (new, 2): the refusal after "Verplaats" is an alert in the sheet and the same node after the day section goes; no stale failure for a reader who asked nothing. `Subthemaplanner.test.tsx` (new, 1): the result is an alert with count and reason. `Bestemmingsblad.test.tsx` (new, 3): HL K3 sees Herfst, not "Leeg thema"; directie and themabeheer see both; the new empty state instead of "Nog geen thema's". `bestemmingen.test.ts` +3 (`themasMetKoppelactie` for HL K3, directie, themabeheer, HL L1, nobody).
+- **Gates:** `pnpm lint` exit 0 · `pnpm test` 51 files, 486/486 · `pnpm build` exit 0 (existing chunk-size warning). Backend untouched.
+- **Browser check** (throwaway `jp_spotcheck_e602f2` on 5433, created, migrated, seeded over the API plus one K3 leerplandoel by SQL, then dropped `WITH (FORCE)`; API on 5395, Vite on 5185, both stopped; the owner's database untouched). Carla had klastoewijzingen on K3 groen and K3 blauw; directie removed groen (200) with her new-activiteit sheet open, she pressed Bewaren:
+  - 1440×1000: `201 POST …/activiteiten`, `403 POST …/weekplanning`, `200 /api/ik`; one alert in the whole document, inside the dialog, not aria-hidden, "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie.", at 678-712, visible in the sheet; page `scrollY` 0; add buttons behind 7 to 0 and the quiet line present. After closing the sheet: no alert anywhere, `scrollY` 0.
+  - 390×844: the same requests and the same single in-dialog alert, at 723-775 in a sheet scroll area of 195-775 (in view, directly above the footer; screenshot checked); add buttons 34 to 0; after close no alert, `scrollY` 0.
+  - Link sheet from the register (doel 9.1.K3.1, K3 groen picked), both widths, no horizontal overflow: Bert (HL K3) sees Herfst and not "Leeg thema"; An (themabeheer) and directie see both.
+  - Klastoewijzing restored (200) after each run.
+- **Left as is (the brief said change nothing else), for the orchestrator:** after a refusal the new-activiteit form stays, so a second Bewaren makes a second activiteit and is refused again (announced the same way), and its day line still says Bewaren plans; the planner keeps its plan button. While the new-activiteit sheet is open after the save, focus is on `body` (the Bewaren button was disabled while busy); pre-existing. Candidates for a follow-up if wanted.
+- **Branch:** `story/E6-02-frontend`.
+
+### Fix round 3
+
+- **Findings resolved:** test-runner round 3 MINOR (a refused create in the new-activiteit sheet; WCAG 4.1.3, E5-03), antagonist round 3 QUESTION (stale controls after a refused placement; the E3-06 rule, taken into this round by the orchestrator), MINOR **F8** and MINOR **F9**, and the residual comment on `Agendamelding`. Base `a4d698a`. No finding disputed.
+- **1, refused create:** `Nieuweactiviteitblad` reads the refusal from the create's own error (`geenToegangZin(maak.error)`) and from that render on shows a sheet holding only that refusal, as its one `role="alert"`, and the close control: no "De activiteit is gemaakt maar niet ingepland." prefix (nothing was made), no form. `periode.geenSubthemaOmIn` now shows only when nothing failed. `bewaarEnPlan` catches the rejection (`.catch(() => null)`; the failure is the mutation's error, which the sheet shows). Decided on the refusal itself rather than on the rights it refetches, so the form never shows it first: the browser counted one alert inserted.
+- **2, stale controls:** a refused plan (new prop `planGeweigerd`, from `isGeenToegang(acties.plaats.error)` in `Agendascherm`) goes to the same refusal-only sheet: "De activiteit is gemaakt maar niet ingepland. {reden}", without Bewaren (no second activiteit) and without the day line that promised a plan. `Subthemaplanner` takes `magPlannen`; without it the footer and its plan button are not rendered, and the result alert stays. A plan failure that is *not* a refusal keeps the form as before (a second Bewaren there would still make a second activiteit); left alone as outside the finding, flagged for the orchestrator.
+- **3, F8:** `Activiteitformulier` renders one `Blad` for the form and the facts. The `<form>` now holds only the fields; `extra`, the goals and the failure sit after it in one shared container, in the same slots in both states, and only the title, the footer and the block above `extra` switch. The former `Activiteitfiche` became `Feiten` and `Feitdoelen`. So when the content right goes with a refusal, the dialog and `Dagfout` are the same elements, not announced or scrolled again. One consequence: `extra` (the agenda's day fields) and the goal picker are no longer inside the `<form>`, so Enter in them no longer reaches the activiteit's own submit. The `Activiteitblad` comment now covers the content-right flip too.
+- **4, F9:** `Bestemmingsblad` decides its list with the rights taken as the sheet opens (`magBijOpenen`, set during render on open, the pattern its search box uses). A refusal refetches every query; the list no longer follows, so the row holding the `Koppelfout` alert keeps its thema. Each row's own controls still follow the live rights, as `Themarij` already did.
+- **5, comment:** chose to narrow the `Agendamelding` comment rather than count the hoek sheets: it now names the four sheets that send these requests (picker, new-activiteit sheet, activiteit sheet, planner) and says the two hoek sheets are not counted because they send none of them.
+- **Remaining, measured:** in cases 1 and 2 the form's dialog is replaced once by the refusal sheet (one dialog insertion), which moves focus to the new sheet; the refusal is inserted, and announced, once. Keeping the form's own dialog there would need `Activiteitformulier` to take a refusal-only body; not done, as the smallest change that meets the finding.
+- **Files changed:** `frontend/src/features/plan/Nieuweactiviteitblad.tsx` (refusal-only sheet, catch, `planGeweigerd`, `Bladfout`), `Agendascherm.tsx` (passes `planGeweigerd` and the planner's `magPlannen`), `Subthemaplanner.tsx` (`magPlannen`), `Activiteitblad.tsx` (comment), `Agendamelding.tsx` (comment), `frontend/src/features/activiteiten/Activiteitformulier.tsx` (one dialog), `frontend/src/features/koppelen/Bestemmingsblad.tsx` (rights taken on open). No new copy; `nl.json` untouched.
+- **Tests (+4; 51 files, 486 to 490):** `Nieuweactiviteitblad.test.tsx`: a create answering 403 (fetch stubbed), rights then refetched as nobody: the refusal is the only alert in the dialog, without the "gemaakt" prefix, `geenSubthemaOmIn` absent, no Bewaren, `onPlan` not called, and no unhandled rejection; the refused-plan test now also asserts no Bewaren and no day line. `Subthemaplanner.test.tsx`: no plan button without `magPlannen`, the result alert still there. `Activiteitblad.test.tsx`: a leerkracht with only this klas at K3 has a move refused, rights refetched as nobody: the same dialog element, now the facts, and the same alert element. `Bestemmingsblad.test.tsx`: a 403 on an activiteit row, rights refetched without the K3 goal-link right: the refusal stays on screen, "nergens aan koppelen" absent.
+- **Gates:** `pnpm lint` exit 0 · `pnpm test` 51 files, 490/490 · `pnpm build` exit 0 (existing chunk-size warning). Backend untouched.
+- **Browser check** (throwaway `jp_spotcheck_e602f3` on 5433, created, migrated, seeded over the API, dropped `WITH (FORCE)`; API 5395 and Vite 5185 stopped; the owner's database untouched). Lies had only K3 groen; Carla K3 groen and blauw; directie removed the groen klastoewijzing (200) mid-flow and restored it (200) after each case. An in-page `MutationObserver` counted dialogs and alerts inserted. The same at 1440×1000 (week view) and 390×844 (day view):
+  - Case 1, Lies, new activiteit, Bewaren: `403 POST …/subthemas/…/activiteiten`, `200 /api/ik`. One alert in the document, in the dialog, visible in it: "Je hebt geen toegang tot deze actie."; no "gemaakt", no "geen subthema", no Bewaren; no uncaught exception; one alert and one dialog inserted; nothing on the page after closing.
+  - Case 2, Carla, new activiteit, Bewaren: `201` create, `403` plan, `200 /api/ik`. One alert: "De activiteit is gemaakt maar niet ingepland. Je hebt geen toegang tot deze actie."; no Bewaren, no day line.
+  - Case 2, Carla's planner ("Plan N activiteiten in" before): `403` on the subthemaperiode and each placement; afterwards no footer button, the result alert in view.
+  - F8, Lies opens the planned activiteit (the form, with Bewaren), changes the day, Verplaats: `403 …/weekplanning/{id}/dag`, `200 /api/ik`. The same dialog element, now titled with the activiteit's name and without Bewaren, holding the same alert element; zero dialogs and one alert inserted; `scrollY` 0.
+- **Branch:** `story/E6-02-frontend`.
+
+### Owner-approved mini-fix (after audit round 4)
+
+- **Scope:** antagonist round 4 MINOR **F10** and **F11** (owner-approved after the three fix rounds), the test-runner round 4 test-only defect (added by the orchestrator, same topic), and the comment nit on `Activiteitformulier`. Base `960ad89`. Nothing disputed; nothing else changed.
+- **F10 (E5-03; WCAG 4.1.3):** `Themarij` now always renders `Nieuweactiviteitregel` and passes `magMaken` (`activiteitBewerken && doelenKoppelen` at the subthema's leeftijd). The regel checks its failure before the rights, as `Activiteitrij` does: it renders nothing only when it lacks the right *and* holds no failure. With a failure and without the right it keeps only the alert and Annuleer: the name, soort and lesuren fields, the klas notice and "Maak en koppel" are left out, each in its own slot, so the alert stays the same element and no refused create is offered again (E3-06). Annuleer resets the mutation, after which the regel goes. The `Bestemmingsblad.test.tsx` header now says what holds (the thema stays listed; a row checks its own failure before the rights).
+- **F11 (E3-06, E5-03):** with `!magPlannen` the planner renders only the `Resultaat` alert. The subthema select, the date fields, the verdeling, the preview section (with its drag handles and `periode.pastNiet`) and the lesdagen line are each left out in their own slot, so `Resultaat` keeps its child position and stays the same element.
+- **Test defect:** the tests in this slice that change `ik` now wait one task after `setQueryData`, `await act(async () => { qc.setQueryData(["ik"], NIEMAND); await new Promise((r) => setTimeout(r, 0)); })`: `Bestemmingsblad` (F9), `Nieuweactiviteitblad` (refused create), `Activiteitblad` (F8), and `ThemadetailScherm` (fix round 1 F4; it already waited through `waitFor`, converted for consistency). The F9 test also asserts the new rights arrived: "Koppel dit doel aan het subthema Bladeren" is there before and gone after.
+- **Mutation proofs (then restored, both files verified byte-identical by sha1):** (1) `themasMetKoppelactie(themas, mag)` (live rights) in `Bestemmingsblad.tsx`: the F9 test fails, and so does the new F10 test (2 of 5 failed); (2) `maakWeigering` set to `null` in `Nieuweactiviteitblad.tsx`: the refused-create test fails (1 of 3 failed).
+- **Comment nit:** `Activiteitformulier` now says the title, the footer, the block above `extra` and the goals below it switch.
+- **Files changed:** `frontend/src/features/koppelen/Themarij.tsx`, `Nieuweactiviteitregel.tsx`, `frontend/src/features/plan/Subthemaplanner.tsx`, `frontend/src/features/activiteiten/Activiteitformulier.tsx` (comment); tests `frontend/src/features/koppelen/Bestemmingsblad.test.tsx`, `frontend/src/features/plan/Nieuweactiviteitblad.test.tsx`, `Activiteitblad.test.tsx`, `Subthemaplanner.test.tsx`, `frontend/src/features/themas/ThemadetailScherm.test.tsx`. No new copy.
+- **Tests (+1; 51 files, 490 to 491):** `Bestemmingsblad.test.tsx`: a 403 on "Maak en koppel", rights then refetched as nobody (awaited): the same alert element stays, the subthema link button, "Maak en koppel" and the name field are gone. `Subthemaplanner.test.tsx`: its second test now opens the preview with the right, then drops the right: no preview heading, no select, date fields or radiogroup, no plan button, and the same alert element.
+- **Gates:** `pnpm lint` exit 0 · `pnpm test` 51 files, 491/491 · `pnpm build` exit 0 (existing chunk-size warning). Backend untouched.
+- **Browser check** (throwaway `jp_spotcheck_e602f4` on 5433: created, migrated, seeded over the API plus one K3 leerplandoel by SQL, dropped `WITH (FORCE)`; API 5395 and Vite 5185 stopped; the owner's database untouched). An in-page `MutationObserver` counted alerts inserted, and the first alert was marked as it appeared. Same result at 1440×1000 and 390×844:
+  - F10: Bert (HL K3) in the register, doel 9.1.K3.1, "Koppel dit doel", searched "Bladeren", "Nieuwe activiteit", typed a name; directie removed his K3 hoofdleerkracht right (200); "Maak en koppel": `403 POST …/subthemas/…/activiteiten`, `200 /api/ik`. The marked alert "Je hebt geen toegang tot deze actie." is still there and the same element, one alert inserted; "Maak en koppel" and the name field gone, Annuleer present; the subthema link button gone (the new rights arrived); no uncaught exception, no horizontal overflow. Right restored (200).
+  - F11: Carla (K3 groen and blauw), "Subthema inplannen", subthema chosen: the preview "Zo komt het te staan" and "Plan 1 activiteit in" present; directie removed groen (200); plan pressed: two 403s, `/api/ik` refetched. Afterwards no select, no date fields, no radiogroup, no preview, no drag handles, no footer; the result alert is the marked element, one alert inserted. Klastoewijzing restored (200).
+- **Branch:** `story/E6-02-frontend`.
+
+## Merge of origin/main before the PR
+
+- **What:** merged `origin/main` at `3ba2391` into `feature/e6-rollen-rechten` at `4ab828a`, so the PR merges cleanly.
+  `main` had moved past the `6051baa` of the trial merge by PR #68 (TB-016) and PR #69 (TB-015); both are in.
+- **Conflicts and how each was resolved** (both sides' behaviour kept in every one):
+  - `CONSTITUTION.md`, ratification log: both sides added rows dated 2026-09-14. All six kept, in commit-time order:
+    I24/I25 (ours), ADR-0035 ontwikkelingsrapport (main), TB-010 minimumdoel ordering (main), I26-I28 (ours), the Q4
+    narrowing (ours), the Q5 clarification (ours). The Art. VI.1 text merged by itself (main's fifth right,
+    Leerlingzorg, beside our I24-I28). No I-item renumbered, and no contradiction in substance found.
+  - `docs/adr/0030-rollen-en-rechten-in-de-app.md`: both sides added a footnote 6. Main's (the ontwikkelingsrapport
+    rows) is cited by the ADR header, the column rule and the TB-005 audits; ours (the thema delete, I26/I27) by one
+    cell. Ours became footnote 7 and follows main's. One sentence added to *How the matrix is enforced*, because "each
+    row is a named policy" became false on merge: the ontwikkelingsrapport rows have no policy in `Rechtenmatrix` yet,
+    and get one when FR-13 is built.
+  - `Navigatie.tsx`: main's two panel switches (Hoekenfiches, Algemene fiches), both behind `opAgenda && magPlannen`.
+  - `Doeldetail.tsx`: main's required-but-nullable `onKoppel` (TB-016) kept, with our paragraph: the register passes
+    `null` when `mag.doelKoppelenVoor` says no. `DoelenScherm.tsx`: main's `detail()` helper, gated the same way.
+  - `Minimumdoelenlijst.tsx` and its test (modify/delete): main replaced the list with `Minimumdoelenboom` (TB-010).
+    Deleted, and our E1-22 carry-forward ported to it: `Laadlink` only with `mag.curriculumbeheer`, pointing at
+    `/inladen?bron=opstap`; both tests ported to `Minimumdoelenboom.test.tsx`.
+  - `Agendascherm.tsx`: main added `verplaatsFichemoment` to the drag message, which ours had replaced with
+    `Agendamelding`, so its error joins `Agendamelding`'s list. Main's two mobile chips and its `onKiesAlgemeneFiche`
+    on the panel kept, both only when `magPlannen`.
+  - `Tijdraster.tsx`: main's aria-label (the onderschrift of a hoek or fiche) with our drag gating.
+    `Tijdraster.test.tsx`: both option sets and every test kept.
+  - `Subthemahoofdstuk.tsx`, `ThemadetailScherm.tsx`: main's `Gekoppelddoel` rows (TB-016), with the unlink only for
+    `magSubdoelen` / `mag.themaBewerken`, as before.
+- **Follow-up fixes where the two sides meet** (in the merge commit):
+  - `Gekoppelddoel.tsx`: `onOntkoppel` optional; without it the row only opens the detail (the E3-06 rule).
+  - `Algemenefichedetailblad.tsx`: an `alleenLezen` mode like `Hoekdetailblad`'s. It drops the delete footer, the
+    moment's day and hour fields, and the sentence about what the delete costs. `Agendascherm` passes `!magPlannen`.
+    Main's fiche blocks open this sheet, and a reader sees the blocks.
+  - Not changed, and why: `Algemeneficheplaatsingblad` and the panel's create tile (TB-015) are reachable only through
+    `Hoekenpaneel`, which a gebruiker who may not plan the klas does not get.
+  - Tests: `Tijdraster.test` has a new case (a reader opens a fiche block and cannot drag it). `Navigatie.test`: main's
+    two-switch test renders as directie, and our "may not plan" test also asserts the Algemene fiches switch is absent.
+    `Gekoppelddoel.test` (main's TB-016) renders as directie, since without an `Ik` no write control is drawn.
+    `DoelenScherm.test` (our F1): fixtures moved to the TB-010 shapes, and the way in is the tree, the minimumdoel's
+    row, then the code in `Minimumdoeldetail`.
+- **Backend:** no conflicts. The model snapshot merged by itself; our `20260914093928_RechtenModel` and
+  `20260914114237_Wizardrun` and main's `20260914124010_MinimumdoelOrdeningEnSoort` coexist, and
+  `has-pending-model-changes` reports none. Main's one new route is a `[HttpGet("{minimumdoelRef}")]` on
+  `MinimumdoelenController`, a read, so `ElkeWijzigendeRouteVraagtEenRechtTests` asks no policy of it; it passes.
+- **Gates:** `dotnet build` 0 warnings, 0 errors. `dotnet test` against the local `jaarplanner-db`: unit 1450 passed,
+  4 skipped; integration 467 passed, 1 skipped. All five skips are the KOV live-API tests (`JAARPLANNER_LIVE_OPSTAP`).
+  `dotnet format --verify-no-changes` clean. `pnpm lint` clean. `pnpm test` 61 files, 552 passed. `pnpm build` ok.
+  One full `pnpm test` run before the fixes timed out a `ThemadetailScherm` test at 5.3 s under load. It passed alone
+  and in the full rerun; noted in case it recurs.
+- **Not audited:** the gating of main's new controls above had no antagonist pass, and no browser pass.
+
+### Fix after the merge audit
+
+The merge's gate: the antagonist found it COMPLIANT with three MINOR findings, and the test-runner confirmed the same
+test gaps plus one more. Its browser pass stopped when Docker Desktop did, an environment failure. Each item below is
+fixed in one commit on top of `a985cab`.
+
+- **Antagonist MINOR 1, test-runner defects 1 and 2 (the gating of main's controls had no tests).**
+  - New `frontend/src/features/plan/Agendascherm.test.tsx` renders the whole screen, since the gates sit inline in it.
+    The selection is mocked, and `fetch` answers the rooster, jaarplan, weekplanning, hoeken and algemene fiches, with
+    one turnen block on the week it opens.
+    - A reader (leerkracht of K3, another klas): the quiet line, no Hoekenfiches or Algemene fiches chip, no side panel
+      (desktop width, panel open in the store), and the fiche sheet opened from the block has no delete and no Dag field.
+    - A planner of the klas: both chips and the panel, then the sheet with its delete and Dag field. Chips and panel are
+      asserted before the sheet opens, because an open Radix dialog hides the rest of the page from role queries.
+  - `Algemenefichedetailblad.test.tsx`: a reader case mirroring `Hoekdetailblad`'s, opened from a moment on the fiche's
+    only period with goals. It shows the hours, with no delete ("Hele periode uit de agenda halen"), no Dag, Van or Tot
+    field, no Bewaren and no "laatste periode" sentence.
+  - **Mutation proof**, each gate removed once and restored (both files match the commit again afterwards):
+    - M1, the `magPlannen` gate on the chips: the reader case fails.
+    - M2, `alleenLezen={!magPlannen}` on the fiche sheet: the reader case fails.
+    - M3, the `magPlannen` gate on `Hoekenpaneel`: the reader case fails.
+    - M4, the component ignores `alleenLezen` on the moment fields: `Algemenefichedetailblad`'s reader case fails.
+- **Test-runner info 3.** The `ThemadetailScherm.test` fixture gets an L1 subdoel (`REK-1`). The hoofdleerkracht-of-K3
+  case asserts the unlink on the K3 subdoel (`WIS-1`) and none on the L1 one.
+- **Antagonist MINOR 2.** `Rechtenmatrix.cs`'s "Not expressed here, on purpose" now names the six ontwikkelingsrapport
+  rows of ADR-0030 §3 (footnote 6, ADR-0035): they get their policies with FR-13. `RechtenmatrixTests.cs` said "the
+  §3 matrix, row by row"; it now says the matrix as `Rechtenmatrix` declares it, and that those six rows get their
+  tests with their policies. Comment-only.
+- **Antagonist MINOR 3.** `infra/seed-demo.ps1`'s guard compared only the newest `MigrationId` with the newest
+  migration file. Ours (`093928`, `114237`) sort before main's (`124010`), so a demo database with main's migration and
+  not ours passed. It now compares the sets, and refuses in either direction. When any checkout migration is missing
+  from `__EFMigrationsHistory`, the message names the missing ids. When the database holds one the checkout lacks, it
+  names those, which keeps the old guard's refusal of an older checkout. The synopsis says so too.
+  - Not run against Azure. The script parses with PowerShell 5.1's parser, and no stale variable is left.
+  - A dry run of the same two comparisons on hard-coded lists:
+    - main's migration only: refused, naming `RechtenModel` and `Wizardrun` (the old guard passed this);
+    - all present: passes;
+    - an extra one in the database: refused;
+    - only an older one missing: refused.
+- **Gates** (the ones that need no Docker, which was down):
+  - `pnpm lint` clean, `pnpm test` 62 files with 555 passed, `pnpm build` ok.
+  - `dotnet build` 0 errors, `dotnet format --verify-no-changes` clean.
+  - `dotnet test tests/Jaarplanner.UnitTests`: 1450 passed, 4 skipped (the KOV live-API tests).
+  - **The integration tests were not re-run, because Postgres was down.** The only backend change is comments in
+    `Rechtenmatrix.cs` and `RechtenmatrixTests.cs`.
+
+### Second merge of origin/main (PR #70, TB-014)
+
+- **What:** merged `origin/main` at `ea6c5c6` into the branch at `0ddf4fe` as `9a81c74`. `main` had moved on by PR #70
+  (TB-014): the time grid lights up the quarter under the mouse, and a drag across empty space plans an activiteit for
+  exactly that stretch.
+- **Conflicts** (both sides kept):
+  - `Tijdraster.tsx`: our required `magPlannen` with TB-014's `onVoegToe(datum, begin, einde?)`, in `Tijdraster` and in
+    `Dagkolom`. The empty column's button stays behind `dag.isLesdag && magPlannen`, with TB-014's comment and ours.
+    TB-014 puts every gesture of `useLegePlek` on that button (pointer down, move, leave, up and cancel, lost capture,
+    the click), and listens for Escape only while a stretch drawn there runs. So a gebruiker who may not plan the klas
+    gets no lit-up quarter, no stretch and no click. The component's doc block said "three gestures"; TB-014 made them
+    four, and it now says so.
+  - `Agendascherm.tsx`: `magPlannen` and TB-014's three-argument `onVoegToe`.
+  - Merged by themselves: `Activiteitkiezer` and `Nieuweactiviteitblad` (`eindtijd`), `gevraagdeplek.ts`, `tijd.ts`,
+    two `nl.json` keys, `index.css`, the ADR-0024 amendment, and `Tijdraster.test.tsx` (TB-014's "onder de muis" tests
+    use the test helper's default `magPlannen: true`).
+- **Tests:** no new case. The reader case in `Tijdraster.test.tsx` already asserts that the empty column's button is
+  absent, and TB-014's tests reach each of its gestures through that same button; the case's comment now says so.
+- **Gates:** `pnpm lint` 0; `pnpm test` 64 files, 572 passed; `pnpm build` ok; `dotnet test tests/Jaarplanner.UnitTests`
+  1450 passed, 4 skipped; `dotnet format --verify-no-changes` clean. The merge brings no backend change.
+  **Not run:** the Postgres integration suite and a browser pass, because Docker Desktop was down.

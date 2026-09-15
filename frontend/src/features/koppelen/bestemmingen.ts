@@ -1,5 +1,6 @@
 import { MAX_THEMADOELEN } from "../../lib/types";
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
+import type { Mag } from "../../lib/rechten";
 
 /**
  * Reading the school's own content as a list of places one leerplandoel could go.
@@ -111,6 +112,32 @@ export function filterBestemmingen(
       };
     })
     .filter((tak): tak is Themabestemming => tak !== null);
+}
+
+/** The rights the sheet's link controls ask for, as `Themarij` asks them. A test passes `magVoor(ik)`. */
+export type Koppelrechten = Pick<Mag, "themaBewerken" | "subdoelenBeheren" | "doelenKoppelen" | "activiteitBewerken">;
+
+/**
+ * The thema's where this gebruiker has a link control to press (E6-02 slice 4, fix round 2; the E3-06 rule).
+ *
+ * Mirrors `Themarij` level by level: the thema level for directie and themabeheer (R4); a subthema's "Koppel aan
+ * subthema" where they may manage subdoelen (R24); its activiteiten, and a new activiteit with the doel on it, where
+ * they may link goals (R19, with R17 for the new one). A thema with none of these opened onto rows with nothing to
+ * press: a hoofdleerkracht of K3 met it on a thema without subthema's.
+ *
+ * Only whole thema's are dropped. Inside one that stays, `Themarij` already leaves out each control the gebruiker
+ * lacks.
+ */
+export function themasMetKoppelactie(themas: readonly ThemaWeergave[], mag: Koppelrechten): ThemaWeergave[] {
+  if (mag.themaBewerken) return [...themas];
+  return themas.filter((thema) =>
+    thema.subthemas.some(
+      (subthema) =>
+        mag.subdoelenBeheren(subthema.leeftijd) ||
+        (mag.doelenKoppelen(subthema.leeftijd) &&
+          (subthema.activiteiten.length > 0 || mag.activiteitBewerken(subthema.leeftijd))),
+    ),
+  );
 }
 
 /**
