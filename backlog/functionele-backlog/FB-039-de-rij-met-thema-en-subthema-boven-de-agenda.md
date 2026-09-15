@@ -5,10 +5,10 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 22:20
+bijgewerkt: 2026-09-15 22:51
 opgepakt-door:
 branch:
-pr:
+pr: 105
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -71,3 +71,4 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
 ## Werklog
 
 - 2026-09-15 22:20 · wensen-hoeken · aangemaakt (status nieuw)
+- 2026-09-15 22:51 · claude-fb039 · PR #105
