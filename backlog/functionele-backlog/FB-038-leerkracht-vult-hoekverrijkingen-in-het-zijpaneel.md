@@ -2,10 +2,10 @@
 id: FB-038
 titel: Leerkracht vult hoekverrijkingen in het zijpaneel in; hoeken gaan niet meer in de agenda
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:12
+bijgewerkt: 2026-09-15 21:59
 opgepakt-door: hoeken-zijpaneel
 branch: ticket/FB-038-hoeken-zijpaneel
 pr:
@@ -61,18 +61,18 @@ verrijking onder elke hoek, maar ze kan ze daar niet invullen, en een klik op ee
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week waarin een subthema loopt, dan toont de subthemabalk de links naar het thema en het subthema, en
+- [x] Gegeven een week waarin een subthema loopt, dan toont de subthemabalk de links naar het thema en het subthema, en
   geen regel over hoekverrijkingen; een klik erop opent geen verrijkingenblad.
-- [ ] Gegeven het zijpaneel Hoekenfiches in een week waarin een subthema loopt, wanneer de leerkracht op een hoek klikt,
+- [x] Gegeven het zijpaneel Hoekenfiches in een week waarin een subthema loopt, wanneer de leerkracht op een hoek klikt,
   een verrijking invult en bewaart, dan staat die tekst onder die hoek in het paneel, en in een week van een ander
   subthema niet.
-- [ ] Gegeven een gebruiker die de agenda van de klas mag bekijken maar niet plannen, dan ziet ze in het zijpaneel de
+- [x] Gegeven een gebruiker die de agenda van de klas mag bekijken maar niet plannen, dan ziet ze in het zijpaneel de
   hoeken met hun verrijkingen, zonder velden en zonder "Hoek toevoegen".
-- [ ] Gegeven een klas met hoeken, dan kan de leerkracht geen hoek meer in de agenda plaatsen: niet door slepen en niet
+- [x] Gegeven een klas met hoeken, dan kan de leerkracht geen hoek meer in de agenda plaatsen: niet door slepen en niet
   door te klikken, en de week-, dag- en maandweergave tonen geen hoeken.
-- [ ] Gegeven een hoek die vroeger in de agenda stond, wanneer de leerkracht hem verwijdert, dan lukt dat, en de
+- [x] Gegeven een hoek die vroeger in de agenda stond, wanneer de leerkracht hem verwijdert, dan lukt dat, en de
   bevestiging noemt alleen het aantal verrijkingen.
-- [ ] Nagekeken in een echte browser op desktop en op ~390px.
+- [x] Nagekeken in een echte browser op desktop en op ~390px.
 
 ## Testscenario's
 
@@ -107,3 +107,7 @@ Geen.
 - 2026-09-15 21:10 · wensen-hoeken · aangemaakt (status nieuw)
 - 2026-09-15 21:12 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15): meteen bouwen
 - 2026-09-15 21:12 · hoeken-zijpaneel · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 21:59 · hoeken-zijpaneel · gebouwd: verrijking per hoek in het zijpaneel Hoekenfiches (blad per hoek, een veld per subthema van de week), ook voor wie alleen mag bekijken; subthemabalk alleen links; hoeken niet meer in de agenda (tabellen en API slapend); hoek verwijderen neemt verborgen plaatsingen mee; ADR-0044
+- 2026-09-15 21:59 · hoeken-zijpaneel · antagonist COMPLIANT, 4 kleine bevindingen: 3 opgelost (b34a071), 1 genoteerd (focus op telefoon, zoals de tegel van TB-015); backlog/worklogs/FB-038/antagonist.md
+- 2026-09-15 21:59 · hoeken-zijpaneel · browsercontrole geslaagd (headless Chrome, 1440 en 390, licht en donker, wegwerpdatabank jp_fb038): 30/30, contrast 4,64 tot 16,58:1, console leeg; criteria afgevinkt; backlog/worklogs/FB-038/verification.md
+- 2026-09-15 21:59 · hoeken-zijpaneel · in-uitvoering → te-testen: klaar om te testen: gates groen (lint, Vitest 952, unit 1801, Postgres 32, dotnet format), antagonist COMPLIANT, browser 30/30
