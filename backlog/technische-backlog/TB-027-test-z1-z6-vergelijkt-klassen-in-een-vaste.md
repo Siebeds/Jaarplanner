@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:56
+bijgewerkt: 2026-09-15 19:57
 opgepakt-door: woordweb
 branch: ticket/flaky-z1z6
-pr:
+pr: 97
 geblokkeerd:
 fr: []
 ---
@@ -44,3 +44,4 @@ Geen.
 
 - 2026-09-15 19:51 · woordweb · aangemaakt (status in-uitvoering)
 - 2026-09-15 19:56 · woordweb · in-uitvoering → klaar: beide kanten gesorteerd voor de vergelijking; test 10 van 10 groen tegen PostgreSQL, dotnet format schoon
+- 2026-09-15 19:57 · woordweb · PR #97
