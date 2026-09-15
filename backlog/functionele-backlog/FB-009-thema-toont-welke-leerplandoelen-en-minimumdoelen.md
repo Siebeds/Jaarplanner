@@ -2,13 +2,13 @@
 id: FB-009
 titel: Thema toont welke leerplandoelen en minimumdoelen het per leeftijd bereikt
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:46
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 16:16
+opgepakt-door: themapagina
+branch: ticket/FB-009-doelen-per-leeftijd
+pr: 83
 geblokkeerd:
 fr: [FR-2.3, FR-9.3]
 ---
@@ -44,15 +44,15 @@ thema subthema's heeft).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met een K3-subthema waarvan een subdoel en een activiteit elk een ander leerplandoel dragen,
+- [x] Gegeven een thema met een K3-subthema waarvan een subdoel en een activiteit elk een ander leerplandoel dragen,
   wanneer ik de themapagina open, dan staan bij K3 beide leerplandoelen en de minimumdoelen waarnaar ze via de
   concordantie leiden.
-- [ ] Gegeven een leerplandoel dat zowel subdoel als activiteitsdoel is in hetzelfde thema, dan staat het één keer,
+- [x] Gegeven een leerplandoel dat zowel subdoel als activiteitsdoel is in hetzelfde thema, dan staat het één keer,
   met de plaatsen waar het voorkomt.
-- [ ] Gegeven een doelsuggestie die voorgesteld of geweigerd is, dan telt ze in het overzicht niet mee; na aanvaarden
+- [x] Gegeven een doelsuggestie die voorgesteld of geweigerd is, dan telt ze in het overzicht niet mee; na aanvaarden
   wel.
-- [ ] Gegeven een leerplandoel zonder concordantie, dan staat het bij de leerplandoelen en levert het geen minimumdoel op.
-- [ ] Het overzicht gebruikt het woord "gedekt" niet, en is in een echte browser nagekeken op desktop en op ~390px.
+- [x] Gegeven een leerplandoel zonder concordantie, dan staat het bij de leerplandoelen en levert het geen minimumdoel op.
+- [x] Het overzicht gebruikt het woord "gedekt" niet, en is in een echte browser nagekeken op desktop en op ~390px.
 
 ## Testscenario's
 
@@ -80,3 +80,10 @@ thema subthema's heeft).
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 15:30 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt; gestapeld op ticket/FB-010-subdoelen-in-activiteiten
+- 2026-09-15 15:48 · themapagina · gebouwd: nieuw endpoint GET /api/themas/{id}/doelenoverzicht (drie queries per thema) en een blok 'Doelen per leeftijd' op de themapagina; unittests 7 groen (plaatsen per leeftijd, een doel een keer, voorgesteld/geweigerd telt niet, aanvaarde suggestie wel, concordantie, codevolgorde), Vitest 589 groen, backend 1457 unit en 129 integratie groen, lint en dotnet format schoon
+- 2026-09-15 15:48 · themapagina · browser op echte Op.stap-doelen, desktop en 390px: rijen per leeftijd met tellingen, lijsten met 'Via …', minimumdoel opent in het blad, scenario 4 (nieuw K3-doel gekoppeld, na herladen erbij); contrast licht en donker 6,51 tot 7,58:1; geen consolefouten. Open vraag: standaard toegepast (themadoelen bij de jaarfase van hun leerplandoel)
+- 2026-09-15 16:07 · themapagina · antagonist: een MAJOR (een aanvaarde doelsuggestie stond als 'themadoel', terwijl ze dat niet is, Art. IX.2): opgelost met een eigen plaats 'aanvaarde doelsuggestie' en een verbeterde test; de kleine bevindingen ook (HTTP-integratietest 200/404, test voor 'geen minimumdoel', commentaar); unit 7, integratie 6, Vitest 60 groen, lint en format schoon
+- 2026-09-15 16:08 · themapagina · in-uitvoering → te-testen: thema toont per leeftijd de leerplandoelen en de minimumdoelen die ze bereiken, via een nieuw endpoint; browser desktop en 390px op echte Op.stap-doelen, contrast licht en donker gemeten, antagonist-MAJOR opgelost
+- 2026-09-15 16:10 · themapagina · tweede controle antagonist, alleen op de MAJOR: opgelost, COMPLIANT, geen nieuwe blokkerende bevinding
+- 2026-09-15 16:16 · themapagina · PR #83

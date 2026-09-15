@@ -22,6 +22,7 @@ import type {
   SchooljaarSamenvatting,
   SubthemaBestemming,
   ThemaBibliotheekItem,
+  ThemaDoelenoverzicht,
   ThemaWeergave,
   Weekplanning,
 } from "./types";
@@ -249,6 +250,18 @@ export function useThema(themaId: string | undefined) {
   return useQuery({
     queryKey: themaSleutels.detail(themaId ?? ""),
     queryFn: () => get<ThemaWeergave>(`/api/themas/${themaId}`),
+    enabled: Boolean(themaId),
+  });
+}
+
+/**
+ * The doelen a thema reaches per leeftijd (FB-009). Under the thema's own key, so every write that refreshes the thema
+ * (a prefix invalidation of `themaSleutels.detail`) refreshes this too, and it can never lag the lists beside it.
+ */
+export function useThemaDoelenoverzicht(themaId: string | undefined) {
+  return useQuery({
+    queryKey: [...themaSleutels.detail(themaId ?? ""), "doelenoverzicht"] as const,
+    queryFn: () => get<ThemaDoelenoverzicht>(`/api/themas/${themaId}/doelenoverzicht`),
     enabled: Boolean(themaId),
   });
 }
