@@ -86,10 +86,8 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "",
             "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
             "  Tekst: De kleuter onderzoekt water.",
-            "  Minimumdoel: K-20",
             "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
             "  Tekst: De kleuter benoemt nat en droog.",
-            "  Woordenschat: nat, droog",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
@@ -129,10 +127,8 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "",
             "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
             "  Tekst: De kleuter onderzoekt water.",
-            "  Minimumdoel: K-20",
             "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
             "  Tekst: De kleuter benoemt nat en droog.",
-            "  Woordenschat: nat, droog",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);

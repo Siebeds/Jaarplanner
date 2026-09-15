@@ -2,13 +2,13 @@
 id: TB-007
 titel: Thema-matching stuurt niet langer de hele doelencatalogus mee
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:36
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 19:38
+opgepakt-door: prompt-begrenzing
+branch: ticket/TB-007-prompt-begrenzing
+pr: 93
 geblokkeerd:
 fr: []
 ---
@@ -44,15 +44,22 @@ geen selectie meegeeft.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met subthema's voor K3 en de volledige Op.stap-import, wanneer suggesties gegenereerd worden,
+- [x] Gegeven een thema met subthema's voor K3 en de volledige Op.stap-import, wanneer suggesties gegenereerd worden,
   dan bevat de prompt alleen K3-doelen en toont het resultaat het aantal kandidaten.
-- [ ] Gegeven een thema zonder subthema's, wanneer de gebruiker suggesties wil genereren, dan kiest hij eerst één of meer
+- [x] Gegeven een thema zonder subthema's, wanneer de gebruiker suggesties wil genereren, dan kiest hij eerst één of meer
   jaarfasen en bevat de prompt alleen doelen van die jaarfasen; zonder keuze wordt het model niet aangeroepen, en nooit
   gaat stilzwijgend de hele catalogus mee.
-- [ ] Gegeven een kandidatenset boven de ingestelde bovengrens (standaard 50.000 tokens), wanneer suggesties gevraagd
+- [x] Gegeven een kandidatenset boven de ingestelde bovengrens (standaard 50.000 tokens), wanneer suggesties gevraagd
   worden, dan wordt het model niet aangeroepen, wordt er niets bewaard en ziet de gebruiker een Nederlandse melding.
-- [ ] Gegeven de nep-AI-client, dan dekken unit tests de drie gevallen hierboven en zijn de snapshot tests van de prompt
+- [x] Gegeven de nep-AI-client, dan dekken unit tests de drie gevallen hierboven en zijn de snapshot tests van de prompt
   bijgewerkt.
+
+Bewijs: `DoelMatchingServiceTests`, `ThemaOpbouwAssistServiceTests`, `PromptbegrenzingTests` en de bijgewerkte
+snapshots in `MatchingPromptBuilderTests` en `ThemaOpbouwPromptBuilderTests`; de integratietests in
+`DoelsuggestieEndpointsTests` (400 zonder jaarfase, 400 boven een grens van 10, niets bewaard, AI niet aangeroepen);
+de Vitest-tests in `ThemadetailScherm.test.tsx`; en de browsercontrole in de Werklog (535 K3-doelen uit de volledige
+import, de Nederlandse weigering). De resultaatregel na een geslaagde AI-aanroep is alleen met Vitest nagekeken, omdat
+de Foundry-resource geblokkeerd is (TB-004).
 
 ## Buiten scope
 
@@ -69,9 +76,24 @@ Beantwoord door de eigenaar op 2026-09-14:
 - **De bovengrens:** één instelling in de configuratie, standaard 50.000 tokens, aan te passen zonder codewijziging
   (bijvoorbeeld na de meting van TB-004). Niet per model.
 
+Beantwoord door de eigenaar op 2026-09-15:
+
+- **De promptvorm:** meteen compact, niet pas na TB-004. Per doel code, doelsoort, jaarfase, domein, subdomein en tekst.
+  Gemeten op de volledige Op.stap-import is alleen K3 in de oude vorm ongeveer 54.000 tokens, boven de grens, en compact
+  ongeveer 22.000. TB-004 kan de vorm later nog bijsturen.
+
 ## Werklog
 
 - 2026-09-14 11:33 · ai-doelsuggesties · aangemaakt (status nieuw)
 - 2026-09-14 11:36 · ai-doelsuggesties · geblokkeerd: wacht op de eigenaar: wat bij een thema zonder subthema's, en welke bovengrens voor de prompt
 - 2026-09-14 14:35 · ai-doelsuggesties · niet langer geblokkeerd
 - 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: bij een thema zonder subthema's kiest de gebruiker de jaarfasen; bovengrens is een configinstelling, standaard 50.000 tokens
+- 2026-09-15 18:45 · eigenaar · nieuw → klaar-voor-bouw: eigenaar gaf vrij voor bouw; de compactere promptvorm wacht op de meting van TB-004
+- 2026-09-15 18:45 · prompt-begrenzing · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:50 · prompt-begrenzing · eigenaar besliste: compacte promptvorm nu (code, doelsoort, jaarfase, domein, subdomein, tekst), want in de huidige vorm is alleen K3 al ~54.000 tokens (gemeten op de lokale databank met de volledige Op.stap-import)
+- 2026-09-15 19:12 · prompt-begrenzing · gevonden: EfDoelMatchOpslag laadde de subthema's van een thema niet mee, dus de matchingprompt schreef altijd '(nog geen)' subthema's en activiteiten; nu laadt ze subthema's, onderzoeksvragen en activiteiten, nodig voor de standaardjaarfasen
+- 2026-09-15 19:23 · prompt-begrenzing · gates: 1701 unit + 55 integratietests op PostgreSQL (doelsuggesties, thema-opbouw, rechten, referentiedata), 878 frontend-tests, dotnet format en pnpm lint schoon; RechtenAfdwinging faalde één keer en slaagde daarna twee keer 28/28, de wisselvallige teardown van E7-14, los van dit ticket
+- 2026-09-15 19:26 · prompt-begrenzing · browsercontrole op een wegwerpkopie van de dev-databank (volledige Op.stap-import), 1440 en 390 px, licht en donker: thema met K3-subthema duidt alleen K3 aan en de server rekent 535 doelen, ongeveer 23.619 tokens (compacte vorm); thema zonder subthema's: knop uit met hint, na K2 aan, lege aanvraag geeft 400 'Kies eerst ...'; met een testgrens van 1.000 weigert de server met de Nederlandse melding; contrast tekst 5,51 tot 17,78:1, rand van de aangeduide leeftijd 4,21:1 (donker 6,84:1); geen overloop, geen consolefouten. Een geslaagde AI-aanroep is niet in de browser gedaan (Foundry geblokkeerd, zie TB-004); de resultaatregel is met Vitest gedekt
+- 2026-09-15 19:31 · prompt-begrenzing · PR #93
+- 2026-09-15 19:38 · prompt-begrenzing · antagonist: COMPLIANT, geen CRITICAL of MAJOR; de vijf MINOR's opgelost: de weigering zonder jargon en met een verwijzing naar wie de server beheert, oude leeftijdnotatie (3K) genormaliseerd, AsSplitQuery bij het laden van het thema, het statusgebied blijft staan voor schermlezers, en de grens wordt bij het opstarten gecontroleerd; gates opnieuw groen (1701 unit, 55 integratie op PostgreSQL, 39 frontend, format en lint)
+- 2026-09-15 19:38 · prompt-begrenzing · in-uitvoering → klaar: gebouwd: kandidaten per jaarfase, compacte doelenlijst, promptgrens van 50.000 tokens als instelling, leeftijdkeuze op het themascherm; alle gates groen, antagonist COMPLIANT
