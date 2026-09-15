@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 19:11
+bijgewerkt: 2026-09-15 19:37
 opgepakt-door: leerlingzorg
 branch: ticket/FB-008-leerlingzorg
 pr:
@@ -81,3 +81,4 @@ Geen.
 - 2026-09-15 19:03 · leerlingzorg · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR, waarvan twee opgelost (commentaar, test hoofdleerkracht K3)
 - 2026-09-15 19:07 · leerlingzorg · derde MINOR als test opgelost: RapportleesrijTests laat de leesrij van het rapport alleen op de twee leesroutes toe, zodat FB-006 er geen download mee kan openen (D5)
 - 2026-09-15 19:11 · leerlingzorg · in-uitvoering → te-testen: recht Leerlingzorg gebouwd; alle vijf criteria afgevinkt: tests (unit, PostgreSQL, Vitest) en de browserpas van de eigenaar; antagonist COMPLIANT, drie MINOR opgelost
+- 2026-09-15 19:37 · leerlingzorg · main (FB-020) ingemerged, migratie AddLeerlingzorg opnieuw aangemaakt; daarna groen: unit 1703, PostgreSQL 527 van 528 (de ene is een bestaande flaky test uit FB-013, los van dit ticket), Vitest 907, lint en format schoon
