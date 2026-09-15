@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:01
+bijgewerkt: 2026-09-15 18:11
 opgepakt-door: hoekverrijking
 branch: ticket/FB-020-hoekverrijking-per-subthema
 pr:
@@ -43,15 +43,15 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met drie hoeken en een lopend subthema, wanneer de leerkracht op dat subthema in de subthemabalk
+- [x] Gegeven een klas met drie hoeken en een lopend subthema, wanneer de leerkracht op dat subthema in de subthemabalk
   klikt, dan kan ze voor elk van de drie hoeken een verrijking invullen en bewaren.
-- [ ] Gegeven bewaarde verrijkingen, dan toont de subthemabalk er een voorbeeld van, en de zijbalk toont onder elke
+- [x] Gegeven bewaarde verrijkingen, dan toont de subthemabalk er een voorbeeld van, en de zijbalk toont onder elke
   hoek de verrijking van het subthema van de zichtbare week.
-- [ ] Gegeven een volgende subthemaperiode, dan is de verrijking per hoek leeg tot de leerkracht ze invult; de vorige
+- [x] Gegeven een volgende subthemaperiode, dan is de verrijking per hoek leeg tot de leerkracht ze invult; de vorige
   blijft bewaard.
-- [ ] Gegeven de detailpagina van een hoek, dan staan daar zijn verrijkingen per subthemaperiode.
-- [ ] Gegeven een verrijking, dan staat ze niet als blok op het tijdraster.
-- [ ] Gegeven een andere klas van dezelfde leeftijd, dan ziet die haar eigen verrijkingen, niet die van deze klas.
+- [x] Gegeven de detailpagina van een hoek, dan staan daar zijn verrijkingen per subthemaperiode.
+- [x] Gegeven een verrijking, dan staat ze niet als blok op het tijdraster.
+- [x] Gegeven een andere klas van dezelfde leeftijd, dan ziet die haar eigen verrijkingen, niet die van deze klas.
 
 ## Testscenario's
 
@@ -95,3 +95,4 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 - 2026-09-15 17:21 · hoekverrijking · klaar-voor-bouw → in-uitvoering: opgepakt; eigenaar besliste: oude verrijkingen omzetten naar de overlappende subthemaperiodes (rest weg), periode mee vastleggen bij een subthema zonder vastgelegde periode, bij verwijderen van een subthema het aantal verrijkingen noemen, verrijking ook bewerkbaar in het hoekdetail
 - 2026-09-15 17:46 · hoekverrijking · backend klaar: verrijking per (hoek, subthemaperiode) buiten het jaarplan, route /api/klassen/{id}/hoekverrijkingen (lezen per bereik, bewaren per periode met periode vastleggen), aantal per subthema, migratie zet oude verrijkingen om (ADR-0040 volgt); unit 1632 groen, Postgres-tests voor endpoint, cascade en migratie groen
 - 2026-09-15 18:01 · hoekverrijking · frontend gebouwd: subthemabalk boven het tijdraster met voorbeeld, blad met een veld per hoek (legt de periode vast waar die ontbreekt), verrijking onder elke hoek in de zijbalk, hoekdetail toont en bewerkt per subthemaperiode, aantallen in de verwijderbevestiging van hoek en subthema; ADR-0040; lint schoon, Vitest 823 groen, dotnet format schoon
+- 2026-09-15 18:11 · hoekverrijking · browsercontrole geslaagd (headless Chrome, 1440 en 390, wegwerpdatabank jp_fb020_browser): balk, blad, zijbalk, hoekdetail, periode vastleggen, volgende periode leeg, vorige bewaard, geen blok op het raster, aantallen in beide verwijderbevestigingen, contrast 5,78 tot 13,12:1, console leeg; criteria afgevinkt (AC6 met de service- en Postgres-test); verslag in backlog/worklogs/FB-020/verification.md; antagonist loopt
