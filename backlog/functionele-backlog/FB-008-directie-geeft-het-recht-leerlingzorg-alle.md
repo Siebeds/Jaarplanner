@@ -2,12 +2,12 @@
 id: FB-008
 titel: Directie geeft het recht Leerlingzorg: alle ontwikkelingsrapporten lezen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:39
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 18:27
+opgepakt-door: leerlingzorg
+branch: ticket/FB-008-leerlingzorg
 pr:
 geblokkeerd:
 fr: [FR-13.7, FR-12.2]
@@ -72,3 +72,5 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:39 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 18:27 · eigenaar · nieuw → klaar-voor-bouw: eigenaar zet het ticket klaar voor bouw
+- 2026-09-15 18:27 · leerlingzorg · klaar-voor-bouw → in-uitvoering: opgepakt
