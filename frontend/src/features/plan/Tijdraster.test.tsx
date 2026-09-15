@@ -1,5 +1,6 @@
 import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
@@ -342,7 +343,15 @@ describe("Tijdraster", () => {
    * view, and the phone's three-day week when it is anchored past Monday.
    */
   const lopendeReeks = [
-    { subthemaId: "s1", subthemaNaam: "de speelhoek", van: "2026-09-07", tot: "2026-09-18", aantalDagen: 4 },
+    {
+      subthemaId: "s1",
+      subthemaNaam: "de speelhoek",
+      themaId: "t1",
+      themaNaam: "Ik en mijn klas",
+      van: "2026-09-07",
+      tot: "2026-09-18",
+      aantalDagen: 4,
+    },
   ];
   const midden = {
     magPlannen: true,
@@ -364,11 +373,14 @@ describe("Tijdraster", () => {
     onOpenFiche: () => {},
     onWijzigTijd: () => {},
   };
+  // The bands are links to the themapagina (FB-037), so these rows need a router.
   const toonRij = (datums: string[]) =>
     render(
-      <DndContext>
-        <Tijdraster dagen={datums.map((datum) => dag([], { datum }))} {...midden} />
-      </DndContext>,
+      <MemoryRouter>
+        <DndContext>
+          <Tijdraster dagen={datums.map((datum) => dag([], { datum }))} {...midden} />
+        </DndContext>
+      </MemoryRouter>,
     );
   const themaLabels = () => screen.getAllByText(t("periode.themaVervolg", { naam: "Ik en mijn klas" }));
 
@@ -409,9 +421,11 @@ describe("Tijdraster", () => {
 
   it("hangt dezelfde zin aan de dagknop van de weekweergave", () => {
     render(
-      <DndContext>
-        <Tijdraster dagen={[dag([], { datum: "2026-09-11" })]} {...midden} onKiesDag={() => {}} />
-      </DndContext>,
+      <MemoryRouter>
+        <DndContext>
+          <Tijdraster dagen={[dag([], { datum: "2026-09-11" })]} {...midden} onKiesDag={() => {}} />
+        </DndContext>
+      </MemoryRouter>,
     );
 
     // One control, one reading: the button a screen reader lands on names the date AND what runs on it.

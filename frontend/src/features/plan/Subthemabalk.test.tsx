@@ -1,14 +1,19 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { Subthemabalk } from "./Subthemabalk";
 import type { Subthemareeks } from "./subthemareeksen";
 import type { SubthemaperiodeVerrijkingen } from "../hoeken/gegevens";
 import { t } from "../../i18n";
 import { periode } from "../../lib/datum";
+import { themapaginaPad } from "../themas/themapagina";
 
 /**
  * The subthemabalk above the grid (FB-020): one button per subthema on screen, with a one-line preview of what the
  * hoeken hold while it runs. The preview's branches are pinned, because each may only say what its data proves.
+ *
+ * Since FB-037 it is also the keyboard's way to the themapagina: a link per thema in view, followed by its runs, and a
+ * link beside each run's button to its chapter.
  */
 const HOEKEN = [
   { id: "h-boek", naam: "boekenhoek" },
@@ -16,9 +21,13 @@ const HOEKEN = [
   { id: "h-zand", naam: "zandtafel" },
 ];
 
+const SEIZOENEN = { id: "t-seizoenen", naam: "Seizoenen" };
+
 const herfst: Subthemareeks = {
   subthemaId: "s-herfst",
   subthemaNaam: "De herfst",
+  themaId: SEIZOENEN.id,
+  themaNaam: SEIZOENEN.naam,
   van: "2026-09-14",
   tot: "2026-09-25",
   aantalDagen: 3,
@@ -29,6 +38,8 @@ const herfst: Subthemareeks = {
 const winter: Subthemareeks = {
   subthemaId: "s-winter",
   subthemaNaam: "De winter",
+  themaId: SEIZOENEN.id,
+  themaNaam: SEIZOENEN.naam,
   van: "2026-09-21",
   tot: "2026-10-02",
   aantalDagen: 2,
@@ -50,15 +61,18 @@ const gevuld: SubthemaperiodeVerrijkingen = {
 function toon(opties: Partial<Parameters<typeof Subthemabalk>[0]> = {}) {
   const onOpen = vi.fn();
   render(
-    <Subthemabalk
-      reeksen={[herfst, winter]}
-      verrijkingen={[gevuld]}
-      geladen
-      hoeken={HOEKEN}
-      magPlannen
-      onOpen={onOpen}
-      {...opties}
-    />,
+    <MemoryRouter>
+      <Subthemabalk
+        themas={[SEIZOENEN]}
+        reeksen={[herfst, winter]}
+        verrijkingen={[gevuld]}
+        geladen
+        hoeken={HOEKEN}
+        magPlannen
+        onOpen={onOpen}
+        {...opties}
+      />
+    </MemoryRouter>,
   );
   return { onOpen };
 }
@@ -98,9 +112,58 @@ describe("Subthemabalk", () => {
     expect(screen.getByRole("button", { name: new RegExp(`De winter.*${t("subthemabalk.geen")}`) })).toBeInTheDocument();
   });
 
-  it("tekent niets als er in beeld geen subthema loopt", () => {
-    toon({ reeksen: [] });
+  it("tekent niets als er in beeld geen thema en geen subthema loopt", () => {
+    toon({ themas: [], reeksen: [] });
 
     expect(screen.queryByRole("list")).toBeNull();
+  });
+});
+
+describe("Subthemabalk: de weg naar de themapagina met het toetsenbord (FB-037)", () => {
+  it("linkt naar het thema, en naast de knop van elk subthema naar zijn hoofdstuk", () => {
+    const { onOpen } = toon();
+
+    expect(screen.getByRole("link", { name: t("subthemabalk.naarThema", { naam: "Seizoenen" }) })).toHaveAttribute(
+      "href",
+      themapaginaPad("t-seizoenen"),
+    );
+    const naarHerfst = screen.getByRole("link", { name: t("subthemabalk.naarSubthema", { naam: "De herfst" }) });
+    expect(naarHerfst).toHaveAttribute("href", themapaginaPad("t-seizoenen", "s-herfst"));
+    // Beside the button, never inside it: a link in a button is invalid and unreachable by keyboard.
+    expect(naarHerfst.closest("button")).toBeNull();
+
+    // The link goes; it does not also open the verrijkingen.
+    fireEvent.click(naarHerfst);
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
+  it("zet elk subthema achter zijn thema", () => {
+    const natuur = { id: "t-natuur", naam: "Natuur" };
+    toon({ themas: [natuur, SEIZOENEN], reeksen: [herfst, { ...winter, themaId: natuur.id, themaNaam: natuur.naam }] });
+
+    const rijen = within(screen.getByRole("list")).getAllByRole("listitem");
+    expect(rijen.map((rij) => rij.textContent)).toEqual([
+      "Natuur",
+      expect.stringContaining("De winter"),
+      "Seizoenen",
+      expect.stringContaining("De herfst"),
+    ]);
+  });
+
+  it("toont het thema ook als er in beeld nog geen subthema loopt, en noemt de lijst dan naar wat ze toont", () => {
+    toon({ reeksen: [] });
+
+    expect(screen.getByRole("list", { name: t("subthemabalk.labelThemas") })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: t("subthemabalk.naarThema", { naam: "Seizoenen" }) })).toBeInTheDocument();
+  });
+
+  it("geeft een subthema waarvan het thema in geen periode in beeld staat toch zijn thema", () => {
+    // An activiteit planned between two periodes: no band names its thema, the run itself does.
+    toon({ themas: [], reeksen: [herfst] });
+
+    expect(screen.getByRole("link", { name: t("subthemabalk.naarThema", { naam: "Seizoenen" }) })).toHaveAttribute(
+      "href",
+      themapaginaPad("t-seizoenen"),
+    );
   });
 });

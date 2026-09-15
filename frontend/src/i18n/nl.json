@@ -1122,12 +1122,15 @@
     "sluiten": "Sluiten"
   },
   "subthemabalk": {
-    "label": "Subthema's in beeld, met hun hoekverrijking",
+    "label": "Thema's en subthema's in beeld",
+    "labelThemas": "Thema's in beeld",
     "verrijktEen": "1 hoek:",
     "verrijktAantal": "{aantal} hoeken:",
     "invullen": "Hoekverrijking invullen",
     "bekijken": "Hoekverrijking bekijken",
-    "geen": "Nog geen hoekverrijking"
+    "geen": "Nog geen hoekverrijking",
+    "naarThema": "Open thema {naam}",
+    "naarSubthema": "Open subthema {naam} op de themapagina"
   },
   "verrijkingenblad": {
     "titel": "Hoeken tijdens {naam}",

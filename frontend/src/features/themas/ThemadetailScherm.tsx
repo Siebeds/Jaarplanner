@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
@@ -107,6 +108,9 @@ export function ThemadetailScherm() {
   const beoordeel = useBeoordeelSuggestie(id);
   const navigeer = useNavigate();
   const { mag } = useRechten();
+  // The subthema a link from the agenda asked for (FB-037): its chapter opens on arrival.
+  const [zoek] = useSearchParams();
+  const gevraagdSubthema = zoek.get(SUBTHEMA_PARAMETER);
 
   // The leeftijden a doelsuggestie run searches, once the gebruiker touched the buttons; null follows the subthema's.
   const [leeftijdkeuze, setLeeftijdkeuze] = useState<string[] | null>(null);
@@ -534,6 +538,7 @@ export function ThemadetailScherm() {
             key={subthema.id}
             subthema={subthema}
             mag={mag}
+            gevraagd={subthema.id === gevraagdSubthema}
             koppelenBezig={
               koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
             }

@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import { themaLabel, type Themavak } from "./themavakken";
 import { t } from "../../i18n";
 import { weekdagIndex } from "../../lib/datum";
 import { cn } from "../../lib/cn";
+import { themapaginaPad } from "../themas/themapagina";
 
 /**
  * Which thema this day's themaperiode holds, as a band along the top edge of the day.
@@ -24,8 +26,10 @@ import { cn } from "../../lib/cn";
  * inside an empty period would then be thirty warm bars, and the one hue this app has for a knelpunt
  * would be spent on the calmest possible reading of one. The words carry it.
  *
- * `aria-hidden`, like the strip below it: the day's own button already speaks both facts, once. See
- * `themaZin`.
+ * **A pointer's shortcut to the thema's page** (FB-037, ADR-0042). A band that names a thema is a link a mouse or a
+ * finger can press, on every day it covers. It stays out of the tab order and, like the strip below it, `aria-hidden`:
+ * the day's own button already speaks both facts, once (see `themaZin`), and the subthemabalk above the grid is where a
+ * keyboard reaches the same page, one link per thema instead of one per day.
  */
 export function Themastroken({
   vak,
@@ -60,31 +64,51 @@ export function Themastroken({
   const toonNaam = isStart || weekdagIndex(datum) === 0;
 
   const naam = themaLabel(vak);
+  // The thema the label names first is the one the band opens. With two in a period it reads "Herfst +1", and the
+  // other is one of the thema links in the subthemabalk. An empty period names nothing, so it opens nothing.
+  const genoemd = vak.themas.at(0);
+
+  const band = cn(
+    "flex min-w-0 flex-1 items-center overflow-hidden border-l-2 font-medium leading-none",
+    leeg ? "bg-lijn text-inkt-zacht" : "bg-lijn-sterk text-inkt",
+    // The tick marks where the period BEGINS. An empty period gets the neutral edge instead of
+    // the accent: the accent means "something starts here", and what starts here is a stretch
+    // of days with nothing in them.
+    isStart ? (leeg ? "border-l-lijn-veld" : "border-l-accent") : leeg ? "border-l-lijn" : "border-l-lijn-sterk",
+    dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
+  );
+
+  const tekst = toonNaam ? (
+    <span className="truncate">{naam}</span>
+  ) : (
+    // Mid band. The month cell drops the word entirely, as its strip does; the week view keeps
+    // it below `xl`, where the seven columns have folded into a stack and there is no row left
+    // for a blank band to continue along. A single column never drops it: see `altijdNaam`.
+    <span className={cn("truncate", !altijdNaam && (dicht ? "hidden" : "xl:hidden"))}>
+      {t("periode.themaVervolg", { naam })}
+    </span>
+  );
 
   return (
     <div aria-hidden="true" className={cn("pointer-events-none flex", className)}>
-      <span
-        className={cn(
-          "flex min-w-0 flex-1 items-center overflow-hidden border-l-2 font-medium leading-none",
-          leeg ? "bg-lijn text-inkt-zacht" : "bg-lijn-sterk text-inkt",
-          // The tick marks where the period BEGINS. An empty period gets the neutral edge instead of
-          // the accent: the accent means "something starts here", and what starts here is a stretch
-          // of days with nothing in them.
-          isStart ? (leeg ? "border-l-lijn-veld" : "border-l-accent") : leeg ? "border-l-lijn" : "border-l-lijn-sterk",
-          dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
-        )}
-      >
-        {toonNaam ? (
-          <span className="truncate">{naam}</span>
-        ) : (
-          // Mid band. The month cell drops the word entirely, as its strip does; the week view keeps
-          // it below `xl`, where the seven columns have folded into a stack and there is no row left
-          // for a blank band to continue along. A single column never drops it: see `altijdNaam`.
-          <span className={cn("truncate", !altijdNaam && (dicht ? "hidden" : "xl:hidden"))}>
-            {t("periode.themaVervolg", { naam })}
-          </span>
-        )}
-      </span>
+      {genoemd ? (
+        <Link
+          to={themapaginaPad(genoemd.id)}
+          tabIndex={-1}
+          draggable={false}
+          // No focus from a press: a ctrl- or middle-click opens a tab and would leave focus on a link nobody can hear.
+          onMouseDown={(e) => e.preventDefault()}
+          // One step further into the ink on hover, and the name underlined: no accent, which here means "starts".
+          className={cn(
+            band,
+            "pointer-events-auto underline-offset-2 transition-colors duration-150 hover:bg-lijn-veld/70 hover:underline",
+          )}
+        >
+          {tekst}
+        </Link>
+      ) : (
+        <span className={band}>{tekst}</span>
+      )}
     </div>
   );
 }
