@@ -180,6 +180,20 @@ describe("RapportdoelenScherm, voor een K3-leerkracht", () => {
     expect(within(blad).queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("laat het laatste subdoel van een bestaand rapportdoel niet weghalen", async () => {
+    const verzoeken = toon(K3_LEERKRACHT);
+    fireEvent.click(
+      await screen.findByRole("button", { name: t("ontwikkelingsrapport.wijzigRapportdoel", { naam: "Luisteren en spreken" }) }),
+    );
+
+    const blad = await screen.findByRole("dialog", { name: t("ontwikkelingsrapport.rapportdoelWijzigen") });
+    fireEvent.click(await within(blad).findByRole("checkbox", { name: /NL\.1/ }));
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(within(blad).getByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.subdoelVerplicht"));
+    expect(verzoeken.some((verzoek) => verzoek.methode === "PUT")).toBe(false);
+  });
+
   it("zegt het als er nog geen beslist K3-subdoel is om te kiezen", async () => {
     toon(K3_LEERKRACHT, []);
     await screen.findByText("Luisteren en spreken");

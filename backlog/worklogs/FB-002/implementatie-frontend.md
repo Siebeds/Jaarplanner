@@ -122,3 +122,18 @@ The round-1 report is `antagonist-ronde-1.md`. The owner answered its MAJOR and 
   - oxlint and `tsc` clean;
   - vitest: 69 files, 682 tests passed.
 - **Browser:** the pass at 1440 and 390 is in `browsercheck.md`, including the stars' contrast in both themes.
+
+## Gates after fix round 1 (on `c2e5ebc`)
+
+- **Backend:**
+  - `dotnet build`: 0 warnings, 0 errors;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - UnitTests: 1596 passed, 4 skipped;
+  - IntegrationTests: 491 passed, 1 skipped (the live KOV import), against the Docker Postgres. The first run failed one
+    test that still created a rapportdoel without a subdoel; it now gets one. A second run was killed for low memory
+    and was run again alone.
+- **Frontend:** oxlint and `tsc` clean; vitest 69 files, 686 tests passed. After the re-audit one test was added (the
+  last subdoel of an existing rapportdoel cannot be unticked and saved, no PUT is sent); its file passes 8 of 8.
+- **Browser:** round 2 in `browsercheck.md`.
+- **Antagonist:** round 2, the re-audit of the one MAJOR, is COMPLIANT (`antagonist-ronde-2.md`). The owner ruled that
+  it is the last round.

@@ -2,10 +2,10 @@
 id: FB-002
 titel: K3-leerkrachten beheren de gedeelde rapportdoelen en de sterrenschaal
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 16:01
+bijgewerkt: 2026-09-15 16:13
 opgepakt-door: kindvolg
 branch: ticket/FB-002-rapportdoelen-sterrenschaal
 pr:
@@ -50,11 +50,11 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een K3-leerkracht, wanneer die een rapportdoel maakt met een titel en er K3-subdoelen aan koppelt, dan ziet elke K3-leerkracht van de school hetzelfde rapportdoel met dezelfde subdoelen.
-- [ ] Gegeven de keuzelijst van subdoelen, dan staan er alleen K3-subdoelen in waarvan het doel aanvaard of manueel is.
-- [ ] Gegeven de sterrenschaal, wanneer een K3-leerkracht een gradatie toevoegt met een label en een kleur uit de vaste lijst, dan toont de schaal elke ster met haar label ernaast, in de gekozen volgorde.
-- [ ] Gegeven een subdoel in een rapportdoel, wanneer het doel ervan geweigerd wordt of het subdoel verwijderd wordt, dan verdwijnt het uit het rapportdoel, en blijft het rapportdoel met zijn titel bestaan.
-- [ ] Gegeven de directie, of een hoofdleerkracht van K3 zonder klastoewijzing op een K3-klas, wanneer die de set of de schaal opent, dan kan die ze bekijken maar niets wijzigen, ook niet via het adres.
+- [x] Gegeven een K3-leerkracht, wanneer die een rapportdoel maakt met een titel en er K3-subdoelen aan koppelt, dan ziet elke K3-leerkracht van de school hetzelfde rapportdoel met dezelfde subdoelen.
+- [x] Gegeven de keuzelijst van subdoelen, dan staan er alleen K3-subdoelen in waarvan het doel aanvaard of manueel is.
+- [x] Gegeven de sterrenschaal, wanneer een K3-leerkracht een gradatie toevoegt met een label en een kleur uit de vaste lijst, dan toont de schaal elke ster met haar label ernaast, in de gekozen volgorde.
+- [x] Gegeven een subdoel in een rapportdoel, wanneer het doel ervan geweigerd wordt of het subdoel verwijderd wordt, dan verdwijnt het uit het rapportdoel, en blijft het rapportdoel met zijn titel bestaan.
+- [x] Gegeven de directie, of een hoofdleerkracht van K3 zonder klastoewijzing op een K3-klas, wanneer die de set of de schaal opent, dan kan die ze bekijken maar niets wijzigen, ook niet via het adres.
 
 ## Testscenario's
 
@@ -100,3 +100,4 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 - 2026-09-15 15:38 · kindvolg · eigenaar 2026-09-15: rood en blauw blijven zoals voorgesteld; hij zag dat rood de tint deelt met geweigerd, niet gedekt en gevaar, en blauw met doelsoort MD en voorgesteld
 - 2026-09-15 15:38 · kindvolg · correctie op de regel van 14:50: die browsercheck toonde de subdoelkiezer niet, want de testdatabank had nog geen leerplandoelen; die check volgt in ronde 2 van browsercheck.md
 - 2026-09-15 16:01 · kindvolg · browsercheck ronde 2 op 1440 en 390 met echte K3-subdoelen: kiezen, zoeken, weigering zonder subdoel, ingeklapte lijst; hoofdleerkracht K3 ziet de tab en alleen Rapportdoelen en Sterrenschaal; twee fouten gevonden en hersteld (melding bleef staan na aanvinken, subdoelen te smal op 390); verslag in browsercheck.md
+- 2026-09-15 16:13 · kindvolg · in-uitvoering → te-testen: klaar om te testen: antagonist ronde 2 COMPLIANT, de laatste ronde (eigenaar); bewijs per criterium: 1 en 2 RapportsetEndpointsTests en browsercheck ronde 2; 3 de sterrenschaaltests en browsercheck ronde 1; 4 de lidmaatschaps- en D3-test (geweigerd alleen via het leesfilter, zie 14:07); 5 de rechtentests en de browsercheck (directie, hoofdleerkracht K3, ook via het adres)
