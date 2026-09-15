@@ -2,10 +2,10 @@
 id: FB-002
 titel: K3-leerkrachten beheren de gedeelde rapportdoelen en de sterrenschaal
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
+bijgewerkt: 2026-09-15 10:48
 opgepakt-door:
 branch:
 pr:
@@ -88,3 +88,4 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 10:48 · eigenaar · nieuw → klaar-voor-bouw

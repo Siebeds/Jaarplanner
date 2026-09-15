@@ -2,10 +2,10 @@
 id: FB-001
 titel: K3-leerkracht beheert de kinderen van de klas, via een nieuwe tab onderaan de zijbalk
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
+bijgewerkt: 2026-09-15 10:48
 opgepakt-door:
 branch:
 pr:
@@ -97,3 +97,4 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 10:48 · eigenaar · nieuw → klaar-voor-bouw
