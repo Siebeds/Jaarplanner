@@ -15,11 +15,18 @@ import { volleDag } from "../../lib/datum";
  * drag uses and for that day only. And the delete's cost is said only where it is true: when this is the fiche's
  * only period and the fiche carries goals.
  */
-const moment = (id: string, datum: string, begin: string, einde: string): AlgemeneFichemomentWeergave => ({
+const moment = (
+  id: string,
+  datum: string,
+  begin: string,
+  einde: string,
+  tekst: string | null = null,
+): AlgemeneFichemomentWeergave => ({
   id,
   datum,
   begin,
   einde,
+  tekst,
 });
 
 // Four Mondays of turnen; the last one moved to the afternoon.
@@ -57,19 +64,28 @@ function toon({
   enige = false,
   alleenLezen = false,
   doelen,
-}: { momentId?: string | null; enige?: boolean; alleenLezen?: boolean; doelen?: readonly Infodoel[] } = {}) {
+  plaatsing = turnen,
+  onVerwijder = () => {},
+}: {
+  momentId?: string | null;
+  enige?: boolean;
+  alleenLezen?: boolean;
+  doelen?: readonly Infodoel[];
+  plaatsing?: AlgemeneFicheplaatsingWeergave;
+  onVerwijder?: () => void;
+} = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <Algemenefichedetailblad
         open
-        plaatsing={turnen}
+        plaatsing={plaatsing}
         momentId={momentId}
         enigePeriodeMetDoelen={enige}
         doelen={doelen}
         alleenLezen={alleenLezen}
         bezig={false}
-        onVerwijder={() => {}}
+        onVerwijder={onVerwijder}
         onSluit={() => {}}
       />
     </QueryClientProvider>,
@@ -164,6 +180,8 @@ describe("Algemenefichedetailblad", () => {
   it("biedt geen dagvelden aan wanneer het blad een hele periode toont", () => {
     toon({ momentId: null });
     expect(screen.queryByLabelText(t("fichedetail.dag"))).not.toBeInTheDocument();
+    // Nor a day text: there is no particular day.
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("zegt alleen bij de enige periode van een fiche met doelen dat de fiche dan niet meer meetelt", () => {
@@ -173,6 +191,84 @@ describe("Algemenefichedetailblad", () => {
 
     toon({ enige: false });
     expect(screen.queryByText(t("fichedetail.laatstePeriode"))).not.toBeInTheDocument();
+  });
+});
+
+/*
+  FB-022: a text per day. Wero stands every afternoon; opened from one day's block, the sheet carries that day's text,
+  saved for that occurrence only. A reader sees it and cannot change it. Deleting the period asks first when texts would
+  be lost with it.
+*/
+describe("Algemenefichedetailblad: tekst per dag", () => {
+  const dagtekstLabel = (datum: string) => t("fichedetail.dagtekst", { dag: volleDag(datum) });
+  const metTekst: AlgemeneFicheplaatsingWeergave = {
+    ...turnen,
+    momenten: [
+      moment("m-1", "2026-09-07", "13:15:00", "14:00:00", "Kapla: een toren bouwen."),
+      moment("m-2", "2026-09-14", "13:15:00", "14:00:00", "Buiten met de fietsjes."),
+      moment("m-3", "2026-09-21", "13:15:00", "14:00:00"),
+    ],
+  };
+
+  it("bewaart de tekst voor alleen de dag waarop ze het blad opende", async () => {
+    toon({ momentId: "m-2" });
+
+    const veld = screen.getByLabelText(dagtekstLabel("2026-09-14"));
+    const bewaar = screen.getByRole("button", { name: t("fichedetail.dagtekstBewaren") });
+    expect(bewaar).toBeDisabled();
+
+    fireEvent.change(veld, { target: { value: "  We bouwen een toren met kapla.  " } });
+    fireEvent.click(bewaar);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [pad, init] = fetchMock.mock.calls[0];
+    expect(pad).toBe("/api/algemene-ficheplaatsingen/p-1/momenten/m-2/tekst");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body)).toEqual({ tekst: "We bouwen een toren met kapla." });
+  });
+
+  it("vult het veld met de bewaarde tekst van die dag", () => {
+    toon({ momentId: "m-1", plaatsing: metTekst });
+
+    expect(screen.getByLabelText(dagtekstLabel("2026-09-07"))).toHaveValue("Kapla: een toren bouwen.");
+  });
+
+  it("toont de tekst aan wie de klas alleen mag bekijken, zonder veld", () => {
+    toon({ momentId: "m-1", plaatsing: metTekst, alleenLezen: true });
+
+    expect(screen.getByText("Kapla: een toren bouwen.")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByRole("button", { name: t("fichedetail.dagtekstBewaren") })).toBeNull();
+  });
+
+  it("zegt aan wie alleen mag bekijken dat er voor die dag nog niets staat", () => {
+    toon({ momentId: "m-3", plaatsing: metTekst, alleenLezen: true });
+
+    expect(screen.getByText(t("fichedetail.dagtekstLeeg"))).toBeInTheDocument();
+  });
+
+  it("vraagt eerst of de periode weg mag wanneer er teksten mee verloren gaan, met het aantal", () => {
+    const onVerwijder = vi.fn();
+    toon({ momentId: "m-3", plaatsing: metTekst, onVerwijder });
+
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.verwijder") }));
+
+    expect(screen.getByRole("dialog", { name: t("fichedetail.bevestigTitel") })).toBeInTheDocument();
+    expect(screen.getByText(t("fichedetail.bevestigTeksten", { aantal: 2 }))).toBeInTheDocument();
+    expect(onVerwijder).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bevestigLabel") }));
+    expect(onVerwijder).toHaveBeenCalledTimes(1);
+  });
+
+  it("haalt een periode zonder teksten meteen weg, zoals voorheen", () => {
+    const onVerwijder = vi.fn();
+    toon({ onVerwijder });
+
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.verwijder") }));
+
+    expect(onVerwijder).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("dialog", { name: t("fichedetail.bevestigTitel") })).toBeNull();
   });
 });
 

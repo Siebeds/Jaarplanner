@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:08
+bijgewerkt: 2026-09-15 16:31
 opgepakt-door: fichetekst
 branch: ticket/FB-022-fiche-dagtekst
 pr:
@@ -64,3 +64,5 @@ algemene fiche.
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 16:07 · eigenaar · nieuw → klaar-voor-bouw: naar klaar-voor-bouw op vraag van de eigenaar; open vraag beslist: waarschuwen bij verwijderen van een plaatsing met teksten
 - 2026-09-15 16:08 · fichetekst · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 16:23 · fichetekst · gebouwd: tekst per fichemoment (max 500 tekens, leeg = wissen) met eigen endpoint en recht KlasplanningBewerken, tekst op het blok waar plaats is, bevestiging met aantal bij weghalen van een periode met teksten; unit- en frontendtests groen
+- 2026-09-15 16:31 · fichetekst · gates: 30 unit (fiches), 471 integratie (1 overgeslagen: live KOV), 614 frontendtests groen; dotnet format en pnpm lint schoon

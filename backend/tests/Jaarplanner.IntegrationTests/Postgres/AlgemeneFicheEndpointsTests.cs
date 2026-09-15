@@ -109,6 +109,55 @@ public sealed class AlgemeneFicheEndpointsTests : IAsyncLifetime
         Assert.Contains("maandag tot vrijdag", await antwoord.Content.ReadAsStringAsync());
     }
 
+    /// <summary>
+    /// FB-022's first two acceptance criteria over HTTP: wero every afternoon of one week, a text on Tuesday, read back
+    /// the way the agenda reads it, and still there after the block moved to a later hour.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_tekst_voor_dinsdag_staat_na_herladen_alleen_bij_dinsdag_en_blijft_bij_verplaatsen()
+    {
+        var klasId = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var fiche = (await (await client.PostAsJsonAsync($"/api/klassen/{klasId}/algemene-fiches", new { naam = "Wero" }))
+            .Content.ReadFromJsonAsync<FicheDto>())!;
+        var plaatsing = (await (await client.PostAsJsonAsync($"/api/klassen/{klasId}/algemene-ficheplaatsingen", new
+        {
+            algemeneFicheId = fiche.Id,
+            van = "2026-09-07",
+            tot = "2026-09-11",
+            weekdagen = new[] { 1, 2, 3, 4, 5 },
+            begin = "13:15:00",
+            einde = "14:00:00",
+        })).Content.ReadFromJsonAsync<PlaatsingDto>())!;
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == "2026-09-08");
+        var tekstpad = $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/momenten/{dinsdag.Id}/tekst";
+
+        (await client.PutAsJsonAsync(tekstpad, new { tekst = "We bouwen een toren met kapla." })).EnsureSuccessStatusCode();
+
+        var momenten = await WeekAsync(client, klasId);
+        Assert.Equal("We bouwen een toren met kapla.", momenten.Single(m => m.Id == dinsdag.Id).Tekst);
+        Assert.All(momenten.Where(m => m.Id != dinsdag.Id), m => Assert.Null(m.Tekst));
+
+        (await client.PutAsJsonAsync(
+            $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/momenten/{dinsdag.Id}",
+            new { datum = "2026-09-08", begin = "13:30:00", einde = "14:15:00" })).EnsureSuccessStatusCode();
+
+        var verplaatst = (await WeekAsync(client, klasId)).Single(m => m.Id == dinsdag.Id);
+        Assert.Equal(("13:30:00", "We bouwen een toren met kapla."), (verplaatst.Begin, verplaatst.Tekst));
+
+        var teLang = await client.PutAsJsonAsync(tekstpad, new { tekst = new string('a', 501) });
+        Assert.Equal(HttpStatusCode.BadRequest, teLang.StatusCode);
+        Assert.Contains("hoogstens 500 tekens", await teLang.Content.ReadAsStringAsync());
+
+        // Emptied, the day is empty again.
+        (await client.PutAsJsonAsync(tekstpad, new { tekst = "" })).EnsureSuccessStatusCode();
+        Assert.Null((await WeekAsync(client, klasId)).Single(m => m.Id == dinsdag.Id).Tekst);
+    }
+
+    private static async Task<List<MomentDto>> WeekAsync(HttpClient client, Guid klasId) =>
+        (await client.GetFromJsonAsync<List<PlaatsingDto>>(
+            $"/api/klassen/{klasId}/algemene-ficheplaatsingen?van=2026-09-07&tot=2026-09-11"))!.Single().Momenten;
+
     private static async Task<DoelDto> DoelAsync(HttpClient client, Guid klasId, string code)
     {
         var dekking = await client.GetFromJsonAsync<DekkingDto>($"/api/klassen/{klasId}/dekking");
@@ -137,7 +186,7 @@ public sealed class AlgemeneFicheEndpointsTests : IAsyncLifetime
 
     private sealed record PlaatsingDto(Guid Id, List<MomentDto> Momenten);
 
-    private sealed record MomentDto(Guid Id, string Datum, string Begin, string Einde);
+    private sealed record MomentDto(Guid Id, string Datum, string Begin, string Einde, string? Tekst);
 
     private sealed record DekkingDto(List<DoelDto> Doelen);
 
