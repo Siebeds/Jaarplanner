@@ -20,13 +20,14 @@ import { t } from "./i18n";
  * stubbed `/api/ik`: `App` keeps one query client for the whole file and `ik` never goes stale, so
  * the first answer would be the answer for every test after it.
  */
-const aangemeld = vi.hoisted(() => ({ isDirectie: true }));
+const aangemeld = vi.hoisted(() => ({ isDirectie: true, bekend: true }));
 
 vi.mock("./lib/aanmelding", async (importOriginal) => {
   const echt = await importOriginal<typeof import("./lib/aanmelding")>();
   return {
     ...echt,
-    useIk: () => ({
+    // `bekend: false` is the moment before `/api/ik` answers, which the aanmeldpoort (TB-026) waits on.
+    useIk: () => aangemeld.bekend ? {
       data: {
         id: "ik-1",
         naam: "Test",
@@ -41,12 +42,13 @@ vi.mock("./lib/aanmelding", async (importOriginal) => {
       },
       isPending: false,
       isError: false,
-    }),
+    } : { data: undefined, error: null, isPending: true, isError: false, isFetching: true },
   };
 });
 
 beforeEach(() => {
   aangemeld.isDirectie = true;
+  aangemeld.bekend = true;
   vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
 });
 
@@ -61,6 +63,28 @@ const openOp = (pad: string) => {
 };
 
 describe("App", () => {
+  it("toont alleen de tussenpagina zolang niet bekend is wie aangemeld is", () => {
+    aangemeld.bekend = false;
+    openOp("/agenda");
+
+    expect(screen.getByRole("status")).toHaveTextContent(t("aanmelding.tussenpagina.openen"));
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+
+  // The two pages a sign-in can end on stand outside the aanmeldpoort (TB-026). Inside it they would wait
+  // on the tussenpagina for an answer that, for someone refused, only ever loops through the sign-in.
+  it.each([
+    ["/geen-toegang", "aanmelding.geenToegang.titel"],
+    ["/aanmelden-mislukt", "aanmelding.mislukt.titel"],
+  ] as const)("toont %s buiten de aanmeldpoort, zonder de API te vragen", async (pad, titel) => {
+    aangemeld.bekend = false;
+    openOp(pad);
+
+    expect(await screen.findByRole("heading", { level: 1, name: t(titel) })).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("opent op de agenda en niet op Doelen", async () => {
     openOp("/");
     await waitFor(() => expect(window.location.pathname).toBe("/agenda"));
