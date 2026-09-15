@@ -104,8 +104,9 @@ export function OntwikkelingsrapportScherm() {
         ) : !mag.ontwikkelingsrapportZien ? (
           <Leegte titel={t("ontwikkelingsrapport.geenToegang")} />
         ) : fout ? (
-          // The schooljaren or the klassen did not load: an empty list then proves nothing, so neither sentence below
-          // may be said (antagonist round 2, the E5-03 rule).
+          // The schooljaren or the klassen failed their first load: an empty list then proves nothing, so neither
+          // sentence below may be said (antagonist round 2, the E5-03 rule). The sentence names neither list, since
+          // either one may be the failed one (round 3). A failed refetch keeps its data and does not land here.
           <Foutregel zin={t("ontwikkelingsrapport.selectieLaadFout")} />
         ) : schooljaren.length === 0 ? (
           // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).

@@ -106,6 +106,7 @@
 
 ## Not covered here
 
-- Contrast was not measured; the screen uses existing tokens only (`inkt`, `inkt-zacht`, `accent` on the primary
-  button, `attentie` for errors), each already measured in earlier passes.
+- ~~Contrast was not measured; the screen uses existing tokens only (`inkt`, `inkt-zacht`, `accent` on the primary
+  button, `attentie` for errors), each already measured in earlier passes.~~ *Superseded by the addendum of 2026-09-15
+  above, which measured it in both themes (antagonist round 3, finding H).*
 - The validation error line was not triggered in the browser; the screen test covers it.

@@ -120,3 +120,16 @@ Decisions:
 - frontend oxlint and `tsc` clean;
 - vitest 65 files, 649 tests passed (the 2 new ones included);
 - the backend is unchanged in this round.
+
+## Fix round 3 (antagonist round 3, `antagonist-ronde-3.md`: 0 MAJOR, 3 MINOR)
+
+| Finding | Change |
+| --- | --- |
+| F | `fout` now comes from `isLoadingError`: only a first load that failed, which leaves a list with no data. A failed refetch keeps its data, so the page no longer contradicts its own header, and the form is not unmounted along with what was typed in it. The sentence says only that the page did not load ("Het is niet gelukt deze pagina te laden. Herlaad de pagina."), because either list may be the one that failed. The doc comment and the screen comment were corrected. |
+| G | New `lib/selectie.test.tsx` over a real `QueryClient` with a stubbed `fetch`. It covers four cases: both lists load (no `fout`), the schooljaren fail (`fout`), the klassen fail (`fout`), and a refetch fails with data present (no `fout`, lists kept). |
+| H | The "Contrast was not measured" line in `browsercheck.md` is struck through and marked as superseded by the addendum. |
+
+The antagonist's follow-up belongs to another ticket and is passed to the owner, not built here. Five other screens say
+"no klassen" on an empty list without checking whether the load failed.
+
+**Gates (2026-09-15, fix round 3):** see the ticket Werklog line of this round.
