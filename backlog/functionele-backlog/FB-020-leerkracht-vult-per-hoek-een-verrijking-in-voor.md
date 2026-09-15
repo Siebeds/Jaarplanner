@@ -2,10 +2,10 @@
 id: FB-020
 titel: Leerkracht vult per hoek een verrijking in voor het lopende subthema
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:11
+bijgewerkt: 2026-09-15 18:22
 opgepakt-door: hoekverrijking
 branch: ticket/FB-020-hoekverrijking-per-subthema
 pr:
@@ -96,3 +96,4 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 - 2026-09-15 17:46 · hoekverrijking · backend klaar: verrijking per (hoek, subthemaperiode) buiten het jaarplan, route /api/klassen/{id}/hoekverrijkingen (lezen per bereik, bewaren per periode met periode vastleggen), aantal per subthema, migratie zet oude verrijkingen om (ADR-0040 volgt); unit 1632 groen, Postgres-tests voor endpoint, cascade en migratie groen
 - 2026-09-15 18:01 · hoekverrijking · frontend gebouwd: subthemabalk boven het tijdraster met voorbeeld, blad met een veld per hoek (legt de periode vast waar die ontbreekt), verrijking onder elke hoek in de zijbalk, hoekdetail toont en bewerkt per subthemaperiode, aantallen in de verwijderbevestiging van hoek en subthema; ADR-0040; lint schoon, Vitest 823 groen, dotnet format schoon
 - 2026-09-15 18:11 · hoekverrijking · browsercontrole geslaagd (headless Chrome, 1440 en 390, wegwerpdatabank jp_fb020_browser): balk, blad, zijbalk, hoekdetail, periode vastleggen, volgende periode leeg, vorige bewaard, geen blok op het raster, aantallen in beide verwijderbevestigingen, contrast 5,78 tot 13,12:1, console leeg; criteria afgevinkt (AC6 met de service- en Postgres-test); verslag in backlog/worklogs/FB-020/verification.md; antagonist loopt
+- 2026-09-15 18:22 · hoekverrijking · in-uitvoering → te-testen: gebouwd: verrijking per hoek en subthemaperiode (ADR-0041, na de merge van main; FB-013 nam 0040), subthemabalk met voorbeeld, blad per subthema, verrijking onder elke hoek in de zijbalk, hoekdetail per subthemaperiode, aantallen in de verwijderbevestigingen, oude verrijkingen omgezet; lezen volgt KlasplanningBekijken (FB-013); antagonist COMPLIANT, 4 kleine bevindingen opgelost, 2 genoteerd, 1 vraag aan de eigenaar (backlog/worklogs/FB-020/antagonist.md); gates groen: unit 1645, Postgres-integratie 507, Vitest 849, lint en dotnet format schoon; browsercontrole in verification.md
