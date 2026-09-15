@@ -715,17 +715,18 @@ export function Agendascherm() {
               {/* Two chips since 2026-09-14, one per list, for the reason the sidebar has two switches (owner: "twee
                   secties ... niet gegroepeerd als fiches"), and a third for the activiteiten since 2026-09-15 (FB-017).
                   The fiche chips only for a gebruiker who may plan this klas; the activiteiten chip for everyone who
-                  reads the agenda, whose cards then plan nothing (owner, 2026-09-15). */}
-              {/* None until the rights are known, so the fiche chips do not appear before the activiteiten chip a moment
+                  reads the agenda, whose cards then plan nothing (owner, 2026-09-15). In the sidebar's order: Activiteiten,
+                  Algemene fiches, Hoekenfiches (owner, TB-024). */}
+              {/* None until the rights are known, so the fiche chips do not appear after the activiteiten chip a moment
                   later, as the sidebar does. */}
               {([
+                { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
                 ...(magPlannen
                   ? ([
-                      { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
                       { soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche },
+                      { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
                     ] as const)
                   : []),
-                { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
               ] as const)
                 .filter(() => rechtenBekend)
                 .map(({ soort, label, Icoon }) => {

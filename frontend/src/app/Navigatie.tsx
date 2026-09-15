@@ -64,7 +64,8 @@ import { cn } from "../lib/cn";
  * en algemene fiches, niet gegroepeerd als fiches"): Hoekenfiches and Algemene fiches, one under the other over the
  * same rule. Both open the same column, each on its own list; see `state/hoekenpaneel.ts`. A third, Activiteiten, joined
  * them on 2026-09-15 (FB-017), for the same column. It is the one switch for everyone who reads the agenda: whoever
- * may not plan the klas gets its cards to read and nothing to plan with (owner, 2026-09-15).
+ * may not plan the klas gets its cards to read and nothing to plan with (owner, 2026-09-15). The order is Activiteiten,
+ * Algemene fiches, Hoekenfiches (owner, TB-024), here and in the agenda's phone chips.
  *
  * **Leaving the agenda closes the panel** (owner, 2026-08-31): press a destination and the panel is
  * gone. That reset is not cosmetic. Only `Agendascherm` renders the panel, while the rail here and
@@ -149,27 +150,9 @@ export function Navigatie() {
 
         {/* Only on the routes that have a panel to switch. Never in the bottom bar, hence `hidden`
             with an `lg` opt-in: the phone keeps exactly its five tabs at every route. */}
-        {/* Once the rights are known, so the fiche switches do not appear above the activiteiten one a moment later. */}
+        {/* Once the rights are known, so the fiche switches do not appear under the activiteiten one a moment later. */}
         {opAgenda && !rechtenLaden ? (
           <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-0.5 lg:border-t lg:border-lijn lg:pt-2">
-            {magPlannen ? (
-              <>
-                <Paneelschakelaar
-                  naam={t("hoekenpaneel.titel")}
-                  Icoon={IcoonHoek}
-                  aan={paneelOpen && paneelSoort === "hoeken"}
-                  smal={smal}
-                  onWissel={() => kiesPaneel("hoeken")}
-                />
-                <Paneelschakelaar
-                  naam={t("hoekenpaneel.algemeenTitel")}
-                  Icoon={IcoonFiche}
-                  aan={paneelOpen && paneelSoort === "algemeen"}
-                  smal={smal}
-                  onWissel={() => kiesPaneel("algemeen")}
-                />
-              </>
-            ) : null}
             <Paneelschakelaar
               naam={t("hoekenpaneel.activiteitenTitel")}
               Icoon={IcoonActiviteit}
@@ -177,6 +160,24 @@ export function Navigatie() {
               smal={smal}
               onWissel={() => kiesPaneel("activiteiten")}
             />
+            {magPlannen ? (
+              <>
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.algemeenTitel")}
+                  Icoon={IcoonFiche}
+                  aan={paneelOpen && paneelSoort === "algemeen"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("algemeen")}
+                />
+                <Paneelschakelaar
+                  naam={t("hoekenpaneel.titel")}
+                  Icoon={IcoonHoek}
+                  aan={paneelOpen && paneelSoort === "hoeken"}
+                  smal={smal}
+                  onWissel={() => kiesPaneel("hoeken")}
+                />
+              </>
+            ) : null}
           </li>
         ) : null}
 
@@ -218,7 +219,8 @@ export function Navigatie() {
 }
 
 /**
- * A panel switch (Hoekenfiches, Algemene fiches): the shape of a sidebar item, deliberately not its behaviour.
+ * A panel switch (Activiteiten, Algemene fiches, Hoekenfiches): the shape of a sidebar item, deliberately not its
+ * behaviour.
  *
  * It borrows the geometry of a `Tab` so the sidebar reads as one family: the same height, the same
  * icon size, the same rounding and inset. What it does not borrow is the accent. A destination is
