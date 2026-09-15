@@ -2,12 +2,12 @@
 id: FB-003
 titel: Leerkracht vult het ontwikkelingsrapport van een kind in, per evaluatiemoment
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
 bijgewerkt: 2026-09-15 16:48
-opgepakt-door:
-branch:
+opgepakt-door: rapport-invullen
+branch: ticket/FB-003-rapport-invullen
 pr:
 geblokkeerd:
 fr: [FR-13.3, FR-13.7, FR-13.9]
@@ -84,3 +84,4 @@ Geen.
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-15 16:48 · eigenaar · nieuw → klaar-voor-bouw: klaar voor bouw (eigenaar)
+- 2026-09-15 16:48 · rapport-invullen · klaar-voor-bouw → in-uitvoering: opgepakt
