@@ -26,6 +26,8 @@ const HOEKEN = [hoek("h-boek", "boekenhoek"), hoek("h-bouw", "bouwhoek"), hoek("
 const herfst: Subthemareeks = {
   subthemaId: "s-herfst",
   subthemaNaam: "De herfst",
+  themaId: "t-seizoenen",
+  themaNaam: "Seizoenen",
   van: "2026-09-14",
   tot: "2026-09-25",
   aantalDagen: 4,

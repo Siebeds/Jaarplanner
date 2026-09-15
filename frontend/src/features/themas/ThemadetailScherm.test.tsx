@@ -86,7 +86,10 @@ function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
 }
 
-function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave; overzicht?: ThemaDoelenoverzicht } = {}) {
+function toon(
+  ik: Ik,
+  opties: { weiger?: boolean; thema?: ThemaWeergave; overzicht?: ThemaDoelenoverzicht; pad?: string } = {},
+) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string, init?: RequestInit) => {
@@ -110,7 +113,7 @@ function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave; overzic
   );
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/themas/thema-1"]}>
+      <MemoryRouter initialEntries={[opties.pad ?? "/themas/thema-1"]}>
         <Routes>
           <Route path="themas/:themaId" element={<ThemadetailScherm />} />
         </Routes>
@@ -305,6 +308,26 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
 
     fireEvent.click(hoofdstuk("Bladeren", true));
     expect(screen.queryByText("Eigen spel")).toBeNull();
+  });
+});
+
+describe("ThemadetailScherm: een link vanuit de agenda opent één subthema (FB-037)", () => {
+  it("klapt het gevraagde subthema open, geeft zijn knop de focus en laat de andere ingeklapt", async () => {
+    toon(DIRECTIE, { pad: "/themas/thema-1?subthema=s-l1" });
+    await screen.findByText("Rekenen");
+
+    const rekenen = await waitFor(() => hoofdstuk("Rekenen", true));
+    expect(rekenen).toHaveFocus();
+    expect(screen.getByText("Tellen")).toBeInTheDocument();
+    expect(hoofdstuk("Bladeren", false)).toBeInTheDocument();
+  });
+
+  it("opent niets voor een subthema dat niet bij dit thema hoort", async () => {
+    toon(DIRECTIE, { pad: "/themas/thema-1?subthema=elders" });
+    await screen.findByText("Rekenen");
+
+    expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
+    expect(hoofdstuk("Bladeren", false)).toBeInTheDocument();
   });
 });
 

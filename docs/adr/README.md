@@ -52,6 +52,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0039](0039-ai-knoppen-regenboogring.md) | **A control that calls the AI wears a rainbow ring**: every such control is an `AiKnop` with the wand before its label; a 2px sweep through five stops around the card surface, label in ink; still at rest, a glow on hover, the sweep travels while a run is busy; the AI's proposals keep their suggestiestatus colours (amends 0024 decision 4) | Accepted |
 | [0040](0040-klassen-inkijken-per-jaarfase.md) | **A leerkracht reads the klassen of her own jaarfase**: a hoofdleerkracht those of her appointed jaarfase, themabeheer and directie every klas, a gebruiker without a right none, in every schooljaar (a default); one matrix row, `KlasplanningBekijken`, is the E6-09 seam, on every read of one klas's planning and on the klassen list. Supersedes 0030 default I9; directie's confirmation (question 4) is outstanding | Accepted |
 | [0041](0041-hoekverrijking-per-subthemaperiode.md) | **A hoekverrijking belongs to a hoek and a subthemaperiode**: one text per (hoek, stored subthema window), outside the jaarplan; saving one for a subthema drawn from its activiteiten stores the window first; it goes with its hoek or subthema, counted before the delete; written from the subthemabalk above the grid and from the hoek's detail; old dated verrijkingen converted to the windows they overlapped | Accepted |
+| [0042](0042-stroken-openen-de-themapagina.md) | **The agenda's thema and subthema bands open the themapagina**: links for a pointer on every day, still `aria-hidden` and out of the tab order; a subthema opens its thema's page with its chapter open and in view; the subthemabalk, now above the month too, is the equivalent control with a link per thema and per run (supersedes 0026 decision 5 in part) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -96,6 +97,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0039 | Art. IV.1, XII, II.3; amends 0024 decision 4 | TB-023; the AI tickets still to be built | FR-4, FR-5; NFR-2 |
 | 0040 | Art. VI.1, VI.7, XIV; supersedes 0030 default I9 and narrows its §4 (d) | FB-013 (takes over E6-08 and E6-09) | FR-10.1, FR-10.2 |
 | 0041 | Art. IV.2, IX.3, V.1 (unchanged), VI.1, II.3; replaces the dated verrijking on a hoekplaatsing (2026-08-30, no ADR); reads follow 0040 | FB-020; FB-019, FB-021, E10-01 build on it | FR-3.1 |
+| 0042 | Art. XII, II.3; WCAG 2.2 AA via 0017; supersedes 0026 decision 5 in part | FB-037; E10-01 | FR-6.1 |
 
 ## Open decisions referenced by ADRs
 

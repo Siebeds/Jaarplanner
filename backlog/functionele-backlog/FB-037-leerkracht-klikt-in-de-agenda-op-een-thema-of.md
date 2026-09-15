@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:30
+bijgewerkt: 2026-09-15 19:47
 opgepakt-door: stroken-doorklik
 branch: ticket/FB-037-stroken-doorklik
 pr:
@@ -81,3 +81,4 @@ Geen.
 - 2026-09-15 19:27 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-15 19:29 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 19:30 · stroken-doorklik · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 19:47 · stroken-doorklik · gebouwd: thema- en subthemastroken zijn links (muis en aanraking, zonder tabstop), subthemabalk met themalink en subthemalink per rij ook boven de maand, themapagina opent het gevraagde subthema; ADR-0042 vervangt ADR-0026 beslissing 5 deels; lint schoon, Vitest 884/884 groen

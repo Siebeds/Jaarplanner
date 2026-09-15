@@ -1,6 +1,8 @@
+import { Link } from "react-router-dom";
 import { naamOpDezeDag, type Subthemareeks } from "./subthemareeksen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { themapaginaPad } from "../themas/themapagina";
 
 /**
  * Which subthema is running on this day, as a strip along the top edge of the day.
@@ -21,6 +23,11 @@ import { cn } from "../../lib/cn";
  * `aria-hidden`, because the day's own button already names what is running on it. Two readings of
  * the same fact per cell, across forty cells, is what makes a calendar unusable with a screen
  * reader.
+ *
+ * **A pointer's shortcut to the subthema** (FB-037, ADR-0042). A strip that names a run is a link to its chapter on the
+ * thema's page, on every day it covers; the count that stands in for the runs that did not fit names none, so it opens
+ * none. Out of the tab order, for the reason above: the keyboard's route is the subthemabalk above the grid, one link
+ * per run instead of one per day.
  */
 export function Subthemastroken({
   reeksen,
@@ -63,6 +70,7 @@ export function Subthemastroken({
           dicht={dicht}
           vervolg={!toonNaam}
           tekst={reeks.van === datum ? reeks.subthemaNaam : t("periode.subthemaVervolg", { naam: reeks.subthemaNaam })}
+          naar={themapaginaPad(reeks.themaId, reeks.subthemaId)}
         />
       ))}
       {rest > 0 ? <Strook isStart={false} dicht={dicht} tekst={t("periode.subthemaMeer", { aantal: rest })} /> : null}
@@ -92,26 +100,36 @@ function Strook({
   dicht,
   vervolg,
   tekst,
+  naar,
 }: {
   isStart: boolean;
   dicht?: boolean;
   /** The middle of a run, so this is the label a wide layout can do without. */
   vervolg?: boolean;
   tekst: string;
+  /** Where a press takes a pointer, or nothing for a strip that names no single run. */
+  naar?: string;
 }) {
-  return (
-    <span
-      className={cn(
-        // `lijn` rather than `vlak-diep` for the fill. At a six percent step from the page the four
-        // pixel gutter between two cells stopped reading as a gutter, so a week of strips looked like
-        // one bar spanning the row: it joined a Friday to the Monday after it and claimed the weekend
-        // between them. Measured at 2x in the browser, invisible in a downscaled screenshot.
-        "flex items-center overflow-hidden border-l-2 bg-lijn font-medium leading-none text-inkt-zacht",
-        isStart ? "border-l-accent" : "border-l-lijn",
-        dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
-      )}
-    >
-      {vervolg && dicht ? null : <span className={cn("truncate", vervolg && "xl:hidden")}>{tekst}</span>}
-    </span>
+  const klassen = cn(
+    // `lijn` rather than `vlak-diep` for the fill. At a six percent step from the page the four
+    // pixel gutter between two cells stopped reading as a gutter, so a week of strips looked like
+    // one bar spanning the row: it joined a Friday to the Monday after it and claimed the weekend
+    // between them. Measured at 2x in the browser, invisible in a downscaled screenshot.
+    "flex items-center overflow-hidden border-l-2 bg-lijn font-medium leading-none text-inkt-zacht",
+    isStart ? "border-l-accent" : "border-l-lijn",
+    dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
+    // The same step the thema band takes on hover, one level lighter. The ink firms up with it: the soft ink on the
+    // darker fill measures under 4.5:1.
+    naar &&
+      "pointer-events-auto underline-offset-2 transition-colors duration-150 hover:bg-lijn-sterk hover:text-inkt hover:underline",
+  );
+  const inhoud = vervolg && dicht ? null : <span className={cn("truncate", vervolg && "xl:hidden")}>{tekst}</span>;
+
+  return naar ? (
+    <Link to={naar} tabIndex={-1} draggable={false} className={klassen}>
+      {inhoud}
+    </Link>
+  ) : (
+    <span className={klassen}>{inhoud}</span>
   );
 }

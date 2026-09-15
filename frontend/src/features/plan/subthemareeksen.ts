@@ -14,6 +14,9 @@ import { datumsTussen, maandagVan, valtBinnen, verschuif, weekdagIndex } from ".
 export interface Subthemareeks {
   subthemaId: string;
   subthemaNaam: string;
+  /** The thema the subthema belongs to: its page is where the subthema's own chapter lives (FB-037). */
+  themaId: string;
+  themaNaam: string;
   van: string;
   tot: string;
   /** Days inside the range that actually carry an activiteit of this subthema. */
@@ -80,6 +83,8 @@ export function subthemareeksen(
         reeksen.set(sleutel, {
           subthemaId: activiteit.subthemaId,
           subthemaNaam: activiteit.subthemaNaam,
+          themaId: activiteit.themaId,
+          themaNaam: activiteit.themaNaam,
           van: dag.datum,
           tot: dag.datum,
           aantalDagen: 1,
@@ -101,6 +106,8 @@ export function subthemareeksen(
       reeksen.set(sleutel, {
         subthemaId: periode.subthemaId,
         subthemaNaam: periode.subthemaNaam,
+        themaId: periode.themaId,
+        themaNaam: periode.themaNaam,
         van: periode.van,
         tot: periode.tot,
         // Nothing has touched down in it yet. That is a window waiting for its activiteiten, not an error, and it is

@@ -88,9 +88,10 @@ home for that whole set.
   *Agenda — the doorklik*
   - A rail above the grid lists **every** subthema run in the visible range, one row each: name, run dates, first
     few streefwoorden as chips, and a count. Each row is a single control of at least 24×24 CSS px (SC 2.5.8).
-  - **`Subthemastroken` is not modified.** Its `aria-hidden` and `pointer-events-none` stay. A test asserts the
-    strips are still absent from the accessibility tree, because the tempting fix is to make them the button and
-    it fails three ways at once (ADR-0026 decision 5).
+  - **`Subthemastroken` stays out of the accessibility tree.** Its `aria-hidden` stays and it takes no tab stop; a
+    strip is a pointer-only link to the themapagina ([ADR-0042](../docs/adr/0042-stroken-openen-de-themapagina.md),
+    FB-037), and the rail row is the control a keyboard uses. A test asserts the strips are still absent from the
+    accessibility tree.
   - A run with no streefwoorden yet still gets a row, and the row says so in a way that invites the press. The
     rail may never be conditional on "every activiteit in view belongs to one subthema" — that condition is why
     the old `Maandrooster` chip was deleted.
