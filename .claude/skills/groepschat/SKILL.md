@@ -121,6 +121,7 @@ claim() {  # claim <resource> <session> <why>
 | `file-<path with / as ->` | `file-frontend-src-i18n-nl.json` | before editing a shared file |
 | `port-<n>` | `port-5186` | before starting a dev server |
 | `maintree` | `maintree` | **before any git operation in `C:\source\Jaarplanner` that moves HEAD** |
+| `deploy-azure-demo` | `deploy-azure-demo` | before any write to the Azure demo, including starting, stopping or restarting the app or its database, and so before `deploy-app.ps1`, `migrate-db.ps1` or `seed-demo.ps1` (skill `deploy-demo`, `infra/README.md`) |
 
 **`maintree` is the important one.** The main working tree is shared, it is currently *not*
 on `main`, and a session that switches branches there yanks the floor out from under
