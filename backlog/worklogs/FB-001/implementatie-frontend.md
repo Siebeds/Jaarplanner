@@ -78,7 +78,15 @@ Decisions:
 - **Before round 1:**
   - `pnpm lint` (oxlint + tsc) clean; `pnpm test` 65 files, 647 tests green.
   - Browser pass at 1440 and 390 recorded in `browsercheck.md`.
-- **Fix round 1:** see the ticket Werklog and the round 2 audit.
+- **Fix round 1 (`7cdefc9`, 2026-09-15):**
+  - backend `dotnet build`: 0 warnings, 0 errors;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - `dotnet test`: unit 1561 passed and 4 skipped; integration 480 passed and 1 skipped (the live KOV import, which
+    needs its own opt-in), against the Docker Postgres through `JAARPLANNER_TEST_POSTGRES`;
+  - frontend oxlint and `tsc` clean; vitest 65 files, 647 tests passed.
+  - *The earlier line pointed at "the ticket Werklog and the round 2 audit"; the antagonist rightly called that
+    circular (round 2, finding B), so the figures are here.*
+- **Fix round 2:** see below.
 
 ## Fix round 1 (antagonist round 1, `antagonist-ronde-1.md`)
 
@@ -96,3 +104,32 @@ Decisions:
 | 10 | A dated note in ADR-0030 footnote ⁶. |
 | 11 | `.gitignore` ignores `**/Microsoft.NET.Workload_*.log`. |
 | 12 | The owner ruling above. |
+
+## Fix round 2 (antagonist round 2, `antagonist-ronde-2.md`: 0 MAJOR, 5 MINOR)
+
+| Finding | Change |
+| --- | --- |
+| A | The test's klassen now pin "follow the server" in both directions. A menggroep stated as K2 that the server says can hold children is offered, and a new "K3 zonder kinderen", stated as K3, that the server says cannot is not. A second mapping in the screen fails one of the two. |
+| B | The fix round 1 gate figures are recorded above, not referred to. |
+| C | `browsercheck.md` has a dated addendum: the post-fix directie check on the rebuilt API, the new no-access sentence, and contrast measured in the browser for both themes. The double safe-area inset between the phone card and a part's title is accepted, with the reasoning recorded there. |
+| D | The test name now says what it proves: "zegt wie geen rapport mag lezen dat die geen toegang heeft". |
+| E | `useActieveSelectie` returns `fout` (either list failed to load). The screen shows `selectieLaadFout` before both empty-state branches, so an empty list after a failure is no longer read as "no schooljaar" or "no K3 klas". Two new tests: a real empty list gives `geenSchooljaar`, and a failed load gives the load sentence and neither empty one. The selection mock became replaceable per test (`vi.hoisted`). |
+
+**Gates (2026-09-15, fix round 2):**
+
+- frontend oxlint and `tsc` clean;
+- vitest 65 files, 649 tests passed (the 2 new ones included);
+- the backend is unchanged in this round.
+
+## Fix round 3 (antagonist round 3, `antagonist-ronde-3.md`: 0 MAJOR, 3 MINOR)
+
+| Finding | Change |
+| --- | --- |
+| F | `fout` now comes from `isLoadingError`: only a first load that failed, which leaves a list with no data. A failed refetch keeps its data, so the page no longer contradicts its own header, and the form is not unmounted along with what was typed in it. The sentence says only that the page did not load ("Het is niet gelukt deze pagina te laden. Herlaad de pagina."), because either list may be the one that failed. The doc comment and the screen comment were corrected. |
+| G | New `lib/selectie.test.tsx` over a real `QueryClient` with a stubbed `fetch`. It covers four cases: both lists load (no `fout`), the schooljaren fail (`fout`), the klassen fail (`fout`), and a refetch fails with data present (no `fout`, lists kept). |
+| H | The "Contrast was not measured" line in `browsercheck.md` is struck through and marked as superseded by the addendum. |
+
+The antagonist's follow-up belongs to another ticket and is passed to the owner, not built here. Five other screens say
+"no klassen" on an empty list without checking whether the load failed.
+
+**Gates (2026-09-15, fix round 3):** see the ticket Werklog line of this round.

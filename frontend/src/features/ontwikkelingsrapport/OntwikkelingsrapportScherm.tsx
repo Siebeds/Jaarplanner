@@ -47,7 +47,7 @@ import { Rapportwissel } from "./Rapportwissel";
  */
 export function OntwikkelingsrapportScherm() {
   const { mag, laadt: rechtenLaden, bekend } = useRechten();
-  const { schooljaar, schooljaren, klassen, klasId, laadt, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  const { schooljaar, schooljaren, klassen, klasId, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
 
   const rapportklassen = klassen.filter(
     (kandidaat) => kandidaat.kanLeerlingenHebben && mag.ontwikkelingsrapportLezen(kandidaat.id),
@@ -108,6 +108,11 @@ export function OntwikkelingsrapportScherm() {
           </p>
         ) : !mag.ontwikkelingsrapportZien ? (
           <Leegte titel={t("ontwikkelingsrapport.geenToegang")} />
+        ) : fout ? (
+          // The schooljaren or the klassen failed their first load: an empty list then proves nothing, so neither
+          // sentence below may be said (antagonist round 2, the E5-03 rule). The sentence names neither list, since
+          // either one may be the failed one (round 3). A failed refetch keeps its data and does not land here.
+          <Foutregel zin={t("ontwikkelingsrapport.selectieLaadFout")} />
         ) : schooljaren.length === 0 ? (
           // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).
           <Leegte titel={t("ontwikkelingsrapport.geenSchooljaar")} />

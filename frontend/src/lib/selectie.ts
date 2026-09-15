@@ -12,12 +12,12 @@ import { useSelectie } from "../state/selectie";
  */
 export function useActieveSelectie() {
   const { schooljaarId, klasId, kiesSchooljaar, kiesKlas } = useSelectie();
-  const { data: schooljaren, isPending: schooljarenLaden } = useSchooljaren();
+  const { data: schooljaren, isPending: schooljarenLaden, isLoadingError: schooljarenFout } = useSchooljaren();
 
   const actiefSchooljaarId = schooljaarId ?? schooljaren?.[0]?.id ?? null;
 
   // Narrowed here rather than by the request: the klassen endpoint has no school-year filter.
-  const { data: alleKlassen, isPending: klassenLaden } = useKlassen();
+  const { data: alleKlassen, isPending: klassenLaden, isLoadingError: klassenFout } = useKlassen();
   const klassen = (alleKlassen ?? []).filter((klas) => klas.schooljaarId === actiefSchooljaarId);
 
   // A klas chosen in another school year is not a klas in this one, so the id only counts when the
@@ -33,6 +33,16 @@ export function useActieveSelectie() {
     schooljaren: schooljaren ?? [],
     klassen,
     laadt: schooljarenLaden || klassenLaden,
+    /**
+     * One of the two lists failed to load the first time, so it has no data at all. `laadt` is false then and that list
+     * reads as empty, so a screen that says "there is no schooljaar" or "no klas" on an empty list must ask this first:
+     * an empty list after a failure proves nothing (FB-001, antagonist round 2).
+     *
+     * **A failed refetch does not count** (`isLoadingError`, not `isError`; antagonist round 3). TanStack keeps the
+     * loaded data when a background refetch fails, so the lists are still usable, and a screen that swapped them for a
+     * load sentence would contradict its own header and drop whatever was being typed.
+     */
+    fout: schooljarenFout || klassenFout,
     kiesSchooljaar,
     kiesKlas,
   };
