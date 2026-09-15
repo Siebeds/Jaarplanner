@@ -118,6 +118,18 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
             _context.AlgemeneFicheplaatsingen.AsNoTracking().Where(p => p.Id == plaatsingId).Select(p => p.KlasId),
             cancellationToken);
 
+    /// <summary>The klas with its stated jaarfase, read as two columns: the matrix maps it to leeftijden (FB-013).</summary>
+    public async Task<Klasinzage?> VoorKlasinzageAsync(Guid klasId, CancellationToken cancellationToken = default)
+    {
+        var gevonden = await _context.Klassen
+            .AsNoTracking()
+            .Where(k => k.Id == klasId)
+            .Select(k => new { k.Id, k.Jaarfase })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return gevonden is null ? null : Klasinzage.Voor(gevonden.Id, gevonden.Jaarfase);
+    }
+
     public async Task<Rapportklas?> VoorRapportklasAsync(Guid klasId, CancellationToken cancellationToken = default) =>
         await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken)
             ? new Rapportklas(klasId)

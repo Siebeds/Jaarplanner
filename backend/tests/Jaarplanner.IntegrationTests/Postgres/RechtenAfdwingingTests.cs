@@ -389,19 +389,131 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(niemand.PutAsJsonAsync($"/api/themas/{Guid.NewGuid()}", new { })));
     }
 
-    // --- Jaarplan, agenda en dekking bekijken (R3, R7; I9): every signed-in gebruiker reads every klas. ---
+    // --- Jaarplan, agenda en dekking bekijken en exporteren (R3, R7; FB-013, ADR-0039 Z1-Z6): the own jaarfase. ---
+
+    /// <summary>Every read of one klas's planning, the klas itself included: the routes that carry KlasplanningBekijken.</summary>
+    private static string[] Leespaden(Guid klasId) =>
+    [
+        $"/api/klassen/{klasId}",
+        $"/api/klassen/{klasId}/jaarplan",
+        $"/api/klassen/{klasId}/jaarplan/parameters",
+        $"/api/klassen/{klasId}/jaarplan/weekplanning",
+        $"/api/klassen/{klasId}/dekking",
+        $"/api/klassen/{klasId}/dekking/voortgang",
+        $"/api/klassen/{klasId}/dekking/export",
+        $"/api/klassen/{klasId}/hoeken",
+        $"/api/klassen/{klasId}/hoekplaatsingen",
+        $"/api/klassen/{klasId}/algemene-fiches",
+        $"/api/klassen/{klasId}/algemene-ficheplaatsingen",
+    ];
 
     [PostgresFact]
-    public async Task Lezen_mag_elke_gebruiker_ook_de_planning_van_een_andere_klas_I9()
+    public async Task Een_leerkracht_leest_de_klassen_van_haar_jaarfase_ook_van_vorig_jaar_en_geen_andere_Z1_Z6()
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
+        var vorig = await opzet.VorigSchooljaarAsync();
+        using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+
+        var zichtbaar = await RechtenTestOpzet.KlasIdsAsync(leerkracht);
+        Assert.Contains(school.K3Blauw, zichtbaar);
+        Assert.Contains(school.K3Groen, zichtbaar);
+        Assert.Contains(vorig.K3, zichtbaar);
+        Assert.DoesNotContain(school.K2Rood, zichtbaar);
+        Assert.DoesNotContain(vorig.K2, zichtbaar);
+
+        // Another klas of her jaarfase, this year or last: read, and not written (writing stays "LK eigen").
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.GetAsync($"/api/klassen/{school.K3Groen}/jaarplan")));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.GetAsync($"/api/klassen/{school.K3Groen}/hoeken")));
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.GetAsync($"/api/klassen/{vorig.K3}/dekking")));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(
+            leerkracht.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", new { naam = "bouwhoek" })));
+
+        // A klas of another jaarfase: refused on every read and on the export, also when its address is typed in.
+        foreach (var pad in Leespaden(school.K2Rood).Concat(Leespaden(vorig.K2)))
+        {
+            await RechtenTestOpzet.VerwachtAsync(leerkracht.GetAsync(pad), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        }
+    }
+
+    [PostgresFact]
+    public async Task Een_hoofdleerkracht_zonder_klas_leest_de_klassen_van_haar_jaarfase_en_geen_andere_Z2()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
+
+        var zichtbaar = await RechtenTestOpzet.KlasIdsAsync(hoofdleerkracht);
+        Assert.Contains(school.K2Rood, zichtbaar);
+        Assert.DoesNotContain(school.K3Blauw, zichtbaar);
+        Assert.DoesNotContain(school.K3Groen, zichtbaar);
+
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(hoofdleerkracht.GetAsync($"/api/klassen/{school.K2Rood}/dekking")));
+        await RechtenTestOpzet.VerwachtAsync(
+            hoofdleerkracht.GetAsync($"/api/klassen/{school.K3Blauw}/dekking"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+    }
+
+    [PostgresFact]
+    public async Task Een_leerkracht_met_klassen_in_twee_jaarfasen_leest_de_klassen_van_beide_Z1()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw, school.K2Rood]));
+
+        var zichtbaar = await RechtenTestOpzet.KlasIdsAsync(leerkracht);
+        Assert.Contains(school.K3Blauw, zichtbaar);
+        Assert.Contains(school.K3Groen, zichtbaar);
+        Assert.Contains(school.K2Rood, zichtbaar);
+    }
+
+    [PostgresFact]
+    public async Task Themabeheer_en_directie_lezen_elke_klas_en_wie_geen_recht_heeft_geen_enkele_Z3_Z4_Z5()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
         using var niemand = opzet.Als(await opzet.GebruikerAsync());
 
-        Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync($"/api/klassen/{school.K3Groen}/jaarplan")));
-        Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync($"/api/klassen/{school.K3Groen}/dekking")));
-        Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync($"/api/klassen/{school.K3Groen}/hoeken")));
+        foreach (var client in new[] { themabeheer, directie })
+        {
+            var zichtbaar = await RechtenTestOpzet.KlasIdsAsync(client);
+            Assert.Contains(school.K3Blauw, zichtbaar);
+            Assert.Contains(school.K3Groen, zichtbaar);
+            Assert.Contains(school.K2Rood, zichtbaar);
+            Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.GetAsync($"/api/klassen/{school.K2Rood}/jaarplan")));
+        }
+
+        // Themabeheer reads, but plans no klas it does not teach.
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(
+            themabeheer.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "bouwhoek" })));
+
+        Assert.Empty(await RechtenTestOpzet.KlasIdsAsync(niemand));
+        await RechtenTestOpzet.VerwachtAsync(
+            niemand.GetAsync($"/api/klassen/{school.K3Blauw}/jaarplan"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        // Thema's are shared content, not a klas's planning: still readable (Art. IX.2).
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync("/api/themas")));
+    }
+
+    [PostgresFact]
+    public async Task Hoeken_overnemen_leest_de_bronklas_dus_alleen_uit_een_klas_die_je_mag_inkijken()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        using (var directie = opzet.Directie())
+        {
+            Assert.Equal(HttpStatusCode.Created, await StatusAsync(
+                directie.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "zandtafel" })));
+            Assert.Equal(HttpStatusCode.Created, await StatusAsync(
+                directie.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", new { naam = "poppenhoek" })));
+        }
+
+        using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+        var overnemen = $"/api/klassen/{school.K3Blauw}/hoeken/overnemen";
+
+        await RechtenTestOpzet.VerwachtAsync(
+            leerkracht.PostAsJsonAsync(overnemen, new { vanKlasId = school.K2Rood }), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.PostAsJsonAsync(overnemen, new { vanKlasId = school.K3Groen })));
     }
 
     // --- Een thema verwijderen (R4; default I26): directie; themabeheer only while nothing in it is anyone else's. ---

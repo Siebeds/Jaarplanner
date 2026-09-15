@@ -46,6 +46,12 @@ public interface IRechtenbronnen
     /// <summary>The planning of the klas an algemene ficheplaatsing is in.</summary>
     Task<Klasplanning?> VoorAlgemeneFicheplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// A klas named in the route, as reading its planning needs it: with the leeftijden it stands for (FB-013).
+    /// <c>null</c> when the klas does not exist.
+    /// </summary>
+    Task<Klasinzage?> VoorKlasinzageAsync(Guid klasId, CancellationToken cancellationToken = default);
+
     // --- The ontwikkelingsrapport of one klas (FB-001): its leerlingen, and from FB-003 on its reports. ---
 
     /// <summary>The ontwikkelingsrapport of a klas named in the route. <c>null</c> when the klas does not exist.</summary>
@@ -89,6 +95,41 @@ public sealed record Leeftijdsinhoud(string Leeftijd)
 
 /// <summary>The planning of one klas (jaarplan, (her)generatie, agenda, hoeken, algemene fiches): the "LK eigen" resource.</summary>
 public sealed record Klasplanning(Guid KlasId);
+
+/// <summary>
+/// One klas as <b>reading</b> its planning needs it (FB-013, ADR-0039): the jaarplan, the agenda, the dekking and their
+/// export. The row <c>KlasplanningBekijken</c> asks it: a leerkracht or hoofdleerkracht reads a klas whose leeftijden
+/// include one of their own, and a klastoewijzing reads its own klas.
+/// <para>
+/// <b>A type of its own rather than a <see cref="Klasplanning"/></b>, because it carries the klas's leeftijden and a
+/// planning resource does not: a write row can never be passed by a reading resource's leeftijd, nor a read by a write's.
+/// </para>
+/// <para>
+/// <b>Built only through <see cref="Voor"/></b>, which takes the klas's <b>stated</b> jaarfase and maps it with
+/// <see cref="Domain.Toegang.Leeftijdsrechten.VoorKlas"/>, the one klas→leeftijden mapping of Art. VI.1. So a graadklas
+/// decision (Art. XIV) moves this rule with the leeftijd rights, and a klas without a stated jaarfase stands for no
+/// leeftijd: only its own leerkrachten, themabeheer and directie read it (fail closed, as ADR-0030 I12).
+/// </para>
+/// </summary>
+public sealed record Klasinzage
+{
+    private Klasinzage(Guid klasId, IReadOnlyList<string> leeftijden)
+    {
+        KlasId = klasId;
+        Leeftijden = leeftijden;
+    }
+
+    /// <summary>The klas.</summary>
+    public Guid KlasId { get; }
+
+    /// <summary>The leeftijden this klas stands for, through the one klas→leeftijden mapping. Empty grants no leeftijd.</summary>
+    public IReadOnlyList<string> Leeftijden { get; }
+
+    /// <param name="klasId">The klas.</param>
+    /// <param name="gesteldeJaarfase">The klas's <c>Jaarfase</c> exactly as stored. Never derive it from the leerjaar.</param>
+    public static Klasinzage Voor(Guid klasId, string? gesteldeJaarfase) =>
+        new(klasId, Domain.Toegang.Leeftijdsrechten.VoorKlas(gesteldeJaarfase));
+}
 
 /// <summary>
 /// The ontwikkelingsrapport of one klas: its leerlingen and their reports, the resource of the ontwikkelingsrapport rows

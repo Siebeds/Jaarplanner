@@ -4,6 +4,7 @@ import { Klaskiezer } from "../../app/Klaskiezer";
 import { Segment } from "../../components/ui/Segment";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Leegte } from "../../components/ui/Leegte";
+import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Laadlijst, Laadvlak } from "../../components/ui/Laadvlak";
 import { useDekking } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
@@ -56,7 +57,7 @@ export function DekkingScherm() {
 
       <Schermvlak>
         {!klasId ? (
-          <Leegte titel={t("dekking.geenKlas")} />
+          <Geenklasleegte titel={t("dekking.geenKlas")} />
         ) : isError ? (
           <Leegte titel={t("dekking.fout")} />
         ) : isPending || !data ? (

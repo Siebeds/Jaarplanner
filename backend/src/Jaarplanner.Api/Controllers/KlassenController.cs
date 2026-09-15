@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Authorization;
@@ -16,7 +17,12 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights (E6-02):</b> creating, changing and deleting a klas is the row <c>Beheer</c>, directie only (ADR-0030 R2,
 /// R3, R16). That includes the klas's jaarfase, which the klaskiezer lets a teacher set: since slice 3 only directie
-/// may send it, and the frontend has to hide the field for anyone else (slice 4). Reads stay open (I9).
+/// may send it, and the frontend has to hide the field for anyone else (slice 4).
+/// </para>
+/// <para>
+/// <b>Reads (FB-013, ADR-0039):</b> the row <c>KlasplanningBekijken</c>. The list holds only the klassen it lets the
+/// gebruiker read, so the klaskiezer offers nothing the planning routes would refuse, and one klas is refused like its
+/// planning.
 /// </para>
 /// </summary>
 [ApiController]
@@ -24,14 +30,36 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class KlassenController : ControllerBase
 {
     private readonly IKlasBeheerService _service;
+    private readonly IAuthorizationService _autorisatie;
 
-    public KlassenController(IKlasBeheerService service) => _service = service;
+    public KlassenController(IKlasBeheerService service, IAuthorizationService autorisatie)
+    {
+        _service = service;
+        _autorisatie = autorisatie;
+    }
 
+    /// <summary>
+    /// Every klas the gebruiker may read (FB-013): each is asked the row <c>KlasplanningBekijken</c> on its own
+    /// <see cref="Klasinzage"/>, the same question its planning routes ask, so the list and the routes cannot disagree.
+    /// The rights are read once per request (<c>RechtenService</c>), so the loop costs no query per klas.
+    /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Lijst(CancellationToken cancellationToken) =>
-        Ok(await _service.HaalKlassenOpAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Lijst(CancellationToken cancellationToken)
+    {
+        var zichtbaar = new List<KlasWeergave>();
+        foreach (var klas in await _service.HaalKlassenOpAsync(cancellationToken))
+        {
+            if (await _autorisatie.MagAsync(User, Klasinzage.Voor(klas.Id, klas.Jaarfase), Rechtenmatrix.Beleid.KlasplanningBekijken))
+            {
+                zichtbaar.Add(klas);
+            }
+        }
+
+        return Ok(zichtbaar);
+    }
 
     [HttpGet("{klasId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<KlasWeergave>> Detail(Guid klasId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalKlasOpAsync(klasId, cancellationToken));
 

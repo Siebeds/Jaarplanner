@@ -125,7 +125,7 @@
   Export the school-wide/per-class overviews.
   *Done when:* exported overviews match the screen. Ref: FR-12.3.
 
-- [ ] **E6-08 — Colleagues view each other's plans (read, per rights)**
+- [x] **E6-08 — Colleagues view each other's plans (read, per rights)** — *done by FB-013 ([ADR-0039](../docs/adr/0039-klassen-inkijken-per-jaarfase.md))*
   Teachers can view colleagues' jaarplannen (read-only per permissions) to align.
   *Done when:* a teacher reads another class's plan iff allowed. Ref: FR-10.1.
   *Owner ruling 2026-09-11 (ADR-0030 R7):* a leerkracht can view other klassen. How many is not ruled: the build's default is every other klas (ADR-0030 I9). Directie has not yet confirmed that scope (Art. XIV, FR-10.2), so **build the read access behind the E6-09 seam**: one place decides which klassen a leerkracht may read. That seam, not this story, is what a narrower directie answer changes.
@@ -136,6 +136,7 @@
   *Done when:* the scope rule is configurable per directie decision. Ref: FR-10.2.
   *Narrowed 2026-09-11:* the owner ruled the default (every klas, read-only) and that directie sees everything (ADR-0030 rulings 3 and 7). Whether directie wants it narrower or configurable is still theirs to decide (question 4 in [`docs/besluiten-gevraagd.md`](../docs/besluiten-gevraagd.md)), so this stays `[!]`.
   *Taken over 2026-09-15 by [FB-013](functionele-backlog/FB-013-leerkracht-ziet-alleen-de-klassen-van-haar-eigen.md).* The owner narrowed the scope to the leerkracht's own jaarfase (see E6-08). Directie's confirmation of question 4 is still outstanding, so FB-013 builds the rule in this one seam, where a different directie answer changes one place.
+  *Seam built by FB-013:* the one matrix row `Rechtenmatrix.KlasplanningBekijken` ([ADR-0039](../docs/adr/0039-klassen-inkijken-per-jaarfase.md)). What stays `[!]` is directie's answer, and a setting only if they want one.
 
 ### Eigen inhoud per leerkracht
 

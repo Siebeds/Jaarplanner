@@ -4,12 +4,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../lib/aanmelding";
 import type { KlasWeergave, SchooljaarSamenvatting } from "../lib/types";
 import { t } from "../i18n";
-import { DIRECTIE, ikMet, metIk } from "../test/rechten";
+import { DIRECTIE, NIEMAND, ikMet, metIk } from "../test/rechten";
 import { Klaskiezer } from "./Klaskiezer";
 
 /**
  * The klaskiezer's jaarfase field writes `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Every
  * gebruiker still picks a schooljaar and a klas here, which is a context and not a write.
+ *
+ * Since FB-013 the server offers only the klassen a gebruiker may read, so an empty list is said for who is looking.
  */
 
 const JAAR: SchooljaarSamenvatting = { id: "jaar-1", naam: "2026-2027", start: "2026-09-01", eind: "2027-06-30" };
@@ -25,18 +27,22 @@ const KLAS: KlasWeergave = {
   kanLeerlingenHebben: false,
 };
 
+/** The klassen the mocked selection offers; each test sets it. */
+const selectie = vi.hoisted(() => ({ klassen: [] as KlasWeergave[] }));
+
 vi.mock("../lib/selectie", () => ({
   useActieveSelectie: () => ({
-    klas: KLAS,
+    klas: selectie.klassen[0] ?? null,
     schooljaar: JAAR,
     schooljaren: [JAAR],
-    klassen: [KLAS],
+    klassen: selectie.klassen,
     kiesSchooljaar: () => {},
     kiesKlas: () => {},
   }),
 }));
 
 beforeEach(() => {
+  selectie.klassen = [KLAS];
   vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
 });
 
@@ -50,7 +56,8 @@ function open(ik: Ik) {
       <Klaskiezer />
     </QueryClientProvider>,
   );
-  fireEvent.click(screen.getByRole("button", { name: KLAS.naam }));
+  const knop = selectie.klassen.length > 0 ? KLAS.naam : t("context.geenKlas");
+  fireEvent.click(screen.getByRole("button", { name: knop }));
   return screen.getByRole("dialog");
 }
 
@@ -66,5 +73,34 @@ describe("Klaskiezer", () => {
     const blad = open(DIRECTIE);
 
     expect(within(blad).getByRole("combobox", { name: t("context.jaarFase") })).toBeInTheDocument();
+  });
+
+  describe("zonder klas in de lijst (FB-013)", () => {
+    beforeEach(() => {
+      selectie.klassen = [];
+    });
+
+    it("zegt een gebruiker zonder enig recht waarom er niets te kiezen is", () => {
+      const blad = open(NIEMAND);
+
+      expect(within(blad).getByText(t("context.geenInzage"))).toBeInTheDocument();
+      expect(within(blad).queryByText(t("context.geenKlassen"))).toBeNull();
+    });
+
+    it("zegt een leerkracht niet dat het schooljaar geen klassen heeft, alleen geen die ze mag inkijken", () => {
+      const blad = open(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["andere-klas"] }));
+
+      expect(within(blad).getByText(t("context.geenKlassenInzage"))).toBeInTheDocument();
+      expect(within(blad).queryByText(t("context.geenKlassen"))).toBeNull();
+    });
+
+    it.each([
+      ["directie", DIRECTIE],
+      ["themabeheer", ikMet({ heeftThemabeheer: true })],
+    ])("zegt %s dat het schooljaar nog geen klassen heeft", (_, ik) => {
+      const blad = open(ik);
+
+      expect(within(blad).getByText(t("context.geenKlassen"))).toBeInTheDocument();
+    });
   });
 });

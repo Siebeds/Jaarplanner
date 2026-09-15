@@ -69,6 +69,9 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   StreefwoordenschatAanpassen: ["Directie", "HL", "LK leeftijd"],
   GedeeldeActiviteitBewerken: ["Directie", "HL", "LK leeftijd"],
   KlasplanningBewerken: ["Directie", "LK eigen"],
+  // FB-013 (ADR-0039 Z1-Z5): a K3 klas is read by its own leerkracht, the leerkrachten and hoofdleerkrachten of K3,
+  // themabeheer and directie. Not by another leeftijd, and not by a gebruiker without a right.
+  KlasplanningBekijken: ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"],
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
   OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij"],
   LeerlingenBeheren: ["Directie", "LK rapport"],
@@ -76,6 +79,7 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
 function bronVoor(rij: Rij): Rechtbron | undefined {
+  if (rij === "KlasplanningBekijken") return { soort: "klasinzage", klasId: EIGEN_KLAS, leeftijden: [LEEFTIJD] };
   if (rij === "KlasplanningBewerken") return { soort: "klas", klasId: EIGEN_KLAS };
   if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren") return { soort: "rapportklas", klasId: EIGEN_KLAS };
   const kolommen = RECHTENMATRIX[rij];
@@ -103,8 +107,8 @@ describe("de rechtenmatrix van de frontend", () => {
   it("heeft een verwachting voor elke rij, en elke rij van de server", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
-    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty rows since FB-001 added the two report rows.
-    expect(rijen).toHaveLength(20);
+    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty-one rows since FB-013 added the read row.
+    expect(rijen).toHaveLength(21);
   });
 
   it("geeft een leerkracht de kinderen van een andere K3-klas niet, en de klasplanning geen rapport (R17)", () => {
@@ -285,6 +289,48 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(tb.menselijkeBeslissingenVerwijderen).toBe(false);
     expect(tb.curriculumbeheer).toBe(false);
     expect(tb.schoolcontentImporteren).toBe(true);
+  });
+});
+
+describe("een klas inkijken (FB-013, ADR-0039)", () => {
+  const inzage = (klasId: string, leeftijden: string[]): Rechtbron => ({ soort: "klasinzage", klasId, leeftijden });
+
+  it("leest geen klas van een andere jaarfase, behalve voor themabeheer en directie", () => {
+    const k2 = inzage(ANDERE_KLAS, ["K2"]);
+    for (const relatie of ["HL", "LK leeftijd", "LK eigen", "Ander"]) {
+      expect(staatToe(RELATIES[relatie], "KlasplanningBekijken", k2)).toBe(false);
+    }
+    expect(staatToe(RELATIES.TB, "KlasplanningBekijken", k2)).toBe(true);
+    expect(staatToe(RELATIES.Directie, "KlasplanningBekijken", k2)).toBe(true);
+  });
+
+  it("leest de eigen klas ook als ze voor geen leeftijd staat, en een klas zonder leeftijd verder niet", () => {
+    expect(staatToe(RELATIES["LK eigen"], "KlasplanningBekijken", inzage(EIGEN_KLAS, []))).toBe(true);
+    expect(staatToe(RELATIES["LK leeftijd"], "KlasplanningBekijken", inzage(ANDERE_KLAS, []))).toBe(false);
+  });
+
+  it("opent met een leesbron geen schrijfrij", () => {
+    const alles = ik({ hoofdleerkrachtLeeftijden: [LEEFTIJD], leerkrachtLeeftijden: [LEEFTIJD], eigenKlasIds: [EIGEN_KLAS] });
+    const bron = inzage(EIGEN_KLAS, [LEEFTIJD]);
+    expect(staatToe(alles, "KlasplanningBewerken", bron)).toBe(false);
+    expect(staatToe(alles, "SubthemaBeheren", bron)).toBe(false);
+    expect(staatToe(alles, "KlasplanningBekijken", { soort: "klas", klasId: EIGEN_KLAS })).toBe(false);
+  });
+
+  it("zegt dat iemand alle klassen inkijkt alleen voor directie en themabeheer", () => {
+    expect(magVoor(RELATIES.Directie).alleKlassenInzien).toBe(true);
+    expect(magVoor(RELATIES.TB).alleKlassenInzien).toBe(true);
+    for (const relatie of ["HL", "LK leeftijd", "LK eigen", "Ander"]) {
+      expect(magVoor(RELATIES[relatie]).alleKlassenInzien).toBe(false);
+    }
+  });
+
+  it("zegt dat iemand geen enkele klas inkijkt alleen zonder enige relatie, en niet voor /api/ik antwoordt", () => {
+    expect(magVoor(RELATIES.Ander).geenKlasInzien).toBe(true);
+    for (const relatie of ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"]) {
+      expect(magVoor(RELATIES[relatie]).geenKlasInzien).toBe(false);
+    }
+    expect(magVoor(undefined).geenKlasInzien).toBe(false);
   });
 });
 

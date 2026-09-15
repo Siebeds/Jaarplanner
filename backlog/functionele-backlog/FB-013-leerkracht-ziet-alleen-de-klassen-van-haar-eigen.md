@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:28
+bijgewerkt: 2026-09-15 17:00
 opgepakt-door: zichtbaarheid
 branch: ticket/FB-013-klassen-eigen-jaarfase
 pr:
@@ -85,3 +85,4 @@ Dit ticket neemt het werk van story E6-08 en E6-09 over.
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 16:27 · eigenaar · nieuw → klaar-voor-bouw: vrijgegeven voor de bouw op vraag van de eigenaar
 - 2026-09-15 16:28 · zichtbaarheid · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 17:00 · zichtbaarheid · Gebouwd: rij KlasplanningBekijken (ADR-0039) op elke leesroute van een klas, klassenlijst gefilterd, hoeken overnemen vraagt de bronklas; frontend-zinnen voor een lege lijst en voor wie geen recht heeft; amendement Art. VI.1, VI.7, XIV. Unit 1597 groen, rechten-integratie 45 groen, frontend 743 groen, lint schoon

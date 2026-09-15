@@ -3,6 +3,7 @@ import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Keuze } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
+import { useRechten } from "../../lib/rechten";
 import { t } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 
@@ -39,6 +40,9 @@ export function Hoekovername({
   onSluit: () => void;
 }) {
   const id = useId();
+  // The list holds only the klassen this gebruiker may read (FB-013): "no other klas" is the school's fact only for
+  // whoever reads them all.
+  const { mag } = useRechten();
   const [vanKlasId, setVanKlasId] = useState("");
   const [keuzeFout, setKeuzeFout] = useState(false);
 
@@ -82,7 +86,9 @@ export function Hoekovername({
             not a fault, so it is said plainly and the control above is disabled rather than absent:
             a button that vanishes leaves the teacher wondering what she did. */}
         {klassen.length === 0 ? (
-          <p className="text-body text-inkt-zacht">{t("hoeken.geenAndereKlas")}</p>
+          <p className="text-body text-inkt-zacht">
+            {mag.alleKlassenInzien ? t("hoeken.geenAndereKlas") : t("hoeken.geenAndereKlasInzage")}
+          </p>
         ) : (
           <div>
             <label htmlFor={`${id}-klas`} className="text-meta font-medium text-inkt">
