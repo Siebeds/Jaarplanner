@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
+bijgewerkt: 2026-09-15 21:12
 opgepakt-door:
 branch:
 pr:
@@ -21,8 +21,8 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 
 ## Gewenst gedrag
 
-- In het blad waarin de leerkracht de verrijkingen van een subthemaperiode invult (FB-020), vraagt ze "stel verrijkingen
-  voor".
+- Waar de leerkracht de verrijkingen invult, vraagt ze "stel verrijkingen voor". Sinds FB-038 is dat het zijpaneel
+  Hoekenfiches, met een blad per hoek (zie Open vragen).
 - De AI krijgt het subthema (naam, onderzoeksvragen, subdoelen) en de hoeken van de klas (naam, omschrijving), en stelt per
   hoek een verrijking voor, met een korte motivatie.
 - Per hoek: het voorstel overnemen (en daarna aanpassen), of weigeren. Een voorstel en de beslissing worden bewaard.
@@ -41,7 +41,7 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 
 ## Testscenario's
 
-1. Open de agenda van een K2-klas, klik op het lopende subthema en open de verrijkingen.
+1. Open de agenda van een K2-klas in een week waarin een subthema loopt, en open links Hoekenfiches.
 2. Kies "stel verrijkingen voor". Elke hoek krijgt een voorstel met een motivatie.
 3. Neem het voorstel voor de boekenhoek over en pas een woord aan. Bewaar: het staat als verrijking.
 4. Weiger het voorstel voor de bouwhoek. Zijn verrijking blijft zoals ze was.
@@ -52,9 +52,13 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 
 ## Open vragen
 
+- **Waar staat de knop?** Sinds FB-038 vult de leerkracht een verrijking in via een blad per hoek, vanuit het zijpaneel
+  Hoekenfiches. De knop kan bovenaan het paneel staan (een voorstel voor alle hoeken van het lopende subthema samen), of
+  in het blad van één hoek (een voorstel voor die hoek). Te beslissen in de ontwerpstap.
 - **AI-omgeving:** er is nog geen werkende AI-omgeving (TB-004 wacht op Azure), en de demo draait zonder AI.
 - Hangt af van FB-020.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 21:12 · wensen-hoeken · tekst bijgewerkt na FB-038: invullen gebeurt in het zijpaneel Hoekenfiches; plaats van de knop als open vraag

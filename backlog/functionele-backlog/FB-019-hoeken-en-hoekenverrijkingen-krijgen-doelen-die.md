@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
+bijgewerkt: 2026-09-15 21:12
 opgepakt-door:
 branch:
 pr:
@@ -22,20 +22,24 @@ bewezen werd.
 **Beslissing van de eigenaar, 2026-09-15:** hoeken en hoekenverrijkingen krijgen **doelen, en die tellen mee voor de
 dekking**. Dat vervangt de beslissing van 2026-08-30.
 
+**Sinds FB-038 (2026-09-15)** gaat een hoek niet meer in de agenda: de eigenaar besliste dat hoeken niet meer ingepland
+worden. Wanneer het doel van een hoek meetelt, staat daarom onder Open vragen.
+
 ## Gewenst gedrag
 
 - Een leerkracht van de klas koppelt leerplandoelen aan een hoek van haar klas en aan een verrijking (FB-020), zoals bij
   een algemene fiche. De keuze is beperkt tot de jaarfase van de klas, en elke koppeling is manueel.
-- Een doel van een hoek telt mee voor de dekking van de klas zodra die hoek in haar agenda ingepland is.
+- Een doel van een hoek telt mee voor de dekking van de klas volgens de regel die de eigenaar nog kiest (zie Open
+  vragen).
 - Een doel van een verrijking telt mee zodra die verrijking ingevuld is voor een subthemaperiode in de agenda van de klas.
 - In het dekkingsoverzicht, het vooruitzicht en de export staat zo'n bewijs als hoek of verrijking, nooit als thema.
 - Het doelenregister en de telling bij een Op.stap-herimport kennen deze koppelingen ook.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een hoek met een doel, ingepland in de agenda van de klas, wanneer ik de dekking van die klas open, dan is
-  dat doel gedekt, met de hoek als bewijs.
-- [ ] Gegeven dezelfde hoek, maar niet ingepland, dan is dat doel door de hoek niet gedekt.
+- [ ] Gegeven een hoek met een doel, die volgens de gekozen regel meetelt, wanneer ik de dekking van die klas open, dan
+  is dat doel gedekt, met de hoek als bewijs.
+- [ ] Gegeven dezelfde hoek, maar zonder dat de regel voldaan is, dan is dat doel door de hoek niet gedekt.
 - [ ] Gegeven een verrijking met een doel voor een subthemaperiode in de agenda van de klas, dan is dat doel gedekt, met
   de verrijking als bewijs.
 - [ ] Gegeven een hoek van een andere klas, dan telt zijn doel niet voor deze klas.
@@ -45,19 +49,24 @@ dekking**. Dat vervangt de beslissing van 2026-08-30.
 ## Testscenario's
 
 1. Open Instellingen, Hoeken. Koppel een doel aan de bouwhoek van je klas.
-2. Plan de bouwhoek in je agenda. Open de dekking: het doel is gedekt, met "hoek: bouwhoek" als bewijs.
-3. Verwijder de planning. Het doel is door de hoek niet meer gedekt.
-4. Vul een verrijking in voor een subthemaperiode (FB-020) en koppel er een doel aan. De dekking toont het, met de
-   verrijking als bewijs.
+2. Zorg dat de regel voor een hoek voldaan is (zie Open vragen). Open de dekking: het doel is gedekt, met
+   "hoek: bouwhoek" als bewijs.
+3. Maak de regel ongedaan. Het doel is door de hoek niet meer gedekt.
+4. Vul in het zijpaneel Hoekenfiches een verrijking in voor een subthemaperiode (FB-038) en koppel er een doel aan. De
+   dekking toont het, met de verrijking als bewijs.
 5. Exporteer de dekking. Hoek en verrijking staan erin.
 
 ## Buiten scope
 
 - AI die doelen bij een hoek voorstelt.
-- Doelen per dag of per hoekmoment.
+- Doelen per dag.
 
 ## Open vragen
 
+- **Wanneer telt het doel van een hoek mee?** Tot FB-038 was dat "zodra de hoek ingepland is", maar een hoek wordt niet
+  meer ingepland. Mogelijke regels: zodra de hoek bestaat in de klas; zodra hij een verrijking heeft in een
+  subthemaperiode in de agenda van de klas; of alleen via de doelen van zijn verrijkingen. Te beslissen door de eigenaar
+  vóór de bouw.
 - **Grondwet:** Art. V.1 zegt vandaag welke koppelingen meetellen (een ingepland thema en een ingeplande algemene fiche).
   Die wijziging (Art. XI), en de aanpassing van het hoekmodel in Art. IX.2, horen bij de bouw van dit ticket, vóór de code.
 - Neemt het kopiëren van een hoek naar een andere klas zijn doelen mee? **Standaard** ja.
@@ -66,3 +75,4 @@ dekking**. Dat vervangt de beslissing van 2026-08-30.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 21:12 · wensen-hoeken · tekst bijgewerkt na FB-038: een hoek wordt niet meer ingepland, dus de regel voor het doel van een hoek staat nu als open vraag; testscenario verwijst naar het zijpaneel

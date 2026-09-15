@@ -2,10 +2,10 @@
 id: FB-020
 titel: Leerkracht vult per hoek een verrijking in voor het lopende subthema
 soort: functioneel
-status: te-testen
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:24
+bijgewerkt: 2026-09-15 21:11
 opgepakt-door: hoekverrijking
 branch: ticket/FB-020-hoekverrijking-per-subthema
 pr: 92
@@ -98,3 +98,4 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 - 2026-09-15 18:11 · hoekverrijking · browsercontrole geslaagd (headless Chrome, 1440 en 390, wegwerpdatabank jp_fb020_browser): balk, blad, zijbalk, hoekdetail, periode vastleggen, volgende periode leeg, vorige bewaard, geen blok op het raster, aantallen in beide verwijderbevestigingen, contrast 5,78 tot 13,12:1, console leeg; criteria afgevinkt (AC6 met de service- en Postgres-test); verslag in backlog/worklogs/FB-020/verification.md; antagonist loopt
 - 2026-09-15 18:22 · hoekverrijking · in-uitvoering → te-testen: gebouwd: verrijking per hoek en subthemaperiode (ADR-0041, na de merge van main; FB-013 nam 0040), subthemabalk met voorbeeld, blad per subthema, verrijking onder elke hoek in de zijbalk, hoekdetail per subthemaperiode, aantallen in de verwijderbevestigingen, oude verrijkingen omgezet; lezen volgt KlasplanningBekijken (FB-013); antagonist COMPLIANT, 4 kleine bevindingen opgelost, 2 genoteerd, 1 vraag aan de eigenaar (backlog/worklogs/FB-020/antagonist.md); gates groen: unit 1645, Postgres-integratie 507, Vitest 849, lint en dotnet format schoon; browsercontrole in verification.md
 - 2026-09-15 18:24 · hoekverrijking · PR #92
+- 2026-09-15 21:11 · eigenaar · te-testen → klaar: Beslist door de eigenaar in sessie: FB-020 klaar; het model per hoek en subthemaperiode blijft, de ingang (subthemabalk en blad) wordt vervangen door FB-038 (verrijking in het zijpaneel, hoeken niet meer in de agenda)
