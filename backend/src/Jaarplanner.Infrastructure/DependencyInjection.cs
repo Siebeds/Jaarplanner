@@ -205,6 +205,10 @@ public static class DependencyInjection
         // sibling of the import service that drives the same domain mutators.
         services.AddScoped<ISchoolcontentBeheerService, SchoolcontentBeheerService>();
 
+        // A gebruiker's own woordweb per subthema (FB-036, ADR-0043). Its AI words go through the same IAiClient seam,
+        // so the flow runs against the stub in tests (Art. IV.6).
+        services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
+
         // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
         // IAiClient interface (Application) so it is fakeable with no network in tests; the real
         // implementation is the Azure AI Foundry client (Infrastructure, Art. VIII). Its key/endpoint

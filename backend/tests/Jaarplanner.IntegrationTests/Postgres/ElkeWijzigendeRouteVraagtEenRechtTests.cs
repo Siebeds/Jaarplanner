@@ -38,12 +38,17 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     private static readonly string[] WijzigendeMethoden = ["POST", "PUT", "PATCH", "DELETE"];
 
     /// <summary>
-    /// Write routes deliberately open to every signed-in gebruiker, keyed "METHOD route", each with the ADR-0030 §3 row
-    /// that opens it. <b>Empty, and that is the finding:</b> §3 opens no write to every gebruiker today. The one row that
-    /// grants "Ander" a write is personal content (R6), and nothing of it is built (E6-10). Signing out is anonymous and
-    /// pinned by <c>ElkeRouteVraagtEenSessieTests</c>.
+    /// Write routes deliberately open to every signed-in gebruiker, keyed "METHOD route", each with the ruling that opens
+    /// it. <b>One:</b> adding words to one's own woordweb, the personal content of ADR-0043 (D2). That route takes the web
+    /// from the caller's session and never from the body, so it reaches no one else's; every action on a web by its id is
+    /// the <c>WoordwebBewerken</c> row, and the sweep sends those a web that is not the caller's. Signing out is anonymous
+    /// and pinned by <c>ElkeRouteVraagtEenSessieTests</c>.
     /// </summary>
-    private static readonly Dictionary<string, string> OpenVoorIedereen = new(StringComparer.Ordinal);
+    private static readonly Dictionary<string, string> OpenVoorIedereen = new(StringComparer.Ordinal)
+    {
+        ["POST api/subthemas/{subthemaId:guid}/woordwebs/eigen/woorden"] =
+            "one's own woordweb (ADR-0043 D2): created for the caller, from the session, never for an id in the body",
+    };
 
     /// <summary>
     /// Routes whose rights resource is read from the body, so the check runs after binding and the sweep must send a
@@ -268,6 +273,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         "ficheId" => zaad.FicheId.ToString(),
         "leerlingId" => zaad.LeerlingId.ToString(),
         "runId" => zaad.RunId.ToString(),
+        "woordwebId" => zaad.WoordwebId.ToString(),
         "plaatsingId" when route.StartsWith("api/hoekplaatsingen/", StringComparison.Ordinal) => zaad.HoekplaatsingId.ToString(),
         "plaatsingId" when route.StartsWith("api/algemene-ficheplaatsingen/", StringComparison.Ordinal) => zaad.FicheplaatsingId.ToString(),
         "blokStart" => "2026-09-07",
@@ -316,6 +322,12 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         // A child in the K3 klas (FB-001), so the leerling routes are sent one that exists. Made-up name (Art. VI.7).
         var leerlingId = await IdAsync(client.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }));
 
+        // A seeded directeur's own woordweb (FB-036), so the woordweb routes are sent one that exists and is not the
+        // caller's. A seeded one, because a woordweb's owner is a row in gebruikers.
+        using var eigenaar = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        var woordwebId = await IdAsync(eigenaar.PostAsJsonAsync(
+            $"/api/subthemas/{subthemaId}/woordwebs/eigen/woorden", new { woorden = new[] { "regen" } }));
+
         // An open run with one item of each kind it creates, so its item routes are sent the run's own items.
         var run = await RechtenTestOpzet.StartWizardAsync(client);
         var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
@@ -338,7 +350,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             run.Id,
             runSubthemaId,
             runSubdoelId,
-            runActiviteitId);
+            runActiviteitId,
+            woordwebId);
     }
 
     private static async Task<Guid> IdAsync(Task<HttpResponseMessage> verzoek)
@@ -362,5 +375,6 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Guid RunId,
         Guid RunSubthemaId,
         Guid RunSubdoelId,
-        Guid RunActiviteitId);
+        Guid RunActiviteitId,
+        Guid WoordwebId);
 }

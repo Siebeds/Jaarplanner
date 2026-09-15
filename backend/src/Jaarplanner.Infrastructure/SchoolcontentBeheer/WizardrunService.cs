@@ -49,6 +49,9 @@ public sealed class WizardrunService : IWizardrunService
         "Onder dit subthema staan subdoelen of activiteiten die niet in deze wizard aangemaakt zijn. "
         + "Die zouden mee verdwijnen, dus de wizard verwijdert het niet.";
 
+    private const string WoordwebVerdwijnt =
+        "Op dit subthema houdt iemand een woordweb bij. Dat zou mee verdwijnen, dus de wizard verwijdert het niet.";
+
     private const string AndermansInhoudVerhuist =
         "Onder dit subthema staan subdoelen of activiteiten die niet in deze wizard aangemaakt zijn. "
         + "Die zouden mee van leeftijd veranderen, dus de wizard verandert de leeftijd niet.";
@@ -186,6 +189,13 @@ public sealed class WizardrunService : IWizardrunService
         if (HeeftAndermansInhoud(run, onder))
         {
             throw new WizardrunWeigering(AndermansInhoudVerdwijnt);
+        }
+
+        // ADR-0043: a woordweb is someone's personal content and never the run's, so I25 does not reach it. The delete
+        // would cascade to it, and it would also get around D5, the thema delete's own guard, in two steps.
+        if (await _context.Woordwebs.AnyAsync(w => w.SubthemaId == subthemaId, cancellationToken))
+        {
+            throw new WizardrunWeigering(WoordwebVerdwijnt);
         }
 
         // I27: an activiteit the run created may carry a goal link someone linked since (R19). Deleting it removes that

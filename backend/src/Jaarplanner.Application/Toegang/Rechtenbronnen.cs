@@ -59,7 +59,20 @@ public interface IRechtenbronnen
 
     /// <summary>The ontwikkelingsrapport of the klas a leerling is in. <c>null</c> when the leerling does not exist.</summary>
     Task<Rapportklas?> VoorLeerlingAsync(Guid leerlingId, CancellationToken cancellationToken = default);
+
+    // --- Personal content (FB-036): a woordweb. ---
+
+    /// <summary>A woordweb with its owner. <c>null</c> when the woordweb does not exist.</summary>
+    Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default);
 }
+
+/// <summary>
+/// One gebruiker's woordweb (FB-036, ADR-0043): the resource of the <c>WoordwebBewerken</c> row, whose one column is its
+/// owner. A type of its own, so no other row's column can match it and it can match no other row.
+/// </summary>
+/// <param name="WoordwebId">The woordweb.</param>
+/// <param name="EigenaarId">Whose web it is.</param>
+public sealed record Woordwebbron(Guid WoordwebId, Guid EigenaarId);
 
 /// <summary>
 /// Shared content of one leeftijd (a subthema, its subdoelen, its streefwoordenschat, a new activiteit under it): the

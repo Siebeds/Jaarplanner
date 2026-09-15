@@ -2,13 +2,13 @@
 id: FB-036
 titel: Leerkracht brainstormt een eigen woordweb bij een subthema, met AI-voorstellen
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:20
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 19:42
+opgepakt-door: woordweb
+branch: ticket/FB-036-woordweb
+pr: 94
 geblokkeerd:
 fr: [FR-3.1, FR-4.2, FR-4.3]
 ---
@@ -33,23 +33,19 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 - Staat er al minstens één eigen woord in haar web, dan kan ze de AI om woorden vragen. De AI stelt een paar woorden
   voor, elk met een korte motivatie. Ze aanvaardt of weigert elk woord; niets komt in het web zonder dat ze het
   aanvaardt, en wat ze besliste blijft bewaard.
-- Een woord uit haar web kan ze met één klik overnemen in de **streefwoordenschat** van het subthema, als ze die mag
-  aanpassen (elke leerkracht met een klas van die leeftijd, de hoofdleerkrachten en de directie).
 - Een woordweb telt nooit mee voor de dekking.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema, wanneer leerkracht A woorden toevoegt, dan staan ze in haar eigen woordweb; leerkracht B ziet
+- [x] Gegeven een subthema, wanneer leerkracht A woorden toevoegt, dan staan ze in haar eigen woordweb; leerkracht B ziet
   dat web bij hetzelfde subthema met de naam van A, zonder het te kunnen wijzigen.
-- [ ] Gegeven een leeg eigen woordweb, dan kan de leerkracht nog geen AI-voorstellen vragen; na het eerste eigen woord
+- [x] Gegeven een leeg eigen woordweb, dan kan de leerkracht nog geen AI-voorstellen vragen; na het eerste eigen woord
   wel.
-- [ ] Gegeven een AI-vraag, dan krijgt de leerkracht hoogstens vijf woorden, elk als voorstel met een motivatie en elk
+- [x] Gegeven een AI-vraag, dan krijgt de leerkracht hoogstens vijf woorden, elk als voorstel met een motivatie en elk
   apart te aanvaarden of te weigeren; een aanvaard woord staat in het web, een geweigerd woord wordt niet opnieuw
   voorgesteld, en de beslissing is bewaard.
-- [ ] Gegeven een woord in het eigen web, wanneer een leerkracht met een klas van die leeftijd het overneemt, dan staat
-  het in de streefwoordenschat van het subthema; wie de streefwoordenschat niet mag aanpassen, ziet die knop niet.
-- [ ] Gegeven een woordweb, dan verandert geen enkel dekkingscijfer als er woorden bijkomen of verdwijnen.
-- [ ] De AI-logica is getest met een nep-AI-client, en een modelantwoord dat niet aan het afgesproken formaat voldoet,
+- [x] Gegeven een woordweb, dan verandert geen enkel dekkingscijfer als er woorden bijkomen of verdwijnen.
+- [x] De AI-logica is getest met een nep-AI-client, en een modelantwoord dat niet aan het afgesproken formaat voldoet,
   wordt niet getoond en niet bewaard.
 
 ## Testscenario's
@@ -59,14 +55,14 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 2. Voeg drie woorden toe, en plak daarna "wind, regen, wolk". Je ziet zes losse woorden rond de naam van het subthema.
 3. Vraag AI-voorstellen. Hoogstens vijf woorden verschijnen, elk met een motivatie. Aanvaard er twee en weiger er één.
    De twee staan in je web; vraag opnieuw en het geweigerde woord komt niet terug.
-4. Neem een woord over naar de streefwoordenschat. Open het subthema vanuit de agenda: het woord staat in de
-   streefwoorden.
-5. Meld aan als een andere leerkracht. Bij hetzelfde subthema zie je het web van de eerste leerkracht met haar naam, en
+4. Meld aan als een andere leerkracht. Bij hetzelfde subthema zie je het web van de eerste leerkracht met haar naam, en
    geen knoppen om het te wijzigen. Maak je eigen web: beide staan er.
-6. Herhaal stap 1 tot 3 op een smal scherm (~390px).
+5. Herhaal stap 1 tot 3 op een smal scherm (~390px).
 
 ## Buiten scope
 
+- Een woord uit het web overnemen in de streefwoordenschat van het subthema: de streefwoordenschat bestaat nog niet
+  (E10-01 is ontworpen, niet gebouwd). Beslissing van de eigenaar, 2026-09-15: een eigen ticket, na E10-01.
 - Een woordweb aan het thema, of één gedeeld web voor het hele team.
 - Takken of meerdere niveaus in het web.
 - Woorden overnemen in de kern- of rijke woordenschat van het thema.
@@ -78,6 +74,9 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 - **Grondwet (Art. XI), mee te nemen in dit ticket, in een aparte commit:**
   - Art. IV.8 noemt AI-hulp alleen bij stap 2 en 6. Het krijgt stap 3: de AI stelt woorden voor in het woordweb, pas
     na het eerste eigen woord, zodat ze niet vooruitloopt op de leerkracht (goedgekeurd door de eigenaar, 2026-09-15).
+  - Art. IV.4 laat de AI alleen steunen op de gegevens van de school en Op.stap. Het krijgt een uitzondering voor het
+    woordweb: de AI stelt woorden voor uit haar eigen taalkennis, bij het subthema, zijn onderzoeksvragen en de woorden
+    in het web (goedgekeurd door de eigenaar, 2026-09-15).
   - Art. IX.2 krijgt het woordweb op het subthema, als persoonlijke inhoud.
   - ADR-0030 open vraag (a) (wie bezit persoonlijke inhoud en wie ziet ze) wordt voor het woordweb beantwoord: het hoort
     bij de leerkracht, volgt haar over de schooljaren heen, en iedereen kan het lezen. Een nieuwe ADR legt dat vast.
@@ -93,3 +92,10 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 
 - 2026-09-15 18:15 · woordweb · aangemaakt (status nieuw)
 - 2026-09-15 18:20 · eigenaar · nieuw → klaar-voor-bouw: eigenaar wil het meteen samen oppakken
+- 2026-09-15 18:22 · woordweb · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:27 · woordweb · eigenaar: overnemen naar streefwoordenschat uit scope (eigen ticket na E10-01); AI mag vrij woorden voorstellen, met uitzondering in Art. IV.4
+- 2026-09-15 19:12 · woordweb · gebouwd: woordweb per gebruiker en subthema, AI-voorstellen (max 5, motivatie, aanvaard/weiger), recht WoordwebBewerken, migratie Woordwebs; gates groen behalve de flaky Z1_Z6 (los van dit ticket); browsercontrole 19/19 op 1440 en 390px, zie worklogs/FB-036
+- 2026-09-15 19:26 · woordweb · antagonist ronde 1: 1 MAJOR (wizard verwijderde andermans woordweb, omweg rond D5) en 4 MINOR, alle verwerkt; tests groen; her-audit van de MAJOR gevraagd
+- 2026-09-15 19:29 · woordweb · in-uitvoering → te-testen: gebouwd en getest: woordweb per gebruiker en subthema met AI-voorstellen; backend unit 1727 en integratie groen (behalve de flaky Z1_Z6, los van dit ticket), Vitest 871, lint en format schoon; browsercontrole 19/19 op 1440 en 390px; antagonist ronde 2 COMPLIANT
+- 2026-09-15 19:32 · woordweb · PR #94
+- 2026-09-15 19:42 · woordweb · main binnengehaald (FB-020): ADR hernummerd naar ADR-0043, migratie Woordwebs opnieuw gegenereerd na die van hoekverrijking, verwijderbevestiging combineert verrijkingen en woordwebs; tests groen behalve de flaky Z1_Z6

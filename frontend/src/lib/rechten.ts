@@ -42,7 +42,8 @@ export type Rij =
   | "OntwikkelingsrapportLezen"
   | "LeerlingenBeheren"
   | "RapportInvullen"
-  | "RapportsetBewerken";
+  | "RapportsetBewerken"
+  | "WoordwebBewerken";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
@@ -59,7 +60,8 @@ export type Kolom =
   | "HoofdleerkrachtLezen"
   | "LeerkrachtLeeftijdLezen"
   | "LeerkrachtEigenLezen"
-  | "Leerlingzorg";
+  | "Leerlingzorg"
+  | "Eigenaar";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -105,6 +107,8 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so directie's
   // graadklas decision moves this row with it. Directie does NOT pass it: see `ZONDER_DIRECTIE`.
   RapportsetBewerken: ["Rapportsetleerkracht"],
+  // FB-036 (ADR-0043 W2, D3): a woordweb is its owner's; directie passes every row. Keeping one needs no row (D2).
+  WoordwebBewerken: ["Eigenaar"],
 };
 
 /**
@@ -132,7 +136,9 @@ export type Rechtbron =
   /** A klas as the ontwikkelingsrapport rows ask about it: the server's `Rapportklas`. */
   | { soort: "rapportklas"; klasId: string }
   /** A klas as reading its planning asks about it: the server's `Klasinzage`, with the leeftijden the server mapped it to. */
-  | { soort: "klasinzage"; klasId: string; leeftijden: readonly string[] };
+  | { soort: "klasinzage"; klasId: string; leeftijden: readonly string[] }
+  /** A woordweb with its owner: the server's `Woordwebbron` (FB-036). */
+  | { soort: "woordweb"; eigenaarId: string };
 
 /** GUIDs from System.Text.Json are lowercase on every route, so this is equality; the fold only guards a future one. */
 function zelfdeId(a: string, b: string): boolean {
@@ -207,6 +213,9 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     // Leerlingzorg (R18, FB-008): every klas's reports. `=== true`: an answer without the field grants nothing.
     if (kolommen.includes("Leerlingzorg") && ik.heeftLeerlingzorg === true) return true;
   }
+
+  // ADR-0043 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
+  if (kolommen.includes("Eigenaar") && bron?.soort === "woordweb" && zelfdeId(bron.eigenaarId, ik.id)) return true;
 
   return (
     kolommen.includes("LeerkrachtEigen") &&
@@ -332,6 +341,8 @@ export interface Mag {
    * open the set and the scale by address (FB-002 AC5); the tab is not offered to them.
    */
   ontwikkelingsrapportTab: boolean;
+  /** Changing this woordweb and asking the AI for words: its owner, and directie (ADR-0043 W2, D3). */
+  woordwebBewerken: (eigenaarId: string) => boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -405,6 +416,7 @@ export function magVoor(ik: Ik | undefined): Mag {
       // "K3" is the leeftijd of a hoofdleerkracht's appointment, not a klas's jaarfase, so this is no klas→leeftijden
       // mapping (that stays the server's, `Leeftijdsrechten.VoorKlas`).
       hoofdleerkrachtLeeftijden.includes("K3"),
+    woordwebBewerken: (eigenaarId) => rij("WoordwebBewerken", { soort: "woordweb", eigenaarId }),
   };
 }
 

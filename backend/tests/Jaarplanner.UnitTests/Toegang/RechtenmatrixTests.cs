@@ -72,6 +72,9 @@ public sealed class RechtenmatrixTests
         // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
         // running rapportklassen (the D9 function), not the stated jaarfase.
         [Rechtenmatrix.Beleid.RapportsetBewerken] = ["LK K3 lopend"],
+        // FB-036 (ADR-0043 W2, D3): on someone else's woordweb, only directie. Every relation on her own web is the test
+        // Een_woordweb_is_van_zijn_eigenaar below.
+        [Rechtenmatrix.Beleid.WoordwebBewerken] = ["Directie"],
     };
 
     private static readonly string[] ActiviteitRijen =
@@ -531,8 +534,44 @@ public sealed class RechtenmatrixTests
     private static Matrixrij Rij(string beleid) => Rechtenmatrix.Rijen.Single(r => r.Beleid == beleid);
 
     /// <summary>The resource a controller would pass for this row: none for resource-free rows.</summary>
+    // --- A woordweb (FB-036, ADR-0043): personal content, its owner's and directie's. ---
+
+    [Fact]
+    public void Een_woordweb_is_van_zijn_eigenaar_welk_ander_recht_ze_ook_heeft()
+    {
+        var eigen = new Woordwebbron(Guid.NewGuid(), Ik);
+
+        // Every relation, "Ander" included (D2): the owner edits her own web whatever else she holds or lacks.
+        Assert.All(Relaties.Values, rechten => Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.WoordwebBewerken, eigen)));
+    }
+
+    [Fact]
+    public void Andermans_woordweb_wijzigt_alleen_de_directie()
+    {
+        var andermans = new Woordwebbron(Guid.NewGuid(), AnderePersoon);
+        var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
+
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, andermans));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.WoordwebBewerken, andermans));
+    }
+
+    [Fact]
+    public void Een_woordweb_opent_geen_andere_rij_en_de_woordwebrij_opent_geen_andere_bron()
+    {
+        var eigen = new Woordwebbron(Guid.NewGuid(), Ik);
+        var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
+
+        Assert.All(
+            Rechtenmatrix.Rijen.Where(rij => rij.Beleid != Rechtenmatrix.Beleid.WoordwebBewerken && !rij.Kolommen.HasFlag(Kolom.Themabeheer)),
+            rij => Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, eigen)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, new Leeftijdsinhoud(Leeftijd)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, bron: null));
+    }
+
     private static object? BronVoor(Matrixrij rij) => rij.Kolommen switch
     {
+        // Someone else's web: the owner's own is its own test above.
+        _ when rij.Kolommen.HasFlag(Kolom.Eigenaar) => new Woordwebbron(Guid.NewGuid(), AnderePersoon),
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportLezen) || rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportInvullen) =>
             new Rapportklas(EigenKlas),
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtEigenLezen) => Klasinzage.Voor(EigenKlas, Leeftijd),

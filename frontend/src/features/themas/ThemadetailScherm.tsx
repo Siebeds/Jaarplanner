@@ -34,6 +34,7 @@ import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { themabalans } from "./themabalans";
+import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
   useKoppelSubdoel,
@@ -122,6 +123,9 @@ export function ThemadetailScherm() {
   const [teVerwijderenSubthema, setTeVerwijderenSubthema] = useState<SubthemaWeergave | null>(null);
   // What deleting it takes along from the klassen's agenda (FB-020; owner, 2026-09-15: "mee weg, met aantal").
   const verrijkingenWeg = useAantalHoekverrijkingen(teVerwijderenSubthema?.id ?? null);
+  // The woordwebs a subthema delete takes with it (ADR-0043 D4), read only while the confirmation is open. Until they
+  // have arrived the sentence names only what the reads above guarantee.
+  const { data: teVerwijderenWoordwebs } = useWoordwebs(teVerwijderenSubthema?.id ?? null);
   const [activiteitBlad, setActiviteitBlad] = useState<{
     subthemaId: string;
     activiteitId?: string;
@@ -664,8 +668,9 @@ export function ThemadetailScherm() {
         titel={t("subthemabeheer.verwijderTitel", { naam: teVerwijderenSubthema?.naam ?? "" })}
         // The verrijkingen are named once the count is read and above zero. While it is out, the delete waits (the
         // owner's ruling is that the count comes first); if it cannot be read, the sentence says so rather than delete
-        // other klassen's texts without a number.
-        gevolg={
+        // other klassen's texts without a number. The woordwebs (FB-036) follow as a sentence of their own, only once
+        // their count is read and above zero.
+        gevolg={[
           verrijkingenWeg.isError
             ? t("subthemabeheer.verwijderGevolgVerrijkingenOnbekend", {
                 activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
@@ -684,8 +689,13 @@ export function ThemadetailScherm() {
             : t("subthemabeheer.verwijderGevolg", {
                 activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
                 doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
-              })
-        }
+              }),
+          teVerwijderenWoordwebs && teVerwijderenWoordwebs.length > 0
+            ? telWoord(teVerwijderenWoordwebs.length, "woordweb.verwijderGevolgEen", "woordweb.verwijderGevolgMeer")
+            : null,
+        ]
+          .filter((zin) => zin !== null)
+          .join(" ")}
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijderSubthema.isPending || (teVerwijderenSubthema !== null && verrijkingenWeg.isPending)}
         onSluit={() => setTeVerwijderenSubthema(null)}
