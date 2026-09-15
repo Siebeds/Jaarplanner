@@ -2,10 +2,10 @@
 id: FB-001
 titel: K3-leerkracht beheert de kinderen van de klas, via een nieuwe tab onderaan de zijbalk
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 14:43
+bijgewerkt: 2026-09-15 14:57
 opgepakt-door: kindvolg
 branch: ticket/FB-001-kinderen-van-de-klas
 pr:
@@ -105,3 +105,4 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 - 2026-09-15 14:20 · kindvolg · antagonist ronde 2: MAJOR opgelost, 5 MINOR; fixronde 2: test pint 'volg de server' in beide richtingen, een mislukte lading zegt niet meer 'geen schooljaar', contrast gemeten in licht en donker (alles haalt de norm), browseraddendum en controle-uitslagen vastgelegd; frontend 65 bestanden, 649 tests groen
 - 2026-09-15 14:32 · kindvolg · antagonist ronde 3: 3 MINOR; fixronde 3: 'fout' geldt alleen voor een mislukte eerste lading (een mislukte herlading houdt de lijsten en de getypte naam), zin zegt minder, eigen test voor de hook, verouderde regel in het browserverslag doorgehaald; oxlint en tsc schoon, 66 bestanden en 653 tests groen
 - 2026-09-15 14:43 · kindvolg · antagonist ronde 4: F, G en H opgelost (met mutatietests nagegaan), 1 MINOR in een codecommentaar; fixronde 4 past die ene bijzin aan (geen codewijziging)
+- 2026-09-15 14:57 · kindvolg · in-uitvoering → te-testen: klaar om te testen: antagonist ronde 5 COMPLIANT; controles groen (backend 1561 unit en 480 integratie, frontend 66 bestanden en 653 tests, browsercheck op 1440 en 390). Antwoorden op de open vragen (eigenaar 2026-09-15): op de laptop staat de tab boven Instellingen, op de telefoon bereik je het rapport bovenaan Instellingen. Testen met verzonnen namen.
