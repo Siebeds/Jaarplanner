@@ -2,12 +2,12 @@
 id: FB-017
 titel: Activiteiten als derde sectie in de zijbalk van de agenda
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 14:44
+opgepakt-door: FB-017
+branch: ticket/FB-017-activiteiten-in-zijbalk
 pr:
 geblokkeerd:
 fr: [FR-6.2]
@@ -67,9 +67,13 @@ en Algemene fiches.
 
 ## Open vragen
 
-- Moet er onderaan, zoals bij de fiches (TB-015), een tegel met een plus komen om een nieuwe activiteit aan te maken?
+- ~~Moet er onderaan, zoals bij de fiches (TB-015), een tegel met een plus komen om een nieuwe activiteit aan te maken?~~
+  **Beantwoord door de eigenaar, 2026-09-15:** ja, zoals bij de fiches. De tegel opent het bestaande activiteitformulier
+  voor het gekozen subthema.
 - De eigen activiteiten van parallelle collega's verschijnen pas als FB-015 gebouwd is.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 14:44 · eigenaar · nieuw → klaar-voor-bouw: eigenaar gaf in de sessie de opdracht om te bouwen; open vraag beantwoord: ja, een plustegel onderaan zoals bij de fiches (TB-015)
+- 2026-09-15 14:44 · FB-017 · klaar-voor-bouw → in-uitvoering: opgepakt
