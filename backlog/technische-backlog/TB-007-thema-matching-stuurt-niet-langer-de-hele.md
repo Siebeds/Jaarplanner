@@ -5,10 +5,10 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 19:26
+bijgewerkt: 2026-09-15 19:31
 opgepakt-door: prompt-begrenzing
 branch: ticket/TB-007-prompt-begrenzing
-pr:
+pr: 93
 geblokkeerd:
 fr: []
 ---
@@ -94,3 +94,4 @@ Beantwoord door de eigenaar op 2026-09-15:
 - 2026-09-15 19:12 · prompt-begrenzing · gevonden: EfDoelMatchOpslag laadde de subthema's van een thema niet mee, dus de matchingprompt schreef altijd '(nog geen)' subthema's en activiteiten; nu laadt ze subthema's, onderzoeksvragen en activiteiten, nodig voor de standaardjaarfasen
 - 2026-09-15 19:23 · prompt-begrenzing · gates: 1701 unit + 55 integratietests op PostgreSQL (doelsuggesties, thema-opbouw, rechten, referentiedata), 878 frontend-tests, dotnet format en pnpm lint schoon; RechtenAfdwinging faalde één keer en slaagde daarna twee keer 28/28, de wisselvallige teardown van E7-14, los van dit ticket
 - 2026-09-15 19:26 · prompt-begrenzing · browsercontrole op een wegwerpkopie van de dev-databank (volledige Op.stap-import), 1440 en 390 px, licht en donker: thema met K3-subthema duidt alleen K3 aan en de server rekent 535 doelen, ongeveer 23.619 tokens (compacte vorm); thema zonder subthema's: knop uit met hint, na K2 aan, lege aanvraag geeft 400 'Kies eerst ...'; met een testgrens van 1.000 weigert de server met de Nederlandse melding; contrast tekst 5,51 tot 17,78:1, rand van de aangeduide leeftijd 4,21:1 (donker 6,84:1); geen overloop, geen consolefouten. Een geslaagde AI-aanroep is niet in de browser gedaan (Foundry geblokkeerd, zie TB-004); de resultaatregel is met Vitest gedekt
+- 2026-09-15 19:31 · prompt-begrenzing · PR #93
