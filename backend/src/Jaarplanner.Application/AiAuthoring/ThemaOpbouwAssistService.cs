@@ -11,7 +11,9 @@ namespace Jaarplanner.Application.AiAuthoring;
 /// the whole flow runs against fakes with <b>no network and no database</b> in tests (Art. IV.6).
 /// Each hook:
 /// <list type="number">
-/// <item>loads the bounded, read-only Op.stap leerplandoel candidates (grounding + resolvable set);</item>
+/// <item>loads the read-only Op.stap leerplandoel candidates (grounding + resolvable set) of the chosen jaar/fasen, or at
+/// step 6 of the subthema's own leeftijd, and never of the whole catalogue (TB-007); over the prompt ceiling the model
+/// is not called;</item>
 /// <item>builds the grounded authoring prompt (<see cref="ThemaOpbouwPromptBuilder"/>, Art. IV.4);</item>
 /// <item>calls the model through the injected client (E2-01);</item>
 /// <item>parses + validates the raw completion against the structured-JSON contract, <b>reusing the
@@ -28,17 +30,24 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
 {
     private readonly IAiClient _aiClient;
     private readonly ILeerdoelCatalogus _catalogus;
+    private readonly Promptbegrenzing _begrenzing;
 
-    /// <summary>Constructs the service around the injected AI client and leerdoel catalogus (DI / tests).</summary>
-    public ThemaOpbouwAssistService(IAiClient aiClient, ILeerdoelCatalogus catalogus)
+    /// <summary>Constructs the service around the injected AI client, leerdoel catalogus and prompt ceiling (DI / tests).</summary>
+    public ThemaOpbouwAssistService(IAiClient aiClient, ILeerdoelCatalogus catalogus, Promptbegrenzing begrenzing)
     {
         ArgumentNullException.ThrowIfNull(aiClient);
         ArgumentNullException.ThrowIfNull(catalogus);
+        ArgumentNullException.ThrowIfNull(begrenzing);
         _aiClient = aiClient;
         _catalogus = catalogus;
+        _begrenzing = begrenzing;
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The jaar/fasen are required here (TB-007): a thema being authored has no subthema yet to take a leeftijd from, and
+    /// without them the whole catalogue would go into the prompt.
+    /// </remarks>
     public async Task<ThemaOpbouwAdviesResultaat> StelThemadoelenVoorAsync(
         ThemadoelSuggestieVerzoek verzoek,
         CancellationToken cancellationToken = default)
@@ -46,12 +55,23 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
         ArgumentNullException.ThrowIfNull(verzoek);
         ArgumentNullException.ThrowIfNull(verzoek.Thema);
 
-        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(verzoek.Selectie ?? LeerdoelSelectie.Alles, cancellationToken);
+        var basis = verzoek.Selectie ?? new LeerdoelSelectie();
+        var jaarFasen = basis.GekozenJaarFasen();
+        if (jaarFasen.Count == 0)
+        {
+            throw new JaarfaseKeuzeNodigFout("Kies eerst voor welke leeftijden je themadoelen wil laten voorstellen.");
+        }
+
+        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(basis with { JaarFasen = jaarFasen }, cancellationToken);
         var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(verzoek.Thema, leerdoelen);
         return await VoerAssistUitAsync(request, leerdoelen, verzoek.Thema.GekozenThemadoelCodes, cancellationToken);
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Without chosen jaar/fasen the subthema's own leeftijd applies, written in the canonical form (<c>3K</c> becomes
+    /// <c>K3</c>), because the subdoelen are for that one age (Art. IX.2, TB-007).
+    /// </remarks>
     public async Task<ThemaOpbouwAdviesResultaat> StelSubdoelenVoorAsync(
         SubdoelSuggestieVerzoek verzoek,
         CancellationToken cancellationToken = default)
@@ -60,7 +80,16 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
         ArgumentNullException.ThrowIfNull(verzoek.Thema);
         ArgumentNullException.ThrowIfNull(verzoek.Subthema);
 
-        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(verzoek.Selectie ?? LeerdoelSelectie.Alles, cancellationToken);
+        var basis = verzoek.Selectie ?? new LeerdoelSelectie();
+        var gekozen = basis.GekozenJaarFasen();
+        var leeftijd = Jaarfasen.Normaliseer(verzoek.Subthema.Leeftijd ?? string.Empty);
+        IReadOnlyList<string> jaarFasen = gekozen.Count > 0 ? gekozen : leeftijd.Length > 0 ? [leeftijd] : [];
+        if (jaarFasen.Count == 0)
+        {
+            throw new JaarfaseKeuzeNodigFout("Kies eerst voor welke leeftijd je subdoelen wil laten voorstellen.");
+        }
+
+        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(basis with { JaarFasen = jaarFasen }, cancellationToken);
         var request = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(verzoek.Thema, verzoek.Subthema, leerdoelen);
         return await VoerAssistUitAsync(request, leerdoelen, verzoek.Thema.GekozenThemadoelCodes, cancellationToken);
     }
@@ -74,6 +103,8 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
         IReadOnlyCollection<string>? reedsGekozenCodes,
         CancellationToken cancellationToken)
     {
+        // Over the ceiling the model is not called (TB-007).
+        _begrenzing.Bewaak(request, leerdoelen);
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = DoelMatchResponseParser.Parse(completion);
 

@@ -235,13 +235,15 @@ public static class Rechtenmatrix
     /// §3 "Een ontwikkelingsrapport lezen" (ADR-0035 R16, R17, R18, R26), which FB-001 also applies to reading the klas's
     /// leerlingen: the list of children is the first thing a report shows. Resource: <see cref="Rapportklas"/>.
     /// <b>Stricter than <see cref="KlasplanningBekijken"/></b>: reading a klas's planning does not reach these rows, so a
-    /// leerkracht of another klas, a hoofdleerkracht and themabeheer read none of it (R17). Leerlingzorg (R18) joins this row with
-    /// FB-008, as a relation of its own.
+    /// leerkracht of another klas, a hoofdleerkracht and themabeheer read none of it (R17). <b>Leerlingzorg</b> (R18, FB-008)
+    /// reads every klas's reports, of every schooljaar, as a column of its own. This is the only row that column is on:
+    /// Leerlingzorg fills in nothing, asks for no rewrite and downloads nothing (D5), so the rows of FB-004 and FB-006 must
+    /// not take it, and no route but the two reads may declare this row (<c>RapportleesrijTests</c> pins both).
     /// </summary>
     public static readonly Matrixrij OntwikkelingsrapportLezen = new(
         Beleid.OntwikkelingsrapportLezen,
         "Een ontwikkelingsrapport lezen, en de leerlingen van de klas (ADR-0035 R16, R17, R18, R26)",
-        Kolom.LeerkrachtRapportLezen);
+        Kolom.LeerkrachtRapportLezen | Kolom.Leerlingzorg);
 
     /// <summary>
     /// §3 "Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen" (ADR-0035 R14, R15, R26; D8, D9). Resource:
@@ -444,6 +446,13 @@ public static class Rechtenmatrix
             {
                 return true;
             }
+
+            // Leerlingzorg (R18, FB-008): every klas's reports, with no end date. Only on a Rapportklas, like the two
+            // columns above, so the right opens no planning and no other resource.
+            if (kolommen.HasFlag(Kolom.Leerlingzorg) && rechten.HeeftLeerlingzorg)
+            {
+                return true;
+            }
         }
 
         // ADR-0042 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
@@ -538,7 +547,13 @@ public enum Kolom
     LeerkrachtEigenLezen = 4096,
 
     /// <summary>
+    /// "Leerlingzorg" (ADR-0035 R18, §3.3, §3.4; FB-008): the right directie gave, on any <see cref="Rapportklas"/>, in
+    /// every schooljaar. On the report's read row only.
+    /// </summary>
+    Leerlingzorg = 8192,
+
+    /// <summary>
     /// The owner of a <see cref="Woordwebbron"/> (ADR-0042 W2): her own woordweb, whatever other right she holds or lacks.
     /// </summary>
-    Eigenaar = 8192,
+    Eigenaar = 16384,
 }

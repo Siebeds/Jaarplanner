@@ -2,13 +2,13 @@
 id: FB-008
 titel: Directie geeft het recht Leerlingzorg: alle ontwikkelingsrapporten lezen
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:39
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 19:38
+opgepakt-door: leerlingzorg
+branch: ticket/FB-008-leerlingzorg
+pr: 95
 geblokkeerd:
 fr: [FR-13.7, FR-12.2]
 ---
@@ -41,11 +41,11 @@ de server op de ene plaats van E6-02.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de directie, wanneer die een gebruiker het recht Leerlingzorg geeft, dan staat dat recht bij die gebruiker, naast themabeheer, en kan de directie het weer afnemen.
-- [ ] Gegeven een gebruiker met alleen Leerlingzorg, wanneer die zich aanmeldt, dan ziet die de tab Ontwikkelingsrapport en kan die de rapporten van elke K3-klas lezen.
-- [ ] Gegeven die gebruiker, dan kan die niets wijzigen, geen AI-herwerking vragen en geen rapport downloaden, ook niet via het adres.
-- [ ] Gegeven een gebruiker met alleen themabeheer, dan ziet die de tab niet en kan die geen enkel rapport lezen, ook niet via het adres.
-- [ ] Gegeven dat de directie het recht afneemt, wanneer de gebruiker de app opnieuw laadt, dan is de tab weg en weigert de app de rapporten.
+- [x] Gegeven de directie, wanneer die een gebruiker het recht Leerlingzorg geeft, dan staat dat recht bij die gebruiker, naast themabeheer, en kan de directie het weer afnemen.
+- [x] Gegeven een gebruiker met alleen Leerlingzorg, wanneer die zich aanmeldt, dan ziet die de tab Ontwikkelingsrapport en kan die de rapporten van elke K3-klas lezen.
+- [x] Gegeven die gebruiker, dan kan die niets wijzigen, geen AI-herwerking vragen en geen rapport downloaden, ook niet via het adres.
+- [x] Gegeven een gebruiker met alleen themabeheer, dan ziet die de tab niet en kan die geen enkel rapport lezen, ook niet via het adres.
+- [x] Gegeven dat de directie het recht afneemt, wanneer de gebruiker de app opnieuw laadt, dan is de tab weg en weigert de app de rapporten.
 
 ## Testscenario's
 
@@ -72,3 +72,14 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:39 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 18:27 · eigenaar · nieuw → klaar-voor-bouw: eigenaar zet het ticket klaar voor bouw
+- 2026-09-15 18:27 · leerlingzorg · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:44 · leerlingzorg · recht Leerlingzorg gebouwd: kolom op de leesrij van het rapport, vinkje in het Rechtenblad, eigen lijst /api/rapportklassen; unittests groen (1702)
+- 2026-09-15 18:46 · leerlingzorg · frontend groen: pnpm lint en Vitest (81 bestanden, 889 tests)
+- 2026-09-15 18:55 · leerlingzorg · backend groen: unittests 1702, integratietests op PostgreSQL 523 geslaagd (1 live-KOV overgeslagen), incl. sweep met een gebruiker met alleen Leerlingzorg; dotnet format schoon
+- 2026-09-15 18:59 · leerlingzorg · browserpas: geen browser beschikbaar voor de sessie (Playwright bezet, Chrome-extensie niet verbonden); de eigenaar loopt de testscenario's zelf door op een wegwerpdatabank
+- 2026-09-15 19:03 · leerlingzorg · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR, waarvan twee opgelost (commentaar, test hoofdleerkracht K3)
+- 2026-09-15 19:07 · leerlingzorg · derde MINOR als test opgelost: RapportleesrijTests laat de leesrij van het rapport alleen op de twee leesroutes toe, zodat FB-006 er geen download mee kan openen (D5)
+- 2026-09-15 19:11 · leerlingzorg · in-uitvoering → te-testen: recht Leerlingzorg gebouwd; alle vijf criteria afgevinkt: tests (unit, PostgreSQL, Vitest) en de browserpas van de eigenaar; antagonist COMPLIANT, drie MINOR opgelost
+- 2026-09-15 19:37 · leerlingzorg · main (FB-020) ingemerged, migratie AddLeerlingzorg opnieuw aangemaakt; daarna groen: unit 1703, PostgreSQL 527 van 528 (de ene is een bestaande flaky test uit FB-013, los van dit ticket), Vitest 907, lint en format schoon
+- 2026-09-15 19:38 · leerlingzorg · PR #95

@@ -11,7 +11,10 @@ public enum DoelWeergave
     /// <summary>Code, taxonomy and text only: a fraction of the tokens.</summary>
     Compact,
 
-    /// <summary>Exactly what production step 6 sends today, examples and explanation included.</summary>
+    /// <summary>
+    /// Exactly what production step 6 sends. Since TB-007 that is itself a compact list (code, doelsoort, jaar/fase,
+    /// domein, subdomein, text), without examples or explanation.
+    /// </summary>
     Volledig,
 }
 

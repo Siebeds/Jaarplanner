@@ -26,6 +26,7 @@ function ik(delen: Partial<Ik>): Ik {
     email: "test@school.be",
     isDirectie: false,
     heeftThemabeheer: false,
+    heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],
     leerkrachtLeeftijden: [],
     eigenKlasIds: [],
@@ -47,6 +48,8 @@ const RELATIES: Record<string, Ik> = {
   // "LK eigen" for the ontwikkelingsrapport (ADR-0030 footnote ⁶): the klas grants K3, during its schooljaar or after it.
   "LK rapport": ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }),
   "LK rapport voorbij": ik({ rapportklasIds: [EIGEN_KLAS] }),
+  // FB-008 (ADR-0035 R18): the right directie gave, and nothing else.
+  Leerlingzorg: ik({ heeftLeerlingzorg: true }),
   Ander: ik({}),
 };
 
@@ -73,7 +76,8 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   // themabeheer and directie. Not by another leeftijd, and not by a gebruiker without a right.
   KlasplanningBekijken: ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"],
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
-  OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij"],
+  // R18: Leerlingzorg reads every klas's reports, and passes no other row.
+  OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij", "Leerlingzorg"],
   LeerlingenBeheren: ["Directie", "LK rapport"],
   RapportInvullen: ["Directie", "LK rapport"],
   // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
@@ -407,6 +411,54 @@ describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
     const mag = magVoor(oud as Ik);
     expect(mag.ontwikkelingsrapportZien).toBe(false);
     expect(mag.ontwikkelingsrapportLezen(EIGEN_KLAS)).toBe(false);
+  });
+});
+
+describe("Leerlingzorg (FB-008, ADR-0035 R18)", () => {
+  const zorg = magVoor(RELATIES.Leerlingzorg);
+
+  it("biedt de bestemming aan, en leest de rapporten van elke klas", () => {
+    expect(zorg.ontwikkelingsrapportTab).toBe(true);
+    expect(zorg.ontwikkelingsrapportZien).toBe(true);
+    expect(zorg.ontwikkelingsrapportLezen(EIGEN_KLAS)).toBe(true);
+    expect(zorg.ontwikkelingsrapportLezen(ANDERE_KLAS)).toBe(true);
+    expect(zorg.alleRapportklassenLezen).toBe(true);
+  });
+
+  it("wijzigt niets, en zegt niet dat het schooljaar voorbij is: dat is niet de reden", () => {
+    expect(zorg.leerlingenBeheren(EIGEN_KLAS)).toBe(false);
+    expect(zorg.rapportInvullen(EIGEN_KLAS)).toBe(false);
+    expect(zorg.rapportsetBewerken).toBe(false);
+    expect(zorg.rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
+    expect(zorg.klasplanningBewerken(EIGEN_KLAS)).toBe(false);
+    expect(zorg.alleKlassenInzien).toBe(false);
+  });
+
+  it("laat een leerkracht met Leerlingzorg de eigen klas invullen, en een andere alleen lezen", () => {
+    const beide = magVoor(ik({ ...RELATIES["LK rapport"], heeftLeerlingzorg: true }));
+    expect(beide.rapportInvullen(EIGEN_KLAS)).toBe(true);
+    expect(beide.rapportInvullen(ANDERE_KLAS)).toBe(false);
+    expect(beide.ontwikkelingsrapportLezen(ANDERE_KLAS)).toBe(true);
+    expect(beide.rapportAlleenNogLezen(ANDERE_KLAS)).toBe(false);
+  });
+
+  it("zegt 'alleen nog lezen' nog wel aan wie de klas zelf gaf, ook met Leerlingzorg", () => {
+    expect(magVoor(ik({ ...RELATIES["LK rapport voorbij"], heeftLeerlingzorg: true })).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(
+      true,
+    );
+  });
+
+  it("geeft themabeheer geen rapport en niet de hele lijst (R18)", () => {
+    expect(magVoor(RELATIES.TB).alleRapportklassenLezen).toBe(false);
+    expect(magVoor(RELATIES["LK rapport"]).alleRapportklassenLezen).toBe(false);
+    expect(magVoor(RELATIES.Directie).alleRapportklassenLezen).toBe(true);
+  });
+
+  it("faalt dicht op een /api/ik-antwoord zonder het veld", () => {
+    const oud = { ...RELATIES.Ander } as Partial<Ik>;
+    delete oud.heeftLeerlingzorg;
+    expect(magVoor(oud as Ik).ontwikkelingsrapportZien).toBe(false);
+    expect(staatToe(oud as Ik, "OntwikkelingsrapportLezen", { soort: "rapportklas", klasId: EIGEN_KLAS })).toBe(false);
   });
 });
 

@@ -60,6 +60,7 @@ export type Kolom =
   | "HoofdleerkrachtLezen"
   | "LeerkrachtLeeftijdLezen"
   | "LeerkrachtEigenLezen"
+  | "Leerlingzorg"
   | "Eigenaar";
 
 /** §3 as data, one entry per server row, with the same columns. */
@@ -96,8 +97,9 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   KlasplanningBekijken: ["Themabeheer", "HoofdleerkrachtLezen", "LeerkrachtLeeftijdLezen", "LeerkrachtEigenLezen"],
   // The ontwikkelingsrapport rows (ADR-0030 footnote ⁶, ADR-0035 §3.3; FB-001). "LK eigen" here means a klas that
   // grants K3, and it fills in only during the klas's schooljaar (R26), so both columns read their own list from
-  // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg joins the read row with FB-008.
-  OntwikkelingsrapportLezen: ["LeerkrachtRapportLezen"],
+  // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg (R18, FB-008) reads every klas's
+  // reports, and this is the only row its column is on: it fills in nothing, and downloads nothing (D5).
+  OntwikkelingsrapportLezen: ["LeerkrachtRapportLezen", "Leerlingzorg"],
   LeerlingenBeheren: ["LeerkrachtRapportInvullen"],
   // FB-003: the star, the text and the besluit of a report, by the same column as the children.
   RapportInvullen: ["LeerkrachtRapportInvullen"],
@@ -208,6 +210,8 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     const heeft = (lijst: readonly string[] | undefined) => (lijst ?? []).some((klasId) => zelfdeId(klasId, bron.klasId));
     if (kolommen.includes("LeerkrachtRapportInvullen") && heeft(ik.lopendeRapportklasIds)) return true;
     if (kolommen.includes("LeerkrachtRapportLezen") && heeft(ik.rapportklasIds)) return true;
+    // Leerlingzorg (R18, FB-008): every klas's reports. `=== true`: an answer without the field grants nothing.
+    if (kolommen.includes("Leerlingzorg") && ik.heeftLeerlingzorg === true) return true;
   }
 
   // ADR-0042 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
@@ -302,11 +306,19 @@ export interface Mag {
    */
   geenKlasInzien: boolean;
   /**
-   * Whether the Ontwikkelingsrapport destination is offered at all (ADR-0035 D18): directie, or a leerkracht of a klas
-   * that grants K3. Leerlingzorg joins it with FB-008. Anyone else would find a screen with nothing they may see.
+   * Whether this gebruiker reads reports at all (ADR-0035 D18): directie, a leerkracht of a klas that grants K3, or
+   * Leerlingzorg (FB-008). Anyone else would find a list of children with nothing they may see.
    */
   ontwikkelingsrapportZien: boolean;
-  /** Reading this klas's children and reports: directie, and the klas's own K3 leerkrachten, also after its year (R26). */
+  /**
+   * Whether this gebruiker reads the reports of every klas that can hold children: directie or Leerlingzorg (FB-008).
+   * Only then does an empty list of such klassen mean the schooljaar has none; anyone else reads only their own.
+   */
+  alleRapportklassenLezen: boolean;
+  /**
+   * Reading this klas's children and reports: directie, the klas's own K3 leerkrachten, also after its year (R26), and
+   * Leerlingzorg, on every klas (R18, FB-008).
+   */
   ontwikkelingsrapportLezen: (klasId: string) => boolean;
   /** Adding, renaming and deleting this klas's children: directie, and its K3 leerkrachten during its year (R26, D8). */
   leerlingenBeheren: (klasId: string) => boolean;
@@ -382,19 +394,24 @@ export function magVoor(ik: Ik | undefined): Mag {
       (ik.hoofdleerkrachtLeeftijden ?? []).length === 0 &&
       (ik.leerkrachtLeeftijden ?? []).length === 0 &&
       (ik.eigenKlasIds ?? []).length === 0,
-    ontwikkelingsrapportZien: ik?.isDirectie === true || (ik?.rapportklasIds ?? []).length > 0,
+    ontwikkelingsrapportZien:
+      ik?.isDirectie === true || ik?.heeftLeerlingzorg === true || (ik?.rapportklasIds ?? []).length > 0,
+    alleRapportklassenLezen: ik?.isDirectie === true || ik?.heeftLeerlingzorg === true,
     ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
     leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
     rapportInvullen: (klasId) => rij("RapportInvullen", { soort: "rapportklas", klasId }),
+    // The klas is one they taught (`rapportklasIds`), not merely one they read: Leerlingzorg reads without writing too,
+    // and for them "dit schooljaar is voorbij" would be a reason that is not theirs.
     rapportAlleenNogLezen: (klasId) =>
       ik !== undefined &&
       !ik.isDirectie &&
-      rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }) &&
+      (ik.rapportklasIds ?? []).some((id) => zelfdeId(id, klasId)) &&
       !rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
     // Deliberately no `isDirectie` short-circuit here, unlike some answers above: this is the row directie does not pass.
     rapportsetBewerken: rij("RapportsetBewerken"),
     ontwikkelingsrapportTab:
       ik?.isDirectie === true ||
+      ik?.heeftLeerlingzorg === true ||
       (ik?.rapportklasIds ?? []).length > 0 ||
       // "K3" is the leeftijd of a hoofdleerkracht's appointment, not a klas's jaarfase, so this is no klas→leeftijden
       // mapping (that stays the server's, `Leeftijdsrechten.VoorKlas`).

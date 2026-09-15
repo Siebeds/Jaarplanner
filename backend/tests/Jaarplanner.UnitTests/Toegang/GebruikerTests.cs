@@ -98,6 +98,24 @@ public sealed class GebruikerTests
     }
 
     [Fact]
+    public void Leerlingzorg_wordt_gegeven_en_afgenomen_los_van_themabeheer()
+    {
+        // ADR-0035 R18: a right of its own, not a part of themabeheer.
+        var gebruiker = new Gebruiker("zorg@school.be", "Zorg", isDirectie: false);
+        Assert.False(gebruiker.HeeftLeerlingzorg);
+
+        gebruiker.GeefLeerlingzorg();
+        gebruiker.GeefLeerlingzorg();
+        Assert.True(gebruiker.HeeftLeerlingzorg);
+        Assert.False(gebruiker.HeeftThemabeheer);
+
+        gebruiker.GeefThemabeheer();
+        gebruiker.NeemLeerlingzorgAf();
+        Assert.False(gebruiker.HeeftLeerlingzorg);
+        Assert.True(gebruiker.HeeftThemabeheer);
+    }
+
+    [Fact]
     public void Directie_kan_het_directierecht_aan_iemand_anders_geven()
     {
         var ict = new Gebruiker("ict@school.be", "ICT", isDirectie: false);

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260915173845_Woordwebs")]
-    partial class Woordwebs
+    [Migration("20260915171322_AddLeerlingzorg")]
+    partial class AddLeerlingzorg
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -988,58 +988,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("wizardruns", (string)null);
                 });
 
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Woordweb", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("EigenaarId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SubthemaId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EigenaarId");
-
-                    b.HasIndex("SubthemaId", "EigenaarId")
-                        .IsUnique();
-
-                    b.ToTable("woordwebs", (string)null);
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.WoordwebWoord", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("AiMotivatie")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<int>("Volgnummer")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Woord")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("WoordwebId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("WoordwebId");
-
-                    b.ToTable("woordweb_woorden", (string)null);
-                });
-
             modelBuilder.Entity("Jaarplanner.Domain.Toegang.Gebruiker", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1055,6 +1003,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("EntraTenantId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("HeeftLeerlingzorg")
+                        .HasColumnType("boolean");
 
                     b.Property<bool>("HeeftThemabeheer")
                         .HasColumnType("boolean");
@@ -1830,30 +1781,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("Aangemaakt");
                 });
 
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Woordweb", b =>
-                {
-                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
-                        .WithMany()
-                        .HasForeignKey("EigenaarId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
-                        .WithMany()
-                        .HasForeignKey("SubthemaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.WoordwebWoord", b =>
-                {
-                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Woordweb", null)
-                        .WithMany("Woorden")
-                        .HasForeignKey("WoordwebId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Jaarplanner.Domain.Toegang.Hoofdleerkrachtaanstelling", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
@@ -1930,11 +1857,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("Subthemas");
 
                     b.Navigation("Themadoelen");
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Woordweb", b =>
-                {
-                    b.Navigation("Woorden");
                 });
 #pragma warning restore 612, 618
         }

@@ -31,11 +31,12 @@ import { Rapportwissel } from "./Rapportwissel";
  *
  * **Only a klas that can hold children, and only one this gebruiker may read.** The klas choice here lists exactly
  * those: a klas the server says can hold children (`kanLeerlingenHebben`, from its one klas→leeftijden mapping, D9),
- * that the gebruiker teaches or, for directie, any. The screen never compares a jaarfase to "K3" itself: that would be
- * a second mapping, and directie's graadklas decision (Art. XIV) would then have to change this file as well
- * (antagonist round 1). It is not the header's Klaskiezer, which lists every klas, because a colleague's klas
- * here would be a klas whose children this person may not see (R17). Choosing one still sets the app's one klas, so
- * the agenda opens on it afterwards.
+ * that the gebruiker teaches or, for directie and Leerlingzorg, any. The screen never compares a jaarfase to "K3"
+ * itself: that would be a second mapping, and directie's graadklas decision (Art. XIV) would then have to change this
+ * file as well (antagonist round 1). The klassen come from the report's own list (`GET /api/rapportklassen`, FB-008),
+ * not the planning's that the header's Klaskiezer shows: a colleague's klas there would be a klas whose children this
+ * person may not see (R17), and Leerlingzorg reads the reports of klassen whose planning it does not (R18). Choosing
+ * one still sets the app's one klas, so the agenda opens on it afterwards when its planning is readable too.
  *
  * **Typing twenty names at the start of the year is the job this screen is shaped around** (R15: by hand, one at a
  * time). The two fields sit above the list, and after each child they empty and take the focus again, so the next name
@@ -49,7 +50,7 @@ import { Rapportwissel } from "./Rapportwissel";
  */
 export function OntwikkelingsrapportScherm() {
   const { mag, laadt: rechtenLaden, bekend } = useRechten();
-  const { schooljaar, schooljaren, klassen, klasId, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  const { schooljaar, schooljaren, klassen, klasId, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie("rapport");
 
   const rapportklassen = klassen.filter(
     (kandidaat) => kandidaat.kanLeerlingenHebben && mag.ontwikkelingsrapportLezen(kandidaat.id),
@@ -119,10 +120,12 @@ export function OntwikkelingsrapportScherm() {
           // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).
           <Leegte titel={t("ontwikkelingsrapport.geenSchooljaar")} />
         ) : klas === null ? (
-          // Directie reads every klas that can hold children, so for directie an empty list means the year has none.
-          // Anyone else reads only their own, so for them it means they teach none this year.
+          // Directie and Leerlingzorg read every klas that can hold children, so for them an empty list means the year
+          // has none. Anyone else reads only their own, so for them it means they teach none this year.
           <Leegte
-            titel={mag.beheer ? t("ontwikkelingsrapport.geenK3Klas") : t("ontwikkelingsrapport.geenEigenK3Klas")}
+            titel={
+              mag.alleRapportklassenLezen ? t("ontwikkelingsrapport.geenK3Klas") : t("ontwikkelingsrapport.geenEigenK3Klas")
+            }
           />
         ) : (
           <Kinderen key={klas.id} klas={klas} />

@@ -38,6 +38,8 @@ export interface GebruikerBeheer {
   email: string;
   isDirectie: boolean;
   heeftThemabeheer: boolean;
+  /** Reads every ontwikkelingsrapport and nothing else (FB-008, ADR-0035 R18). */
+  heeftLeerlingzorg: boolean;
   /** False until their first login binds the invitation: the state ADR-0031's residual risk lives in. */
   isAangemeld: boolean;
   klastoewijzingen: KlastoewijzingBeheer[];
@@ -65,6 +67,7 @@ export function useGebruikersOverzicht(ingeschakeld: boolean) {
 export const rechtPad = {
   directie: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/directierecht`,
   themabeheer: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/themabeheer`,
+  leerlingzorg: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/leerlingzorg`,
   klas: (gebruikerId: string, klasId: string) => `/api/gebruikers/${gebruikerId}/klassen/${klasId}`,
   hoofdleerkracht: (gebruikerId: string, schooljaarId: string, jaarfase: string) =>
     `/api/gebruikers/${gebruikerId}/hoofdleerkracht/${schooljaarId}/${encodeURIComponent(jaarfase)}`,

@@ -57,6 +57,7 @@ public interface IOntwikkelingsrapportService
 /// <param name="Rapportdoelen">Every rapportdoel of the set, in its order, with what is filled in for it.</param>
 /// <param name="Besluit">The algemeen besluit, or none yet.</param>
 /// <param name="BesluitStatus">Who wrote the besluit; null when there is none.</param>
+/// <param name="Tekening">The kindtekening's version and size (FB-005), or none; the image itself is a route of its own.</param>
 public sealed record RapportWeergave(
     Guid LeerlingId,
     Guid KlasId,
@@ -67,7 +68,8 @@ public sealed record RapportWeergave(
     int Moment,
     IReadOnlyList<RapportdoelBeoordelingWeergave> Rapportdoelen,
     string? Besluit,
-    Tekststatus? BesluitStatus);
+    Tekststatus? BesluitStatus,
+    TekeningWeergave? Tekening);
 
 /// <summary>One rapportdoel on a report: the set's side, and the child's.</summary>
 /// <param name="RapportdoelId">The rapportdoel.</param>

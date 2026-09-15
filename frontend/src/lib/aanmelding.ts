@@ -20,6 +20,8 @@ export interface Ik {
   isDirectie: boolean;
   /** "TB": thema's, the FR-1 import, the wizard and doelsuggesties (R4, R14). */
   heeftThemabeheer: boolean;
+  /** "Leerlingzorg" (FB-008, ADR-0035 R18): reads every ontwikkelingsrapport, of every K3 klas, and nothing else. */
+  heeftLeerlingzorg: boolean;
   /** "HL": the jaarfasen they are hoofdleerkracht of in a schooljaar that has not ended (R5, R20). */
   hoofdleerkrachtLeeftijden: string[];
   /** "LK leeftijd": the stated jaarfasen of their klassen in a schooljaar that has not ended (R17, R22). */

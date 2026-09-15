@@ -567,6 +567,8 @@ export interface DoelMatchResultaat {
   overgeslagenOnbekend: string[];
   overgeslagenDuplicaat: string[];
   aantalKandidaten: number;
+  /** The jaarfasen the candidates came from (TB-007): the choice sent, or else the leeftijden of the subthema's. */
+  jaarFasen: string[];
 }
 
 // --- Jaarplan (FR-5 to FR-8) ---

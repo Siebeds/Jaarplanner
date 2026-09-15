@@ -31,6 +31,8 @@ public sealed class RechtenmatrixTests
         // FB-001: one klastoewijzing on a K3 klas, as Rechtenberekening builds it, in a running and in an ended schooljaar.
         ["LK K3 lopend"] = new Rechten(Ik, false, false, [], [Leeftijd], [EigenKlas], [EigenKlas], [EigenKlas]),
         ["LK K3 afgelopen"] = new Rechten(Ik, false, false, [], [], [EigenKlas], [EigenKlas], []),
+        // FB-008 (ADR-0035 R18): the right directie gave, and nothing else.
+        ["Leerlingzorg"] = new Rechten(Ik, false, false, [], [], [], heeftLeerlingzorg: true),
         ["Ander"] = Rechten.Geen(Ik),
     };
 
@@ -62,8 +64,8 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.KlasplanningBekijken] =
             ["Directie", "TB", "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
         // Footnote ⁶ (ADR-0035 R16, R17, R26): the klas's K3 leerkracht reads with no end date and keeps the leerlingen
-        // only during the schooljaar. Nobody else but directie, not HL, TB or "LK leeftijd" (R17).
-        [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen"],
+        // only during the schooljaar. Nobody else but directie and Leerlingzorg (R18), not HL, TB or "LK leeftijd" (R17).
+        [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen", "Leerlingzorg"],
         [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Directie", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.RapportInvullen] = ["Directie", "LK K3 lopend"],
         // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even directie.
@@ -414,6 +416,59 @@ public sealed class RechtenmatrixTests
         // A report resource never opens a planning or leeftijd row either.
         Assert.False(Rechtenmatrix.StaatToe(k3, Rechtenmatrix.KlasplanningBewerken, new Rapportklas(EigenKlas)));
         Assert.False(Rechtenmatrix.StaatToe(k3, Rechtenmatrix.GedeeldeActiviteitBewerken, new Rapportklas(EigenKlas)));
+    }
+
+    // --- Leerlingzorg: every report, and nothing else (ADR-0035 R18, §3.3, §3.4; FB-008). ---
+
+    [Fact]
+    public void Leerlingzorg_leest_de_rapporten_van_elke_klas_en_passeert_geen_enkele_andere_rij()
+    {
+        var zorg = Relaties["Leerlingzorg"];
+
+        Assert.True(Rechtenmatrix.StaatToe(zorg, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(EigenKlas)));
+        Assert.True(Rechtenmatrix.StaatToe(zorg, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(AndereKlas)));
+
+        // R18 "lezen, niets wijzigen", D5 no download: no other row, whatever the resource, the planning included.
+        object?[] bronnen =
+        [
+            null,
+            new object(),
+            new Leeftijdsinhoud(Leeftijd),
+            new Klasplanning(EigenKlas),
+            Klasinzage.Voor(EigenKlas, Leeftijd),
+            new Rapportklas(EigenKlas),
+            new Activiteitbron(Guid.NewGuid(), Leeftijd, AnderePersoon, HeeftDoelkoppelingen: false),
+            new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: []),
+        ];
+        Assert.All(Rechtenmatrix.Rijen.Where(rij => rij != Rechtenmatrix.OntwikkelingsrapportLezen), rij =>
+            Assert.All(bronnen, bron => Assert.False(Rechtenmatrix.StaatToe(zorg, rij, bron))));
+
+        // The read row itself needs the report's resource: the klas's planning or no resource opens nothing.
+        Assert.False(Rechtenmatrix.StaatToe(zorg, Rechtenmatrix.OntwikkelingsrapportLezen, bron: null));
+        Assert.False(Rechtenmatrix.StaatToe(zorg, Rechtenmatrix.OntwikkelingsrapportLezen, Klasinzage.Voor(EigenKlas, Leeftijd)));
+        Assert.False(Rechtenmatrix.StaatToe(zorg, Rechtenmatrix.OntwikkelingsrapportLezen, new Klasplanning(EigenKlas)));
+    }
+
+    [Fact]
+    public void Een_leerkracht_met_leerlingzorg_houdt_voor_de_eigen_klas_de_gewone_rechten()
+    {
+        // The union rule (§3): Leerlingzorg adds reading every klas's reports and takes nothing of the own klas away.
+        var beide = new Rechten(Ik, false, false, [], [Leeftijd], [EigenKlas], [EigenKlas], [EigenKlas], heeftLeerlingzorg: true);
+
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.RapportInvullen, new Rapportklas(EigenKlas)));
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.LeerlingenBeheren, new Rapportklas(EigenKlas)));
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.KlasplanningBewerken, new Klasplanning(EigenKlas)));
+        Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(AndereKlas)));
+        Assert.False(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.RapportInvullen, new Rapportklas(AndereKlas)));
+        Assert.False(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.LeerlingenBeheren, new Rapportklas(AndereKlas)));
+    }
+
+    [Fact]
+    public void Themabeheer_geeft_geen_toegang_tot_de_rapporten_R18()
+    {
+        // R18's "Via themabeheer" was not chosen: themabeheer exists for thema's and holds no pupil data.
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(EigenKlas)));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(AndereKlas)));
     }
 
     // --- The one K3 set of rapportdoelen and the scale (footnote ⁶, ADR-0035 R6, R31, D4; FB-002). ---

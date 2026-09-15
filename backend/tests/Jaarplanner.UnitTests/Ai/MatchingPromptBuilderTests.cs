@@ -99,14 +99,10 @@ public sealed class MatchingPromptBuilderTests
             "",
             "# Beschikbare Op.stap-leerplandoelen",
             "",
-            "- NAT-K3-01 | MD | K3 | Natuur > Levende natuur > Planten",
+            "- NAT-K3-01 | MD | K3 | Natuur > Levende natuur",
             "  Tekst: De kleuter herkent bomen.",
-            "  Voorbeelden: eik, beuk",
-            "  Toelichting: focus op waarneembare kenmerken",
-            "  Minimumdoel: K-12",
             "- NAT-K3-02 | G | K3 | Natuur > Levende natuur",
             "  Tekst: De kleuter observeert veranderingen in de natuur.",
-            "  Woordenschat: seizoen",
             "",
             "# Minimumdoelen (concordantie)",
             "",
@@ -128,7 +124,7 @@ public sealed class MatchingPromptBuilderTests
             "Herfst", "natuur en seizoenen", "blad", "boom", "bladverliezende boom",
             "Bladeren", "Welke kleuren zien we?", "Waarom vallen bladeren?", "ontdektafel",
             "sorteren op kleur", "NAT-K3-01", "NAT-K3-02", "De kleuter herkent bomen.",
-            "eik, beuk", "K-12", "De leerling herkent levende wezens.",
+            "K-12", "De leerling herkent levende wezens.",
         })
         {
             Assert.Contains(datum, volledig, StringComparison.Ordinal);
@@ -141,6 +137,19 @@ public sealed class MatchingPromptBuilderTests
         Assert.DoesNotContain("http", volledig, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("wikipedia", volledig, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("internet als bron", volledig, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Doelen_staan_compact_in_de_prompt()
+    {
+        // TB-007: code, doelsoort, jaar/fase, domein, subdomein and text only. The long fields made the K3 goals of the
+        // Op.stap import alone about 54,000 tokens.
+        var request = MatchingPromptBuilder.Bouw(EenThema(), EenLeerdoelenSet());
+
+        foreach (var weggelaten in new[] { "Voorbeelden:", "eik, beuk", "Toelichting:", "  Woordenschat:", "  Minimumdoel:", "> Planten" })
+        {
+            Assert.DoesNotContain(weggelaten, request.UserPrompt, StringComparison.Ordinal);
+        }
     }
 
     [Fact]

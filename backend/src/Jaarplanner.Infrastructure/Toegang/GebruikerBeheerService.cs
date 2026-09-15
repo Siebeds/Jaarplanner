@@ -104,6 +104,11 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
             gebruiker.GeefThemabeheer();
         }
 
+        if (uitnodiging.HeeftLeerlingzorg)
+        {
+            gebruiker.GeefLeerlingzorg();
+        }
+
         _context.Gebruikers.Add(gebruiker);
         try
         {
@@ -169,6 +174,22 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     {
         var gebruiker = await VindAsync(gebruikerId, cancellationToken);
         gebruiker.NeemThemabeheerAf();
+        await BewaarWijzigingAsync(cancellationToken);
+        return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
+    }
+
+    public async Task<GebruikerBeheerWeergave> GeefLeerlingzorgAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
+    {
+        var gebruiker = await VindAsync(gebruikerId, cancellationToken);
+        gebruiker.GeefLeerlingzorg();
+        await BewaarWijzigingAsync(cancellationToken);
+        return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
+    }
+
+    public async Task<GebruikerBeheerWeergave> NeemLeerlingzorgAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
+    {
+        var gebruiker = await VindAsync(gebruikerId, cancellationToken);
+        gebruiker.NeemLeerlingzorgAf();
         await BewaarWijzigingAsync(cancellationToken);
         return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
     }
@@ -347,6 +368,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
                 g.Email,
                 g.IsDirectie,
                 g.HeeftThemabeheer,
+                g.HeeftLeerlingzorg,
                 g.IsGekoppeld,
                 toewijzingenPerGebruiker[g.Id]
                     .Select(t => new KlastoewijzingBeheerWeergave(

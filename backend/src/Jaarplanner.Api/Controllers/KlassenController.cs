@@ -47,6 +47,15 @@ public sealed class KlassenController : ControllerBase
     public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Lijst(CancellationToken cancellationToken) =>
         Ok(await _autorisatie.LeesbaarAsync(User, await _service.HaalKlassenOpAsync(cancellationToken)));
 
+    /// <summary>
+    /// Every klas whose ontwikkelingsrapporten the gebruiker may read (FB-008), for the report's own klas choice: the K3
+    /// klassen of every schooljaar, each asked <c>OntwikkelingsrapportLezen</c>. Not <see cref="Lijst"/>, which is the
+    /// planning's: Leerlingzorg reads no klas's planning (R18), and a hoofdleerkracht of K3 reads no report (R17).
+    /// </summary>
+    [HttpGet("/api/rapportklassen")]
+    public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Rapportklassen(CancellationToken cancellationToken) =>
+        Ok(await _autorisatie.RapportleesbaarAsync(User, await _service.HaalKlassenOpAsync(cancellationToken)));
+
     [HttpGet("{klasId:guid}")]
     [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<KlasWeergave>> Detail(Guid klasId, CancellationToken cancellationToken) =>

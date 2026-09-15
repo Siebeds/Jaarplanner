@@ -53,6 +53,7 @@ const IK: Ik = {
   email: "dirk@school.be",
   isDirectie: true,
   heeftThemabeheer: false,
+  heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: [],
   leerkrachtLeeftijden: [],
   eigenKlasIds: [],
@@ -67,6 +68,7 @@ function gebruiker(overrides: Partial<GebruikerBeheer> = {}): GebruikerBeheer {
     email: "an.peeters@school.be",
     isDirectie: false,
     heeftThemabeheer: false,
+    heeftLeerlingzorg: false,
     isAangemeld: true,
     klastoewijzingen: [],
     hoofdleerkrachtaanstellingen: [],
@@ -177,6 +179,32 @@ describe("GebruikersScherm", () => {
       ].join(" · "),
     );
     expect(rij).not.toHaveTextContent("K3 vorig jaar");
+  });
+
+  it("geeft Leerlingzorg met een PUT op dat ene recht, naast themabeheer, en toont het in de rij (FB-008)", async () => {
+    const an = gebruiker({ heeftThemabeheer: true });
+    const fetchMock = toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, (pad, methode) =>
+      methode === "PUT" && pad.endsWith(`/api/gebruikers/${an.id}/leerlingzorg`)
+        ? { status: 200, body: { ...an, heeftLeerlingzorg: true } }
+        : undefined,
+    );
+
+    const blad = await openRechten(an.naam);
+    const vakje = within(blad).getByRole("checkbox", { name: t("gebruikers.leerlingzorg") });
+    expect(vakje).toHaveAccessibleDescription(t("gebruikers.leerlingzorgUitleg"));
+    expect(vakje).not.toBeChecked();
+    fireEvent.click(vakje);
+
+    await waitFor(() => expect(within(blad).getByRole("checkbox", { name: t("gebruikers.leerlingzorg") })).toBeChecked());
+    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.themabeheer") })).toBeChecked();
+    const schrijven = fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== "GET");
+    expect(schrijven).toHaveLength(1);
+    expect(schrijven[0][0]).toBe(`/api/gebruikers/${an.id}/leerlingzorg`);
+    expect(schrijven[0][1]?.method).toBe("PUT");
+
+    fireEvent.click(within(blad).getByRole("button", { name: t("gebruikers.klaar") }));
+    const rij = (await screen.findByRole("button", { name: t("gebruikers.rechtenVan", { naam: an.naam }) })).closest("li")!;
+    expect(rij).toHaveTextContent([t("gebruikers.themabeheer"), t("gebruikers.leerlingzorg")].join(" · "));
   });
 
   it("bewaart een aangevinkte klas meteen, met een PUT op die ene koppeling", async () => {

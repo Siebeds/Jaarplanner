@@ -19,7 +19,7 @@ import {
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
-import type { SubthemaWeergave } from "../../lib/types";
+import type { DoelMatchResultaat, SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
@@ -29,6 +29,7 @@ import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
 import { Blok, Doellijst, Feit, Groep, Kop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { themabalans } from "./themabalans";
@@ -108,6 +109,8 @@ export function ThemadetailScherm() {
   const navigeer = useNavigate();
   const { mag } = useRechten();
 
+  // The leeftijden a doelsuggestie run searches, once the gebruiker touched the buttons; null follows the subthema's.
+  const [leeftijdkeuze, setLeeftijdkeuze] = useState<string[] | null>(null);
   const [bewerkOpen, setBewerkOpen] = useState(false);
   const [verwijderOpen, setVerwijderOpen] = useState(false);
   // One piece of state per sheet, holding what it is editing. `{}` means "a new one"; two booleans
@@ -178,6 +181,14 @@ export function ThemadetailScherm() {
 
   const balans = themabalans(thema);
   const subthemas = opLeeftijd(thema.subthemas, jaarfasen);
+
+  // WHICH GOALS A DOELSUGGESTIE RUN SEARCHES (TB-007). The server never sends the whole Op.stap catalogue, so the run
+  // is for chosen leeftijden: pre-set to the leeftijden of the subthema's until the gebruiker changes them. While
+  // `/api/jaarfasen` has not answered, no choice is shown or sent and the server takes the subthema's leeftijden
+  // itself, so the button never waits on that list. Only a shown choice with nothing pressed disables it.
+  const standaardLeeftijden = (jaarfasen ?? []).filter((fase) => thema.subthemas.some((s) => s.leeftijd === fase));
+  const gekozenLeeftijden = leeftijdkeuze ?? standaardLeeftijden;
+  const geenLeeftijd = jaarfasen !== undefined && gekozenLeeftijden.length === 0;
 
   // The sheet holds IDS, not objects, and the objects are looked up from the freshly invalidated
   // thema on every render. Holding the object would freeze the goal list at the moment the sheet
@@ -354,20 +365,38 @@ export function ThemadetailScherm() {
                   {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
                       legible: this does not add a themadoel, it asks the model for candidates that a
                       teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
+                  {/* The button and its scope read as one phrase, "Vraag suggesties voor K3 L1", and wrap as one. */}
                   {mag.doelsuggestiesMaken ? (
-                    <AiKnop
-                      className="h-9 min-h-9 px-2.5 text-meta"
-                      bezig={genereer.isPending}
-                      disabled={genereer.isPending}
-                      onClick={() => genereer.mutate()}
-                    >
-                      {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-                    </AiKnop>
+                    <span className="flex flex-wrap items-center gap-2">
+                      <AiKnop
+                        className="h-9 min-h-9 px-2.5 text-meta"
+                        bezig={genereer.isPending}
+                        disabled={genereer.isPending || geenLeeftijd}
+                        onClick={() => genereer.mutate(gekozenLeeftijden)}
+                      >
+                        {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
+                      </AiKnop>
+                      {jaarfasen ? (
+                        <>
+                          <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVoor")}</span>
+                          <Leeftijdkeuze
+                            jaarfasen={jaarfasen}
+                            gekozen={gekozenLeeftijden}
+                            onWijzig={setLeeftijdkeuze}
+                          />
+                        </>
+                      ) : null}
+                    </span>
                   ) : null}
                 </>
               ) : undefined
             }
           >
+            {/* Why the AI button is disabled, directly under it, and only while it is. */}
+            {mag.doelsuggestiesMaken && geenLeeftijd ? (
+              <p className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
+            ) : null}
+
             {thema.themadoelen.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
             ) : (
@@ -387,13 +416,22 @@ export function ThemadetailScherm() {
               </Doellijst>
             )}
 
+            {/* A refusal's own Dutch sentence where the server wrote one (too many goals, no leeftijd). A 422 is a bad
+                model answer and its detail is an English operator diagnostic (Art. II.3), so the catalogue line stands
+                in for it. */}
             {genereer.isError ? (
               <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-                {genereer.error instanceof ApiError && genereer.error.detail
+                {genereer.error instanceof ApiError && genereer.error.status !== 422 && genereer.error.detail
                   ? genereer.error.detail
                   : t("thema.suggestiesMislukt")}
               </p>
             ) : null}
+
+            {/* Mounted before any run, with only its text swapped: several screen readers do not announce a live region
+                that appears with its content already in it (WCAG 4.1.3). */}
+            <p role="status" className={genereer.isSuccess ? "mt-3 text-meta text-inkt-zacht" : "sr-only"}>
+              {genereer.isSuccess ? resultaatZin(genereer.data) : null}
+            </p>
 
             {/* Open suggestions, when there are any. They keep a white surface where the rest of
                 this screen has none, and that is the point: everything else here is a fact to
@@ -773,6 +811,29 @@ function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
       <span className="mono font-medium text-inkt">{aantal}</span> {t(woord)}
     </span>
   );
+}
+
+/**
+ * What a doelsuggestie run did, in one line (TB-007): how many proposals it added, out of how many goals, of which
+ * leeftijden. Every figure is read off the server's answer, so the line states what the run searched, not what the
+ * buttons say now. With no candidates the server answers before calling the model, which is what that sentence claims.
+ */
+function resultaatZin(resultaat: DoelMatchResultaat): string {
+  const leeftijden = opsomming(resultaat.jaarFasen);
+  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { leeftijden });
+
+  const doelen = telWoord(resultaat.aantalKandidaten, "thema.kandidaatEen", "thema.kandidatenMeer");
+  const nieuw = resultaat.bewaard.length;
+  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, leeftijden });
+  return nieuw === 1
+    ? t("thema.suggestiesEenNieuw", { doelen, leeftijden })
+    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, leeftijden });
+}
+
+/** "K3", "K3 en L1", "JK, K2 en K3". */
+function opsomming(woorden: string[]): string {
+  if (woorden.length <= 1) return woorden[0] ?? "";
+  return t("thema.opsommingEn", { eerste: woorden.slice(0, -1).join(", "), laatste: woorden[woorden.length - 1] });
 }
 
 /**

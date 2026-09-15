@@ -34,6 +34,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Jaarplanner.Api\Jaarplanner.Api.csproj" />
+    <!-- The made-up test images of the kindtekening (FB-005), kept once, in the unit tests. -->
+    <Compile Include="..\Jaarplanner.UnitTests\Ontwikkelingsrapport\Testbeelden.cs" Link="Postgres\Testbeelden.cs" />
     <ProjectReference Include="..\..\src\Jaarplanner.Domain\Jaarplanner.Domain.csproj" />
     <ProjectReference Include="..\..\src\Jaarplanner.Infrastructure\Jaarplanner.Infrastructure.csproj" />
   </ItemGroup>

@@ -54,6 +54,7 @@ function leegRapport(moment: number): Rapport {
     rapportdoelen: [LUISTEREN, TELLEN],
     besluit: null,
     besluitStatus: null,
+    tekening: null,
   };
 }
 
@@ -76,8 +77,19 @@ interface Verzoek {
   lichaam?: unknown;
 }
 
-/** A small server over the three reports in memory, so a save and the report read after it agree. */
-function toon(ik: Ik, { moment = 1, weiger = false, begin }: { moment?: number; weiger?: boolean; begin?: Rapport } = {}) {
+/**
+ * A small server over the three reports in memory, so a save and the report read after it agree. `tekeningAntwoord`
+ * replaces its answer to a drawing upload, for a refusal.
+ */
+function toon(
+  ik: Ik,
+  {
+    moment = 1,
+    weiger = false,
+    begin,
+    tekeningAntwoord,
+  }: { moment?: number; weiger?: boolean; begin?: Rapport; tekeningAntwoord?: () => Response } = {},
+) {
   const rapporten = new Map<number, Rapport>([1, 2, 3].map((m) => [m, m === 1 && begin ? begin : leegRapport(m)]));
   const verzoeken: Verzoek[] = [];
 
@@ -86,8 +98,9 @@ function toon(ik: Ik, { moment = 1, weiger = false, begin }: { moment?: number; 
     vi.fn(async (invoer: string, init?: RequestInit) => {
       const pad = String(invoer);
       const methode = init?.method ?? "GET";
-      const lichaam = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined;
-      verzoeken.push({ methode, pad, lichaam });
+      const formulier = init?.body instanceof FormData ? init.body : undefined;
+      const lichaam = !formulier && init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : undefined;
+      verzoeken.push({ methode, pad, lichaam: formulier ?? lichaam });
 
       if (pad === "/api/gradaties") return json(GRADATIES);
       const rapport = /\/api\/leerlingen\/([^/]+)\/rapporten\/(\d)(.*)$/.exec(pad);
@@ -97,6 +110,17 @@ function toon(ik: Ik, { moment = 1, weiger = false, begin }: { moment?: number; 
       const huidig = rapporten.get(Number(rapport[2]))!;
       const rest = rapport[3];
       if (methode === "GET" && rest === "") return json(huidig);
+
+      if (rest === "/tekening" && methode === "PUT") {
+        if (tekeningAntwoord) return tekeningAntwoord();
+        const tekening = { versie: `v${verzoeken.length}`, breedte: 40, hoogte: 20 };
+        rapporten.set(huidig.moment, { ...huidig, tekening });
+        return json(tekening);
+      }
+      if (rest === "/tekening" && methode === "DELETE") {
+        rapporten.set(huidig.moment, { ...huidig, tekening: null });
+        return new Response(null, { status: 204 });
+      }
 
       const doel = /^\/rapportdoelen\/(.+)$/.exec(rest);
       if (methode === "PUT" && doel) {
@@ -143,6 +167,125 @@ const besluitvak = () => screen.getByRole("textbox", { name: t("ontwikkelingsrap
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+// --- The kindtekening (FB-005). ---
+
+const MET_TEKENING: Rapport = { ...leegRapport(1), tekening: { versie: "v1", breedte: 40, hoogte: 20 } };
+const tekeningAdres = (versie: string) => `/api/leerlingen/${KIND}/rapporten/1/tekening?versie=${versie}`;
+const tekeningvak = () => screen.getByRole("region", { name: t("ontwikkelingsrapport.tekening") });
+
+function foto(naam: string, type: string, grootte = 1024): File {
+  const bestand = new File([new Uint8Array(8)], naam, { type });
+  Object.defineProperty(bestand, "size", { value: grootte });
+  return bestand;
+}
+
+describe("RapportScherm, de tekening van het kind", () => {
+  it("toont de tekening op haar eigen maat, met een adres dat de versie draagt, en de knoppen om ze te wijzigen", async () => {
+    toon(LEERKRACHT, { begin: MET_TEKENING });
+
+    const beeld = await screen.findByRole("img", { name: t("ontwikkelingsrapport.tekeningVan", { naam: "Fien" }) });
+    expect(beeld).toHaveAttribute("src", tekeningAdres("v1"));
+    expect(beeld).toHaveAttribute("width", "40");
+    expect(beeld).toHaveAttribute("height", "20");
+
+    const vak = within(tekeningvak());
+    expect(vak.getByLabelText(t("ontwikkelingsrapport.tekeningVervangen"))).toHaveAttribute("accept", "image/jpeg,image/png");
+    expect(vak.getByRole("button", { name: t("ontwikkelingsrapport.tekeningVerwijderen") })).toBeInTheDocument();
+    expect(vak.getByRole("link", { name: t("ontwikkelingsrapport.tekeningOpenen") })).toHaveAttribute("href", tekeningAdres("v1"));
+    expect(vak.getByText(t("ontwikkelingsrapport.tekeningUitleg", { mb: 20 }))).toBeInTheDocument();
+  });
+
+  it("vraagt om alleen de tekening en stuurt een gekozen foto op zonder haar bestandsnaam", async () => {
+    const verzoeken = toon(LEERKRACHT);
+    await screen.findByText(t("ontwikkelingsrapport.nogGeenTekening"));
+    expect(screen.getByText(t("ontwikkelingsrapport.tekeningUitleg", { mb: 20 }))).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(t("ontwikkelingsrapport.tekeningToevoegen")), {
+      target: { files: [foto("IMG_Fien_thuis.jpg", "image/jpeg")] },
+    });
+
+    const beeld = await screen.findByRole("img", { name: t("ontwikkelingsrapport.tekeningVan", { naam: "Fien" }) });
+    const upload = verzoeken.find((verzoek) => verzoek.methode === "PUT")!;
+    expect(upload.pad).toBe(`/api/leerlingen/${KIND}/rapporten/1/tekening`);
+    const gestuurd = (upload.lichaam as FormData).get("bestand") as File;
+    expect(gestuurd.name).toBe("tekening");
+    expect(beeld.getAttribute("src")).toMatch(/\/tekening\?versie=v\d+$/);
+    expect(await within(tekeningvak()).findByText(t("ontwikkelingsrapport.bewaard"))).toBeInTheDocument();
+    expect(within(tekeningvak()).getByLabelText(t("ontwikkelingsrapport.tekeningVervangen"))).toBeInTheDocument();
+  });
+
+  it("weigert een PDF en een te groot bestand zonder iets te sturen, en noemt de grens", async () => {
+    const verzoeken = toon(LEERKRACHT);
+    const kies = async () => screen.findByLabelText(t("ontwikkelingsrapport.tekeningToevoegen"));
+
+    fireEvent.change(await kies(), { target: { files: [foto("brief.pdf", "application/pdf")] } });
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.tekeningGeenJpegOfPng"));
+
+    fireEvent.change(await kies(), { target: { files: [foto("groot.jpg", "image/jpeg", 20 * 1024 * 1024 + 1)] } });
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.tekeningTeGroot", { mb: 20 })),
+    );
+
+    expect(puts(verzoeken)).toEqual([]);
+  });
+
+  it("toont de weigering van de server in haar eigen woorden, en een afgebroken upload als te groot", async () => {
+    const detail = "Deze foto heeft meer dan 40 miljoen pixels. Kies een foto met een lagere resolutie.";
+    toon(LEERKRACHT, { tekeningAntwoord: () => json({ detail }, 400) });
+
+    fireEvent.change(await screen.findByLabelText(t("ontwikkelingsrapport.tekeningToevoegen")), {
+      target: { files: [foto("groot.png", "image/png")] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(detail);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("leest een upload die de server afbrak (413) als te groot, met de grens", async () => {
+    toon(LEERKRACHT, { tekeningAntwoord: () => new Response("", { status: 413 }) });
+
+    fireEvent.change(await screen.findByLabelText(t("ontwikkelingsrapport.tekeningToevoegen")), {
+      target: { files: [foto("groot.jpg", "image/jpeg")] },
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.tekeningTeGroot", { mb: 20 }));
+  });
+
+  it("verwijdert de tekening pas na bevestiging", async () => {
+    const verzoeken = toon(LEERKRACHT, { begin: MET_TEKENING });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("ontwikkelingsrapport.tekeningVerwijderen") }));
+    const blad = await screen.findByRole("dialog", { name: t("ontwikkelingsrapport.tekeningVerwijderTitel") });
+    expect(within(blad).getByText(t("ontwikkelingsrapport.tekeningVerwijderGevolg"))).toBeInTheDocument();
+    expect(verzoeken.some((verzoek) => verzoek.methode === "DELETE")).toBe(false);
+
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.verwijder") }));
+
+    expect(await screen.findByText(t("ontwikkelingsrapport.nogGeenTekening"))).toBeInTheDocument();
+    expect(verzoeken.filter((verzoek) => verzoek.methode === "DELETE").map((verzoek) => verzoek.pad)).toEqual([
+      `/api/leerlingen/${KIND}/rapporten/1/tekening`,
+    ]);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("na het schooljaar is de tekening te zien en te openen, zonder knoppen om ze te wijzigen", async () => {
+    toon(LEERKRACHT_VOORBIJ, { begin: MET_TEKENING });
+
+    expect(await screen.findByRole("img", { name: t("ontwikkelingsrapport.tekeningVan", { naam: "Fien" }) })).toBeInTheDocument();
+    const vak = within(tekeningvak());
+    expect(vak.getByRole("link", { name: t("ontwikkelingsrapport.tekeningOpenen") })).toBeInTheDocument();
+    expect(vak.queryByLabelText(t("ontwikkelingsrapport.tekeningVervangen"))).not.toBeInTheDocument();
+    expect(vak.queryByRole("button", { name: t("ontwikkelingsrapport.tekeningVerwijderen") })).not.toBeInTheDocument();
+    expect(vak.queryByText(t("ontwikkelingsrapport.tekeningUitleg", { mb: 20 }))).not.toBeInTheDocument();
+  });
+
+  it("directie wijzigt een tekening ook na het schooljaar", async () => {
+    toon(DIRECTIE, { begin: MET_TEKENING });
+
+    const vak = within(await screen.findByRole("region", { name: t("ontwikkelingsrapport.tekening") }));
+    expect(vak.getByLabelText(t("ontwikkelingsrapport.tekeningVervangen"))).toBeInTheDocument();
+    expect(vak.getByRole("button", { name: t("ontwikkelingsrapport.tekeningVerwijderen") })).toBeInTheDocument();
+  });
 });
 
 describe("RapportScherm, het ontwikkelingsrapport van een kind", () => {
@@ -260,6 +403,22 @@ describe("RapportScherm, het ontwikkelingsrapport van een kind", () => {
     expect(screen.getByText("Luistert goed.")).toBeInTheDocument();
     expect(screen.getByText(t("ontwikkelingsrapport.nogGeenSter"))).toBeInTheDocument();
     expect(screen.getByText(t("ontwikkelingsrapport.nogGeenBesluit"))).toBeInTheDocument();
+  });
+
+  it("toont Leerlingzorg het rapport om te lezen, zonder velden en zonder de zin over een voorbij schooljaar (R18)", async () => {
+    const verzoeken = toon(ikMet({ heeftLeerlingzorg: true }), {
+      begin: {
+        ...leegRapport(1),
+        rapportdoelen: [{ ...LUISTEREN, gradatieId: "g-volledig", tekst: "Luistert goed.", tekstStatus: "Manueel" }, TELLEN],
+      },
+    });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.getByText("Luistert goed.")).toBeInTheDocument();
+    expect(screen.queryByText(t("ontwikkelingsrapport.rapportAlleenLezen"))).not.toBeInTheDocument();
+    expect(verzoeken.every((verzoek) => verzoek.methode === "GET")).toBe(true);
   });
 
   it("laat de directie invullen, zonder de zin over een voorbij schooljaar", async () => {

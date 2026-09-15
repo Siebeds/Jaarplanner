@@ -21,6 +21,7 @@ function ik(delen: Partial<Ik> = {}): Ik {
     email: "an@school.be",
     isDirectie: false,
     heeftThemabeheer: false,
+    heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],
     leerkrachtLeeftijden: ["K3"],
     eigenKlasIds: [],
