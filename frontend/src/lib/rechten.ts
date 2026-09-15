@@ -37,7 +37,9 @@ export type Rij =
   | "SubdoelenBeheren"
   | "DoelenKoppelen"
   | "ActiviteitVerplaatsen"
-  | "KlasplanningBewerken";
+  | "KlasplanningBewerken"
+  | "OntwikkelingsrapportLezen"
+  | "LeerlingenBeheren";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
@@ -47,7 +49,9 @@ export type Kolom =
   | "LeerkrachtLeeftijdZonderKoppelingen"
   | "LeerkrachtEigen"
   | "MakerZonderKoppelingen"
-  | "ThemabeheerZonderAndermansInhoud";
+  | "ThemabeheerZonderAndermansInhoud"
+  | "LeerkrachtRapportLezen"
+  | "LeerkrachtRapportInvullen";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -76,6 +80,11 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   DoelenKoppelen: ["Hoofdleerkracht"],
   ActiviteitVerplaatsen: ["Hoofdleerkracht", "LeerkrachtLeeftijdZonderKoppelingen"],
   KlasplanningBewerken: ["LeerkrachtEigen"],
+  // The ontwikkelingsrapport rows (ADR-0030 footnote ⁶, ADR-0035 §3.3; FB-001). "LK eigen" here means a klas that
+  // grants K3, and it fills in only during the klas's schooljaar (R26), so both columns read their own list from
+  // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg joins the read row with FB-008.
+  OntwikkelingsrapportLezen: ["LeerkrachtRapportLezen"],
+  LeerlingenBeheren: ["LeerkrachtRapportInvullen"],
 };
 
 /**
@@ -92,7 +101,9 @@ export type Rechtbron =
    * The part of the server's `Themabron` the frontend can know: whether the thema is empty. `useThema` reads every
    * leeftijd's chapters, so `subthemas.length === 0` is the same fact the server's resolver decides on for it.
    */
-  | { soort: "thema"; leeg: boolean };
+  | { soort: "thema"; leeg: boolean }
+  /** A klas as the ontwikkelingsrapport rows ask about it: the server's `Rapportklas`. */
+  | { soort: "rapportklas"; klasId: string };
 
 /** GUIDs from System.Text.Json are lowercase on every route, so this is equality; the fold only guards a future one. */
 function zelfdeId(a: string, b: string): boolean {
@@ -138,6 +149,13 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     if (kolommen.includes("MakerZonderKoppelingen") && bron.makerId !== null && zelfdeId(bron.makerId, ik.id)) {
       return true;
     }
+  }
+
+  if (bron?.soort === "rapportklas") {
+    // `?? []`: an `/api/ik` answer from before FB-001 has neither list, and a right must fail closed.
+    const heeft = (lijst: readonly string[] | undefined) => (lijst ?? []).some((klasId) => zelfdeId(klasId, bron.klasId));
+    if (kolommen.includes("LeerkrachtRapportInvullen") && heeft(ik.lopendeRapportklasIds)) return true;
+    if (kolommen.includes("LeerkrachtRapportLezen") && heeft(ik.rapportklasIds)) return true;
   }
 
   return (
@@ -216,6 +234,22 @@ export interface Mag {
   doelKoppelenVoor: (leeftijden: readonly string[]) => boolean;
   /** Everything that writes a klas's planning: jaarplan, agenda, hoeken, algemene fiches (R7, R15; I21). */
   klasplanningBewerken: (klasId: string | null) => boolean;
+  /**
+   * Whether the Ontwikkelingsrapport destination is offered at all (ADR-0035 D18): directie, or a leerkracht of a klas
+   * that grants K3. Leerlingzorg joins it with FB-008. Anyone else would find a screen with nothing they may see.
+   */
+  ontwikkelingsrapportZien: boolean;
+  /** Reading this klas's children and reports: directie, and the klas's own K3 leerkrachten, also after its year (R26). */
+  ontwikkelingsrapportLezen: (klasId: string) => boolean;
+  /** Adding, renaming and deleting this klas's children: directie, and its K3 leerkrachten during its year (R26, D8). */
+  leerlingenBeheren: (klasId: string) => boolean;
+  /**
+   * Whether this gebruiker reads this klas's children only because they taught it in a schooljaar that has ended:
+   * a K3 leerkracht of the klas, not directie, and no longer allowed to write (R26). Exactly the case a screen may
+   * explain with "dit schooljaar is voorbij" (the E5-03 rule): reading without writing for any other reason
+   * (Leerlingzorg, FB-008) is not this.
+   */
+  rapportAlleenNogLezen: (klasId: string) => boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -257,6 +291,14 @@ export function magVoor(ik: Ik | undefined): Mag {
       ),
     klasplanningBewerken: (klasId) =>
       ik?.isDirectie === true || (klasId !== null && rij("KlasplanningBewerken", { soort: "klas", klasId })),
+    ontwikkelingsrapportZien: ik?.isDirectie === true || (ik?.rapportklasIds ?? []).length > 0,
+    ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
+    leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
+    rapportAlleenNogLezen: (klasId) =>
+      ik !== undefined &&
+      !ik.isDirectie &&
+      rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }) &&
+      !rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
   };
 }
 

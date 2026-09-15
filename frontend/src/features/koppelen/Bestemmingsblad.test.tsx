@@ -31,6 +31,7 @@ const KLAS: KlasWeergave = {
   jaarFasen: ["K3"],
   jaarfase: "K3",
   mogelijkeJaarfasen: [],
+  kanLeerlingenHebben: true,
 };
 
 vi.mock("../../lib/selectie", () => ({

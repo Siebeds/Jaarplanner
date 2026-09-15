@@ -1,3 +1,4 @@
+using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Toegang;
 
 namespace Jaarplanner.Application.Toegang;
@@ -13,6 +14,9 @@ namespace Jaarplanner.Application.Toegang;
 /// klas to (its stated jaarfase, or none; R22, I12), while the klas's schooljaar has not ended (R20).</item>
 /// <item><b>LK eigen:</b> every klastoewijzing gives its klas, with no end date (I21): the klas already belongs to one
 /// schooljaar.</item>
+/// <item><b>LK eigen, for the ontwikkelingsrapport</b> (FB-001, ADR-0030 footnote ⁶): a klastoewijzing on a klas that
+/// grants K3 (<see cref="Leerling.KlasKanLeerlingenHebben"/>, D9) gives that klas to read with no end date, and to fill
+/// in only while its schooljaar has not ended (R26, overriding I21 for these rows).</item>
 /// </list>
 /// <c>Schooljaar.Eind</c> is the last school day, inclusive, so on that day the right still holds and on the next it
 /// lapses.
@@ -42,10 +46,24 @@ public static class Rechtenberekening
 
         var eigenKlassen = toewijzingen.Select(t => t.KlasId);
 
-        return new Rechten(gebruikerId, isDirectie, heeftThemabeheer, hoofdleerkracht, leerkrachtLeeftijden, eigenKlassen);
+        var rapportklassen = toewijzingen.Where(t => Leerling.KlasKanLeerlingenHebben(t.GesteldeJaarfase)).ToList();
+        var lopendeRapportklassen = rapportklassen.Where(t => TeltNog(t.SchooljaarEind, vandaag));
+
+        return new Rechten(
+            gebruikerId,
+            isDirectie,
+            heeftThemabeheer,
+            hoofdleerkracht,
+            leerkrachtLeeftijden,
+            eigenKlassen,
+            rapportklassen.Select(t => t.KlasId),
+            lopendeRapportklassen.Select(t => t.KlasId));
     }
 
-    /// <summary>R20: a schooljaar counts for the shared content until its last school day has passed.</summary>
+    /// <summary>
+    /// R20: a schooljaar counts for the shared content until its last school day has passed. The ontwikkelingsrapport
+    /// uses the same day for R26: a leerkracht fills in until then, and reads afterwards.
+    /// </summary>
     public static bool TeltNog(DateOnly schooljaarEind, DateOnly vandaag) => vandaag <= schooljaarEind;
 }
 

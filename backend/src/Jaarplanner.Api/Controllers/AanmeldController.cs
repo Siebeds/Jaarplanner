@@ -88,7 +88,9 @@ public sealed class AanmeldController : ControllerBase
             rechten.HeeftThemabeheer,
             rechten.HoofdleerkrachtLeeftijden,
             rechten.LeerkrachtLeeftijden,
-            rechten.EigenKlasIds));
+            rechten.EigenKlasIds,
+            rechten.RapportklasIds,
+            rechten.LopendeRapportklasIds));
     }
 }
 
@@ -106,6 +108,15 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 /// <param name="HoofdleerkrachtLeeftijden">"HL": the jaarfasen they are hoofdleerkracht of in a schooljaar that has not ended.</param>
 /// <param name="LeerkrachtLeeftijden">"LK leeftijd": the stated jaarfasen of their klassen in a schooljaar that has not ended.</param>
 /// <param name="EigenKlasIds">"LK eigen": every klas they hold a klastoewijzing on.</param>
+/// <param name="RapportklasIds">
+/// "LK eigen" for the ontwikkelingsrapport (FB-001): the klassen of <paramref name="EigenKlasIds"/> that grant K3, whose
+/// leerlingen and reports they read, with no end date. Non-empty (or directie) is what shows the Ontwikkelingsrapport tab
+/// (ADR-0035 D18).
+/// </param>
+/// <param name="LopendeRapportklasIds">
+/// The <paramref name="RapportklasIds"/> whose schooljaar has not ended: where they may also add, rename and delete
+/// leerlingen and fill in reports (R26).
+/// </param>
 public sealed record IkWeergave(
     Guid Id,
     string Naam,
@@ -114,4 +125,6 @@ public sealed record IkWeergave(
     bool HeeftThemabeheer,
     IReadOnlyList<string> HoofdleerkrachtLeeftijden,
     IReadOnlyList<string> LeerkrachtLeeftijden,
-    IReadOnlyList<Guid> EigenKlasIds);
+    IReadOnlyList<Guid> EigenKlasIds,
+    IReadOnlyList<Guid> RapportklasIds,
+    IReadOnlyList<Guid> LopendeRapportklasIds);

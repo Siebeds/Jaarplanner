@@ -1,4 +1,5 @@
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
@@ -172,6 +173,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// wizard's own write actions can tell a thema built from scratch from any other.
     /// </summary>
     public DbSet<Wizardrun> Wizardruns => Set<Wizardrun>();
+
+    /// <summary>
+    /// The children of the K3 klassen, for the ontwikkelingsrapport (FB-001, Art. IX.4). <b>Pupil data</b> (Art. VI.7):
+    /// a voornaam, an achternaam and the klas, nothing else, and never in a log.
+    /// </summary>
+    public DbSet<Leerling> Leerlingen => Set<Leerling>();
 
     /// <summary>
     /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a

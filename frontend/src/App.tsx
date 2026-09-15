@@ -9,6 +9,7 @@ import { PlanScherm } from "./features/plan/PlanScherm";
 import { Agendascherm } from "./features/plan/Agendascherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
 import { ImportScherm } from "./features/import/ImportScherm";
+import { OntwikkelingsrapportScherm } from "./features/ontwikkelingsrapport/OntwikkelingsrapportScherm";
 import { GeenToegangScherm } from "./features/aanmelding/GeenToegangScherm";
 import { Instellingenindeling } from "./features/instellingen/Instellingenindeling";
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
@@ -56,6 +57,9 @@ export default function App() {
             <Route path="agenda/dag/:datum" element={<Agendascherm />} />
             <Route path="agenda/periodes" element={<PlanScherm />} />
             <Route path="dekking" element={<DekkingScherm />} />
+            {/* The K3 ontwikkelingsrapport (FR-13). The screen says so itself to whoever may read no report, and the
+                server refuses them the data (R17). */}
+            <Route path="ontwikkelingsrapport" element={<OntwikkelingsrapportScherm />} />
             {/* A frame with parts, each at its own address (owner, 2026-09-11). The bare address
                 opens the first part, so the navigation item and every old link still land somewhere. */}
             <Route path="instellingen" element={<Instellingenindeling />}>

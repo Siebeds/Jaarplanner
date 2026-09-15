@@ -196,3 +196,46 @@ describe("Navigatie", () => {
     expect(screen.getByRole("link", { name: t("navigatie.doelen") })).not.toHaveAttribute("title");
   });
 });
+
+/*
+  The Ontwikkelingsrapport destination (FB-001; ADR-0035 R32, D17, D18). Where it sits (bottom of the sidebar, above
+  Instellingen, `lg` only) is a browser pass: jsdom sees no `hidden lg:block`. What is testable is who is offered it.
+*/
+describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
+  const rapport = () => screen.queryByRole("link", { name: t("navigatie.ontwikkelingsrapport") });
+
+  it("staat er voor een leerkracht van een K3-klas, en leidt naar het rapport", () => {
+    rendermetPad("/doelen", ikMet({ eigenKlasIds: ["k3"], rapportklasIds: ["k3"], lopendeRapportklasIds: ["k3"] }));
+    expect(rapport()).toHaveAttribute("href", "/ontwikkelingsrapport");
+  });
+
+  it("staat er ook na het schooljaar, want die leerkracht leest de rapporten nog (R26)", () => {
+    rendermetPad("/doelen", ikMet({ eigenKlasIds: ["k3"], rapportklasIds: ["k3"] }));
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er voor directie", () => {
+    rendermetPad("/doelen", DIRECTIE);
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K3", () => {
+    rendermetPad(
+      "/doelen",
+      ikMet({
+        eigenKlasIds: ["k2"],
+        leerkrachtLeeftijden: ["K2"],
+        heeftThemabeheer: true,
+        hoofdleerkrachtLeeftijden: ["K3"],
+      }),
+    );
+    expect(rapport()).not.toBeInTheDocument();
+    // Instellingen is still there, so the report's absence did not take the group with it.
+    expect(screen.getByRole("link", { name: t("navigatie.instellingen") })).toBeInTheDocument();
+  });
+
+  it("staat er niet zolang niet bekend is wie er aangemeld is", () => {
+    rendermetPad("/doelen");
+    expect(rapport()).not.toBeInTheDocument();
+  });
+});

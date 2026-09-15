@@ -49,6 +49,7 @@ const klasVan = (jaarfase: string): KlasWeergave => ({
   jaarFasen: [jaarfase],
   jaarfase,
   mogelijkeJaarfasen: [],
+  kanLeerlingenHebben: jaarfase === "K3",
 });
 
 const REF = "K-2.1";

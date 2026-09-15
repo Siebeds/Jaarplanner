@@ -215,6 +215,145 @@ public sealed class RechtenberekeningTests
         Assert.Empty(geen.HoofdleerkrachtLeeftijden);
         Assert.Empty(geen.LeerkrachtLeeftijden);
         Assert.Empty(geen.EigenKlasIds);
+        Assert.Empty(geen.RapportklasIds);
+        Assert.Empty(geen.LopendeRapportklasIds);
+    }
+
+    // --- LK eigen for the ontwikkelingsrapport (FB-001, ADR-0030 footnote ⁶): a K3 klas (D9), read with no end date and
+    // filled in only during its schooljaar (ADR-0035 R26, which overrides I21 for these rows). ---
+
+    [Fact]
+    public void Een_K3_klas_in_het_lopende_schooljaar_is_een_rapportklas_om_te_lezen_en_in_te_vullen()
+    {
+        var klas = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(klas, "K3", LopendEind)]);
+
+        Assert.Equal([klas], rechten.RapportklasIds);
+        Assert.Equal([klas], rechten.LopendeRapportklasIds);
+        Assert.True(rechten.IsRapportleerkrachtVan(klas));
+        Assert.True(rechten.VultRapportIn(klas));
+    }
+
+    [Fact]
+    public void Een_K3_klas_van_een_afgelopen_schooljaar_blijft_leesbaar_maar_wordt_niet_meer_ingevuld()
+    {
+        var klas = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(klas, "K3", AfgelopenEind)]);
+
+        Assert.Equal([klas], rechten.RapportklasIds);
+        Assert.Empty(rechten.LopendeRapportklasIds);
+        Assert.True(rechten.IsRapportleerkrachtVan(klas));
+        Assert.False(rechten.VultRapportIn(klas));
+    }
+
+    [Fact]
+    public void Een_K3_klas_van_een_schooljaar_dat_nog_niet_begon_wordt_al_ingevuld()
+    {
+        // The same "vandaag ≤ Eind" as R20: a leerkracht may enter next year's children in June.
+        var klas = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(klas, "K3", VolgendEind)]);
+
+        Assert.Equal([klas], rechten.LopendeRapportklasIds);
+    }
+
+    [Fact]
+    public void Op_de_laatste_schooldag_vult_de_leerkracht_nog_in_en_de_dag_erna_niet()
+    {
+        var klas = Guid.NewGuid();
+        KlastoewijzingFeit[] toewijzing = [new KlastoewijzingFeit(klas, "K3", LopendEind)];
+
+        Assert.Equal([klas], Bereken(toewijzingen: toewijzing, vandaag: LopendEind).LopendeRapportklasIds);
+
+        var daarna = Bereken(toewijzingen: toewijzing, vandaag: LopendEind.AddDays(1));
+        Assert.Empty(daarna.LopendeRapportklasIds);
+        Assert.Equal([klas], daarna.RapportklasIds);
+    }
+
+    [Theory]
+    [InlineData("JK")]
+    [InlineData("K2")]
+    [InlineData("L1")]
+    [InlineData("L6")]
+    public void Een_klas_die_geen_K3_geeft_is_geen_rapportklas_maar_blijft_de_eigen_klas(string jaarfase)
+    {
+        // D9: only a klas that grants K3 has leerlingen. Its planning is still the leerkracht's own (I21).
+        var klas = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(klas, jaarfase, LopendEind)]);
+
+        Assert.Empty(rechten.RapportklasIds);
+        Assert.Empty(rechten.LopendeRapportklasIds);
+        Assert.Equal([klas], rechten.EigenKlasIds);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("3K")]
+    [InlineData("K4")]
+    public void Een_klas_zonder_geldige_gestelde_jaarfase_is_geen_rapportklas(string? gesteld)
+    {
+        // Fails closed through the one mapping (R22, I12), never widened the way the dekking widens a kleutergroep.
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(Guid.NewGuid(), gesteld, LopendEind)]);
+
+        Assert.Empty(rechten.RapportklasIds);
+        Assert.Empty(rechten.LopendeRapportklasIds);
+    }
+
+    [Fact]
+    public void Een_gestelde_jaarfase_met_spaties_telt_zoals_de_mapping_ze_leest()
+    {
+        var klas = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen: [new KlastoewijzingFeit(klas, " K3 ", LopendEind)]);
+
+        Assert.Equal([klas], rechten.RapportklasIds);
+    }
+
+    [Fact]
+    public void Een_leerkracht_met_meerdere_klassen_krijgt_precies_zijn_K3_klassen()
+    {
+        var lopend = Guid.NewGuid();
+        var afgelopen = Guid.NewGuid();
+        var k2 = Guid.NewGuid();
+
+        var rechten = Bereken(toewijzingen:
+        [
+            new KlastoewijzingFeit(lopend, "K3", LopendEind),
+            new KlastoewijzingFeit(afgelopen, "K3", AfgelopenEind),
+            new KlastoewijzingFeit(k2, "K2", LopendEind),
+        ]);
+
+        Assert.Equal(new[] { lopend, afgelopen }.Order(), rechten.RapportklasIds);
+        Assert.Equal([lopend], rechten.LopendeRapportklasIds);
+        Assert.Equal(new[] { lopend, afgelopen, k2 }.Order(), rechten.EigenKlasIds);
+    }
+
+    [Fact]
+    public void Een_klas_om_in_te_vullen_is_altijd_ook_een_klas_om_te_lezen()
+    {
+        // The constructor keeps the one list a subset of the other, whoever builds it.
+        var gelezen = Guid.NewGuid();
+        var alleenIngevuld = Guid.NewGuid();
+
+        var rechten = new Rechten(An, false, false, [], [], [], [gelezen], [gelezen, alleenIngevuld]);
+
+        Assert.Equal([gelezen], rechten.LopendeRapportklasIds);
+        Assert.False(rechten.VultRapportIn(alleenIngevuld));
+    }
+
+    [Fact]
+    public void Zonder_rapportlijsten_heeft_een_rechtenobject_geen_rapportklas()
+    {
+        // The optional parameters default to nothing, which is the direction a right must fail in.
+        var rechten = new Rechten(An, false, false, [], ["K3"], [Guid.NewGuid()]);
+
+        Assert.Empty(rechten.RapportklasIds);
+        Assert.Empty(rechten.LopendeRapportklasIds);
     }
 
     // --- The one mapping from a klas to its leeftijden (R22), and why it is not Klasleeftijden. ---

@@ -45,6 +45,14 @@ public interface IRechtenbronnen
 
     /// <summary>The planning of the klas an algemene ficheplaatsing is in.</summary>
     Task<Klasplanning?> VoorAlgemeneFicheplaatsingAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
+
+    // --- The ontwikkelingsrapport of one klas (FB-001): its leerlingen, and from FB-003 on its reports. ---
+
+    /// <summary>The ontwikkelingsrapport of a klas named in the route. <c>null</c> when the klas does not exist.</summary>
+    Task<Rapportklas?> VoorRapportklasAsync(Guid klasId, CancellationToken cancellationToken = default);
+
+    /// <summary>The ontwikkelingsrapport of the klas a leerling is in. <c>null</c> when the leerling does not exist.</summary>
+    Task<Rapportklas?> VoorLeerlingAsync(Guid leerlingId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -81,6 +89,19 @@ public sealed record Leeftijdsinhoud(string Leeftijd)
 
 /// <summary>The planning of one klas (jaarplan, (her)generatie, agenda, hoeken, algemene fiches): the "LK eigen" resource.</summary>
 public sealed record Klasplanning(Guid KlasId);
+
+/// <summary>
+/// The ontwikkelingsrapport of one klas: its leerlingen and their reports, the resource of the ontwikkelingsrapport rows
+/// (FB-001, ADR-0030 footnote ⁶, ADR-0035 §3.3). <b>A type of its own rather than a <see cref="Klasplanning"/></b>,
+/// because "LK eigen" means something narrower here: only a klas that grants K3, and filling in only during its
+/// schooljaar (R26). A planning resource can therefore never pass a report row, nor a report resource a planning row.
+/// <para>
+/// It is built for any klas that exists, K3 or not. Whether that klas can have leerlingen at all (D9) is the matrix's
+/// question for a leerkracht and the service's for directie.
+/// </para>
+/// </summary>
+/// <param name="KlasId">The klas.</param>
+public sealed record Rapportklas(Guid KlasId);
 
 /// <summary>
 /// An existing activiteit, as the delete and move rows need it (ADR-0030 §3, R25, R33, I19). It also serves every

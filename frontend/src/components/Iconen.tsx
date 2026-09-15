@@ -140,6 +140,23 @@ export function IcoonDekking(props: IconProps) {
   );
 }
 
+/**
+ * Ontwikkelingsrapport: a sheet with a star on it.
+ *
+ * The star is what the report is made of: a child is rated on each rapportdoel with a star from the one K3 scale
+ * (ADR-0035 R5). A sheet alone would be any document, and a face or a child would put a pupil where this app draws
+ * only the work about one.
+ */
+export function IcoonRapport(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <rect x="5" y="3" width="14" height="18" rx="2.5" />
+      <path d="M12 6.8 13.06 9.54 15.99 9.7 13.71 11.56 14.47 14.4 12 12.8 9.53 14.4 10.29 11.56 8.01 9.7 10.94 9.54z" />
+      <path d="M9 17.5h6" />
+    </Icoon>
+  );
+}
+
 export function IcoonZoek(props: IconProps) {
   return (
     <Icoon {...props}>

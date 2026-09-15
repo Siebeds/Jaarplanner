@@ -1,6 +1,6 @@
 import { useLayoutEffect, type ReactNode, type SVGProps } from "react";
 import { NavLink, useMatch } from "react-router-dom";
-import { BESTEMMINGEN, ONDERAAN, type Bestemming } from "./routes";
+import { BESTEMMINGEN, ONDERAAN, RAPPORT, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
 import { IcoonActiviteit, IcoonFiche, IcoonHoek } from "../components/Iconen";
@@ -44,6 +44,12 @@ import { cn } from "../lib/cn";
  * no bottom to push it to, so it is simply the last tab: five fit, and the alternative is a
  * destination that exists on a laptop and not on a phone.
  *
+ * **The ontwikkelingsrapport has a section of its own at the bottom, above Instellingen** (FR-13.10; ADR-0035 R32,
+ * D17; owner, 2026-09-15). It takes the push to the bottom edge and a rule of its own, so Instellingen follows it over
+ * a second rule and stays last before the sign-in row. It is `lg` only: on a phone the bar keeps its five tabs and the
+ * report is reached from the top of Instellingen (`Instellingenindeling`), which is the owner's choice over a sixth tab.
+ * It shows only to whoever may read a report (D18), since for anyone else it would lead to nothing.
+ *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
  * it never takes the accent bar that stands for `aria-current`, and its open state is a neutral tint
@@ -78,6 +84,7 @@ export function Navigatie() {
   const { klasId, laadt: selectieLaadt } = useActieveSelectie();
   const { mag, laadt: rechtenLaden } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
+  const toonRapport = mag.ontwikkelingsrapportZien;
 
   /*
     The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
@@ -171,14 +178,28 @@ export function Navigatie() {
           </li>
         ) : null}
 
+        {/* From `lg` only, and only for whoever may read a report: the phone keeps its five tabs. */}
+        {toonRapport ? (
+          <Tab
+            bestemming={RAPPORT}
+            smal={smal}
+            className="hidden lg:mt-auto lg:block lg:border-t lg:border-lijn lg:pt-2"
+          />
+        ) : null}
+
         {ONDERAAN.map((bestemming, index) => (
           <Tab
             key={bestemming.pad}
             bestemming={bestemming}
             smal={smal}
-            // Only the first of the group takes the push and the rule, so a second settings
-            // destination would sit under this one instead of starting a third group.
-            className={index === 0 ? "lg:mt-auto lg:border-t lg:border-lijn lg:pt-2" : undefined}
+            // Only the first of the group takes the rule, so a second settings destination would sit under this one
+            // instead of starting a third group. It takes the push to the bottom edge too, unless the report above it
+            // already has it: then the two stand together at the bottom, each over its own rule.
+            className={
+              index === 0
+                ? cn(toonRapport ? "lg:mt-2" : "lg:mt-auto", "lg:border-t lg:border-lijn lg:pt-2")
+                : undefined
+            }
           />
         ))}
 

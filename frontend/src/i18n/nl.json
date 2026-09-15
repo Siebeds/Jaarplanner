@@ -10,7 +10,8 @@
     "agenda": "Agenda",
     "dekking": "Dekking",
     "instellingen": "Instellingen",
-    "inladen": "Inladen"
+    "inladen": "Inladen",
+    "ontwikkelingsrapport": "Ontwikkelingsrapport"
   },
   "context": {
     "titel": "Klas en schooljaar",
@@ -443,6 +444,34 @@
     "verwijderTitel": "{naam} verwijderen?",
     "verwijderGevolg": "Het jaarplan verdwijnt mee, en ook de hoeken van deze klas met wat erin gepland staat. Dat is niet terug te draaien.",
     "verwijderMislukt": "De klas is niet verwijderd."
+  },
+  "ontwikkelingsrapport": {
+    "titel": "Ontwikkelingsrapport",
+    "kinderen": "Kinderen",
+    "eenKind": "1 kind",
+    "aantalKinderen": "{aantal} kinderen",
+    "voornaam": "Voornaam",
+    "achternaam": "Achternaam",
+    "toevoegen": "Kind toevoegen",
+    "voornaamVerplicht": "Vul een voornaam in.",
+    "achternaamVerplicht": "Vul een achternaam in.",
+    "toegevoegd": "{naam} is toegevoegd.",
+    "toevoegenMislukt": "Het kind is niet toegevoegd.",
+    "wijzigKind": "{naam} wijzigen",
+    "wijzigenMislukt": "De naam is niet bewaard.",
+    "verwijderKind": "{naam} verwijderen",
+    "verwijderTitel": "{naam} verwijderen?",
+    "verwijderGevolg": "Alle rapporten van dit kind verdwijnen mee. Dat is niet terug te draaien.",
+    "verwijderenMislukt": "Het kind is niet verwijderd.",
+    "geenKinderen": "Nog geen kinderen in deze klas.",
+    "alleenLezen": "Dit schooljaar is voorbij. Je kan de kinderen nog bekijken, maar niet meer toevoegen, wijzigen of verwijderen.",
+    "laadFout": "De kinderen konden niet geladen worden. Herlaad de pagina.",
+    "rechtenOnbekend": "Het is niet gelukt na te gaan wat je mag zien. Herlaad de pagina.",
+    "geenToegang": "Je hebt geen toegang tot het ontwikkelingsrapport.",
+    "geenSchooljaar": "Er is nog geen schooljaar.",
+    "selectieLaadFout": "Het is niet gelukt deze pagina te laden. Herlaad de pagina.",
+    "geenK3Klas": "Dit schooljaar heeft geen klas van de derde kleuter.",
+    "geenEigenK3Klas": "Je hebt in dit schooljaar geen klas van de derde kleuter."
   },
   "gebruikers": {
     "uitnodigen": "Gebruiker uitnodigen",

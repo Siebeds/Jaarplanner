@@ -75,8 +75,16 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
         using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
         Assert.Equal(
-            ["eigenKlasIds", "email", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isDirectie", "leerkrachtLeeftijden", "naam"],
+            [
+                "eigenKlasIds", "email", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isDirectie",
+                "leerkrachtLeeftijden", "lopendeRapportklasIds", "naam", "rapportklasIds",
+            ],
             json.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
+
+        // FB-001: the running K3 klas is a rapportklas, to read and to fill in; the ended L4 klas grants no K3 at all.
+        var k3 = lopend.Klassen.Single().Id;
+        Assert.Equal([k3], json.RootElement.GetProperty("rapportklasIds").EnumerateArray().Select(e => e.GetGuid()));
+        Assert.Equal([k3], json.RootElement.GetProperty("lopendeRapportklasIds").EnumerateArray().Select(e => e.GetGuid()));
 
         var ik = json.RootElement.Deserialize<IkDto>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         Assert.Equal(an.Id, ik.Id);

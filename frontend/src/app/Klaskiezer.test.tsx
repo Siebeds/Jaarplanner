@@ -22,6 +22,7 @@ const KLAS: KlasWeergave = {
   jaarFasen: ["JK", "K2", "K3"],
   jaarfase: null,
   mogelijkeJaarfasen: ["JK", "K2", "K3"],
+  kanLeerlingenHebben: false,
 };
 
 vi.mock("../lib/selectie", () => ({
