@@ -2,12 +2,12 @@
 id: FB-020
 titel: Leerkracht vult per hoek een verrijking in voor het lopende subthema
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:19
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 17:21
+opgepakt-door: hoekverrijking
+branch: ticket/FB-020-hoekverrijking-per-subthema
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -77,9 +77,19 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 - **Bestaande verrijkingen met eigen datums** (demo en ontwikkeling): **standaard** krijgt elke verrijking de
   subthemaperiode waarmee ze overlapt, en een verrijking zonder subthemaperiode blijft leesbaar in het detail van de hoek.
   Is dat goed, of mogen ze weg?
+  **Beslist door de eigenaar, 2026-09-15:** omzetten naar elke subthemaperiode van de klas waarmee ze overlapt; een
+  verrijking die met geen enkele periode overlapt, verdwijnt. Er blijft één soort verrijking over.
 - Een subthema dat in de agenda van de klas niet ingepland is, heeft geen periode en dus geen verrijking. Is dat goed?
+  **Beslist door de eigenaar, 2026-09-15:** de agenda toont een subthema ook als het alleen via activiteiten loopt,
+  zonder vastgelegde periode. Bij het eerste bewaren legt de tool die periode vast zoals de balk ze toont, en het blad
+  zegt dat vooraf.
+- **Beslist door de eigenaar, 2026-09-15:** wordt een subthema verwijderd, dan gaan de verrijkingen van zijn periodes
+  mee weg, en de bevestiging bij het verwijderen zegt hoeveel.
+- **Beslist door de eigenaar, 2026-09-15:** in het hoekdetail kan de leerkracht de verrijking per subthemaperiode ook
+  bewerken, niet alleen lezen.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 17:19 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 17:21 · hoekverrijking · klaar-voor-bouw → in-uitvoering: opgepakt; eigenaar besliste: oude verrijkingen omzetten naar de overlappende subthemaperiodes (rest weg), periode mee vastleggen bij een subthema zonder vastgelegde periode, bij verwijderen van een subthema het aantal verrijkingen noemen, verrijking ook bewerkbaar in het hoekdetail
