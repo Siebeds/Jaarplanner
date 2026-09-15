@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:20
+bijgewerkt: 2026-09-15 15:26
 opgepakt-door: claude-opkuis
 branch: ticket/claude-config-opkuis
-pr:
+pr: 76
 geblokkeerd:
 fr: []
 ---
@@ -64,3 +64,4 @@ Geen.
 - 2026-09-15 14:59 · claude-opkuis · Antagonist begrensd, groepschat verwijderd (demo-slot blijft als lockbestand), CLAUDE.md 45 naar 12 KB, constitutie 99 naar 64 KB met het log in docs/constitutie-log.md, ADR-0037; bordtests 84/84 groen
 - 2026-09-15 15:10 · claude-opkuis · Antagonist ronde 1: 1 MAJOR (drie regels uit de opgeloste lijst van Art. XIV ontbraken), 4 MINOR, 1 vraag; alles verwerkt, verslag in backlog/worklogs/TB-021/antagonist.md
 - 2026-09-15 15:20 · claude-opkuis · in-uitvoering → klaar: Antagonist ronde 2 COMPLIANT; bordtests 84/84 groen. Groepschat weg, antagonist begrensd (ADR-0037), CLAUDE.md 45 naar 12 KB, constitutie 99 naar 65 KB
+- 2026-09-15 15:26 · claude-opkuis · PR #76
