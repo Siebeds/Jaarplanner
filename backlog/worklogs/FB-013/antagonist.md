@@ -43,3 +43,15 @@
 - `main` was merged in. Main had taken **ADR-0039** for the AI buttons (TB-023), so FB-013's ADR is **ADR-0040** now.
   FB-002's new `Rapportsetleerkracht` column had the value 512 that FB-013's `HoofdleerkrachtLezen` used; the three
   read columns moved to 1024, 2048 and 4096.
+
+## Round 2, re-audit (2026-09-15, `git diff 93ff3e0..3e658fe` plus the merge's conflict resolution)
+
+**Verdict: COMPLIANT.** The round-1 MAJOR is resolved: the register asks `KlasplanningBekijken` on each fiche's
+`Klasinzage`, `Koppelingzichtbaarheid` gates only layers that are no klas's planning, and both levels are tested. No
+other read returns a klas's planning past the row (checked: every GET with a `klasId`, `leerplandoelen/ongekoppeld`
+(codes only), `minimumdoelen`, `themas/bibliotheek` (an aggregate count), `gebruikers` (directie), `schooljaren`
+(filtered)). The `Kolom` flags are distinct after the merge and the frontend mirror matches. The renumber is
+consistent; every remaining 0039 reference is TB-023's. No new MINOR.
+
+Evidence at close: backend unit 1644 and integration 504 passed against PostgreSQL (0 failed), frontend 831 passed,
+`dotnet format` and `pnpm lint` clean.
