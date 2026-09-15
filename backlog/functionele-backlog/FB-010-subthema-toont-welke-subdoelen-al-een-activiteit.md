@@ -2,12 +2,12 @@
 id: FB-010
 titel: Subthema toont welke subdoelen al een activiteit hebben en welke nog niet
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:46
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 15:08
+opgepakt-door: themapagina
+branch: ticket/FB-010-subdoelen-in-activiteiten
 pr:
 geblokkeerd:
 fr: [FR-3.2, FR-4.4]
@@ -65,3 +65,4 @@ een activiteit wachten.
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 15:08 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt; gestapeld op ticket/FB-011-subthemas-ingeklapt
