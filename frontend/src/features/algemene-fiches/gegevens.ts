@@ -216,6 +216,20 @@ export function useVerwijderAlgemeneFicheplaatsing() {
   });
 }
 
+/**
+ * Takes ONE occurrence off its day, with its day text (TB-030). Refreshes what a placement's removal refreshes: the last
+ * occurrence takes the placement along on the server, and that can move dekking.
+ */
+export function useVerwijderFichemoment() {
+  const ververs = usePlaatsingVerversing();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, momentId }: { plaatsingId: string; momentId: string }) =>
+      del(`/api/algemene-ficheplaatsingen/${plaatsingId}/momenten/${momentId}`),
+    onSuccess: ververs,
+  });
+}
+
 /** Where one occurrence should move to, or how long it should run. */
 export interface FichemomentVerplaatsing {
   plaatsingId: string;

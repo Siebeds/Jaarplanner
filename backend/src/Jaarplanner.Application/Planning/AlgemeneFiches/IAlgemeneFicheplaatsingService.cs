@@ -36,6 +36,16 @@ public interface IAlgemeneFicheplaatsingService
     /// </summary>
     Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Takes ONE occurrence out of the agenda, with its day text (TB-030). The last occurrence takes the placement
+    /// along: dekking counts a placement while its row exists, so one with no day left would keep the fiche counting
+    /// from a period drawn nowhere.
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
+    /// No such placement, or no such occurrence in it.
+    /// </exception>
+    Task VerwijderMomentAsync(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken = default);
+
     /// <summary>Moves or resizes ONE occurrence, inside the placement's window.</summary>
     Task<AlgemeneFicheplaatsingWeergave> VerplaatsMomentAsync(
         Guid plaatsingId,

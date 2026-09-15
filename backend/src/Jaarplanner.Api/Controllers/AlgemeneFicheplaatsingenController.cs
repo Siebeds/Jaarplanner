@@ -50,6 +50,15 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>Takes ONE occurrence out of the agenda (TB-030). The last one takes its placement along.</summary>
+    [HttpDelete("/api/algemene-ficheplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]
+    public async Task<IActionResult> VerwijderMoment(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken)
+    {
+        await _service.VerwijderMomentAsync(plaatsingId, momentId, cancellationToken);
+        return NoContent();
+    }
+
     /// <summary>Moves or resizes ONE occurrence.</summary>
     [HttpPut("/api/algemene-ficheplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}")]
     [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]

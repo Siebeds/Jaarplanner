@@ -122,6 +122,28 @@ public sealed class AlgemeneFicheplaatsingService : IAlgemeneFicheplaatsingServi
         await _db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task VerwijderMomentAsync(Guid plaatsingId, Guid momentId, CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await _db.AlgemeneFicheplaatsingen
+            .Include(p => p.Momenten)
+            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {plaatsingId} is niet gevonden.");
+
+        if (!plaatsing.VerwijderMoment(momentId))
+        {
+            throw new SchoolcontentNietGevondenFout($"Moment {momentId} is niet gevonden.");
+        }
+
+        // The last day takes the placement along. Dekking asks whether a placement row exists (EfDekkingOpslag), so an
+        // empty one would keep the fiche's goals counting from a period the agenda draws on no day at all.
+        if (plaatsing.Momenten.Count == 0)
+        {
+            _db.AlgemeneFicheplaatsingen.Remove(plaatsing);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<AlgemeneFicheplaatsingWeergave> VerplaatsMomentAsync(
         Guid plaatsingId,
         Guid momentId,

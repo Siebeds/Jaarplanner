@@ -15,6 +15,7 @@ import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../l
 import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
+import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
@@ -113,6 +114,7 @@ export function Tijdraster({
   onVoegToe,
   onOpen,
   onOpenFiche,
+  onVanDag,
   onKiesDag,
   onWijzigTijd,
 }: {
@@ -139,6 +141,11 @@ export function Tijdraster({
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** A fiche block was opened: its placement, and the one occurrence it was opened from. */
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
+  /**
+   * The right-click menu's bin (TB-030): take this one block off its day. The screen decides whether that needs a yes
+   * first, since only it can see what else would go.
+   */
+  onVanDag: (doel: Tijddoel, naam: string, datum: string) => void;
   /** Opens one day on its own. Left out in the day view, which is already that. */
   onKiesDag?: (datum: string) => void;
   /** A block was made longer or shorter by its bottom edge. */
@@ -276,6 +283,7 @@ export function Tijdraster({
                 onVoegToe={onVoegToe}
                 onOpen={onOpen}
                 onOpenFiche={onOpenFiche}
+                onVanDag={onVanDag}
                 onWijzigTijd={onWijzigTijd}
               />
             ))}
@@ -519,6 +527,7 @@ function Dagkolom({
   onVoegToe,
   onOpen,
   onOpenFiche,
+  onVanDag,
   onWijzigTijd,
 }: {
   dag: Agendadag;
@@ -530,6 +539,7 @@ function Dagkolom({
   onVoegToe: (datum: string, begin: number, einde?: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
+  onVanDag: (doel: Tijddoel, naam: string, datum: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: kolomId(dag.datum), disabled: !dag.isLesdag || !magPlannen });
@@ -598,6 +608,7 @@ function Dagkolom({
           magPlannen={magPlannen}
           onOpen={onOpen}
           onOpenFiche={onOpenFiche}
+          onVanDag={onVanDag}
           onWijzigTijd={onWijzigTijd}
         />
       ))}
@@ -838,17 +849,27 @@ function Blok({
   magPlannen,
   onOpen,
   onOpenFiche,
+  onVanDag,
   onWijzigTijd,
 }: {
   blok: Rasterblok;
   plek: { kolom: number; kolommen: number };
   rasterVan: number;
-  /** Without it the block only opens: no drag, no grip, and no drag semantics on the button. */
+  /** Without it the block only opens: no drag, no grip, no right-click menu, and no drag semantics on the button. */
   magPlannen: boolean;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
+  onVanDag: (doel: Tijddoel, naam: string, datum: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
 }) {
+  // What pressing the block does, and what the right-click menu's "Bewerken" does too (TB-030): one sheet, two ways in.
+  const open = () => {
+    const doel = blok.doel;
+    if (doel.soort === "activiteit") {
+      if (blok.activiteit) onOpen(blok.activiteit, blok.datum);
+    } else onOpenFiche(doel.plaatsingId, doel.momentId);
+  };
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: blok.id,
     data: { naam: blok.naam, duur: blok.einde - blok.begin },
@@ -915,15 +936,17 @@ function Blok({
           isDragging && "opacity-40",
         )}
       >
+        {/* The right-click menu (TB-030) hangs on the block's own button, so it answers wherever the block does. */}
+        <Blokmenu
+          naam={blok.naam}
+          magPlannen={magPlannen}
+          onBewerk={open}
+          onVanDag={() => onVanDag(blok.doel, blok.naam, blok.datum)}
+        >
         <button
           ref={setNodeRef}
           type="button"
-          onClick={() => {
-            const doel = blok.doel;
-            if (doel.soort === "activiteit") {
-              if (blok.activiteit) onOpen(blok.activiteit, blok.datum);
-            } else onOpenFiche(doel.plaatsingId, doel.momentId);
-          }}
+          onClick={open}
           // The kind is spoken for a fiche: it carries no colour, so the word under the name is the only thing that
           // tells it from an activiteit, and a short block does not print it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
@@ -981,6 +1004,7 @@ function Blok({
             </span>
           ) : null}
         </button>
+        </Blokmenu>
 
         {/* A sibling of the block's button, above it in the corner: pressing it opens the goals and nothing else. For
             everyone who can see the block, since reading what a block works on is not planning.
