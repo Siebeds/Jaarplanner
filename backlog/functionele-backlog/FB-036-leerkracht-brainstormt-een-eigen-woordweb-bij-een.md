@@ -2,10 +2,10 @@
 id: FB-036
 titel: Leerkracht brainstormt een eigen woordweb bij een subthema, met AI-voorstellen
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 18:15
+bijgewerkt: 2026-09-15 18:20
 opgepakt-door:
 branch:
 pr:
@@ -92,3 +92,4 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 ## Werklog
 
 - 2026-09-15 18:15 · woordweb · aangemaakt (status nieuw)
+- 2026-09-15 18:20 · eigenaar · nieuw → klaar-voor-bouw: eigenaar wil het meteen samen oppakken
