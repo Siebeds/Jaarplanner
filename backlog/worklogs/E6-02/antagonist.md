@@ -971,3 +971,29 @@ The QUESTION is taken inside slice 4's fix round 3 rather than filed as a ticket
 - Between the rights refetch and `Resultaat` arriving during a refused plan, the planner's body can be briefly empty. It asserts nothing false.
 
 **Slice 4 closed on the gates:** test-runner PASS on every browser criterion (round 4, `960ad89`; the mini-fix's behaviour checked in the implementer's browser pass and its test defect fixed as the test-runner prescribed) and antagonist COMPLIANT (round 5, `fe47e99`).
+
+## Merge of origin/main — audit
+
+*Recorded by the orchestrator from the antagonist's final message (read-only role, no Write tool).*
+
+**Verdict:** COMPLIANT (three MINOR findings; Art. X.7: fix or waive).
+**Scope audited:** `a985cab` (parents `4ab828a`, `3ba2391`): `git show --cc`, both one-sided diffs of the conflicted files, main's API/frontend changes since `60020b9`, migrations and `infra/`. Constitution read fresh from the merged tree.
+
+### Findings
+- **MINOR 1: main's new controls are gated but the gating is untested (Art. VI.1, R7; the E3-06/reachable-vs-tested rule).** `Agendascherm` (no test file) hides the two mobile chips, the panel and `onKiesAlgemeneFiche` for a reader, and passes `alleenLezen` to `Algemenefichedetailblad`, whose test never exercises it. No browser pass at the time of the audit. *Fix:* one reader test for the agenda, one `alleenLezen` test for the sheet (as `Hoekdetailblad.test`), a 390px look; or waive.
+- **MINOR 2: `Rechtenmatrix.cs` (lines 3–24) still calls itself the §3 matrix declared once, and its "Not expressed here, on purpose" list omits the six ontwikkelingsrapport rows the merge added to §3.** The ADR got the caveat (line 727); the code did not. *Fix:* one sentence (their policies come with FR-13).
+- **MINOR 3: `infra/seed-demo.ps1:201-202,248-250` compares only the newest migration id.** `RechtenModel` (093928) and `Wizardrun` (114237) sort before main's `MinimumdoelOrdeningEnSoort` (124010), so a demo DB with main's migration passes the guard with ours pending; the API then fails loudly on `gebruikers.HeeftThemabeheer`. `migrate-db.ps1` applies them correctly. *Fix:* compare the set of migrations, or record that migrate-db runs first; or waive.
+
+### Checks run
+- Constitution: 19 ratification rows (base 13 + ours 4 + main 2), in commit-time order; I1–I28 intact, none renumbered; (e) and VI.1 say five rights; no substantive contradiction (I21 vs report rows: footnote ⁶; I9 vs R17: VI.1; the klas→leeftijden mapping is ours; subdoel deletion vs rapportdoelen: ADR-0035 D3).
+- ADR-0030: every ⁶ means the report rows (lines 22, 610, 666–670, 727), the only ⁷ the thema delete (647 → 709); footnote order cosmetic only. The enforcement sentence is true (no report type or route in `backend/src`) and needed.
+- Gating: switches and chips behind `magPlannen`; panel only mounted for planners; fiche blocks not draggable or resizable for a reader but open; the read-only fiche sheet drops delete, moment fields and the delete-cost sentence; `Gekoppelddoel` unlink optional and gated; `Laadlink` directie only; `doelKoppelenVoor` in both layouts.
+- Server: main's only new route is `GET api/minimumdoelen/{minimumdoelRef}`; the fiche move is the existing `PUT …/momenten/{momentId}` with `[RechtOp(KlasplanningBewerken)]`; migrations additive on disjoint tables.
+- Nothing lost: `verplaatsFichemoment.error` feeds `Agendamelding`; E1-22 tests ported; `Maandrooster` both sides kept.
+- Seven merge-touched frontend test files: 65/65 pass. Backend suites and `has-pending-model-changes` not re-run here.
+
+## Fix and second merge — audit waived
+
+The owner stopped the antagonist audit of `0ddf4fe` (the fix for the merge audit's three MINOR findings) and `9a81c74`
+(the merge of PR #70, TB-014) on 2026-09-15: "STOP met antagonisten, deze sessie duurt veel te lang". No audit record
+exists for those two commits.

@@ -2581,3 +2581,25 @@ fixed in one commit on top of `a985cab`.
   - `dotnet test tests/Jaarplanner.UnitTests`: 1450 passed, 4 skipped (the KOV live-API tests).
   - **The integration tests were not re-run, because Postgres was down.** The only backend change is comments in
     `Rechtenmatrix.cs` and `RechtenmatrixTests.cs`.
+
+### Second merge of origin/main (PR #70, TB-014)
+
+- **What:** merged `origin/main` at `ea6c5c6` into the branch at `0ddf4fe` as `9a81c74`. `main` had moved on by PR #70
+  (TB-014): the time grid lights up the quarter under the mouse, and a drag across empty space plans an activiteit for
+  exactly that stretch.
+- **Conflicts** (both sides kept):
+  - `Tijdraster.tsx`: our required `magPlannen` with TB-014's `onVoegToe(datum, begin, einde?)`, in `Tijdraster` and in
+    `Dagkolom`. The empty column's button stays behind `dag.isLesdag && magPlannen`, with TB-014's comment and ours.
+    TB-014 puts every gesture of `useLegePlek` on that button (pointer down, move, leave, up and cancel, lost capture,
+    the click), and listens for Escape only while a stretch drawn there runs. So a gebruiker who may not plan the klas
+    gets no lit-up quarter, no stretch and no click. The component's doc block said "three gestures"; TB-014 made them
+    four, and it now says so.
+  - `Agendascherm.tsx`: `magPlannen` and TB-014's three-argument `onVoegToe`.
+  - Merged by themselves: `Activiteitkiezer` and `Nieuweactiviteitblad` (`eindtijd`), `gevraagdeplek.ts`, `tijd.ts`,
+    two `nl.json` keys, `index.css`, the ADR-0024 amendment, and `Tijdraster.test.tsx` (TB-014's "onder de muis" tests
+    use the test helper's default `magPlannen: true`).
+- **Tests:** no new case. The reader case in `Tijdraster.test.tsx` already asserts that the empty column's button is
+  absent, and TB-014's tests reach each of its gestures through that same button; the case's comment now says so.
+- **Gates:** `pnpm lint` 0; `pnpm test` 64 files, 572 passed; `pnpm build` ok; `dotnet test tests/Jaarplanner.UnitTests`
+  1450 passed, 4 skipped; `dotnet format --verify-no-changes` clean. The merge brings no backend change.
+  **Not run:** the Postgres integration suite and a browser pass, because Docker Desktop was down.

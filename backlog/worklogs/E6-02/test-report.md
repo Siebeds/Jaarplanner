@@ -560,3 +560,26 @@ None blocking.
 
 ## Owner decision after round 4 (2026-09-14)
 The three fix rounds were used up. The owner approved one extra mini-fix for the antagonist's F10 and F11; the orchestrator added this test-only defect and the antagonist's comment nit, both on the same topic. A short check follows it.
+
+
+# Merge of origin/main — Test report
+
+**Verdict:** incomplete, environment failure. The suites are green; the browser pass stopped when Docker Desktop did.
+**Commits:** `a985cab` (merge of `3ba2391`), the fix `0ddf4fe`, and the second merge `9a81c74` (of `ea6c5c6`).
+
+*Recorded by the orchestrator after a session break. The test-runner's final message was not kept, so this record is
+reconstructed from "Fix after the merge audit" in `implementation.md` and the evidence in the orchestrator's scratchpad
+(`tr-merge\`), and claims nothing beyond those.*
+
+- **Findings, all fixed in `0ddf4fe`:** no tests for the gating of main's agenda controls or for the fiche sheet's
+  read-only mode (defects 1 and 2); the hoofdleerkracht-of-K3 subdoel unlink not asserted per leeftijd (info 3).
+- **Browser pass, partial** (throwaway database `jp_tr_merge_e6`). On `/doelen`, Minimumdoelen: directie at 1440 gets
+  "Laad ze in bij Inladen", pointing at `/inladen?bron=opstap`, which opens the Op.stap section. A leerkracht (390) and
+  a gebruiker without rights (both widths) get no link. No horizontal overflow. The directie-at-390 screenshot still
+  shows the list loading, so it proves nothing about the link. Signing in as themabeheer, hoofdleerkracht and leerkracht
+  at 1440 then failed (401), because the API had lost its database. The setState-in-render warning on `DoelenScherm`
+  in the console predates E6-02.
+- **Not run:** the agenda criteria and the remaining profiles in the browser, and the Postgres integration suite on
+  `0ddf4fe` and `9a81c74`.
+- **Teardown:** the API and Vite are stopped (nothing listens on 5395 or 5185); `jp_tr_merge_e6` cannot be dropped
+  while Docker is down.
