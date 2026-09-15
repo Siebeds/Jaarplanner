@@ -2,10 +2,10 @@
 id: TB-029
 titel: Aanmeldpoort-test bouwt zijn gebruiker met ikMet, zodat de frontend-check weer slaagt
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 20:27
+bijgewerkt: 2026-09-15 20:30
 opgepakt-door: kindtekening
 branch: ticket/aanmeldpoort-leerlingzorg
 pr:
@@ -28,9 +28,9 @@ verplicht maakte. Daardoor faalt `tsc` in `pnpm lint`, en is de frontend-check r
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven `main` met TB-026 en FB-008, wanneer `pnpm lint` draait, dan meldt `tsc` geen fout meer in
+- [x] Gegeven `main` met TB-026 en FB-008, wanneer `pnpm lint` draait, dan meldt `tsc` geen fout meer in
   `Aanmeldpoort.test.tsx`.
-- [ ] Gegeven de frontend-tests, wanneer ze draaien, dan slagen de tests van `Aanmeldpoort` zoals voorheen.
+- [x] Gegeven de frontend-tests, wanneer ze draaien, dan slagen de tests van `Aanmeldpoort` zoals voorheen.
 
 ## Buiten scope
 
@@ -43,3 +43,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 20:27 · kindtekening · aangemaakt (status in-uitvoering)
+- 2026-09-15 20:30 · kindtekening · in-uitvoering → klaar: Aanmeldpoort.test.tsx bouwt zijn gebruiker met ikMet; pnpm lint exit 0, frontend 929/929 groen; geen antagonist: alleen een test, geen code of recht
