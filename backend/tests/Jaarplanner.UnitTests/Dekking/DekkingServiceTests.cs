@@ -952,19 +952,40 @@ public sealed class DekkingServiceTests
             // "thema could not be resolved" degrade. Dekking ignores the field either way.
             4);
 
+    [Fact]
+    public async Task Elk_doel_draagt_zijn_discipline_en_een_nummer_zonder_naam_blijft_zonder_naam()
+    {
+        // TB-022: the overview groups by discipline (owner ruling 2026-09-15), so every goal carries its discipline's
+        // number and name. A number the reference table does not know keeps a null name rather than a guessed one;
+        // the screen shows the number then, which is the stable key anyway.
+        var opslag = new FakeDekkingOpslag([], [Doel("WIS-K3-01", disciplineNummer: "2"), Doel("ONB-K3-01", disciplineNummer: "99")])
+        {
+            Leerjaar = KleuterLeerjaar,
+            Disciplinenamen = new Dictionary<string, string> { ["2"] = "Wiskunde" },
+        };
+
+        var dekking = await new DekkingService(new FakeJaarplanLezer(Plan([])), opslag).BerekenAsync(KlasId);
+
+        Assert.Equal("2", Doelvan(dekking, "WIS-K3-01").DisciplineNummer);
+        Assert.Equal("Wiskunde", Doelvan(dekking, "WIS-K3-01").DisciplineNaam);
+        Assert.Equal("99", Doelvan(dekking, "ONB-K3-01").DisciplineNummer);
+        Assert.Null(Doelvan(dekking, "ONB-K3-01").DisciplineNaam);
+    }
+
     private static Leerplandoel Doel(
         string code,
         string domein = "Natuur",
         string subdomein = "Levende natuur",
         string? minimumdoelRef = null,
-        string jaarFase = "K3") =>
+        string jaarFase = "K3",
+        string disciplineNummer = "9.1") =>
         new(
             code,
             Doelsoort.Gemeenschappelijk,
             jaarFase,
             domein,
             subdomein,
-            "9.1",
+            disciplineNummer,
             tekst: $"Tekst van {code}",
             minimumdoelRef: minimumdoelRef);
 
