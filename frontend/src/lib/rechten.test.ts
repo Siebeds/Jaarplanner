@@ -72,6 +72,7 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
   OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij"],
   LeerlingenBeheren: ["Directie", "LK rapport"],
+  RapportInvullen: ["Directie", "LK rapport"],
   // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
   RapportsetBewerken: ["LK rapport"],
 };
@@ -79,7 +80,9 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
 function bronVoor(rij: Rij): Rechtbron | undefined {
   if (rij === "KlasplanningBewerken") return { soort: "klas", klasId: EIGEN_KLAS };
-  if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren") return { soort: "rapportklas", klasId: EIGEN_KLAS };
+  if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren" || rij === "RapportInvullen") {
+    return { soort: "rapportklas", klasId: EIGEN_KLAS };
+  }
   const kolommen = RECHTENMATRIX[rij];
   return kolommen.some((kolom) => kolom === "Hoofdleerkracht" || kolom === "LeerkrachtLeeftijd")
     ? { soort: "leeftijd", leeftijd: LEEFTIJD }
@@ -105,8 +108,9 @@ describe("de rechtenmatrix van de frontend", () => {
   it("heeft een verwachting voor elke rij, en elke rij van de server", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
-    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set row.
-    expect(rijen).toHaveLength(21);
+    // The server's `Rechtenmatrix.Rijen`, by policy name: the E6-02 rows, FB-001's two report rows, FB-002's set row
+    // and FB-003's filling-in row.
+    expect(rijen).toHaveLength(22);
   });
 
   it("geeft een leerkracht de kinderen van een andere K3-klas niet, en de klasplanning geen rapport (R17)", () => {

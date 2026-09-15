@@ -1,5 +1,8 @@
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Ontwikkelingsrapport;
+// The type shares its name with its namespace (Art. IX.4 names it); the Infrastructure namespace of that name would
+// shadow it here.
+using Rapportentiteit = Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
@@ -191,6 +194,18 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// rapportdoel without loading the set (ADR-0035 D12); a subdoel delete drops them through the database cascade (D3).
     /// </summary>
     public DbSet<RapportdoelSubdoel> RapportdoelSubdoelen => Set<RapportdoelSubdoel>();
+
+    /// <summary>
+    /// The report of one child at one evaluatiemoment (FB-003, Art. IX.4). <b>Pupil data</b> (Art. VI.7): its besluit and
+    /// its texts never go into a log, and none of it counts for dekking.
+    /// </summary>
+    public DbSet<Rapportentiteit> Ontwikkelingsrapporten => Set<Rapportentiteit>();
+
+    /// <summary>
+    /// The star and text per rapportdoel of each report. A set of its own so the K3 set's deletes can ask whether a report
+    /// uses a gradatie or rapportdoel (ADR-0035 D1) without loading any report.
+    /// </summary>
+    public DbSet<Rapportbeoordeling> Rapportbeoordelingen => Set<Rapportbeoordeling>();
 
     /// <summary>
     /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a

@@ -35,6 +35,14 @@ public sealed class RapportsetService : IRapportsetService
     internal const string GradatievolgordeOnvolledig = "De volgorde moet elke gradatie één keer bevatten.";
     internal const string RapportdoelvolgordeOnvolledig = "De volgorde moet elk rapportdoel één keer bevatten.";
 
+    /// <summary>ADR-0035 D1: what a teacher can do instead, since the rename reaches every report (R7).</summary>
+    internal const string GradatieInGebruik =
+        "Deze gradatie staat al op een rapport en kan niet verwijderd worden. Je kan ze wel hernoemen of verschuiven.";
+
+    /// <summary>ADR-0035 D1, for a rapportdoel.</summary>
+    internal const string RapportdoelInGebruik =
+        "Dit rapportdoel staat al op een rapport en kan niet verwijderd worden. Je kan het wel hernoemen of verschuiven.";
+
     /// <summary>
     /// A subdoel id that is not a candidate: unknown, deleted, undecided or not K3. One sentence for all of them, so the
     /// answer does not say which ids exist. The picker offers only candidates, so a teacher meets this only when the
@@ -95,8 +103,13 @@ public sealed class RapportsetService : IRapportsetService
     {
         var gradatie = await VindGradatieAsync(gradatieId, cancellationToken);
 
-        // D1 (a gradatie a rating uses cannot be deleted) arrives with FB-003, which makes the ratings. Until then no
-        // report can use one, so every delete is allowed.
+        // D1: a star a report shows cannot be deleted, since the report may already be with the parents. The foreign key
+        // (Restrict) holds it too; this is the teacher's sentence first.
+        if (await _db.Rapportbeoordelingen.AnyAsync(b => b.GradatieId == gradatieId, cancellationToken))
+        {
+            throw new SchoolcontentValidatieFout(GradatieInGebruik);
+        }
+
         _db.Gradaties.Remove(gradatie);
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -168,7 +181,12 @@ public sealed class RapportsetService : IRapportsetService
         var rapportdoel = await _db.Rapportdoelen.FirstOrDefaultAsync(r => r.Id == rapportdoelId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout(RapportdoelNietGevonden);
 
-        // D1 arrives with FB-003, as for a gradatie. The join rows go with it (Cascade).
+        // D1, as for a gradatie. The join rows to its subdoelen go with it (Cascade).
+        if (await _db.Rapportbeoordelingen.AnyAsync(b => b.RapportdoelId == rapportdoelId, cancellationToken))
+        {
+            throw new SchoolcontentValidatieFout(RapportdoelInGebruik);
+        }
+
         _db.Rapportdoelen.Remove(rapportdoel);
         await _db.SaveChangesAsync(cancellationToken);
     }

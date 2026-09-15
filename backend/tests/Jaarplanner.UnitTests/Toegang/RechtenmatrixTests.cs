@@ -61,6 +61,7 @@ public sealed class RechtenmatrixTests
         // only during the schooljaar. Nobody else but directie, not HL, TB or "LK leeftijd" (R17).
         [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen"],
         [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Directie", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.RapportInvullen] = ["Directie", "LK K3 lopend"],
         // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even directie.
         // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
         // running rapportklassen (the D9 function), not the stated jaarfase.

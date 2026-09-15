@@ -20,11 +20,11 @@ namespace Jaarplanner.Application.Toegang;
 /// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
 /// reading and exporting another klas (I9) is every signed-in gebruiker today, which the fallback policy already gives,
-/// and narrowing it is E6-09's seam; and four of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶,
-/// ADR-0035), added on 2026-09-14, which get their policies with FB-002, FB-003, FB-006 and FB-007, since no route serves
-/// them before. <i>Since FB-001 (2026-09-15) two have one: <see cref="OntwikkelingsrapportLezen"/> and
-/// <see cref="LeerlingenBeheren"/>. Until then this sentence said all six had none. Since FB-002 (2026-09-15) a third
-/// has one: <see cref="RapportsetBewerken"/>, the one row directie does not pass (R31).</i>
+/// and narrowing it is E6-09's seam; and two of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶,
+/// ADR-0035), downloading a report and wiping a schooljaar, which get their policies with FB-006 and FB-007, since no
+/// route serves them before. The other four have one: <see cref="OntwikkelingsrapportLezen"/> and
+/// <see cref="LeerlingenBeheren"/> (FB-001), <see cref="RapportsetBewerken"/>, the one row directie does not pass (R31,
+/// FB-002), and <see cref="RapportInvullen"/> (FB-003).
 /// </para>
 /// <para>
 /// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row
@@ -66,6 +66,7 @@ public static class Rechtenmatrix
         public const string KlasplanningBewerken = "KlasplanningBewerken";
         public const string OntwikkelingsrapportLezen = "OntwikkelingsrapportLezen";
         public const string LeerlingenBeheren = "LeerlingenBeheren";
+        public const string RapportInvullen = "RapportInvullen";
         public const string RapportsetBewerken = "RapportsetBewerken";
     }
 
@@ -228,6 +229,17 @@ public static class Rechtenmatrix
         "Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen (ADR-0035 R14, R15, R26; D8, D9)",
         Kolom.LeerkrachtRapportInvullen);
 
+    /// <summary>
+    /// §3 "Een ontwikkelingsrapport invullen (gradatie, tekst, besluit, tekening) en een AI-herwerking vragen" (ADR-0035
+    /// R16, R26). Resource: <see cref="Rapportklas"/>. The klas's K3 leerkrachten only during its schooljaar (R26), and
+    /// afterwards they read (<see cref="OntwikkelingsrapportLezen"/>); directie always (R3). FB-003 applies it to the star,
+    /// the text and the besluit; the drawing (FB-005) and the rewrite (FB-004) take the same row.
+    /// </summary>
+    public static readonly Matrixrij RapportInvullen = new(
+        Beleid.RapportInvullen,
+        "Een ontwikkelingsrapport invullen (gradatie, tekst, besluit, tekening) en een AI-herwerking vragen (ADR-0035 R16, R26)",
+        Kolom.LeerkrachtRapportInvullen);
+
     // --- Resource-free row without directie: the one K3 set (footnote ⁶, ADR-0035 §3.3; FB-002). ---
 
     /// <summary>
@@ -266,6 +278,7 @@ public static class Rechtenmatrix
         KlasplanningBewerken,
         OntwikkelingsrapportLezen,
         LeerlingenBeheren,
+        RapportInvullen,
         RapportsetBewerken,
     ];
 

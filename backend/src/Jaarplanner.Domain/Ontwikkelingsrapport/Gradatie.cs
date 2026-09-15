@@ -5,8 +5,8 @@ namespace Jaarplanner.Domain.Ontwikkelingsrapport;
 /// from the fixed <see cref="Sterkleur"/> palette, and a place in the order. <b>Not pupil data</b> (ADR-0035 §3.1).
 /// <para>
 /// <b>One scale for all of K3, with no schooljaar</b> (R5, R7). A rename or recolour therefore changes every report
-/// already written, which the owner chose with that cost stated. From FB-003 on, a gradatie a rating uses cannot be
-/// deleted (D1); nothing uses one before then.
+/// already written, which the owner chose with that cost stated. A gradatie a <see cref="Rapportbeoordeling"/> uses cannot
+/// be deleted (D1).
 /// </para>
 /// <para>
 /// The scale starts with the owner's example, seeded by the migration <c>AddRapportdoelenEnGradaties</c>: "Volledig

@@ -11,6 +11,7 @@ import { DekkingScherm } from "./features/dekking/DekkingScherm";
 import { ImportScherm } from "./features/import/ImportScherm";
 import { OntwikkelingsrapportScherm } from "./features/ontwikkelingsrapport/OntwikkelingsrapportScherm";
 import { RapportdoelenScherm } from "./features/ontwikkelingsrapport/RapportdoelenScherm";
+import { RapportScherm } from "./features/ontwikkelingsrapport/RapportScherm";
 import { SterrenschaalScherm } from "./features/ontwikkelingsrapport/SterrenschaalScherm";
 import { Rapportstart } from "./features/ontwikkelingsrapport/Rapportwissel";
 import { GeenToegangScherm } from "./features/aanmelding/GeenToegangScherm";
@@ -66,6 +67,10 @@ export default function App() {
             <Route path="ontwikkelingsrapport">
               <Route index element={<Rapportstart />} />
               <Route path="kinderen" element={<OntwikkelingsrapportScherm />} />
+              {/* One child's report per moment (FB-003), under the children. The server refuses the report to
+                  anyone who may not read it, also by this address (R17). A child alone opens Rapport 1. */}
+              <Route path="kinderen/:leerlingId" element={<Navigate to="rapport/1" replace />} />
+              <Route path="kinderen/:leerlingId/rapport/:moment" element={<RapportScherm />} />
               <Route path="rapportdoelen" element={<RapportdoelenScherm />} />
               <Route path="sterrenschaal" element={<SterrenschaalScherm />} />
             </Route>

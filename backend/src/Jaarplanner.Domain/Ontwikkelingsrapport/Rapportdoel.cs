@@ -10,7 +10,7 @@ namespace Jaarplanner.Domain.Ontwikkelingsrapport;
 /// read. This class keeps the titel, the order and a set of subdoel ids, each once.
 /// </para>
 /// <para>
-/// From FB-003 on, a rapportdoel a rating uses cannot be deleted (D1); nothing uses one before then.
+/// A rapportdoel a <see cref="Rapportbeoordeling"/> uses cannot be deleted (D1).
 /// </para>
 /// </summary>
 public sealed class Rapportdoel

@@ -184,8 +184,11 @@ export function RapportdoelenScherm() {
   );
 }
 
-/** One subdoel: its doelsoort, code and text, and where in the school's own content it comes from. No status dot. */
-function Subdoelregel({ subdoel }: { subdoel: Rapportsubdoel }) {
+/**
+ * One subdoel: its doelsoort, code and text, and where in the school's own content it comes from. No status dot. Also
+ * what a report shows under a rapportdoel, for the teacher (FB-003).
+ */
+export function Subdoelregel({ subdoel }: { subdoel: Rapportsubdoel }) {
   return (
     <div className="flex items-start gap-2">
       <Doelsoortmerk soort={subdoel.doelsoort} className="mt-0.5" />

@@ -13,7 +13,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// </para>
 /// <para>
 /// <b><c>Restrict</c> on the klas, unlike the hoeken and algemene fiches beside it, which cascade.</b> A klas delete
-/// must not silently take a child and, from FB-003 on, every report written for that child: those are for the parents,
+/// must not silently take a child and every report written for that child (which cascade from it): those are for the parents,
 /// and deleting them is directie's deliberate act (ADR-0035 §3.7, D7, D8). <c>KlasBeheerService</c> refuses the delete
 /// first with a sentence that says what to do, so the FK only has to hold against a path that forgets.
 /// </para>

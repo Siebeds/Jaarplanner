@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 16:48
+bijgewerkt: 2026-09-15 17:16
 opgepakt-door: rapport-invullen
 branch: ticket/FB-003-rapport-invullen
 pr:
@@ -85,3 +85,4 @@ Geen.
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-15 16:48 · eigenaar · nieuw → klaar-voor-bouw: klaar voor bouw (eigenaar)
 - 2026-09-15 16:48 · rapport-invullen · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 17:16 · rapport-invullen · Backend en scherm gebouwd: rapport per kind en moment, ster en tekst per rapportdoel, algemeen besluit, bewaren zonder knop; een gebruikte ster of rapportdoel kan niet meer weg (D1).
