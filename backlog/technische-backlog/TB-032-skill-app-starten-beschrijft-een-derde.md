@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 22:48
+bijgewerkt: 2026-09-15 23:07
 opgepakt-door: machine-c
 branch: ticket/app-starten-machine-c
-pr:
+pr: 106
 geblokkeerd:
 fr: []
 ---
@@ -58,3 +58,4 @@ machine B.
 - 2026-09-15 22:45 · machine-c · aangemaakt (status in-uitvoering)
 - 2026-09-15 22:48 · machine-c · Aanleiding rechtgezet: de reden staat ook in com.docker.backend.exe.log, als [W]-regel onder herhaalde event-streamer-fouten; grep 'failed to start' vindt ze op machine C. Criteria afgevinkt na nalezen van de nieuwe tekst; command -v docker en de paden gecontroleerd op machine C.
 - 2026-09-15 22:48 · machine-c · in-uitvoering → klaar: Skill app-starten beschrijft machine C en wat een nieuwe pc nodig heeft. Alleen documentatie: geen tests, dotnet format of pnpm lint van toepassing, geen antagonist (geen significante wijziging).
+- 2026-09-15 23:07 · machine-c · PR #106
