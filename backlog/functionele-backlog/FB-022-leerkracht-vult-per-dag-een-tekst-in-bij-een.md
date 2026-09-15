@@ -2,10 +2,10 @@
 id: FB-022
 titel: Leerkracht vult per dag een tekst in bij een ingeplande algemene fiche, zoals wero
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:31
+bijgewerkt: 2026-09-15 16:41
 opgepakt-door: fichetekst
 branch: ticket/FB-022-fiche-dagtekst
 pr:
@@ -33,12 +33,12 @@ algemene fiche.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een algemene fiche "Wero" die elke dag na de middag ingepland is, wanneer de leerkracht op dinsdag een tekst
+- [x] Gegeven een algemene fiche "Wero" die elke dag na de middag ingepland is, wanneer de leerkracht op dinsdag een tekst
   invult en bewaart, dan staat die tekst bij het dinsdagmoment, ook na herladen, en de andere dagen blijven leeg.
-- [ ] Gegeven dat moment, wanneer het naar een ander uur verplaatst wordt, dan blijft de tekst erbij.
-- [ ] Gegeven een lang genoeg blok, dan toont het blok het begin van de tekst; anders alleen het blad.
-- [ ] Gegeven een gebruiker die de klas alleen mag inkijken, dan kan ze de tekst lezen maar niet wijzigen.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven dat moment, wanneer het naar een ander uur verplaatst wordt, dan blijft de tekst erbij.
+- [x] Gegeven een lang genoeg blok, dan toont het blok het begin van de tekst; anders alleen het blad.
+- [x] Gegeven een gebruiker die de klas alleen mag inkijken, dan kan ze de tekst lezen maar niet wijzigen.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -56,8 +56,9 @@ algemene fiche.
 ## Open vragen
 
 - Wat gebeurt met de teksten als de leerkracht de hele planning van de fiche wijzigt (andere weekdagen of periode)?
-  **Standaard** blijven de teksten van de dagen die blijven bestaan, en waarschuwt de tool vóór het bewaren als er teksten
-  verloren gaan.
+  **Beslist door de eigenaar, 2026-09-15:** de app kent geen "planning wijzigen", alleen een periode weghalen en opnieuw
+  inplannen. Wie een periode met ingevulde teksten weghaalt, ziet eerst bij hoeveel dagen een tekst staat en bevestigt.
+  Een "planning wijzigen" die teksten bewaart, wordt een apart ticket als dat nodig blijkt.
 
 ## Werklog
 
@@ -66,3 +67,5 @@ algemene fiche.
 - 2026-09-15 16:08 · fichetekst · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-15 16:23 · fichetekst · gebouwd: tekst per fichemoment (max 500 tekens, leeg = wissen) met eigen endpoint en recht KlasplanningBewerken, tekst op het blok waar plaats is, bevestiging met aantal bij weghalen van een periode met teksten; unit- en frontendtests groen
 - 2026-09-15 16:31 · fichetekst · gates: 30 unit (fiches), 471 integratie (1 overgeslagen: live KOV), 614 frontendtests groen; dotnet format en pnpm lint schoon
+- 2026-09-15 16:38 · fichetekst · browsercontrole desktop en 390px geslaagd, alle vijf acceptatiecriteria afgevinkt (bewijs: backlog/worklogs/FB-022/verification.md); antagonist COMPLIANT, twee MINOR testpunten worden meegenomen
+- 2026-09-15 16:41 · fichetekst · in-uitvoering → te-testen: gebouwd: per ingepland moment van een algemene fiche een tekst voor die dag (in het blad, op het blok waar plaats is, blijft bij verplaatsen, alleen lezen voor wie de klas niet mag plannen), bevestiging met aantal bij weghalen van een periode met teksten; gates groen, browser desktop en 390px, antagonist COMPLIANT

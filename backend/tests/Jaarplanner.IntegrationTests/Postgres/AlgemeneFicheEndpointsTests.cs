@@ -154,6 +154,56 @@ public sealed class AlgemeneFicheEndpointsTests : IAsyncLifetime
         Assert.Null((await WeekAsync(client, klasId)).Single(m => m.Id == dinsdag.Id).Tekst);
     }
 
+    /// <summary>
+    /// FB-022 with real people (antagonist MINOR): a leerkracht of the klas writes a day text; a leerkracht of another
+    /// klas of the same jaarfase is refused with the authorisation's own 403 and still reads it. A moment of another
+    /// placement, addressed through this placement's route, names nothing here: 404.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_leerkracht_van_de_klas_zet_de_tekst_en_een_van_een_andere_klas_mag_ze_alleen_lezen()
+    {
+        var opzet = new RechtenTestOpzet(_db, _factory);
+        var school = await opzet.SchoolAsync();
+        var directie = opzet.Directie();
+        var vandaag = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (van, tot) = (vandaag.ToString("yyyy-MM-dd"), vandaag.AddDays(6).ToString("yyyy-MM-dd"));
+
+        var fiche = (await (await directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-fiches", new { naam = "Wero" }))
+            .Content.ReadFromJsonAsync<FicheDto>())!;
+        async Task<PlaatsingDto> PlanAsync(string begin, string einde) =>
+            (await (await directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-ficheplaatsingen", new
+            {
+                algemeneFicheId = fiche.Id,
+                van,
+                tot,
+                weekdagen = new[] { 1, 2, 3, 4, 5 },
+                begin,
+                einde,
+            })).Content.ReadFromJsonAsync<PlaatsingDto>())!;
+        var plaatsing = await PlanAsync("13:15:00", "14:00:00");
+        var andere = await PlanAsync("15:00:00", "15:30:00");
+        var moment = plaatsing.Momenten.First();
+        var tekstpad = $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/momenten/{moment.Id}/tekst";
+
+        using var eigen = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+        using var ander = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
+
+        (await eigen.PutAsJsonAsync(tekstpad, new { tekst = "Kapla" })).EnsureSuccessStatusCode();
+
+        var geweigerd = await ander.PutAsJsonAsync(tekstpad, new { tekst = "Iets anders" });
+        Assert.Equal(HttpStatusCode.Forbidden, geweigerd.StatusCode);
+        Assert.Equal(RechtenTestOpzet.GeenToegang, await RechtenTestOpzet.DetailAsync(geweigerd));
+
+        var gelezen = await ander.GetFromJsonAsync<List<PlaatsingDto>>(
+            $"/api/klassen/{school.K3Blauw}/algemene-ficheplaatsingen?van={van}&tot={tot}");
+        Assert.Equal("Kapla", gelezen!.Single(p => p.Id == plaatsing.Id).Momenten.Single(m => m.Id == moment.Id).Tekst);
+
+        var vreemd = await eigen.PutAsJsonAsync(
+            $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/momenten/{andere.Momenten.First().Id}/tekst",
+            new { tekst = "Iets" });
+        Assert.Equal(HttpStatusCode.NotFound, vreemd.StatusCode);
+    }
+
     private static async Task<List<MomentDto>> WeekAsync(HttpClient client, Guid klasId) =>
         (await client.GetFromJsonAsync<List<PlaatsingDto>>(
             $"/api/klassen/{klasId}/algemene-ficheplaatsingen?van=2026-09-07&tot=2026-09-11"))!.Single().Momenten;
