@@ -2,12 +2,12 @@
 id: FB-037
 titel: Leerkracht klikt in de agenda op een thema of subthema en komt op de themapagina
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:29
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 19:30
+opgepakt-door: stroken-doorklik
+branch: ticket/FB-037-stroken-doorklik
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -80,3 +80,4 @@ Geen.
 
 - 2026-09-15 19:27 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-15 19:29 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 19:30 · stroken-doorklik · klaar-voor-bouw → in-uitvoering: opgepakt
