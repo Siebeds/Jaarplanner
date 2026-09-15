@@ -8,7 +8,14 @@ import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonFiche, IcoonHoek, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
+import {
+  IcoonActiviteit,
+  IcoonFiche,
+  IcoonHoek,
+  IcoonPijlLinks,
+  IcoonPijlRechts,
+  IcoonPlus,
+} from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { isGeenToegang, useRechten } from "../../lib/rechten";
@@ -30,6 +37,7 @@ import {
   valtBinnen,
   vandaag,
   volleDag,
+  weeknummer,
 } from "../../lib/datum";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -46,6 +54,9 @@ import { leesWeergave, weergaveZoek, type Weergave } from "./weergave";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
+import { Activiteitplaatsingblad } from "./Activiteitplaatsingblad";
+import { kaartLanding, leesActiviteitkaartId, type Activiteitkaartdata } from "./activiteitkaart";
+import type { Activiteitenweek, GekozenActiviteit } from "./Activiteitensectie";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
 import { FICHE_VOORVOEGSEL, leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
@@ -70,7 +81,7 @@ import {
 import { ALGEMENE_FICHE_VOORVOEGSEL, fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { useSchooluren } from "../schooluren/gegevens";
 import { roosterdagen } from "./roosterdagen";
-import { reeksenPerDag, subthemareeksen, voorstelReeks } from "./subthemareeksen";
+import { reeksbereik, reeksenPerDag, subthemareeksen, subthemasInWeek, voorstelReeks } from "./subthemareeksen";
 import { themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
@@ -153,6 +164,11 @@ export function Agendascherm() {
     begin: number | null;
   } | null>(null);
   const [geopendeFiche, setGeopendeFiche] = useState<{ plaatsingId: string; momentId: string | null } | null>(null);
+  // An activiteit card from the side panel that was clicked, or dropped where the drop named no hour (FB-017): the day
+  // it starts from, and the minute when there was one. A drop on an hour of the time grid plans it without asking.
+  const [gekozenActiviteit, setGekozenActiviteit] = useState<
+    (GekozenActiviteit & { datum: string; begin: number | null }) | null
+  >(null);
 
   const { data: rooster } = useRooster(schooljaarId);
   const { data: plan, isSuccess: planGeladen } = useJaarplan(klasId);
@@ -275,16 +291,13 @@ export function Agendascherm() {
    * whole year. When the union adds nothing the range is identical to the grid's own and TanStack
    * hands back the same cached response rather than a second request.
    */
-  const [reeksVan, reeksTot] = useMemo<[string, string]>(() => {
-    if (van.length === 0) return ["", ""];
-    const raken = (rooster?.blokken ?? []).filter((blok) => blok.start <= tot && blok.eind >= van);
-    return [
-      [van, ...raken.map((blok) => blok.start)].reduce((a, b) => (a < b ? a : b)),
-      [tot, ...raken.map((blok) => blok.eind)].reduce((a, b) => (a > b ? a : b)),
-    ];
-  }, [van, tot, rooster]);
+  // The whole week of the anchored day is in it too, which the activiteiten list speaks about (`reeksbereik`).
+  const [reeksVan, reeksTot] = useMemo(
+    () => reeksbereik(van, tot, anker, rooster?.blokken ?? []),
+    [van, tot, anker, rooster],
+  );
 
-  const { data: reeksbron } = useWeekplanning(klasId, reeksVan, reeksTot);
+  const { data: reeksbron, isError: reeksbronMislukt } = useWeekplanning(klasId, reeksVan, reeksTot);
 
   const reeksen = useMemo(
     () => subthemareeksen(reeksbron?.dagen ?? [], rooster?.blokken ?? [], reeksbron?.subthemaperiodes ?? []),
@@ -350,6 +363,23 @@ export function Agendascherm() {
     () => reeksen.map((reeks) => ({ naam: reeks.subthemaNaam, van: reeks.van, tot: reeks.tot })),
     [reeksen],
   );
+
+  /**
+   * The week the activiteiten list opens on (FB-017), and the subthema's running in it.
+   *
+   * The WEEK of the anchored day, Monday to Sunday, whatever the view: the owner asked for "het subthema van die week",
+   * and a day would miss a subthema that starts on Wednesday. The list names it by number, since in the month view it
+   * is not a week the screen singles out. Until the runs are read it says so rather than passing an empty list, which
+   * would read as "nothing runs".
+   */
+  const activiteitenWeek = useMemo<Activiteitenweek>(() => {
+    const maandag = maandagVan(anker);
+    return {
+      maandag,
+      nummer: weeknummer(maandag),
+      lopend: reeksbron ? subthemasInWeek(reeksen, maandag) : reeksbronMislukt ? "mislukt" : "laadt",
+    };
+  }, [anker, reeksbron, reeksbronMislukt, reeksen]);
 
   /**
    * EVERY THEMAPERIODE OF THE YEAR, WITH THE THEMA'S PLACED IN IT.
@@ -446,8 +476,18 @@ export function Agendascherm() {
     else ga({ datum: verschuif(anker, richting) });
   }
 
+  /**
+   * The name of whatever is being dragged: from `opNaam` for everything already on screen, and for an activiteit card
+   * from the panel from the card's own drag data, because the agenda does not load that list (`activiteitkaart.ts`).
+   */
+  function sleepnaam(sleepId: string, data?: unknown): string | undefined {
+    const bekend = opNaam.get(sleepId);
+    if (bekend !== undefined) return bekend;
+    return leesActiviteitkaartId(sleepId) !== null ? (data as Activiteitkaartdata | undefined)?.naam : undefined;
+  }
+
   function begin(gebeurtenis: DragStartEvent) {
-    setSleepNaam(opNaam.get(String(gebeurtenis.active.id)) ?? null);
+    setSleepNaam(sleepnaam(String(gebeurtenis.active.id), gebeurtenis.active.data.current) ?? null);
     // Starts following the pointer, which is the only thing a fiche from the panel and a block in the grid have in
     // common; see `tijdsleep`. Ended in both `laatLos` and the cancel handler, so the listener never outlives a drag.
     beginSleep(gebeurtenis);
@@ -569,6 +609,23 @@ export function Agendascherm() {
       return;
     }
 
+    // An activiteit card from the panel (FB-017). Unlike a fiche it has one question only, when, and a drop on an hour
+    // of the time grid answers it: the block is planned there, with the activiteit's own length. A month cell or a
+    // keyboard drop names no hour, so they open the sheet on that day, as a click does on the day the agenda is on.
+    const kaartId = leesActiviteitkaartId(sleepId);
+    if (kaartId !== null) {
+      const kaart = active.data.current as Activiteitkaartdata | undefined;
+      if (!kaart) return;
+      acties.plaats.reset();
+      const landing = kaartLanding(kaart, doelBegin);
+      if (landing) {
+        acties.plaats.mutate({ activiteitId: kaartId, datum, begin: alsTijd(landing.begin), einde: alsTijd(landing.einde) });
+      } else {
+        setGekozenActiviteit({ id: kaartId, naam: kaart.naam, duur: kaart.duur, datum, begin: null });
+      }
+      return;
+    }
+
     const blok = blokOpSleepId.get(sleepId);
     // Not on the days in hand. Only reachable if the grid and the fetched range disagree, and there is nothing
     // honest to send: without the block's own duration a move would have to invent an end time.
@@ -655,14 +712,22 @@ export function Agendascherm() {
                 Only for whoever may plan this klas: a fiche is dragged or clicked to plan a hoek.
               */}
               {/* Two chips since 2026-09-14, one per list, for the reason the sidebar has two switches (owner: "twee
-                  secties ... niet gegroepeerd als fiches"). Neither for a gebruiker who may not plan this klas. */}
-              {(magPlannen
-                ? ([
-                    { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
-                    { soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche },
-                  ] as const)
-                : []
-              ).map(({ soort, label, Icoon }) => {
+                  secties ... niet gegroepeerd als fiches"), and a third for the activiteiten since 2026-09-15 (FB-017).
+                  The fiche chips only for a gebruiker who may plan this klas; the activiteiten chip for everyone who
+                  reads the agenda, whose cards then plan nothing (owner, 2026-09-15). */}
+              {/* None until the rights are known, so the fiche chips do not appear before the activiteiten chip a moment
+                  later, as the sidebar does. */}
+              {([
+                ...(magPlannen
+                  ? ([
+                      { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
+                      { soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche },
+                    ] as const)
+                  : []),
+                { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
+              ] as const)
+                .filter(() => rechtenBekend)
+                .map(({ soort, label, Icoon }) => {
                 const aan = paneelOpen && paneelSoort === soort;
                 return (
                   <button
@@ -773,7 +838,10 @@ export function Agendascherm() {
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
-          accessibility={{ announcements: kalenderMeldingen((id) => opNaam.get(id) ?? ""), screenReaderInstructions: sleepUitleg }}
+          accessibility={{
+            announcements: kalenderMeldingen((id, data) => sleepnaam(id, data) ?? ""),
+            screenReaderInstructions: sleepUitleg,
+          }}
           onDragStart={begin}
           onDragEnd={laatLos}
           onDragCancel={() => {
@@ -784,11 +852,12 @@ export function Agendascherm() {
           {/* INSIDE the context, and it has to be: a fiche is dragged FROM here ONTO the grid below,
               and dnd-kit registers a draggable through React context rather than through the DOM. The
               panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree.
-              Not at all for a gebruiker who may not plan this klas: every fiche in it plans a hoek or an
-              algemene fiche, and its create tiles make one. */}
-          {magPlannen ? (
-            <Hoekenpaneel
+              For a gebruiker who may not plan this klas it holds only the activiteiten, as cards that plan
+              nothing (owner, 2026-09-15, FB-017): every fiche plans a hoek or an algemene fiche, and every create
+              tile makes one. */}
+          <Hoekenpaneel
               klasId={klasId}
+              magPlannen={magPlannen}
               onKies={(hoekId) => {
                 // A click has no landing point, so the window opens on the day the agenda is standing
                 // on and the sheet offers its own default hour. On a phone the panel closes its own
@@ -800,8 +869,12 @@ export function Agendascherm() {
                 plaatsFiche.reset();
                 setGevallenAlgemeneFiche({ ficheId, datum: anker, begin: null });
               }}
+              activiteitenWeek={activiteitenWeek}
+              onKiesActiviteit={(activiteit) => {
+                acties.plaats.reset();
+                setGekozenActiviteit({ ...activiteit, datum: anker, begin: null });
+              }}
             />
-          ) : null}
 
           <div className="mt-3">
             {isPending || !planning ? (
@@ -880,7 +953,7 @@ export function Agendascherm() {
           sleepFout={sleepFout}
           fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error, verplaatsFichemoment.error]}
           kiezerOpen={magPlannen && kiezer !== null}
-          bladOpen={nieuw !== null || geopend !== null || plannerOpen}
+          bladOpen={nieuw !== null || geopend !== null || plannerOpen || (magPlannen && gekozenActiviteit !== null)}
         />
       </Schermvlak>
 
@@ -1036,6 +1109,40 @@ export function Agendascherm() {
           />
         );
       })()}
+
+      {/* WHAT A CLICKED ACTIVITEIT CARD OPENS (FB-017), and a card dropped where the drop named no hour. Keyed on the
+          card and the day, so a second card refills the sheet. Only while this gebruiker may plan the klas, which after a
+          refusal is the moment the refetched rights arrive, for the reason the Activiteitkiezer gives. */}
+      {gekozenActiviteit && rooster && magPlannen ? (
+        <Activiteitplaatsingblad
+          key={`${gekozenActiviteit.id}-${gekozenActiviteit.datum}-${gekozenActiviteit.begin ?? "geen"}`}
+          naam={gekozenActiviteit.naam}
+          startdag={gekozenActiviteit.datum}
+          startuur={gekozenActiviteit.begin}
+          duur={gekozenActiviteit.duur}
+          vroegste={rooster.start}
+          laatste={rooster.eind}
+          bezig={acties.plaats.isPending}
+          fout={acties.plaats.error}
+          onSluit={() => setGekozenActiviteit(null)}
+          onPlaats={(plek) =>
+            acties.plaats.mutate(
+              { activiteitId: gekozenActiviteit.id, ...plek },
+              {
+                onSuccess: () => {
+                  setGekozenActiviteit(null);
+                  // Follow it to its day, as a moved activiteit does: planned on a day off screen, the sheet would
+                  // close on an agenda that shows no sign of it.
+                  ga({ datum: plek.datum });
+                },
+                onError: (fout) => {
+                  if (isGeenToegang(fout)) setGekozenActiviteit(null);
+                },
+              },
+            )
+          }
+        />
+      ) : null}
 
       <Nieuweactiviteitblad
         // Keyed on the day and the hour: the form fills its fields at mount, so reopening it for

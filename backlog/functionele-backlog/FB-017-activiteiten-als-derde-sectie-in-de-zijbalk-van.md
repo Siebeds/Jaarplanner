@@ -2,13 +2,13 @@
 id: FB-017
 titel: Activiteiten als derde sectie in de zijbalk van de agenda
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 16:14
+opgepakt-door: FB-017
+branch: ticket/FB-017-activiteiten-in-zijbalk
+pr: 79
 geblokkeerd:
 fr: [FR-6.2]
 ---
@@ -40,15 +40,15 @@ en Algemene fiches.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met een subthema dat in de zichtbare week loopt, wanneer de leerkracht de sectie Activiteiten
+- [x] Gegeven een klas met een subthema dat in de zichtbare week loopt, wanneer de leerkracht de sectie Activiteiten
   opent, dan staan de activiteiten van dat subthema er als kaarten.
-- [ ] Gegeven die sectie, wanneer ze een ander thema en subthema kiest, dan toont de lijst die activiteiten, en de keuze
+- [x] Gegeven die sectie, wanneer ze een ander thema en subthema kiest, dan toont de lijst die activiteiten, en de keuze
   biedt alleen subthema's van de leeftijd van de klas.
-- [ ] Gegeven een kaart, wanneer ze die naar een dag en uur sleept, of aanklikt en dag en uur kiest, dan staat de
+- [x] Gegeven een kaart, wanneer ze die naar een dag en uur sleept, of aanklikt en dag en uur kiest, dan staat de
   activiteit daar ingepland.
-- [ ] Gegeven een week zonder lopend subthema, dan zegt de sectie dat en toont ze de keuzelijst.
-- [ ] Gegeven een gebruiker die de klas alleen mag inkijken, dan kan ze niets inplannen vanuit de sectie.
-- [ ] Bereikbaar met het toetsenbord, zichtbare focusring, nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een week zonder lopend subthema, dan zegt de sectie dat en toont ze de keuzelijst.
+- [x] Gegeven een gebruiker die de klas alleen mag inkijken, dan kan ze niets inplannen vanuit de sectie.
+- [x] Bereikbaar met het toetsenbord, zichtbare focusring, nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -67,9 +67,20 @@ en Algemene fiches.
 
 ## Open vragen
 
-- Moet er onderaan, zoals bij de fiches (TB-015), een tegel met een plus komen om een nieuwe activiteit aan te maken?
+- ~~Moet er onderaan, zoals bij de fiches (TB-015), een tegel met een plus komen om een nieuwe activiteit aan te maken?~~
+  **Beantwoord door de eigenaar, 2026-09-15:** ja, zoals bij de fiches. De tegel opent het bestaande activiteitformulier
+  voor het gekozen subthema.
 - De eigen activiteiten van parallelle collega's verschijnen pas als FB-015 gebouwd is.
+- ~~Wat ziet wie de klas alleen mag inkijken?~~ **Beantwoord door de eigenaar, 2026-09-15:** de schakelaar en de kaarten,
+  alleen-lezen: niet sleepbaar, niet aanklikbaar, geen plustegel. De twee fichelijsten blijven zoals ze zijn: alleen
+  voor wie de klas mag plannen.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 14:44 · eigenaar · nieuw → klaar-voor-bouw: eigenaar gaf in de sessie de opdracht om te bouwen; open vraag beantwoord: ja, een plustegel onderaan zoals bij de fiches (TB-015)
+- 2026-09-15 14:44 · FB-017 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 15:20 · FB-017 · Gebouwd en getest: derde sectie Activiteiten in de zijbalk (schakelaar vanaf lg, chip op gsm), keuzelijst per thema, kaarten slepen of aanklikken, plustegel. Browsercontrole op 1440 en 390 tegen een wegwerpdatabase: 11 van 11 controles groen. Onderweg gevonden en opgelost: bij slepen negeerde het landingsuur waar de kaart vastgenomen werd (dnd-kit vult die maat pas na de start); dat gold voor elke sleep in de agenda. Vitest 212/212, lint groen. Antagonist loopt.
+- 2026-09-15 16:05 · FB-017 · in-uitvoering → te-testen: Gebouwd: derde sectie Activiteiten in de zijbalk (schakelaar vanaf lg, chip op gsm), met standaard het subthema dat in die week loopt (de week wordt met haar nummer genoemd) en een keuzelijst per thema. Kaarten sleep je naar een uur, of je klikt ze aan en kiest dag, van en tot. Onderaan staat een plustegel. Wie de klas alleen mag inkijken, ziet de kaarten alleen-lezen (beslissing eigenaar). Let op bij het testen: bestaande blokken en fiches in de agenda landen nu waar je ze vastneemt; voordien werd de grijpafstand genegeerd. Gates: lint groen; vitest 623 tests na de merge met main, waarvan 1 fout (SchoolurenScherm van FB-023, tijdslimiet onder belasting; slaagt apart); browsercontrole 15/15 op 1440 en 390 voor de merge; antagonist 2 rondes met alleen MINOR, alles verwerkt. De browsercontrole na de merge kon niet opnieuw: de lokale API werd twee keer gestopt.
+- 2026-09-15 16:07 · FB-017 · PR #79
+- 2026-09-15 16:14 · FB-017 · Na de merge met main (met FB-018): de activiteitkaarten in de zijbalk krijgen het doel-infoicoon, zoals de eigenaar in FB-018 besliste (wie als tweede merget). Het merkje en het icoon tellen alleen aanvaarde en manuele koppelingen; ook wie alleen mag inkijken ziet het icoon. Lint groen, vitest 641/641. Niet opnieuw in de browser nagekeken: de lokale API werd gestopt.
