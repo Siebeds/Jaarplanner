@@ -381,10 +381,11 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     { id: "s-3", naam: "De stoomboot", leeftijd: "K3", themaId: "t-2", themaNaam: "Sinterklaas" },
   ];
 
-  const activiteit = (id: string, naam: string, lengteInLesuren: number) => ({
+  const activiteit = (id: string, naam: string, lengteInLesuren: number, doelkoppelingen: unknown[] = []) => ({
     id, naam, activiteitType: "Kring", hoek: null, verwachteUitkomsten: null, onderzoeksvraagId: null, kleur: null,
-    lengteInLesuren, doelkoppelingen: [],
+    lengteInLesuren, doelkoppelingen,
   });
+  const koppeling = (code: string, status: string) => ({ id: `k-${code}`, leerplandoelCode: code, status, aiMotivatie: null });
   const subthema = (id: string, themaId: string, naam: string, activiteiten: unknown[]) => ({
     id, themaId, naam, duurWeken: 2, leeftijd: "K3", onderzoeksvragen: [], subdoelen: [], activiteiten,
   });
@@ -396,7 +397,9 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
   const THEMAS: Record<string, unknown> = {
     "t-1": thema("t-1", "Herfst", [
       subthema("s-1", "t-1", "De eekhoorn", [activiteit("a-1", "Eikels rapen", 1)]),
-      subthema("s-2", "t-1", "Paddenstoelen", [activiteit("a-2", "Paddenstoelen tekenen", 2)]),
+      subthema("s-2", "t-1", "Paddenstoelen", [
+        activiteit("a-2", "Paddenstoelen tekenen", 2, [koppeling("MUZ.1.1", "Manueel"), koppeling("MUZ.2.2", "Voorgesteld")]),
+      ]),
     ]),
     "t-2": thema("t-2", "Sinterklaas", [subthema("s-3", "t-2", "De stoomboot", [])]),
   };
@@ -458,7 +461,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     const { onKiesActiviteit } = toonActiviteiten({ lopend: ["s-2"] });
 
     expect(screen.getByRole("complementary", { name: t("hoekenpaneel.activiteitenTitel") })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /Paddenstoelen tekenen/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ }));
 
     expect(keuzelijst()).toHaveValue("s-2");
     expect(screen.getByText(t("activiteitenpaneel.looptInWeek", { nummer: 38 }))).toBeInTheDocument();
@@ -469,7 +472,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
 
   it("laat een ander subthema kiezen, gegroepeerd per thema, en toont dan diens activiteiten", async () => {
     toonActiviteiten({ lopend: ["s-2"] });
-    await screen.findByRole("button", { name: /Paddenstoelen tekenen/ });
+    await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
 
     // Only what the server offers for this klas's leeftijd, one group per thema.
     const groepen = within(keuzelijst()).getAllByRole("group");
@@ -478,7 +481,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
 
     fireEvent.change(keuzelijst(), { target: { value: "s-1" } });
 
-    expect(await screen.findByRole("button", { name: /Eikels rapen/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Eikels rapen/ })).toBeInTheDocument();
     expect(useHoekenpaneel.getState().subthemaKeuze).toEqual({ subthemaId: "s-1", klasId: "k-1", week: WEEK });
     // True only of a subthema that runs this week, which the chosen one does not.
     expect(screen.queryByText(t("activiteitenpaneel.looptInWeek", { nummer: 38 }))).not.toBeInTheDocument();
@@ -489,7 +492,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
 
     expect(await screen.findByText(t("activiteitenpaneel.geenLopendInWeek", { nummer: 38 }))).toBeInTheDocument();
     expect(keuzelijst()).toHaveValue("");
-    expect(screen.queryByRole("button", { name: /Eikels rapen|Paddenstoelen tekenen/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^(Eikels rapen|Paddenstoelen tekenen)/ })).not.toBeInTheDocument();
   });
 
   it("zegt bij een klas zonder subthema's dat die er nog niet zijn, en wijst naar de thema's", async () => {
@@ -554,7 +557,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     useHoekenpaneel.setState({ subthemaKeuze: { subthemaId: "s-1", klasId: "k-1", week: "2026-09-07" } });
     toonActiviteiten({ lopend: ["s-2"] });
 
-    expect(await screen.findByRole("button", { name: /Paddenstoelen tekenen/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ })).toBeInTheDocument();
     expect(keuzelijst()).toHaveValue("s-2");
   });
 
@@ -574,9 +577,26 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     });
 
     expect(await screen.findByText("Paddenstoelen tekenen")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Paddenstoelen tekenen/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Paddenstoelen tekenen/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("activiteit.toevoegen") })).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Paddenstoelen tekenen"));
+    expect(onKiesActiviteit).not.toHaveBeenCalled();
+    // Reading a card's goals is reading, so the info icon stays.
+    expect(screen.getByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) })).toBeInTheDocument();
+  });
+
+  // FB-018 (owner, 2026-09-15): the activiteitkaarten get the goals' info icon from whichever ticket merges second.
+  it("toont de doelen van een kaart achter een info-icoon, alleen de aanvaarde en manuele", async () => {
+    const { onKiesActiviteit } = toonActiviteiten({ lopend: ["s-2"] });
+
+    const kaart = await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
+    // One manual link and one proposal: a suggestion is not a goal of the card, so the mark says one.
+    expect(within(kaart).getByText(t("activiteit.eenDoel"))).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) }));
+    expect(await screen.findByText("MUZ.1.1")).toBeInTheDocument();
+    expect(screen.queryByText("MUZ.2.2")).not.toBeInTheDocument();
+    // The icon shows the goals; it plans nothing.
     expect(onKiesActiviteit).not.toHaveBeenCalled();
   });
 

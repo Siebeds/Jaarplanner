@@ -253,7 +253,7 @@ describe("Agendascherm: een activiteit uit het zijpaneel inplannen (FB-017)", ()
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-2"] }));
 
     expect(await screen.findByText("Eikels rapen")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Eikels rapen/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Eikels rapen/ })).toBeNull();
     expect(screen.queryByRole("button", { name: t("activiteit.toevoegen") })).toBeNull();
     // The fiche lists stay the planners'.
     expect(paneel()).toBeNull();
@@ -263,7 +263,7 @@ describe("Agendascherm: een activiteit uit het zijpaneel inplannen (FB-017)", ()
     useHoekenpaneel.setState({ open: true, soort: "activiteiten", subthemaKeuze: KEUZE });
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
 
-    fireEvent.click(await screen.findByRole("button", { name: /Eikels rapen/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^Eikels rapen/ }));
 
     const blad = await screen.findByRole("dialog", { name: t("activiteitplaatsing.titel", { naam: "Eikels rapen" }) });
     // A click names no day, so the sheet starts on the day the agenda stands on.

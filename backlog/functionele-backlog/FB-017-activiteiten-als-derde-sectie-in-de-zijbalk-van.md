@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:07
+bijgewerkt: 2026-09-15 16:14
 opgepakt-door: FB-017
 branch: ticket/FB-017-activiteiten-in-zijbalk
 pr: 79
@@ -83,3 +83,4 @@ en Algemene fiches.
 - 2026-09-15 15:20 · FB-017 · Gebouwd en getest: derde sectie Activiteiten in de zijbalk (schakelaar vanaf lg, chip op gsm), keuzelijst per thema, kaarten slepen of aanklikken, plustegel. Browsercontrole op 1440 en 390 tegen een wegwerpdatabase: 11 van 11 controles groen. Onderweg gevonden en opgelost: bij slepen negeerde het landingsuur waar de kaart vastgenomen werd (dnd-kit vult die maat pas na de start); dat gold voor elke sleep in de agenda. Vitest 212/212, lint groen. Antagonist loopt.
 - 2026-09-15 16:05 · FB-017 · in-uitvoering → te-testen: Gebouwd: derde sectie Activiteiten in de zijbalk (schakelaar vanaf lg, chip op gsm), met standaard het subthema dat in die week loopt (de week wordt met haar nummer genoemd) en een keuzelijst per thema. Kaarten sleep je naar een uur, of je klikt ze aan en kiest dag, van en tot. Onderaan staat een plustegel. Wie de klas alleen mag inkijken, ziet de kaarten alleen-lezen (beslissing eigenaar). Let op bij het testen: bestaande blokken en fiches in de agenda landen nu waar je ze vastneemt; voordien werd de grijpafstand genegeerd. Gates: lint groen; vitest 623 tests na de merge met main, waarvan 1 fout (SchoolurenScherm van FB-023, tijdslimiet onder belasting; slaagt apart); browsercontrole 15/15 op 1440 en 390 voor de merge; antagonist 2 rondes met alleen MINOR, alles verwerkt. De browsercontrole na de merge kon niet opnieuw: de lokale API werd twee keer gestopt.
 - 2026-09-15 16:07 · FB-017 · PR #79
+- 2026-09-15 16:14 · FB-017 · Na de merge met main (met FB-018): de activiteitkaarten in de zijbalk krijgen het doel-infoicoon, zoals de eigenaar in FB-018 besliste (wie als tweede merget). Het merkje en het icoon tellen alleen aanvaarde en manuele koppelingen; ook wie alleen mag inkijken ziet het icoon. Lint groen, vitest 641/641. Niet opnieuw in de browser nagekeken: de lokale API werd gestopt.

@@ -15,6 +15,7 @@ import { useMaakActiviteit } from "../themas/mutaties";
 import { Toevoegtegel } from "../hoeken/Toevoegtegel";
 import { STANDAARDDUUR } from "./tijd";
 import { ACTIVITEIT_VOORVOEGSEL, type Activiteitkaartdata } from "./activiteitkaart";
+import { Doelinfo, type Infodoel } from "./Doelinfo";
 
 /** An activiteit chosen from the panel: what the agenda needs to plan it. */
 export interface GekozenActiviteit {
@@ -286,10 +287,24 @@ function Activiteitenlijst({
 }
 
 /**
+ * The goals an activiteit works on, as the info icon and the mark count them: its accepted and manual links, which is
+ * what the server counts for the weekplanning's `Doelcodes` (FB-018). A suggestion is never a goal of the card, and
+ * the mark and the window it opens cannot disagree, because both read this one list.
+ */
+function doelenVan(activiteit: ActiviteitWeergave): Infodoel[] {
+  return activiteit.doelkoppelingen
+    .filter((koppeling) => koppeling.status === "Aanvaard" || koppeling.status === "Manueel")
+    .map((koppeling) => ({ code: koppeling.leerplandoelCode }));
+}
+
+/**
  * One activiteit: dragged onto an hour of the agenda, or clicked to plan it from a sheet.
  *
  * The same card as a fiche in the panel, and the same two gestures on one button (see `Hoekenpaneel`'s `Fiche`). The
  * name and the length travel with the drag, because the agenda does not load this list.
+ *
+ * **Its goals behind the info icon in the corner, beside the button and not in it**, as on every card in this panel
+ * (FB-018; owner, 2026-09-15: the activiteitkaarten get the icon from whichever of the two tickets merges second).
  */
 function Activiteitkaart({
   activiteit,
@@ -306,40 +321,52 @@ function Activiteitkaart({
     id: `${ACTIVITEIT_VOORVOEGSEL}${activiteit.id}`,
     data,
   });
+  const doelen = doelenVan(activiteit);
 
   return (
-    <button
-      type="button"
-      ref={sleepbaar ? setNodeRef : undefined}
-      onClick={() => onKies({ id: activiteit.id, naam: activiteit.naam, duur })}
-      {...(sleepbaar ? listeners : {})}
-      {...(sleepbaar ? attributes : {})}
-      className={cn(
-        "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
-        "transition-colors duration-150 hover:border-accent",
-        sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
-        isDragging && "opacity-40",
-      )}
-    >
-      <Kaartinhoud activiteit={activiteit} />
-    </button>
-  );
-}
-
-/** The same card for whoever may only read the klas: what it says, and nothing it does. */
-function Leeskaart({ activiteit }: { activiteit: ActiviteitWeergave }) {
-  return (
-    <div className="w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5">
-      <Kaartinhoud activiteit={activiteit} />
+    <div className="relative">
+      <button
+        type="button"
+        ref={sleepbaar ? setNodeRef : undefined}
+        onClick={() => onKies({ id: activiteit.id, naam: activiteit.naam, duur })}
+        {...(sleepbaar ? listeners : {})}
+        {...(sleepbaar ? attributes : {})}
+        className={cn(
+          // Room for the icon, so a long name wraps before it rather than running under it.
+          "w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9 text-left",
+          "transition-colors duration-150 hover:border-accent",
+          sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
+          isDragging && "opacity-40",
+        )}
+      >
+        <Kaartinhoud naam={activiteit.naam} doelen={doelen} />
+      </button>
+      <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
     </div>
   );
 }
 
-function Kaartinhoud({ activiteit }: { activiteit: ActiviteitWeergave }) {
+/**
+ * The same card for whoever may only read the klas: what it says, and nothing it does. The info icon stays, because
+ * reading an activiteit's goals is reading, not planning.
+ */
+function Leeskaart({ activiteit }: { activiteit: ActiviteitWeergave }) {
+  const doelen = doelenVan(activiteit);
+  return (
+    <div className="relative">
+      <div className="w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9">
+        <Kaartinhoud naam={activiteit.naam} doelen={doelen} />
+      </div>
+      <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
+    </div>
+  );
+}
+
+function Kaartinhoud({ naam, doelen }: { naam: string; doelen: readonly Infodoel[] }) {
   return (
     <>
-      <p className="text-meta font-medium text-inkt">{activiteit.naam}</p>
-      <Doelmerk aantal={activiteit.doelkoppelingen.length} className="mt-1.5" />
+      <p className="text-meta font-medium text-inkt">{naam}</p>
+      <Doelmerk aantal={doelen.length} className="mt-1.5" />
     </>
   );
 }
