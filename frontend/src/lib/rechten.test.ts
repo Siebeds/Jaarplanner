@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "./api";
 import type { Ik } from "./aanmelding";
-import { RECHTENMATRIX, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
+import { RECHTENMATRIX, ZONDER_DIRECTIE, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
 import { t } from "../i18n";
 
 /**
@@ -72,6 +72,8 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
   OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij"],
   LeerlingenBeheren: ["Directie", "LK rapport"],
+  // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
+  RapportsetBewerken: ["LK rapport"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
@@ -103,8 +105,8 @@ describe("de rechtenmatrix van de frontend", () => {
   it("heeft een verwachting voor elke rij, en elke rij van de server", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
-    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty rows since FB-001 added the two report rows.
-    expect(rijen).toHaveLength(20);
+    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set row.
+    expect(rijen).toHaveLength(21);
   });
 
   it("geeft een leerkracht de kinderen van een andere K3-klas niet, en de klasplanning geen rapport (R17)", () => {
@@ -117,11 +119,17 @@ describe("de rechtenmatrix van de frontend", () => {
     );
   });
 
-  it("laat directie elke rij toe, met of zonder bron", () => {
+  it("laat directie elke rij toe, met of zonder bron, behalve de K3-set (R31)", () => {
     for (const rij of Object.keys(RECHTENMATRIX) as Rij[]) {
+      if (ZONDER_DIRECTIE.has(rij)) continue;
       expect(staatToe(RELATIES.Directie, rij)).toBe(true);
       expect(staatToe(RELATIES.Directie, rij, activiteit(null, true))).toBe(true);
     }
+    expect([...ZONDER_DIRECTIE]).toEqual(["RapportsetBewerken"]);
+    expect(staatToe(RELATIES.Directie, "RapportsetBewerken")).toBe(false);
+    expect(magVoor(RELATIES.Directie).rapportsetBewerken).toBe(false);
+    // Directie with a running K3 klas of its own is a K3 leerkracht too, and passes as one (the union rule).
+    expect(staatToe(ik({ isDirectie: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(true);
   });
 
   it("faalt dicht zonder of met de verkeerde bron, en voor niemand", () => {

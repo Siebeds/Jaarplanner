@@ -39,7 +39,8 @@ export type Rij =
   | "ActiviteitVerplaatsen"
   | "KlasplanningBewerken"
   | "OntwikkelingsrapportLezen"
-  | "LeerlingenBeheren";
+  | "LeerlingenBeheren"
+  | "RapportsetBewerken";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
@@ -51,7 +52,8 @@ export type Kolom =
   | "MakerZonderKoppelingen"
   | "ThemabeheerZonderAndermansInhoud"
   | "LeerkrachtRapportLezen"
-  | "LeerkrachtRapportInvullen";
+  | "LeerkrachtRapportInvullen"
+  | "Rapportsetleerkracht";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -85,7 +87,18 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg joins the read row with FB-008.
   OntwikkelingsrapportLezen: ["LeerkrachtRapportLezen"],
   LeerlingenBeheren: ["LeerkrachtRapportInvullen"],
+  // FB-002 (R6, D4): a klastoewijzing on a klas that can hold children, in a running schooljaar, which is exactly
+  // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so directie's
+  // graadklas decision moves this row with it. Directie does NOT pass it: see `ZONDER_DIRECTIE`.
+  RapportsetBewerken: ["Rapportsetleerkracht"],
 };
+
+/**
+ * The rows directie does not pass (the server's `Matrixrij.ZonderDirectie`). One today: the K3 set of rapportdoelen and
+ * the sterrenschaal, which only the K3 leerkrachten change while directie views them (ADR-0035 R31, the one exception to
+ * R3 "directie sees and edits everything").
+ */
+export const ZONDER_DIRECTIE: ReadonlySet<Rij> = new Set<Rij>(["RapportsetBewerken"]);
 
 /**
  * The resource a row is asked about: the server's `Leeftijdsinhoud`, `Activiteitbron` and `Klasplanning`.
@@ -112,14 +125,18 @@ function zelfdeId(a: string, b: string): boolean {
 
 /**
  * Whether `ik` may do what `rij` describes, on `bron`. The server's `StaatToe`, clause for clause:
- * directie passes every row; otherwise any one matching column is enough (the union rule); a column that needs a
- * resource matches only a resource of its own kind, so a missing one fails closed.
+ * directie passes every row but those in `ZONDER_DIRECTIE` (R31); otherwise any one matching column is enough (the
+ * union rule); a column that needs a resource matches only a resource of its own kind, so a missing one fails closed.
  */
 export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolean {
   if (!ik) return false;
-  if (ik.isDirectie) return true;
+  if (ik.isDirectie && !ZONDER_DIRECTIE.has(rij)) return true;
 
   const kolommen = RECHTENMATRIX[rij];
+
+  // Resource-free, like the server's column: some klas of theirs can hold children and its schooljaar still runs (D4).
+  // `?? []` as for the report rows: an `/api/ik` answer without the list grants nothing.
+  if (kolommen.includes("Rapportsetleerkracht") && (ik.lopendeRapportklasIds ?? []).length > 0) return true;
 
   if (kolommen.includes("Themabeheer") && ik.heeftThemabeheer) return true;
 
@@ -250,6 +267,9 @@ export interface Mag {
    * (Leerlingzorg, FB-008) is not this.
    */
   rapportAlleenNogLezen: (klasId: string) => boolean;
+  /** Changing the one K3 set of rapportdoelen and the sterrenschaal: a K3 leerkracht in a running schooljaar, never
+   * directie (R6, R31, D4). */
+  rapportsetBewerken: boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -299,6 +319,8 @@ export function magVoor(ik: Ik | undefined): Mag {
       !ik.isDirectie &&
       rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }) &&
       !rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
+    // Deliberately no `isDirectie` short-circuit here, unlike some answers above: this is the row directie does not pass.
+    rapportsetBewerken: rij("RapportsetBewerken"),
   };
 }
 

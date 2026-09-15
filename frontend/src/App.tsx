@@ -10,6 +10,9 @@ import { Agendascherm } from "./features/plan/Agendascherm";
 import { DekkingScherm } from "./features/dekking/DekkingScherm";
 import { ImportScherm } from "./features/import/ImportScherm";
 import { OntwikkelingsrapportScherm } from "./features/ontwikkelingsrapport/OntwikkelingsrapportScherm";
+import { RapportdoelenScherm } from "./features/ontwikkelingsrapport/RapportdoelenScherm";
+import { SterrenschaalScherm } from "./features/ontwikkelingsrapport/SterrenschaalScherm";
+import { Rapportstart } from "./features/ontwikkelingsrapport/Rapportwissel";
 import { GeenToegangScherm } from "./features/aanmelding/GeenToegangScherm";
 import { Instellingenindeling } from "./features/instellingen/Instellingenindeling";
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
@@ -55,9 +58,15 @@ export default function App() {
             <Route path="agenda/dag/:datum" element={<Agendascherm />} />
             <Route path="agenda/periodes" element={<PlanScherm />} />
             <Route path="dekking" element={<DekkingScherm />} />
-            {/* The K3 ontwikkelingsrapport (FR-13). The screen says so itself to whoever may read no report, and the
-                server refuses them the data (R17). */}
-            <Route path="ontwikkelingsrapport" element={<OntwikkelingsrapportScherm />} />
+            {/* The K3 ontwikkelingsrapport (FR-13), in parts since FB-002. The bare address opens the first part this
+                person may see. The children say so themselves to whoever may read no report, and the server refuses
+                them the data (R17); the set and the scale are no pupil data and anyone may view them (AC5). */}
+            <Route path="ontwikkelingsrapport">
+              <Route index element={<Rapportstart />} />
+              <Route path="kinderen" element={<OntwikkelingsrapportScherm />} />
+              <Route path="rapportdoelen" element={<RapportdoelenScherm />} />
+              <Route path="sterrenschaal" element={<SterrenschaalScherm />} />
+            </Route>
             {/* A frame with parts, each at its own address (owner, 2026-09-11). The bare address
                 opens the first part, so the navigation item and every old link still land somewhere. */}
             <Route path="instellingen" element={<Instellingenindeling />}>

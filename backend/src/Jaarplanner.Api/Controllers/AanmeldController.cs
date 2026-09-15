@@ -100,10 +100,10 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 
 /// <summary>
 /// <c>GET /api/ik</c>: who is signed in, and the relations the ADR-0030 §3 columns are made of. Raw relations, not
-/// per-action answers: directie may do everything whatever the lists say, and a gebruiker holds the union of all of
-/// them. The frontend uses this to hide controls only; the server enforces.
+/// per-action answers: directie may do everything whatever the lists say but edit the K3 rapportdoelen and scale (ADR-0035
+/// R31), and a gebruiker holds the union of all of them. The frontend uses this to hide controls only; the server enforces.
 /// </summary>
-/// <param name="IsDirectie">"Directie": every action.</param>
+/// <param name="IsDirectie">"Directie": every action but editing the K3 rapportdoelen and the sterrenschaal (R31).</param>
 /// <param name="HeeftThemabeheer">"TB".</param>
 /// <param name="HoofdleerkrachtLeeftijden">"HL": the jaarfasen they are hoofdleerkracht of in a schooljaar that has not ended.</param>
 /// <param name="LeerkrachtLeeftijden">"LK leeftijd": the stated jaarfasen of their klassen in a schooljaar that has not ended.</param>
@@ -115,7 +115,8 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 /// </param>
 /// <param name="LopendeRapportklasIds">
 /// The <paramref name="RapportklasIds"/> whose schooljaar has not ended: where they may also add, rename and delete
-/// leerlingen and fill in reports (R26).
+/// leerlingen and fill in reports (R26). Non-empty is also exactly what lets them edit the one K3 set of rapportdoelen and
+/// the sterrenschaal (FB-002, <c>RapportsetBewerken</c>, D4), directie included; <paramref name="IsDirectie"/> alone does not.
 /// </param>
 public sealed record IkWeergave(
     Guid Id,

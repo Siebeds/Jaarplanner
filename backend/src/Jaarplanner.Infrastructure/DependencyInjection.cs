@@ -171,6 +171,10 @@ public static class DependencyInjection
         // services because a leerling hangs off a klas directly; it is the one pupil-data service, and it logs nothing.
         services.AddScoped<ILeerlingBeheerService, LeerlingBeheerService>();
 
+        // The one K3 set of rapportdoelen and the sterrenschaal (FB-002, Art. IX.4). Not pupil data; beside the leerlingen
+        // because both belong to the ontwikkelingsrapport.
+        services.AddScoped<IRapportsetService, RapportsetService>();
+
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —
         // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update

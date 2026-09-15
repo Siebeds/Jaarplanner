@@ -117,6 +117,28 @@
   --color-attentie-zacht: hsl(40 90% 96%);
   --color-attentie-inkt: hsl(25 68% 24%);
 
+  /* ── ster - the gradaties of the K3 ontwikkelingsrapport (FB-002, owner 2026-09-15) ──── */
+  /* A FIXED PALETTE OF SIX, chosen by the owner from a proposal that showed them next to what the app already means
+     by green and orange (aanvaard, gedekt, doelsoort +, attentie, doelsoort A). They were allowed to share those hues
+     because a star never stands where those signals do: those are a dot, a square and a wash, this is a star, it
+     always carries its label (Art. XII), and the invulscherm of FB-003 shows no status dot beside a subdoel (owner,
+     same ruling). The parents' report carries no other signal at all.
+
+     Each is a fill and a deeper edge. The edge is what clears 1.4.11's 3:1 on white, since a yellow or orange fill
+     alone does not; the fill is what a teacher and a parent recognise. */
+  --color-ster-groen: hsl(129 49% 36%);
+  --color-ster-groen-rand: hsl(130 55% 27%);
+  --color-ster-lichtgroen: hsl(82 59% 45%);
+  --color-ster-lichtgroen-rand: hsl(85 66% 30%);
+  --color-ster-geel: hsl(45 81% 52%);
+  --color-ster-geel-rand: hsl(42 92% 31%);
+  --color-ster-oranje: hsl(28 86% 54%);
+  --color-ster-oranje-rand: hsl(26 88% 35%);
+  --color-ster-rood: hsl(4 65% 51%);
+  --color-ster-rood-rand: hsl(5 72% 36%);
+  --color-ster-blauw: hsl(214 59% 49%);
+  --color-ster-blauw-rand: hsl(216 65% 35%);
+
   /* ── gevaar - the one destructive control (owner, 2026-08-30: "verwijderen = rood") ── */
   /* NO NEW HUE. It is `suggestie-geweigerd` and `dekking-niet-gedekt` byte for byte, given a
      name for the third thing that red already means here. Adding a second red would put two
@@ -289,6 +311,20 @@
       --color-attentie: hsl(30 85% 58%);
       --color-attentie-zacht: hsl(40 42% 14%);
       --color-attentie-inkt: hsl(25 90% 74%);
+
+      /* Hue kept, fill raised; the edge goes lighter still, so on slate it is the edge that stands out. */
+      --color-ster-groen: hsl(130 46% 57%);
+      --color-ster-groen-rand: hsl(129 53% 74%);
+      --color-ster-lichtgroen: hsl(82 58% 59%);
+      --color-ster-lichtgroen-rand: hsl(82 62% 76%);
+      --color-ster-geel: hsl(46 86% 62%);
+      --color-ster-geel-rand: hsl(46 88% 79%);
+      --color-ster-oranje: hsl(28 90% 63%);
+      --color-ster-oranje-rand: hsl(28 89% 78%);
+      --color-ster-rood: hsl(5 81% 65%);
+      --color-ster-rood-rand: hsl(6 80% 80%);
+      --color-ster-blauw: hsl(214 71% 66%);
+      --color-ster-blauw-rand: hsl(214 72% 80%);
 
       --color-gevaar: hsl(0 80% 70%);
       --color-gevaar-zacht: hsl(0 42% 16%);
