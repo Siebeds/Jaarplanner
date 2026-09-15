@@ -242,6 +242,13 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
       <Bevestiging
         open={teVerwijderen !== null}
         titel={t("hoeken.verwijderTitel", { naam: teVerwijderen?.naam ?? "" })}
+        // Its verrijkingen go with it (FB-020), and the count is said before, never after. Nothing is said when there
+        // are none: a warning about nothing trains her to skip the warning.
+        gevolg={
+          teVerwijderen && teVerwijderen.aantalVerrijkingen > 0
+            ? telWoord(teVerwijderen.aantalVerrijkingen, "hoeken.verwijderGevolgEen", "hoeken.verwijderGevolgAantal")
+            : undefined
+        }
         bevestigLabel={t("themabeheer.verwijder")}
         bezig={verwijder.isPending}
         onSluit={() => setTeVerwijderen(null)}

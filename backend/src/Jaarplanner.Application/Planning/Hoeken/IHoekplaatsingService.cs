@@ -8,6 +8,10 @@ namespace Jaarplanner.Application.Planning.Hoeken;
 /// request over its own range. That costs one call and buys the property the model was built for: nothing that
 /// (re)generates a plan can see these rows, let alone discard them.
 /// </para>
+/// <para>
+/// <b>What is in the corner is not here since FB-020.</b> A verrijking belongs to the hoek and a subthemaperiode, and
+/// <see cref="IHoekverrijkingService"/> reads and writes it.
+/// </para>
 /// </summary>
 public interface IHoekplaatsingService
 {
@@ -21,10 +25,9 @@ public interface IHoekplaatsingService
     /// <summary>
     /// Places a hoek over a stretch of days.
     /// <para>
-    /// One call does all three things the teacher answered in the sheet: the window, the enrichment she typed,
-    /// and the time of day it runs. They arrive together because she decided them together, and because a
-    /// placement that got its window but lost its verrijking to a second failed request is worse than one that
-    /// never happened.
+    /// One call does both things the teacher answered in the sheet: the window and the time of day it runs. They arrive
+    /// together because she decided them together, and because a placement that got its window but lost its hours to a
+    /// second failed request is worse than one that never happened.
     /// </para>
     /// <para>
     /// <b>Every placement gets a row per teaching day of the window</b> (owner, 2026-09-11: <i>"elke hoek moet
@@ -38,11 +41,11 @@ public interface IHoekplaatsingService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Removes a placement, with its enrichments and its timetable rows.
+    /// Removes a placement, with its timetable rows.
     /// <para>
-    /// The way back out of a mistake, and the reason placing is safe to offer at all. It is a hard delete: an
-    /// enrichment describes THIS window and means nothing without it, unlike an activiteit placed on a Tuesday,
-    /// which stays a fact about a day that was taught.
+    /// The way back out of a mistake, and the reason placing is safe to offer at all. It is a hard delete: a timetable
+    /// row describes THIS window and means nothing without it. The corner's verrijkingen stay: they belong to the hoek
+    /// and the subthema, not to a run in the timetable.
     /// </para>
     /// </summary>
     Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default);
@@ -56,9 +59,8 @@ public interface IHoekplaatsingService
     /// hour. Moving the whole run is <c>Herzet</c>, which is a different verb with a different sheet.
     /// </para>
     /// <para>
-    /// It answers with the WHOLE placement rather than the moved row. The agenda draws a placement's band, its
-    /// enrichments and all of its rows together, so handing back one row would leave the caller to patch a
-    /// structure it did not receive.
+    /// It answers with the WHOLE placement rather than the moved row. The agenda draws a placement's band and all of
+    /// its rows together, so handing back one row would leave the caller to patch a structure it did not receive.
     /// </para>
     /// </summary>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
@@ -94,43 +96,6 @@ public interface IHoekplaatsingService
         TimeOnly begin,
         TimeOnly einde,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Adds an enrichment: what is in the corner over these days (owner, 2026-08-31).
-    /// <para>
-    /// A placement may hold several, for successive stretches of its window. They may not overlap, which
-    /// the aggregate enforces: two answers to "what is in the boekenhoek this week" is not a richer
-    /// answer, it is an ambiguous one.
-    /// </para>
-    /// </summary>
-    Task<HoekplaatsingWeergave> VoegVerrijkingToeAsync(
-        Guid plaatsingId,
-        DateOnly van,
-        DateOnly tot,
-        string tekst,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Rewrites one enrichment (owner, 2026-08-31: "ik wil ook de verrijking kunnen aanpassen").
-    /// <para>
-    /// It was write-once: the sheet took it on the way in and no screen ever changed it again. The
-    /// enrichment is the field carrying the pedagogy, so a typo in it was permanent unless the whole
-    /// placement was deleted and redone.
-    /// </para>
-    /// </summary>
-    Task<HoekplaatsingWeergave> WijzigVerrijkingAsync(
-        Guid plaatsingId,
-        Guid verrijkingId,
-        DateOnly van,
-        DateOnly tot,
-        string tekst,
-        CancellationToken cancellationToken = default);
-
-    /// <summary>Removes one enrichment, leaving the placement and its days alone.</summary>
-    Task<HoekplaatsingWeergave> VerwijderVerrijkingAsync(
-        Guid plaatsingId,
-        Guid verrijkingId,
-        CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the teacher answered in the sheet after dropping a fiche on a day.</summary>
@@ -142,17 +107,12 @@ public interface IHoekplaatsingService
 /// an answer until 2026-09-11, when the owner ruled that every hoek gets a time.
 /// </param>
 /// <param name="Einde">When it closes. Must lie after <paramref name="Begin"/>.</param>
-/// <param name="Verrijking">
-/// What the corner gets over this window, or null when she left it blank. Blank is an ordinary answer: the
-/// boekenhoek runs in december with nothing special in it.
-/// </param>
 public sealed record HoekplaatsingInvoer(
     Guid HoekId,
     DateOnly Van,
     DateOnly Tot,
     TimeOnly Begin,
-    TimeOnly Einde,
-    string? Verrijking = null);
+    TimeOnly Einde);
 
 /// <summary>A placed hoek as the agenda reads it.</summary>
 /// <param name="Id">Surrogate identity of the placement.</param>
@@ -160,7 +120,6 @@ public sealed record HoekplaatsingInvoer(
 /// <param name="HoekNaam">Its name, so the calendar can label the band without a second request.</param>
 /// <param name="Van">First day, inclusive.</param>
 /// <param name="Tot">Last day, inclusive.</param>
-/// <param name="Verrijkingen">What is in the corner, per sub-window. Empty is normal.</param>
 /// <param name="Momenten">
 /// Where it appears in the time grid, one per teaching day. Empty only for a placement made before every hoek had
 /// to have a time (2026-09-11).
@@ -171,11 +130,7 @@ public sealed record HoekplaatsingWeergave(
     string HoekNaam,
     DateOnly Van,
     DateOnly Tot,
-    IReadOnlyList<HoekverrijkingWeergave> Verrijkingen,
     IReadOnlyList<HoekmomentWeergave> Momenten);
-
-/// <summary>One enrichment: what is in the corner, over these days.</summary>
-public sealed record HoekverrijkingWeergave(Guid Id, DateOnly Van, DateOnly Tot, string Tekst);
 
 /// <summary>One appearance in the time grid: this day, from this time to that one.</summary>
 public sealed record HoekmomentWeergave(Guid Id, DateOnly Datum, TimeOnly Begin, TimeOnly Einde);

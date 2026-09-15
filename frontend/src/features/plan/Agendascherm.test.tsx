@@ -97,6 +97,7 @@ function antwoord(pad: string): unknown {
     }
     case "/api/klassen/klas-1/hoekplaatsingen":
     case "/api/klassen/klas-1/hoeken":
+    case "/api/klassen/klas-1/hoekverrijkingen":
       return [];
     case "/api/klassen/klas-1/algemene-ficheplaatsingen":
       return [TURNEN];

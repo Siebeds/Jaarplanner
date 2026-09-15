@@ -3,6 +3,7 @@ using System;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260915153625_HoekverrijkingPerSubthemaperiode")]
+    partial class HoekverrijkingPerSubthemaperiode
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -322,64 +325,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.HasIndex("KlasId");
 
                     b.ToTable("leerlingen", (string)null);
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Besluit")
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
-
-                    b.Property<string>("BesluitStatus")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<Guid>("LeerlingId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Moment")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LeerlingId", "Moment")
-                        .IsUnique();
-
-                    b.ToTable("ontwikkelingsrapporten", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_ontwikkelingsrapporten_Moment", "\"Moment\" BETWEEN 1 AND 3");
-                        });
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportbeoordeling", b =>
-                {
-                    b.Property<Guid>("OntwikkelingsrapportId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("RapportdoelId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("GradatieId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Tekst")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<string>("TekstStatus")
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.HasKey("OntwikkelingsrapportId", "RapportdoelId");
-
-                    b.HasIndex("GradatieId");
-
-                    b.HasIndex("RapportdoelId");
-
-                    b.ToTable("rapportbeoordelingen", (string)null);
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", b =>
@@ -1120,35 +1065,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport", b =>
-                {
-                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Leerling", null)
-                        .WithMany()
-                        .HasForeignKey("LeerlingId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportbeoordeling", b =>
-                {
-                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Gradatie", null)
-                        .WithMany()
-                        .HasForeignKey("GradatieId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport", null)
-                        .WithMany("Beoordelingen")
-                        .HasForeignKey("OntwikkelingsrapportId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", null)
-                        .WithMany()
-                        .HasForeignKey("RapportdoelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.RapportdoelSubdoel", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", null)
@@ -1803,11 +1719,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasForeignKey("KlasId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport", b =>
-                {
-                    b.Navigation("Beoordelingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", b =>

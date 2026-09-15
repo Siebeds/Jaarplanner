@@ -136,6 +136,34 @@ public sealed class HoekBeheerServiceTests
     }
 
     [Fact]
+    public async Task Een_hoek_telt_zijn_verrijkingen_en_neemt_ze_mee_als_hij_weggaat()
+    {
+        // FB-020: a verrijking hangs on the hoek and a subthemaperiode. The list says how many, which is what the
+        // delete confirmation reads, and the delete takes them along rather than leaving text about a gone corner.
+        var hoek = await Service().MaakHoekAsync(_k3a.Id, new HoekInvoer("boekenhoek"));
+        var ander = await Service().MaakHoekAsync(_k3a.Id, new HoekInvoer("bouwhoek"));
+        Assert.Equal(0, hoek.AantalVerrijkingen);
+
+        await using (var context = Context())
+        {
+            context.Hoekverrijkingen.AddRange(
+                new Hoekverrijking(hoek.Id, Guid.NewGuid(), "herfstboeken"),
+                new Hoekverrijking(hoek.Id, Guid.NewGuid(), "winterboeken"),
+                new Hoekverrijking(ander.Id, Guid.NewGuid(), "blokken"));
+            await context.SaveChangesAsync();
+        }
+
+        var lijst = await Service().HaalHoekenOpAsync(_k3a.Id);
+        Assert.Equal(2, lijst.Single(h => h.Id == hoek.Id).AantalVerrijkingen);
+
+        await Service().VerwijderHoekAsync(hoek.Id);
+
+        await using var na = Context();
+        var over = Assert.Single(await na.Hoekverrijkingen.ToListAsync());
+        Assert.Equal(ander.Id, over.HoekId);
+    }
+
+    [Fact]
     public async Task Overnemen_kopieert_en_slaat_over_wat_er_al_is()
     {
         var service = Service();

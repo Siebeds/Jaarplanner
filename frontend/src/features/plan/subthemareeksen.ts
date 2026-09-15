@@ -18,6 +18,12 @@ export interface Subthemareeks {
   tot: string;
   /** Days inside the range that actually carry an activiteit of this subthema. */
   aantalDagen: number;
+  /**
+   * The stored window folded into this run, the first one the server listed (it lists them by start), or absent when
+   * the run is drawn from its activiteiten alone. A hoekverrijking is written against it (FB-020); where it is absent,
+   * saving one stores the window first.
+   */
+  periodeId?: string;
 }
 
 /**
@@ -90,6 +96,7 @@ export function subthemareeksen(
     if (lopend) {
       if (periode.van < lopend.van) lopend.van = periode.van;
       if (periode.tot > lopend.tot) lopend.tot = periode.tot;
+      lopend.periodeId ??= periode.id;
     } else {
       reeksen.set(sleutel, {
         subthemaId: periode.subthemaId,
@@ -99,6 +106,7 @@ export function subthemareeksen(
         // Nothing has touched down in it yet. That is a window waiting for its activiteiten, not an error, and it is
         // why `aantalDagen` is a separate figure from the length of the range.
         aantalDagen: 0,
+        periodeId: periode.id,
       });
     }
   }

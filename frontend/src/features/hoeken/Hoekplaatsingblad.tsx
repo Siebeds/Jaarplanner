@@ -1,7 +1,7 @@
 import { useId, useMemo, useState, type FormEvent } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
-import { Invoer, Tekstvlak } from "../../components/ui/Veld";
+import { Invoer } from "../../components/ui/Veld";
 import { IcoonChevron } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst } from "../../lib/datum";
@@ -14,11 +14,10 @@ import type { HoekplaatsingInvoer, HoekplaatsingWeergave } from "./gegevens";
  * What happens after a hoekfiche lands on a day: over which days, with what in it, and at which
  * lesuur (owner, 2026-08-30).
  *
- * **Three questions in one sheet because she decided them in one gesture.** Dragging the boekenhoek
- * onto 12 october is not "place a corner"; it is "the boekenhoek runs these weeks, with the autumn
- * books in it, during hoekenwerk". Asking them one at a time would turn one decision into three
- * screens, and a placement that got its window but lost its verrijking to a second failed request is
- * worse than one that never happened. The server takes all three in one call for the same reason.
+ * **Two questions in one sheet because she decided them in one gesture.** Dragging the boekenhoek
+ * onto 12 october is not "place a corner"; it is "the boekenhoek runs these weeks, during hoekenwerk".
+ * The server takes both in one call for the same reason. What is IN the corner is no longer asked here
+ * (FB-020): that belongs to the subthema that runs, and she writes it from the subthemabalk.
  *
  * **What this corner already runs comes first** (owner, 2026-09-10). It used to hang under the fiche
  * in the hoekenpaneel, where it cluttered a list meant for seeing the corners side by side, and it
@@ -85,7 +84,6 @@ export function Hoekplaatsingblad({
   const id = useId();
   const [van, setVan] = useState(startdag);
   const [tot, setTot] = useState("");
-  const [verrijking, setVerrijking] = useState("");
   // `HH:mm`, which is what a time input reads and writes; the seconds are added on submit, where the wire format
   // is decided once.
   const [begin, setBegin] = useState(() => alsTijd(startuur ?? STANDAARDBEGIN).slice(0, 5));
@@ -110,7 +108,6 @@ export function Hoekplaatsingblad({
       hoekId,
       van,
       tot,
-      verrijking: verrijking.trim() || null,
       begin: `${begin}:00`,
       einde: `${einde}:00`,
     });
@@ -210,20 +207,6 @@ export function Hoekplaatsingblad({
           ) : null}
         </div>
 
-        <div>
-          <label htmlFor={`${id}-verrijking`} className="text-meta font-medium text-inkt">
-            {t("hoekplaatsing.verrijking")}
-          </label>
-          <Tekstvlak
-            id={`${id}-verrijking`}
-            value={verrijking}
-            disabled={bezig}
-            rows={3}
-            placeholder={t("hoekplaatsing.verrijkingVoorbeeld")}
-            onChange={(e) => setVerrijking(e.target.value)}
-            className="mt-1.5"
-          />
-        </div>
 
         <div>
           <p className="text-meta font-medium text-inkt">{t("hoekplaatsing.wanneer")}</p>
