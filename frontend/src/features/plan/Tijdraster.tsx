@@ -163,8 +163,14 @@ export function Tijdraster({
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
       {/* THE DAY HEADINGS AND THE ALL-DAY BAND, outside the scroller so they stay put while the hours move.
           What is in the band is what is true of a whole day and has no hour: which themaperiode it belongs to and
-          which subthema runs on it. The hoeken used to be here too and are in the grid now, on their own time. */}
-      <div className="flex border-b border-lijn">
+          which subthema runs on it. The hoeken used to be here too and are in the grid now, on their own time.
+
+          THE SAME GUTTER AS THE SCROLLER BELOW, so every heading sits over its own column. The scroller's scrollbar
+          takes its width from the hour columns and not from these headings, which drifted each column a little further
+          right than the one before it: a few pixels on Tuesday, nine by Friday (owner, 2026-09-15, TB-020). A gutter
+          is only reserved on an element that can scroll, hence `overflow-hidden`; nothing in a heading hangs outside
+          it, and the card already clips. With overlay scrollbars both reserve nothing, which is equal too. */}
+      <div className="flex overflow-hidden border-b border-lijn [scrollbar-gutter:stable]">
         <div className="w-12 shrink-0 border-r border-lijn sm:w-14" />
         <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))` }}>
           {dagen.map((dag) => (
@@ -196,7 +202,7 @@ export function Tijdraster({
           promise about what he sees, and on a phone it is one the pixels cannot keep. */}
       <div
         ref={scrollvak}
-        className="overflow-y-auto"
+        className="overflow-y-auto [scrollbar-gutter:stable]"
         style={{ maxHeight: `clamp(24rem, calc(100dvh - 21rem), ${(DAGEINDE - DAGBEGIN) * PX_PER_MINUUT}px)` }}
       >
         <div className="flex" style={{ height: hoogte }}>
