@@ -2,12 +2,12 @@
 id: FB-009
 titel: Thema toont welke leerplandoelen en minimumdoelen het per leeftijd bereikt
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:46
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 15:30
+opgepakt-door: themapagina
+branch: ticket/FB-009-doelen-per-leeftijd
 pr:
 geblokkeerd:
 fr: [FR-2.3, FR-9.3]
@@ -80,3 +80,4 @@ thema subthema's heeft).
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 15:30 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt; gestapeld op ticket/FB-010-subdoelen-in-activiteiten
