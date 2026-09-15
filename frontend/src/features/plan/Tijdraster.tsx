@@ -62,6 +62,8 @@ export interface Hoekblokje {
  */
 export interface Ficheblokje extends Hoekblokje {
   doelen?: readonly Infodoel[];
+  /** What the class does in it that day (FB-022), drawn in the block where there is room. */
+  tekst?: string | null;
 }
 
 /** What a resize asks the screen to save. The three kinds live behind three endpoints; the grid knows which is which. */
@@ -82,6 +84,8 @@ type Rasterblok = Blokje & {
    * FB-019 gives hoeken goals of their own.
    */
   doelen?: readonly Infodoel[];
+  /** An algemene fiche's day text (FB-022). Absent for every other kind, and for a day nobody wrote about. */
+  tekst?: string;
 };
 
 /**
@@ -376,6 +380,9 @@ function urenZin(uren: Schooldaguren | undefined): string {
  */
 const UREN = Array.from({ length: (HEEL_DE_DAG.tot - HEEL_DE_DAG.van) / 60 }, (_, i) => HEEL_DE_DAG.van + i * 60);
 
+/** One line of an algemene fiche's day text on a block, in pixels: its `leading-[0.9375rem]` (FB-022). */
+const TEKSTREGEL = 15;
+
 /** Every block of every visible day, of all three kinds, in one list the layout and the range can both read. */
 function bouwBlokken(
   dagen: Agendadag[],
@@ -426,6 +433,7 @@ function bouwBlokken(
       onder: t("tijdraster.algemeneFiche"),
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
       doelen: moment.doelen,
+      tekst: moment.tekst ?? undefined,
     });
   }
 
@@ -902,6 +910,22 @@ function Blok({
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
   /*
+    AN ALGEMENE FICHE'S DAY TEXT, IN WHOLE LINES OF THE ROOM THAT IS LEFT (FB-022). The name line is 18 pixels and the
+    time line under it 15.5, after 8 of padding, and the text sets its own 15-pixel leading so this sum holds. A
+    45-minute block (42 pixels) has room for one line under the name-and-time line; an hour or more gives the text what
+    is left under the time, in place of the "Algemene fiche" line, since the glyph and the accessible name still say
+    the kind. Whole lines, so no line is drawn cut in half; the rest of the text is in the sheet the block opens.
+  */
+  const hoogte = duur * PX_PER_MINUUT;
+  const tekstregels = !blok.tekst
+    ? 0
+    : toont === "alles"
+      ? Math.max(1, Math.floor((hoogte - 8 - 18 - 15.5) / TEKSTREGEL))
+      : toont === "tijd" && hoogte - 8 - 18 >= TEKSTREGEL
+        ? 1
+        : 0;
+
+  /*
     THE INFO ICON FROM HALF AN HOUR UP (FB-018). A half-hour block is 28 pixels tall, which holds the 24-pixel target
     WCAG 2.2 AA asks for; a quarter is 14, which holds nothing a finger can hit. Below half an hour the goals are in the
     sheet the block opens, which lists them for an activiteit and an algemene fiche alike, so no block's goals are out of
@@ -944,7 +968,7 @@ function Blok({
             blok.doel.soort === "activiteit" ? "" : `, ${blok.onder}`
           }${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
             blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""
-          }`}
+          }${blok.tekst ? `, ${blok.tekst}` : ""}`}
           // dnd-kit's attributes say "draggable" to a screen reader, so a block that cannot move does not get them.
           {...(magPlannen ? listeners : {})}
           {...(magPlannen ? attributes : {})}
@@ -982,8 +1006,19 @@ function Blok({
               <span className="mono block truncate text-[0.625rem] text-inkt-zacht">
                 {toonBereik(blok.begin, einde)}
               </span>
-              <span className="block truncate text-[0.625rem] text-inkt-zacht">{blok.onder}</span>
+              {tekstregels === 0 ? (
+                <span className="block truncate text-[0.625rem] text-inkt-zacht">{blok.onder}</span>
+              ) : null}
             </>
+          ) : null}
+
+          {tekstregels > 0 ? (
+            <span
+              className="block break-words text-[0.625rem] leading-[0.9375rem] text-inkt"
+              style={{ display: "-webkit-box", WebkitBoxOrient: "vertical", WebkitLineClamp: tekstregels, overflow: "hidden" }}
+            >
+              {blok.tekst}
+            </span>
           ) : null}
         </button>
 

@@ -171,6 +171,24 @@ public sealed class AlgemeneFicheplaatsing
         return true;
     }
 
+    /// <summary>
+    /// Sets or clears what the class does in ONE occurrence (FB-022). Only that day's row changes: the other days of the
+    /// run stay empty until they are filled in themselves.
+    /// </summary>
+    /// <returns><c>false</c> when this placement holds no occurrence with that id.</returns>
+    /// <exception cref="ArgumentException">The text is longer than <see cref="AlgemeneFichemoment.MaxTekstLengte"/>.</exception>
+    public bool ZetTekst(Guid momentId, string? tekst)
+    {
+        var moment = _momenten.Find(m => m.Id == momentId);
+        if (moment is null)
+        {
+            return false;
+        }
+
+        moment.ZetTekst(tekst);
+        return true;
+    }
+
     private void BewaakDag(DateOnly datum, TimeOnly begin, Guid? negeer)
     {
         if (!Omvat(datum))

@@ -1,5 +1,6 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ComponentProps } from "react";
 import { cn } from "../../lib/cn";
+import { IcoonToverstok } from "../Iconen";
 import { knopklassen, type Rang } from "./knopklassen";
 
 /**
@@ -23,6 +24,27 @@ export function Knop({
       className={cn(knopklassen(rang, vol), "disabled:pointer-events-none disabled:opacity-45", className)}
       {...props}
     />
+  );
+}
+
+/**
+ * A button that calls the model, so that what follows is a proposal rather than a result (Art. IV).
+ *
+ * It wears the rainbow ring of ADR-0039, and the wand in front of its label says the same thing without
+ * colour (Art. XII). This is the one way to the `ai` look: a caller that wants the ring gets the wand with
+ * it. `bezig` sets `aria-busy` for the run, which is also what keeps the ring bright and sweeping while
+ * the button is disabled.
+ */
+export function AiKnop({
+  bezig,
+  children,
+  ...props
+}: Omit<ComponentProps<typeof Knop>, "rang"> & { bezig?: boolean }) {
+  return (
+    <Knop rang="ai" aria-busy={bezig || undefined} {...props}>
+      <IcoonToverstok aria-hidden="true" className="h-4 w-4 shrink-0" />
+      {children}
+    </Knop>
   );
 }
 

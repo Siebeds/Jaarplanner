@@ -3,13 +3,13 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
-import { Knop } from "../../components/ui/Knop";
+import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
-import { IcoonDoelen, IcoonToverstok } from "../../components/Iconen";
+import { IcoonDoelen } from "../../components/Iconen";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
@@ -348,15 +348,14 @@ export function ThemadetailScherm() {
                       legible: this does not add a themadoel, it asks the model for candidates that a
                       teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
                   {mag.doelsuggestiesMaken ? (
-                    <Knop
-                      rang="stil"
+                    <AiKnop
                       className="h-9 min-h-9 px-2.5 text-meta"
+                      bezig={genereer.isPending}
                       disabled={genereer.isPending}
                       onClick={() => genereer.mutate()}
                     >
-                      <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
                       {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-                    </Knop>
+                    </AiKnop>
                   ) : null}
                 </>
               ) : undefined

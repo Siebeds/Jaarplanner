@@ -1090,6 +1090,10 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             public Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default) =>
                 Task.FromResult(0);
 
+            public Task<IReadOnlyDictionary<string, string>> HaalDisciplinenamenAsync(
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>());
+
             /// <summary>
             /// The class's leerjaar, <c>3</c> by default to match <see cref="SeedAsync"/>'s class. Returning
             /// <c>null</c> would be simpler and would make every response report a fallback to the whole curriculum,

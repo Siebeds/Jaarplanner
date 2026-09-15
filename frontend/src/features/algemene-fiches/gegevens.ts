@@ -137,7 +137,12 @@ export interface AlgemeneFichemomentWeergave {
   /** `HH:mm:ss`, as the server sends a TimeOnly. */
   begin: string;
   einde: string;
+  /** What the class does in it that day, or null while nothing is filled in (FB-022). */
+  tekst: string | null;
 }
+
+/** The longest day text, mirroring `AlgemeneFichemoment.MaxTekstLengte`. */
+export const MAX_DAGTEKST = 500;
 
 /** A planned fiche as the agenda reads it. Mirrors `AlgemeneFicheplaatsingWeergave`. */
 export interface AlgemeneFicheplaatsingWeergave {
@@ -238,6 +243,22 @@ export function useVerplaatsFichemoment() {
         datum,
         begin,
         einde,
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] }),
+  });
+}
+
+/**
+ * Sets or clears ONE occurrence's day text (FB-022). An empty text clears it. Only the placements are refetched, as
+ * for a move: a day text changes nothing about dekking.
+ */
+export function useZetFichemomenttekst() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, momentId, tekst }: { plaatsingId: string; momentId: string; tekst: string }) =>
+      put<AlgemeneFicheplaatsingWeergave>(`/api/algemene-ficheplaatsingen/${plaatsingId}/momenten/${momentId}/tekst`, {
+        tekst,
       }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] }),
   });

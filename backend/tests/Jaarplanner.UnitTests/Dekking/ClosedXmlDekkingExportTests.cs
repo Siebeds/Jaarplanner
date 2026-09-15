@@ -87,6 +87,8 @@ public class ClosedXmlDekkingExportTests
             code,
             doelsoort,
             jaarFase,
+            "3",
+            "Wetenschap en techniek",
             "Levende natuur",
             "Dieren",
             $"De leerling kan {code} aantonen.",

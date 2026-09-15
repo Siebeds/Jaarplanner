@@ -171,6 +171,20 @@ describe("Navigatie", () => {
     expect(useHoekenpaneel.getState().open).toBe(false);
   });
 
+  it("zet de schakelaars in de volgorde activiteiten, algemene fiches, hoekenfiches (TB-024)", () => {
+    rendermetPad("/agenda", DIRECTIE);
+    const namen = [
+      t("hoekenpaneel.activiteitenTitel"),
+      t("hoekenpaneel.algemeenTitel"),
+      t("hoekenpaneel.titel"),
+    ];
+    const knoppen = namen.map((naam) => screen.getByRole("button", { name: naam }));
+
+    for (let i = 1; i < knoppen.length; i++) {
+      expect(knoppen[i - 1].compareDocumentPosition(knoppen[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {
     useHoekenpaneel.setState({ open: true });
     rendermetPad("/agenda", DIRECTIE);

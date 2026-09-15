@@ -205,6 +205,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("doelkiezer.koppel"))).not.toBeNull();
     expect(knop(t("activiteit.ontkoppel", { code: "NED-1" }))).not.toBeNull();
     expect(knop(t("thema.suggestiesVragen"))).not.toBeNull();
+    // It calls the model, so it wears the AI ring (ADR-0039).
+    expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
     expect(await screen.findByText(SUGGESTIE.aiMotivatie!)).toBeInTheDocument();
     expect(knop(t("thema.aanvaard"))).not.toBeNull();
     expect(knop(t("thema.weiger"))).not.toBeNull();

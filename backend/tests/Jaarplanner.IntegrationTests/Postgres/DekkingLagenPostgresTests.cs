@@ -333,6 +333,19 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task De_disciplinenamen_komen_uit_de_geseede_referentietabel()
+    {
+        // TB-022: the overview's top level is the leergebied, named from the seeded `disciplines` table (Art. VII.0).
+        // Against PostgreSQL because the seed lives in a migration, which the in-memory provider never runs.
+        await using var context = _db.MaakContext();
+
+        var namen = await new EfDekkingOpslag(context).HaalDisciplinenamenAsync();
+
+        Assert.Equal("Wiskunde", namen["2"]);
+        Assert.Equal("Veilige en gezonde levensstijl", namen["9.1"]);
+    }
+
+    [PostgresFact]
     public async Task De_kandidaatlezing_levert_alle_vier_de_lagen_met_hun_beslisstatus()
     {
         // The gap-analyse's own read (E5-05). Four layers again, and the two things that make it different from the
