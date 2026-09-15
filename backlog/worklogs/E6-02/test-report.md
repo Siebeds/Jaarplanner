@@ -583,3 +583,24 @@ reconstructed from "Fix after the merge audit" in `implementation.md` and the ev
   `0ddf4fe` and `9a81c74`.
 - **Teardown:** the API and Vite are stopped (nothing listens on 5395 or 5185); `jp_tr_merge_e6` cannot be dropped
   while Docker is down.
+
+## Browser pass on the PR (2026-09-15)
+
+**Verdict:** PASS. **Commit:** `3f4125c`. Run by the orchestrator once Docker was back, on the owner's request, with
+the scripts of the stopped merge pass (headless Chrome over CDP, real mouse input), the API on 5395 and Vite on 5185
+against the throwaway database `jp_tr_merge_e6` (all 28 migrations applied, the same seed).
+
+- **The agenda, per profile at 1440×1000 and 390×844.** Directie and the leerkracht of K3 groen: both panel switches
+  at 1440, both chips at 390, the add buttons, draggable fiche blocks, and the fiche sheet with its fields, Bewaren and
+  "Hele periode uit de agenda halen". The leerkracht dragged the Onthaal fiche three hours down: one
+  `PUT …/momenten/{id}` (200), and the block moved from 8:30 to 11:45. The same leerkracht on K3 blauw, the
+  hoofdleerkracht, themabeheer and a gebruiker without rights on groen: the "kan je alleen bekijken" line, no
+  switches, no chips, no panel, no add buttons, fiche blocks without drag semantics, and a fiche sheet and a hoek sheet
+  with only Sluiten. A reader's drag of the fiche wrote nothing and moved nothing. Switching the leerkracht from groen
+  to blauw closes the open panel and removes the switches. No horizontal overflow at either width.
+- **TB-014 in the grid (1440).** The planner hovering an empty quarter sees it light up ("16:00"); a drag across
+  empty space opens the picker as "maandag 14 september van 16:00 tot 18:15" and writes nothing before a choice. At
+  the same screen point, the reader of another klas gets no lit-up quarter, no picker and no write.
+- **Console:** no errors or warnings in either run.
+- **Teardown:** API and Vite stopped, `jp_tr_merge_e6` dropped, together with three `jp_test_*` databases the
+  integration tests left behind when Docker stopped.
