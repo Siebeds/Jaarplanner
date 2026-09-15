@@ -1156,6 +1156,13 @@
     "mislukt": {
       "titel": "Aanmelden is niet gelukt",
       "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
+    },
+    "tussenpagina": {
+      "openen": "Jaarplanner wordt geopend.",
+      "doorsturen": "Je wordt doorgestuurd naar de aanmelding.",
+      "fout": "Jaarplanner kan nu niet openen.",
+      "foutUitleg": "Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie.",
+      "opnieuw": "Opnieuw proberen"
     }
   },
   "rechten": {
