@@ -51,6 +51,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0038](0038-schooluren-per-weekdag.md) | **The school's hours are school data**: one row per weekday (Monday to Friday) with a begin, an end and an optional middagpauze, set by directie (`Beheer`) and read by everyone; the agenda opens at the start of the school day and hatches the hours outside it, labelled in words; the grid still draws and plans every hour (supersedes ADR-0028 decision 5 in part) | Accepted |
 | [0039](0039-ai-knoppen-regenboogring.md) | **A control that calls the AI wears a rainbow ring**: every such control is an `AiKnop` with the wand before its label; a 2px sweep through five stops around the card surface, label in ink; still at rest, a glow on hover, the sweep travels while a run is busy; the AI's proposals keep their suggestiestatus colours (amends 0024 decision 4) | Accepted |
 | [0040](0040-klassen-inkijken-per-jaarfase.md) | **A leerkracht reads the klassen of her own jaarfase**: a hoofdleerkracht those of her appointed jaarfase, themabeheer and directie every klas, a gebruiker without a right none, in every schooljaar (a default); one matrix row, `KlasplanningBekijken`, is the E6-09 seam, on every read of one klas's planning and on the klassen list. Supersedes 0030 default I9; directie's confirmation (question 4) is outstanding | Accepted |
+| [0041](0041-eigen-woordweb-per-subthema.md) | **A leerkracht keeps her own woordweb per subthema** (the brainstorm of step 3): loose words, one web per gebruiker and subthema that follows her across schooljaren, read by everyone, edited by its owner and directie; the AI proposes at most five words with a motivation, only once the web holds a word of her own, from its own language knowledge (an Art. IV.4 exception). Answers 0030 §4 (a) for the woordweb only | Accepted |
 
 ## Compliance traceability matrix
 
@@ -94,6 +95,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0038 | Art. VI.1, II.3, XII, IV.2, V.1; supersedes 0028 decision 5 in part | FB-023; enables FB-027 | FR-12.1 |
 | 0039 | Art. IV.1, XII, II.3; amends 0024 decision 4 | TB-023; the AI tickets still to be built | FR-4, FR-5; NFR-2 |
 | 0040 | Art. VI.1, VI.7, XIV; supersedes 0030 default I9 and narrows its §4 (d) | FB-013 (takes over E6-08 and E6-09) | FR-10.1, FR-10.2 |
+| 0041 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 (amended); V.1 unchanged; answers 0030 §4 (a) for the woordweb only | FB-036 | FR-3.1, FR-4.2, FR-4.3; FA A.7 step 3 |
 
 ## Open decisions referenced by ADRs
 

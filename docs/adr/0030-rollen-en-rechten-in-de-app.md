@@ -767,6 +767,9 @@ settled", then "Five are open".*
   - *Not the maker of R26.* An activiteit's maker only decides who may delete it; the activiteit stays shared.
 
   *Owner: E6-10.* Nothing personal is built until this is answered.
+  - *Answered for the woordweb only* by [ADR-0041](0041-eigen-woordweb-per-subthema.md) (2026-09-15, W2 and W4): a
+    woordweb belongs to the gebruiker, follows her across schooljaren, and every signed-in gebruiker reads it; its
+    owner and directie edit it. For personal activiteiten and subdoelen (a) stays open with E6-10.
 - **(b) The FR-1 import.** *Settled by statement 13 (R9).*
   - The import is for directie and themabeheer only. That is also the only route by which it creates subthema's at
     any leeftijd, a power R5 otherwise gives to that jaar's hoofdleerkrachten, and the only route by which it can
