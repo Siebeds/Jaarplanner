@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:27
+bijgewerkt: 2026-09-15 21:30
 opgepakt-door: activiteitenicoon
 branch: ticket/activiteitenicoon-puzzelstuk
-pr:
+pr: 102
 geblokkeerd:
 fr: []
 ---
@@ -52,3 +52,4 @@ Geen.
 - 2026-09-15 21:24 · activiteitenicoon · Antagonist: COMPLIANT, geen CRITICAL of MAJOR bevindingen.
 - 2026-09-15 21:27 · activiteitenicoon · Browserpas (headless Chrome, wegwerpkopie jp_tb031, daarna verwijderd): puzzelstuk in zijpaneel breed en smal (20px), paneelkop (16px), licht en donker, en in de chip boven de agenda op 390px (16px); oud ruitje nergens meer, icoon aria-hidden. Criteria afgevinkt.
 - 2026-09-15 21:27 · activiteitenicoon · in-uitvoering → klaar: Activiteitenicoon is een puzzelstuk; lint, 962 tests, antagonist en browserpas groen.
+- 2026-09-15 21:30 · activiteitenicoon · PR #102
