@@ -70,6 +70,10 @@ apart weekoverzicht.
     uur is 28 pixels hoog en past een doel van 24 bij 24; een kwartier is 14 pixels en past niets dat een vinger raakt.
     Een korter blok toont zijn doelen alleen in het blad dat het opent: het activiteitblad deed dat al, en het blad van
     een algemene fiche kreeg daarvoor een sectie Doelen.
+- Een doel dat uit Op.stap verdwenen is, draagt in het venster het label "Vervallen in Op.stap" bij een activiteit,
+  maar niet bij een algemene fiche: de doelen van een fiche komen zonder die vlag van de server, en dat was al zo voor
+  dit ticket (antagonist, 2026-09-15).
+  - **Aanvaard door de eigenaar (2026-09-15):** fichedoelen tonen het label voorlopig niet; geen apart ticket.
 
 ## Werklog
 
