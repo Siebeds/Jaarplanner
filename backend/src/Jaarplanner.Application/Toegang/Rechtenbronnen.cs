@@ -97,7 +97,7 @@ public sealed record Leeftijdsinhoud(string Leeftijd)
 public sealed record Klasplanning(Guid KlasId);
 
 /// <summary>
-/// One klas as <b>reading</b> its planning needs it (FB-013, ADR-0039): the jaarplan, the agenda, the dekking and their
+/// One klas as <b>reading</b> its planning needs it (FB-013, ADR-0040): the jaarplan, the agenda, the dekking and their
 /// export. The row <c>KlasplanningBekijken</c> asks it: a leerkracht or hoofdleerkracht reads a klas whose leeftijden
 /// include one of their own, and a klastoewijzing reads its own klas.
 /// <para>

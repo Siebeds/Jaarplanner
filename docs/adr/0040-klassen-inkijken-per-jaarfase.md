@@ -1,4 +1,4 @@
-# ADR-0039 — A leerkracht reads the klassen of her own jaarfase
+# ADR-0040 — A leerkracht reads the klassen of her own jaarfase
 
 - **Status:** Accepted
 - **Date:** 2026-09-15

@@ -7,7 +7,7 @@ import { DIRECTIE, NIEMAND, ikMet, metIk } from "../test/rechten";
 import { Geenklasleegte } from "./Geenklasleegte";
 
 /**
- * FB-013 (ADR-0039 Z4): a screen about one klas, with no klas chosen, tells a gebruiker without any right why, and
+ * FB-013 (ADR-0040 Z4): a screen about one klas, with no klas chosen, tells a gebruiker without any right why, and
  * everyone else what the screen itself says. Never before `/api/ik` has answered.
  */
 

@@ -390,7 +390,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(niemand.PutAsJsonAsync($"/api/themas/{Guid.NewGuid()}", new { })));
     }
 
-    // --- Jaarplan, agenda en dekking bekijken en exporteren (R3, R7; FB-013, ADR-0039 Z1-Z6): the own jaarfase. ---
+    // --- Jaarplan, agenda en dekking bekijken en exporteren (R3, R7; FB-013, ADR-0040 Z1-Z6): the own jaarfase. ---
 
     /// <summary>Every read of one klas's planning, the klas itself included: the routes that carry KlasplanningBekijken.</summary>
     private static string[] Leespaden(Guid klasId) =>

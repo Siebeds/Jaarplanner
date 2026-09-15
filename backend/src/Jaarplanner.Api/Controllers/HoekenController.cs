@@ -18,7 +18,7 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights (E6-02, FB-013):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (directie and the
 /// klas's own leerkrachten; ADR-0030 R7, R15, I21), against the klas in the route or the hoek's own klas. Reading the
-/// list is <c>KlasplanningBekijken</c> (ADR-0039). Taking corners over writes only into the klas in the route, and reads
+/// list is <c>KlasplanningBekijken</c> (ADR-0040). Taking corners over writes only into the klas in the route, and reads
 /// the klas they come from, so that klas must be one the gebruiker may read too: otherwise the copy would show another
 /// jaarfase's corners.
 /// </para>

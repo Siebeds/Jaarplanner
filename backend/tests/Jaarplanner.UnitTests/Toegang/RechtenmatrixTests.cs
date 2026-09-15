@@ -57,7 +57,7 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.StreefwoordenschatAanpassen] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.KlasplanningBewerken] = ["Directie", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
-        // FB-013 (ADR-0039 Z1-Z5): reading a K3 klas is for its own leerkracht, every leerkracht and hoofdleerkracht of
+        // FB-013 (ADR-0040 Z1-Z5): reading a K3 klas is for its own leerkracht, every leerkracht and hoofdleerkracht of
         // K3, themabeheer and directie. Not for another leeftijd, and not for a gebruiker without a right (Z4).
         [Rechtenmatrix.Beleid.KlasplanningBekijken] =
             ["Directie", "TB", "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
@@ -173,7 +173,7 @@ public sealed class RechtenmatrixTests
             Relaties["LK eigen"], Rechtenmatrix.KlasplanningBewerken, new Klasplanning(AndereKlas)));
     }
 
-    // --- Reading a klas's planning (FB-013, ADR-0039): the klas's jaarfase decides, through the one mapping. ---
+    // --- Reading a klas's planning (FB-013, ADR-0040): the klas's jaarfase decides, through the one mapping. ---
 
     [Fact]
     public void Een_klas_van_een_andere_jaarfase_leest_alleen_themabeheer_en_directie_Z1_Z2_Z3()

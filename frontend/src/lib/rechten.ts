@@ -86,7 +86,7 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   DoelenKoppelen: ["Hoofdleerkracht"],
   ActiviteitVerplaatsen: ["Hoofdleerkracht", "LeerkrachtLeeftijdZonderKoppelingen"],
   KlasplanningBewerken: ["LeerkrachtEigen"],
-  // Reading a klas's planning (FB-013, ADR-0039): themabeheer every klas; a hoofdleerkracht and a leerkracht the klassen
+  // Reading a klas's planning (FB-013, ADR-0040): themabeheer every klas; a hoofdleerkracht and a leerkracht the klassen
   // of their jaarfase; a klastoewijzing its own klas. Columns of their own, as on the server. No screen asks it about one
   // klas: the server filters `GET /api/klassen` by it, and the klas→leeftijden mapping lives there. The screens ask the
   // resource-free part only (`alleKlassenInzien`, `geenKlasInzien`).
@@ -285,7 +285,7 @@ export interface Mag {
   alleKlassenInzien: boolean;
   /**
    * Whether this gebruiker holds no relation that opens any klas: no directie, no themabeheer, no hoofdleerkracht
-   * appointment, no klastoewijzing (FB-013, ADR-0039 Z4). False until `/api/ik` has answered with a gebruiker, so a
+   * appointment, no klastoewijzing (FB-013, ADR-0040 Z4). False until `/api/ik` has answered with a gebruiker, so a
    * screen never says "you have no right" on a failed answer.
    */
   geenKlasInzien: boolean;
@@ -402,7 +402,7 @@ export function useRechten(): { mag: Mag; laadt: boolean; bekend: boolean } {
 }
 
 /**
- * What an empty klassen list means for the signed-in gebruiker, as one sentence (FB-013, ADR-0039). The server offers
+ * What an empty klassen list means for the signed-in gebruiker, as one sentence (FB-013, ADR-0040). The server offers
  * only the klassen a gebruiker may read, so "this schooljaar has no klassen" is true only for whoever reads them all:
  * - no relation that opens any klas (known from `/api/ik`): that, in plain words;
  * - directie or themabeheer: `alleKlassenZin`, the screen's own sentence;

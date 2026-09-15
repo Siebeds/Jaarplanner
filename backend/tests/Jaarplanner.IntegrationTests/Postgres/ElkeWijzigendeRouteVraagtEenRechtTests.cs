@@ -131,7 +131,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 
     /// <summary>
     /// Read routes on one klas deliberately open to every signed-in gebruiker, keyed "GET route", each with why. Both read
-    /// shared content at the klas's leeftijden, which is school-wide and not the klas's planning (Art. IX.2, ADR-0039).
+    /// shared content at the klas's leeftijden, which is school-wide and not the klas's planning (Art. IX.2, ADR-0040).
     /// </summary>
     private static readonly Dictionary<string, string> KlasleesroutesOpenVoorIedereen = new(StringComparer.Ordinal)
     {
@@ -140,7 +140,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     };
 
     /// <summary>
-    /// FB-013's sweep (ADR-0039): <b>every</b> read route that names a klas refuses a gebruiker who holds no right at all
+    /// FB-013's sweep (ADR-0040): <b>every</b> read route that names a klas refuses a gebruiker who holds no right at all
     /// with the authorisation's own 403, unless it is on <see cref="KlasleesroutesOpenVoorIedereen"/>; and the klassen
     /// list offers that gebruiker nothing. So a klas read added later fails here until someone decides its row.
     /// </summary>
@@ -173,7 +173,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
                 fouten.Add(
                     $"{sleutel} answered {(int)antwoord.StatusCode} \"{detail}\" to a gebruiker who holds no right at all. A read of one klas's"
                     + " planning must declare [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, \"klasId\")]"
-                    + " (FB-013, ADR-0039); a route that reads no klas's planning goes on KlasleesroutesOpenVoorIedereen with why.");
+                    + " (FB-013, ADR-0040); a route that reads no klas's planning goes on KlasleesroutesOpenVoorIedereen with why.");
             }
         }
 

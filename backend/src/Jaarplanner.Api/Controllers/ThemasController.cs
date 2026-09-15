@@ -19,7 +19,7 @@ namespace Jaarplanner.Api.Controllers;
 /// it is the subthema row at the leeftijd in the body (<c>SubthemaBeheren</c>: directie and that leeftijd's
 /// hoofdleerkrachten; R5, R21), so themabeheer gets no right there (I22) and the wizard has its own route for it. Reads
 /// stay open to every signed-in gebruiker: a thema and its subthema's are shared content, not a klas's planning, and
-/// <c>voor-klas</c> only narrows them to that klas's leeftijden (FB-013, ADR-0039).
+/// <c>voor-klas</c> only narrows them to that klas's leeftijden (FB-013, ADR-0040).
 /// </para>
 /// </summary>
 [ApiController]

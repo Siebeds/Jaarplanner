@@ -69,7 +69,7 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   StreefwoordenschatAanpassen: ["Directie", "HL", "LK leeftijd"],
   GedeeldeActiviteitBewerken: ["Directie", "HL", "LK leeftijd"],
   KlasplanningBewerken: ["Directie", "LK eigen"],
-  // FB-013 (ADR-0039 Z1-Z5): a K3 klas is read by its own leerkracht, the leerkrachten and hoofdleerkrachten of K3,
+  // FB-013 (ADR-0040 Z1-Z5): a K3 klas is read by its own leerkracht, the leerkrachten and hoofdleerkrachten of K3,
   // themabeheer and directie. Not by another leeftijd, and not by a gebruiker without a right.
   KlasplanningBekijken: ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"],
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
@@ -303,7 +303,7 @@ describe("de antwoorden die de schermen vragen", () => {
   });
 });
 
-describe("een klas inkijken (FB-013, ADR-0039)", () => {
+describe("een klas inkijken (FB-013, ADR-0040)", () => {
   const inzage = (klasId: string, leeftijden: string[]): Rechtbron => ({ soort: "klasinzage", klasId, leeftijden });
 
   it("leest geen klas van een andere jaarfase, behalve voor themabeheer en directie", () => {

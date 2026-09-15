@@ -58,7 +58,7 @@ internal sealed class RechtenTestOpzet
 
     /// <summary>
     /// A school year that ended a hundred days ago, with a K3 and a K2 klas: for reading the klassen of an earlier year
-    /// (FB-013, ADR-0039 default Z6).
+    /// (FB-013, ADR-0040 default Z6).
     /// </summary>
     public async Task<VorigJaar> VorigSchooljaarAsync()
     {

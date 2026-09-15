@@ -26,7 +26,7 @@ namespace Jaarplanner.Api.Controllers;
 /// correcting one of them is when you are least likely to check the next.</i>
 /// </para>
 /// <para>
-/// <b>Who may read it.</b> Every route here is the row <c>KlasplanningBekijken</c> (FB-013, ADR-0039): the klas's own
+/// <b>Who may read it.</b> Every route here is the row <c>KlasplanningBekijken</c> (FB-013, ADR-0040): the klas's own
 /// leerkrachten, the leerkrachten and hoofdleerkrachten of its jaarfase, themabeheer and directie. That row is the E6-09
 /// seam, so a different answer from directie changes it there and nowhere here.
 /// </para>

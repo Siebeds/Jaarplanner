@@ -20,7 +20,7 @@ namespace Jaarplanner.Api.Controllers;
 /// may send it, and the frontend has to hide the field for anyone else (slice 4).
 /// </para>
 /// <para>
-/// <b>Reads (FB-013, ADR-0039):</b> the row <c>KlasplanningBekijken</c>. The list holds only the klassen it lets the
+/// <b>Reads (FB-013, ADR-0040):</b> the row <c>KlasplanningBekijken</c>. The list holds only the klassen it lets the
 /// gebruiker read, so the klaskiezer offers nothing the planning routes would refuse, and one klas is refused like its
 /// planning.
 /// </para>
