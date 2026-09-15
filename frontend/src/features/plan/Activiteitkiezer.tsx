@@ -32,6 +32,7 @@ import { STANDAARDDUUR } from "./tijd";
 export function Activiteitkiezer({
   datum,
   tijd,
+  eindtijd,
   klasId,
   themaIds,
   bezig,
@@ -47,6 +48,11 @@ export function Activiteitkiezer({
    * say that.
    */
   tijd?: string;
+  /**
+   * The time it will end at, when the teacher dragged out a stretch of the grid rather than clicking one quarter;
+   * undefined when the chosen activiteit's own length decides. Named in the title for the reason the start is.
+   */
+  eindtijd?: string;
   klasId: string | null;
   themaIds: string[];
   bezig: boolean;
@@ -76,7 +82,9 @@ export function Activiteitkiezer({
         datum
           ? tijd === undefined
             ? volleDag(datum)
-            : t("tijdraster.kiezerTitel", { dag: volleDag(datum), tijd })
+            : eindtijd === undefined
+              ? t("tijdraster.kiezerTitel", { dag: volleDag(datum), tijd })
+              : t("tijdraster.kiezerTitelBereik", { dag: volleDag(datum), begin: tijd, einde: eindtijd })
           : t("periode.voegToe")
       }
     >

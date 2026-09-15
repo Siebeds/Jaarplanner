@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useDndMonitor, useDraggable, useDroppable } from "@dnd-kit/core";
 import { IcoonFiche, IcoonHoek } from "../../components/Iconen";
 import { t } from "../../i18n";
@@ -28,6 +36,7 @@ import {
   rond,
   toonBereik,
   toonTijd,
+  vloer,
 } from "./tijd";
 import { KOLOM_ATTRIBUUT, VAN_ATTRIBUUT, doelTijd, kolomId } from "./tijdsleep";
 
@@ -73,17 +82,18 @@ type Rasterblok = Blokje & {
  * week is the same grid with more columns. It is also what keeps the two from drifting, which is the defect the month
  * and week views produced twice before.
  *
- * **Three gestures, and each one says something the others cannot.** Dragging a block moves it in both axes at once
+ * **Four gestures, and each one says something the others cannot.** Dragging a block moves it in both axes at once
  * (another day, another hour). Dragging its bottom edge changes when it ends. Clicking empty space makes something at
- * that hour. The keyboard has the first through dnd-kit and the second through the activiteit sheet's time fields,
- * which is the non-drag route WCAG 2.2 SC 2.5.7 asks for.
+ * that quarter, which lights up under a mouse before it is pressed; dragging across empty space makes something for
+ * exactly that stretch (TB-014). The keyboard has the first through dnd-kit, and the second and fourth through a click
+ * followed by the activiteit sheet's time fields, which is the non-drag route WCAG 2.2 SC 2.5.7 asks for.
  *
  * **The now-line is ink, not a hue** (Art. XII): the accent is rationed to five uses and none of them is this. It
  * carries the current time as text in the hour gutter, so it is never colour alone.
  *
- * **The three gestures are the klas's planning, and only whoever may plan it gets them** (E6-02, ADR-0030 §3, R7,
+ * **The four gestures are the klas's planning, and only whoever may plan it gets them** (E6-02, ADR-0030 §3, R7,
  * R15): directie and the leerkrachten of this klas. Anyone else reads the grid, every block still opens, and nothing
- * drags, stretches or invites a click into empty space.
+ * drags, stretches, lights up a quarter or invites a click into empty space.
  */
 export function Tijdraster({
   dagen,
@@ -111,8 +121,11 @@ export function Tijdraster({
   vakken: readonly Themavak[];
   /** Whether this gebruiker may change this klas's planning (`mag.klasplanningBewerken`). Required, so no caller forgets. */
   magPlannen: boolean;
-  /** Asked for an activiteit on this day, starting at this minute of it. */
-  onVoegToe: (datum: string, begin: number) => void;
+  /**
+   * Asked for an activiteit on this day, starting at this minute of it. With an `einde`, the teacher dragged out the
+   * stretch it should take; without one, the activiteit's own length decides where it ends.
+   */
+  onVoegToe: (datum: string, begin: number, einde?: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenHoek: (plaatsingId: string) => void;
   /** A fiche block was opened: its placement, and the one occurrence it was opened from. */
@@ -436,7 +449,7 @@ function Dagkolom({
   blokken: Rasterblok[];
   bereik: { van: number; tot: number };
   magPlannen: boolean;
-  onVoegToe: (datum: string, begin: number) => void;
+  onVoegToe: (datum: string, begin: number, einde?: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onOpenHoek: (plaatsingId: string) => void;
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
@@ -445,6 +458,7 @@ function Dagkolom({
   const { setNodeRef, isOver } = useDroppable({ id: kolomId(dag.datum), disabled: !dag.isLesdag || !magPlannen });
   const plekken = useMemo(() => kolommen(blokken), [blokken]);
   const voorbeeld = useSleepvoorbeeld(dag.datum);
+  const leeg = useLegePlek(dag.datum, bereik, onVoegToe);
 
   return (
     <div
@@ -453,48 +467,46 @@ function Dagkolom({
       className={cn(
         "relative min-w-0 border-l border-lijn first:border-l-0",
         !dag.isLesdag && "bg-vlak-diep/60",
+        // The accent as its selected-row use: the day a moved block would land on (ADR-0024 amendment, 2026-09-14).
         isOver && dag.isLesdag && "bg-accent-zacht/60",
       )}
     >
-      {/* THE EMPTY COLUMN IS THE INVITATION, and where it is pressed is the hour it means. Behind the blocks
-          (z-0) because they are buttons themselves, and a button inside a button is invalid.
+      {/* THE EMPTY COLUMN IS THE INVITATION, and where it is pressed is the quarter it means; dragged across, the
+          stretch it means (`useLegePlek`). Behind the blocks (z-0) because they are buttons themselves, and a button
+          inside a button is invalid.
 
-          A keyboard press has no position, so it falls back to the ordinary start of a morning rather than to
-          whatever hour the last pointer happened to be over. `detail === 0` is what says so.
-
-          Only for whoever may plan this klas; for anyone else the empty hours are just empty. */}
+          Only for whoever may plan this klas; for anyone else the empty hours are just empty. Every gesture of
+          `useLegePlek` is on this button, so without it no quarter lights up and no stretch is drawn either. */}
       {dag.isLesdag && magPlannen ? (
         <button
           type="button"
-          onClick={(gebeurtenis) => {
-            const vak = gebeurtenis.currentTarget.getBoundingClientRect();
-            const geklikt =
-              gebeurtenis.detail === 0
-                ? STANDAARDBEGIN
-                : rond((gebeurtenis.clientY - vak.top) / PX_PER_MINUUT + bereik.van, STAP);
-            onVoegToe(dag.datum, Math.min(geklikt, bereik.tot - STANDAARDDUUR));
-          }}
+          {...leeg.gebaren}
           aria-label={t("periode.voegToeOp", { dag: volleDag(dag.datum) })}
           className="absolute inset-0 z-0 w-full cursor-copy"
         />
       ) : null}
 
-      {/* Where the dragged block would land, drawn while it is in flight. Without it a drag in a grid this fine is
-          a guess: the pointer is somewhere over a column and the block is under the cursor, and neither says which
-          quarter of an hour it will take. */}
-      {voorbeeld ? (
+      {/* THE QUARTER A CLICK WOULD PICK, under a mouse before it is pressed (owner, 2026-09-14). In ink rather than
+          the accent, which is rationed to five uses and this is none of them, and with its own start time written in
+          it: the band says which quarter, the time says which hour, so the answer never rests on the tint alone.
+          Hidden while a block is being dragged over the column, where the landing spot below answers instead. */}
+      {leeg.zweef !== null && voorbeeld === null ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-1 z-10 rounded-veld border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
-          style={{
-            top: (voorbeeld.begin - bereik.van) * PX_PER_MINUUT,
-            height: Math.max(voorbeeld.einde - voorbeeld.begin, KORTSTE) * PX_PER_MINUUT,
-          }}
+          className="pointer-events-none absolute inset-x-0.5 flex items-center rounded-veld bg-vlak-diep px-1.5"
+          style={{ top: (leeg.zweef - bereik.van) * PX_PER_MINUUT, height: STAP * PX_PER_MINUUT }}
         >
-          <span className="mono text-[0.625rem] font-medium text-accent">
-            {toonBereik(voorbeeld.begin, voorbeeld.einde)}
-          </span>
+          <span className="mono text-[0.625rem] font-medium leading-none text-inkt-zacht">{toonTijd(leeg.zweef)}</span>
         </div>
+      ) : null}
+
+      {/* Where the dragged block would land, drawn while it is in flight, or the stretch being dragged out on empty
+          space. Without it a drag in a grid this fine is a guess: the pointer is somewhere over a column and neither
+          it nor the block under it says which quarter of an hour it will take. */}
+      {voorbeeld ? (
+        <Landingsvak begin={voorbeeld.begin} einde={voorbeeld.einde} rasterVan={bereik.van} />
+      ) : leeg.stuk ? (
+        <Landingsvak begin={leeg.stuk.begin} einde={leeg.stuk.einde} rasterVan={bereik.van} />
       ) : null}
 
       {blokken.map((blok) => (
@@ -548,6 +560,185 @@ function useSleepvoorbeeld(datum: string): { begin: number; einde: number } | nu
   });
 
   return voorbeeld;
+}
+
+/** A stretch being dragged out: the quarter it was pressed in, and the quarter the pointer is in now. */
+type Trek = { anker: number; nu: number };
+
+/**
+ * What the empty column does under a pointer: it lights up the quarter a press would pick, and turns a press and a
+ * drag into a stretch of time (owner, 2026-09-14, TB-014).
+ *
+ * **The quarter the pointer is inside, rounded down** (`vloer`), not the nearest one. The band has to name the hour
+ * the click asks for, and a nearest-quarter click asked for the next quarter from the lower half of every band.
+ *
+ * **A stretch covers both quarters it touches**, whichever way it was dragged, so pressing at 9:00 and letting go
+ * inside the 10:15 quarter asks for 9:00 to 10:30. A press that never leaves its quarter is a click: one quarter is
+ * not what anybody drags out, and a click gets the activiteit's own length.
+ *
+ * **Two limits at the end of the day, so that what the grid shows is what gets sent.** A click starts no later than
+ * the last quarter that still fits an activiteit of the default length, and the band stops at that quarter too,
+ * because it names what the click asks for. A stretch ends no later than a quarter before midnight: the wire format
+ * stops at 23:59, so a stretch drawn to midnight would say one time and store another. Both limits bound the answer,
+ * never the quarters the gesture is read from, so whether a press was a click or a stretch is decided on the quarters
+ * the pointer was really in.
+ *
+ * **A mouse draws a stretch, a finger does not.** On a touchscreen a finger drawn down the grid scrolls the hours,
+ * which a phone cannot give up, and there is no hover to show. A tap still picks its quarter, through the click. A pen
+ * is handled as a mouse, which draws a stretch only where the platform does not pan the scroller under it instead.
+ *
+ * **Its own pointer handling, not dnd-kit**, for the reason `Rekgreep` gives: nothing moves from one place to another,
+ * two numbers are chosen inside one column. Capture keeps the stretch following the pointer once it leaves the column,
+ * and a stretch whose release never reaches the column (capture lost, the button let go elsewhere) is dropped rather
+ * than left for some later release to finish. The stretch lives in a ref as well as in state because the release has
+ * to read the last move, and a render need not have happened between the two.
+ */
+function useLegePlek(
+  datum: string,
+  bereik: { van: number; tot: number },
+  onVoegToe: (datum: string, begin: number, einde?: number) => void,
+) {
+  const [zweef, setZweef] = useState<number | null>(null);
+  const [trek, setTrek] = useState<Trek | null>(null);
+  const lopend = useRef<Trek | null>(null);
+  // Whether the coming click belongs to a primary mouse or pen press, whose click this column must not answer: its
+  // release either answered it, or deliberately let it go (Escape, lost capture). Every primary press sets it. A tap
+  // and a keyboard press are answered by the click alone, and a hover clears it: nothing is held, so no press is
+  // waiting for its click.
+  const doorAanwijzer = useRef(false);
+
+  const zet = (volgende: Trek | null) => {
+    lopend.current = volgende;
+    setTrek(volgende);
+  };
+
+  // The two limits above: the latest quarter a click (and so the band) may name, and the latest end a stretch may have.
+  const laatsteKlik = vloer(bereik.tot - STANDAARDDUUR);
+  const laatsteEinde = bereik.tot - STAP;
+
+  // The quarter the pointer is in, kept inside the grid and nothing more: the limits belong to the answer.
+  const kwartier = (clientY: number, knop: HTMLElement) => {
+    const vak = knop.getBoundingClientRect();
+    return Math.min(Math.max(vloer((clientY - vak.top) / PX_PER_MINUUT + bereik.van), bereik.van), bereik.tot - STAP);
+  };
+
+  // What a stretch between two different quarters asks for: both of them, ended no later than `laatsteEinde`. Two
+  // different quarters inside the grid put the earlier one at least two quarters before midnight, so the begin always
+  // stays before that end.
+  const bereikTussen = (a: number, b: number) => ({
+    begin: Math.min(a, b),
+    einde: Math.min(Math.max(a, b) + STAP, laatsteEinde),
+  });
+
+  // Escape lets go of a stretch the teacher did not mean. Listened for only while one is being drawn.
+  const trekt = trek !== null;
+  useEffect(() => {
+    if (!trekt) return;
+    const luister = (gebeurtenis: KeyboardEvent) => {
+      if (gebeurtenis.key !== "Escape") return;
+      lopend.current = null;
+      setTrek(null);
+    };
+    window.addEventListener("keydown", luister);
+    return () => window.removeEventListener("keydown", luister);
+  }, [trekt]);
+
+  const gebaren = {
+    onPointerDown(gebeurtenis: ReactPointerEvent<HTMLButtonElement>) {
+      const primair = gebeurtenis.pointerType !== "touch" && gebeurtenis.button === 0;
+      doorAanwijzer.current = primair;
+      if (!primair) return;
+      // No text selected while the pointer crosses the hour labels on its way down the grid.
+      gebeurtenis.preventDefault();
+      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
+      zet({ anker: hier, nu: hier });
+      setZweef(null);
+      gebeurtenis.currentTarget.setPointerCapture?.(gebeurtenis.pointerId);
+    },
+    onPointerMove(gebeurtenis: ReactPointerEvent<HTMLButtonElement>) {
+      if (gebeurtenis.pointerType === "touch") return;
+      const hier = kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget);
+      if (lopend.current && (gebeurtenis.buttons & 1) === 1) {
+        if (hier !== lopend.current.nu) zet({ ...lopend.current, nu: hier });
+        return;
+      }
+      // The primary button came up where this column never heard it, so the stretch it was drawing is over.
+      if (lopend.current) zet(null);
+      if (gebeurtenis.buttons === 0) {
+        // Nothing is held, so no answered press is waiting for its click: a release and its click arrive together,
+        // with no move between them.
+        doorAanwijzer.current = false;
+        setZweef(Math.min(hier, laatsteKlik));
+      } else {
+        // A button held down with no stretch of this column running is not asking which quarter a click would pick.
+        setZweef(null);
+      }
+    },
+    onPointerLeave() {
+      setZweef(null);
+    },
+    onPointerUp() {
+      const gesleept = lopend.current;
+      if (!gesleept) return;
+      zet(null);
+      if (gesleept.anker === gesleept.nu) {
+        onVoegToe(datum, Math.min(gesleept.anker, laatsteKlik));
+        return;
+      }
+      const { begin, einde } = bereikTussen(gesleept.anker, gesleept.nu);
+      onVoegToe(datum, begin, einde);
+    },
+    onPointerCancel() {
+      zet(null);
+    },
+    // Capture is let go right after a release, which has already finished the stretch; any other loss ends it.
+    onLostPointerCapture() {
+      zet(null);
+    },
+    onClick(gebeurtenis: ReactMouseEvent<HTMLButtonElement>) {
+      // A keyboard press has no position, so it falls back to the ordinary start of a morning rather than to whatever
+      // hour the last pointer happened to be over. `detail === 0` is what says so.
+      if (gebeurtenis.detail === 0) {
+        onVoegToe(datum, STANDAARDBEGIN);
+        return;
+      }
+      // Read once and cleared: it answers for the one click that follows a mouse's or pen's release, and a later click
+      // with no press before it must still be heard.
+      const alBeantwoord = doorAanwijzer.current;
+      doorAanwijzer.current = false;
+      if (alBeantwoord) return;
+      onVoegToe(datum, Math.min(kwartier(gebeurtenis.clientY, gebeurtenis.currentTarget), laatsteKlik));
+    },
+  };
+
+  // Drawn only once the press has left its first quarter. Until then it is a click, which gets the activiteit's own
+  // length, and a one-quarter preview would promise a length it will not get.
+  const stuk = trek && trek.anker !== trek.nu ? bereikTussen(trek.anker, trek.nu) : null;
+
+  return { zweef, stuk, gebaren };
+}
+
+/**
+ * Where something is about to be: a block in flight, or a stretch being dragged out on empty space. One look for both,
+ * because to a teacher they answer the same question, and its hours written in it so the answer is not the shape alone.
+ *
+ * **In the accent, as the fifth of its five uses: a selected row.** What it draws is the stretch of time the teacher is
+ * selecting, and only while she selects it (owner, 2026-09-14, TB-014; recorded above `--color-accent` in `index.css`
+ * and in ADR-0024). The hover band is not a selection, which is why it stays ink.
+ */
+function Landingsvak({ begin, einde, rasterVan }: { begin: number; einde: number; rasterVan: number }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-x-1 z-10 rounded-veld border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
+      style={{
+        top: (begin - rasterVan) * PX_PER_MINUUT,
+        height: Math.max(einde - begin, KORTSTE) * PX_PER_MINUUT,
+      }}
+    >
+      <span className="mono text-[0.625rem] font-medium text-accent">{toonBereik(begin, einde)}</span>
+    </div>
+  );
 }
 
 /**

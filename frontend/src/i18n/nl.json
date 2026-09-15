@@ -696,6 +696,8 @@
   "tijdraster": {
     "kiezerTitel": "{dag} om {tijd}",
     "enOpDitUur": "Bewaren maakt de activiteit en plant ze meteen op {dag} om {tijd}.",
+    "kiezerTitelBereik": "{dag} van {begin} tot {einde}",
+    "enOpDitBereik": "Bewaren maakt de activiteit en plant ze meteen op {dag} van {begin} tot {einde}.",
     "hoekenwerk": "hoekenwerk",
     "algemeneFiche": "algemene fiche",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."

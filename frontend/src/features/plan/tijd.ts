@@ -81,6 +81,15 @@ export const toonBereik = (begin: string | number, einde: string | number) =>
 /** To the nearest quarter of an hour. */
 export const rond = (minuten: number, stap = STAP) => Math.round(minuten / stap) * stap;
 
+/**
+ * The quarter of an hour a minute falls inside: its start, rounded down.
+ *
+ * What an empty stretch of the grid means under a pointer. `rond` is right for a block being moved, which should
+ * snap to the nearest line; a press on empty space means the quarter the pointer is standing in, which is the one
+ * the grid lights up (TB-014).
+ */
+export const vloer = (minuten: number, stap = STAP) => Math.floor(minuten / stap) * stap;
+
 /** Something occupying a stretch of one day. */
 export interface Blokje {
   id: string;
