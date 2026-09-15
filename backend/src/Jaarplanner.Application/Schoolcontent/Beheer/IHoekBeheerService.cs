@@ -22,8 +22,9 @@ public interface IHoekBeheerService
 
     /// <summary>
     /// Removes a corner. <b>Refused while it is still placed on the agenda</b>, with the count in the message: a
-    /// placement owns verrijkingen, which are sentences a teacher wrote, and Art. IV.2 does not let an unrelated
-    /// action undo those as a side effect.
+    /// placement is a scheduling decision the teacher made, and Art. IV.2 does not let an unrelated action undo it as a
+    /// side effect. Its verrijkingen go with it (FB-020); the confirmation names how many first
+    /// (<see cref="HoekWeergave.AantalVerrijkingen"/>).
     /// </summary>
     Task VerwijderHoekAsync(Guid hoekId, CancellationToken cancellationToken = default);
 
@@ -44,7 +45,7 @@ public interface IHoekBeheerService
 /// <param name="Naam">The corner's name. Required.</param>
 /// <param name="Omschrijving">
 /// What the corner permanently holds. This is the part that does NOT change per thema; what does is a
-/// <c>Hoekverrijking</c> on a placement.
+/// <c>Hoekverrijking</c> per subthemaperiode.
 /// </param>
 public sealed record HoekInvoer(string Naam, string? Omschrijving = null);
 
@@ -59,12 +60,17 @@ public sealed record HoekInvoer(string Naam, string? Omschrijving = null);
 /// pre-empt the refusal, because the only count that may block a delete is the one the server sees at the
 /// moment of the delete.
 /// </param>
+/// <param name="AantalVerrijkingen">
+/// How many verrijkingen were written for this corner, over every subthemaperiode (FB-020). They go when the corner
+/// goes, so the delete confirmation says how many.
+/// </param>
 public sealed record HoekWeergave(
     Guid Id,
     Guid KlasId,
     string Naam,
     string? Omschrijving,
-    int AantalPlaatsingen);
+    int AantalPlaatsingen,
+    int AantalVerrijkingen);
 
 /// <summary>
 /// What taking over another class's corners actually did.

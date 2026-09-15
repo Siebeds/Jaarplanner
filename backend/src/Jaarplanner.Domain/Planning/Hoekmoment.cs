@@ -17,11 +17,9 @@ namespace Jaarplanner.Domain.Planning;
 /// quietly.
 /// </para>
 /// <para>
-/// <b>It carries no verrijking of its own.</b> What is in the corner on a given day is read from the placement's
-/// <see cref="Hoekverrijking"/>en by date. Two appearances of the same hoek on one day with <i>different</i>
-/// enrichments, which the owner also asked for, are two placements rather than two moments: each drag of a fiche
-/// makes its own placement, so each carries its own text. Putting a verrijking here as well would give the same
-/// day two places to answer from, and they would disagree.
+/// <b>It carries no verrijking of its own.</b> What is in the corner on a given day is the
+/// <see cref="Hoekverrijking"/> of the hoek for the subthemaperiode covering that day (FB-020). Putting a verrijking
+/// here as well would give the same day two places to answer from, and they would disagree.
 /// </para>
 /// </summary>
 public sealed class Hoekmoment

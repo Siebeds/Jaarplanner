@@ -13,9 +13,9 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// eight is the real one.
 /// </para>
 /// <para>
-/// <b>What changes per period is not the hoek but its <see cref="Hoekverrijking"/></b>, which hangs off a
-/// <c>Hoekplaatsing</c> rather than off this. That split is the whole model: the hoek recurs, the verrijking is
-/// what makes this fortnight's boekenhoek different from last fortnight's.
+/// <b>What changes per period is not the hoek but its <c>Hoekverrijking</c></b>, one per subthemaperiode the
+/// class plans (FB-020, ADR-0040). That split is the whole model: the hoek recurs, the verrijking is what makes this
+/// subthema's boekenhoek different from the last one's.
 /// </para>
 /// <para>
 /// <b>Per klas rather than per leeftijd</b>, unlike <see cref="Subthema"/>, which moved to leeftijd scoping on
@@ -63,7 +63,7 @@ public sealed class Hoek
 
     /// <summary>
     /// What the corner permanently holds, optionally. This is the part that does NOT change per thema; what
-    /// does is a <see cref="Hoekverrijking"/> on a placement.
+    /// does is a <c>Hoekverrijking</c> per subthemaperiode.
     /// </summary>
     public string? Omschrijving { get; private set; }
 

@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:21
+bijgewerkt: 2026-09-15 17:46
 opgepakt-door: hoekverrijking
 branch: ticket/FB-020-hoekverrijking-per-subthema
 pr:
@@ -93,3 +93,4 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 17:19 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 17:21 · hoekverrijking · klaar-voor-bouw → in-uitvoering: opgepakt; eigenaar besliste: oude verrijkingen omzetten naar de overlappende subthemaperiodes (rest weg), periode mee vastleggen bij een subthema zonder vastgelegde periode, bij verwijderen van een subthema het aantal verrijkingen noemen, verrijking ook bewerkbaar in het hoekdetail
+- 2026-09-15 17:46 · hoekverrijking · backend klaar: verrijking per (hoek, subthemaperiode) buiten het jaarplan, route /api/klassen/{id}/hoekverrijkingen (lezen per bereik, bewaren per periode met periode vastleggen), aantal per subthema, migratie zet oude verrijkingen om (ADR-0040 volgt); unit 1632 groen, Postgres-tests voor endpoint, cascade en migratie groen

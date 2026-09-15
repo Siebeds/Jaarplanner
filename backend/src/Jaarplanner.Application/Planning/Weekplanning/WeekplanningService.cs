@@ -337,6 +337,7 @@ public sealed class WeekplanningService : IWeekplanningService
             {
                 var inhoud = subthemainhoud[p.SubthemaId];
                 return new Subthemaperiodeweergave(
+                    Id: p.Id,
                     SubthemaId: p.SubthemaId,
                     SubthemaNaam: inhoud.SubthemaNaam,
                     ThemaId: inhoud.ThemaId,

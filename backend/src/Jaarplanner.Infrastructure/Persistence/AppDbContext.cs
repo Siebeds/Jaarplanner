@@ -121,15 +121,15 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Hoek> Hoeken => Set<Hoek>();
 
     /// <summary>
-    /// The stretches of days a hoek runs in a class, each owning its <see cref="Hoekverrijking"/>en. Queried
-    /// independently of the jaarplan because it does not belong to one: see <see cref="Hoekplaatsing"/> for why a
-    /// (re)generation must not be able to reach these.
+    /// The stretches of days a hoek runs in a class, each owning its timetable rows. Queried independently of the
+    /// jaarplan because it does not belong to one: see <see cref="Hoekplaatsing"/> for why a (re)generation must not
+    /// be able to reach these.
     /// </summary>
     public DbSet<Hoekplaatsing> Hoekplaatsingen => Set<Hoekplaatsing>();
 
     /// <summary>
-    /// What is in each corner, per stretch of days. A set of its own so a day can be read without loading a whole
-    /// placement graph; the aggregate still owns them and still enforces their two window rules.
+    /// What is in each corner, per subthemaperiode of its klas (FB-020, ADR-0040): one row per (hoek, window), an
+    /// aggregate of its own.
     /// </summary>
     public DbSet<Hoekverrijking> Hoekverrijkingen => Set<Hoekverrijking>();
 
