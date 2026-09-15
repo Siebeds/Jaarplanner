@@ -2,10 +2,10 @@
 id: TB-020
 titel: Dagkoppen van de agenda staan recht boven hun uurkolommen
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:13
+bijgewerkt: 2026-09-15 14:23
 opgepakt-door: agenda-uitlijning
 branch: ticket/agenda-uitlijning
 pr:
@@ -27,10 +27,11 @@ Geen nieuwe kleur of typografie: de strook boven de scrollbalk is leeg en heeft 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de weekweergave in een desktopbrowser met een zichtbare scrollbalk, wanneer de agenda open staat, dan valt de linkerrand van elke dagkop op dezelfde pixel als de linkerrand van de uurkolom eronder, voor elke dag van de week.
-- [ ] Gegeven de dagweergave, wanneer de agenda open staat, dan is de dagkop even breed als de uurkolom eronder.
-- [ ] Gegeven een scherm van ongeveer 390 px breed, wanneer de weekweergave open staat, dan staan de koppen ook recht boven hun kolommen en scrollt de pagina niet horizontaal.
-- [ ] Gegeven de bestaande tests van het tijdraster, wanneer ze draaien, dan slagen ze allemaal.
+- [x] Gegeven de weekweergave in een desktopbrowser met een zichtbare scrollbalk, wanneer de agenda open staat, dan valt de linkerrand van elke dagkop op dezelfde pixel als de linkerrand van de uurkolom eronder, voor elke dag van de week.
+- [x] Gegeven de dagweergave, wanneer de agenda open staat, dan is de dagkop even breed als de uurkolom eronder.
+- [x] Gegeven een scherm van ongeveer 390 px breed, wanneer de weekweergave open staat, dan staan de koppen ook recht boven hun kolommen en scrollt de pagina niet horizontaal.
+- [x] Gegeven de weekweergave, wanneer een leerkracht met Tab op de dagknop van de laatste dag komt, dan staat de focusring er volledig: de kopregel knipt er niets van af.
+- [x] Gegeven de bestaande tests van het tijdraster, wanneer ze draaien, dan slagen ze allemaal.
 
 ## Buiten scope
 
@@ -43,3 +44,6 @@ Geen.
 ## Werklog
 
 - 2026-09-15 14:13 · agenda-uitlijning · aangemaakt (status in-uitvoering)
+- 2026-09-15 14:21 · agenda-uitlijning · gebouwd (d931026); pnpm lint groen, 131 Vitest-tests van plan groen; headless Chrome tegen een draaiende API: afwijking kop/kolom 0 px op week 1440 (7 dagen), dag 1440 en week 390 (3 dagen, geen horizontale scroll); zonder de fix 2,1 tot 15 px, de breedte van de scrollbalk; focusring van de dagknoppen valt volledig binnen de kopregel
+- 2026-09-15 14:23 · agenda-uitlijning · antagonist: COMPLIANT met twee kleine opmerkingen, beide afgewerkt: een zin in het codecommentaar beweerde meer dan de code garandeert en is herschreven; criterium voor de focusring toegevoegd (gemeten: ring volledig binnen de kopregel). Niet gemeten: de kop van vandaag bij 1024 px met het hoekenpaneel open, want de testklas heeft geen schooljaar dat vandaag bevat; de kopregel knipt daar op dezelfde rand als de kaart al deed
+- 2026-09-15 14:23 · agenda-uitlijning · in-uitvoering → klaar: klaar: dagkoppen en uurkolommen reserveren dezelfde strook voor de scrollbalk; lint groen, 131 tests groen, browsercontrole 0 px, antagonist COMPLIANT

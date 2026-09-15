@@ -168,8 +168,9 @@ export function Tijdraster({
           THE SAME GUTTER AS THE SCROLLER BELOW, so every heading sits over its own column. The scroller's scrollbar
           takes its width from the hour columns and not from these headings, which drifted each column a little further
           right than the one before it: a few pixels on Tuesday, nine by Friday (owner, 2026-09-15, TB-020). A gutter
-          is only reserved on an element that can scroll, hence `overflow-hidden`; nothing in a heading hangs outside
-          it, and the card already clips. With overlay scrollbars both reserve nothing, which is equal too. */}
+          is only reserved on an element that can scroll, hence `overflow-hidden`. Sideways it clips where the card
+          already did, at the last heading's right edge, and the row grows with its headings, so it cuts off nothing
+          that was visible before. With overlay scrollbars both reserve nothing, which is equal too. */}
       <div className="flex overflow-hidden border-b border-lijn [scrollbar-gutter:stable]">
         <div className="w-12 shrink-0 border-r border-lijn sm:w-14" />
         <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))` }}>
