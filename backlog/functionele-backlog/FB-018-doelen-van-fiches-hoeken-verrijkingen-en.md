@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:26
+bijgewerkt: 2026-09-15 15:45
 opgepakt-door: FB-018
 branch: ticket/FB-018-doelen-info-icoon
 pr:
@@ -78,3 +78,4 @@ apart weekoverzicht.
 - 2026-09-15 14:53 · FB-018 · klaar-voor-bouw → in-uitvoering: opgepakt; de activiteitkaarten uit FB-017 krijgen het icoon van wie als tweede merget (eigenaar, 2026-09-15)
 - 2026-09-15 15:12 · FB-018 · info-icoon met doelvenster gebouwd: op tijdrasterblokken vanaf een half uur (activiteit, algemene fiche) en op de kaarten van algemene fiches in de zijbalk; kortere blokken tonen hun doelen in hun blad, daarvoor kreeg het fichedetailblad een doelensectie; lint en 588 frontendtests groen
 - 2026-09-15 15:26 · FB-018 · browsercontrole op wegwerpdatabank jp_fb018 (headless Chrome, 1440 en 390 px): alle vijf acceptatiecriteria gezien, icoon 24x24, contrast 5,97 tot 6,51:1, focus keert terug naar het icoon; open vraag beslist: icoon vanaf een half uur, korter blok toont doelen in zijn blad
+- 2026-09-15 15:45 · FB-018 · antagonist ronde 1: VIOLATIONS FOUND, een zware bevinding (op een blok van een half uur lag de rekgreep over het onderste derde van het icoon) en vijf kleinere; opgelost: icoon boven de greep (z-20), commentaar over de starttijd rechtgezet, ADR-0024 kreeg een amendement voor de popover, focustest toegevoegd; herbemeten in de browser: alle 1653 punten binnen de cirkel van 24 px raken het icoon op drie blokken; lint en 589 frontendtests groen

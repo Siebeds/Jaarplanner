@@ -881,8 +881,10 @@ function Blok({
             <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
             {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped.
                 Not on a phone when the block also carries the info icon: a column there is about a hundred pixels,
-                and the name was left one letter wide. The hour gutter still says when it starts, and so does the
-                block's accessible name. */}
+                and the name was left one letter wide. What that costs is the start time for a sighted phone user: the
+                hour gutter prints whole hours only, so a block at 9:15 shows its quarter nowhere on the grid. Accepted,
+                because a name one letter wide says nothing at all; the time stays in the block's accessible name and
+                in the sheet it opens. */}
             {toont === "tijd" ? (
               <span className={cn("mono shrink-0 text-[0.625rem] text-inkt-zacht", infodoelen && "max-sm:hidden")}>
                 {toonTijd(blok.begin)}
@@ -901,9 +903,13 @@ function Blok({
         </button>
 
         {/* A sibling of the block's button, above it in the corner: pressing it opens the goals and nothing else. For
-            everyone who can see the block, since reading what a block works on is not planning. */}
+            everyone who can see the block, since reading what a block works on is not planning.
+
+            ABOVE THE RESIZE GRIP (z-20 over its z-10). On a half-hour block the grip's 8-pixel strip runs across the
+            bottom of the 24-pixel icon, and as the later sibling at the same z it painted over it and took the press:
+            the icon's lower third started a resize instead (antagonist, FB-018). The grip keeps the rest of the edge. */}
         {infodoelen ? (
-          <Doelinfo naam={blok.naam} doelen={infodoelen} className="absolute right-0.5 top-0.5 z-10" />
+          <Doelinfo naam={blok.naam} doelen={infodoelen} className="absolute right-0.5 top-0.5 z-20" />
         ) : null}
 
         {magPlannen ? (

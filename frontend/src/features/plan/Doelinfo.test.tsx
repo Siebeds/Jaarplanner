@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
 import type { LeerplandoelDetail } from "../../lib/types";
@@ -111,5 +111,21 @@ describe("Doelinfo", () => {
     const detailblad = await screen.findByRole("dialog", { name: t("doel.titel") });
     expect(await within(detailblad).findByText("Tekst van 1.1.GK3.1.")).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "onthaal" })).not.toBeInTheDocument();
+  });
+
+  it("geeft de focus aan het detail, en na het sluiten terug aan het icoon", async () => {
+    // Hand-written rather than Radix's default: the window's own close must not pull focus back to the icon while the
+    // detail is opening, and the detail, which has no trigger of its own, must return it there when it closes.
+    const knop = toon([groeten]);
+    fireEvent.click(knop);
+    fireEvent.click(screen.getByRole("button", { name: /Groet de anderen\./ }));
+
+    const detailblad = await screen.findByRole("dialog", { name: t("doel.titel") });
+    await waitFor(() => expect(detailblad).toContainElement(document.activeElement as HTMLElement));
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: t("doel.titel") })).not.toBeInTheDocument());
+    expect(knop).toHaveFocus();
   });
 });

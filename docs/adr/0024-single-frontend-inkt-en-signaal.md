@@ -109,3 +109,13 @@ it, and only while she selects it. The ration itself is unchanged and still five
 without selecting it does not qualify: the band that lights up the quarter under the pointer before it is pressed
 stays ink. Recorded as well above `--color-accent` in `frontend/src/index.css`, and on `Landingsvak` and `Dagkolom` in
 `frontend/src/features/plan/Tijdraster.tsx`.
+
+## Amendment (2026-09-15) — a third primitive, the popover
+
+Decision 2 names the Radix primitives taken. FB-018 adds a third, **`@radix-ui/react-popover`**, for the small window
+the agenda's info icon opens with a block's goals (`frontend/src/features/plan/Doelinfo.tsx`). It earns its weight on
+the same grounds as the dialog: a non-modal window anchored to its trigger has to move focus in and back out, close on
+Escape and on a press outside, and stay on screen at 390 pixels when the trigger sits at the edge of a column. The
+last is collision-aware positioning, which is what the package brings in (`@floating-ui/*` through Radix's popper);
+writing that here would be the hand-rolled version of what the dialog was taken to avoid. Nothing else changes: no
+shadcn, no styling from the package, and `src/components/ui/` still holds the app's own components.
