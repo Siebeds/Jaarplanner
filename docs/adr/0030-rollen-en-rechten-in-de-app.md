@@ -660,7 +660,7 @@ that this relation alone does not grant the action. It never takes away what ano
 | Doelen met de hand koppelen aan of ontkoppelen van gedeelde activiteiten (R19; (c)) | ✓ | – | ✓ | – | – | – |
 | Een activiteit naar een ander thema verplaatsen (R19, R23; I19) | ✓ | – | ✓ | zonder koppelingen³ | – | – |
 | Eigen activiteiten en subdoelen onder een subthema plaatsen (R6; shape: E6-10) | ✓ | ✓¹ | ✓¹ | ✓ | ✓ | ✓¹ |
-| Een eigen woordweb bijhouden en er AI-woorden bij laten voorstellen (ADR-0041 W2, W5; D2, D3) | ✓ | eigen⁹ | eigen⁹ | eigen⁹ | eigen⁹ | eigen⁹ |
+| Een eigen woordweb bijhouden en er AI-woorden bij laten voorstellen (ADR-0042 W2, W5; D2, D3) | ✓ | eigen⁹ | eigen⁹ | eigen⁹ | eigen⁹ | eigen⁹ |
 | Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21) | ✓ | – | – | – | ✓ | – |
 | Jaarplan, agenda en dekking bekijken (R3, R7; ADR-0040 Z1–Z5, Z6) | ✓ | lezen | lezen⁸ | lezen⁸ | ✓ | – |
 | Exporteren (R3, R7; ADR-0040 Z1–Z5, Z6) | ✓ | lezen⁴ | lezen⁴ ⁸ | lezen⁴ ⁸ | ✓ | – |
@@ -749,7 +749,7 @@ yet: no route serves them until FR-13 is built, and each gets its policy then.* 
 The owner read R31 as "never a person holding directie" on 2026-09-15: a directeur who also has a K3 klastoewijzing still
 does not edit the set or the scale.*
 
-⁹ **A woordweb** ([ADR-0041](0041-eigen-woordweb-per-subthema.md), FB-036, 2026-09-15). "eigen" is one's own web,
+⁹ **A woordweb** ([ADR-0042](0042-eigen-woordweb-per-subthema.md), FB-036, 2026-09-15). "eigen" is one's own web,
 whatever other relation the gebruiker holds or lacks: the `Eigenaar` column of the row `WoordwebBewerken`. Directie
 edits every web (D3). Keeping a web needs no relation at all (D2), and every signed-in gebruiker reads the standing
 words of every web (D7). The wizard's own subthema delete refuses a subthema that holds a woordweb (I25).
@@ -773,7 +773,7 @@ settled", then "Five are open".*
   - *Not the maker of R26.* An activiteit's maker only decides who may delete it; the activiteit stays shared.
 
   *Owner: E6-10.* Nothing personal is built until this is answered.
-  - *Answered for the woordweb only* by [ADR-0041](0041-eigen-woordweb-per-subthema.md) (2026-09-15, W2 and W4): a
+  - *Answered for the woordweb only* by [ADR-0042](0042-eigen-woordweb-per-subthema.md) (2026-09-15, W2 and W4): a
     woordweb belongs to the gebruiker, follows her across schooljaren, and every signed-in gebruiker reads it; its
     owner and directie edit it. For personal activiteiten and subdoelen (a) stays open with E6-10.
 - **(b) The FR-1 import.** *Settled by statement 13 (R9).*

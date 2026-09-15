@@ -163,6 +163,10 @@ public static class DependencyInjection
         // is not part of that aggregate, and the separation is what keeps a (re)generation unable to see it.
         services.AddScoped<IHoekplaatsingService, HoekplaatsingService>();
 
+        // What each hoek holds while a subthema runs (FB-020). Its own service because it keys on a subthema window,
+        // which the placement above has nothing to do with.
+        services.AddScoped<IHoekverrijkingService, HoekverrijkingService>();
+
         // The algemene fiches (owner, 2026-09-11): the hoek's sibling for recurring activities, with the same split
         // between the class's own list and its planning, and the planning kept out of the jaarplan for the same reason.
         services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();
@@ -199,7 +203,7 @@ public static class DependencyInjection
         // sibling of the import service that drives the same domain mutators.
         services.AddScoped<ISchoolcontentBeheerService, SchoolcontentBeheerService>();
 
-        // A gebruiker's own woordweb per subthema (FB-036, ADR-0041). Its AI words go through the same IAiClient seam,
+        // A gebruiker's own woordweb per subthema (FB-036, ADR-0042). Its AI words go through the same IAiClient seam,
         // so the flow runs against the stub in tests (Art. IV.6).
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
 

@@ -2,14 +2,15 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer, Tekstvlak } from "../../components/ui/Veld";
-import { IcoonPlus } from "../../components/Iconen";
+import { Laadlijst } from "../../components/ui/Laadvlak";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst, volleDag } from "../../lib/datum";
 import { toonBereik } from "../plan/tijd";
 import { t, telWoord } from "../../i18n";
 import {
-  useBewaarHoekverrijking,
-  useVerwijderHoekverrijking,
+  MAXIMALE_VERRIJKING,
+  useBewaarHoekverrijkingen,
+  useHoekverrijkingen,
   useZetHoekuren,
   type HoekmomentWeergave,
   type HoekplaatsingWeergave,
@@ -25,10 +26,10 @@ import {
  * carries the pedagogy, was write-only: she typed it, the server stored it, and no screen ever showed
  * it to her again.
  *
- * **It edits the verrijking since 2026-08-31** (owner: "ik wil ook de verrijking kunnen aanpassen, nu
- * is het read-only nadat ik opgeslagen heb"). Showing it and never letting her change it was the same
- * defect one step further on: a typo in the one field carrying the pedagogy was permanent unless the
- * whole placement was deleted and redone.
+ * **It shows and edits the corner's verrijking per subthemaperiode** (FB-020; owner, 2026-09-15: also editable
+ * here, not only from the subthemabalk). A verrijking belongs to the hoek and a stored window of a subthema, not to
+ * this placement, so the sheet lists every stored window touching the placement's days, each with what the corner
+ * holds then. Taking the placement out of the agenda leaves them standing.
  *
  * **It edits the hours of the run since 2026-09-11** (owner: "ik wil op het detailscherm van de hoeken
  * de mogelijkheid om de uren aan te passen"). Two rulings of the same day shape it. Every day gets the
@@ -42,12 +43,6 @@ import {
  * appearance and present it as the run's: after she shortened only the Monday it said "8:00 - 10:00, op
  * 4 schooldagen" while three of the four still ran to 11:50. Each distinct stretch of hours now has its
  * own line and its own count, so the line is true whatever she dragged.
- *
- * **What it still does not offer is a SECOND verrijking for a later stretch of the window.** The
- * domain and the endpoint take one, and a second one needs its own two dates, which is a control this
- * sheet has no room for yet. So "toevoegen" appears only where there is nothing to edit, and an
- * existing verrijking keeps the window it has. Deliberately no sentence about the missing half: the
- * window each one covers is printed, so nothing on the screen claims otherwise.
  *
  * **EACH DELETE SAYS HOW MUCH IT DELETES.** The owner looked at this sheet and reported not seeing a
  * way to delete (2026-08-31): the one button read "Uit de agenda halen" while it removed the whole run
@@ -64,6 +59,7 @@ import {
  */
 export function Hoekdetailblad({
   open,
+  klasId,
   plaatsing,
   bezig,
   fout,
@@ -72,6 +68,8 @@ export function Hoekdetailblad({
   onSluit,
 }: {
   open: boolean;
+  /** The klas the placement is in, whose subthemaperiodes the verrijkingen hang on. */
+  klasId: string;
   plaatsing: HoekplaatsingWeergave;
   bezig: boolean;
   fout?: unknown;
@@ -81,19 +79,19 @@ export function Hoekdetailblad({
   onSluit: () => void;
 }) {
   const id = useId();
-  const bewaar = useBewaarHoekverrijking();
-  const verwijderVerrijking = useVerwijderHoekverrijking();
+  // Every stored subthemaperiode touching the placement's days, with what each hoek holds then (FB-020).
+  const verrijkingen = useHoekverrijkingen(klasId, plaatsing.van, plaatsing.tot);
+  const bewaar = useBewaarHoekverrijkingen(klasId);
   const zetUren = useZetHoekuren();
 
   /**
-   * Which verrijking is open in the form: its id, `"nieuw"`, or nothing.
+   * Which subthemaperiode's verrijking is open in the form, by the window's id, or nothing.
    *
    * One piece of state and not a flag per row, so two rows can never be in edit mode at once. The draft
    * lives beside it rather than inside the row, for the same reason.
    */
   const [bewerkt, setBewerkt] = useState<string | null>(null);
   const [tekst, setTekst] = useState("");
-  const [leegFout, setLeegFout] = useState(false);
 
   // The hours form. `HH:mm`, which is what a time input reads and writes; the seconds are added on save.
   const [urenOpen, setUrenOpen] = useState(false);
@@ -118,7 +116,7 @@ export function Hoekdetailblad({
     : 0;
 
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
-  const drukBezig = bezig || bewaar.isPending || verwijderVerrijking.isPending || zetUren.isPending;
+  const drukBezig = bezig || bewaar.isPending || zetUren.isPending;
 
   // Focus follows the form: into its first field when it opens, back to the button that opened it when it closes.
   // Without the second half a keyboard user who saves lands on the top of the page, because the control that had
@@ -175,34 +173,20 @@ export function Hoekdetailblad({
     if (verloren) document.getElementById(`${id}-dubbel`)?.focus();
   }, [dubbeleZin, id]);
 
-  function beginBewerken(verrijkingId: string, huidige: string) {
+  function beginBewerken(periodeId: string, huidige: string) {
     bewaar.reset();
-    setLeegFout(false);
-    setBewerkt(verrijkingId);
+    setBewerkt(periodeId);
     setTekst(huidige);
   }
 
-  function bewaarTekst() {
-    const schoon = tekst.trim();
-    if (schoon.length === 0) {
-      // Not an error until she tries to save it, and not a silent delete either: clearing the field is
-      // a plausible way to mean "remove this", and guessing which she meant would throw away her text.
-      setLeegFout(true);
-      return;
-    }
-
-    const bestaande = plaatsing.verrijkingen.find((v) => v.id === bewerkt);
+  /**
+   * Writes this hoek's text for one window, and only this hoek's: the other corners of the same window are not in the
+   * request, so they stay as they are. A blank text removes it, the rule the subthemabalk's sheet follows too.
+   */
+  function bewaarVoor(periodeId: string, waarde: string, daarna?: () => void) {
     bewaar.mutate(
-      {
-        plaatsingId: plaatsing.id,
-        verrijkingId: bestaande?.id,
-        // A new one covers the whole run; an edited one keeps the window it has, since this sheet
-        // offers no control for changing it.
-        van: bestaande?.van ?? plaatsing.van,
-        tot: bestaande?.tot ?? plaatsing.tot,
-        tekst: schoon,
-      },
-      { onSuccess: () => setBewerkt(null) },
+      { subthemaperiodeId: periodeId, verrijkingen: [{ hoekId: plaatsing.hoekId, tekst: waarde.trim() }] },
+      { onSuccess: daarna },
     );
   }
 
@@ -388,114 +372,91 @@ export function Hoekdetailblad({
         <div>
           <p className="text-micro uppercase text-inkt-zwak">{t("hoekdetail.verrijking")}</p>
 
-          {plaatsing.verrijkingen.length === 0 && bewerkt !== "nieuw" ? (
-            <div className="mt-1 flex flex-col items-start gap-2">
-              <p className="text-body text-inkt-zacht">{t("hoekdetail.geenVerrijking")}</p>
-              {alleenLezen ? null : (
-                <Knop
-                  rang="stil"
-                  type="button"
-                  disabled={drukBezig}
-                  onClick={() => beginBewerken("nieuw", "")}
-                >
-                  <IcoonPlus aria-hidden="true" className="mr-1.5 h-4 w-4" />
-                  {t("hoekdetail.verrijkingToevoegen")}
-                </Knop>
-              )}
+          {/* Each branch says only what it knows: "no window in these days" needs a read that succeeded, and a failed
+              read keeps a list it already had rather than claiming it is empty. */}
+          {verrijkingen.isPending ? (
+            <div className="mt-1">
+              <Laadlijst rijen={2} />
             </div>
-          ) : null}
+          ) : verrijkingen.data === undefined ? (
+            <p role="alert" className="mt-1 text-meta text-attentie-inkt">
+              {t("hoekdetail.verrijkingenMislukt")}
+            </p>
+          ) : verrijkingen.data.length === 0 ? (
+            <p className="mt-1 text-body text-inkt-zacht">{t("hoekdetail.geenSubthemaperiode")}</p>
+          ) : (
+            <ul className="mt-1 flex flex-col gap-2">
+              {verrijkingen.data.map((periode) => {
+                const eigen = periode.verrijkingen.find((v) => v.hoekId === plaatsing.hoekId);
+                const naam = periode.subthemaNaam;
+                return (
+                  <li key={periode.subthemaperiodeId} className="rounded-veld border border-lijn bg-vlak px-3 py-2">
+                    <p className="text-micro text-inkt-zwak">
+                      {t("hoekdetail.tijdens", { naam, periode: periodeTekst(periode.van, periode.tot) })}
+                    </p>
 
-          <ul className="mt-1 flex flex-col gap-2">
-            {plaatsing.verrijkingen.map((verrijking) => {
-              const venster = periodeTekst(verrijking.van, verrijking.tot);
-              return (
-                <li key={verrijking.id} className="rounded-veld border border-lijn bg-vlak px-3 py-2">
-                  {/* The window is printed even when it equals the run's own, which is the normal case
-                      today: a second verrijking for a later fortnight is the thing this list is shaped
-                      for, and a reader should not have to learn a new layout the day it appears. */}
-                  <p className="text-micro text-inkt-zwak">{venster}</p>
-
-                  {bewerkt === verrijking.id ? (
-                    <Verrijkingsvorm
-                      tekst={tekst}
-                      onTekst={setTekst}
-                      leegFout={leegFout}
-                      bezig={bewaar.isPending}
-                      fout={bewaar.isError ? bewaar.error : undefined}
-                      onBewaar={bewaarTekst}
-                      onAnnuleer={() => setBewerkt(null)}
-                    />
-                  ) : (
-                    <>
-                      <p className="mt-0.5 whitespace-pre-line text-body text-inkt">{verrijking.tekst}</p>
-                      {alleenLezen ? null : (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Knop
-                          rang="stil"
-                          type="button"
-                          disabled={drukBezig}
-                          aria-label={t("hoekdetail.verrijkingBewerkVan", { periode: venster })}
-                          onClick={() => beginBewerken(verrijking.id, verrijking.tekst)}
+                    {bewerkt === periode.subthemaperiodeId ? (
+                      <Verrijkingsvorm
+                        tekst={tekst}
+                        onTekst={setTekst}
+                        bezig={bewaar.isPending}
+                        fout={bewaar.isError ? bewaar.error : undefined}
+                        onBewaar={() => bewaarVoor(periode.subthemaperiodeId, tekst, () => setBewerkt(null))}
+                        onAnnuleer={() => setBewerkt(null)}
+                      />
+                    ) : (
+                      <>
+                        <p
+                          className={
+                            eigen ? "mt-0.5 whitespace-pre-line text-body text-inkt" : "mt-0.5 text-body text-inkt-zacht"
+                          }
                         >
-                          {t("hoekdetail.verrijkingBewerk")}
-                        </Knop>
-                        <Knop
-                          rang="stil"
-                          type="button"
-                          disabled={drukBezig}
-                          aria-label={t("hoekdetail.verrijkingWegVan", { periode: venster })}
-                          onClick={() => {
-                            verwijderVerrijking.reset();
-                            verwijderVerrijking.mutate({
-                              plaatsingId: plaatsing.id,
-                              verrijkingId: verrijking.id,
-                            });
-                          }}
-                        >
-                          {t("hoekdetail.verrijkingWeg")}
-                        </Knop>
-                      </div>
-                      )}
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                          {eigen?.tekst ?? t("hoekdetail.geenVerrijking")}
+                        </p>
+                        {alleenLezen ? null : (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Knop
+                              rang="stil"
+                              type="button"
+                              disabled={drukBezig}
+                              aria-label={
+                                eigen
+                                  ? t("hoekdetail.verrijkingBewerkVan", { naam })
+                                  : t("hoekdetail.verrijkingInvullenVan", { naam })
+                              }
+                              onClick={() => beginBewerken(periode.subthemaperiodeId, eigen?.tekst ?? "")}
+                            >
+                              {eigen ? t("hoekdetail.verrijkingBewerk") : t("hoekdetail.verrijkingInvullen")}
+                            </Knop>
+                            {eigen ? (
+                              <Knop
+                                rang="stil"
+                                type="button"
+                                disabled={drukBezig}
+                                aria-label={t("hoekdetail.verrijkingWegVan", { naam })}
+                                onClick={() => {
+                                  bewaar.reset();
+                                  bewaarVoor(periode.subthemaperiodeId, "");
+                                }}
+                              >
+                                {t("hoekdetail.verrijkingWeg")}
+                              </Knop>
+                            ) : null}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
 
-          {/* The form for a brand new one, outside the list because there is no row to sit in yet. */}
-          {bewerkt === "nieuw" ? (
-            <div className="mt-1 rounded-veld border border-lijn bg-vlak px-3 py-2">
-              <p className="text-micro text-inkt-zwak">{periodeTekst(plaatsing.van, plaatsing.tot)}</p>
-              <Verrijkingsvorm
-                tekst={tekst}
-                onTekst={setTekst}
-                leegFout={leegFout}
-                bezig={bewaar.isPending}
-                fout={bewaar.isError ? bewaar.error : undefined}
-                onBewaar={bewaarTekst}
-                onAnnuleer={() => setBewerkt(null)}
-              />
-            </div>
-          ) : null}
-
-          {verwijderVerrijking.isError ? (
-            <Melding titel={t("hoekdetail.verrijkingWegMislukt")} reden={verwijderVerrijking.error} />
+          {/* A failed removal has no open form to show it in. */}
+          {bewaar.isError && bewerkt === null ? (
+            <Melding titel={t("hoekdetail.verrijkingMislukt")} reden={bewaar.error} />
           ) : null}
         </div>
-
-        {/* Said only where it is true. A placement with no verrijking loses nothing a teacher typed,
-            and warning about it anyway would train her to ignore the warning. Not for a reader, who has
-            no delete for it to be a consequence of. */}
-        {!alleenLezen && plaatsing.verrijkingen.length > 0 ? (
-          <p className="text-meta text-inkt-zacht">
-            {telWoord(
-              plaatsing.verrijkingen.length,
-              "hoekdetail.verwijderGevolgEen",
-              "hoekdetail.verwijderGevolgAantal",
-            )}
-          </p>
-        ) : null}
 
         {fout ? (
           <div role="alert" className="rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
@@ -550,7 +511,7 @@ function dagenMeerDanEenKeer(momenten: readonly HoekmomentWeergave[]): string[] 
 }
 
 /**
- * The one form, for a new verrijking and for rewriting one.
+ * The one form, for filling in a verrijking and for rewriting one. Saving it blank removes it.
  *
  * Not a `<form>`: this sheet already sits inside one on some screens and a nested form is invalid HTML
  * that submits the wrong thing. The buttons are explicit for the same reason.
@@ -558,7 +519,6 @@ function dagenMeerDanEenKeer(momenten: readonly HoekmomentWeergave[]): string[] 
 function Verrijkingsvorm({
   tekst,
   onTekst,
-  leegFout,
   bezig,
   fout,
   onBewaar,
@@ -566,7 +526,6 @@ function Verrijkingsvorm({
 }: {
   tekst: string;
   onTekst: (waarde: string) => void;
-  leegFout: boolean;
   bezig: boolean;
   fout?: unknown;
   onBewaar: () => void;
@@ -578,9 +537,9 @@ function Verrijkingsvorm({
         aria-label={t("hoekdetail.verrijkingLabel")}
         placeholder={t("hoekdetail.verrijkingVoorbeeld")}
         value={tekst}
+        maxLength={MAXIMALE_VERRIJKING}
         onChange={(e) => onTekst(e.target.value)}
       />
-      {leegFout ? <p className="text-meta text-attentie-inkt">{t("hoekdetail.verrijkingLeeg")}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Knop type="button" onClick={onBewaar} disabled={bezig}>
           {bezig ? t("hoekdetail.bewarenBezig") : t("hoekdetail.bewaren")}

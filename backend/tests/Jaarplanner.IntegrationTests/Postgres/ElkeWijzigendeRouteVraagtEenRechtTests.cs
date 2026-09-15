@@ -39,7 +39,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 
     /// <summary>
     /// Write routes deliberately open to every signed-in gebruiker, keyed "METHOD route", each with the ruling that opens
-    /// it. <b>One:</b> adding words to one's own woordweb, the personal content of ADR-0041 (D2). That route takes the web
+    /// it. <b>One:</b> adding words to one's own woordweb, the personal content of ADR-0042 (D2). That route takes the web
     /// from the caller's session and never from the body, so it reaches no one else's; every action on a web by its id is
     /// the <c>WoordwebBewerken</c> row, and the sweep sends those a web that is not the caller's. Signing out is anonymous
     /// and pinned by <c>ElkeRouteVraagtEenSessieTests</c>.
@@ -47,7 +47,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     private static readonly Dictionary<string, string> OpenVoorIedereen = new(StringComparer.Ordinal)
     {
         ["POST api/subthemas/{subthemaId:guid}/woordwebs/eigen/woorden"] =
-            "one's own woordweb (ADR-0041 D2): created for the caller, from the session, never for an id in the body",
+            "one's own woordweb (ADR-0042 D2): created for the caller, from the session, never for an id in the body",
     };
 
     /// <summary>

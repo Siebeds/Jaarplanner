@@ -67,7 +67,7 @@ public interface IRechtenbronnen
 }
 
 /// <summary>
-/// One gebruiker's woordweb (FB-036, ADR-0041): the resource of the <c>WoordwebBewerken</c> row, whose one column is its
+/// One gebruiker's woordweb (FB-036, ADR-0042): the resource of the <c>WoordwebBewerken</c> row, whose one column is its
 /// owner. A type of its own, so no other row's column can match it and it can match no other row.
 /// </summary>
 /// <param name="WoordwebId">The woordweb.</param>

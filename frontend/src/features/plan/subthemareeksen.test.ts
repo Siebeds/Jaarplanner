@@ -150,6 +150,7 @@ describe("voorstelReeks", () => {
 
 describe("subthemareeksen met bewaarde vensters", () => {
   const venster = (subthemaId: string, van: string, tot: string): Subthemaperiode => ({
+    id: `p-${subthemaId}-${van}`,
     subthemaId,
     subthemaNaam: subthemaId === "s1" ? "de speelhoek" : "dieren in de herfst",
     themaId: "t",
@@ -201,6 +202,18 @@ describe("subthemareeksen met bewaarde vensters", () => {
     const leeg = subthemareeksen([dag("2026-09-01", "s1"), dag("2026-09-03", "s1")], september, []);
 
     expect(leeg).toEqual(zonder);
+  });
+
+  it("draagt het bewaarde venster mee waar de hoekverrijking aan hangt, en geen voor een reeks zonder venster (FB-020)", () => {
+    const reeksen = subthemareeksen(
+      [dag("2026-09-02", "s1"), dag("2026-09-03", "s2")],
+      september,
+      [venster("s1", "2026-09-01", "2026-09-05")],
+    );
+
+    expect(reeksen.find((r) => r.subthemaId === "s1")?.periodeId).toBe("p-s1-2026-09-01");
+    // Drawn from its activiteit alone: saving a verrijking there stores the window first.
+    expect(reeksen.find((r) => r.subthemaId === "s2")?.periodeId).toBeUndefined();
   });
 });
 

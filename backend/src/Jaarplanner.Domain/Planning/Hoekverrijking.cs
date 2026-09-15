@@ -1,24 +1,31 @@
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// What a hoek is enriched with over one stretch of days: "prentenboeken over de herfst, bladerenpers op tafel"
-/// (owner, meeting 2026-08-30). It belongs to a <see cref="Hoekplaatsing"/> and cannot exist without one.
+/// What one hoek of a class is enriched with while one subthema runs: "prentenboeken over de herfst, bladerenpers op
+/// tafel" (owner, meeting 2026-08-30; per subthemaperiode since 2026-09-15, FB-020, ADR-0041).
 /// <para>
-/// <b>This is the entity that carries the pedagogy, and it is free text on purpose.</b> The owner's first sketch
-/// had verrijkingen configured per subthema and picked from a list; that was dropped in the same session, because
-/// what a teacher puts in her boekenhoek for these two weeks is too specific to be worth choosing from a menu she
-/// would first have had to fill in. So there is nothing to validate here beyond "she wrote something".
+/// <b>One hoek and one <see cref="Subthemaplaatsing"/>, and that pair is the whole model.</b> The owner asked for the
+/// verrijking to belong to the subthema that is running: she clicks the subthema in the agenda and writes, per hoek,
+/// what goes in it for that stretch. Before FB-020 it hung off a <see cref="Hoekplaatsing"/> with two dates of its own,
+/// which had no tie to what the class was working on and made her type a window the subthema already had. The hoek
+/// says which class (a hoek belongs to one), the window says which days, and neither is stored here a second time.
 /// </para>
 /// <para>
-/// <b>It carries its own window, and that is what makes a hoek placed once able to change through the year.</b>
-/// The boekenhoek is placed from september to june; inside that placement one verrijking runs to the autumn
-/// holiday and the next starts after it. Without its own dates a verrijking would be a property of the whole
-/// placement, and a teacher wanting a second one would have to cut the placement in two, which is bookkeeping
-/// about a corner that never moved.
+/// <b>Free text on purpose.</b> The owner's first sketch had verrijkingen configured per subthema and picked from a
+/// list; that was dropped in the same session, because what a teacher puts in her boekenhoek for these two weeks is too
+/// specific to be worth choosing from a menu she would first have had to fill in. So there is nothing to validate here
+/// beyond "she wrote something".
 /// </para>
 /// <para>
-/// <b>Gaps are legal and overlaps are not</b> — see <see cref="Hoekplaatsing.VoegVerrijkingToe"/> for the
-/// reasoning, which belongs on the aggregate that can see the other verrijkingen.
+/// <b>Outside the <see cref="Jaarplan"/> aggregate, like the hoekplaatsing, though the window it names is inside it.</b>
+/// That is safe because nothing discards a window: a (re)generation removes only placements that are <c>Voorgesteld</c>
+/// and not <c>vergrendeld</c> (Art. IX.3), a window carries no status, and re-planning an overlapping window moves the
+/// same row (<see cref="Jaarplan.PlaatsSubthema"/>), so the text follows the days. A verrijking goes only with its hoek
+/// or with its subthema, and deleting either one says first how many go with it.
+/// </para>
+/// <para>
+/// <b>It grants no dekking.</b> Art. V.1 counts links hanging off a placed thema or a planned algemene fiche, and a
+/// verrijking carries no doelkoppeling at all.
 /// </para>
 /// </summary>
 public sealed class Hoekverrijking
@@ -29,75 +36,37 @@ public sealed class Hoekverrijking
         Tekst = null!;
     }
 
-    /// <summary>Creates a verrijking over <paramref name="van"/>–<paramref name="tot"/>.</summary>
-    /// <param name="hoekplaatsingId">The placement this enrichment belongs to.</param>
-    /// <param name="van">First day, inclusive.</param>
-    /// <param name="tot">
-    /// Last day, inclusive. Equal to <paramref name="van"/> for a single day, which is legal: a teacher may
-    /// enrich a corner for one morning.
+    /// <summary>Writes what <paramref name="hoekId"/> holds while the subthema of one window runs.</summary>
+    /// <param name="hoekId">
+    /// The corner. That it belongs to the klas whose plan holds the window is checked by the service, the one layer
+    /// that can read both rows; this type stores honest keys.
     /// </param>
-    /// <param name="tekst">What she puts in the corner. Required — an enrichment that says nothing is not one.</param>
-    /// <exception cref="ArgumentException">
-    /// The window ends before it starts. Dutch, because both dates come from two fields on a teacher's screen and
-    /// this is the sentence she can act on (Art. II.3).
-    /// </exception>
-    public Hoekverrijking(Guid hoekplaatsingId, DateOnly van, DateOnly tot, string tekst)
+    /// <param name="subthemaplaatsingId">The window of the subthema, in the klas's own plan.</param>
+    /// <param name="tekst">
+    /// What she puts in the corner. Required: the service reads a blank field as "remove it", so a blank never reaches
+    /// here from a screen, and one that does is a programmer error.
+    /// </param>
+    public Hoekverrijking(Guid hoekId, Guid subthemaplaatsingId, string tekst)
     {
-        if (tot < van)
-        {
-            throw new ArgumentException("De laatste dag van een verrijking kan niet voor de eerste dag liggen.");
-        }
-
-        HoekplaatsingId = RequireId(hoekplaatsingId, nameof(hoekplaatsingId));
-        Van = van;
-        Tot = tot;
+        HoekId = RequireId(hoekId, nameof(hoekId));
+        SubthemaplaatsingId = RequireId(subthemaplaatsingId, nameof(subthemaplaatsingId));
         Tekst = Require(tekst, nameof(tekst));
     }
 
     /// <summary>Surrogate identity.</summary>
     public Guid Id { get; private set; } = Guid.NewGuid();
 
-    /// <summary>The placement this enrichment hangs on.</summary>
-    public Guid HoekplaatsingId { get; private set; }
+    /// <summary>The corner this is about.</summary>
+    public Guid HoekId { get; private set; }
 
-    /// <summary>First day, inclusive.</summary>
-    public DateOnly Van { get; private set; }
-
-    /// <summary>Last day, inclusive.</summary>
-    public DateOnly Tot { get; private set; }
+    /// <summary>The window of the subthema it belongs to.</summary>
+    public Guid SubthemaplaatsingId { get; private set; }
 
     /// <summary>What the corner is enriched with. Free text, required.</summary>
     public string Tekst { get; private set; }
 
-    /// <summary>Whether this enrichment covers <paramref name="datum"/>.</summary>
-    public bool Omvat(DateOnly datum) => datum >= Van && datum <= Tot;
-
-    /// <summary>
-    /// Whether this enrichment shares a day with <paramref name="van"/>–<paramref name="tot"/>. Abutting windows
-    /// (one ends on the Friday the next begins on the Monday) share no day and therefore do not overlap, which is
-    /// what one enrichment following another looks like.
-    /// </summary>
-    public bool Overlapt(DateOnly van, DateOnly tot) => van <= Tot && tot >= Van;
-
-    /// <summary>
-    /// Rewrites the text and/or moves the window. Used by the detail sheet the teacher reaches by clicking the
-    /// hoek in her agenda: she may have written the enrichment while dragging and thought better of it since.
-    /// <para>
-    /// The caller is <see cref="Hoekplaatsing.WijzigVerrijking"/> rather than a screen, because whether a new
-    /// window is free is a question only the placement can answer.
-    /// </para>
-    /// </summary>
-    internal void Wijzig(DateOnly van, DateOnly tot, string tekst)
-    {
-        if (tot < van)
-        {
-            throw new ArgumentException("De laatste dag van een verrijking kan niet voor de eerste dag liggen.");
-        }
-
-        Van = van;
-        Tot = tot;
-        Tekst = Require(tekst, nameof(tekst));
-    }
+    /// <summary>Rewrites the text. The hoek and the window are what the row IS, so they never change.</summary>
+    public void Wijzig(string tekst) => Tekst = Require(tekst, nameof(tekst));
 
     private static Guid RequireId(Guid value, string paramName) =>
         value == Guid.Empty ? throw new ArgumentException($"'{paramName}' is required.", paramName) : value;

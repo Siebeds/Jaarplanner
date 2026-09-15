@@ -10,14 +10,14 @@ created, and nothing else"); and themabeheer could empty a thema in the wizard f
 *Fixed:* the wizard's subthema delete refuses a subthema that holds any woordweb, with its own Dutch sentence
 ("Op dit subthema houdt iemand een woordweb bij. Dat zou mee verdwijnen, dus de wizard verwijdert het niet.").
 `WoordwebEndpointsTests.Themabeheer_verwijdert_geen_nieuw_thema_waarop_een_collega_een_woordweb_bijhoudt` now also
-takes the two-step route and checks the web survives. Recorded in ADR-0041 and the Art. VI.1 defaults bullet.
+takes the two-step route and checks the web survives. Recorded in ADR-0042 and the Art. VI.1 defaults bullet.
 
 **MINOR, all fixed:**
 
 1. Default (e) in Art. VI.1 and FA A.11 still said a gebruiker without a right may do nothing beyond the maker's
    delete right: both now name keeping a woordweb of one's own (D2).
 2. The amendment stated two things W1–W7 did not rule. "Outside the wizard" (IV.8, FA A.7) now reads "whether the
-   wizard shows it too is E6-05's"; "every signed-in gebruiker reads every woordweb" is now default **D7** (ADR-0041,
+   wizard shows it too is E6-05's"; "every signed-in gebruiker reads every woordweb" is now default **D7** (ADR-0042,
    VI.1, FA A.11).
 3. ADR-0030 §3 had no row for `WoordwebBewerken`: added, with footnote ⁹.
 4. The GET sent other people's open proposals and rejected words to every reader, though the screen hid them: the
@@ -31,7 +31,7 @@ against PostgreSQL; `dotnet format` clean. No frontend file changed.
 
 A re-audit of the MAJOR only (ADR-0037). **Resolved:** the wizard's subthema delete refuses while any woordweb is on the
 subthema, inside its transaction and before the cascade; the two-step route is tested; the rule is stated as a default
-(I25) in Art. VI.1, ADR-0041, ADR-0030 §3 footnote 9 and FA A.11.
+(I25) in Art. VI.1, ADR-0042, ADR-0030 §3 footnote 9 and FA A.11.
 
 **No new CRITICAL or MAJOR.** The antagonist checked every other path that could remove someone else's woordweb:
 

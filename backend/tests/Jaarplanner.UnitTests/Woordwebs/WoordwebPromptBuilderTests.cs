@@ -4,7 +4,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Woordwebs;
 
 /// <summary>
-/// What the AI is told about a woordweb (FB-036, ADR-0041 W6): the subthema, its thema and this web's words, and the
+/// What the AI is told about a woordweb (FB-036, ADR-0042 W6): the subthema, its thema and this web's words, and the
 /// contract it must answer in. Nothing else: no owner, no other web.
 /// </summary>
 public sealed class WoordwebPromptBuilderTests

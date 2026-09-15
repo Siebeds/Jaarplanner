@@ -3,7 +3,7 @@ import { del, get, post, put } from "../../lib/api";
 import type { KoppelingStatus, WoordwebVoorstelResultaat, WoordwebWeergave } from "../../lib/types";
 
 /**
- * The woordwebs of one subthema (FB-036, ADR-0041): everyone's, the signed-in gebruiker's first.
+ * The woordwebs of one subthema (FB-036, ADR-0042): everyone's, the signed-in gebruiker's first.
  *
  * Under a key of its own, not under the thema's: a woordweb counts for nothing (no dekking, no count on the thema), so
  * a word added here has nothing else on the page to refresh, and a thema write has nothing here to refresh either.

@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Hoekplaatsing"/> and the <see cref="Hoekverrijking"/>en it owns (owner, meeting
-/// 2026-08-30).
+/// EF Core mapping for <see cref="Hoekplaatsing"/> and the <see cref="Hoekmoment"/>en it owns (owner, meeting
+/// 2026-08-30). The verrijkingen no longer hang here since FB-020: see <c>HoekverrijkingConfiguration</c>.
 /// <para>
 /// <b>Two dates and no planningsblok</b>, the same choice as on <c>activiteitplaatsingen</c> and
 /// <c>subthemaplaatsingen</c>: a window a teacher drew in a mini calendar is not a derived block boundary, so it
@@ -19,14 +19,12 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// a (re)generation structurally unable to touch a hoek — see the type's own documentation for the argument.
 /// </para>
 /// <para>
-/// <b>RESTRICT on the hoek, unlike the cascade a subthema window gets, and the difference is authored text.</b> A
-/// <c>Subthemaplaatsing</c> is a bare window: delete the subthema and the band on the calendar names nothing, so
-/// letting it go costs nobody anything. A hoekplaatsing owns <see cref="Hoekverrijking"/>en, which are sentences
-/// a teacher wrote about her own classroom, and Art. IV.2 protects a teacher's own decisions from being undone
-/// by a side effect of an unrelated action. So deleting a placed hoek is refused, and
-/// <c>HoekBeheerService</c> turns that refusal into a Dutch sentence naming the count BEFORE the database can
-/// raise a bare 23503. That guard is not optional: this repo has already shipped a Restrict whose Dutch refusal
-/// did not actually exist, and the result was an unhandled 500 on an ordinary teacher action with no way out.
+/// <b>RESTRICT on the hoek, unlike the cascade a subthema window gets.</b> A placement is the teacher's own
+/// scheduling decision, and Art. IV.2 protects it from being undone by a side effect of an unrelated action. So
+/// deleting a placed hoek is refused, and <c>HoekBeheerService</c> turns that refusal into a Dutch sentence naming the
+/// count BEFORE the database can raise a bare 23503. That guard is not optional: this repo has already shipped a
+/// Restrict whose Dutch refusal did not actually exist, and the result was an unhandled 500 on an ordinary teacher
+/// action with no way out.
 /// </para>
 /// </summary>
 public sealed class HoekplaatsingConfiguration : IEntityTypeConfiguration<Hoekplaatsing>
@@ -58,20 +56,8 @@ public sealed class HoekplaatsingConfiguration : IEntityTypeConfiguration<Hoekpl
             .HasForeignKey(p => p.HoekId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // The enrichments are owned by this placement: they are loaded with it, saved with it, and go when it
-        // goes. Cascade is right here and Restrict is not, because unlike the hoek->plaatsing edge above there is
-        // no independent thing being destroyed: an enrichment describes THIS window and has no meaning outside
-        // it. The teacher who deletes a placement is deleting the corner's whole run, with what was in it.
-        builder.HasMany(p => p.Verrijkingen)
-            .WithOne()
-            .HasForeignKey(v => v.HoekplaatsingId)
-            .OnDelete(DeleteBehavior.Cascade);
-        builder.Navigation(p => p.Verrijkingen)
-            .HasField("_verrijkingen")
-            .UsePropertyAccessMode(PropertyAccessMode.Field);
-
-        // The timetable appearances, cascading for the same reason: one row per day the hoek takes a lesuur, and
-        // a day the corner no longer runs on has nothing to schedule.
+        // The timetable appearances are owned by this placement: loaded with it, saved with it, and gone when it goes.
+        // One row per day the hoek takes a lesuur, and a day the corner no longer runs on has nothing to schedule.
         builder.HasMany(p => p.Momenten)
             .WithOne()
             .HasForeignKey(m => m.HoekplaatsingId)

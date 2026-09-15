@@ -78,7 +78,7 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   RapportInvullen: ["Directie", "LK rapport"],
   // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
   RapportsetBewerken: ["LK rapport"],
-  // FB-036 (ADR-0041): on someone else's woordweb only directie; her own web is its own case below.
+  // FB-036 (ADR-0042): on someone else's woordweb only directie; her own web is its own case below.
   WoordwebBewerken: ["Directie"],
 };
 
@@ -120,7 +120,7 @@ describe("de rechtenmatrix van de frontend", () => {
     expect(rijen).toHaveLength(24);
   });
 
-  it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0041)", () => {
+  it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0042)", () => {
     const eigen: Rechtbron = { soort: "woordweb", eigenaarId: IK };
     for (const relatie of Object.values(RELATIES)) expect(staatToe(relatie, "WoordwebBewerken", eigen)).toBe(true);
     // The woordweb resource opens no other row.

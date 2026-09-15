@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
 /// One gebruiker's woordweb on one subthema: the brainstorm of the goal-first method's step 3 (Art. IV.8, Art. IX.2,
-/// ADR-0041). Loose words around the subthema's name, without branches (W1).
+/// ADR-0042). Loose words around the subthema's name, without branches (W1).
 /// <para>
 /// <b>Personal content, not the leeftijd's shared content.</b> It belongs to <see cref="EigenaarId"/> and follows her
 /// across schooljaren (W4): one web per gebruiker and subthema, and nothing about it depends on a klas or a schooljaar.

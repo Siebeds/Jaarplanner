@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Woordweb"/> (FB-036, ADR-0041): one per gebruiker and subthema, enforced by a unique
+/// EF Core mapping for <see cref="Woordweb"/> (FB-036, ADR-0042): one per gebruiker and subthema, enforced by a unique
 /// index. Both foreign keys cascade (D4): a woordweb is personal content about one subthema, so it goes when the
 /// subthema goes, and when its owner is removed as a gebruiker. Unlike an activiteit's maker (SetNull, I17), there is
 /// nobody left for a web to belong to.

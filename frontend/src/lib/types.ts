@@ -42,7 +42,7 @@ export const DOELSOORTEN: Doelsoort[] = [
 
 export type KoppelingStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manueel";
 
-/** One word of a woordweb (FB-036, ADR-0041): typed (`Manueel`), or proposed by the AI and then decided (Art. IV.2). */
+/** One word of a woordweb (FB-036, ADR-0042): typed (`Manueel`), or proposed by the AI and then decided (Art. IV.2). */
 export interface WoordwebWoord {
   id: string;
   woord: string;
@@ -790,6 +790,8 @@ export interface Dagweergave {
  * ranges and the days that carry an activiteit of the same subthema, so the two can never contradict each other.
  */
 export interface Subthemaperiode {
+  /** The window's own id: what a hoekverrijking is written against (FB-020). */
+  id: string;
   subthemaId: string;
   subthemaNaam: string;
   themaId: string;

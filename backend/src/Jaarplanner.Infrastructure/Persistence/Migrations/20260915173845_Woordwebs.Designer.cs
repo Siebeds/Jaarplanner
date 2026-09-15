@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260915164418_Woordwebs")]
+    [Migration("20260915173845_Woordwebs")]
     partial class Woordwebs
     {
         /// <inheritdoc />
@@ -589,22 +589,22 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid>("HoekplaatsingId")
+                    b.Property<Guid>("HoekId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SubthemaplaatsingId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("Tekst")
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<DateOnly>("Tot")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly>("Van")
-                        .HasColumnType("date");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("HoekplaatsingId", "Van", "Tot");
+                    b.HasIndex("SubthemaplaatsingId");
+
+                    b.HasIndex("HoekId", "SubthemaplaatsingId")
+                        .IsUnique();
 
                     b.ToTable("hoekverrijkingen", (string)null);
                 });
@@ -1359,9 +1359,15 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekverrijking", b =>
                 {
-                    b.HasOne("Jaarplanner.Domain.Planning.Hoekplaatsing", null)
-                        .WithMany("Verrijkingen")
-                        .HasForeignKey("HoekplaatsingId")
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Hoek", null)
+                        .WithMany()
+                        .HasForeignKey("HoekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Planning.Subthemaplaatsing", null)
+                        .WithMany()
+                        .HasForeignKey("SubthemaplaatsingId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -1896,8 +1902,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekplaatsing", b =>
                 {
                     b.Navigation("Momenten");
-
-                    b.Navigation("Verrijkingen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>

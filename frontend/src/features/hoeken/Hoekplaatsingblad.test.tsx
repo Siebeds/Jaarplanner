@@ -18,7 +18,6 @@ const reeks = (id: string, van: string, tot: string): HoekplaatsingWeergave => (
   hoekNaam: "bouwhoek",
   van,
   tot,
-  verrijkingen: [],
   momenten: [],
 });
 

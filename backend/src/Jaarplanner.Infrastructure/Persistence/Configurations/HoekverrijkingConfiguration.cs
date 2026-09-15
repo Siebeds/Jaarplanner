@@ -1,21 +1,26 @@
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Hoekverrijking"/> — what a hoek is enriched with over one stretch of days
-/// inside a <see cref="Hoekplaatsing"/> (owner, meeting 2026-08-30).
+/// EF Core mapping for <see cref="Hoekverrijking"/>: what one hoek holds while one subthemaperiode of its klas runs
+/// (FB-020, ADR-0041).
 /// <para>
-/// The FK and its cascade are configured on the owning side, in <c>HoekplaatsingConfiguration</c>, so the
-/// aggregate's navigation and its delete behaviour stay in one place. This file maps the table and its columns.
+/// <b>One row per (hoek, window), enforced by a unique index.</b> Two answers to "what is in the boekenhoek during de
+/// herfst" would leave the agenda unable to choose; the service writes the pair as an upsert, so the index is the
+/// backstop and not the rule a teacher meets.
 /// </para>
 /// <para>
-/// <b>Nothing here enforces "inside the placement" or "no overlap".</b> Both are invariants of the aggregate and
-/// are enforced in <see cref="Hoekplaatsing.VoegVerrijkingToe"/>, which is the only layer that can see the other
-/// enrichments and the placement's own window. A database check constraint could express neither: the first
-/// needs the parent row, the second needs the siblings.
+/// <b>CASCADE on both edges, and both deletes say the count first.</b> A verrijking is text a teacher wrote, and
+/// Art. IV.2 protects a teacher's decisions from being undone as a side effect. It has no meaning without its hoek or
+/// without its window, though, so refusing either delete would only send her hunting for rows to clear by hand.
+/// The owner's ruling for the subthema (2026-09-15) is "mee weg, met aantal": the confirmation before deleting a
+/// subthema names how many verrijkingen go with it, and the hoek's delete confirmation does the same. The services
+/// also remove the rows themselves, so the in-memory provider the unit tests run on, which enforces no cascade,
+/// deletes what PostgreSQL deletes.
 /// </para>
 /// </summary>
 public sealed class HoekverrijkingConfiguration : IEntityTypeConfiguration<Hoekverrijking>
@@ -27,17 +32,26 @@ public sealed class HoekverrijkingConfiguration : IEntityTypeConfiguration<Hoekv
         builder.HasKey(v => v.Id);
         builder.Property(v => v.Id).ValueGeneratedNever();
 
-        builder.Property(v => v.HoekplaatsingId).IsRequired();
+        builder.Property(v => v.HoekId).IsRequired();
+        builder.Property(v => v.SubthemaplaatsingId).IsRequired();
 
-        // DateOnly -> PostgreSQL `date`, both inclusive.
-        builder.Property(v => v.Van).IsRequired();
-        builder.Property(v => v.Tot).IsRequired();
-
-        // Free text, required. What a teacher puts in her boekenhoek for a fortnight is too specific to be
-        // chosen from a list, which is why the owner dropped the configured-verrijking idea in the same session.
+        // Free text, required. What a teacher puts in her boekenhoek for a subthema is too specific to be chosen
+        // from a list, which is why the owner dropped the configured-verrijking idea in the same session.
         builder.Property(v => v.Tekst).IsRequired();
 
-        // Reading a day asks "which enrichment covers this date, for this placement".
-        builder.HasIndex(v => new { v.HoekplaatsingId, v.Van, v.Tot });
+        builder.HasIndex(v => new { v.HoekId, v.SubthemaplaatsingId }).IsUnique();
+
+        // The agenda's access pattern: every verrijking of the windows touching the range on screen.
+        builder.HasIndex(v => v.SubthemaplaatsingId);
+
+        builder.HasOne<Hoek>()
+            .WithMany()
+            .HasForeignKey(v => v.HoekId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne<Subthemaplaatsing>()
+            .WithMany()
+            .HasForeignKey(v => v.SubthemaplaatsingId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

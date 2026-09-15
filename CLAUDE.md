@@ -93,7 +93,7 @@ tools/backlog-board/   ticket CLI and local kanban board
 ## Architecture
 - SPA over REST/JSON, organised by feature. Anchor screens: the **kalender with drag-and-drop** and the **dekkingsoverzicht**.
 - Backend layered pragmatically: `Domain` ← `Application` (use cases, AI orchestration) ← `Infrastructure` (EF Core, imports, Azure AI); `Api` is thin. A small app: clarity over ceremony.
-- **AI flow:** the backend builds a prompt from the school's own doelen and thema's, calls Azure AI Foundry, validates a **structured JSON** response, and returns suggestions with a motivation and `status = voorgesteld`. The client sits behind an interface and is faked in tests. The one exception to grounding on school data alone is a woordweb's words (Art. IV.4, ADR-0041).
+- **AI flow:** the backend builds a prompt from the school's own doelen and thema's, calls Azure AI Foundry, validates a **structured JSON** response, and returns suggestions with a motivation and `status = voorgesteld`. The client sits behind an interface and is faked in tests. The one exception to grounding on school data alone is a woordweb's words (Art. IV.4, ADR-0042).
 - **Op.stap goals** come from KOV's Op.stap API, backend only, G goals for now ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), Art. VII.2). The minimumdoelen mapping is `OnderwijsdoelMapping`, the leerplandoelen mapping `CurriculumdoelMapping`, each kept in one place. The per-discipline Excel route (Art. VII.1) refuses every file once a leerplandoelen snapshot has been applied. School thema's and activiteiten arrive by Excel upload (FR-1).
 
 ## Domain model
@@ -105,7 +105,7 @@ The model is [`CONSTITUTION.md` Art. IX](CONSTITUTION.md#article-ix--core-data-m
 - Planningsblokken: themaperiode (4–6 wk) and subthemaperiode (~2 wk), configurable behind the E3-05 seam; never assume months. Generatieparameters are kept per (klas, schooljaar); startthema's key on `blokStart`, never an ordinal.
 - Rights, checked server-side: directie sees and edits everything; themabeheer edits thema's, runs the FR-1 import and the wizard, and with directie alone reviews doelsuggesties; a hoofdleerkracht per (schooljaar, jaarfase) owns that jaarfase's subthema's, subdoelen and goal links; a klastoewijzing gives a klas's planning; a leerkracht and a hoofdleerkracht read the planning of the klassen of their own jaarfase, themabeheer every klas, anyone else none ([ADR-0040](docs/adr/0040-klassen-inkijken-per-jaarfase.md)); Leerlingzorg reads every ontwikkelingsrapport.
 - The ontwikkelingsrapport (K3 only, Art. IX.4 and VI.7) holds the only pupil data and never counts for dekking.
-- A `Woordweb` (the brainstorm of step 3, [ADR-0041](docs/adr/0041-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and directie. Its AI words come from the model's own language knowledge (the Art. IV.4 exception), and it never counts for dekking.
+- A `Woordweb` (the brainstorm of step 3, [ADR-0042](docs/adr/0042-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and directie. Its AI words come from the model's own language knowledge (the Art. IV.4 exception), and it never counts for dekking.
 
 ## Testing
 - **Backend (xUnit):** the dekking and concordance logic, the Op.stap API mapping and its HTML-to-text conversion, and the Excel import; integration tests against a Postgres test container.
