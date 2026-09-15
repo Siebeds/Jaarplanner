@@ -2,12 +2,12 @@
 id: FB-018
 titel: Doelen van fiches, hoeken, verrijkingen en activiteiten via een info-icoon in de agenda
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 14:53
+opgepakt-door: FB-018
+branch: ticket/FB-018-doelen-info-icoon
 pr:
 geblokkeerd:
 fr: [FR-3.2, FR-6.1]
@@ -70,3 +70,5 @@ apart weekoverzicht.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 14:52 · eigenaar · nieuw → klaar-voor-bouw: eigenaar vroeg in sessie om FB-018 op te nemen, zonder op FB-017 te wachten
+- 2026-09-15 14:53 · FB-018 · klaar-voor-bouw → in-uitvoering: opgepakt; de activiteitkaarten uit FB-017 krijgen het icoon van wie als tweede merget (eigenaar, 2026-09-15)
