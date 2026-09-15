@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 20:15
+bijgewerkt: 2026-09-15 20:19
 opgepakt-door: kindtekening
 branch: ticket/TB-028-rapportleesrij-tekening
-pr:
+pr: 100
 geblokkeerd:
 fr: []
 ---
@@ -48,3 +48,4 @@ Geen.
 
 - 2026-09-15 20:01 · kindtekening · aangemaakt (status in-uitvoering)
 - 2026-09-15 20:15 · kindtekening · in-uitvoering → klaar: leesrij-test kent nu drie leesroutes (met de tekening); nieuwe test: Leerlingzorg ziet de tekening en wijzigt ze niet; backend unit 1749 en integratie 541 groen, 0 gefaald; format schoon; geen antagonist: alleen een testlijst, de route zelf werd in FB-005 geauditeerd
+- 2026-09-15 20:19 · kindtekening · PR #100
