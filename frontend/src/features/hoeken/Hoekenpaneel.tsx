@@ -62,6 +62,7 @@ export function Hoekenpaneel({
   onKiesAlgemeneFiche,
   magPlannen,
   activiteitenWeek,
+  verrijkingenWeek,
   onKiesActiviteit,
 }: {
   klasId: string | null;
@@ -80,6 +81,11 @@ export function Hoekenpaneel({
   magPlannen: boolean;
   /** The week the agenda stands in, which the activiteiten list opens on. */
   activiteitenWeek: Activiteitenweek;
+  /**
+   * Per hoek, what it holds while a subthema of that same week runs (FB-020): shown under its card, so she reads the
+   * corner and what is in it together. Absent for a hoek with none.
+   */
+  verrijkingenWeek: ReadonlyMap<string, readonly Paneelverrijking[]>;
   /** An activiteit card was chosen rather than dragged; the agenda asks the day and the hours. */
   onKiesActiviteit: (activiteit: GekozenActiviteit) => void;
 }) {
@@ -151,6 +157,7 @@ export function Hoekenpaneel({
             sleepId: `${FICHE_VOORVOEGSEL}${hoek.id}`,
             naam: hoek.naam,
             omschrijving: hoek.omschrijving,
+            verrijkingen: verrijkingenWeek.get(hoek.id),
           })),
           leeg: t("hoekenpaneel.geenHoeken"),
           naarInstellingen: { pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") },
@@ -303,6 +310,14 @@ interface Paneelfiche {
   omschrijving: string | null;
   /** The goals, for the card's info icon (FB-018). Absent for a kind with none to show: a hoek, until FB-019. */
   doelen?: readonly Infodoel[];
+  /** A hoek's verrijkingen for the week the agenda stands in (FB-020). */
+  verrijkingen?: readonly Paneelverrijking[];
+}
+
+/** What a hoek holds while one subthema runs, as its card shows it. */
+export interface Paneelverrijking {
+  subthemaNaam: string;
+  tekst: string;
 }
 
 /** The list the panel is showing, with everything that differs between the two kinds. */
@@ -439,6 +454,18 @@ function Fiche({
         {fiche.omschrijving ? (
           <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
         ) : null}
+        {/* What is in the corner this week (FB-020), set off by a rule so it does not read as the corner's own
+            description: that one is there all year, this one only while the subthema runs. Named by the subthema,
+            because a week can hold two. */}
+        {fiche.verrijkingen?.map((verrijking, i) => (
+          <span
+            key={`${verrijking.subthemaNaam}-${i}`}
+            className="mt-1.5 block border-l-2 border-lijn-sterk pl-2 text-micro leading-snug"
+          >
+            <span className="block text-inkt-zwak">{verrijking.subthemaNaam}</span>
+            <span className="line-clamp-3 whitespace-pre-line text-inkt">{verrijking.tekst}</span>
+          </span>
+        ))}
       </button>
 
       {fiche.doelen ? (

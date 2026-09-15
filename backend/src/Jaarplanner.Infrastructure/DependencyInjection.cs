@@ -163,6 +163,10 @@ public static class DependencyInjection
         // is not part of that aggregate, and the separation is what keeps a (re)generation unable to see it.
         services.AddScoped<IHoekplaatsingService, HoekplaatsingService>();
 
+        // What each hoek holds while a subthema runs (FB-020). Its own service because it keys on a subthema window,
+        // which the placement above has nothing to do with.
+        services.AddScoped<IHoekverrijkingService, HoekverrijkingService>();
+
         // The algemene fiches (owner, 2026-09-11): the hoek's sibling for recurring activities, with the same split
         // between the class's own list and its planning, and the planning kept out of the jaarplan for the same reason.
         services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();

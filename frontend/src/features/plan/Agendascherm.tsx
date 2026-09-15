@@ -62,8 +62,11 @@ import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
 import { FICHE_VOORVOEGSEL, leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
 import { Hoekdetailblad } from "../hoeken/Hoekdetailblad";
+import { Verrijkingenblad } from "../hoeken/Verrijkingenblad";
+import { Subthemabalk } from "./Subthemabalk";
 import {
   useHoekplaatsingen,
+  useHoekverrijkingen,
   usePlaatsHoek,
   useVerplaatsHoekmoment,
   useVerwijderHoekplaatsing,
@@ -82,7 +85,14 @@ import {
 import { ALGEMENE_FICHE_VOORVOEGSEL, fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { useSchooluren } from "../schooluren/gegevens";
 import { roosterdagen } from "./roosterdagen";
-import { reeksbereik, reeksenPerDag, subthemareeksen, subthemasInWeek, voorstelReeks } from "./subthemareeksen";
+import {
+  reeksbereik,
+  reeksenPerDag,
+  subthemareeksen,
+  subthemasInWeek,
+  voorstelReeks,
+  type Subthemareeks,
+} from "./subthemareeksen";
 import { themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
@@ -156,6 +166,8 @@ export function Agendascherm() {
   // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
   // a delete, and holding a copy would keep a sheet describing a row that is gone.
   const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
+  // The run of the subthemabalk whose verrijkingen sheet is open (FB-020).
+  const [geopendeReeks, setGeopendeReeks] = useState<Subthemareeks | null>(null);
   // The same pair for an algemene fiche (ADR-0029): the one that landed, and the planned one that is open. The open
   // one also remembers the occurrence it was opened from, because that day is what its sheet lets her change without
   // a drag; opened from a list of whole periods it names none.
@@ -257,7 +269,7 @@ export function Agendascherm() {
   // (owner, 2026-09-10). The visible range above is not enough: a teacher planning the boekenhoek in
   // november needs to see that it already ran in september, which the month on screen does not reach.
   const { data: jaarHoekplaatsingen } = useHoekplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
-  const { data: hoeken } = useHoeken(klasId);
+  const { data: hoeken, isError: hoekenMislukt } = useHoeken(klasId);
   const plaatsHoek = usePlaatsHoek(klasId);
   const verwijderPlaatsing = useVerwijderHoekplaatsing();
   const verplaatsMoment = useVerplaatsHoekmoment();
@@ -305,6 +317,46 @@ export function Agendascherm() {
     [reeksbron, rooster],
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
+
+  /**
+   * WHAT THE HOEKEN HOLD WHILE EACH SUBTHEMA RUNS (FB-020), read over the same range as the runs, so the subthemabalk,
+   * the side panel's week and the sheet all answer from one request.
+   */
+  const verrijkingen = useHoekverrijkingen(klasId, reeksVan, reeksTot);
+  // The runs the balk above the grid names: the ones touching the days on screen, as the strips in the headings do.
+  // A run drawn from its activiteiten alone may still share days with a stored window of the same subthema that began
+  // in the previous themaperiode, which the runs do not fold in. The server writes onto that window rather than store a
+  // second one, so the balk and the sheet name it too, instead of offering to store a period that exists.
+  const reeksenInBeeld = useMemo(
+    () =>
+      reeksen
+        .filter((reeks) => reeks.van <= tot && reeks.tot >= van)
+        .map((reeks) => {
+          if (reeks.periodeId) return reeks;
+          const venster = (verrijkingen.data ?? []).find(
+            (p) => p.subthemaId === reeks.subthemaId && p.van <= reeks.tot && p.tot >= reeks.van,
+          );
+          return venster ? { ...reeks, periodeId: venster.subthemaperiodeId } : reeks;
+        }),
+    [reeksen, van, tot, verrijkingen.data],
+  );
+  // Under each hoek in the side panel: its verrijking for every stored subthemaperiode touching the anchored week,
+  // the week the activiteiten list speaks about too.
+  const verrijkingenWeek = useMemo(() => {
+    const maandag = maandagVan(anker);
+    const zondag = verschuif(maandag, 6);
+    const perHoek = new Map<string, { subthemaNaam: string; tekst: string }[]>();
+    for (const periode of verrijkingen.data ?? []) {
+      if (periode.tot < maandag || zondag < periode.van) continue;
+      for (const verrijking of periode.verrijkingen) {
+        perHoek.set(verrijking.hoekId, [
+          ...(perHoek.get(verrijking.hoekId) ?? []),
+          { subthemaNaam: periode.subthemaNaam, tekst: verrijking.tekst },
+        ]);
+      }
+    }
+    return perHoek;
+  }, [verrijkingen.data, anker]);
 
   /**
    * The hoek appearances of the visible range, as blocks the time grid can draw.
@@ -873,6 +925,7 @@ export function Agendascherm() {
                 setGevallenAlgemeneFiche({ ficheId, datum: anker, begin: null });
               }}
               activiteitenWeek={activiteitenWeek}
+              verrijkingenWeek={verrijkingenWeek}
               onKiesActiviteit={(activiteit) => {
                 acties.plaats.reset();
                 setGekozenActiviteit({ ...activiteit, datum: anker, begin: null });
@@ -906,10 +959,22 @@ export function Agendascherm() {
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
               />
             ) : (
-              /* THE DAY AND THE WEEK ARE ONE GRID (ADR-0028), which is what makes them agree: they were a row of
+              <>
+              {/* THE SUBTHEMABALK (FB-020): the subthema's on screen, each with what the hoeken hold while it runs. A
+                  verrijking is never a block in the grid below; this is where she reads and writes it. */}
+              <Subthemabalk
+                reeksen={reeksenInBeeld}
+                verrijkingen={verrijkingen.data ?? []}
+                // "None yet" needs both reads: the preview is built from the klas's hoeken as well.
+                geladen={verrijkingen.isSuccess && hoeken !== undefined}
+                hoeken={hoeken ?? []}
+                magPlannen={magPlannen}
+                onOpen={(reeks) => setGeopendeReeks(reeks)}
+              />
+              {/* THE DAY AND THE WEEK ARE ONE GRID (ADR-0028), which is what makes them agree: they were a row of
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
-                 a phone. */
+                 a phone. */}
               <Tijdraster
                 dagen={zichtbareDagen.length > 0 ? zichtbareDagen : [leegteDag(anker)]}
                 hoekmomenten={hoekblokjes}
@@ -932,6 +997,7 @@ export function Agendascherm() {
                 onKiesDag={weergave === "week" ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
               />
+              </>
             )}
           </div>
 
@@ -1037,10 +1103,30 @@ export function Agendascherm() {
         />
       ) : null}
 
-      {/* THE WAY BACK OUT, and the only screen that reads a verrijking back. Looked up by id on every
-          render, so the sheet disappears by itself when the placement it describes does. In the
-          year's list as well as the visible range's: the placement sheet opens runs from any month,
-          and one outside the range on screen would otherwise open nothing at all. */}
+      {/* WHAT THE HOEKEN HOLD WHILE A SUBTHEMA RUNS (FB-020), opened from a row of the subthemabalk. Keyed on the run,
+          so opening a second row fills the fields afresh instead of showing the first one's draft. */}
+      {geopendeReeks ? (
+        <Verrijkingenblad
+          key={`${geopendeReeks.subthemaId}-${geopendeReeks.van}`}
+          klasId={klasId}
+          reeks={geopendeReeks}
+          periode={(verrijkingen.data ?? []).find((p) => p.subthemaperiodeId === geopendeReeks.periodeId)}
+          hoeken={hoeken}
+          status={
+            (verrijkingen.isError && !verrijkingen.data) || (hoekenMislukt && !hoeken)
+              ? "mislukt"
+              : verrijkingen.isSuccess && hoeken
+                ? "klaar"
+                : "laadt"
+          }
+          magPlannen={magPlannen}
+          onSluit={() => setGeopendeReeks(null)}
+        />
+      ) : null}
+
+      {/* THE WAY BACK OUT for a placed hoek. Looked up by id on every render, so the sheet disappears by itself when
+          the placement it describes does. In the year's list as well as the visible range's: the placement sheet opens
+          runs from any month, and one outside the range on screen would otherwise open nothing at all. */}
       {(() => {
         const open =
           (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek) ??
@@ -1048,6 +1134,7 @@ export function Agendascherm() {
         return open ? (
           <Hoekdetailblad
             open
+            klasId={klasId}
             plaatsing={open}
             alleenLezen={!magPlannen}
             bezig={verwijderPlaatsing.isPending}

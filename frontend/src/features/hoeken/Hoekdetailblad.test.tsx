@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Hoekdetailblad } from "./Hoekdetailblad";
 import type { HoekmomentWeergave, HoekplaatsingWeergave } from "./gegevens";
 import { t } from "../../i18n";
-import { volleDag } from "../../lib/datum";
+import { periode, volleDag } from "../../lib/datum";
 
 /**
  * The hours of a run, in the sheet that describes it (owner, 2026-09-11).
@@ -27,9 +27,27 @@ const bouwhoek = (momenten: HoekmomentWeergave[]): HoekplaatsingWeergave => ({
   hoekNaam: "bouwhoek",
   van: "2026-09-14",
   tot: "2026-09-17",
-  verrijkingen: [],
   momenten,
 });
+
+/** Two stored subthemaperiodes touching the run: the boekenhoek... this bouwhoek has a verrijking in the first. */
+const HERFST = {
+  subthemaperiodeId: "p-herfst",
+  subthemaId: "s-herfst",
+  subthemaNaam: "De herfst",
+  van: "2026-09-07",
+  tot: "2026-09-15",
+  verrijkingen: [{ id: "v-1", hoekId: "h-1", tekst: "herfstboeken" }],
+};
+const WINTER = {
+  subthemaperiodeId: "p-winter",
+  subthemaId: "s-winter",
+  subthemaNaam: "De winter",
+  van: "2026-09-16",
+  tot: "2026-09-25",
+  // Another corner's verrijking: this one's is still empty here.
+  verrijkingen: [{ id: "v-2", hoekId: "h-2", tekst: "sneeuwbollen" }],
+};
 
 const gelijk = [
   moment("m-1", "2026-09-14", "08:00:00", "11:50:00"),
@@ -47,16 +65,24 @@ const maandagDubbel = [moment("m-2", "2026-09-14", "07:00:00", "07:45:00"), ...g
 const opUur = (periode: string, dagen: string) => t("hoekdetail.opUur", { periode, dagen });
 
 let fetchMock: ReturnType<typeof vi.fn>;
+/** What the server answers for the subthemaperiodes touching the run (FB-020); none unless a test says otherwise. */
+let perioden: unknown[] = [];
 
 beforeEach(() => {
-  fetchMock = vi.fn().mockResolvedValue(
-    new Response(JSON.stringify(bouwhoek(gelijk)), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
+  perioden = [];
+  fetchMock = vi.fn(
+    async (pad: string) =>
+      new Response(JSON.stringify(String(pad).includes("/hoekverrijkingen") ? perioden : bouwhoek(gelijk)), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
   );
   vi.stubGlobal("fetch", fetchMock);
 });
+
+/** The writes the sheet sent: the reads of its verrijkingen are not what these tests are about. */
+const schrijfacties = () =>
+  fetchMock.mock.calls.filter(([, init]) => (init as RequestInit | undefined)?.method !== undefined);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -67,7 +93,14 @@ function toon(momenten: HoekmomentWeergave[]) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   const blad = (lijst: HoekmomentWeergave[]) => (
     <QueryClientProvider client={client}>
-      <Hoekdetailblad open plaatsing={bouwhoek(lijst)} bezig={false} onVerwijder={() => {}} onSluit={() => {}} />
+      <Hoekdetailblad
+        open
+        klasId="k-1"
+        plaatsing={bouwhoek(lijst)}
+        bezig={false}
+        onVerwijder={() => {}}
+        onSluit={() => {}}
+      />
     </QueryClientProvider>
   );
   const resultaat = render(blad(momenten));
@@ -81,17 +114,16 @@ const openUren = () => fireEvent.click(screen.getByRole("button", { name: t("hoe
   klas opens the same sheet and gets what the run is, with nothing that would change it.
 */
 describe("Hoekdetailblad voor wie de klas alleen mag bekijken", () => {
-  it("toont periode, uren en verrijking, zonder één knop die iets verandert", () => {
+  it("toont periode, uren en verrijking, zonder één knop die iets verandert", async () => {
+    perioden = [HERFST, WINTER];
     const client = new QueryClient();
     render(
       <QueryClientProvider client={client}>
         <Hoekdetailblad
           open
           alleenLezen
-          plaatsing={{
-            ...bouwhoek(maandagDubbel),
-            verrijkingen: [{ id: "v-1", van: "2026-09-14", tot: "2026-09-17", tekst: "herfstboeken" }],
-          }}
+          klasId="k-1"
+          plaatsing={bouwhoek(maandagDubbel)}
           bezig={false}
           onVerwijder={() => {}}
           onSluit={() => {}}
@@ -99,16 +131,77 @@ describe("Hoekdetailblad voor wie de klas alleen mag bekijken", () => {
       </QueryClientProvider>,
     );
 
-    expect(screen.getByText("herfstboeken")).toBeInTheDocument();
+    expect(await screen.findByText("herfstboeken")).toBeInTheDocument();
     expect(screen.getByText(opUur("8:00 - 11:50", t("hoekdetail.aantalSchooldagen", { aantal: 3 })))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("hoekdetail.urenAanpassen") })).toBeNull();
     expect(screen.queryByRole("button", { name: t("hoekdetail.verwijder") })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Verrijking van .* bewerken/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("hoekdetail.verrijkingBewerkVan", { naam: "De herfst" }) })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("hoekdetail.verrijkingInvullenVan", { naam: "De winter" }) })).toBeNull();
     // The doubled-day sentence tells her to drag a day away first: an instruction for a change she cannot make.
     expect(screen.queryByText(/staat deze hoek meer dan één keer/)).toBeNull();
-    expect(screen.queryByText(t("hoekdetail.verwijderGevolgEen"))).toBeNull();
     // The way out is the sheet's own close control, once: the footer, whose only button would repeat it, is left out.
     expect(screen.getAllByRole("button", { name: t("hoekdetail.sluiten") })).toHaveLength(1);
+  });
+});
+
+/*
+  FB-020: the corner's verrijking belongs to the hoek and a subthemaperiode, not to this placement. The sheet lists every
+  stored window touching the run's days, each with what this hoek holds then, and edits one hoek at a time (owner,
+  2026-09-15: also editable here).
+*/
+describe("Hoekdetailblad: de verrijking per subthemaperiode", () => {
+  it("toont elke subthemaperiode van deze dagen met wat deze hoek dan bevat", async () => {
+    perioden = [HERFST, WINTER];
+    toon(gelijk);
+
+    expect(await screen.findByText("herfstboeken")).toBeInTheDocument();
+    expect(screen.getByText(t("hoekdetail.tijdens", { naam: "De herfst", periode: periode("2026-09-07", "2026-09-15") })))
+      .toBeInTheDocument();
+    // De winter has another corner's verrijking and none for this one: that is "nothing yet", not the other's text.
+    expect(screen.getByText(t("hoekdetail.geenVerrijking"))).toBeInTheDocument();
+    expect(screen.queryByText("sneeuwbollen")).toBeNull();
+  });
+
+  it("bewaart een herschreven verrijking voor deze hoek alleen, bij die subthemaperiode", async () => {
+    perioden = [HERFST, WINTER];
+    toon(gelijk);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("hoekdetail.verrijkingBewerkVan", { naam: "De herfst" }) }));
+    fireEvent.change(screen.getByLabelText(t("hoekdetail.verrijkingLabel")), { target: { value: "herfstboeken en bladeren" } });
+    fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.bewaren") }));
+
+    await waitFor(() => expect(schrijfacties()).toHaveLength(1));
+    const [pad, init] = schrijfacties()[0];
+    expect(pad).toBe("/api/klassen/k-1/hoekverrijkingen");
+    expect(init.method).toBe("PUT");
+    // Only this hoek: the other corners of the window are left out, so they stay as they are.
+    expect(JSON.parse(init.body)).toEqual({
+      subthemaperiodeId: "p-herfst",
+      verrijkingen: [{ hoekId: "h-1", tekst: "herfstboeken en bladeren" }],
+    });
+  });
+
+  it("vult een lege verrijking in, en verwijderen stuurt een lege tekst", async () => {
+    perioden = [HERFST, WINTER];
+    toon(gelijk);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("hoekdetail.verrijkingWegVan", { naam: "De herfst" }) }));
+    await waitFor(() => expect(schrijfacties()).toHaveLength(1));
+    expect(JSON.parse(schrijfacties()[0][1].body)).toEqual({
+      subthemaperiodeId: "p-herfst",
+      verrijkingen: [{ hoekId: "h-1", tekst: "" }],
+    });
+
+    // De winter has nothing for this hoek: no delete, and the button says it fills something in.
+    expect(screen.queryByRole("button", { name: t("hoekdetail.verrijkingWegVan", { naam: "De winter" }) })).toBeNull();
+    expect(screen.getByRole("button", { name: t("hoekdetail.verrijkingInvullenVan", { naam: "De winter" }) }))
+      .toBeInTheDocument();
+  });
+
+  it("zegt dat er in deze dagen nog geen subthemaperiode is, en pas als de server dat antwoordde", async () => {
+    toon(gelijk);
+
+    expect(await screen.findByText(t("hoekdetail.geenSubthemaperiode"))).toBeInTheDocument();
   });
 });
 
@@ -135,8 +228,8 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     fireEvent.change(screen.getByLabelText(t("hoekdetail.tot")), { target: { value: "10:30" } });
     fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.bewaren") }));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const [pad, init] = fetchMock.mock.calls[0];
+    await waitFor(() => expect(schrijfacties()).toHaveLength(1));
+    const [pad, init] = schrijfacties()[0];
     expect(pad).toBe("/api/hoekplaatsingen/hp-1/uren");
     expect(init.method).toBe("PUT");
     expect(JSON.parse(init.body)).toEqual({ begin: "09:00:00", einde: "10:30:00" });
@@ -176,7 +269,7 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     expect(screen.getByText(dubbel("maandag 14 september"))).toBeInTheDocument();
     // No button into a form that cannot be saved: the reason stands where she reads the hours instead.
     expect(screen.queryByRole("button", { name: t("hoekdetail.urenAanpassen") })).toBeNull();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(schrijfacties()).toHaveLength(0);
   });
 
   it("zegt ook bij drie keer op één dag meer dan één keer, en niet twee", () => {
@@ -217,7 +310,7 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
     // Cancelling: the button focus would return to is no longer there, so it lands on the reason in its place.
     fireEvent.click(screen.getByRole("button", { name: t("hoekdetail.annuleren") }));
     await waitFor(() => expect(screen.getByText(dubbel("maandag 14 september"))).toHaveFocus());
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(schrijfacties()).toHaveLength(0);
   });
 
   it("zet de focus op de reden wanneer de knop onder de cursor verdwijnt", async () => {
@@ -298,7 +391,7 @@ describe("Hoekdetailblad: de uren van de hoek", () => {
 
     expect(screen.getByRole("alert")).toHaveTextContent(t("hoekdetail.eindeVoorBegin"));
     expect(screen.getByRole("button", { name: t("hoekdetail.bewaren") })).toBeDisabled();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(schrijfacties()).toHaveLength(0);
   });
 
   it("biedt geen uren aan voor een hoek zonder rijen, want er is niets om ze op te zetten", () => {

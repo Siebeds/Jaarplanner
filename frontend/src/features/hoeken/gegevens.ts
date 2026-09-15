@@ -23,6 +23,8 @@ export interface HoekWeergave {
   omschrijving: string | null;
   /** How often this corner is currently placed on the agenda. Zero for one that is only defined. */
   aantalPlaatsingen: number;
+  /** How many verrijkingen were written for it, over every subthemaperiode: what deleting it takes along (FB-020). */
+  aantalVerrijkingen: number;
 }
 
 /** What a teacher states about a corner. */
@@ -81,10 +83,15 @@ export function useWijzigHoek(klasId: string | null) {
  */
 export function useVerwijderHoek(klasId: string | null) {
   const ververs = useHoekVerversing(klasId);
+  const qc = useQueryClient();
 
   return useMutation({
     mutationFn: (hoekId: string) => del(`/api/hoeken/${hoekId}`),
-    onSuccess: ververs,
+    onSuccess: () => {
+      ververs();
+      // Its verrijkingen went with it (FB-020).
+      void qc.invalidateQueries({ queryKey: ["hoekverrijkingen"] });
+    },
   });
 }
 
@@ -119,22 +126,13 @@ export interface HoekmomentWeergave {
   einde: string;
 }
 
-/** What is in the corner over a stretch of days. */
-export interface HoekverrijkingWeergave {
-  id: string;
-  van: string;
-  tot: string;
-  tekst: string;
-}
-
-/** A placed hoek as the agenda reads it. */
+/** A placed hoek as the agenda reads it. What is in the corner is not here: see the verrijkingen below. */
 export interface HoekplaatsingWeergave {
   id: string;
   hoekId: string;
   hoekNaam: string;
   van: string;
   tot: string;
-  verrijkingen: HoekverrijkingWeergave[];
   momenten: HoekmomentWeergave[];
 }
 
@@ -143,8 +141,6 @@ export interface HoekplaatsingInvoer {
   hoekId: string;
   van: string;
   tot: string;
-  /** What the corner gets over this window. Null when she left it blank, which is an ordinary answer. */
-  verrijking: string | null;
   /**
    * When it opens and closes on every teaching day of the window, as `HH:mm:ss`.
    *
@@ -198,7 +194,8 @@ export function usePlaatsHoek(klasId: string | null) {
 }
 
 /**
- * Removes a placement, with its enrichments and its timetable rows.
+ * Removes a placement, with its timetable rows. The corner's verrijkingen stay: they belong to the hoek and a
+ * subthemaperiode, not to a run in the timetable (FB-020).
  *
  * The way back out of a mistake, which is what makes placing safe to offer at all: a teacher who
  * drags a fiche onto the wrong fortnight can undo it without a support call.
@@ -208,53 +205,6 @@ export function useVerwijderHoekplaatsing() {
 
   return useMutation({
     mutationFn: (plaatsingId: string) => del(`/api/hoekplaatsingen/${plaatsingId}`),
-    onSuccess: ververs,
-  });
-}
-
-/** What is in the corner, over which days. */
-export interface HoekverrijkingInvoer {
-  plaatsingId: string;
-  /** Set when rewriting one, absent when adding one. */
-  verrijkingId?: string;
-  van: string;
-  tot: string;
-  tekst: string;
-}
-
-/**
- * Adds or rewrites an enrichment (owner, 2026-08-31: "ik wil ook de verrijking kunnen aanpassen").
- *
- * **One hook for both, because the sheet has one form for both.** Adding and rewriting differ only in
- * whether an id exists, and splitting them into two hooks would give the same form two loading flags
- * and two error slots to keep in step.
- *
- * The enrichment is the field carrying the pedagogy and it used to be write-once: the placement sheet
- * took it on the way in and nothing reached it again, so a typo in it was permanent unless the whole
- * placement was deleted and redone.
- */
-export function useBewaarHoekverrijking() {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: ({ plaatsingId, verrijkingId, van, tot, tekst }: HoekverrijkingInvoer) =>
-      verrijkingId === undefined
-        ? post<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/verrijkingen`, { van, tot, tekst })
-        : put<HoekplaatsingWeergave>(
-            `/api/hoekplaatsingen/${plaatsingId}/verrijkingen/${verrijkingId}`,
-            { van, tot, tekst },
-          ),
-    onSuccess: ververs,
-  });
-}
-
-/** Removes one enrichment. The run itself stays: she clears what is in the corner, not the corner. */
-export function useVerwijderHoekverrijking() {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: ({ plaatsingId, verrijkingId }: { plaatsingId: string; verrijkingId: string }) =>
-      del<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/verrijkingen/${verrijkingId}`),
     onSuccess: ververs,
   });
 }
@@ -318,5 +268,87 @@ export function useZetHoekuren() {
     mutationFn: ({ plaatsingId, begin, einde }: Hoekuren) =>
       put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/uren`, { begin, einde }),
     onSuccess: ververs,
+  });
+}
+
+/* ------------------------------------------------------------------------------------------------
+   WHAT IS IN THE CORNER WHILE A SUBTHEMA RUNS (FB-020, ADR-0041)
+
+   One text per hoek and per subthemaperiode: a window the klas's plan stores for a subthema. Written
+   from the subthemabalk above the agenda, and from the hoek's detail sheet; never a block in the grid.
+   ------------------------------------------------------------------------------------------------ */
+
+/** The longest text one verrijking may hold. The server refuses anything longer, with the same number. */
+export const MAXIMALE_VERRIJKING = 2000;
+
+/** What one hoek holds for one subthemaperiode. */
+export interface HoekverrijkingWeergave {
+  id: string;
+  hoekId: string;
+  tekst: string;
+}
+
+/** One stored subthemaperiode of the klas, with what each hoek holds while it runs. Mirrors the server's record. */
+export interface SubthemaperiodeVerrijkingen {
+  subthemaperiodeId: string;
+  subthemaId: string;
+  subthemaNaam: string;
+  van: string;
+  tot: string;
+  /** One per hoek that has one; empty is the ordinary state of a new window. */
+  verrijkingen: HoekverrijkingWeergave[];
+}
+
+/**
+ * What the sheet saves. A window's id when the klas stores one; otherwise the subthema and the days the agenda draws it
+ * on, and the server stores that window first (owner, 2026-09-15). A blank text removes that hoek's verrijking.
+ */
+export type HoekverrijkingenInvoer = {
+  verrijkingen: { hoekId: string; tekst: string }[];
+} & (
+  | { subthemaperiodeId: string }
+  | { subthemaperiodeId: null; subthemaId: string; van: string; tot: string }
+);
+
+/**
+ * The stored subthemaperiodes of the klas touching a range, each with its verrijkingen.
+ *
+ * Keyed on the range like the weekplanning, so the agenda's reads over the same range share one request.
+ */
+export function useHoekverrijkingen(klasId: string | null, van: string, tot: string) {
+  return useQuery({
+    queryKey: ["hoekverrijkingen", klasId, van, tot] as const,
+    queryFn: () => get<SubthemaperiodeVerrijkingen[]>(`/api/klassen/${klasId}/hoekverrijkingen?van=${van}&tot=${tot}`),
+    enabled: klasId !== null && van.length > 0 && tot.length > 0,
+  });
+}
+
+/**
+ * Writes the verrijkingen of one subthemaperiode, for every hoek named in the request.
+ *
+ * **It invalidates the weekplanning too**, because a save for a subthema the agenda drew from its activiteiten alone
+ * stores the window first, and from then on the weekplanning names that window.
+ */
+export function useBewaarHoekverrijkingen(klasId: string | null) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: (invoer: HoekverrijkingenInvoer) =>
+      put<SubthemaperiodeVerrijkingen>(`/api/klassen/${klasId}/hoekverrijkingen`, invoer),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["hoekverrijkingen"] });
+      void qc.invalidateQueries({ queryKey: ["weekplanning"] });
+      // The corners' own counts, which the delete confirmation in Instellingen reads.
+      void qc.invalidateQueries({ queryKey: sleutel(klasId) });
+    },
+  });
+}
+
+/** How many verrijkingen deleting a subthema would take along, over every klas. Disabled until one is chosen. */
+export function useAantalHoekverrijkingen(subthemaId: string | null) {
+  return useQuery({
+    queryKey: ["hoekverrijkingen", "aantal", subthemaId] as const,
+    queryFn: () => get<{ aantal: number }>(`/api/subthemas/${subthemaId}/hoekverrijkingen/aantal`),
+    enabled: subthemaId !== null,
   });
 }

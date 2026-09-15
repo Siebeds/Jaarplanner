@@ -764,6 +764,8 @@ export interface Dagweergave {
  * ranges and the days that carry an activiteit of the same subthema, so the two can never contradict each other.
  */
 export interface Subthemaperiode {
+  /** The window's own id: what a hoekverrijking is written against (FB-020). */
+  id: string;
   subthemaId: string;
   subthemaNaam: string;
   themaId: string;
