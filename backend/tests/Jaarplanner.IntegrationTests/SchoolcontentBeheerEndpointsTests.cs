@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
@@ -96,6 +97,28 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         Assert.Equal("Manueel", Assert.Single(sub.Subdoelen).Koppeling.Status);
         var act = Assert.Single(sub.Activiteiten);
         Assert.Equal("Manueel", Assert.Single(act.Doelkoppelingen).Status);
+    }
+
+    /// <summary>FB-009 through HTTP: the route, the DI registration and the not-found mapping, which the query's unit tests cannot see.</summary>
+    [Fact]
+    public async Task Doelenoverzicht_toont_de_doelen_van_een_thema_en_weigert_een_onbekend_thema()
+    {
+        var client = _factory.CreateClient();
+        var themaResp = await client.PostAsJsonAsync("/api/themas", new { naam = "Overzicht", duurWeken = 4 });
+        var thema = await themaResp.Content.ReadFromJsonAsync<ThemaDto>();
+        (await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/themadoelen", new { leerplandoelCode = "NL-001" }))
+            .EnsureSuccessStatusCode();
+
+        var overzicht = await client.GetFromJsonAsync<JsonElement>($"/api/themas/{thema.Id}/doelenoverzicht");
+        var doelen = overzicht.GetProperty("leeftijden").EnumerateArray()
+            .SelectMany(l => l.GetProperty("leerplandoelen").EnumerateArray())
+            .ToList();
+        var doel = Assert.Single(doelen);
+        Assert.Equal("NL-001", doel.GetProperty("code").GetString());
+        Assert.Equal("Themadoel", doel.GetProperty("plaatsen")[0].GetProperty("soort").GetString());
+
+        var onbekend = await client.GetAsync($"/api/themas/{Guid.NewGuid()}/doelenoverzicht");
+        Assert.Equal(HttpStatusCode.NotFound, onbekend.StatusCode);
     }
 
     /// <summary>

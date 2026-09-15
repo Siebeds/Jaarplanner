@@ -456,6 +456,49 @@ export interface ThemaWeergave {
   subthemas: SubthemaWeergave[];
 }
 
+/** Where in a thema a leerplandoel is linked (FB-009). */
+export type DoelPlaatsSoort = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
+
+export interface DoelPlaats {
+  soort: DoelPlaatsSoort;
+  /** The subthema's name for a subdoel, the activiteit's for an activiteit doel; null for a themadoel. */
+  naam: string | null;
+}
+
+/** A leerplandoel a thema reaches at one leeftijd, once, with every place it is linked. */
+export interface OverzichtLeerplandoel {
+  code: string;
+  doelsoort: Doelsoort;
+  tekst: string;
+  nietMeerInOpstap: boolean;
+  minimumdoelRef: string | null;
+  plaatsen: DoelPlaats[];
+}
+
+/** A minimumdoel the leeftijd's leerplandoelen concord to, with the codes that lead there. */
+export interface OverzichtMinimumdoel {
+  ref: string;
+  leeftijd: string;
+  nr: string;
+  omschrijving: string;
+  leerplandoelen: string[];
+}
+
+export interface LeeftijdDoelen {
+  leeftijd: string;
+  leerplandoelen: OverzichtLeerplandoel[];
+  minimumdoelen: OverzichtMinimumdoel[];
+}
+
+/**
+ * What a thema reaches per leeftijd (FB-009): computed by the server from the decided links under it, never stored, and
+ * never dekking (that belongs to a klas with a plan, Art. V.1).
+ */
+export interface ThemaDoelenoverzicht {
+  themaId: string;
+  leeftijden: LeeftijdDoelen[];
+}
+
 /**
  * A subthema at an age this klas teaches, named with its thema (`GET /api/subthemas/voor-klas/{klasId}`). A thin row
  * for a picker, not a subtree: the agenda's activiteiten list offers these and loads the chosen one's activiteiten.
@@ -602,10 +645,20 @@ export interface Planningsrooster {
 
 export type Dekkingsbereik = "EigenJaarFase" | "HeelCurriculum";
 
+/**
+ * Why a goal is not covered, and so where closing it happens (E5-05). Ordered by how close the goal is to being
+ * covered; the server takes the first that applies.
+ */
+export type Lacuneoorzaak = "WachtOpBeslissing" | "PlaatsingGeweigerd" | "NietIngepland" | "KoppelingNietBeslist" | "GeenThema";
+
 export interface LeerplandoelDekking {
   code: string;
   doelsoort: Doelsoort;
   jaarFase: string;
+  /** The leergebied: the overview's top level (TB-022). */
+  disciplineNummer: string;
+  /** Null only when the number has no row on the server; show the number then. */
+  disciplineNaam: string | null;
   domein: string;
   subdomein: string;
   tekst: string;
@@ -618,6 +671,10 @@ export interface LeerplandoelDekking {
    * exactly when this or `dekkendeThemas` is non-empty, so neither list alone says whether a goal is covered.
    */
   dekkendeFiches: string[];
+  /** Why the goal is not covered (E5-05); null exactly when it is. */
+  oorzaak: Lacuneoorzaak | null;
+  /** The thema's a teacher would act on to close the gap, for its cause only. Empty for GeenThema. */
+  kandidaatThemas: string[];
 }
 
 /**

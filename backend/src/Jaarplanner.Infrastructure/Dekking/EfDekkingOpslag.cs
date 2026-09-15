@@ -281,6 +281,14 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         _context.Leerplandoelen.AsNoTracking().CountAsync(cancellationToken);
 
     /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<string, string>> HaalDisciplinenamenAsync(
+        CancellationToken cancellationToken = default) =>
+        await _context.Disciplines
+            .AsNoTracking()
+            .Select(d => new { d.Nummer, d.Naam })
+            .ToDictionaryAsync(d => d.Nummer, d => d.Naam, StringComparer.Ordinal, cancellationToken);
+
+    /// <inheritdoc />
     public async Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default)
     {
         // Projected to a nullable int rather than loading the Klas: this needs one column, and materialising the

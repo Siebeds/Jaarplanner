@@ -1,7 +1,8 @@
 import { useId, useMemo, useState } from "react";
+import { Bevestiging } from "../../components/ui/Bevestiging";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
-import { Invoer } from "../../components/ui/Veld";
+import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst, volleDag, weekdagIndex } from "../../lib/datum";
 import { toonBereik } from "../plan/tijd";
@@ -9,7 +10,9 @@ import { Doelregels, type Infodoel } from "../plan/Doelinfo";
 import { Doeldetailblad } from "../themas/Doeldetailblad";
 import { t, telWoord } from "../../i18n";
 import {
+  MAX_DAGTEKST,
   useVerplaatsFichemoment,
+  useZetFichemomenttekst,
   type AlgemeneFichemomentWeergave,
   type AlgemeneFicheplaatsingWeergave,
 } from "./gegevens";
@@ -34,6 +37,12 @@ import {
  * **`alleenLezen` is the same sheet for a gebruiker who may not plan this klas** (E6-02, ADR-0030 §3, R7), as in
  * `Hoekdetailblad`: the period and the hours as they are, with the delete, the moment's fields and the sentence about
  * what the delete costs left out, since all three are about changing the plan.
+ *
+ * **Opened from a block, it starts with that day's text** (FB-022): what the class does in this block today, the thing
+ * she opens Tuesday's wero for. A reader sees the text; whoever may plan the klas gets a field for it.
+ *
+ * **Deleting a period that carries day texts asks first**, with the count (owner, 2026-09-15). The texts of the other
+ * days are not on this sheet, so unlike the hoek's sheet it cannot rely on showing what would be lost.
  */
 export function Algemenefichedetailblad({
   open,
@@ -70,6 +79,9 @@ export function Algemenefichedetailblad({
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
   // The goal whose detail is open over this sheet, with the row that opened it, which gets focus back when it closes.
   const [doel, setDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
+  const [bevestigen, setBevestigen] = useState(false);
+  // Every occurrence of the run, not only the visible week's: the placement read carries all of them.
+  const aantalTeksten = plaatsing.momenten.filter((m) => m.tekst !== null).length;
 
   return (
     <Blad
@@ -84,7 +96,7 @@ export function Algemenefichedetailblad({
           <Knop
             rang="stil"
             type="button"
-            onClick={onVerwijder}
+            onClick={() => (aantalTeksten > 0 ? setBevestigen(true) : onVerwijder())}
             disabled={bezig}
             className="bg-inkt text-inkt-op hover:bg-inkt active:bg-inkt"
           >
@@ -98,6 +110,27 @@ export function Algemenefichedetailblad({
       }
     >
       <div className="flex flex-col gap-5">
+        {moment ? (
+          alleenLezen ? (
+            <div>
+              <p className="text-micro uppercase text-inkt-zwak">
+                {t("fichedetail.dagtekst", { dag: volleDag(moment.datum) })}
+              </p>
+              <p className={`mt-0.5 whitespace-pre-line text-body ${moment.tekst ? "text-inkt" : "text-inkt-zacht"}`}>
+                {moment.tekst ?? t("fichedetail.dagtekstLeeg")}
+              </p>
+            </div>
+          ) : (
+            // Keyed on the saved text, so the refetch after a save refills the field with what the server kept.
+            <Dagtekstvorm
+              key={`${moment.id}-${moment.tekst ?? ""}`}
+              plaatsingId={plaatsing.id}
+              moment={moment}
+              vergrendeld={bezig}
+            />
+          )
+        ) : null}
+
         <div>
           <p className="text-micro uppercase text-inkt-zwak">{t("fichedetail.periode")}</p>
           <p className="mt-0.5 text-body text-inkt">{periodeTekst(plaatsing.van, plaatsing.tot)}</p>
@@ -160,7 +193,83 @@ export function Algemenefichedetailblad({
           </div>
         ) : null}
       </div>
+
+      {alleenLezen ? null : (
+        <Bevestiging
+          open={bevestigen}
+          titel={t("fichedetail.bevestigTitel")}
+          gevolg={telWoord(aantalTeksten, "fichedetail.bevestigEenTekst", "fichedetail.bevestigTeksten")}
+          bevestigLabel={t("fichedetail.bevestigLabel")}
+          onBevestig={() => {
+            // Back to the sheet, which shows the delete running and, if it fails, why.
+            setBevestigen(false);
+            onVerwijder();
+          }}
+          onSluit={() => setBevestigen(false)}
+        />
+      )}
     </Blad>
+  );
+}
+
+/**
+ * One day's text, as a field (FB-022). Saving an emptied field clears the day, which is what every other day of the
+ * run looks like until someone writes about it.
+ */
+function Dagtekstvorm({
+  plaatsingId,
+  moment,
+  vergrendeld,
+}: {
+  plaatsingId: string;
+  moment: AlgemeneFichemomentWeergave;
+  /** The delete is running; nothing else in the sheet should start. */
+  vergrendeld: boolean;
+}) {
+  const id = useId();
+  const zet = useZetFichemomenttekst();
+  const opgeslagen = moment.tekst ?? "";
+  const [tekst, setTekst] = useState(opgeslagen);
+  const detail = zet.error instanceof ApiError ? zet.error.detail : undefined;
+
+  return (
+    <div>
+      <label htmlFor={id} className="text-micro uppercase text-inkt-zwak">
+        {t("fichedetail.dagtekst", { dag: volleDag(moment.datum) })}
+      </label>
+      <Tekstvlak
+        id={id}
+        value={tekst}
+        maxLength={MAX_DAGTEKST}
+        placeholder={t("fichedetail.dagtekstPlaatshouder")}
+        aria-describedby={`${id}-hint`}
+        disabled={zet.isPending || vergrendeld}
+        onChange={(e) => {
+          zet.reset();
+          setTekst(e.target.value);
+        }}
+        className="mt-1"
+      />
+      <p id={`${id}-hint`} className="mt-1 text-micro text-inkt-zacht">
+        {t("fichedetail.dagtekstHint")}
+      </p>
+
+      <Knop
+        type="button"
+        className="mt-2"
+        disabled={zet.isPending || vergrendeld || tekst.trim() === opgeslagen}
+        onClick={() => zet.mutate({ plaatsingId, momentId: moment.id, tekst: tekst.trim() })}
+      >
+        {zet.isPending ? t("fichedetail.bewarenBezig") : t("fichedetail.dagtekstBewaren")}
+      </Knop>
+
+      {zet.isError ? (
+        <div role="alert" className="mt-2 rounded-veld border border-attentie/40 bg-attentie-zacht p-3">
+          <p className="text-body font-medium text-attentie-inkt">{t("fichedetail.dagtekstMislukt")}</p>
+          {detail ? <p className="mt-1 text-meta text-attentie-inkt">{detail}</p> : null}
+        </div>
+      ) : null}
+    </div>
   );
 }
 

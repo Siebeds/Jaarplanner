@@ -171,6 +171,20 @@ describe("Navigatie", () => {
     expect(useHoekenpaneel.getState().open).toBe(false);
   });
 
+  it("zet de schakelaars in de volgorde activiteiten, algemene fiches, hoekenfiches (TB-024)", () => {
+    rendermetPad("/agenda", DIRECTIE);
+    const namen = [
+      t("hoekenpaneel.activiteitenTitel"),
+      t("hoekenpaneel.algemeenTitel"),
+      t("hoekenpaneel.titel"),
+    ];
+    const knoppen = namen.map((naam) => screen.getByRole("button", { name: naam }));
+
+    for (let i = 1; i < knoppen.length; i++) {
+      expect(knoppen[i - 1].compareDocumentPosition(knoppen[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {
     useHoekenpaneel.setState({ open: true });
     rendermetPad("/agenda", DIRECTIE);
@@ -219,14 +233,19 @@ describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
     expect(rapport()).toBeInTheDocument();
   });
 
-  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K3", () => {
+  it("staat er voor een hoofdleerkracht van K3 zonder klas, voor de set en de schaal (eigenaar, 2026-09-15)", () => {
+    rendermetPad("/doelen", ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K2", () => {
     rendermetPad(
       "/doelen",
       ikMet({
         eigenKlasIds: ["k2"],
         leerkrachtLeeftijden: ["K2"],
         heeftThemabeheer: true,
-        hoofdleerkrachtLeeftijden: ["K3"],
+        hoofdleerkrachtLeeftijden: ["K2"],
       }),
     );
     expect(rapport()).not.toBeInTheDocument();

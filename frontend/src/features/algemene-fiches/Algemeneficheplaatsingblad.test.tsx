@@ -99,7 +99,7 @@ describe("Algemeneficheplaatsingblad", () => {
           ficheNaam: "turnen",
           van: "2026-09-01",
           tot: "2026-09-04",
-          momenten: [{ id: "m-1", datum: "2026-09-02", begin: "10:30:00", einde: "11:20:00" }],
+          momenten: [{ id: "m-1", datum: "2026-09-02", begin: "10:30:00", einde: "11:20:00", tekst: null }],
         },
       ],
     });

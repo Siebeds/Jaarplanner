@@ -55,6 +55,34 @@ public sealed class AlgemeneFicheplaatsingServiceTests
     private static AlgemeneFicheplaatsingInvoer Invoer(Guid ficheId, DateOnly van, DateOnly tot, int[] weekdagen) =>
         new(ficheId, van, tot, weekdagen, Begin, Einde);
 
+    /// <summary>
+    /// FB-022: a day text through the service. It lands on that one occurrence and is persisted; an unknown placement or
+    /// moment is a 404 and a text over the limit a Dutch 400, and a refusal leaves the saved text alone.
+    /// </summary>
+    [Fact]
+    public async Task Een_dagtekst_wordt_bewaard_en_een_onbekend_moment_of_een_te_lange_tekst_geweigerd()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            Invoer(_ficheId, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 18), [1, 2]));
+        var dinsdag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 15));
+
+        var na = await Service().ZetMomenttekstAsync(plaatsing.Id, dinsdag.Id, "Kapla");
+        Assert.Equal("Kapla", na.Momenten.Single(m => m.Id == dinsdag.Id).Tekst);
+        Assert.Null(na.Momenten.Single(m => m.Id != dinsdag.Id).Tekst);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().ZetMomenttekstAsync(Guid.NewGuid(), dinsdag.Id, "Iets"));
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().ZetMomenttekstAsync(plaatsing.Id, Guid.NewGuid(), "Iets"));
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() =>
+            Service().ZetMomenttekstAsync(plaatsing.Id, dinsdag.Id, new string('a', AlgemeneFichemoment.MaxTekstLengte + 1)));
+        Assert.Contains("hoogstens 500 tekens", fout.Message);
+
+        await using var context = new AppDbContext(_options);
+        Assert.Equal("Kapla", (await context.AlgemeneFichemomenten.SingleAsync(m => m.Id == dinsdag.Id)).Tekst);
+    }
+
     [Fact]
     public async Task Elke_maandag_levert_een_rij_per_maandag_met_school_op_het_gekozen_lesuur()
     {

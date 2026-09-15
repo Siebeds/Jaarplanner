@@ -66,6 +66,23 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
             invoer.Einde,
             cancellationToken));
 
+    /// <summary>
+    /// Sets or clears what the class does in ONE occurrence that day (FB-022). The same right as moving it: the text is
+    /// part of the klas's planning, and whoever may only read the agenda reads it in the GET above.
+    /// </summary>
+    [HttpPut("/api/algemene-ficheplaatsingen/{plaatsingId:guid}/momenten/{momentId:guid}/tekst")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]
+    public async Task<ActionResult<AlgemeneFicheplaatsingWeergave>> ZetMomenttekst(
+        Guid plaatsingId,
+        Guid momentId,
+        [FromBody] FichemomentTekst invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.ZetMomenttekstAsync(plaatsingId, momentId, invoer.Tekst, cancellationToken));
+
+    /// <summary>One day's text.</summary>
+    /// <param name="Tekst">What the class does in the block that day. Empty or <c>null</c> clears it.</param>
+    public sealed record FichemomentTekst(string? Tekst);
+
     /// <summary>Where one occurrence should move to.</summary>
     /// <param name="Datum">The day. May be the day it is already on.</param>
     /// <param name="Begin">When it starts.</param>

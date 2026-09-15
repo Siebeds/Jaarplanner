@@ -28,6 +28,9 @@ public sealed class AlgemeneFichemomentConfiguration : IEntityTypeConfiguration<
         builder.Property(m => m.Begin).IsRequired();
         builder.Property(m => m.Einde).IsRequired();
 
+        // Nullable: a day nobody has written about has no text, which is most of them (FB-022).
+        builder.Property(m => m.Tekst).HasMaxLength(AlgemeneFichemoment.MaxTekstLengte);
+
         builder.HasIndex(m => new { m.Datum, m.Begin });
     }
 }

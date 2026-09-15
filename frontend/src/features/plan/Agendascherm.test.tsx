@@ -197,6 +197,11 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
     expect(chip(t("periode.hoekenfiches"))).not.toBeNull();
     expect(chip(t("periode.algemeneFiches"))).not.toBeNull();
     expect(chip(t("periode.activiteiten"))).not.toBeNull();
+    // In the sidebar's order: activiteiten, algemene fiches, hoekenfiches (TB-024).
+    const chips = [t("periode.activiteiten"), t("periode.algemeneFiches"), t("periode.hoekenfiches")].map(chip);
+    for (let i = 1; i < chips.length; i++) {
+      expect(chips[i - 1]!.compareDocumentPosition(chips[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
     expect(paneel()).not.toBeNull();
 
     const blad = await openTurnen();
