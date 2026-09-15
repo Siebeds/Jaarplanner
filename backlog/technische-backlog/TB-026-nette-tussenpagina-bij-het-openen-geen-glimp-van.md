@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:34
+bijgewerkt: 2026-09-15 19:47
 opgepakt-door: tussenpagina
 branch: ticket/tussenpagina-aanmelding
 pr:
@@ -53,3 +53,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 19:34 · tussenpagina · aangemaakt (status in-uitvoering)
+- 2026-09-15 19:47 · tussenpagina · Aanmeldpoort en tussenpagina gebouwd; vitest 876/876 groen, pnpm lint en pnpm build groen

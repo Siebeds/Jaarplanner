@@ -17,9 +17,24 @@
         if (keuze === "licht" || keuze === "donker") document.documentElement.setAttribute("data-weergave", keuze);
       } catch (e) {}
     </script>
+    <!-- Hides the tussenpagina below until the stylesheet has arrived, which defines the variable. -->
+    <style>
+      .tussenpagina {
+        visibility: var(--tussenpagina-zichtbaar, hidden);
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The tussenpagina (TB-026), for the moment before the script has loaded. React replaces it with the
+         same drawing from src/app/Tussenpagina.tsx: change one, change the other. The status line is
+         empty here on purpose; its sentence lives in the catalogue. -->
+    <div id="root">
+      <main class="tussenpagina">
+        <h1 class="tussenpagina-naam">Jaarplanner</h1>
+        <span aria-hidden="true" class="tussenpagina-balk"><span></span><span></span><span></span></span>
+        <p class="tussenpagina-status"></p>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
