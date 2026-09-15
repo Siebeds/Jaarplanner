@@ -24,11 +24,14 @@ namespace Jaarplanner.Infrastructure.Ontwikkelingsrapport;
 /// </summary>
 public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
 {
-    /// <summary>The rapportdoel was deleted after the screen loaded, or never existed.</summary>
-    internal const string RapportdoelNietGevonden = "Dit rapportdoel bestaat niet meer. Vernieuw de pagina.";
+    /// <summary>
+    /// No rapportdoel has this id. Usually deleted after the screen loaded, but the lookup does not prove that one
+    /// existed, so the sentence does not say so either (the E5-03 rule).
+    /// </summary>
+    internal const string RapportdoelNietGevonden = "Dit rapportdoel is niet gevonden. Vernieuw de pagina.";
 
-    /// <summary>The star was deleted from the scale after the screen loaded, or never was on it.</summary>
-    internal const string OnbekendeGradatie = "Deze ster staat niet meer in de sterrenschaal. Vernieuw de pagina en kies opnieuw.";
+    /// <summary>No star of the scale has this id; as above, the sentence claims no more than the lookup proves.</summary>
+    internal const string OnbekendeGradatie = "Deze ster is niet gevonden in de sterrenschaal. Vernieuw de pagina en kies opnieuw.";
 
     private readonly AppDbContext _db;
     private readonly IRapportsetService _rapportset;
@@ -145,8 +148,9 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
     /// Applies <paramref name="wijziging"/> to the child's report at the moment, making the report on the first write.
     /// <para>
     /// <b>Two first writes at once</b> (two co-teachers, or one teacher's star and text a moment apart) both find no
-    /// report and both make one; the unique index on (leerling, moment) refuses the second. That one is then applied
-    /// again, once, to the report the first made, so neither write is lost and neither teacher sees an error.
+    /// report and both make one; the unique index on (leerling, moment) refuses the second. Two first writes of the same
+    /// rapportdoel on an existing report collide the same way on the pair key of <c>rapportbeoordelingen</c>. The refused
+    /// one is then applied again, once, to what the first wrote, so no teacher sees an error and the later write wins.
     /// </para>
     /// </summary>
     private async Task<T> SchrijfAsync<T>(
@@ -162,7 +166,7 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
         catch (DbUpdateException fout) when (fout.InnerException is PostgresException
         {
             SqlState: PostgresErrorCodes.UniqueViolation,
-            TableName: "ontwikkelingsrapporten",
+            TableName: "ontwikkelingsrapporten" or "rapportbeoordelingen",
         })
         {
             _db.ChangeTracker.Clear();

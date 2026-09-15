@@ -186,6 +186,31 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
         Assert.Equal(1, await AantalRapportenAsync());
     }
 
+    [PostgresFact]
+    public async Task Twee_eerste_bewaringen_van_hetzelfde_rapportdoel_tegelijk_geven_geen_fout()
+    {
+        var o = await OpzetAsync();
+        using var lk = _opzet.Als(o.LeerkrachtId);
+        using (var besluit = await lk.PutAsJsonAsync(Besluit(o.Kind, 1), new { tekst = "Het rapport bestaat al." }))
+        {
+            Assert.Equal(HttpStatusCode.OK, besluit.StatusCode);
+        }
+
+        // Two co-teachers rate the same rapportdoel for the first time at once (R16): both rows would share one key.
+        var antwoorden = await Task.WhenAll(
+            lk.PutAsJsonAsync(Beoordeling(o.Kind, 1, o.Luisteren), new { gradatieId = o.VolledigBereikt, tekst = "Van de ene." }),
+            lk.PutAsJsonAsync(Beoordeling(o.Kind, 1, o.Luisteren), new { gradatieId = o.NogNietVolledig, tekst = "Van de andere." }));
+        Assert.All(antwoorden, a => Assert.Equal(HttpStatusCode.OK, a.StatusCode));
+        foreach (var antwoord in antwoorden)
+        {
+            antwoord.Dispose();
+        }
+
+        Assert.Contains((await LeesAsync(lk, o.Kind, 1)).Rapportdoelen[0].Tekst, new[] { "Van de ene.", "Van de andere." });
+        await using var context = _db.MaakContext();
+        Assert.Equal(1, await context.Rapportbeoordelingen.CountAsync());
+    }
+
     // --- Who (AC3, AC4; R16, R17, R26). ---
 
     [PostgresFact]
@@ -328,11 +353,11 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
         await RechtenTestOpzet.VerwachtAsync(
             lk.PutAsJsonAsync(Beoordeling(o.Kind, 1, o.Luisteren), new { gradatieId = Guid.NewGuid(), tekst = "Tekst." }),
             HttpStatusCode.BadRequest,
-            "Deze ster staat niet meer in de sterrenschaal. Vernieuw de pagina en kies opnieuw.");
+            "Deze ster is niet gevonden in de sterrenschaal. Vernieuw de pagina en kies opnieuw.");
         await RechtenTestOpzet.VerwachtAsync(
             lk.PutAsJsonAsync(Beoordeling(o.Kind, 1, Guid.NewGuid()), new { gradatieId = o.VolledigBereikt, tekst = "Tekst." }),
             HttpStatusCode.NotFound,
-            "Dit rapportdoel bestaat niet meer. Vernieuw de pagina.");
+            "Dit rapportdoel is niet gevonden. Vernieuw de pagina.");
         await RechtenTestOpzet.VerwachtAsync(
             lk.PutAsJsonAsync(Beoordeling(o.Kind, 1, o.Luisteren), new { gradatieId = o.VolledigBereikt, tekst = new string('x', 2001) }),
             HttpStatusCode.BadRequest,
