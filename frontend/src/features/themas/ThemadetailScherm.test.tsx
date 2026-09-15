@@ -4,7 +4,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import type { ActiviteitWeergave, DoelMatchSuggestie, ThemaWeergave } from "../../lib/types";
-import { t } from "../../i18n";
+import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -119,6 +119,20 @@ function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave } = {}) 
 
 const knop = (naam: string) => screen.queryByRole("button", { name: naam });
 
+/** A chapter's fold button, found by the subthema's name; its summary follows the name in the same label. */
+const hoofdstuk = (naam: string, open: boolean) =>
+  screen.getByRole("button", { name: new RegExp(`^${naam}`), expanded: open });
+
+/**
+ * Opens both chapters. They start shut (FB-011), and on a shut chapter every "this control is absent" check below
+ * would pass without testing anything, so the rights tests open them first.
+ */
+async function openHoofdstukken() {
+  await screen.findByText("Bladeren");
+  fireEvent.click(hoofdstuk("Bladeren", false));
+  fireEvent.click(hoofdstuk("Rekenen", false));
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
 });
@@ -126,7 +140,7 @@ afterEach(() => {
 describe("ThemadetailScherm: wie wat mag", () => {
   it("geeft een leerkracht van K3 de activiteiten van K3, en de prullenbak alleen op wat zij zelf maakte zonder doel", async () => {
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-k3"] }));
-    await screen.findByText("Bladeren");
+    await openHoofdstukken();
 
     // Not the thema, its themadoelen or the doelsuggesties (R4, R14), nor any subthema (R5, R21) or subdoel (R24).
     expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).toBeNull();
@@ -156,7 +170,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("geeft een hoofdleerkracht van K3 het K3-hoofdstuk helemaal, en het L1-hoofdstuk niet", async () => {
     toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
-    await screen.findByText("Bladeren");
+    await openHoofdstukken();
 
     expect(knop(t("subthemabeheer.toevoegen"))).not.toBeNull();
     expect(knop(t("subthemabeheer.bewerkAria", { naam: "Bladeren" }))).not.toBeNull();
@@ -179,7 +193,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("geeft themabeheer het thema, de themadoelen en de doelsuggesties, niet het verwijderen en niet de subthema's", async () => {
     toon(ikMet({ heeftThemabeheer: true }));
-    await screen.findByText("Bladeren");
+    await openHoofdstukken();
 
     expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).not.toBeNull();
     expect(knop(t("doelkiezer.koppel"))).not.toBeNull();
@@ -199,7 +213,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("geeft directie alles, ook het verwijderen van het thema", async () => {
     toon(DIRECTIE);
-    await screen.findByText("Bladeren");
+    await openHoofdstukken();
 
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).not.toBeNull();
     expect(knop(t("subthemabeheer.bewerkAria", { naam: "Rekenen" }))).not.toBeNull();
@@ -208,7 +222,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("opent een activiteit voor wie haar niet mag aanpassen als feiten, zonder Bewaren", async () => {
     toon(ikMet({ leerkrachtLeeftijden: ["L1"] }));
-    fireEvent.click(await screen.findByRole("button", { name: t("activiteit.bekijkAria", { naam: "Gekoppeld spel" }) }));
+    await openHoofdstukken();
+    fireEvent.click(screen.getByRole("button", { name: t("activiteit.bekijkAria", { naam: "Gekoppeld spel" }) }));
 
     const blad = await screen.findByRole("dialog");
     expect(within(blad).getByText(t("activiteit.minuten", { aantal: STANDAARDDUUR }))).toBeInTheDocument();
@@ -250,5 +265,34 @@ describe("ThemadetailScherm: wie wat mag", () => {
     fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
+  });
+});
+
+describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
+  it("toont elk subthema ingeklapt, met zijn samenvatting in plaats van zijn lijsten", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+
+    const bladeren = hoofdstuk("Bladeren", false);
+    expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
+    expect(within(bladeren).getByText(telWoord(3, "thema.eenActiviteit", "thema.activiteiten"))).toBeInTheDocument();
+    expect(within(bladeren).getByText(telWoord(1, "thema.eenSubdoel", "thema.subdoelen"))).toBeInTheDocument();
+    expect(screen.queryByText("Eigen spel")).toBeNull();
+    expect(screen.queryByText("Tellen")).toBeNull();
+  });
+
+  // The fold is a native button (`getByRole` above finds it with `aria-expanded`), which answers Enter and Space by
+  // itself; jsdom does not turn a key press into a click, so the keyboard half is checked in the browser pass.
+  it("klapt één subthema open met een klik, en bij een tweede klik weer in", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+
+    fireEvent.click(hoofdstuk("Bladeren", false));
+    expect(screen.getByText("Eigen spel")).toBeInTheDocument();
+    expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
+    expect(screen.queryByText("Tellen")).toBeNull();
+
+    fireEvent.click(hoofdstuk("Bladeren", true));
+    expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 });

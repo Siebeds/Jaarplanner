@@ -25,10 +25,13 @@ import { Gekoppelddoel } from "./Gekoppelddoel";
  * rather than by how deeply it is buried.
  *
  * **The card folds shut, and the heading is what folds it** (owner, 2026-08-31: "ik wil dat de
- * subthema cards collapsible worden, zodat ik ze kan dicht en openklappen, default mogen ze
- * openstaan"). Open by default, and a disclosure button with `aria-expanded` and a chevron that
- * turns, which is the shape this app already uses in `Themarij` and `Doelenboom`. One pattern for
- * one gesture.
+ * subthema cards collapsible worden, zodat ik ze kan dicht en openklappen"). A disclosure button with
+ * `aria-expanded` and a chevron that turns, which is the shape this app already uses in `Themarij`
+ * and `Doelenboom`. One pattern for one gesture.
+ *
+ * **Shut by default** (FB-011, owner 2026-09-15: "standaard subthema's ingeklapt op thema pagina").
+ * The 2026-08-31 ruling had them open; with chapters for three leeftijden the page grew long enough
+ * that finding one meant scrolling past the others, so every visit now starts on the folded summaries.
  *
  * **That cost the "press the subthema to edit it" gesture, and the pencil comes back for it.** The
  * heading of a card that folds has to fold it: that is what a teacher has met everywhere else, and a
@@ -84,9 +87,9 @@ export function Subthemahoofdstuk({
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
-  // Local, and deliberately not persisted. The owner asked for open by default; remembering a fold
+  // Local, and deliberately not persisted: shut on every visit (FB-011's default). Remembering a fold
   // across a route change is a different feature and would need somewhere to remember it.
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);
 
   const leeftijd = subthema.leeftijd;
   const magSubthema = mag.subthemaBeheren(leeftijd);
