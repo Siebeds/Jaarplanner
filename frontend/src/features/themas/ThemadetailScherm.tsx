@@ -619,10 +619,16 @@ export function ThemadetailScherm() {
       <Bevestiging
         open={teVerwijderenSubthema !== null}
         titel={t("subthemabeheer.verwijderTitel", { naam: teVerwijderenSubthema?.naam ?? "" })}
-        // The verrijkingen are named only once the count is read and above zero. Until then the sentence without them
-        // stands, which claims nothing about them.
+        // The verrijkingen are named once the count is read and above zero. While it is out, the delete waits (the
+        // owner's ruling is that the count comes first); if it cannot be read, the sentence says so rather than delete
+        // other klassen's texts without a number.
         gevolg={
-          (verrijkingenWeg.data?.aantal ?? 0) > 0
+          verrijkingenWeg.isError
+            ? t("subthemabeheer.verwijderGevolgVerrijkingenOnbekend", {
+                activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
+                doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
+              })
+            : (verrijkingenWeg.data?.aantal ?? 0) > 0
             ? t("subthemabeheer.verwijderGevolgMetVerrijkingen", {
                 activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
                 doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
@@ -638,7 +644,7 @@ export function ThemadetailScherm() {
               })
         }
         bevestigLabel={t("themabeheer.verwijder")}
-        bezig={verwijderSubthema.isPending}
+        bezig={verwijderSubthema.isPending || (teVerwijderenSubthema !== null && verrijkingenWeg.isPending)}
         onSluit={() => setTeVerwijderenSubthema(null)}
         onBevestig={() => {
           if (!teVerwijderenSubthema) return;

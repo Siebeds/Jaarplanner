@@ -324,9 +324,21 @@ export function Agendascherm() {
    */
   const verrijkingen = useHoekverrijkingen(klasId, reeksVan, reeksTot);
   // The runs the balk above the grid names: the ones touching the days on screen, as the strips in the headings do.
+  // A run drawn from its activiteiten alone may still share days with a stored window of the same subthema that began
+  // in the previous themaperiode, which the runs do not fold in. The server writes onto that window rather than store a
+  // second one, so the balk and the sheet name it too, instead of offering to store a period that exists.
   const reeksenInBeeld = useMemo(
-    () => reeksen.filter((reeks) => reeks.van <= tot && reeks.tot >= van),
-    [reeksen, van, tot],
+    () =>
+      reeksen
+        .filter((reeks) => reeks.van <= tot && reeks.tot >= van)
+        .map((reeks) => {
+          if (reeks.periodeId) return reeks;
+          const venster = (verrijkingen.data ?? []).find(
+            (p) => p.subthemaId === reeks.subthemaId && p.van <= reeks.tot && p.tot >= reeks.van,
+          );
+          return venster ? { ...reeks, periodeId: venster.subthemaperiodeId } : reeks;
+        }),
+    [reeksen, van, tot, verrijkingen.data],
   );
   // Under each hoek in the side panel: its verrijking for every stored subthemaperiode touching the anchored week,
   // the week the activiteiten list speaks about too.
@@ -953,7 +965,8 @@ export function Agendascherm() {
               <Subthemabalk
                 reeksen={reeksenInBeeld}
                 verrijkingen={verrijkingen.data ?? []}
-                geladen={verrijkingen.isSuccess}
+                // "None yet" needs both reads: the preview is built from the klas's hoeken as well.
+                geladen={verrijkingen.isSuccess && hoeken !== undefined}
                 hoeken={hoeken ?? []}
                 magPlannen={magPlannen}
                 onOpen={(reeks) => setGeopendeReeks(reeks)}

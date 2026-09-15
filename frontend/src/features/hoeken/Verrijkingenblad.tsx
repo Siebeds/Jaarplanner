@@ -20,8 +20,9 @@ import {
  * 2026-09-15, FB-020).
  *
  * **One field per hoek, saved together**, because she writes them together: standing in the agenda at the start of "de
- * herfst", she goes round the room. The server writes the whole set in one save, where a blank field removes what that
- * hoek had.
+ * herfst", she goes round the room. Only the fields she changed are sent, in one save, where a blank field removes what
+ * that hoek had. An untouched field says nothing new, and sending it would overwrite, or blank out, a text a colleague
+ * of the klas wrote since this sheet read it.
  *
  * **A run with no stored window says so before the save** (owner, 2026-09-15). The agenda draws a subthema from its
  * activiteiten alone as well; saving here stores its window as the balk shows it, and she reads that first, not after.
@@ -56,7 +57,14 @@ export function Verrijkingenblad({
   const waarden = teksten ?? opgeslagen;
 
   function bewaarAlles() {
-    const verrijkingen = (hoeken ?? []).map((hoek) => ({ hoekId: hoek.id, tekst: (waarden[hoek.id] ?? "").trim() }));
+    const verrijkingen = (hoeken ?? [])
+      .map((hoek) => ({ hoekId: hoek.id, tekst: (waarden[hoek.id] ?? "").trim() }))
+      .filter((regel) => regel.tekst !== (opgeslagen[regel.hoekId] ?? "").trim());
+    // Nothing changed, nothing to say: no request, and no window stored for a run that had none.
+    if (verrijkingen.length === 0) {
+      onSluit();
+      return;
+    }
     bewaar.mutate(
       reeks.periodeId
         ? { subthemaperiodeId: reeks.periodeId, verrijkingen }
@@ -89,8 +97,9 @@ export function Verrijkingenblad({
       <div className="flex flex-col gap-4">
         <p className="text-meta text-inkt-zwak">{periodeTekst(reeks.van, reeks.tot)}</p>
 
-        {/* Only where it is true: this run has no stored window, and this gebruiker's save would store one. */}
-        {magPlannen && reeks.periodeId === undefined ? (
+        {/* Only where it is true: the reads are in, no stored window of this subthema shares these days (the agenda
+            looks for one before it opens this sheet), and this gebruiker's save would store one. */}
+        {magPlannen && status === "klaar" && reeks.periodeId === undefined ? (
           <p className="text-meta text-inkt-zacht">
             {t("verrijkingenblad.periodeVastleggen", { periode: periodeTekst(reeks.van, reeks.tot) })}
           </p>

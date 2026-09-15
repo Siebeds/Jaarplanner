@@ -31,7 +31,7 @@ export function Subthemabalk({
   /** The runs touching the days on screen, in the order they start. */
   reeksen: readonly Subthemareeks[];
   verrijkingen: readonly SubthemaperiodeVerrijkingen[];
-  /** Whether the verrijkingen above come from a read that succeeded. */
+  /** Whether the verrijkingen above and the hoeken below both come from reads that succeeded. */
   geladen: boolean;
   /** The klas's corners, to name the first one in the preview and to keep their order. */
   hoeken: readonly { id: string; naam: string }[];

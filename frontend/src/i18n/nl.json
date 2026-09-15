@@ -428,6 +428,7 @@
     "verwijderTitel": "{naam} verwijderen",
     "verwijderGevolg": "Hiermee verdwijnen ook {activiteiten} activiteiten en {doelen} gekoppelde doelen. Dat is niet terug te draaien.",
     "verwijderGevolgMetVerrijkingen": "Hiermee verdwijnen ook {activiteiten} activiteiten, {doelen} gekoppelde doelen en {verrijkingen} van klassen. Dat is niet terug te draaien.",
+    "verwijderGevolgVerrijkingenOnbekend": "Hiermee verdwijnen ook {activiteiten} activiteiten, {doelen} gekoppelde doelen en eventuele hoekverrijkingen van klassen. Hoeveel dat er zijn, kon niet gelezen worden. Dat is niet terug te draaien.",
     "eenVerrijking": "1 hoekverrijking",
     "aantalVerrijkingen": "{aantal} hoekverrijkingen"
   },
@@ -1079,7 +1080,7 @@
   },
   "verrijkingenblad": {
     "titel": "Hoeken tijdens {naam}",
-    "periodeVastleggen": "Dit subthema heeft nog geen vastgelegde periode. Bewaren legt ze vast: {periode}.",
+    "periodeVastleggen": "Voor deze dagen is nog geen periode van dit subthema vastgelegd. Bewaren legt ze vast: {periode}.",
     "voorbeeld": "prentenboeken over de herfst, bladerenpers op tafel",
     "leeg": "Nog niets ingevuld.",
     "geenHoeken": "Deze klas heeft nog geen hoeken.",

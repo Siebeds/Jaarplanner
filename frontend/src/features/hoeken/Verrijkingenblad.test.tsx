@@ -93,15 +93,24 @@ describe("Verrijkingenblad", () => {
     const [pad, init] = fetchMock.mock.calls[0];
     expect(pad).toBe("/api/klassen/k-1/hoekverrijkingen");
     expect(init.method).toBe("PUT");
-    // Every hoek of the klas, trimmed; a blank one tells the server that corner has nothing this time.
+    // Only the field she changed, trimmed: an untouched one would overwrite, or blank out, a colleague's text.
     expect(JSON.parse(init.body)).toEqual({
       subthemaperiodeId: "p-herfst",
-      verrijkingen: [
-        { hoekId: "h-boek", tekst: "prentenboeken" },
-        { hoekId: "h-bouw", tekst: "kastanjes" },
-        { hoekId: "h-zand", tekst: "" },
-      ],
+      verrijkingen: [{ hoekId: "h-bouw", tekst: "kastanjes" }],
     });
+  });
+
+  it("sluit zonder verzoek als niets veranderde, en stuurt een leeggemaakt veld als leeg mee", async () => {
+    const { onSluit } = toon();
+
+    fireEvent.click(screen.getByRole("button", { name: t("verrijkingenblad.bewaren") }));
+    expect(onSluit).toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("boekenhoek"), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: t("verrijkingenblad.bewaren") }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).verrijkingen).toEqual([{ hoekId: "h-boek", tekst: "" }]);
   });
 
   it("zegt vooraf dat bewaren de periode vastlegt als het subthema er nog geen heeft, en stuurt dan de dagen mee", async () => {
