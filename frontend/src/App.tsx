@@ -16,6 +16,7 @@ import { HoekenScherm } from "./features/instellingen/HoekenScherm";
 import { AlgemeneFichesScherm } from "./features/instellingen/AlgemeneFichesScherm";
 import { WeergaveScherm } from "./features/instellingen/WeergaveScherm";
 import { GebruikersScherm } from "./features/instellingen/GebruikersScherm";
+import { SchoolurenScherm } from "./features/instellingen/SchoolurenScherm";
 import { Onderdeelpoort } from "./features/instellingen/Onderdeelpoort";
 import { ONDERDELEN, type Deel } from "./features/instellingen/onderdelen";
 import type { ComponentType } from "react";
@@ -27,6 +28,7 @@ import type { ComponentType } from "react";
 const INSTELLINGEN: Record<Deel, ComponentType> = {
   klassen: KlassenScherm,
   gebruikers: GebruikersScherm,
+  schooluren: SchoolurenScherm,
   hoeken: HoekenScherm,
   "algemene-fiches": AlgemeneFichesScherm,
   weergave: WeergaveScherm,

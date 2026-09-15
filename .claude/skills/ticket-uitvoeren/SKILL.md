@@ -35,8 +35,8 @@ the merge). It never adopts another copy itself. Do not work around a refusal.
   let the owner confirm your pick.
 
 Exempt from the rule: answering questions, explaining, read-only investigation, edits to ticket files themselves, and
-bookkeeping (the coordination state under `.claude/coordination/`, epic checkboxes, the progress table and the technical
-lead's backlog corrections), exactly as in CLAUDE.md.
+bookkeeping (epic checkboxes, the progress table and the technical lead's backlog corrections), exactly as in
+CLAUDE.md.
 
 ## 1. Check the ticket and claim it
 
@@ -44,8 +44,8 @@ lead's backlog corrections), exactly as in CLAUDE.md.
   you because you just created it. `in-uitvoering` by someone else: stop and pick another. Blocked (`geblokkeerd` in
   `list`): stop too; it waits for an answer from the owner. `nieuw`: it is not refined yet; ask the owner whether to
   move it to `klaar-voor-bouw` first.
-- Join the groepschat (`groepschat` skill) and claim `ticket-<ID>` (for example `ticket-FB-012`). A refused claim means
-  another session has it.
+- The ticket's status `in-uitvoering`, with your session id in `opgepakt-door`, is the claim (step 3); there is no
+  separate lock.
 - Read the whole ticket, the FR numbers it cites and the constitution articles it touches. If it conflicts with
   `CONSTITUTION.md` or needs an open decision (Art. XIV), do not build: write the question under *Open vragen*,
   `block` the ticket with it (step 4), and tell the owner.
@@ -87,8 +87,10 @@ The board shows the card under *In uitvoering* as soon as the file changes, even
 
 ## 5. Gates
 
-Unchanged from CLAUDE.md: the relevant tests, `dotnet format`, `pnpm lint`, a real browser for UI, and the
-`antagonist` for every significant change. Log each verdict; long reports go to `backlog/worklogs/<ID>/`.
+Unchanged from CLAUDE.md: the relevant tests, `dotnet format`, `pnpm lint`, a real browser for UI, and **one**
+`antagonist` audit of the finished branch for a significant change. Only CRITICAL and MAJOR findings block: fix them
+and ask for a re-audit of just those, at most two rounds in total. Fix MINOR findings when cheap or list them in the
+worklog, without another round. Log each verdict; long reports go to `backlog/worklogs/<ID>/`.
 
 ## 6. The final status goes in the last commit
 
@@ -115,9 +117,9 @@ push the give-back too, so the server's copy matches; once your local branch is 
 and the old pushed copy holds the ticket again. A TB ticket lives on its branch until that branch is merged, so whoever takes it next continues on that same
 branch; an FB ticket's next session starts from `main`, and your branch's copy then no longer counts.
 
-## 7. Release
+## 7. Clean up
 
-Release `ticket-<ID>` and your other claims, set your session file to `done`, and post `LEAVE` (groepschat skill).
+Stop the dev servers you started, by port (`app-starten` step 9), unless the owner is still looking at them.
 
 ## Rules
 

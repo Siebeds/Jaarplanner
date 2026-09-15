@@ -20,7 +20,6 @@ function setup() {
   r.commit('base');
   const coord = path.join(r.dir, 'coordination');
   fs.mkdirSync(path.join(coord, 'claims'), { recursive: true });
-  fs.writeFileSync(path.join(coord, 'groepschat.md'), '# Groepschat\n');
   const run = (...args) => runIn({ coord }, r.repo, ...args);
   const fill = (rel) =>
     r.write(
@@ -70,7 +69,6 @@ test('a functional ticket from creation to te-testen, through the allowed transi
     assert.equal(out.status, 0, out.stderr);
     assert.ok(out.stdout.includes(REL));
     assert.deepEqual(fs.readdirSync(path.join(coord, 'claims')), [], 'the number reservation is released');
-    assert.match(fs.readFileSync(path.join(coord, 'groepschat.md'), 'utf8'), /\| fa \| FB-001 \| INFO \| created FB-001 \(nieuw\): Thema dupliceren/);
 
     assert.equal(run('check').status, 1, 'unfilled sections fail the check');
     fill(REL);
