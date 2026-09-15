@@ -24,9 +24,23 @@ namespace Jaarplanner.Api.Controllers;
 [Route("api/leerlingen/{leerlingId:guid}/rapporten/{moment:int:range(1,3)}")]
 public sealed class OntwikkelingsrapportenController : ControllerBase
 {
-    private readonly IOntwikkelingsrapportService _service;
+    /// <summary>
+    /// The largest request the drawing's upload reads: the file limit and room for the multipart envelope. A file between
+    /// the two gets the service's Dutch refusal; anything larger is cut off by the server with a 413, which the screen
+    /// answers in the same words (and it refuses such a file before sending it). There is deliberately no
+    /// <c>RequestFormLimits</c> as well: it would cut the form off first, as an English model-binding 400 that names no
+    /// limit.
+    /// </summary>
+    private const long TekeningAanvraagLimiet = Kindtekeningregels.MaxBytes + (1024 * 1024);
 
-    public OntwikkelingsrapportenController(IOntwikkelingsrapportService service) => _service = service;
+    private readonly IOntwikkelingsrapportService _service;
+    private readonly IKindtekeningService _tekeningen;
+
+    public OntwikkelingsrapportenController(IOntwikkelingsrapportService service, IKindtekeningService tekeningen)
+    {
+        _service = service;
+        _tekeningen = tekeningen;
+    }
 
     [HttpGet]
     [RechtOp(Rechtenmatrix.Beleid.OntwikkelingsrapportLezen, Rechtbron.Leerling, "leerlingId")]
@@ -52,4 +66,55 @@ public sealed class OntwikkelingsrapportenController : ControllerBase
         [FromBody] BesluitInvoer invoer,
         CancellationToken cancellationToken) =>
         Ok(await _service.BewaarBesluitAsync(leerlingId, moment, invoer, cancellationToken));
+
+    /// <summary>
+    /// The kindtekening's image (FB-005). Only through this route, which asks the same right as the report and answers
+    /// <c>no-store</c>: there is no public or lasting address of a drawing (ADR-0035 D15). No file name is sent, so none
+    /// exists to leak; <c>nosniff</c> holds the browser to the stated type.
+    /// </summary>
+    [HttpGet("tekening")]
+    [RechtOp(Rechtenmatrix.Beleid.OntwikkelingsrapportLezen, Rechtbron.Leerling, "leerlingId")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> Tekening(Guid leerlingId, int moment, CancellationToken cancellationToken)
+    {
+        var bestand = await _tekeningen.HaalOpAsync(leerlingId, moment, cancellationToken);
+        Response.Headers.XContentTypeOptions = "nosniff";
+        return File(bestand.Inhoud, bestand.MediaType);
+    }
+
+    /// <summary>
+    /// Adds or replaces the kindtekening (FB-005): a multipart form with one file, <c>bestand</c>. The service re-encodes
+    /// it before anything is stored. The upload's file name is never read.
+    /// <para>
+    /// <b>The form is read here, after the rights check, not bound as a parameter.</b> An <c>IFormFile</c> parameter makes
+    /// the route multipart-only, and routing would then answer a request of any other type with a 415 before anyone is
+    /// asked who they are. Read here, such a request gets the 403 every write route gives someone without the right, and
+    /// with the right the service's Dutch "no file".
+    /// </para>
+    /// </summary>
+    [HttpPut("tekening")]
+    [RechtOp(Rechtenmatrix.Beleid.RapportInvullen, Rechtbron.Leerling, "leerlingId")]
+    [RequestSizeLimit(TekeningAanvraagLimiet)]
+    // The whole form stays in memory. Above the default 64 KB, ASP.NET Core would buffer the upload to a temp file,
+    // and the photo as it came in, GPS position and all, would lie on the server's disk until the request ends
+    // (ADR-0035 §3.6: nothing of it is stored before the re-encode). Only this threshold is set: a smaller multipart
+    // limit here would cut the form off as an English 400 before the service can refuse it in Dutch.
+    [RequestFormLimits(MemoryBufferThreshold = (int)TekeningAanvraagLimiet)]
+    public async Task<ActionResult<TekeningWeergave>> BewaarTekening(Guid leerlingId, int moment, CancellationToken cancellationToken)
+    {
+        var bestand = Request.HasFormContentType
+            ? (await Request.ReadFormAsync(cancellationToken)).Files.GetFile("bestand")
+            : null;
+        await using var stroom = bestand?.OpenReadStream() ?? Stream.Null;
+        return Ok(await _tekeningen.BewaarAsync(leerlingId, moment, stroom, bestand?.Length ?? 0, cancellationToken));
+    }
+
+    /// <summary>Deletes the kindtekening (FB-005). 204 also when there was none.</summary>
+    [HttpDelete("tekening")]
+    [RechtOp(Rechtenmatrix.Beleid.RapportInvullen, Rechtbron.Leerling, "leerlingId")]
+    public async Task<IActionResult> VerwijderTekening(Guid leerlingId, int moment, CancellationToken cancellationToken)
+    {
+        await _tekeningen.VerwijderAsync(leerlingId, moment, cancellationToken);
+        return NoContent();
+    }
 }

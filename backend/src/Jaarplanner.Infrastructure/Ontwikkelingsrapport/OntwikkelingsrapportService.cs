@@ -64,6 +64,15 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
             .SingleOrDefaultAsync(r => r.LeerlingId == leerlingId && r.Moment == moment1tot3, cancellationToken);
         var perRapportdoel = (rapport?.Beoordelingen ?? []).ToDictionary(b => b.RapportdoelId);
 
+        // Only the drawing's version and size: its bytes stay in their own table until the screen asks for them (D15).
+        var tekening = rapport is null
+            ? null
+            : await _db.Kindtekeningen
+                .AsNoTracking()
+                .Where(t => t.OntwikkelingsrapportId == rapport.Id)
+                .Select(t => new TekeningWeergave(t.Versie, t.Breedte, t.Hoogte))
+                .SingleOrDefaultAsync(cancellationToken);
+
         return new RapportWeergave(
             kind.Id,
             kind.KlasId,
@@ -86,7 +95,8 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
                 })
                 .ToList(),
             rapport?.Besluit,
-            rapport?.BesluitStatus);
+            rapport?.BesluitStatus,
+            tekening);
     }
 
     public async Task<BeoordelingWeergave> BewaarBeoordelingAsync(
@@ -197,9 +207,9 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
 
     /// <summary>
     /// The route holds the moment to 1..3 already; this is for a caller that is not the route, in the same words as the
-    /// 404 a route answers for any other number.
+    /// 404 a route answers for any other number. <see cref="KindtekeningService"/> uses it too.
     /// </summary>
-    private static int KeurMoment(int moment) =>
+    internal static int KeurMoment(int moment) =>
         Evaluatiemoment.IsGeldig(moment)
             ? moment
             : throw new SchoolcontentNietGevondenFout("Dit rapport bestaat niet. Kies Rapport 1, 2 of 3.");

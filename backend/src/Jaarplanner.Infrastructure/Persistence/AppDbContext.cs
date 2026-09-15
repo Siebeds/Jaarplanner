@@ -208,6 +208,12 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Rapportbeoordeling> Rapportbeoordelingen => Set<Rapportbeoordeling>();
 
     /// <summary>
+    /// The one drawing per report (FB-005, ADR-0035 D15): a table of its own, so reading a report loads no image.
+    /// <b>Pupil data</b> (Art. VI.7), re-encoded before it is stored, and never in a log.
+    /// </summary>
+    public DbSet<Kindtekening> Kindtekeningen => Set<Kindtekening>();
+
+    /// <summary>
     /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a
     /// restart or a second instance does not log everyone out. Framework-owned rows; nothing in the app reads them.
     /// </summary>

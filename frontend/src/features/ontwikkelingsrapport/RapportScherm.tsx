@@ -1,10 +1,14 @@
 import { useId, useState, type ReactNode } from "react";
 import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
+import { Aandachtsmelding } from "../../components/ui/Aandachtsmelding";
+import { Bevestiging } from "../../components/ui/Bevestiging";
 import { Knop } from "../../components/ui/Knop";
+import { knopklassen } from "../../components/ui/knopklassen";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Tekstvlak } from "../../components/ui/Veld";
-import { IcoonPijlLinks, IcoonVink } from "../../components/Iconen";
+import { IcoonPijlLinks, IcoonPlus, IcoonVink, IcoonVuilbak } from "../../components/Iconen";
+import { ApiError } from "../../lib/api";
 import { cn } from "../../lib/cn";
 import { isGeenToegang, useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
@@ -14,11 +18,17 @@ import { Subdoelregel } from "./RapportdoelenScherm";
 import { rapportadres, rapportpad } from "./rapportdelen";
 import { foutzin } from "./rapporthulp";
 import {
+  MAX_TEKENING_MB,
   MOMENTEN,
+  TEKENINGTYPES,
   isMoment,
+  tekeningadres,
+  tekeningweigering,
   useBewaarBeoordeling,
   useBewaarBesluit,
+  useBewaarTekening,
   useRapport,
+  useVerwijderTekening,
   type Rapport,
   type Rapportregel,
 } from "./rapporten";
@@ -149,8 +159,163 @@ function Rapportblad({
         </ol>
       )}
 
+      <Tekeningvak rapport={rapport} magInvullen={magInvullen} />
       <Besluitvak rapport={rapport} magInvullen={magInvullen} />
     </article>
+  );
+}
+
+// --- The kindtekening (FB-005). ---
+
+/**
+ * The one drawing of this report (R10), between the rapportdoelen and the besluit: under the work a teacher does per
+ * child, so twenty reports are not twenty scrolls past a photo.
+ *
+ * **The drawing is the one bold thing in this block.** It lies centred on a mat of the page's deeper plane, like a
+ * drawing pinned to a board, at its own proportions (its width and height are known, so nothing jumps while it loads).
+ * The controls under it step back: no accent, which this interface spends elsewhere.
+ *
+ * **Only who may fill in the report gets the controls**, and the one line that asks for a photo of the drawing alone
+ * (ADR-0035 §3.1: the app cannot check it, so it asks). Anyone else who may read the report sees the drawing and can
+ * open it; the sentence that explains why there are no controls is the report's own, above.
+ */
+function Tekeningvak({ rapport, magInvullen }: { rapport: Rapport; magInvullen: boolean }) {
+  const kopId = useId();
+  const bewaar = useBewaarTekening(rapport.leerlingId, rapport.moment);
+  const verwijder = useVerwijderTekening(rapport.leerlingId, rapport.moment);
+  const [weigering, setWeigering] = useState<string | null>(null);
+  const [bevestigen, setBevestigen] = useState(false);
+  const [laadFout, setLaadFout] = useState(false);
+  const tekening = rapport.tekening;
+
+  function kies(bestand: File | undefined) {
+    if (!bestand) return;
+    const zin = tekeningweigering(bestand);
+    setWeigering(zin);
+    if (zin) return;
+    verwijder.reset();
+    setLaadFout(false);
+    bewaar.mutate(bestand);
+  }
+
+  const stand: Bewaarstand = bewaar.isPending || verwijder.isPending ? "bezig" : bewaar.isSuccess ? "bewaard" : "rust";
+  const fout = weigering ?? (bewaar.isError ? tekeningfout(bewaar.error) : null);
+
+  return (
+    <section aria-labelledby={kopId} className="flex flex-col gap-3 rounded-kaart border border-lijn bg-kaart px-4 py-4">
+      <Blokkop id={kopId} titel={t("ontwikkelingsrapport.tekening")} stand={magInvullen ? stand : "rust"} />
+
+      {tekening ? (
+        <div className="flex justify-center rounded-veld bg-vlak-diep p-3 sm:p-5">
+          {laadFout ? (
+            <p className="py-6 text-body text-inkt-zacht">{t("ontwikkelingsrapport.tekeningLaadFout")}</p>
+          ) : (
+            <img
+              src={tekeningadres(rapport.leerlingId, rapport.moment, tekening.versie)}
+              alt={t("ontwikkelingsrapport.tekeningVan", { naam: rapport.voornaam })}
+              width={tekening.breedte}
+              height={tekening.hoogte}
+              onError={() => setLaadFout(true)}
+              className="h-auto max-h-[28rem] w-auto max-w-full rounded-[0.25rem] bg-kaart object-contain shadow-licht"
+            />
+          )}
+        </div>
+      ) : (
+        // "Nog" only for who can still add one: to a reader after the schooljaar no drawing is coming.
+        <p className="text-body text-inkt-zacht">
+          {t(magInvullen ? "ontwikkelingsrapport.nogGeenTekening" : "ontwikkelingsrapport.geenTekening")}
+        </p>
+      )}
+
+      {magInvullen ? (
+        <p className="text-meta text-inkt-zacht">{t("ontwikkelingsrapport.tekeningUitleg", { mb: MAX_TEKENING_MB })}</p>
+      ) : null}
+      {fout ? <Aandachtsmelding>{fout}</Aandachtsmelding> : null}
+      {verwijder.isError ? (
+        <Aandachtsmelding>{foutzin(verwijder.error, "ontwikkelingsrapport.verwijderMislukt")}</Aandachtsmelding>
+      ) : null}
+
+      {magInvullen || tekening ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+          {magInvullen ? (
+            <Bestandknop
+              label={t(tekening ? "ontwikkelingsrapport.tekeningVervangen" : "ontwikkelingsrapport.tekeningToevoegen")}
+              bezig={bewaar.isPending}
+              onKies={kies}
+            />
+          ) : null}
+          {magInvullen && tekening ? (
+            <Knop rang="stil" onClick={() => setBevestigen(true)} disabled={verwijder.isPending || bewaar.isPending}>
+              <IcoonVuilbak aria-hidden="true" className="h-4 w-4" />
+              {t("ontwikkelingsrapport.tekeningVerwijderen")}
+            </Knop>
+          ) : null}
+          {tekening && !laadFout ? (
+            <a
+              href={tekeningadres(rapport.leerlingId, rapport.moment, tekening.versie)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-9 items-center text-meta font-medium text-inkt-zacht underline underline-offset-2 transition-colors duration-150 hover:text-inkt sm:ml-auto"
+            >
+              {t("ontwikkelingsrapport.tekeningOpenen")}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      <Bevestiging
+        open={bevestigen}
+        titel={t("ontwikkelingsrapport.tekeningVerwijderTitel")}
+        gevolg={t("ontwikkelingsrapport.tekeningVerwijderGevolg")}
+        bevestigLabel={t("themabeheer.verwijder")}
+        bezig={verwijder.isPending}
+        onSluit={() => setBevestigen(false)}
+        onBevestig={() => {
+          bewaar.reset();
+          setWeigering(null);
+          verwijder.mutate(undefined, { onSettled: () => setBevestigen(false) });
+        }}
+      />
+    </section>
+  );
+}
+
+/** The server's sentence for a refused drawing, and the size refusal for a request it stopped reading (413). */
+function tekeningfout(fout: unknown): string {
+  if (fout instanceof ApiError && fout.status === 413) {
+    return t("ontwikkelingsrapport.tekeningTeGroot", { mb: MAX_TEKENING_MB });
+  }
+  return foutzin(fout, "ontwikkelingsrapport.tekeningNietBewaard");
+}
+
+/**
+ * Choosing a photo, drawn as a button. The real `<input type="file">` sits inside the label, out of sight but in the tab
+ * order, so it keeps its own keyboard behaviour and its name is the label's; the ring shows where the focus is. On a
+ * phone the picker offers the camera as well. The value is cleared after each choice, so the same file can be chosen
+ * again after a refusal.
+ */
+function Bestandknop({ label, bezig, onKies }: { label: string; bezig: boolean; onKies: (bestand: File | undefined) => void }) {
+  return (
+    <label
+      className={cn(
+        knopklassen("rustig"),
+        "cursor-pointer has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
+        bezig && "pointer-events-none opacity-45",
+      )}
+    >
+      <input
+        type="file"
+        accept={TEKENINGTYPES.join(",")}
+        disabled={bezig}
+        className="sr-only"
+        onChange={(e) => {
+          onKies(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+      <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+      {label}
+    </label>
   );
 }
 
