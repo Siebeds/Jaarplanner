@@ -49,6 +49,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0036](0036-ai-evaluatieomgeving-en-v1-route.md) | **An evaluation resource for the AI doelsuggesties, the v1 route, and Entra as an explicit choice**: the AI client speaks the Azure OpenAI v1 API (`/openai/v1/chat/completions`, the deployment as `model`, no `api-version`) and reads the token usage; the key stays the default and `AzureAI:Authentication = Entra` is an explicit choice with a cached token, never a fallback for a missing key; a keyless Foundry resource in Sweden Central with Data Zone Standard (EU) deployments, in its own resource group, for the eval runner of TB-004; retrieval is chosen by measurement (no Azure AI Search) and evaluation data stays out of the public repo. Whether a school's app uses its managed identity is left to TB-006 | **Accepted** (owner, 2026-09-14) |
 | [0037](0037-lichter-agentproces.md) | **A lighter agent process**: the groepschat and its claims are retired (a ticket's status is its claim, worktrees keep sessions apart, and shared files such as `nl.json` are merged, not locked); the antagonist audits a finished diff once, only CRITICAL and MAJOR findings block, at most two rounds; the technical lead runs only on request; CLAUDE.md and the constitution keep the rules in force, and the ratification log moves to `docs/constitutie-log.md`. Amends Art. X.7 and XIII, adds XI.4 | **Accepted** (owner, 2026-09-15) |
 | [0038](0038-schooluren-per-weekdag.md) | **The school's hours are school data**: one row per weekday (Monday to Friday) with a begin, an end and an optional middagpauze, set by directie (`Beheer`) and read by everyone; the agenda opens at the start of the school day and hatches the hours outside it, labelled in words; the grid still draws and plans every hour (supersedes ADR-0028 decision 5 in part) | Accepted |
+| [0039](0039-klassen-inkijken-per-jaarfase.md) | **A leerkracht reads the klassen of her own jaarfase**: a hoofdleerkracht those of her appointed jaarfase, themabeheer and directie every klas, a gebruiker without a right none, in every schooljaar (a default); one matrix row, `KlasplanningBekijken`, is the E6-09 seam, on every read of one klas's planning and on the klassen list. Supersedes 0030 default I9; directie's confirmation (question 4) is outstanding | Accepted |
 
 ## Compliance traceability matrix
 
@@ -90,6 +91,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0036 | Art. IV.4/IV.5/IV.6, VI.2/VI.7, VI.3, VI.4, VI.6, VIII; realises 0016 for the AI evaluation; relates to 0010, 0012 and 0034 | TB-004; TB-006; E7-06; E2-09 (unchanged) | FR-4 (A.7 step 6); NFR-5/6 |
 | 0037 | Art. X.7 and XIII (amended), XI.4 (added), XI (log moved); relates to 0033 | TB-021 | — (team process) |
 | 0038 | Art. VI.1, II.3, XII, IV.2, V.1; supersedes 0028 decision 5 in part | FB-023; enables FB-027 | FR-12.1 |
+| 0039 | Art. VI.1, VI.7, XIV; supersedes 0030 default I9 and narrows its §4 (d) | FB-013 (takes over E6-08 and E6-09) | FR-10.1, FR-10.2 |
 
 ## Open decisions referenced by ADRs
 
