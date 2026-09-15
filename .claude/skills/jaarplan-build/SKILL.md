@@ -56,16 +56,17 @@ Multiple epics/features may be in flight on separate branches at once, so **conf
 ### 3. Implement
 Spawn the **`implementer`** with `isolation: "worktree"`, passing: the full story text + *Done when* criteria, the cited FR/Article, and the worktree expectation. It returns a report (branch `story/<id>`, files, gates, how to verify).
 
-> **Scaling later:** when autonomy is raised to per-epic/autonomous, pick a *wave* of stories that are mutually independent **and touch disjoint files** (avoid two agents both editing `.sln`, `nl.json`, DI, or the same migration), and spawn one implementer per story **in a single message** so they run concurrently — each in its own worktree.
+> **Scaling later:** when autonomy is raised to per-epic/autonomous, pick a *wave* of stories that are mutually independent, and spawn one implementer per story **in a single message** so they run concurrently — each in its own worktree. Shared files such as `nl.json` may be edited by every story; conflicts are resolved at merge. Avoid two stories adding an EF migration at once: the second to merge regenerates its own.
 
 ### 4. Gate: verify + audit in parallel
 In **one message**, spawn both:
 - **`test-runner`** — give it the story criteria, the implementer's report, and the worktree path.
-- **`antagonist`** — point it at the worktree diff / branch for the change.
+- **`antagonist`** — point it at the story branch's diff against its base. **Once per story**, on the finished change: not per slice, not per intermediate commit.
 
 ### 5. Decide
-- **PASS + COMPLIANT** → go to step 6.
-- **FAIL or VIOLATIONS FOUND** → spawn the **`implementer` in FIX mode** with the consolidated findings (defects + cited violations). Then re-run step 4. Cap at **3 fix rounds**; if still red, **stop and surface to the user** with the open findings — do not silently loosen criteria or waive a constitution finding (only the user waives, per the antagonist's contract).
+- **PASS + COMPLIANT** → go to step 6. COMPLIANT may carry MINOR findings: have the implementer fix the cheap ones in the same pass, or list them in the worklog. **A MINOR finding never triggers another audit round.**
+- **FAIL or VIOLATIONS FOUND** (a CRITICAL or MAJOR finding) → spawn the **`implementer` in FIX mode** with the consolidated findings. Then re-run the test-runner, and the antagonist in **re-audit mode**: hand it the round-1 blocking findings, so it checks only those and does not sweep again.
+- **Caps:** at most **2 antagonist rounds** and **3 test rounds**. If still red, **stop and surface to the user** with the open findings. Do not silently loosen criteria or waive a constitution finding (only the user waives).
 
 ### 6. Land it
 - Merge the worktree branch `story/<id>` into **this epic's feature branch** (the one confirmed in step 1.5 — verify with `git branch --show-current` before merging; never merge a story onto a different epic's branch). Local only — **do not push, do not open a PR** unless the user asks.

@@ -454,7 +454,7 @@ async function cmdNextId(positionals) {
   return 0;
 }
 
-// A number is reserved through the groepschat claim directory when this machine has one, so two
+// A number is reserved through the claim directory under COORD when this machine has one, so two
 // sessions creating a ticket at the same moment cannot both take it. The claim (`ticketnr-<ID>`) lives
 // only until the file exists: from then on every session's `next-id` sees the file itself. It is not
 // logged as CLAIM/RELEASE; the INFO line announcing the new ticket is the record.
@@ -528,7 +528,7 @@ async function cmdNew(values, positionals) {
       await hold.release();
     }
   }
-  throw new Fail('Geen vrij nummer gevonden na 50 pogingen. Kijk in de claims-map van de groepschat.');
+  throw new Fail('Geen vrij nummer gevonden na 50 pogingen. Kijk in .claude/coordination/claims.');
 }
 
 async function cmdStatus(values, positionals) {
