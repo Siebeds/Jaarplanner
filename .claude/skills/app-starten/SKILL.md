@@ -40,8 +40,10 @@ What a fresh Windows machine needs before step 1. Machine C lacked every item:
 - **Node 24**: `frontend/package.json` asks `>=24`, and 24 still bundles the corepack step 5 uses.
   `winget install OpenJS.NodeJS.LTS`. Both winget installs ask for UAC consent.
 - **`dotnet tool restore`** in `backend`, for the `dotnet-ef` pinned in `backend/.config/dotnet-tools.json`.
-- **A git identity.** Git for Windows starts without one, and the first commit fails with *"Author identity
-  unknown"*. Take the owner's from `git log`; never invent one.
+- **A git identity and a GitHub sign-in.** Git for Windows starts without an identity, and the first commit
+  fails with *"Author identity unknown"*. Ask the owner which one; the history is no guide, since every commit
+  there is `Siebeds` while machine C uses the GitHub account `dyllisd` with its no-reply address. Git pushes
+  through Git Credential Manager, but `gh` needs its own `gh auth login`, which the owner runs in a separate window.
 - **For Docker, WSL 2 and hardware virtualization.** In an elevated PowerShell, `wsl --install
   --no-distribution` turns on Virtual Machine Platform and WSL and installs the WSL package. Virtualization must
   also be on in the firmware (SVM Mode on AMD, VT-x on Intel): `Get-CimInstance Win32_Processor | Select
