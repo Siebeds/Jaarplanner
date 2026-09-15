@@ -2,12 +2,12 @@
 id: FB-011
 titel: Subthema's staan standaard ingeklapt op de themapagina
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:46
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 14:47
+opgepakt-door: themapagina
+branch: ticket/FB-011-subthemas-ingeklapt
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -57,3 +57,4 @@ Niets.
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:46 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
+- 2026-09-15 14:47 · themapagina · klaar-voor-bouw → in-uitvoering: opgepakt
