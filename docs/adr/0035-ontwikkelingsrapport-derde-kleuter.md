@@ -419,6 +419,11 @@ the rules than they give:
   - directie;
   - Leerlingzorg.
 
+  *Widened by the owner on 2026-09-15 (FB-002, after its antagonist round 1):* the tab also shows to a hoofdleerkracht
+  of K3. They read no report, but they may view the K3 set of rapportdoelen and the sterrenschaal, so for them the tab
+  leads to those two parts and nothing else. The frontend keeps the two apart as `mag.ontwikkelingsrapportTab` (where
+  the tab shows) and `mag.ontwikkelingsrapportZien` (who reads reports).
+
   For anyone else it would lead to a screen with nothing they may see, and the app never ships a control that does
   nothing (the E3-06 rule). For the same reason the tab ships with the first screen behind it, in build ticket 1.
   A gebruiker whose only right is Leerlingzorg can read reports and nothing else, so for them the tab appears once

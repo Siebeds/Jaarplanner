@@ -69,8 +69,8 @@ public sealed class MatrixVereiste : IAuthorizationRequirement
 /// <summary>
 /// The one handler for every matrix row: it looks up the caller's rights and asks <see cref="Rechtenmatrix.StaatToe"/>,
 /// passing the resource the caller authorised against (or, for an attribute, the <c>HttpContext</c>, which no
-/// resource-based column matches). Directie passes every row there (R3). A principal without a gebruiker id is never
-/// allowed.
+/// resource-based column matches). Directie passes every row there (R3) but <c>RapportsetBewerken</c>, the K3 set only
+/// the K3 leerkrachten edit (ADR-0035 R31). A principal without a gebruiker id is never allowed.
 /// </summary>
 public sealed class MatrixHandler : AuthorizationHandler<MatrixVereiste>
 {

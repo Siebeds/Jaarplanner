@@ -44,10 +44,11 @@ export function Instellingenindeling() {
   return (
     <>
       {/* The ontwikkelingsrapport on a phone (owner, 2026-09-15, "Via Instellingen", over a sixth tab). The bottom bar
-          keeps its five tabs, so the report is one press from the top of Instellingen, for whoever may read a report
-          (ADR-0035 D18). From `lg` the sidebar carries it instead (`Navigatie`), so a viewport offers it once. It is a
-          destination, not a part of Instellingen, so it is a link above the page rather than an entry in its parts. */}
-      {mag.ontwikkelingsrapportZien ? (
+          keeps its five tabs, so the report is one press from the top of Instellingen, for whoever is offered the
+          destination (`mag.ontwikkelingsrapportTab`: ADR-0035 D18, and a hoofdleerkracht of K3 since 2026-09-15). From
+          `lg` the sidebar carries it instead (`Navigatie`), so a viewport offers it once. It is a destination, not a part
+          of Instellingen, so it is a link above the page rather than an entry in its parts. */}
+      {mag.ontwikkelingsrapportTab ? (
         <div className="mx-auto max-w-[57.5rem] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 lg:hidden">
           <Link
             to={RAPPORT.pad}

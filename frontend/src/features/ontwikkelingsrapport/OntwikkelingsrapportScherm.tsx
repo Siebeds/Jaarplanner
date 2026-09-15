@@ -8,7 +8,6 @@ import { Leegte } from "../../components/ui/Leegte";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { Invoer, Keuze, Veld } from "../../components/ui/Veld";
 import { IcoonPlus } from "../../components/Iconen";
-import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { useActieveSelectie } from "../../lib/selectie";
 import type { KlasWeergave } from "../../lib/types";
@@ -21,6 +20,9 @@ import {
   type Leerling,
   type LeerlingInvoer,
 } from "./leerlingen";
+import { Foutregel } from "./Foutregel";
+import { foutzin } from "./rapporthulp";
+import { Rapportwissel } from "./Rapportwissel";
 
 /**
  * The K3 ontwikkelingsrapport (FR-13, ADR-0035), starting where it starts: the children of the klas (FR-13.1, FB-001).
@@ -59,7 +61,9 @@ export function OntwikkelingsrapportScherm() {
         titel={t("ontwikkelingsrapport.titel")}
         smal
         onder={
-          toegang ? (
+          <div className="flex flex-col gap-3">
+            <Rapportwissel />
+            {toegang ? (
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
               <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">
                 {t("instellingen.schooljaar")}
@@ -89,7 +93,8 @@ export function OntwikkelingsrapportScherm() {
                 </label>
               ) : null}
             </div>
-          ) : undefined
+            ) : null}
+          </div>
         }
       />
 
@@ -428,14 +433,6 @@ function Naamvelden({
   );
 }
 
-function Foutregel({ zin }: { zin: string }) {
-  return (
-    <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-      {zin}
-    </p>
-  );
-}
-
 function naamVan(kind: LeerlingInvoer): string {
   return `${kind.voornaam} ${kind.achternaam}`;
 }
@@ -448,9 +445,4 @@ function ontbrekend(invoer: LeerlingInvoer): { veld: "voornaam" | "achternaam"; 
   if (invoer.voornaam === "") return { veld: "voornaam", zin: "ontwikkelingsrapport.voornaamVerplicht" };
   if (invoer.achternaam === "") return { veld: "achternaam", zin: "ontwikkelingsrapport.achternaamVerplicht" };
   return null;
-}
-
-/** A refusal in the server's own Dutch where it gave one, else the catalogue's sentence for this action. */
-function foutzin(fout: unknown, anders: Vertaalsleutel): string {
-  return geenToegangZin(fout) ?? (fout instanceof ApiError && fout.detail ? fout.detail : t(anders));
 }
