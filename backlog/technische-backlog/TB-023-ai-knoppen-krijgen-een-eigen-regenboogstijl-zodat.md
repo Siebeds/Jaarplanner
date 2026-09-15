@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:11
+bijgewerkt: 2026-09-15 17:13
 opgepakt-door: ai-knoppen
 branch: ticket/TB-023-ai-knoppen
-pr:
+pr: 88
 geblokkeerd:
 fr: []
 ---
@@ -61,3 +61,4 @@ Geen.
 - 2026-09-15 17:09 · ai-knoppen · Browser (echte app, wegwerpdatabase): donker gemeten, rand minstens 5,9:1, label 13,12:1; jaarplan en venster Genereer bekeken op 1440px en 390px; bezig-toestand berekent animatie ai-veeg en opaciteit 1
 - 2026-09-15 17:11 · ai-knoppen · Antagonist: COMPLIANT. MINOR verwoording (verloop schuift zijwaarts, reist niet rond) rechtgezet; MINOR test voor de knoppen in PlanScherm niet toegevoegd, want PlanScherm heeft geen testbestand: in de browser gecontroleerd en de trace in ADR-0039 zegt dat nu
 - 2026-09-15 17:11 · ai-knoppen · in-uitvoering → klaar: AiKnop met regenboogring op Genereren, Genereer en Vraag suggesties; ADR-0039; tests 777 groen, lint schoon, licht en donker gemeten, desktop en 390px bekeken
+- 2026-09-15 17:13 · ai-knoppen · PR #88
