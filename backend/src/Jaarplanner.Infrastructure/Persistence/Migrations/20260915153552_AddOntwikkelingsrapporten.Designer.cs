@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260915150156_AddOntwikkelingsrapporten")]
+    [Migration("20260915153552_AddOntwikkelingsrapporten")]
     partial class AddOntwikkelingsrapporten
     {
         /// <inheritdoc />
@@ -471,6 +471,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid>("PlaatsingId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("Tekst")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.HasKey("Id");
 
