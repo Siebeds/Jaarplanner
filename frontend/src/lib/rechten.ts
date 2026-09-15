@@ -107,7 +107,7 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so directie's
   // graadklas decision moves this row with it. Directie does NOT pass it: see `ZONDER_DIRECTIE`.
   RapportsetBewerken: ["Rapportsetleerkracht"],
-  // FB-036 (ADR-0042 W2, D3): a woordweb is its owner's; directie passes every row. Keeping one needs no row (D2).
+  // FB-036 (ADR-0043 W2, D3): a woordweb is its owner's; directie passes every row. Keeping one needs no row (D2).
   WoordwebBewerken: ["Eigenaar"],
 };
 
@@ -214,7 +214,7 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     if (kolommen.includes("Leerlingzorg") && ik.heeftLeerlingzorg === true) return true;
   }
 
-  // ADR-0042 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
+  // ADR-0043 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
   if (kolommen.includes("Eigenaar") && bron?.soort === "woordweb" && zelfdeId(bron.eigenaarId, ik.id)) return true;
 
   return (
@@ -341,7 +341,7 @@ export interface Mag {
    * open the set and the scale by address (FB-002 AC5); the tab is not offered to them.
    */
   ontwikkelingsrapportTab: boolean;
-  /** Changing this woordweb and asking the AI for words: its owner, and directie (ADR-0042 W2, D3). */
+  /** Changing this woordweb and asking the AI for words: its owner, and directie (ADR-0043 W2, D3). */
   woordwebBewerken: (eigenaarId: string) => boolean;
 }
 

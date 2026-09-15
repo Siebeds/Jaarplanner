@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Woordwebs;
 
 /// <summary>
-/// The woordweb use cases (FB-036, ADR-0042): reading every web on a subthema, keeping one's own, and asking the AI
+/// The woordweb use cases (FB-036, ADR-0043): reading every web on a subthema, keeping one's own, and asking the AI
 /// for words. Rights are the Api's (the <c>WoordwebBewerken</c> row); this service trusts the web id it is given and
 /// creates a web only for the gebruiker the Api names, never for an id in a body.
 /// </summary>
@@ -37,7 +37,7 @@ public sealed record WoordwebWoordWeergave(Guid Id, string Woord, string Status,
 
 /// <summary>
 /// One woordweb as the screen reads it: whose it is, and its words in the order they were added. Its owner gets every
-/// status, so she sees her open proposals; anyone else gets only the words that stand in it (ADR-0042 D7).
+/// status, so she sees her open proposals; anyone else gets only the words that stand in it (ADR-0043 D7).
 /// </summary>
 public sealed record WoordwebWeergave(
     Guid Id,

@@ -7,7 +7,7 @@ import { t } from "../../i18n";
 import { Woordweb } from "./Woordweb";
 
 /**
- * The woordweb block (FB-036, ADR-0042): one's own web around the subthema's name, AI proposals that wait for a
+ * The woordweb block (FB-036, ADR-0043): one's own web around the subthema's name, AI proposals that wait for a
  * decision, and colleagues' webs to read.
  */
 

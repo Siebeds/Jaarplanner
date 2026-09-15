@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.Infrastructure.Woordwebs;
 
 /// <summary>
-/// EF Core implementation of <see cref="IWoordwebService"/> (FB-036, ADR-0042). The rules are the aggregate's
+/// EF Core implementation of <see cref="IWoordwebService"/> (FB-036, ADR-0043). The rules are the aggregate's
 /// (<see cref="Woordweb"/>); this loads, saves, turns the aggregate's refusals into the Dutch sentences a teacher can act
 /// on (Art. II.3), and runs the AI step: prompt, call, validation, then each valid word through
 /// <see cref="Woordweb.VoegVoorstelToe"/>.

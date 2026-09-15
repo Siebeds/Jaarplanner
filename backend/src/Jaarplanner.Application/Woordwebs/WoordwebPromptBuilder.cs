@@ -5,7 +5,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Woordwebs;
 
 /// <summary>
-/// What the AI is told about one woordweb (FB-036, ADR-0042 W6). Only the school's own data: the subthema's name,
+/// What the AI is told about one woordweb (FB-036, ADR-0043 W6). Only the school's own data: the subthema's name,
 /// leeftijd and onderzoeksvragen, its thema's name and invalshoeken, and the words of this one web. No other web, no
 /// gebruiker's name and no pupil data ever reaches it: a woordweb holds none.
 /// </summary>
@@ -31,7 +31,7 @@ public sealed record WoordwebContext(
 /// Builds the woordweb request for <see cref="IAiClient"/> (FB-036). A pure function of its input, like
 /// <c>MatchingPromptBuilder</c>, so it is snapshot-testable and reads no clock, configuration or I/O.
 /// <para>
-/// <b>The one prompt that does not forbid the model's own knowledge</b> (Art. IV.4's woordweb exception, ADR-0042 W6):
+/// <b>The one prompt that does not forbid the model's own knowledge</b> (Art. IV.4's woordweb exception, ADR-0043 W6):
 /// it asks for words from the model's knowledge of the language, where the goal prompts forbid invented vocabulary.
 /// What it may return is narrow all the same: words with a motivation, never a goal, a code or a claim about the
 /// curriculum, and the teacher accepts each one by hand.

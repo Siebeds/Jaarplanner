@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for the woordweb, the brainstorm of step 3 (FB-036, ADR-0042). All rules live in
+/// Thin REST controller (Art. VIII) for the woordweb, the brainstorm of step 3 (FB-036, ADR-0043). All rules live in
 /// the <see cref="Domain.Schoolcontent.Woordweb"/> aggregate and <see cref="IWoordwebService"/>.
 /// <para>
 /// <b>Rights.</b> Reading every web on a subthema needs a session only (W2). Adding words to <b>one's own</b> web needs

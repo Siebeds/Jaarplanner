@@ -98,4 +98,4 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 - 2026-09-15 19:26 · woordweb · antagonist ronde 1: 1 MAJOR (wizard verwijderde andermans woordweb, omweg rond D5) en 4 MINOR, alle verwerkt; tests groen; her-audit van de MAJOR gevraagd
 - 2026-09-15 19:29 · woordweb · in-uitvoering → te-testen: gebouwd en getest: woordweb per gebruiker en subthema met AI-voorstellen; backend unit 1727 en integratie groen (behalve de flaky Z1_Z6, los van dit ticket), Vitest 871, lint en format schoon; browsercontrole 19/19 op 1440 en 390px; antagonist ronde 2 COMPLIANT
 - 2026-09-15 19:32 · woordweb · PR #94
-- 2026-09-15 19:42 · woordweb · main binnengehaald (FB-020): ADR hernummerd naar ADR-0042, migratie Woordwebs opnieuw gegenereerd na die van hoekverrijking, verwijderbevestiging combineert verrijkingen en woordwebs; tests groen behalve de flaky Z1_Z6
+- 2026-09-15 19:42 · woordweb · main binnengehaald (FB-020): ADR hernummerd naar ADR-0043, migratie Woordwebs opnieuw gegenereerd na die van hoekverrijking, verwijderbevestiging combineert verrijkingen en woordwebs; tests groen behalve de flaky Z1_Z6

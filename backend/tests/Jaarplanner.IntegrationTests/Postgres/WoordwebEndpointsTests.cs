@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// FB-036 (ADR-0042) over HTTP against PostgreSQL: a teacher keeps her own woordweb on a subthema, a colleague reads it
+/// FB-036 (ADR-0043) over HTTP against PostgreSQL: a teacher keeps her own woordweb on a subthema, a colleague reads it
 /// and cannot change it, the AI proposes only after a word of her own and at most five, every proposal waits for her
 /// decision, a rejected word never comes back, and an answer outside the contract stores nothing. The AI is the
 /// factory's stub (Art. IV.6): left unset it fails the test, so a request refused before the call is proven refused.
@@ -163,7 +163,7 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_woordweb_verandert_geen_enkel_dekkingscijfer()
     {
-        // Art. V.1 and ADR-0042: a word is not a doel. The whole dekking payload of a K3 klas is read before and after
+        // Art. V.1 and ADR-0043: a word is not a doel. The whole dekking payload of a K3 klas is read before and after
         // typed words, an AI request and an accepted AI word on a subthema of a thema with a themadoel, and compared as
         // text, so no figure anywhere in it may move.
         var school = await Opzet.SchoolAsync();

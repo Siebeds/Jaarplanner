@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Woordwebs;
 
 /// <summary>
-/// The <see cref="Woordweb"/> aggregate (FB-036, ADR-0042): typed words are the teacher's, the AI proposes only once the
+/// The <see cref="Woordweb"/> aggregate (FB-036, ADR-0043): typed words are the teacher's, the AI proposes only once the
 /// web holds one of hers, every proposal waits for her decision, and a rejected word never comes back.
 /// </summary>
 public sealed class WoordwebTests

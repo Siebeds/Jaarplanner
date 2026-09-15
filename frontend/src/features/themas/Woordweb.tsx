@@ -13,7 +13,7 @@ import { useBeslisWoord, useStelWoordenVoor, useVerwijderWoord, useVoegWoordenTo
 const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord.status === "Aanvaard";
 
 /**
- * The brainstorm of step 3, per teacher (FB-036, ADR-0042): her own woordweb on this subthema, and her colleagues' below
+ * The brainstorm of step 3, per teacher (FB-036, ADR-0043): her own woordweb on this subthema, and her colleagues' below
  * it, to read.
  *
  * **The subthema's name sits in the middle of her words.** The owner asked for "losse woorden rond het thema", and a

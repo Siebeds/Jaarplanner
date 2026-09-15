@@ -24,7 +24,7 @@ namespace Jaarplanner.Application.Toegang;
 /// </para>
 /// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal activiteiten and subdoelen (R6) wait for
-/// E6-10's shape (the one personal content that exists, a woordweb, is <see cref="WoordwebBewerken"/>, ADR-0042);
+/// E6-10's shape (the one personal content that exists, a woordweb, is <see cref="WoordwebBewerken"/>, ADR-0043);
 /// and two of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), downloading a report and
 /// wiping a schooljaar, which get their policies with FB-006 and FB-007, since no route serves them before. The other
 /// four have one: <see cref="OntwikkelingsrapportLezen"/> and <see cref="LeerlingenBeheren"/> (FB-001),
@@ -284,13 +284,13 @@ public static class Rechtenmatrix
     // --- Resource-based row: personal content (FB-036). ---
 
     /// <summary>
-    /// "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen" (ADR-0042 W2; D3). Its owner, and directie
+    /// "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen" (ADR-0043 W2; D3). Its owner, and directie
     /// (R3). Resource: <see cref="Woordwebbron"/>. Keeping a woordweb at all needs no row (D2): the route that adds the
     /// first word creates the caller's own web, never another's, and reading every web needs only a session.
     /// </summary>
     public static readonly Matrixrij WoordwebBewerken = new(
         Beleid.WoordwebBewerken,
-        "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen: de eigenaar (ADR-0042 W2; D3)",
+        "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen: de eigenaar (ADR-0043 W2; D3)",
         Kolom.Eigenaar);
 
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
@@ -455,7 +455,7 @@ public static class Rechtenmatrix
             }
         }
 
-        // ADR-0042 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
+        // ADR-0043 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
         // and that resource matches no other column.
         if (kolommen.HasFlag(Kolom.Eigenaar) && bron is Woordwebbron woordweb && woordweb.EigenaarId == rechten.GebruikerId)
         {
@@ -553,7 +553,7 @@ public enum Kolom
     Leerlingzorg = 8192,
 
     /// <summary>
-    /// The owner of a <see cref="Woordwebbron"/> (ADR-0042 W2): her own woordweb, whatever other right she holds or lacks.
+    /// The owner of a <see cref="Woordwebbron"/> (ADR-0043 W2): her own woordweb, whatever other right she holds or lacks.
     /// </summary>
     Eigenaar = 16384,
 }

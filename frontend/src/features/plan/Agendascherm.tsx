@@ -93,7 +93,7 @@ import {
   voorstelReeks,
   type Subthemareeks,
 } from "./subthemareeksen";
-import { themaIdsOpDag, themavakken } from "./themavakken";
+import { themaIdsOpDag, themasInBereik, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
@@ -448,6 +448,8 @@ export function Agendascherm() {
     () => themavakken(rooster?.blokken ?? [], plan?.plaatsingen ?? []),
     [rooster, plan],
   );
+  // The thema's the bands on screen can open, for the subthemabalk (FB-037): it is where a keyboard reaches their page.
+  const themasInBeeld = useMemo(() => themasInBereik(vakken, van, tot), [vakken, van, tot]);
 
   // The thema's running in this period are what the activity picker may offer.
   const themaIdsInPeriode = useMemo(() => {
@@ -946,23 +948,14 @@ export function Agendascherm() {
                   ) : undefined
                 }
               />
-            ) : weergave === "maand" ? (
-              <Maandrooster
-                dagen={zichtbareDagen}
-                ankerMaand={anker}
-                vakken={vakken}
-                reeksenPerDag={stroken}
-                hoekplaatsingen={hoekplaatsingen ?? []}
-                magPlannen={magPlannen}
-                onKiesDag={openDag}
-                onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
-                onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
-              />
             ) : (
               <>
               {/* THE SUBTHEMABALK (FB-020): the subthema's on screen, each with what the hoeken hold while it runs. A
-                  verrijking is never a block in the grid below; this is where she reads and writes it. */}
+                  verrijking is never a block in the grid below; this is where she reads and writes it. It is also the
+                  keyboard's way to the themapagina the bands in the grid link to (FB-037, ADR-0042), so it stands above
+                  the month as well. */}
               <Subthemabalk
+                themas={themasInBeeld}
                 reeksen={reeksenInBeeld}
                 verrijkingen={verrijkingen.data ?? []}
                 // "None yet" needs both reads: the preview is built from the klas's hoeken as well.
@@ -971,6 +964,20 @@ export function Agendascherm() {
                 magPlannen={magPlannen}
                 onOpen={(reeks) => setGeopendeReeks(reeks)}
               />
+              {weergave === "maand" ? (
+                <Maandrooster
+                  dagen={zichtbareDagen}
+                  ankerMaand={anker}
+                  vakken={vakken}
+                  reeksenPerDag={stroken}
+                  hoekplaatsingen={hoekplaatsingen ?? []}
+                  magPlannen={magPlannen}
+                  onKiesDag={openDag}
+                  onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
+                  onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
+                />
+              ) : (
+              <>
               {/* THE DAY AND THE WEEK ARE ONE GRID (ADR-0028), which is what makes them agree: they were a row of
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
@@ -997,6 +1004,8 @@ export function Agendascherm() {
                 onKiesDag={weergave === "week" ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
               />
+              </>
+              )}
               </>
             )}
           </div>

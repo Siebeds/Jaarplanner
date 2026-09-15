@@ -2,6 +2,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { maakQueryClient } from "./lib/queryClient";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Schil } from "./app/Schil";
+import { Aanmeldpoort } from "./app/Aanmeldpoort";
 import { DoelenScherm } from "./features/doelen/DoelenScherm";
 import { ThemasScherm } from "./features/themas/ThemasScherm";
 import { ThemadetailScherm } from "./features/themas/ThemadetailScherm";
@@ -50,7 +51,15 @@ export default function App() {
               would answer 401 and loop through the sign-in: see GeenToegangScherm. */}
           <Route path="geen-toegang" element={<GeenToegangScherm />} />
           <Route path="aanmelden-mislukt" element={<GeenToegangScherm soort="mislukt" />} />
-          <Route element={<Schil />}>
+          {/* The shell only once it is known who is signed in (TB-026): until then the tussenpagina, so a
+              browser on its way to the sign-in never shows a glimpse of the app. */}
+          <Route
+            element={
+              <Aanmeldpoort>
+                <Schil />
+              </Aanmeldpoort>
+            }
+          >
             {/* The app opens on the agenda (owner, 2026-09-11: "ik wil niet dat er default doelen
                 wordt geopend"), and an address it does not know lands there too, below. */}
             <Route index element={<Navigate to="/agenda" replace />} />

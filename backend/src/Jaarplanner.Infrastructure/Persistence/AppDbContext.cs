@@ -178,7 +178,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Wizardrun> Wizardruns => Set<Wizardrun>();
 
     /// <summary>
-    /// Every gebruiker's own woordweb per subthema, the brainstorm of step 3 (FB-036, ADR-0042): personal content, read by
+    /// Every gebruiker's own woordweb per subthema, the brainstorm of step 3 (FB-036, ADR-0043): personal content, read by
     /// everyone, edited by its owner and directie. Never read by the dekking.
     /// </summary>
     public DbSet<Woordweb> Woordwebs => Set<Woordweb>();

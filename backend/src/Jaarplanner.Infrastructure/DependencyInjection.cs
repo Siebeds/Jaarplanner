@@ -205,7 +205,7 @@ public static class DependencyInjection
         // sibling of the import service that drives the same domain mutators.
         services.AddScoped<ISchoolcontentBeheerService, SchoolcontentBeheerService>();
 
-        // A gebruiker's own woordweb per subthema (FB-036, ADR-0042). Its AI words go through the same IAiClient seam,
+        // A gebruiker's own woordweb per subthema (FB-036, ADR-0043). Its AI words go through the same IAiClient seam,
         // so the flow runs against the stub in tests (Art. IV.6).
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
 

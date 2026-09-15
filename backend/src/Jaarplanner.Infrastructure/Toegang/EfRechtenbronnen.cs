@@ -78,7 +78,7 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
         var openRun = run is not null && run.IsOpen(_tijd.GetUtcNow()) ? run : null;
         bool VanDeOpenRun(Wizarditemsoort soort, Guid id) => openRun?.HeeftAangemaakt(soort, id) == true;
 
-        // ADR-0042 D5: a woordweb is someone's personal content, and it goes with its subthema. This resolver knows no
+        // ADR-0043 D5: a woordweb is someone's personal content, and it goes with its subthema. This resolver knows no
         // caller, so any woordweb under the thema counts, whoever made it: the fail-closed reading.
         var andermans = subthemaIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Subthema, id))
             || subdoelIds.Any(id => !VanDeOpenRun(Wizarditemsoort.Subdoel, id))

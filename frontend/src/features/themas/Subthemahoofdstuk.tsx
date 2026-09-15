@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
@@ -60,6 +60,7 @@ import { Woordweb } from "./Woordweb";
  */
 export function Subthemahoofdstuk({
   subthema,
+  gevraagd,
   mag,
   onBewerk,
   onVerwijder,
@@ -75,6 +76,8 @@ export function Subthemahoofdstuk({
   subthema: SubthemaWeergave;
   /** What the signed-in gebruiker may do, from `useRechten()` on the screen. */
   mag: Mag;
+  /** The chapter a link from the agenda asked for (FB-037): it opens on arrival and is brought into view. */
+  gevraagd?: boolean;
   onBewerk: () => void;
   onVerwijder: () => void;
   onNieuweActiviteit: () => void;
@@ -90,9 +93,18 @@ export function Subthemahoofdstuk({
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
   const balans = subthemabalans(subthema);
-  // Local, and deliberately not persisted: shut on every visit (FB-011's default). Remembering a fold
-  // across a route change is a different feature and would need somewhere to remember it.
-  const [open, setOpen] = useState(false);
+  // Local, and deliberately not persisted: shut on every visit (FB-011's default), except the chapter a link asked for.
+  // Remembering a fold across a route change is a different feature and would need somewhere to remember it.
+  const [open, setOpen] = useState(gevraagd === true);
+  const vouwknop = useRef<HTMLButtonElement>(null);
+  // Into view, with focus on its fold, so a keyboard or screen-reader user lands where the link pointed rather than at
+  // the top of a long page.
+  useEffect(() => {
+    if (!gevraagd) return;
+    vouwknop.current?.focus({ preventScroll: true });
+    // Optional call: jsdom has no scrollIntoView.
+    vouwknop.current?.scrollIntoView?.({ block: "start" });
+  }, [gevraagd]);
 
   const leeftijd = subthema.leeftijd;
   const magSubthema = mag.subthemaBeheren(leeftijd);
@@ -133,10 +145,11 @@ export function Subthemahoofdstuk({
             redesign exists to remove. On the right the title starts where the whole card body starts,
             and the chevron still sits on the row it opens. */}
         <button
+          ref={vouwknop}
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="-mx-2 -my-1.5 flex w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+          className="-mx-2 -my-1.5 flex scroll-mt-6 w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
         >
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>

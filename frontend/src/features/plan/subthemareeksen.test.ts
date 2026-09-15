@@ -215,12 +215,27 @@ describe("subthemareeksen met bewaarde vensters", () => {
     // Drawn from its activiteit alone: saving a verrijking there stores the window first.
     expect(reeksen.find((r) => r.subthemaId === "s2")?.periodeId).toBeUndefined();
   });
+
+  it("draagt het thema van het subthema mee, uit de activiteit en uit het venster (FB-037)", () => {
+    const reeksen = subthemareeksen(
+      [dag("2026-09-02", "s1")],
+      september,
+      [{ ...venster("s2", "2026-09-07", "2026-09-11"), themaId: "t-venster", themaNaam: "Uit het venster" }],
+    );
+
+    expect(reeksen.map((r) => [r.subthemaId, r.themaId, r.themaNaam])).toEqual([
+      ["s1", "t", "Ik en mijn klas"],
+      ["s2", "t-venster", "Uit het venster"],
+    ]);
+  });
 });
 
 describe("subthemasInWeek (FB-017)", () => {
   const reeks = (subthemaId: string, van: string, tot: string): Subthemareeks => ({
     subthemaId,
     subthemaNaam: subthemaId,
+    themaId: "t",
+    themaNaam: "Ik en mijn klas",
     van,
     tot,
     aantalDagen: 1,

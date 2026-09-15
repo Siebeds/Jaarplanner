@@ -72,7 +72,7 @@ public sealed class RechtenmatrixTests
         // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
         // running rapportklassen (the D9 function), not the stated jaarfase.
         [Rechtenmatrix.Beleid.RapportsetBewerken] = ["LK K3 lopend"],
-        // FB-036 (ADR-0042 W2, D3): on someone else's woordweb, only directie. Every relation on her own web is the test
+        // FB-036 (ADR-0043 W2, D3): on someone else's woordweb, only directie. Every relation on her own web is the test
         // Een_woordweb_is_van_zijn_eigenaar below.
         [Rechtenmatrix.Beleid.WoordwebBewerken] = ["Directie"],
     };
@@ -534,7 +534,7 @@ public sealed class RechtenmatrixTests
     private static Matrixrij Rij(string beleid) => Rechtenmatrix.Rijen.Single(r => r.Beleid == beleid);
 
     /// <summary>The resource a controller would pass for this row: none for resource-free rows.</summary>
-    // --- A woordweb (FB-036, ADR-0042): personal content, its owner's and directie's. ---
+    // --- A woordweb (FB-036, ADR-0043): personal content, its owner's and directie's. ---
 
     [Fact]
     public void Een_woordweb_is_van_zijn_eigenaar_welk_ander_recht_ze_ook_heeft()

@@ -1,4 +1,4 @@
-# ADR-0042 — A leerkracht keeps her own woordweb per subthema, and the AI may add words to it
+# ADR-0043 — A leerkracht keeps her own woordweb per subthema, and the AI may add words to it
 
 - **Status:** Accepted
 - **Date:** 2026-09-15

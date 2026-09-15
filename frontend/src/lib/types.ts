@@ -42,7 +42,7 @@ export const DOELSOORTEN: Doelsoort[] = [
 
 export type KoppelingStatus = "Voorgesteld" | "Aanvaard" | "Geweigerd" | "Manueel";
 
-/** One word of a woordweb (FB-036, ADR-0042): typed (`Manueel`), or proposed by the AI and then decided (Art. IV.2). */
+/** One word of a woordweb (FB-036, ADR-0043): typed (`Manueel`), or proposed by the AI and then decided (Art. IV.2). */
 export interface WoordwebWoord {
   id: string;
   woord: string;

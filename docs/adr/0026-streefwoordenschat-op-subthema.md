@@ -10,6 +10,9 @@
     ADR-0030 I16.
   - *Replaced in fix round 2:* this pointer first said the opposite (that the list followed the subthema row),
     before the owner ruled on it. The second was ratified with Art. VI.1 on 2026-09-14.
+  - *Decision 5 is superseded in part by [ADR-0042](0042-stroken-openen-de-themapagina.md) (FB-037, owner
+    2026-09-15):* the bands are links for a pointer, still `aria-hidden` and out of the tab order, and the rail above
+    the grid is their equivalent control.
 
   The text below is left as written.
 - **Date:** 2026-08-30

@@ -191,7 +191,7 @@ public sealed class WizardrunService : IWizardrunService
             throw new WizardrunWeigering(AndermansInhoudVerdwijnt);
         }
 
-        // ADR-0042: a woordweb is someone's personal content and never the run's, so I25 does not reach it. The delete
+        // ADR-0043: a woordweb is someone's personal content and never the run's, so I25 does not reach it. The delete
         // would cascade to it, and it would also get around D5, the thema delete's own guard, in two steps.
         if (await _context.Woordwebs.AnyAsync(w => w.SubthemaId == subthemaId, cancellationToken))
         {
