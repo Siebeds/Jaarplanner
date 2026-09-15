@@ -2,10 +2,10 @@
 id: TB-024
 titel: Zijbalk van de agenda toont eerst Activiteiten, dan Algemene fiches, dan Hoekenfiches
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:11
+bijgewerkt: 2026-09-15 17:13
 opgepakt-door: zijbalk-volgorde
 branch: ticket/zijbalk-volgorde
 pr: 87
@@ -50,3 +50,4 @@ Geen.
 - 2026-09-15 17:01 · zijbalk-volgorde · aangemaakt (status in-uitvoering)
 - 2026-09-15 17:05 · zijbalk-volgorde · Volgorde omgedraaid in de zijbalk (Navigatie) en de gsm-chips (Agendascherm), met een test op de volgorde voor elk. Vitest 775/775, lint groen.
 - 2026-09-15 17:11 · zijbalk-volgorde · PR #87
+- 2026-09-15 17:13 · zijbalk-volgorde · in-uitvoering → klaar: Volgorde van de schakelaars nu Activiteiten, Algemene fiches, Hoekenfiches, in de zijbalk en in de gsm-chips. Na merge met main: vitest 803/803, lint groen. Browsercontrole (headless Chrome, wegwerpdatabase, directie) op 1440 en 390 px: juiste volgorde. Antagonist ronde 1: COMPLIANT; het ene MINOR punt (verouderd commentaar bij Paneelschakelaar) is opgelost.

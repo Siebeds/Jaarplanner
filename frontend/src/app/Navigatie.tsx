@@ -219,7 +219,8 @@ export function Navigatie() {
 }
 
 /**
- * A panel switch (Hoekenfiches, Algemene fiches): the shape of a sidebar item, deliberately not its behaviour.
+ * A panel switch (Activiteiten, Algemene fiches, Hoekenfiches): the shape of a sidebar item, deliberately not its
+ * behaviour.
  *
  * It borrows the geometry of a `Tab` so the sidebar reads as one family: the same height, the same
  * icon size, the same rounding and inset. What it does not borrow is the accent. A destination is
