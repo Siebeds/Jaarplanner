@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { t } from "../../i18n";
@@ -38,8 +39,11 @@ export function Gekoppelddoel({
   ontkoppelBezig,
   onOntkoppel,
   onToon,
+  voet,
 }: {
   koppeling: DoelKoppelingWeergave;
+  /** A line under the text, such as the activiteiten that carry this doel (FB-010). Phrasing content only. */
+  voet?: ReactNode;
   ontkoppelLabel: string;
   ontkoppelBezig?: boolean;
   /** Absent without the right to remove this link: the row then only opens the detail. */
@@ -83,6 +87,7 @@ export function Gekoppelddoel({
           // A span, not `Laadvlak`: that one is a `div`, and a button may only hold phrasing content.
           <span aria-hidden="true" className="mt-1.5 block h-4 w-3/4 animate-pulse rounded-veld bg-vlak-diep" />
         ) : null}
+        {voet ? <span className="mt-1.5 block">{voet}</span> : null}
       </button>
 
       {onOntkoppel ? (

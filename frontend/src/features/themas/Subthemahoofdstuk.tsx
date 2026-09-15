@@ -12,6 +12,7 @@ import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { Blok, Doellijst, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
+import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 
 /**
  * One age's derivation of a thema: a chapter of the fiche.
@@ -87,6 +88,7 @@ export function Subthemahoofdstuk({
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
+  const balans = subthemabalans(subthema);
   // Local, and deliberately not persisted: shut on every visit (FB-011's default). Remembering a fold
   // across a route change is a different feature and would need somewhere to remember it.
   const [open, setOpen] = useState(false);
@@ -137,11 +139,22 @@ export function Subthemahoofdstuk({
         >
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
+            {/* The subdoelen figure says how many of them an activiteit already works out (FB-010), so a fold can be
+                scanned for the chapter that still needs one. It counts decided subdoelen only; with none of those it
+                falls back to the plain count, which is all the data then supports. On a phone the facts stack: wrapped
+                on one line they left a separator dangling at the end of each row. */}
             {open ? null : (
-              <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-meta text-inkt-zacht">
+              <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
                 <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
                 <Punt />
-                <span>{telWoord(subthema.subdoelen.length, "thema.eenSubdoel", "thema.subdoelen")}</span>
+                <span>
+                  {balans.beslisteSubdoelen > 0
+                    ? t(
+                        balans.beslisteSubdoelen === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
+                        { aantal: balans.beslistInActiviteit, totaal: balans.beslisteSubdoelen },
+                      )
+                    : telWoord(subthema.subdoelen.length, "thema.eenSubdoel", "thema.subdoelen")}
+                </span>
                 {zonderDoel > 0 ? (
                   <>
                     <Punt />
@@ -243,11 +256,40 @@ export function Subthemahoofdstuk({
                     ontkoppelBezig={koppelenBezig}
                     onOntkoppel={magSubdoelen ? () => onOntkoppelSubdoel(subdoel.id) : undefined}
                     onToon={onToonDoel}
+                    voet={
+                      <Subdoelvoet
+                        dragers={balans.dragersPerSubdoel.get(subdoel.id) ?? []}
+                        beslist={beslist(subdoel.koppeling.status)}
+                      />
+                    }
                   />
                 ))}
               </Doellijst>
             )}
           </Subkop>
+
+          {/* WHAT THE ACTIVITEITEN OFFER BESIDES THE SUBDOELEN (FB-010), under its own heading so that "a doel of
+              this subthema" and "a doel one of its activiteiten happens to carry" are never one list. Only when there
+              is something: an empty group would be a second "nothing here" line under the subdoelen' own. Read only;
+              linking stays on the activiteit and the subdoelen. */}
+          {balans.andereDoelen.length > 0 ? (
+            <Subkop
+              titel={t("thema.andereDoelenTitel")}
+              icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
+            >
+              <Doellijst>
+                {balans.andereDoelen.map(({ koppeling, dragers }) => (
+                  <Gekoppelddoel
+                    key={koppeling.leerplandoelCode}
+                    koppeling={koppeling}
+                    ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
+                    onToon={onToonDoel}
+                    voet={<Dragers dragers={dragers} />}
+                  />
+                ))}
+              </Doellijst>
+            </Subkop>
+          ) : null}
         </>
       ) : null}
     </Blok>
@@ -376,11 +418,46 @@ function Activiteitregel({
   );
 }
 
-/** The separator in the folded card's summary. Decorative, so it is hidden from the reading order. */
+/**
+ * The separator in the folded card's summary. Decorative, so it is hidden from the reading order, and only from `sm`:
+ * on a phone the facts stack and need no separator.
+ */
 function Punt() {
   return (
-    <span aria-hidden="true" className="text-inkt-zacht">
+    <span aria-hidden="true" className="hidden text-inkt-zacht sm:inline">
       ·
+    </span>
+  );
+}
+
+/**
+ * Under a subdoel: the activiteiten that carry it, or the gap (FB-010).
+ *
+ * The gap is marked only on a decided subdoel, since an undecided one is not yet a subdoel to work out. It uses the
+ * shape and hue of `Doelmerk`'s "Nog geen doel": the same kind of knelpunt, one level up, so a teacher meets one sign
+ * for "nothing works this out yet". The hollow ring and the words carry it without the colour (Art. XII).
+ */
+function Subdoelvoet({ dragers, beslist }: { dragers: Drager[]; beslist: boolean }) {
+  if (dragers.length > 0) return <Dragers dragers={dragers} />;
+  if (!beslist) return null;
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-attentie/40 bg-attentie-zacht py-0.5 pl-1.5 pr-2 text-[0.6875rem] font-medium text-attentie-inkt">
+      <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border-[1.5px] border-attentie" />
+      {t("thema.nogGeenActiviteit")}
+    </span>
+  );
+}
+
+/** The activiteiten carrying a doel, by name and in the subthema's order. */
+function Dragers({ dragers }: { dragers: Drager[] }) {
+  const namen = dragers.map((d) => d.naam).join(", ");
+
+  return (
+    <span className="block text-meta text-inkt-zacht">
+      {dragers.length === 1
+        ? t("thema.inEenActiviteit", { namen })
+        : t("thema.inActiviteiten", { aantal: dragers.length, namen })}
     </span>
   );
 }

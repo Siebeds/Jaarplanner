@@ -158,7 +158,13 @@
     "eenZonderDoel": "1 zonder doel",
     "aantalZonderDoel": "{aantal} zonder doel",
     "fout": "Thema niet geladen",
-    "geenSubdoelen": "Nog geen doelen op dit subthema"
+    "geenSubdoelen": "Nog geen doelen op dit subthema",
+    "inEenActiviteit": "In 1 activiteit: {namen}",
+    "inActiviteiten": "In {aantal} activiteiten: {namen}",
+    "nogGeenActiviteit": "Nog geen activiteit",
+    "andereDoelenTitel": "Andere doelen in de activiteiten",
+    "subdoelInActiviteitEen": "{aantal} van 1 subdoel in een activiteit",
+    "subdoelenInActiviteit": "{aantal} van {totaal} subdoelen in een activiteit"
   },
   "plan": {
     "titel": "Thema's per periode",
