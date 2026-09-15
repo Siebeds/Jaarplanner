@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "azure": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@azure/mcp@2.0.5", "server", "start"],
+      "env": {
+        "AZURE_TOKEN_CREDENTIALS": "AzureCliCredential"
+      }
+    }
+  }
+}
