@@ -29,7 +29,8 @@ public static class Rechtenberekening
         bool heeftThemabeheer,
         IEnumerable<KlastoewijzingFeit> klastoewijzingen,
         IEnumerable<AanstellingFeit> aanstellingen,
-        DateOnly vandaag)
+        DateOnly vandaag,
+        bool heeftLeerlingzorg = false)
     {
         ArgumentNullException.ThrowIfNull(klastoewijzingen);
         ArgumentNullException.ThrowIfNull(aanstellingen);
@@ -57,7 +58,8 @@ public static class Rechtenberekening
             leerkrachtLeeftijden,
             eigenKlassen,
             rapportklassen.Select(t => t.KlasId),
-            lopendeRapportklassen.Select(t => t.KlasId));
+            lopendeRapportklassen.Select(t => t.KlasId),
+            heeftLeerlingzorg);
     }
 
     /// <summary>

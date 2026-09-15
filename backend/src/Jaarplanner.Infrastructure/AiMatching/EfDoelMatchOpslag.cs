@@ -19,10 +19,19 @@ public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
     public EfDoelMatchOpslag(AppDbContext context) => _context = context;
 
     /// <inheritdoc />
+    /// <remarks>
+    /// With its subthema's, their onderzoeksvragen and their activiteiten (TB-007). The run takes its default jaar/fasen
+    /// from the subthema's leeftijden, and <c>MatchingPromptBuilder</c> writes all three into the prompt; without them
+    /// every thema read from the database looked as if it had no subthema's at all. Split into one query per collection,
+    /// as <c>KlasBeheerService</c> does, because five collections in one join multiply into a cartesian result.
+    /// </remarks>
     public async Task<Thema?> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken = default) =>
         await _context.Themas
             .Include(t => t.Themadoelen)
             .Include(t => t.Doelsuggesties)
+            .Include(t => t.Subthemas).ThenInclude(s => s.Onderzoeksvragen)
+            .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
 
     /// <inheritdoc />

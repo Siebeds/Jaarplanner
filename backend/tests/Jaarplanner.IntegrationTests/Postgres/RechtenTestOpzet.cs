@@ -77,20 +77,26 @@ internal sealed class RechtenTestOpzet
         (await client.GetFromJsonAsync<List<IdDto>>("/api/klassen"))!.Select(k => k.Id).ToList();
 
     /// <summary>
-    /// A gebruiker with exactly these relations: directie, themabeheer, hoofdleerkracht of the given leeftijden in the
-    /// school's year, and klastoewijzingen on the given klassen. With none of them, a gebruiker who may do nothing.
+    /// A gebruiker with exactly these relations: directie, themabeheer, Leerlingzorg, hoofdleerkracht of the given leeftijden
+    /// in the school's year, and klastoewijzingen on the given klassen. With none of them, a gebruiker who may do nothing.
     /// </summary>
     public async Task<Guid> GebruikerAsync(
         School? school = null,
         bool directie = false,
         bool themabeheer = false,
         string[]? hoofdleerkrachtVan = null,
-        Guid[]? klassen = null)
+        Guid[]? klassen = null,
+        bool leerlingzorg = false)
     {
         var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", "Test", isDirectie: directie);
         if (themabeheer)
         {
             gebruiker.GeefThemabeheer();
+        }
+
+        if (leerlingzorg)
+        {
+            gebruiker.GeefLeerlingzorg();
         }
 
         await using var context = _db.MaakContext();

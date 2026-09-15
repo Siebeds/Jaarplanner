@@ -32,7 +32,10 @@ public sealed record ThemadoelSuggestieVerzoek
     /// <summary>The (transient) thema context to ground on. Required.</summary>
     public required ThemaOpbouwContext Thema { get; init; }
 
-    /// <summary>Optional filter bounding which Op.stap leerplandoelen are offered as candidates; defaults to all.</summary>
+    /// <summary>
+    /// The filter bounding which Op.stap leerplandoelen are offered as candidates. Its jaar/fasen are required: without
+    /// them the request is refused (TB-007), since a thema being authored has no subthema to take a leeftijd from.
+    /// </summary>
     public LeerdoelSelectie? Selectie { get; init; }
 }
 
@@ -45,6 +48,9 @@ public sealed record SubdoelSuggestieVerzoek
     /// <summary>The (transient) subthema context (with its required leeftijd) to ground on. Required.</summary>
     public required SubthemaOpbouwContext Subthema { get; init; }
 
-    /// <summary>Optional filter bounding which Op.stap leerplandoelen are offered as candidates; defaults to all.</summary>
+    /// <summary>
+    /// Optional filter bounding which Op.stap leerplandoelen are offered as candidates; without jaar/fasen the subthema's
+    /// own leeftijd applies (TB-007).
+    /// </summary>
     public LeerdoelSelectie? Selectie { get; init; }
 }

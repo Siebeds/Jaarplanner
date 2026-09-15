@@ -1,5 +1,13 @@
-import { useKlassen, useSchooljaren } from "./queries";
+import { useKlassen, useRapportklassen, useSchooljaren } from "./queries";
 import { useSelectie } from "../state/selectie";
+
+/**
+ * Which list of klassen a screen chooses from. `planning` is `GET /api/klassen`, the klassen whose planning this
+ * gebruiker reads, for every class-scoped screen. `rapport` is `GET /api/rapportklassen`, the klassen whose
+ * ontwikkelingsrapporten they read (FB-008): not the same set, since Leerlingzorg reads no planning and a hoofdleerkracht
+ * of K3 reads no report.
+ */
+export type Klassenbron = "planning" | "rapport";
 
 /**
  * The schooljaar and klas the class-scoped screens work in.
@@ -9,15 +17,22 @@ import { useSelectie } from "../state/selectie";
  * DERIVED rather than written back into the store, which matters more than it looks: writing a
  * default from an effect means a render with no class, then a render with one, and any request in
  * between fires against the wrong scope or not at all.
+ *
+ * Both lists of klassen share the one chosen klas, so the agenda opens on the klas last picked in the report and the
+ * other way round, whenever the other list holds it too. A klas only one list holds counts only for that list.
  */
-export function useActieveSelectie() {
+export function useActieveSelectie(klassenbron: Klassenbron = "planning") {
   const { schooljaarId, klasId, kiesSchooljaar, kiesKlas } = useSelectie();
   const { data: schooljaren, isPending: schooljarenLaden, isLoadingError: schooljarenFout } = useSchooljaren();
 
   const actiefSchooljaarId = schooljaarId ?? schooljaren?.[0]?.id ?? null;
 
-  // Narrowed here rather than by the request: the klassen endpoint has no school-year filter.
-  const { data: alleKlassen, isPending: klassenLaden, isLoadingError: klassenFout } = useKlassen();
+  // Only the list this screen chooses from is asked for. Narrowed here rather than by the request: neither endpoint has
+  // a school-year filter.
+  const planning = useKlassen(klassenbron === "planning");
+  const rapport = useRapportklassen(klassenbron === "rapport");
+  const { data: alleKlassen, isPending: klassenLaden, isLoadingError: klassenFout } =
+    klassenbron === "rapport" ? rapport : planning;
   const klassen = (alleKlassen ?? []).filter((klas) => klas.schooljaarId === actiefSchooljaarId);
 
   // A klas chosen in another school year is not a klas in this one, so the id only counts when the

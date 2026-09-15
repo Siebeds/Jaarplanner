@@ -49,10 +49,10 @@ public sealed class DoelsuggestiesController : ControllerBase
     /// already linked to the thema is skipped, so re-running is safe.
     /// <para>
     /// The body is <b>optional</b>. Its <c>selectie</c> bounds which Op.stap leerplandoelen the model may choose
-    /// from (disciplines / jaar-fasen / codes); omitting it means the whole loaded set. That default is not
-    /// decided here — it is documented in <see cref="DoelsuggestieGeneratieVerzoek"/> and stated in the UI,
-    /// because "which disciplines first" is still an open Art. XIV question and the run's scope must stay the
-    /// teacher's visible, per-run choice. <c>aantalKandidaten</c> in the response reports what it resolved to.
+    /// from (disciplines / jaar-fasen / codes). Without jaar/fasen in it the run takes the leeftijden of the thema's
+    /// subthema's, and a thema without any answers <b>400</b> (TB-007, <see cref="DoelsuggestieGeneratieVerzoek"/>). A
+    /// prompt over the configured ceiling answers 400 as well. Both carry a Dutch sentence for the person who asked, and
+    /// in both the model is not called. <c>aantalKandidaten</c> and <c>jaarFasen</c> in the response report the scope.
     /// </para>
     /// <para>
     /// An invalid AI response yields <b>422 Unprocessable Entity</b> with the diagnostic and <b>no</b> change to

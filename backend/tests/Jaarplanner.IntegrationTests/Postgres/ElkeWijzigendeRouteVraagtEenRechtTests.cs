@@ -83,12 +83,18 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         }
     }
 
-    [PostgresFact]
-    public async Task Elke_wijzigende_route_weigert_een_gebruiker_zonder_enig_recht()
+    /// <summary>
+    /// With <paramref name="leerlingzorg"/>, the same sweep for a gebruiker whose only right is Leerlingzorg (ADR-0035 R18,
+    /// FB-008): it reads every report and writes nothing, so every write route refuses it exactly as it refuses no right.
+    /// </summary>
+    [PostgresTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Elke_wijzigende_route_weigert_een_gebruiker_zonder_schrijfrecht(bool leerlingzorg)
     {
         var zaad = await ZaaiAsync();
         var opzet = new RechtenTestOpzet(_db, _factory);
-        using var client = opzet.Als(await opzet.GebruikerAsync());
+        using var client = opzet.Als(await opzet.GebruikerAsync(leerlingzorg: leerlingzorg));
 
         var fouten = new List<string>();
         var bestaand = new HashSet<string>(StringComparer.Ordinal);
@@ -140,16 +146,29 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     };
 
     /// <summary>
+    /// Read routes on one klas that Leerlingzorg opens (ADR-0035 R18, FB-008), each with why: the report's own, on the
+    /// report's read row. Every other read of a klas stays closed to it, since it reads no klas's planning.
+    /// </summary>
+    private static readonly Dictionary<string, string> KlasleesroutesVanLeerlingzorg = new(StringComparer.Ordinal)
+    {
+        ["GET api/klassen/{klasId:guid}/leerlingen"] = "the children of a K3 klas: OntwikkelingsrapportLezen, whose Leerlingzorg column this is",
+    };
+
+    /// <summary>
     /// FB-013's sweep (ADR-0040): <b>every</b> read route that names a klas refuses a gebruiker who holds no right at all
     /// with the authorisation's own 403, unless it is on <see cref="KlasleesroutesOpenVoorIedereen"/>; and the klassen
     /// list offers that gebruiker nothing. So a klas read added later fails here until someone decides its row.
+    /// With <paramref name="leerlingzorg"/>, the same for a gebruiker whose only right is Leerlingzorg (FB-008), who reads
+    /// the routes on <see cref="KlasleesroutesVanLeerlingzorg"/> and no klas's planning.
     /// </summary>
-    [PostgresFact]
-    public async Task Elke_leesroute_op_een_klas_weigert_een_gebruiker_zonder_enig_recht()
+    [PostgresTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Elke_leesroute_op_een_klas_weigert_een_gebruiker_zonder_leesrecht_op_de_planning(bool leerlingzorg)
     {
         var zaad = await ZaaiAsync();
         var opzet = new RechtenTestOpzet(_db, _factory);
-        using var client = opzet.Als(await opzet.GebruikerAsync());
+        using var client = opzet.Als(await opzet.GebruikerAsync(leerlingzorg: leerlingzorg));
 
         var fouten = new List<string>();
         var bestaand = new HashSet<string>(StringComparer.Ordinal);
@@ -161,6 +180,18 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             bestaand.Add(sleutel);
             if (KlasleesroutesOpenVoorIedereen.ContainsKey(sleutel))
             {
+                continue;
+            }
+
+            if (leerlingzorg && KlasleesroutesVanLeerlingzorg.ContainsKey(sleutel))
+            {
+                var status = await RechtenTestOpzet.StatusAsync(client.GetAsync("/" + VulIn(endpoint.RoutePattern, route, zaad)));
+                verzonden++;
+                if (status != HttpStatusCode.OK)
+                {
+                    fouten.Add($"{sleutel} answered {(int)status} to Leerlingzorg, which reads every report (ADR-0035 R18).");
+                }
+
                 continue;
             }
 
@@ -178,7 +209,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         }
 
         Assert.True(fouten.Count == 0, string.Join(Environment.NewLine + Environment.NewLine, fouten));
-        Assert.All(KlasleesroutesOpenVoorIedereen.Keys, sleutel => Assert.Contains(sleutel, bestaand));
+        Assert.All(KlasleesroutesOpenVoorIedereen.Keys.Concat(KlasleesroutesVanLeerlingzorg.Keys), sleutel => Assert.Contains(sleutel, bestaand));
         Assert.True(verzonden >= 12, $"Expected every read of a klas, sent only {verzonden} requests.");
         Assert.Empty(await RechtenTestOpzet.KlasIdsAsync(client));
     }

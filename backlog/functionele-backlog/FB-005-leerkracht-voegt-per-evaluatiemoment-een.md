@@ -2,13 +2,13 @@
 id: FB-005
 titel: Leerkracht voegt per evaluatiemoment een kindtekening toe aan het rapport
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 19:39
+opgepakt-door: kindtekening
+branch: ticket/FB-005-kindtekening
+pr: 96
 geblokkeerd:
 fr: [FR-13.5]
 ---
@@ -41,11 +41,11 @@ Geen beeld of bestandsnaam in een log.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een rapport, wanneer de leerkracht een JPEG- of PNG-foto van een tekening toevoegt, dan staat de tekening bij dat rapport en bij geen ander moment, en vervangt een tweede tekening de eerste.
-- [ ] Gegeven een foto met een GPS-locatie en andere metagegevens, wanneer ze toegevoegd wordt en daarna vanuit de app bewaard wordt, dan bevat het bewaarde bestand geen van die metagegevens meer.
-- [ ] Gegeven een bestand dat geen JPEG of PNG is, of dat boven de grens voor grootte of pixels gaat, wanneer de leerkracht het toevoegt, dan weigert de app met een Nederlandse melding die de grens noemt.
-- [ ] Gegeven het adres van een tekening, wanneer iemand zonder recht op het rapport het opent (een leerkracht van een andere klas, of een venster waarin niemand aangemeld is), dan weigert de app.
-- [ ] Gegeven een tekening, wanneer de leerkracht ze verwijdert, dan is ze weg uit het rapport; na het schooljaar ziet de leerkracht ze nog, maar kan die ze niet meer vervangen of verwijderen.
+- [x] Gegeven een rapport, wanneer de leerkracht een JPEG- of PNG-foto van een tekening toevoegt, dan staat de tekening bij dat rapport en bij geen ander moment, en vervangt een tweede tekening de eerste.
+- [x] Gegeven een foto met een GPS-locatie en andere metagegevens, wanneer ze toegevoegd wordt en daarna vanuit de app bewaard wordt, dan bevat het bewaarde bestand geen van die metagegevens meer.
+- [x] Gegeven een bestand dat geen JPEG of PNG is, of dat boven de grens voor grootte of pixels gaat, wanneer de leerkracht het toevoegt, dan weigert de app met een Nederlandse melding die de grens noemt.
+- [x] Gegeven het adres van een tekening, wanneer iemand zonder recht op het rapport het opent (een leerkracht van een andere klas, of een venster waarin niemand aangemeld is), dan weigert de app.
+- [x] Gegeven een tekening, wanneer de leerkracht ze verwijdert, dan is ze weg uit het rapport; na het schooljaar ziet de leerkracht ze nog, maar kan die ze niet meer vervangen of verwijderen.
 
 ## Testscenario's
 
@@ -76,3 +76,9 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 18:24 · eigenaar · nieuw → klaar-voor-bouw: eigenaar geeft de bouw vrij in de sessie
+- 2026-09-15 18:24 · kindtekening · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:56 · kindtekening · backend en scherm gebouwd: SkiaSharp 4.152.0 (MIT) herwerkt elk beeld, grenzen 20 MB en 40 miljoen pixels, bewaard op hoogstens 2400 px; backend- en frontendtests groen
+- 2026-09-15 19:03 · kindtekening · criteria afgevinkt: integratie-, unit- en schermtests groen; in de browser gecontroleerd (GPS-foto rechtop en zonder metagegevens, PDF en 21 MB geweigerd, 401 zonder sessie, vervangen, verwijderen, 390px)
+- 2026-09-15 19:17 · kindtekening · in-uitvoering → te-testen: gebouwd: tekening per rapport, herwerkt zonder metagegevens (SkiaSharp), 20 MB en 40 miljoen pixels; antagonist COMPLIANT, drie kleine punten opgelost; tests, lint en format groen; open vraag voor de eigenaar over de licenties in de native bibliotheek (werklog)
+- 2026-09-15 19:39 · kindtekening · PR #96

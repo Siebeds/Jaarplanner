@@ -205,50 +205,9 @@ public static class ThemaOpbouwPromptBuilder
         }
     }
 
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen)
-    {
-        Line(sb, "# Beschikbare Op.stap-leerplandoelen");
-        Line(sb, string.Empty);
-        if (leerdoelen.Count == 0)
-        {
-            Line(sb, "- (geen leerplandoelen aangeleverd)");
-            return;
-        }
-
-        // Order by the stable code so the prompt is identical regardless of caller ordering.
-        foreach (var doel in leerdoelen.OrderBy(d => d.Code, StringComparer.Ordinal))
-        {
-            SchrijfLeerplandoel(sb, doel);
-        }
-    }
-
-    private static void SchrijfLeerplandoel(StringBuilder sb, Leerplandoel doel)
-    {
-        var taxonomie = doel.Cluster is null
-            ? $"{doel.Domein} > {doel.Subdomein}"
-            : $"{doel.Domein} > {doel.Subdomein} > {doel.Cluster}";
-        Line(sb, $"- {doel.Code} | {doel.Doelsoort.ToCode()} | {doel.JaarFase} | {taxonomie}");
-        Line(sb, $"  Tekst: {doel.Tekst}");
-        if (doel.Voorbeelden is not null)
-        {
-            Line(sb, $"  Voorbeelden: {doel.Voorbeelden}");
-        }
-
-        if (doel.Toelichting is not null)
-        {
-            Line(sb, $"  Toelichting: {doel.Toelichting}");
-        }
-
-        if (doel.Woordenschat is not null)
-        {
-            Line(sb, $"  Woordenschat: {doel.Woordenschat}");
-        }
-
-        if (doel.MinimumdoelRef is not null)
-        {
-            Line(sb, $"  Minimumdoel: {doel.MinimumdoelRef}");
-        }
-    }
+    // The goal list is the one the matching prompt ends with too, compact since TB-007: see LeerplandoelPromptlijst.
+    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
+        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
 
     private static void SchrijfWoordenlijst(StringBuilder sb, string label, IReadOnlyCollection<string>? woorden)
     {

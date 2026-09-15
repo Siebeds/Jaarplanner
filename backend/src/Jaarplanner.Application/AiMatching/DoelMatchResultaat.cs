@@ -56,6 +56,12 @@ public sealed record DoelMatchResultaat
     /// </summary>
     public int AantalKandidaten { get; }
 
+    /// <summary>
+    /// The jaar/fasen the candidates were drawn from (TB-007): the caller's choice, or else the leeftijden of the thema's
+    /// subthema's. Reported beside <see cref="AantalKandidaten"/>, so the screen can say what a run searched.
+    /// </summary>
+    public IReadOnlyList<string> JaarFasen { get; init; } = LeegCodes;
+
     /// <summary>Builds a success result.</summary>
     public static DoelMatchResultaat Geslaagd(
         IReadOnlyList<DoelMatchSuggestieWeergave> bewaard,

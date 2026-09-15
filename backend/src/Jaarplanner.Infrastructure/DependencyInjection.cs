@@ -180,6 +180,8 @@ public static class DependencyInjection
         // because both belong to the ontwikkelingsrapport.
         services.AddScoped<IRapportsetService, RapportsetService>();
         services.AddScoped<IOntwikkelingsrapportService, OntwikkelingsrapportService>();
+        services.AddScoped<IKindtekeningService, KindtekeningService>();
+        services.AddSingleton<ITekeningHerwerker, SkiaTekeningHerwerker>();
 
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —
@@ -210,6 +212,16 @@ public static class DependencyInjection
         // the key never reaches the frontend (Art. VI.4).
         services.Configure<AzureAIOptions>(configuration.GetSection(AzureAIOptions.SectionName));
         services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
+
+        // The ceiling on a prompt's size (TB-007), shared by the matching and the thema-opbouw assist. Bound from the
+        // `AiPrompt` section so it changes without a code change; a value under 1 stops the app at startup, where a
+        // deploy sees it, rather than on the first AI request.
+        services.AddOptions<AiPromptOptions>()
+            .Bind(configuration.GetSection(AiPromptOptions.SectionName))
+            .Validate(o => o.MaxTokens >= 1, "AiPrompt:MaxTokens must be at least 1.")
+            .ValidateOnStart();
+        services.AddSingleton(sp => new Promptbegrenzing(
+            sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<AiPromptOptions>>().Value.MaxTokens));
 
         // The AI goal-matching persistence port (E2-04, Art. VIII layering): the matching service
         // persists/queries thema-level suggestions through this seam, so it stays free of EF Core and

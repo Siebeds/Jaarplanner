@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Curriculum;
@@ -33,10 +34,13 @@ public sealed class DoelMatchingServiceTests
         new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
     ];
 
+    // The configured default; every prompt in these tests is far under it unless a test sets its own ceiling.
+    private static readonly Promptbegrenzing Ruim = new();
+
     private static DoelMatchingService Service(FakeAiClient client, out FakeDoelMatchOpslag opslag, Thema? thema = null)
     {
         opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
-        return new DoelMatchingService(client, opslag, new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+        return new DoelMatchingService(client, opslag, new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
     }
 
     private static DoelMatchingService Service(
@@ -44,11 +48,12 @@ public sealed class DoelMatchingServiceTests
         out FakeDoelMatchOpslag opslag,
         out FakeLeerdoelCatalogus catalogus,
         Thema? thema = null,
-        IReadOnlyList<Leerplandoel>? leerdoelen = null)
+        IReadOnlyList<Leerplandoel>? leerdoelen = null,
+        Promptbegrenzing? begrenzing = null)
     {
         opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
         catalogus = new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet());
-        return new DoelMatchingService(client, opslag, catalogus);
+        return new DoelMatchingService(client, opslag, catalogus, begrenzing ?? Ruim);
     }
 
     [Fact]
@@ -170,7 +175,7 @@ public sealed class DoelMatchingServiceTests
     {
         var fake = new FakeAiClient();
         var service = new DoelMatchingService(
-            fake, new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+            fake, new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
 
         await Assert.ThrowsAsync<ThemaNietGevondenFout>(
             () => service.MatchThemaAsync(ThemaId, EenLeerdoelenSet()));
@@ -182,9 +187,10 @@ public sealed class DoelMatchingServiceTests
     public void Service_verwerpt_null_afhankelijkheden()
     {
         var catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet());
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, new FakeDoelMatchOpslag(EenThema()), catalogus));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), null!, catalogus));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), null!));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, new FakeDoelMatchOpslag(EenThema()), catalogus, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), null!, catalogus, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), null!, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), catalogus, null!));
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -212,26 +218,128 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal("herkent bomen.", bewaard.Tekst);
         Assert.Equal(Doelsoort.Minimumdoel, bewaard.Doelsoort);
 
-        // The candidate set came from the read-only curriculum seam — no caller had to supply it.
+        // The candidate set came from the read-only curriculum seam — no caller had to supply it — and holds the goals of
+        // the thema's one leeftijd, K3, not the L1 goal (TB-007).
         Assert.Equal(1, catalogus.AantalAanroepen);
-        Assert.Equal(3, resultaat.AantalKandidaten);
+        Assert.Equal(2, resultaat.AantalKandidaten);
+        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
 
         // Advisory only: persisted as `voorgesteld`, nothing accepted (Art. IV.1/IV.2).
         Assert.All(thema.Doelsuggesties, k => Assert.Equal(KoppelingStatus.Voorgesteld, k.Status));
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // TB-007 — the candidate set is bounded by jaar/fase and the prompt by a ceiling. The whole catalogue
+    // (some 5,800 goals since the Op.stap import) is never sent.
+    // ---------------------------------------------------------------------------------------------
+
     [Fact]
-    public async Task Zonder_selectie_zoekt_de_generatie_in_alles()
+    public async Task Zonder_keuze_neemt_de_generatie_de_leeftijden_van_de_subthemas()
     {
-        // The default is "no filter", applied in ONE documented place — not a discipline list picked on the
-        // school's behalf (Art. XIV, "disciplines first" is still open). The teacher narrows it per run.
+        // The thema has one subthema, at K3: only the K3 goals are candidates, and the L1 goal never reaches the prompt.
         var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
         var service = Service(fake, out _, out var catalogus);
 
-        await service.GenereerSuggestiesAsync(ThemaId);
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
-        Assert.Equal(LeerdoelSelectie.Alles, catalogus.LaatsteSelectie);
+        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
+        Assert.Equal(2, resultaat.AantalKandidaten);
+        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
+        Assert.Contains("NAT-K3-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("NAT-K3-02", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("REK-L1-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task De_leeftijden_van_meerdere_subthemas_komen_elk_een_keer_in_de_volgorde_van_de_jaarfasen()
+    {
+        var thema = new Thema("Herfst", duurWeken: 4);
+        thema.VoegSubthemaToe("Tellen", duurWeken: 2, leeftijd: "L1");
+        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
+        thema.VoegSubthemaToe("Kastanjes", duurWeken: 2, leeftijd: "K3");
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(new[] { "K3", "L1" }, resultaat.JaarFasen);
+        Assert.Equal(3, resultaat.AantalKandidaten);
+    }
+
+    [Fact]
+    public async Task Een_keuze_van_de_gebruiker_gaat_voor_de_leeftijden_van_de_subthemas()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out _);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, new LeerdoelSelectie { JaarFasen = ["L1"] });
+
+        Assert.Equal(new[] { "L1" }, resultaat.JaarFasen);
+        Assert.Equal(1, resultaat.AantalKandidaten);
+        Assert.DoesNotContain("NAT-K3-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_jaarfasen()
+    {
+        var thema = new Thema("Herfst", duurWeken: 4);
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out _, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, new LeerdoelSelectie { JaarFasen = ["K3"] });
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(2, resultaat.AantalKandidaten);
+        Assert.Equal(1, fake.AantalAanroepen);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Een_thema_zonder_subthemas_en_zonder_keuze_roept_de_ai_niet_aan(bool legeKeuze)
+    {
+        // An empty jaar/fase dimension means "every jaar/fase" to the catalogue, so a blank choice must not count as one.
+        var thema = new Thema("Herfst", duurWeken: 4);
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
+        var service = Service(fake, out var opslag, out var catalogus, thema);
+        var selectie = legeKeuze ? new LeerdoelSelectie { JaarFasen = ["", " "] } : null;
+
+        var fout = await Assert.ThrowsAsync<JaarfaseKeuzeNodigFout>(() => service.GenereerSuggestiesAsync(ThemaId, selectie));
+
+        Assert.Equal("Kies eerst voor welke leeftijden je doelsuggesties wil.", fout.Message);
+        Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.Equal(0, fake.AantalAanroepen);
+        Assert.Empty(thema.Doelsuggesties);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Boven_de_grens_wordt_de_ai_niet_aangeroepen_en_niets_bewaard()
+    {
+        var thema = EenThema();
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
+        var service = Service(fake, out var opslag, out _, thema, begrenzing: new Promptbegrenzing(maxTokens: 10));
+
+        var fout = await Assert.ThrowsAsync<PromptTeGrootFout>(() => service.GenereerSuggestiesAsync(ThemaId));
+
+        Assert.Equal(10, fout.MaxTokens);
+        Assert.True(fout.GeschatteTokens > 10);
+        Assert.Equal(0, fake.AantalAanroepen);
+        Assert.Empty(thema.Doelsuggesties);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Een_aanvraag_van_precies_de_grens_gaat_door()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        await Service(fake, out _, out _).GenereerSuggestiesAsync(ThemaId);
+        var tokens = Promptbegrenzing.SchatTokens(fake.LaatsteRequest!);
+
+        await Service(fake, out _, out _, begrenzing: new Promptbegrenzing(tokens)).GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(2, fake.AantalAanroepen);
     }
 
     [Fact]
@@ -298,7 +406,7 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(0, opslag.AantalKeerBewaard);
         // The run still reports what it searched in, so a 0-suggestion failure is not mistaken for an empty
         // curriculum.
-        Assert.Equal(3, resultaat.AantalKandidaten);
+        Assert.Equal(2, resultaat.AantalKandidaten);
     }
 
     [Fact]
@@ -507,7 +615,7 @@ public sealed class DoelMatchingServiceTests
             () => service.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
 
         var zonderThema = new DoelMatchingService(
-            new FakeAiClient(), new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+            new FakeAiClient(), new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
         await Assert.ThrowsAsync<ThemaNietGevondenFout>(
             () => zonderThema.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
     }

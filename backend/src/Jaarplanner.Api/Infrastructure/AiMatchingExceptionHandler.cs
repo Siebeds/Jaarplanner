@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiMatching;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -10,8 +11,11 @@ namespace Jaarplanner.Api.Infrastructure;
 /// or <see cref="DoelsuggestieNietGevondenFout"/> becomes 404, and an
 /// <see cref="OngeldigeSuggestieStatusFout"/> — a teacher asking for a status they may not set
 /// (Art. IV.1/IV.2) — or an <see cref="OngeldigeDoelsubstitutieFout"/> — an "aanpassen" pointing at a code
-/// Op.stap does not carry or one already linked (Art. III.5, Art. V) — becomes 400. Other exceptions are
-/// left to the next handler / default pipeline.
+/// Op.stap does not carry or one already linked (Art. III.5, Art. V) — becomes 400. So do the two refusals of
+/// TB-007, from the matching and the thema-opbouw assist alike: a <see cref="JaarfaseKeuzeNodigFout"/> (no jaar/fase to
+/// search in) and a <see cref="PromptTeGrootFout"/> (over the prompt ceiling). Each carries a Dutch sentence the person
+/// who asked can act on, and in both the model was not called. Other exceptions are left to the next handler / default
+/// pipeline.
 /// </summary>
 public sealed class AiMatchingExceptionHandler : IExceptionHandler
 {
@@ -28,6 +32,8 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             DoelsuggestieNietGevondenFout => StatusCodes.Status404NotFound,
             OngeldigeSuggestieStatusFout => StatusCodes.Status400BadRequest,
             OngeldigeDoelsubstitutieFout => StatusCodes.Status400BadRequest,
+            JaarfaseKeuzeNodigFout => StatusCodes.Status400BadRequest,
+            PromptTeGrootFout => StatusCodes.Status400BadRequest,
             _ => (int?)null,
         };
 

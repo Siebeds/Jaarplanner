@@ -3,7 +3,13 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import type { ActiviteitWeergave, DoelMatchSuggestie, ThemaDoelenoverzicht, ThemaWeergave } from "../../lib/types";
+import type {
+  ActiviteitWeergave,
+  DoelMatchResultaat,
+  DoelMatchSuggestie,
+  ThemaDoelenoverzicht,
+  ThemaWeergave,
+} from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import { STANDAARDDUUR } from "../plan/tijd";
@@ -88,12 +94,23 @@ function json(inhoud: unknown, status = 200) {
 
 function toon(
   ik: Ik,
-  opties: { weiger?: boolean; thema?: ThemaWeergave; overzicht?: ThemaDoelenoverzicht; pad?: string } = {},
+  opties: {
+    weiger?: boolean;
+    thema?: ThemaWeergave;
+    overzicht?: ThemaDoelenoverzicht;
+    /** Answers "Vraag suggesties", given the body it was sent. */
+    genereer?: (body: unknown) => Response;
+    /** Where the page opens, for a link that asks for one subthema (FB-037). */
+    pad?: string;
+  } = {},
 ) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string, init?: RequestInit) => {
       if (init?.method && init.method !== "GET") {
+        if (opties.genereer && pad.endsWith("/doelsuggesties/genereer")) {
+          return opties.genereer(JSON.parse(String(init.body ?? "{}")));
+        }
         return opties.weiger
           ? json({ title: "Geen toegang", detail: "Je hebt geen toegang tot deze actie." }, 403)
           : json({});
@@ -144,6 +161,126 @@ async function openHoofdstukken() {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-007)", () => {
+  const resultaat = (extra: Partial<DoelMatchResultaat> = {}): DoelMatchResultaat => ({
+    isGeslaagd: true,
+    fout: null,
+    bewaard: [SUGGESTIE, { ...SUGGESTIE, id: "sug-2" }, { ...SUGGESTIE, id: "sug-3" }],
+    overgeslagenOnbekend: [],
+    overgeslagenDuplicaat: [],
+    aantalKandidaten: 535,
+    jaarFasen: ["K3", "L1"],
+    ...extra,
+  });
+
+  const leeftijden = () => screen.findByRole("group", { name: t("thema.leeftijdenLabel") });
+  const vraag = () => fireEvent.click(screen.getByRole("button", { name: t("thema.suggestiesVragen") }));
+
+  it("duidt de leeftijden van de subthema's aan en vraagt voor precies die leeftijden", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat());
+      },
+    });
+
+    const groep = await leeftijden();
+    expect(within(groep).getByRole("button", { name: "K3" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(groep).getByRole("button", { name: "L1" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(groep).getByRole("button", { name: "JK" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(groep).getByRole("button", { name: "K2" })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByText(t("thema.kiesLeeftijd"))).toBeNull();
+
+    vraag();
+
+    const zin = t("thema.suggestiesNieuw", {
+      aantal: 3,
+      doelen: t("thema.kandidatenMeer", { aantal: 535 }),
+      leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }),
+    });
+    expect(await screen.findByText(zin)).toBeInTheDocument();
+    expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K3", "L1"] } }]);
+  });
+
+  it("stuurt een gewijzigde keuze in de volgorde van de jaarfasen, hoe er ook geklikt werd", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat({ jaarFasen: ["K2", "K3"] }));
+      },
+    });
+
+    const groep = await leeftijden();
+    fireEvent.click(within(groep).getByRole("button", { name: "L1" }));
+    fireEvent.click(within(groep).getByRole("button", { name: "K2" }));
+    expect(within(groep).getByRole("button", { name: "L1" })).toHaveAttribute("aria-pressed", "false");
+    vraag();
+
+    await waitFor(() => expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K2", "K3"] } }]));
+  });
+
+  it("laat bij een thema zonder subthema's eerst een leeftijd kiezen, en zegt waarom de knop uit staat", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      thema: { ...THEMA, subthemas: [] },
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat({ bewaard: [], aantalKandidaten: 1, jaarFasen: ["K2"] }));
+      },
+    });
+
+    const groep = await leeftijden();
+    expect(within(groep).queryByRole("button", { pressed: true })).toBeNull();
+    expect(screen.getByRole("button", { name: t("thema.suggestiesVragen") })).toBeDisabled();
+    expect(screen.getByText(t("thema.kiesLeeftijd"))).toBeInTheDocument();
+
+    fireEvent.click(within(groep).getByRole("button", { name: "K2" }));
+    expect(screen.queryByText(t("thema.kiesLeeftijd"))).toBeNull();
+    vraag();
+
+    expect(
+      await screen.findByText(t("thema.suggestiesGeenNieuwe", { doelen: t("thema.kandidaatEen"), leeftijden: "K2" })),
+    ).toBeInTheDocument();
+    expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K2"] } }]);
+  });
+
+  it("zegt het wanneer er voor de gekozen leeftijden geen doelen geladen zijn", async () => {
+    toon(DIRECTIE, { genereer: () => json(resultaat({ bewaard: [], aantalKandidaten: 0 })) });
+
+    await leeftijden();
+    vraag();
+
+    expect(
+      await screen.findByText(
+        t("thema.suggestiesGeenDoelen", { leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }) }),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("toont de Nederlandse weigering van de server", async () => {
+    const weigering =
+      "Deze aanvraag is te groot voor de AI: de tekst van 1.742 doelen is meer dan één aanvraag mag bevatten (ongeveer 91.000 tokens, de grens is 50.000). Kies minder leeftijden.";
+    toon(DIRECTIE, { genereer: () => json({ title: "Ongeldige aanvraag", detail: weigering }, 400) });
+
+    await leeftijden();
+    vraag();
+
+    expect(await screen.findByText(weigering)).toBeInTheDocument();
+  });
+
+  it("toont bij een kapot AI-antwoord de eigen zin, niet de Engelse diagnose", async () => {
+    toon(DIRECTIE, { genereer: () => json({ title: "Invalid AI response", detail: "Response is not valid JSON." }, 422) });
+
+    await leeftijden();
+    vraag();
+
+    expect(await screen.findByText(t("thema.suggestiesMislukt"))).toBeInTheDocument();
+    expect(screen.queryByText("Response is not valid JSON.")).toBeNull();
+  });
 });
 
 describe("ThemadetailScherm: wie wat mag", () => {

@@ -299,6 +299,39 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("gradaties", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Kindtekening", b =>
+                {
+                    b.Property<Guid>("OntwikkelingsrapportId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Breedte")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Formaat")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<int>("Hoogte")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("Inhoud")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<Guid>("Versie")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("OntwikkelingsrapportId");
+
+                    b.ToTable("kindtekeningen", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_kindtekeningen_Breedte", "\"Breedte\" > 0");
+
+                            t.HasCheckConstraint("CK_kindtekeningen_Hoogte", "\"Hoogte\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Leerling", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1001,6 +1034,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("EntraTenantId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("HeeftLeerlingzorg")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("HeeftThemabeheer")
                         .HasColumnType("boolean");
 
@@ -1109,6 +1145,15 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("MinimumdoelRef")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Kindtekening", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrapport", null)
+                        .WithOne()
+                        .HasForeignKey("Jaarplanner.Domain.Ontwikkelingsrapport.Kindtekening", "OntwikkelingsrapportId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Leerling", b =>

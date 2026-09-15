@@ -463,6 +463,144 @@
 }
 
 /*
+ * The tussenpagina (TB-026): what stands on screen until the app knows who is signed in.
+ *
+ * Plain classes rather than utilities because two places draw it: `index.html`, before the script has
+ * loaded, and `Tussenpagina`, after. They must be one drawing, so React can replace the static copy
+ * without anything on screen changing.
+ *
+ * `--tussenpagina-zichtbaar` is how `index.html` knows this sheet has arrived: its inline rule hides the
+ * page until the variable exists. In a build the sheet is linked in <head> and is there before the first
+ * paint; the dev server injects it from the script, and without the guard the static copy would show
+ * unstyled for a moment.
+ *
+ * The moving year bar is the fifth motion in this app, earned the way the AI sweep earns its: it is the
+ * only feedback during a wait. The accent passes from period to period, and every round starts at rest,
+ * the way `Merk` draws the bar, so the static copy (which does not move) hands over without a jump, and a
+ * load that finishes quickly never gets as far as moving. Reduced motion stops it on its resting frame.
+ */
+@layer components {
+  :root {
+    --tussenpagina-zichtbaar: visible;
+  }
+
+  .tussenpagina {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem 1rem;
+    text-align: center;
+  }
+
+  /* `Merk` enlarged by about two, the bar at the same proportion to the word. */
+  .tussenpagina-naam {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--color-inkt);
+  }
+
+  .tussenpagina-balk {
+    display: flex;
+    gap: 6px;
+    width: 13.75rem;
+    height: 6px;
+    margin-top: 0.875rem;
+  }
+
+  .tussenpagina-balk > span {
+    height: 100%;
+    border-radius: 9999px;
+    background-color: var(--color-lijn-sterk);
+  }
+
+  .tussenpagina-balk > span:nth-child(1) {
+    flex: 4;
+    background-color: var(--color-accent);
+  }
+
+  .tussenpagina-balk > span:nth-child(2) {
+    flex: 3;
+  }
+
+  .tussenpagina-balk > span:nth-child(3) {
+    flex: 5;
+  }
+
+  .tussenpagina-balk[data-bezig] > span:nth-child(1) {
+    animation: jaarbalk-1 2.7s ease-in-out infinite;
+  }
+
+  .tussenpagina-balk[data-bezig] > span:nth-child(2) {
+    animation: jaarbalk-2 2.7s ease-in-out infinite;
+  }
+
+  .tussenpagina-balk[data-bezig] > span:nth-child(3) {
+    animation: jaarbalk-3 2.7s ease-in-out infinite;
+  }
+
+  /* Its line box is reserved from the start, empty in the static copy, so the mark does not move up when
+     the sentence arrives. The sentence waits before it fades in: a teacher who is signed in and loads
+     quickly never sees words flash past. */
+  .tussenpagina-status {
+    min-height: calc(var(--text-body) * 1.55);
+    margin: 2rem 0 0;
+    font-size: var(--text-body);
+    line-height: 1.55;
+    color: var(--color-inkt-zacht);
+    animation: waas-in 240ms ease-out 700ms both;
+  }
+}
+
+@keyframes jaarbalk-1 {
+  0%,
+  20% {
+    background-color: var(--color-accent);
+  }
+  32%,
+  88% {
+    background-color: var(--color-lijn-sterk);
+  }
+  100% {
+    background-color: var(--color-accent);
+  }
+}
+
+@keyframes jaarbalk-2 {
+  0%,
+  20% {
+    background-color: var(--color-lijn-sterk);
+  }
+  32%,
+  52% {
+    background-color: var(--color-accent);
+  }
+  64%,
+  100% {
+    background-color: var(--color-lijn-sterk);
+  }
+}
+
+@keyframes jaarbalk-3 {
+  0%,
+  52% {
+    background-color: var(--color-lijn-sterk);
+  }
+  64%,
+  88% {
+    background-color: var(--color-accent);
+  }
+  100% {
+    background-color: var(--color-lijn-sterk);
+  }
+}
+
+/*
  * The AI ring (ADR-0039), worn only through `AiKnop`.
  *
  * Two background layers: the card, clipped to the padding box, over the sweep, clipped to the

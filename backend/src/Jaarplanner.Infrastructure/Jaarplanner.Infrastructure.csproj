@@ -33,6 +33,8 @@
     <!-- Microsoft Entra sign-in for the AI client, only when AzureAI:Authentication is 'Entra' (ADR-0036); the key
          stays the default. The eval runner uses the Azure CLI credential. The same version the Api uses for Key Vault. -->
     <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="SkiaSharp" Version="4.152.0" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.152.0" />
     <!-- Transitive pin, NOT a direct dependency (E7-12 practice, E6-01). Data Protection above resolves 10.0.9, which
          carries five high-severity advisories (GHSA-23rf-6693-g89p, -8q5v-6pqq-x66h, -cvvh-rhrc-wg4q, -g8r8-53c2-pm3f
          and -mmjf-rqrv-855v); `dotnet list package vulnerable` is clean at 10.0.12. Remove this pin once Data

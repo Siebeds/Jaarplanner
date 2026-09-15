@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 20:08
+bijgewerkt: 2026-09-15 20:17
 opgepakt-door: stroken-doorklik
 branch: ticket/FB-037-stroken-doorklik
-pr:
+pr: 99
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -85,3 +85,4 @@ Geen.
 - 2026-09-15 19:57 · stroken-doorklik · browsercontrole geslaagd (headless Chrome over CDP, wegwerpdatabank jp_fb037, 1440 en 390, licht en donker): 35 van 35 controles groen, klik in week, dag en maand, toetsenbord via de subthemabalk, terugknop, lege periode, contrast 5,02 tot 10,82:1, console leeg; criteria afgevinkt; verslag in backlog/worklogs/FB-037/verification.md; antagonist loopt
 - 2026-09-15 20:08 · stroken-doorklik · antagonist: COMPLIANT, 0 kritiek, 0 groot, 4 klein; alle vier opgelost (lijstnaam volgt wat de balk toont, themasInBereik als pure functie met test, geen focus op een strooklink na een klik, E10-01 noemt de link); verslag in backlog/worklogs/FB-037/antagonist.md; lint schoon, Vitest 887/887, browserpas opnieuw 35/35
 - 2026-09-15 20:08 · stroken-doorklik · in-uitvoering → te-testen: gebouwd: thema- en subthemastroken openen de themapagina (subthema opengeklapt en in beeld) in week, dag en maand; toetsenbord via de subthemabalk, nu ook boven de maand; ADR-0042; antagonist COMPLIANT, 4 kleine bevindingen opgelost; gates groen: lint, Vitest 887, browser 1440 en 390 licht en donker 35/35; geen backendwijziging
+- 2026-09-15 20:17 · stroken-doorklik · PR #99

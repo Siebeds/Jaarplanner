@@ -87,7 +87,7 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
             Assert.True(antwoord.Headers.CacheControl?.NoStore, "A report is pupil data: no cache may keep it.");
             using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
             Assert.Equal(
-                ["achternaam", "besluit", "besluitStatus", "klasId", "klasNaam", "leerlingId", "moment", "rapportdoelen", "schooljaarNaam", "voornaam"],
+                ["achternaam", "besluit", "besluitStatus", "klasId", "klasNaam", "leerlingId", "moment", "rapportdoelen", "schooljaarNaam", "tekening", "voornaam"],
                 json.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         }
 

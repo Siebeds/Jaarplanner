@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { get, put } from "../../lib/api";
+import { apiAdres, apiFetch, del, get, put } from "../../lib/api";
+import { t } from "../../i18n";
 import type { Rapportsubdoel } from "./rapportset";
 
 /**
@@ -45,6 +46,16 @@ export interface Rapport {
   rapportdoelen: Rapportregel[];
   besluit: string | null;
   besluitStatus: Tekststatus | null;
+  /** The kindtekening's version and size, or none (FB-005). The image is fetched from `tekeningadres`. */
+  tekening: Tekening | null;
+}
+
+/** The one drawing of a report, as the report names it. */
+export interface Tekening {
+  /** Changes with every replacement, so the image's address does too. */
+  versie: string;
+  breedte: number;
+  hoogte: number;
 }
 
 export interface BeoordelingInvoer {
@@ -101,6 +112,63 @@ export function useBewaarBeoordeling(leerlingId: string, moment: number) {
             }
           : rapport,
       ),
+  });
+}
+
+// --- The kindtekening (FB-005, R10, ADR-0035 §3.6). ---
+
+/**
+ * The server's `Kindtekeningregels`: the size limit, which the screen checks before sending, and the two formats.
+ * Copied by hand from `Kindtekeningregels.MaxMegabytes`; the refusal names this number, so change both.
+ */
+export const MAX_TEKENING_MB = 20;
+export const TEKENINGTYPES = ["image/jpeg", "image/png"] as const;
+
+/**
+ * The image of a drawing. Only reachable with a session that may read the report; the version makes a replaced drawing
+ * a new address, so the browser does not show the old one from memory.
+ */
+export function tekeningadres(leerlingId: string, moment: number, versie: string): string {
+  return apiAdres(`${pad(leerlingId, moment)}/tekening?versie=${encodeURIComponent(versie)}`);
+}
+
+/**
+ * Why a chosen file is refused before it is sent, or null. Only what the browser knows: its size, and its type where
+ * the browser names one (a file it cannot type goes to the server, which reads the content itself).
+ */
+export function tekeningweigering(bestand: File): string | null {
+  if (bestand.type !== "" && !(TEKENINGTYPES as readonly string[]).includes(bestand.type)) {
+    return t("ontwikkelingsrapport.tekeningGeenJpegOfPng");
+  }
+  if (bestand.size > MAX_TEKENING_MB * 1024 * 1024) {
+    return t("ontwikkelingsrapport.tekeningTeGroot", { mb: MAX_TEKENING_MB });
+  }
+  return null;
+}
+
+/**
+ * Adding or replacing the drawing. The file goes under a fixed name, so the one the phone or the computer gave it never
+ * leaves the browser; the server re-encodes the image and keeps nothing else of it.
+ */
+export function useBewaarTekening(leerlingId: string, moment: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bestand: File) => {
+      const formulier = new FormData();
+      formulier.append("bestand", bestand, "tekening");
+      return apiFetch<Tekening>(`${pad(leerlingId, moment)}/tekening`, { method: "PUT", body: formulier });
+    },
+    onSuccess: (tekening) =>
+      qc.setQueryData<Rapport>(sleutel(leerlingId, moment), (rapport) => (rapport ? { ...rapport, tekening } : rapport)),
+  });
+}
+
+export function useVerwijderTekening(leerlingId: string, moment: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => del<void>(`${pad(leerlingId, moment)}/tekening`),
+    onSuccess: () =>
+      qc.setQueryData<Rapport>(sleutel(leerlingId, moment), (rapport) => (rapport ? { ...rapport, tekening: null } : rapport)),
   });
 }
 

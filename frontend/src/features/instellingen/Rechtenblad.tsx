@@ -126,6 +126,13 @@ export function Rechtenblad({
               bezig={bezig}
               onZet={(aan) => zet(rechtPad.themabeheer(id), aan)}
             />
+            <Vinkje
+              label={t("gebruikers.leerlingzorg")}
+              uitleg={t("gebruikers.leerlingzorgUitleg")}
+              aan={staat(rechtPad.leerlingzorg(id), gebruiker.heeftLeerlingzorg)}
+              bezig={bezig}
+              onZet={(aan) => zet(rechtPad.leerlingzorg(id), aan)}
+            />
           </Groep>
 
           {schooljaar ? (
