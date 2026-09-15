@@ -27,6 +27,16 @@ takes the two-step route and checks the web survives. Recorded in ADR-0041 and t
 Gates after the fixes: backend unit 1727 passed; integration (woordweb, wizard, write-route sweep, rights) 54/54
 against PostgreSQL; `dotnet format` clean. No frontend file changed.
 
-## Round 2
+## Round 2 (on 251a5e9 and 51da344): COMPLIANT
 
-A re-audit of the MAJOR only (ADR-0037).
+A re-audit of the MAJOR only (ADR-0037). **Resolved:** the wizard's subthema delete refuses while any woordweb is on the
+subthema, inside its transaction and before the cascade; the two-step route is tested; the rule is stated as a default
+(I25) in Art. VI.1, ADR-0041, ADR-0030 §3 footnote 9 and FA A.11.
+
+**No new CRITICAL or MAJOR.** The antagonist checked every other path that could remove someone else's woordweb:
+
+- The thema delete is guarded by D5.
+- The ordinary subthema delete is directie's and the hoofdleerkracht's, under D4, with the count in the confirmation.
+- The FR-1 import removes no thema or subthema.
+- Removing a gebruiker cascades only her own webs.
+- The D7 read filter only sends less.

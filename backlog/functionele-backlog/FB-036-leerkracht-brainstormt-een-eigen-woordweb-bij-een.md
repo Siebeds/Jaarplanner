@@ -2,10 +2,10 @@
 id: FB-036
 titel: Leerkracht brainstormt een eigen woordweb bij een subthema, met AI-voorstellen
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:26
+bijgewerkt: 2026-09-15 19:29
 opgepakt-door: woordweb
 branch: ticket/FB-036-woordweb
 pr:
@@ -96,3 +96,4 @@ de eigenaar koos bewust voor het subthema, omdat daar het werk in de klas gebeur
 - 2026-09-15 18:27 · woordweb · eigenaar: overnemen naar streefwoordenschat uit scope (eigen ticket na E10-01); AI mag vrij woorden voorstellen, met uitzondering in Art. IV.4
 - 2026-09-15 19:12 · woordweb · gebouwd: woordweb per gebruiker en subthema, AI-voorstellen (max 5, motivatie, aanvaard/weiger), recht WoordwebBewerken, migratie Woordwebs; gates groen behalve de flaky Z1_Z6 (los van dit ticket); browsercontrole 19/19 op 1440 en 390px, zie worklogs/FB-036
 - 2026-09-15 19:26 · woordweb · antagonist ronde 1: 1 MAJOR (wizard verwijderde andermans woordweb, omweg rond D5) en 4 MINOR, alle verwerkt; tests groen; her-audit van de MAJOR gevraagd
+- 2026-09-15 19:29 · woordweb · in-uitvoering → te-testen: gebouwd en getest: woordweb per gebruiker en subthema met AI-voorstellen; backend unit 1727 en integratie groen (behalve de flaky Z1_Z6, los van dit ticket), Vitest 871, lint en format schoon; browsercontrole 19/19 op 1440 en 390px; antagonist ronde 2 COMPLIANT
