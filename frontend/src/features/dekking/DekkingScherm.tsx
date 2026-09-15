@@ -14,16 +14,24 @@ import { naarQuery } from "../../lib/api";
 import type { Dekkingsbereik, Lacuneoorzaak, LeerplandoelDekking } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { bepaalActies, groepeerPerLeergebied, sorteerLeergebieden, type Acties, type Leergebied, type Themaactiesoort } from "./overzicht";
+import {
+  bepaalActies,
+  groepeerPerDiscipline,
+  sorteerDisciplines,
+  type Acties,
+  type Disciplinegroep,
+  type Themaactiesoort,
+} from "./overzicht";
 
 type Toon = "alles" | "lacunes";
 
 /**
  * Proof of coverage (FR-9): which leerplandoelen this class's plan teaches, and which it does not.
  *
- * Read from coarse to fine (TB-022): the one figure, then what to do next, then one closed row per leergebied with the
- * least covered first, and the goals only inside a leergebied the teacher opens. The list used to be every goal of the
- * jaar/fase at once, which answered "what is missing" with several hundred rows and "where do I start" not at all.
+ * Read from coarse to fine (TB-022): the one figure, then what is still missing as actions per thema, then one closed
+ * row per discipline with the least covered first, and the goals only inside a discipline the teacher opens. The list
+ * used to be every goal of the jaar/fase at once, which answered "what is missing" with several hundred rows and "where
+ * do I start" not at all.
  */
 export function DekkingScherm() {
   const { klasId } = useActieveSelectie();
@@ -34,14 +42,14 @@ export function DekkingScherm() {
 
   const { data, isPending, isError } = useDekking(klasId, bereik);
 
-  // THE GATE, and the only one. While a stale placement is unresolved the server withholds the total (directie
-  // 2026-07-28), and every count below is a piece of it: the tallies add up to it and the action counts partition its
-  // gaps. So none of them renders then, not merely the headline. The rows keep their own verdict and reason, which is
-  // a per-goal fact and not a figure (E5-02, E5-05).
+  // THE GATE, and the only one: the meter below reads it too rather than deciding again. While a stale placement is
+  // unresolved the server withholds the total (directie 2026-07-28), and every count on this screen is a piece of it:
+  // the tallies add up to it and the action counts partition its gaps. So none of them renders then, not merely the
+  // headline. The rows keep their own verdict and reason, which is a per-goal fact and not a figure (E5-02, E5-05).
   const metCijfers = data !== undefined && data.aantalGedekt !== null && data.isBetrouwbaar && data.aantalLeerplandoelen > 0;
 
-  const leergebieden = useMemo(
-    () => sorteerLeergebieden(groepeerPerLeergebied(data?.doelen ?? []), metCijfers),
+  const disciplines = useMemo(
+    () => sorteerDisciplines(groepeerPerDiscipline(data?.doelen ?? []), metCijfers),
     [data, metCijfers],
   );
   const acties = useMemo(() => bepaalActies(data?.doelen ?? []), [data]);
@@ -92,9 +100,8 @@ export function DekkingScherm() {
         ) : (
           <>
             <Dekkingsmeter
-              gedekt={data.aantalGedekt}
+              gedekt={metCijfers ? data.aantalGedekt : null}
               totaal={data.aantalLeerplandoelen}
-              betrouwbaar={data.isBetrouwbaar}
               exportPad={`/api/klassen/${data.klasId}/dekking/export${naarQuery({ bereik })}`}
             />
 
@@ -118,13 +125,13 @@ export function DekkingScherm() {
               <Leegte titel={toon === "lacunes" ? t("dekking.geenLacunes") : t("dekking.geenDoelen")} />
             ) : (
               <ul className="flex flex-col gap-2">
-                {leergebieden.map((gebied) =>
-                  gebied.domeinen.some((domein) => domein.doelen.some(zichtbaar)) ? (
-                    <li key={gebied.nummer}>
-                      <Leergebiedgroep
-                        gebied={gebied}
-                        open={open.has(gebied.nummer)}
-                        onWissel={() => wissel(gebied.nummer)}
+                {disciplines.map((groep) =>
+                  groep.domeinen.some((domein) => domein.doelen.some(zichtbaar)) ? (
+                    <li key={groep.nummer}>
+                      <Disciplinegroepkaart
+                        groep={groep}
+                        open={open.has(groep.nummer)}
+                        onWissel={() => wissel(groep.nummer)}
                         metCijfers={metCijfers}
                         zichtbaar={zichtbaar}
                         toonFase={toonFase}
@@ -144,29 +151,16 @@ export function DekkingScherm() {
 /**
  * The one figure the whole screen exists to produce.
  *
- * `aantalGedekt` is nullable on purpose: the server returns null when it cannot stand behind the
- * number. In that case the fraction is not rendered at all rather than shown with a caveat beside
- * it, because a number on screen is read as a number no matter what is written next to it.
+ * `gedekt` is null whenever the screen's gate says the figure may not be shown, and then the fraction is not rendered
+ * at all rather than shown with a caveat beside it, because a number on screen is read as a number no matter what is
+ * written next to it.
  */
-function Dekkingsmeter({
-  gedekt,
-  totaal,
-  betrouwbaar,
-  exportPad,
-}: {
-  gedekt: number | null;
-  totaal: number;
-  betrouwbaar: boolean;
-  exportPad: string;
-}) {
-  const meetbaar = gedekt !== null && betrouwbaar && totaal > 0;
-  const deel = meetbaar ? gedekt / totaal : 0;
-
+function Dekkingsmeter({ gedekt, totaal, exportPad }: { gedekt: number | null; totaal: number; exportPad: string }) {
   return (
     <section className="rounded-kaart border border-lijn bg-kaart p-5 shadow-licht">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          {meetbaar ? (
+          {gedekt !== null ? (
             <p className="font-display text-[2.5rem] leading-none tracking-[-0.04em] text-inkt">
               <span className="mono">{gedekt}</span>
               <span className="text-inkt-zwak">/</span>
@@ -188,11 +182,11 @@ function Dekkingsmeter({
         </a>
       </div>
 
-      {meetbaar ? (
+      {gedekt !== null ? (
         <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-vlak-diep">
           <span
             aria-hidden="true"
-            style={{ width: `${Math.round(deel * 100)}%` }}
+            style={{ width: `${Math.round((gedekt / totaal) * 100)}%` }}
             className="h-full rounded-full bg-dekking-gedekt transition-[width] duration-300"
           />
         </div>
@@ -208,11 +202,12 @@ const ACTIEZIN: Record<Themaactiesoort, Vertaalsleutel> = {
 };
 
 /**
- * What to do next, the largest step first (TB-022).
+ * What is still missing, as actions per thema, the largest first (TB-022).
  *
- * The sentence is the link, so each one says where it goes in its own words, and it is a link only for whoever may
- * change this class's plan: for anyone else it would open a kalender that refuses them (the E3-06 rule). The two
- * closing lines are not thema actions, so they carry no "+N": one is decided on Thema's, and one no planning closes.
+ * The heading says only what every reader may be told, since anyone may read any klas's dekking (I9). The sentence is
+ * the link, so each one says where it goes in its own words, and it is a link only for whoever may change this class's
+ * plan: for anyone else it would open a kalender that refuses them (the E3-06 rule). The two closing lines are not
+ * thema actions, so they carry no "+N": one is decided on Thema's, and one no thema action closes.
  */
 function Actielijst({ acties, magPlannen, magBeoordelen }: { acties: Acties; magPlannen: boolean; magBeoordelen: boolean }) {
   const kopId = useId();
@@ -306,18 +301,18 @@ function Telling({ gedekt, totaal, balk = false }: { gedekt: number; totaal: num
 }
 
 /**
- * One leergebied, closed until the teacher opens it. Its tally counts the whole leergebied whatever the view shows, so
+ * One discipline, closed until the teacher opens it. Its tally counts the whole discipline whatever the view shows, so
  * switching to "Nog te doen" hides covered rows without turning 8/96 into 0/88.
  */
-function Leergebiedgroep({
-  gebied,
+function Disciplinegroepkaart({
+  groep,
   open,
   onWissel,
   metCijfers,
   zichtbaar,
   toonFase,
 }: {
-  gebied: Leergebied;
+  groep: Disciplinegroep;
   open: boolean;
   onWissel: () => void;
   metCijfers: boolean;
@@ -340,14 +335,14 @@ function Leergebiedgroep({
             aria-hidden="true"
             className={cn("h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-150", open ? "" : "-rotate-90")}
           />
-          <span className="min-w-0 flex-1 font-display text-sectie text-inkt">{gebied.naam}</span>
-          {metCijfers ? <Telling gedekt={gebied.gedekt} totaal={gebied.totaal} balk /> : null}
+          <span className="min-w-0 flex-1 font-display text-sectie text-inkt">{groep.naam}</span>
+          {metCijfers ? <Telling gedekt={groep.gedekt} totaal={groep.totaal} balk /> : null}
         </button>
       </h2>
 
       {open ? (
         <div id={inhoudId} className="border-t border-lijn">
-          {gebied.domeinen.map((domein) => {
+          {groep.domeinen.map((domein) => {
             const rijen = domein.doelen.filter(zichtbaar);
             if (rijen.length === 0) return null;
             return (

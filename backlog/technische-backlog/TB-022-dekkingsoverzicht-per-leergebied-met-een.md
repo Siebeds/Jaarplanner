@@ -2,10 +2,10 @@
 id: TB-022
 titel: Dekkingsoverzicht per leergebied, met een actielijst per thema en een rustigere lijst
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:31
+bijgewerkt: 2026-09-15 16:58
 opgepakt-door: dekking-overzicht
 branch: ticket/TB-022-dekking-overzicht
 pr:
@@ -60,20 +60,20 @@ rustigere lijst. De doelsoortfilter komt niet terug.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met doelen in meerdere leergebieden, wanneer ik Dekking open, dan zie ik één ingeklapte rij per
+- [x] Gegeven een klas met doelen in meerdere leergebieden, wanneer ik Dekking open, dan zie ik één ingeklapte rij per
   leergebied met *gedekt van totaal* en een balk, het minst gedekte bovenaan; openklikken toont de domeinen en daarin
   de doelen, en de teller van een groep verandert niet als ik tussen *Nog te doen* en *Alle doelen* wissel.
-- [ ] Gegeven ontbrekende doelen die een thema zou dekken (voorstel, geweigerde plaatsing of niet ingepland), dan staan
+- [x] Gegeven ontbrekende doelen die een thema zou dekken (voorstel, geweigerde plaatsing of niet ingepland), dan staan
   bovenaan hoogstens vijf acties per thema met hun aantal doelen, grootste eerst, elk met een link naar de kalender die
   klas en schooljaar meeneemt; doelen met een doelsuggestie die nog niet beslist is en doelen die geen enkel thema
   dekt, staan elk op één eigen regel.
-- [ ] Gegeven een gebruiker die de planning van deze klas niet mag bewerken, dan staan de acties er zonder link naar de
+- [x] Gegeven een gebruiker die de planning van deze klas niet mag bewerken, dan staan de acties er zonder link naar de
   kalender; de link naar Thema's verschijnt alleen voor wie doelsuggesties mag beoordelen.
-- [ ] Gegeven het scherm Dekking, dan staat de lijst standaard op *Nog te doen* en zegt elke ontbrekende rij in één
+- [x] Gegeven het scherm Dekking, dan staat de lijst standaard op *Nog te doen* en zegt elke ontbrekende rij in één
   regel waarom het doel ontbreekt.
-- [ ] Gegeven een verouderde plaatsing die het totaal inhoudt, dan staan er geen tellers per leergebied of domein en
+- [x] Gegeven een verouderde plaatsing die het totaal inhoudt, dan staan er geen tellers per leergebied of domein en
   geen actielijst op het scherm (ook niet in `aria-*`- of `title`-attributen), en blijft de reden per rij staan.
-- [ ] Nagekeken in een echte browser op desktop en op ~390px, met contrast gemeten; frontend-tests dekken de groepering,
+- [x] Nagekeken in een echte browser op desktop en op ~390px, met contrast gemeten; frontend-tests dekken de groepering,
   het tellen per thema, de rechten en de ingehouden toestand, en de export is ongewijzigd.
 
 ## Buiten scope
@@ -91,3 +91,6 @@ Geen.
 
 - 2026-09-15 15:49 · dekking-overzicht · aangemaakt (status in-uitvoering)
 - 2026-09-15 16:31 · dekking-overzicht · Backend (discipline in de dekking) en frontend (overzicht per leergebied, actielijst per thema, Nog te doen met reden per rij) gebouwd. Gates groen: 95 unit + 52 integratie (PostgreSQL) voor dekking, frontend 607 tests, lint en dotnet format schoon. Browsercontrole op 1440 en 390 px op een wegwerpdatabase: volgorde, acties, redenen en rechten zoals verwacht, contrast minstens 7,58:1, geen horizontale overloop.
+- 2026-09-15 16:33 · dekking-overzicht · Correctie op de regel van 16:31: in de browser is alleen directie nagekeken (de links staan er); het geval zonder planrecht (acties zonder link) is getest in DekkingScherm.test.tsx, niet in de browser. Ingehouden toestand in de browser nagekeken: geen tellers, geen actielijst, geen cijfer in attributen, reden per rij blijft. Code gecommit als 9811f01.
+- 2026-09-15 16:58 · dekking-overzicht · Antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR. Zes MINOR verwerkt: het NUL-teken in de sleutel is weg, 'Plan {thema} alsnog in' vervangt 'Herbekijk de weigering' (de kaart heeft geen knop meer om een weigering terug te draaien), de kop is 'Wat nog ontbreekt', de link naar Thema's is getest, de code zegt discipline in plaats van leergebied (Art. XII), het commentaar over doelen zonder thema klopt en de meter leest dezelfde poort. De vraag over Art. V.3 (doelsoortfilter) ligt bij de eigenaar. Verslag: backlog/worklogs/TB-022/antagonist-ronde-1.md.
+- 2026-09-15 16:58 · dekking-overzicht · in-uitvoering → klaar: Klaar. Gates groen na de fixes: dekking unit 95 en integratie 52 (PostgreSQL), frontend 609 tests in 68 bestanden, lint en dotnet format schoon. Bewijs: AC1, AC2 en AC4 met DekkingScherm.test, overzicht.test en de browser op 1440 en 390 px; AC3 met DekkingScherm.test (directie, leerkracht van de klas, iemand zonder rechten); AC5 met DekkingScherm.test en de browser (geen tellers, geen actielijst, geen cijfer in attributen); AC6 met de browser, contrast minstens 7,58:1, en de export ongewijzigd. Klas en schooljaar reizen via de selectie mee, niet via de URL (antagonist: aanvaardbaar).

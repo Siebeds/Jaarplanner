@@ -196,7 +196,7 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
 
     /// <summary>
     /// The discipline names by number (TB-022). Empty by default, which leaves every goal's name null: the state every
-    /// test written before the overview grouped by leergebied runs in.
+    /// test written before the overview grouped by discipline runs in.
     /// </summary>
     public IReadOnlyDictionary<string, string> Disciplinenamen { get; set; } = new Dictionary<string, string>();
 

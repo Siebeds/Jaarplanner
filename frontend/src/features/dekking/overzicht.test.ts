@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { LeerplandoelDekking } from "../../lib/types";
-import { MAX_THEMAACTIES, bepaalActies, groepeerPerLeergebied, sorteerLeergebieden } from "./overzicht";
+import { MAX_THEMAACTIES, bepaalActies, groepeerPerDiscipline, sorteerDisciplines } from "./overzicht";
 
 const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): LeerplandoelDekking => ({
   code,
@@ -24,24 +24,24 @@ const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): Leerpland
 const gedekt = (code: string, delen: Partial<LeerplandoelDekking> = {}) =>
   doel(code, { isGedekt: true, dekkendeThemas: ["Herfst"], oorzaak: null, ...delen });
 
-describe("groepeerPerLeergebied", () => {
-  it("groepeert per leergebied en daarin per domein, in de volgorde van de server", () => {
-    const gebieden = groepeerPerLeergebied([
+describe("groepeerPerDiscipline", () => {
+  it("groepeert per discipline en daarin per domein, in de volgorde van de server", () => {
+    const groepen = groepeerPerDiscipline([
       doel("W1", { domein: "Getallen" }),
       doel("M1", { disciplineNummer: "6", disciplineNaam: "Muzische vorming", domein: "Beeld" }),
       doel("W2", { domein: "Meten" }),
       doel("W3", { domein: "Getallen" }),
     ]);
 
-    expect(gebieden.map((g) => g.naam)).toEqual(["Wiskunde", "Muzische vorming"]);
-    expect(gebieden[0].domeinen.map((d) => [d.naam, d.doelen.map((x) => x.code)])).toEqual([
+    expect(groepen.map((g) => g.naam)).toEqual(["Wiskunde", "Muzische vorming"]);
+    expect(groepen[0].domeinen.map((d) => [d.naam, d.doelen.map((x) => x.code)])).toEqual([
       ["Getallen", ["W1", "W3"]],
       ["Meten", ["W2"]],
     ]);
   });
 
-  it("telt het hele leergebied en elk domein, gedekt en niet gedekt", () => {
-    const [wiskunde] = groepeerPerLeergebied([gedekt("W1"), doel("W2"), doel("W3", { domein: "Meten" })]);
+  it("telt de hele discipline en elk domein, gedekt en niet gedekt", () => {
+    const [wiskunde] = groepeerPerDiscipline([gedekt("W1"), doel("W2"), doel("W3", { domein: "Meten" })]);
 
     expect([wiskunde.gedekt, wiskunde.totaal]).toEqual([1, 3]);
     expect(wiskunde.domeinen.map((d) => [d.gedekt, d.totaal])).toEqual([
@@ -51,25 +51,25 @@ describe("groepeerPerLeergebied", () => {
   });
 
   it("toont het nummer wanneer de server geen naam kent", () => {
-    const [gebied] = groepeerPerLeergebied([doel("X1", { disciplineNummer: "99", disciplineNaam: null })]);
-    expect(gebied.naam).toBe("99");
+    const [groep] = groepeerPerDiscipline([doel("X1", { disciplineNummer: "99", disciplineNaam: null })]);
+    expect(groep.naam).toBe("99");
   });
 });
 
-describe("sorteerLeergebieden", () => {
-  const gebieden = groepeerPerLeergebied([
+describe("sorteerDisciplines", () => {
+  const groepen = groepeerPerDiscipline([
     gedekt("W1"),
     doel("W2"),
     doel("L1", { disciplineNummer: "10", disciplineNaam: "Frans" }),
     gedekt("V1", { disciplineNummer: "9.1", disciplineNaam: "Veilige en gezonde levensstijl" }),
   ]);
 
-  it("zet het minst gedekte leergebied bovenaan", () => {
-    expect(sorteerLeergebieden(gebieden, true).map((g) => g.nummer)).toEqual(["10", "2", "9.1"]);
+  it("zet de minst gedekte discipline bovenaan", () => {
+    expect(sorteerDisciplines(groepen, true).map((g) => g.nummer)).toEqual(["10", "2", "9.1"]);
   });
 
   it("volgt zonder cijfers de nummering van het leerplan, 2 voor 9.1 voor 10", () => {
-    expect(sorteerLeergebieden(gebieden, false).map((g) => g.nummer)).toEqual(["2", "9.1", "10"]);
+    expect(sorteerDisciplines(groepen, false).map((g) => g.nummer)).toEqual(["2", "9.1", "10"]);
   });
 });
 
@@ -94,6 +94,17 @@ describe("bepaalActies", () => {
     expect(acties.themaacties.map((a) => [a.thema, a.aantal])).toEqual([
       ["Sneeuw", 1],
       ["Winter", 1],
+    ]);
+  });
+
+  it("houdt hetzelfde thema onder twee oorzaken apart", () => {
+    const acties = bepaalActies([
+      doel("A", { oorzaak: "NietIngepland", kandidaatThemas: ["Winter"] }),
+      doel("B", { oorzaak: "WachtOpBeslissing", kandidaatThemas: ["Winter"] }),
+    ]);
+    expect(acties.themaacties.map((a) => [a.soort, a.aantal])).toEqual([
+      ["WachtOpBeslissing", 1],
+      ["NietIngepland", 1],
     ]);
   });
 

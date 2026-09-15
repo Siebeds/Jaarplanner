@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DekkingWeergave, LeerplandoelDekking } from "../../lib/types";
 import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
-import { DIRECTIE, NIEMAND, metIk } from "../../test/rechten";
+import { DIRECTIE, NIEMAND, ikMet, metIk } from "../../test/rechten";
 import { DekkingScherm } from "./DekkingScherm";
 
 vi.mock("../../lib/selectie", () => ({
@@ -41,12 +41,19 @@ const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): Leerpland
   ...delen,
 });
 
-/** Wiskunde 1 of 3 covered, Muzische vorming 0 of 1: so Muzische vorming is the least covered. */
+/** Wiskunde 1 of 3 covered, Muzische vorming 0 of 2: so Muzische vorming is the least covered. */
 const DOELEN: LeerplandoelDekking[] = [
   doel("W1", { isGedekt: true, dekkendeThemas: ["Herfst"], oorzaak: null }),
   doel("W2", { oorzaak: "NietIngepland", kandidaatThemas: ["Winter"] }),
   doel("W3", { domein: "Meten", oorzaak: "NietIngepland", kandidaatThemas: ["Winter"] }),
   doel("M1", { disciplineNummer: "6", disciplineNaam: "Muzische vorming", domein: "Beeld" }),
+  doel("M2", {
+    disciplineNummer: "6",
+    disciplineNaam: "Muzische vorming",
+    domein: "Beeld",
+    oorzaak: "KoppelingNietBeslist",
+    kandidaatThemas: ["Herfst"],
+  }),
 ];
 
 const weergave = (delen: Partial<DekkingWeergave> = {}): DekkingWeergave => ({
@@ -98,10 +105,11 @@ async function toon(ik: Ik = DIRECTIE) {
   return gevolg;
 }
 
-const leergebiedknop = (naam: string) => screen.getByRole("button", { name: new RegExp(`^${naam}`) });
+const disciplineknop = (naam: string) => screen.getByRole("button", { name: new RegExp(`^${naam}`) });
+const actielijst = () => screen.getByRole("region", { name: t("dekking.acties") });
 
 describe("DekkingScherm (TB-022)", () => {
-  it("opent op Nog te doen, met één dichte rij per leergebied en het minst gedekte bovenaan", async () => {
+  it("opent op Nog te doen, met één dichte rij per discipline en de minst gedekte bovenaan", async () => {
     await toon();
 
     expect(screen.getByRole("radio", { name: t("dekking.nogTeDoen") })).toHaveAttribute("aria-checked", "true");
@@ -114,20 +122,20 @@ describe("DekkingScherm (TB-022)", () => {
     expect(screen.queryByText("Tekst van W2")).toBeNull();
   });
 
-  it("houdt de teller van een leergebied gelijk bij het wisselen van weergave", async () => {
+  it("houdt de teller van een discipline gelijk bij het wisselen van weergave", async () => {
     await toon();
     const telling = t("dekking.groepTelling", { gedekt: 1, totaal: 3 });
 
-    expect(within(leergebiedknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
+    expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
-    expect(within(leergebiedknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
+    expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
   });
 
   it("toont na openklikken de domeinen en per ontbrekend doel de reden, en verbergt gedekte doelen onder Nog te doen", async () => {
     await toon();
-    fireEvent.click(leergebiedknop("Wiskunde"));
+    fireEvent.click(disciplineknop("Wiskunde"));
 
-    expect(leergebiedknop("Wiskunde")).toHaveAttribute("aria-expanded", "true");
+    expect(disciplineknop("Wiskunde")).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("heading", { name: /^Getallen/ })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: /^Meten/ })).toBeInTheDocument();
     expect(screen.getByText("Tekst van W2")).toBeInTheDocument();
@@ -135,22 +143,30 @@ describe("DekkingScherm (TB-022)", () => {
     expect(screen.queryByText("Tekst van W1")).toBeNull();
   });
 
-  it("zet de acties per thema bovenaan, met een link naar de kalender voor wie de planning mag bewerken", async () => {
+  it("zet de acties per thema bovenaan, met links naar de kalender en naar Thema's voor directie", async () => {
     await toon(DIRECTIE);
 
-    const lijst = screen.getByRole("region", { name: t("dekking.acties") });
-    const link = within(lijst).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Winter" }) });
+    const link = within(actielijst()).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Winter" }) });
     expect(link).toHaveAttribute("href", "/agenda/periodes");
-    expect(within(lijst).getByText(t("dekking.winst", { aantal: 2 }))).toBeInTheDocument();
-    expect(within(lijst).getByText(t("dekking.zonderThemaEen"))).toBeInTheDocument();
+    expect(within(actielijst()).getByText(t("dekking.winst", { aantal: 2 }))).toBeInTheDocument();
+    expect(within(actielijst()).getByText(t("dekking.onbeslistEen"))).toBeInTheDocument();
+    expect(within(actielijst()).getByRole("link", { name: t("dekking.naarThemas") })).toHaveAttribute("href", "/themas");
+    expect(within(actielijst()).getByText(t("dekking.zonderThemaEen"))).toBeInTheDocument();
+  });
+
+  it("geeft een leerkracht van deze klas de kalenderlinks, maar niet de link naar Thema's zonder beoordelingsrecht", async () => {
+    await toon(ikMet({ eigenKlasIds: ["klas-1"] }));
+
+    expect(within(actielijst()).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Winter" }) })).toBeInTheDocument();
+    expect(within(actielijst()).getByText(t("dekking.onbeslistEen"))).toBeInTheDocument();
+    expect(within(actielijst()).queryByRole("link", { name: t("dekking.naarThemas") })).toBeNull();
   });
 
   it("toont de acties zonder link aan wie de planning van deze klas niet mag bewerken", async () => {
     await toon(NIEMAND);
 
-    const lijst = screen.getByRole("region", { name: t("dekking.acties") });
-    expect(within(lijst).getByText(t("dekking.actieInplannen", { thema: "Winter" }))).toBeInTheDocument();
-    expect(within(lijst).queryByRole("link")).toBeNull();
+    expect(within(actielijst()).getByText(t("dekking.actieInplannen", { thema: "Winter" }))).toBeInTheDocument();
+    expect(within(actielijst()).queryByRole("link")).toBeNull();
   });
 
   it("toont geen enkele teller en geen acties zolang het cijfer ingehouden wordt, maar wel de reden per doel", async () => {
@@ -160,7 +176,7 @@ describe("DekkingScherm (TB-022)", () => {
     expect(screen.queryByRole("region", { name: t("dekking.acties") })).toBeNull();
     expect(screen.queryByText(/van \d+ gedekt/)).toBeNull();
 
-    fireEvent.click(leergebiedknop("Wiskunde"));
+    fireEvent.click(disciplineknop("Wiskunde"));
     expect(screen.getAllByText(t("dekking.oorzaakNietIngepland", { themas: "Winter" }))).toHaveLength(2);
 
     // Nothing a figure could hide in either: no fraction in the text and none in an attribute.

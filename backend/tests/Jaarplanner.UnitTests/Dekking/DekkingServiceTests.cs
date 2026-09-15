@@ -953,9 +953,9 @@ public sealed class DekkingServiceTests
             4);
 
     [Fact]
-    public async Task Elk_doel_draagt_zijn_leergebied_en_een_nummer_zonder_naam_blijft_zonder_naam()
+    public async Task Elk_doel_draagt_zijn_discipline_en_een_nummer_zonder_naam_blijft_zonder_naam()
     {
-        // TB-022: the overview groups by leergebied (owner ruling 2026-09-15), so every goal carries its discipline's
+        // TB-022: the overview groups by discipline (owner ruling 2026-09-15), so every goal carries its discipline's
         // number and name. A number the reference table does not know keeps a null name rather than a guessed one;
         // the screen shows the number then, which is the stable key anyway.
         var opslag = new FakeDekkingOpslag([], [Doel("WIS-K3-01", disciplineNummer: "2"), Doel("ONB-K3-01", disciplineNummer: "99")])

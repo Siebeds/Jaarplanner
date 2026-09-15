@@ -118,7 +118,7 @@ public sealed class DekkingService
         // "sits in no period" a false sentence to put on screen. See Lacuneoorzaak.PlaatsingGeweigerd.
         var geweigerdeThemaIds = Themaplaatsingen(plan, IsGeweigerd).ToHashSet();
 
-        // The names of the overview's top level, the leergebied (owner ruling 2026-09-15, TB-022). Reference data read
+        // The names of the overview's top level, the discipline (owner ruling 2026-09-15, TB-022). Reference data read
         // once, so the projection below is a lookup per goal; a number without a name stays null and the screen shows
         // the number instead.
         var disciplinenamen = await _opslag.HaalDisciplinenamenAsync(cancellationToken);
