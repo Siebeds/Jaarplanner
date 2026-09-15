@@ -423,7 +423,11 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Contains(vorig.K3, zichtbaar);
         Assert.DoesNotContain(school.K2Rood, zichtbaar);
         Assert.DoesNotContain(vorig.K2, zichtbaar);
-        Assert.Equal([school.K3Blauw, school.K3Groen], (await KlassenVanSchooljaarAsync(leerkracht, school.SchooljaarId)).Order());
+        // Both sides sorted (TB-027): the ids are random GUIDs, so the order they were made in says nothing about the
+        // order they sort in, and comparing the two failed about half the time.
+        Assert.Equal(
+            new[] { school.K3Blauw, school.K3Groen }.Order(),
+            (await KlassenVanSchooljaarAsync(leerkracht, school.SchooljaarId)).Order());
 
         // Another klas of her jaarfase, this year or last: read, and not written (writing stays "LK eigen").
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.GetAsync($"/api/klassen/{school.K3Groen}/jaarplan")));
