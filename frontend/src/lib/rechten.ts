@@ -358,12 +358,14 @@ export function magVoor(ik: Ik | undefined): Mag {
       ik?.isDirectie === true || (klasId !== null && rij("KlasplanningBewerken", { soort: "klas", klasId })),
     // Without a klas the row passes only on its resource-free columns: directie and themabeheer.
     alleKlassenInzien: rij("KlasplanningBekijken"),
+    // `?? []`: an answer without the lists (an older API, a test that stubs every request alike) must not crash every
+    // screen that asks for rights. It then reads as "no relation", which only a known gebruiker turns into a sentence.
     geenKlasInzien:
       ik !== undefined &&
       !rij("KlasplanningBekijken") &&
-      ik.hoofdleerkrachtLeeftijden.length === 0 &&
-      ik.leerkrachtLeeftijden.length === 0 &&
-      ik.eigenKlasIds.length === 0,
+      (ik.hoofdleerkrachtLeeftijden ?? []).length === 0 &&
+      (ik.leerkrachtLeeftijden ?? []).length === 0 &&
+      (ik.eigenKlasIds ?? []).length === 0,
     ontwikkelingsrapportZien: ik?.isDirectie === true || (ik?.rapportklasIds ?? []).length > 0,
     ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
     leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),

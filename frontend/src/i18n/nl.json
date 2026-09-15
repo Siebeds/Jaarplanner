@@ -22,6 +22,8 @@
     "geenKlassenInzage": "Dit schooljaar heeft geen klas die je mag inkijken.",
     "geenInzageTitel": "Geen klas om in te kijken",
     "geenInzage": "Je hebt geen klas en geen recht om klassen in te kijken. Vraag het aan de directie.",
+    "klassenLaden": "De klassen worden geladen.",
+    "klassenLaadFout": "De klassen konden niet geladen worden. Herlaad de pagina.",
     "jaarFase": "Leeftijd",
     "jaarFaseLeeg": "Nog niet opgegeven",
     "jaarFaseHulp": "Bepaalt welke leerplandoelen meetellen in de dekking van deze klas. Zonder keuze meet de dekking tegen {fasen} samen.",
@@ -88,6 +90,7 @@
     "gerelateerd": "Zelfde minimumdoel",
     "gebruiktIn": "Gebruikt in",
     "nergensGebruikt": "Nog nergens gebruikt",
+    "nergensGebruiktInzage": "Nog nergens gebruikt in wat je mag inkijken",
     "koppelingLeeftijd": "Leeftijd {leeftijd}",
     "fout": "Doel niet geladen",
     "koppelAan": "Koppel dit doel"

@@ -725,7 +725,8 @@ column rests on a ruling (R3); the TB column is the default.
 
 ⁸ **Reading a klas's planning** ([ADR-0040](0040-klassen-inkijken-per-jaarfase.md), FB-013, 2026-09-15). "HL" and "LK
 leeftijd" read only the klassen **of their own jaarfase**: a klas whose stated jaarfase, through the one klas→leeftijden
-mapping of Art. VI.1, is one they hold (Z1, Z2), in any schooljaar (default Z6). TB reads every klas (Z3), "LK eigen"
+mapping of Art. VI.1, is one they hold (Z1, Z2) while its own schooljaar has not ended (default Z7); the klas read may be of any
+schooljaar (default Z6). TB reads every klas (Z3), "LK eigen"
 its own klas, and "Ander" none (Z4). Enforced as the one row `KlasplanningBekijken`, the E6-09 seam. *Until then every
 column read every klas under I9.*
 
@@ -797,8 +798,9 @@ settled", then "Five are open".*
 
   *Owners: E6-08 and E6-09, both taken over by FB-013.*
 - **(e) Zorgcoördinator rights.** FA §3.1 marks them *"eventueel beperkte bewerkrechten, ter beslissing"*, which is
-  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer, and R7 with I9 gives read
-  access. Anything beyond that is still open. The default is that such a gebruiker, or anyone holding none of the
+  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer; without another right they
+  read no klas's planning (ADR-0040 Z4; until 2026-09-15 R7 with I9 gave read access). Anything beyond that is still
+  open. The default is that such a gebruiker, or anyone holding none of the
   four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.* *Since 2026-09-14
   ([ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) R18) there are five rights: directie may also give a
   zorgcoördinator Leerlingzorg, which reads every ontwikkelingsrapport and nothing else. The default above then reads

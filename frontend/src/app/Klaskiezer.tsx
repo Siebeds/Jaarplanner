@@ -21,7 +21,7 @@ import { t } from "../i18n";
  */
 export function Klaskiezer() {
   const [open, setOpen] = useState(false);
-  const { klas, schooljaar, schooljaren, klassen, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  const { klas, schooljaar, schooljaren, klassen, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
   // The jaarfase travels over `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Everyone else
   // still picks a schooljaar and a klas here; those are a context, not a write.
   const { mag } = useRechten();
@@ -66,7 +66,8 @@ export function Klaskiezer() {
             {(id) =>
               klassen.length === 0 ? (
                 <p className="text-meta text-inkt-zacht" id={id}>
-                  {geenKlassenZin}
+                  {/* An empty list proves nothing while it loads or after it failed (the E5-03 rule). */}
+                  {fout ? t("context.klassenLaadFout") : laadt ? t("context.klassenLaden") : geenKlassenZin}
                 </p>
               ) : (
                 <Keuze id={id} value={klas?.id ?? ""} onChange={(e) => kiesKlas(e.target.value)}>

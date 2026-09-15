@@ -343,6 +343,12 @@ describe("een klas inkijken (FB-013, ADR-0040)", () => {
     }
     expect(magVoor(undefined).geenKlasInzien).toBe(false);
   });
+
+  it("crasht niet op een /api/ik-antwoord zonder de lijsten", () => {
+    const zonderLijsten = { id: IK, naam: "Test", email: "test@school.be", isDirectie: false } as unknown as Ik;
+    expect(() => magVoor(zonderLijsten)).not.toThrow();
+    expect(magVoor(zonderLijsten).alleKlassenInzien).toBe(false);
+  });
 });
 
 describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {

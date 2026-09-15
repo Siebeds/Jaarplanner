@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -422,6 +423,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Contains(vorig.K3, zichtbaar);
         Assert.DoesNotContain(school.K2Rood, zichtbaar);
         Assert.DoesNotContain(vorig.K2, zichtbaar);
+        Assert.Equal([school.K3Blauw, school.K3Groen], (await KlassenVanSchooljaarAsync(leerkracht, school.SchooljaarId)).Order());
 
         // Another klas of her jaarfase, this year or last: read, and not written (writing stays "LK eigen").
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.GetAsync($"/api/klassen/{school.K3Groen}/jaarplan")));
@@ -490,10 +492,50 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
             themabeheer.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "bouwhoek" })));
 
         Assert.Empty(await RechtenTestOpzet.KlasIdsAsync(niemand));
+        // Nor does the schooljaar name them to someone without a right; directie's copy still holds all three.
+        Assert.Empty(await KlassenVanSchooljaarAsync(niemand, school.SchooljaarId));
+        Assert.Equal(3, (await KlassenVanSchooljaarAsync(directie, school.SchooljaarId)).Count);
         await RechtenTestOpzet.VerwachtAsync(
             niemand.GetAsync($"/api/klassen/{school.K3Blauw}/jaarplan"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
         // Thema's are shared content, not a klas's planning: still readable (Art. IX.2).
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(niemand.GetAsync("/api/themas")));
+    }
+
+    /// <summary>The klas ids the schooljaar detail names to this client.</summary>
+    private static async Task<List<Guid>> KlassenVanSchooljaarAsync(HttpClient client, Guid schooljaarId)
+    {
+        var jaar = await client.GetFromJsonAsync<JsonElement>($"/api/schooljaren/{schooljaarId}");
+        return jaar.GetProperty("klassen").EnumerateArray().Select(k => k.GetProperty("id").GetGuid()).ToList();
+    }
+
+    [PostgresFact]
+    public async Task Het_doelenregister_toont_een_algemene_fiche_alleen_aan_wie_haar_klas_mag_inkijken()
+    {
+        var opzet = Opzet;
+        var school = await opzet.SchoolAsync();
+        var fiche = $"Turnen {Guid.NewGuid():N}";
+        using (var directieClient = opzet.Directie())
+        {
+            using var gemaakt = await directieClient.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/algemene-fiches", new { naam = fiche });
+            Assert.True(gemaakt.IsSuccessStatusCode, $"Seeding the fiche failed: {(int)gemaakt.StatusCode}");
+            var ficheId = (await gemaakt.Content.ReadFromJsonAsync<RechtenTestOpzet.IdDto>())!.Id;
+            using var gekoppeld = await directieClient.PostAsJsonAsync($"/api/algemene-fiches/{ficheId}/doelkoppelingen", new { leerplandoelCode = Doelcode });
+            Assert.True(gekoppeld.IsSuccessStatusCode, $"Linking the fiche failed: {(int)gekoppeld.StatusCode}");
+        }
+
+        using var leerkrachtK3 = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+        using var niemand = opzet.Als(await opzet.GebruikerAsync());
+        using var hoofdleerkrachtK2 = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
+        using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
+        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+
+        // A fiche is its klas's planning (ADR-0040): the register must not show K2 rood's to a K3 leerkracht or to anyone
+        // without a right, and must show it to whoever reads K2 rood.
+        Assert.DoesNotContain(fiche, await leerkrachtK3.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
+        Assert.DoesNotContain(fiche, await niemand.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
+        Assert.Contains(fiche, await hoofdleerkrachtK2.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
+        Assert.Contains(fiche, await themabeheer.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
+        Assert.Contains(fiche, await directie.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
     }
 
     [PostgresFact]

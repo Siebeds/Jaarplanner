@@ -27,8 +27,8 @@ const KLAS: KlasWeergave = {
   kanLeerlingenHebben: false,
 };
 
-/** The klassen the mocked selection offers; each test sets it. */
-const selectie = vi.hoisted(() => ({ klassen: [] as KlasWeergave[] }));
+/** What the mocked selection offers; each test sets it. */
+const selectie = vi.hoisted(() => ({ klassen: [] as KlasWeergave[], laadt: false, fout: false }));
 
 vi.mock("../lib/selectie", () => ({
   useActieveSelectie: () => ({
@@ -36,6 +36,8 @@ vi.mock("../lib/selectie", () => ({
     schooljaar: JAAR,
     schooljaren: [JAAR],
     klassen: selectie.klassen,
+    laadt: selectie.laadt,
+    fout: selectie.fout,
     kiesSchooljaar: () => {},
     kiesKlas: () => {},
   }),
@@ -43,6 +45,8 @@ vi.mock("../lib/selectie", () => ({
 
 beforeEach(() => {
   selectie.klassen = [KLAS];
+  selectie.laadt = false;
+  selectie.fout = false;
   vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => {})));
 });
 
@@ -92,6 +96,20 @@ describe("Klaskiezer", () => {
 
       expect(within(blad).getByText(t("context.geenKlassenInzage"))).toBeInTheDocument();
       expect(within(blad).queryByText(t("context.geenKlassen"))).toBeNull();
+    });
+
+    it("zegt niets over klassen of rechten zolang de lijst laadt, of als ze niet laadde", () => {
+      selectie.laadt = true;
+      const laden = open(NIEMAND);
+      expect(within(laden).getByText(t("context.klassenLaden"))).toBeInTheDocument();
+      expect(within(laden).queryByText(t("context.geenInzage"))).toBeNull();
+    });
+
+    it("zegt dat de klassen niet laadden, en niet dat er geen zijn", () => {
+      selectie.fout = true;
+      const fout = open(ikMet({ leerkrachtLeeftijden: ["K3"] }));
+      expect(within(fout).getByText(t("context.klassenLaadFout"))).toBeInTheDocument();
+      expect(within(fout).queryByText(t("context.geenKlassenInzage"))).toBeNull();
     });
 
     it.each([

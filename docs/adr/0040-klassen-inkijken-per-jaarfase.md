@@ -29,9 +29,13 @@ Five rulings of the owner (Z1 to Z5) and one default (Z6):
 - **Z5.** Directie reads every klas, as before (R3).
 - **Z6 (a default, not ruled).** The rule holds in every schooljaar: a leerkracht of K3 reads the K3 klassen of earlier
   and later schooljaren too. FB-013 offered it as the standard answer to its third open question.
+- **Z7 (a default, not ruled).** The reader's own jaarfase counts while the schooljaar of her klas or appointment has
+  not ended, as R20 has it for the shared content. A leerkracht whose only klas belongs to an ended schooljaar reads
+  that klas (I21) and no other klas of its jaarfase until she has a klas or an appointment in a running or coming
+  schooljaar. The owner has been asked whether that should hold over the summer.
 
 "Her jaarfase" is the relation ADR-0030 §3 already has: "LK leeftijd", the stated jaarfase of a klas she teaches in a
-schooljaar that has not ended (R20, R22), and "HL", an appointment in such a schooljaar. The jaarfase **of the klas that
+schooljaar that has not ended (R20, R22), and "HL", an appointment in such a schooljaar; that these lapse with their schooljaar for reading too is default Z7. The jaarfase **of the klas that
 is read** comes from the one klas→leeftijden mapping of Art. VI.1 (`Leeftijdsrechten.VoorKlas`). So a graadklas stands
 for its one stated jaarfase, and directie's graadklas decision (Art. XIV) moves this rule with the leeftijd rights. A
 klas without a stated jaarfase stands for none: only its own leerkrachten, themabeheer and directie read it, which fails
@@ -55,6 +59,13 @@ ontwikkelingsrapport keeps its stricter rule (ADR-0035 R17).
 - **`GET /api/klassen` lists only the klassen the row lets the gebruiker read**, each asked on its own `Klasinzage`, so
   the klaskiezer offers nothing the routes would refuse.
 - **Taking hoeken over** from another klas reads that klas, so the action asks the row on the source klas as well.
+- **The klassen inside a schooljaar** (`GET /api/schooljaren`) are filtered the same way; the schooljaar's own dates
+  and closures stay readable to everyone.
+- **The leerplandoel register** (`GET /api/leerplandoelen/{code}`) shows a klas's algemene fiche on a doel's detail
+  only when the reader may read that klas, asked on the same row. Its other layers (themadoelen, doelsuggesties, and
+  the per-leeftijd subdoelen and activiteit links) stay open, because none of them is one klas's planning
+  (`Koppelingzichtbaarheid` now gates those shared layers only). Where the reader does not read every klas, an empty
+  list there says "nergens gebruikt in wat je mag inkijken" rather than "nergens gebruikt".
 - **Two reads stay open to every signed-in gebruiker**, because they read shared content at a klas's leeftijden and not
   the klas's planning (Art. IX.2): `GET /api/themas/{themaId}/voor-klas/{klasId}` and
   `GET /api/subthemas/voor-klas/{klasId}`. The sweep lists them with that reason.

@@ -603,10 +603,10 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         await using var context = _db.MaakContext();
         var query = new LeerplandoelenQuery(context);
 
-        var alles = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.Alles);
+        var alles = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.Alles, _ => true);
         Assert.Equal(4, alles!.Koppelingen.Count);
 
-        var schoolbreed = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.AlleenSchoolbreed);
+        var schoolbreed = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.AlleenSchoolbreed, _ => true);
         Assert.Equal(2, schoolbreed!.Koppelingen.Count);
         Assert.All(schoolbreed.Koppelingen, k => Assert.True(
             k.Herkomst is KoppelingHerkomst.Themadoel or KoppelingHerkomst.Doelsuggestie,

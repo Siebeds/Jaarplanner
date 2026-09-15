@@ -44,19 +44,8 @@ public sealed class KlassenController : ControllerBase
     /// The rights are read once per request (<c>RechtenService</c>), so the loop costs no query per klas.
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Lijst(CancellationToken cancellationToken)
-    {
-        var zichtbaar = new List<KlasWeergave>();
-        foreach (var klas in await _service.HaalKlassenOpAsync(cancellationToken))
-        {
-            if (await _autorisatie.MagAsync(User, Klasinzage.Voor(klas.Id, klas.Jaarfase), Rechtenmatrix.Beleid.KlasplanningBekijken))
-            {
-                zichtbaar.Add(klas);
-            }
-        }
-
-        return Ok(zichtbaar);
-    }
+    public async Task<ActionResult<IReadOnlyList<KlasWeergave>>> Lijst(CancellationToken cancellationToken) =>
+        Ok(await _autorisatie.LeesbaarAsync(User, await _service.HaalKlassenOpAsync(cancellationToken)));
 
     [HttpGet("{klasId:guid}")]
     [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]

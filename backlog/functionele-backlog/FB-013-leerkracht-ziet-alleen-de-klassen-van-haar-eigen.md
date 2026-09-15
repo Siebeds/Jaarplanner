@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:12
+bijgewerkt: 2026-09-15 17:35
 opgepakt-door: zichtbaarheid
 branch: ticket/FB-013-klassen-eigen-jaarfase
 pr:
@@ -87,3 +87,4 @@ Dit ticket neemt het werk van story E6-08 en E6-09 over.
 - 2026-09-15 16:28 · zichtbaarheid · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-15 17:00 · zichtbaarheid · Gebouwd: rij KlasplanningBekijken (ADR-0039) op elke leesroute van een klas, klassenlijst gefilterd, hoeken overnemen vraagt de bronklas; frontend-zinnen voor een lege lijst en voor wie geen recht heeft; amendement Art. VI.1, VI.7, XIV. Unit 1597 groen, rechten-integratie 45 groen, frontend 743 groen, lint schoon
 - 2026-09-15 17:12 · zichtbaarheid · Criteria 1-6 afgevinkt: RechtenAfdwingingTests (FB-013-sectie) en de leessweep op PostgreSQL, curl op een draaiende API, browsercontrole op wegwerpdatabase (1440 en echte 390 via CDP, geen horizontale scroll); verslag in backlog/worklogs/FB-013/browsercheck.md. Volledige suite: unit 1597, integratie 488, frontend 743 groen; dotnet format en pnpm lint schoon. Antagonist loopt
+- 2026-09-15 17:35 · zichtbaarheid · Antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 5 MINOR, 1 vraag). MAJOR hersteld: het doelenregister toonde de algemene fiches van elke klas; nu enkel van klassen die je mag inkijken (zelfde rij). MINOR hersteld: standaard Z7, formulering besluiten-gevraagd, (e) in grondwet en ADR-0030, klassen in /api/schooljaren gefilterd, Klaskiezer tijdens laden en na fout. Main binnengehaald: ADR-0039 was genomen (TB-023), dit besluit is nu ADR-0040. Verslag in backlog/worklogs/FB-013/antagonist.md
