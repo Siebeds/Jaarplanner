@@ -48,6 +48,7 @@ public sealed record Weekplanningweergave(
 /// <summary>
 /// One stretch of days marked off for a subthema, with the names a screen needs to label it.
 /// </summary>
+/// <param name="Id">The window's own id: what a hoekverrijking is written against (FB-020).</param>
 /// <param name="SubthemaId">The subthema that runs in this window.</param>
 /// <param name="SubthemaNaam">Its name, so a calendar never has to fetch the thema to draw a band.</param>
 /// <param name="ThemaId">The owning thema.</param>
@@ -58,6 +59,7 @@ public sealed record Weekplanningweergave(
 /// <param name="Van">First day, inclusive.</param>
 /// <param name="Tot">Last day, inclusive. Equal to <paramref name="Van"/> for a one-day window.</param>
 public sealed record Subthemaperiodeweergave(
+    Guid Id,
     Guid SubthemaId,
     string SubthemaNaam,
     Guid ThemaId,

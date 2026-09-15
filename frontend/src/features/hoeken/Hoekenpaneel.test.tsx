@@ -3,7 +3,7 @@ import { DndContext } from "@dnd-kit/core";
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Hoekenpaneel } from "./Hoekenpaneel";
+import { Hoekenpaneel, type Paneelverrijking } from "./Hoekenpaneel";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { zetSchermbreedte } from "../../test/setup";
 import { ikMet, metIk } from "../../test/rechten";
@@ -45,7 +45,12 @@ afterEach(() => {
 // The fiche tests do not look at the activiteiten list, so its week says only that nothing runs.
 const EEN_WEEK: Activiteitenweek = { maandag: "2026-09-14", nummer: 38, lopend: [] };
 
-function toon(onKies = vi.fn(), onKiesAlgemeneFiche = vi.fn(), klasId: string | null = "k-1") {
+function toon(
+  onKies = vi.fn(),
+  onKiesAlgemeneFiche = vi.fn(),
+  klasId: string | null = "k-1",
+  verrijkingenWeek: ReadonlyMap<string, readonly Paneelverrijking[]> = new Map(),
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
@@ -57,6 +62,7 @@ function toon(onKies = vi.fn(), onKiesAlgemeneFiche = vi.fn(), klasId: string | 
             onKiesAlgemeneFiche={onKiesAlgemeneFiche}
             magPlannen
             activiteitenWeek={EEN_WEEK}
+            verrijkingenWeek={verrijkingenWeek}
             onKiesActiviteit={vi.fn()}
           />
         </DndContext>
@@ -65,6 +71,27 @@ function toon(onKies = vi.fn(), onKiesAlgemeneFiche = vi.fn(), klasId: string | 
   );
   return { onKies, onKiesAlgemeneFiche, client };
 }
+
+describe("Hoekenpaneel: de verrijking van de week onder elke hoek (FB-020)", () => {
+  it("toont onder de hoek wat hij bevat terwijl het subthema van deze week loopt, met de naam van dat subthema", async () => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    toon(vi.fn(), vi.fn(), "k-1", new Map([["h-1", [{ subthemaNaam: "De herfst", tekst: "kastanjes en dennenappels" }]]]));
+
+    const kaart = (await screen.findByText("bouwhoek")).closest("button")!;
+    expect(within(kaart).getByText("kastanjes en dennenappels")).toBeInTheDocument();
+    expect(within(kaart).getByText("De herfst")).toBeInTheDocument();
+  });
+
+  it("toont niets extra onder een hoek zonder verrijking deze week", async () => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    toon();
+
+    const kaart = (await screen.findByText("bouwhoek")).closest("button")!;
+    expect(kaart).toHaveTextContent(/^bouwhoek$/);
+  });
+});
 
 describe("Hoekenpaneel: één lijst per schakelaar", () => {
   it("toont naast de agenda alleen de algemene fiches wanneer die schakelaar het opende", async () => {
@@ -446,6 +473,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
               onKiesAlgemeneFiche={vi.fn()}
               magPlannen={magPlannen}
               activiteitenWeek={{ maandag: WEEK, nummer: 38, lopend }}
+              verrijkingenWeek={new Map()}
               onKiesActiviteit={onKiesActiviteit}
             />
           </DndContext>

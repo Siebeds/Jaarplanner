@@ -402,6 +402,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 "kan niet verwijderd worden. Haal die activiteiten eerst uit de weekplanning.");
         }
 
+        // FB-020: the hoekverrijkingen of every klas hang on this subthema's windows, and go with them (owner,
+        // 2026-09-15: "mee weg, met aantal"; the confirmation before this call named the count). PostgreSQL cascades
+        // them through the window; they are removed here as well, so a provider that enforces no cascade deletes the
+        // same rows.
+        var vensters = _context.Subthemaplaatsingen.Where(p => p.SubthemaId == subthemaId).Select(p => p.Id);
+        _context.Hoekverrijkingen.RemoveRange(
+            await _context.Hoekverrijkingen
+                .Where(v => vensters.Contains(v.SubthemaplaatsingId))
+                .ToListAsync(cancellationToken));
+
         // Removing the subthema cascades to its subdoelen + activiteiten (SubthemaConfiguration); it never
         // touches the school-wide thema attributes (level scoping, Art. IX.2).
         _context.Subthemas.Remove(subthema);

@@ -64,8 +64,8 @@ public sealed class HoekplaatsingServiceTests
     private HoekplaatsingService Service() => new(new AppDbContext(_options));
 
     /// <summary>The first week of the year, Tuesday to Friday: four teaching days, no closure.</summary>
-    private HoekplaatsingInvoer EersteWeek(string? verrijking = null) =>
-        new(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Begin, Einde, verrijking);
+    private HoekplaatsingInvoer EersteWeek() =>
+        new(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Begin, Einde);
 
     [Fact]
     public async Task Een_plaatsing_bewaart_de_periode_en_de_naam_van_de_hoek()
@@ -77,7 +77,6 @@ public sealed class HoekplaatsingServiceTests
         Assert.Equal("boekenhoek", plaatsing.HoekNaam);
         Assert.Equal(new DateOnly(2026, 9, 1), plaatsing.Van);
         Assert.Equal(new DateOnly(2026, 9, 18), plaatsing.Tot);
-        Assert.Empty(plaatsing.Verrijkingen);
     }
 
     [Fact]
@@ -134,37 +133,6 @@ public sealed class HoekplaatsingServiceTests
                 new HoekplaatsingInvoer(_hoekId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 4), Einde, Begin)));
 
         Assert.Contains("einde", fout.Message);
-    }
-
-    [Fact]
-    public async Task De_verrijking_uit_het_blad_loopt_over_het_hele_venster()
-    {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 18),
-                Begin,
-                Einde,
-                Verrijking: "prentenboeken over de herfst"));
-
-        var verrijking = Assert.Single(plaatsing.Verrijkingen);
-        Assert.Equal("prentenboeken over de herfst", verrijking.Tekst);
-        Assert.Equal(plaatsing.Van, verrijking.Van);
-        Assert.Equal(plaatsing.Tot, verrijking.Tot);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task Een_lege_verrijking_is_geen_verrijking(string tekst)
-    {
-        // Blank is an ordinary answer: the corner runs in december with nothing special in it. Storing "" would
-        // record that she described it as nothing.
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek(tekst));
-
-        Assert.Empty(plaatsing.Verrijkingen);
     }
 
     [Fact]
@@ -247,9 +215,17 @@ public sealed class HoekplaatsingServiceTests
     }
 
     [Fact]
-    public async Task Verwijderen_neemt_de_verrijkingen_en_de_uurroosterrijen_mee()
+    public async Task Verwijderen_neemt_de_uurroosterrijen_mee_en_laat_de_verrijkingen_van_de_hoek_staan()
     {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
+        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
+
+        // A verrijking of this hoek for some subthemaperiode (FB-020). It belongs to the hoek and the subthema, not to
+        // a run in the timetable, so taking the run out must leave it alone.
+        await using (var seed = new AppDbContext(_options))
+        {
+            seed.Hoekverrijkingen.Add(new Hoekverrijking(_hoekId, Guid.NewGuid(), "prentenboeken"));
+            await seed.SaveChangesAsync();
+        }
 
         Assert.NotEmpty(plaatsing.Momenten);
 
@@ -257,8 +233,8 @@ public sealed class HoekplaatsingServiceTests
 
         await using var na = new AppDbContext(_options);
         Assert.Empty(await na.Hoekplaatsingen.ToListAsync());
-        Assert.Empty(await na.Hoekverrijkingen.ToListAsync());
         Assert.Empty(await na.Hoekmomenten.ToListAsync());
+        Assert.Equal("prentenboeken", Assert.Single(await na.Hoekverrijkingen.ToListAsync()).Tekst);
 
         // And the hoek itself is untouched: she removed a run, not a corner.
         Assert.Equal(1, await na.Hoeken.CountAsync(h => h.Id == _hoekId));
@@ -462,134 +438,5 @@ public sealed class HoekplaatsingServiceTests
     {
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
             () => Service().VerplaatsMomentAsync(Guid.NewGuid(), Guid.NewGuid(), new DateOnly(2026, 9, 2), Begin, Einde));
-    }
-
-    /* ------------------------------------------------------------------------------------------------
-       THE ENRICHMENT, AFTER IT IS SAVED (owner, 2026-08-31: "ik wil ook de verrijking kunnen aanpassen")
-
-       It was write-once: the placement sheet took it on the way in and no verb reached it again, so a typo
-       in the one field carrying the pedagogy was permanent unless the whole placement was deleted and
-       redone. These cover the three ways it can change and the two the aggregate refuses.
-       ------------------------------------------------------------------------------------------------ */
-
-    [Fact]
-    public async Task Herschrijft_een_verrijking()
-    {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
-        var verrijking = Assert.Single(plaatsing.Verrijkingen);
-
-        var na = await Service().WijzigVerrijkingAsync(
-            plaatsing.Id,
-            verrijking.Id,
-            verrijking.Van,
-            verrijking.Tot,
-            "prentenboeken over de herfst");
-
-        Assert.Equal("prentenboeken over de herfst", Assert.Single(na.Verrijkingen).Tekst);
-    }
-
-    [Fact]
-    public async Task Verwijdert_een_verrijking_en_laat_de_plaatsing_staan()
-    {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
-
-        var na = await Service().VerwijderVerrijkingAsync(plaatsing.Id, plaatsing.Verrijkingen[0].Id);
-
-        Assert.Empty(na.Verrijkingen);
-        // The run itself is untouched: she cleared what was in the corner, not the corner.
-        Assert.Equal(4, na.Momenten.Count);
-        Assert.Equal(new DateOnly(2026, 9, 1), na.Van);
-    }
-
-    [Fact]
-    public async Task Voegt_een_tweede_verrijking_toe_voor_een_latere_stuk_van_de_periode()
-    {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 18),
-                Begin,
-                Einde,
-                Verrijking: "prentenboeken"));
-        var eerste = Assert.Single(plaatsing.Verrijkingen);
-
-        // The first one shrinks to make room, which is the order a teacher does it in: she splits a window
-        // she already wrote about.
-        await Service().WijzigVerrijkingAsync(
-            plaatsing.Id,
-            eerste.Id,
-            new DateOnly(2026, 9, 1),
-            new DateOnly(2026, 9, 4),
-            "prentenboeken");
-
-        var na = await Service().VoegVerrijkingToeAsync(
-            plaatsing.Id,
-            new DateOnly(2026, 9, 14),
-            new DateOnly(2026, 9, 18),
-            "kastanjes en bladeren");
-
-        Assert.Equal(2, na.Verrijkingen.Count);
-        Assert.Equal(["prentenboeken", "kastanjes en bladeren"], na.Verrijkingen.Select(v => v.Tekst));
-    }
-
-    [Fact]
-    public async Task Weigert_een_verrijking_die_over_een_andere_heen_valt()
-    {
-        var plaatsing = await Service().PlaatsAsync(
-            _klasId,
-            new HoekplaatsingInvoer(
-                _hoekId,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 9, 18),
-                Begin,
-                Einde,
-                Verrijking: "prentenboeken"));
-
-        // Two answers to "what is in the boekenhoek this week" is not a richer answer, it is an ambiguous
-        // one, and the aggregate says so in Dutch.
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => Service().VoegVerrijkingToeAsync(
-                plaatsing.Id,
-                new DateOnly(2026, 9, 14),
-                new DateOnly(2026, 9, 18),
-                "kastanjes"));
-    }
-
-    [Fact]
-    public async Task Weigert_een_verrijking_buiten_de_periode_van_de_hoek()
-    {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
-
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => Service().VoegVerrijkingToeAsync(
-                plaatsing.Id,
-                new DateOnly(2026, 9, 1),
-                new DateOnly(2026, 10, 1),
-                "kastanjes"));
-    }
-
-    [Fact]
-    public async Task Een_verrijking_die_niet_bestaat_geeft_niet_gevonden()
-    {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek());
-
-        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
-            () => Service().VerwijderVerrijkingAsync(plaatsing.Id, Guid.NewGuid()));
-    }
-
-    [Fact]
-    public async Task Houdt_de_verrijkingen_bij_een_verplaatst_moment()
-    {
-        var plaatsing = await Service().PlaatsAsync(_klasId, EersteWeek("prentenboeken"));
-
-        // The answer carries the whole placement, so a verrijking missing from it would blank the detail sheet
-        // the moment a teacher dragged a row.
-        var na = await Service().VerplaatsMomentAsync(
-            plaatsing.Id, plaatsing.Momenten.First().Id, new DateOnly(2026, 9, 3), new TimeOnly(11, 0), new TimeOnly(11, 50));
-
-        Assert.Equal("prentenboeken", Assert.Single(na.Verrijkingen).Tekst);
-        Assert.Equal("boekenhoek", na.HoekNaam);
     }
 }

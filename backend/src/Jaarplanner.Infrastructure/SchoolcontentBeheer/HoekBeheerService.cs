@@ -44,8 +44,8 @@ public sealed class HoekBeheerService : IHoekBeheerService
         _db.Hoeken.Add(hoek);
         await _db.SaveChangesAsync(cancellationToken);
 
-        // Freshly created, so it is placed nowhere. Said as a literal rather than re-queried.
-        return new HoekWeergave(hoek.Id, hoek.KlasId, hoek.Naam, hoek.Omschrijving, 0);
+        // Freshly created, so it is placed nowhere and holds nothing yet. Said as literals rather than re-queried.
+        return new HoekWeergave(hoek.Id, hoek.KlasId, hoek.Naam, hoek.Omschrijving, 0, 0);
     }
 
     public async Task<HoekWeergave> WijzigHoekAsync(
@@ -61,7 +61,8 @@ public sealed class HoekBeheerService : IHoekBeheerService
         await _db.SaveChangesAsync(cancellationToken);
 
         var aantal = await _db.Hoekplaatsingen.CountAsync(p => p.HoekId == hoekId, cancellationToken);
-        return new HoekWeergave(hoek.Id, hoek.KlasId, hoek.Naam, hoek.Omschrijving, aantal);
+        var verrijkingen = await _db.Hoekverrijkingen.CountAsync(v => v.HoekId == hoekId, cancellationToken);
+        return new HoekWeergave(hoek.Id, hoek.KlasId, hoek.Naam, hoek.Omschrijving, aantal, verrijkingen);
     }
 
     public async Task VerwijderHoekAsync(Guid hoekId, CancellationToken cancellationToken = default)
@@ -78,6 +79,12 @@ public sealed class HoekBeheerService : IHoekBeheerService
                     ? $"'{hoek.Naam}' staat nog 1 keer in de agenda en kan niet verwijderd worden. Haal die hoek eerst uit de agenda."
                     : $"'{hoek.Naam}' staat nog {geplaatst} keer in de agenda en kan niet verwijderd worden. Haal die hoeken eerst uit de agenda.");
         }
+
+        // Its verrijkingen go with it (FB-020): text about a corner that no longer exists. The confirmation before this
+        // call has said how many. Removed here rather than left to the database's cascade, so the in-memory provider,
+        // which enforces none, deletes the same rows PostgreSQL does.
+        _db.Hoekverrijkingen.RemoveRange(
+            await _db.Hoekverrijkingen.Where(v => v.HoekId == hoekId).ToListAsync(cancellationToken));
 
         _db.Hoeken.Remove(hoek);
         await _db.SaveChangesAsync(cancellationToken);
@@ -124,7 +131,7 @@ public sealed class HoekBeheerService : IHoekBeheerService
 
             var kopie = hoek.KopieerNaar(klasId);
             _db.Hoeken.Add(kopie);
-            overgenomen.Add(new HoekWeergave(kopie.Id, kopie.KlasId, kopie.Naam, kopie.Omschrijving, 0));
+            overgenomen.Add(new HoekWeergave(kopie.Id, kopie.KlasId, kopie.Naam, kopie.Omschrijving, 0, 0));
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -132,7 +139,10 @@ public sealed class HoekBeheerService : IHoekBeheerService
         return new HoekOvername(overgenomen, overgeslagen);
     }
 
-    /// <summary>The corners matching <paramref name="filter"/>, each with the number of times it is placed.</summary>
+    /// <summary>
+    /// The corners matching <paramref name="filter"/>, each with the number of times it is placed and the number of
+    /// verrijkingen written for it.
+    /// </summary>
     private async Task<IReadOnlyList<HoekWeergave>> LeesAsync(
         System.Linq.Expressions.Expression<Func<Hoek, bool>> filter,
         CancellationToken cancellationToken) =>
@@ -144,7 +154,8 @@ public sealed class HoekBeheerService : IHoekBeheerService
                 h.KlasId,
                 h.Naam,
                 h.Omschrijving,
-                _db.Hoekplaatsingen.Count(p => p.HoekId == h.Id)))
+                _db.Hoekplaatsingen.Count(p => p.HoekId == h.Id),
+                _db.Hoekverrijkingen.Count(v => v.HoekId == h.Id)))
             .ToListAsync(cancellationToken);
 
     private async Task<Hoek> HaalOpAsync(Guid hoekId, CancellationToken cancellationToken) =>

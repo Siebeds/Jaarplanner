@@ -22,6 +22,7 @@ import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
+import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
@@ -112,6 +113,8 @@ export function ThemadetailScherm() {
   // would allow the state where both are true.
   const [subthemaBlad, setSubthemaBlad] = useState<{ subthema?: SubthemaWeergave } | null>(null);
   const [teVerwijderenSubthema, setTeVerwijderenSubthema] = useState<SubthemaWeergave | null>(null);
+  // What deleting it takes along from the klassen's agenda (FB-020; owner, 2026-09-15: "mee weg, met aantal").
+  const verrijkingenWeg = useAantalHoekverrijkingen(teVerwijderenSubthema?.id ?? null);
   const [activiteitBlad, setActiviteitBlad] = useState<{
     subthemaId: string;
     activiteitId?: string;
@@ -616,12 +619,32 @@ export function ThemadetailScherm() {
       <Bevestiging
         open={teVerwijderenSubthema !== null}
         titel={t("subthemabeheer.verwijderTitel", { naam: teVerwijderenSubthema?.naam ?? "" })}
-        gevolg={t("subthemabeheer.verwijderGevolg", {
-          activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
-          doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
-        })}
+        // The verrijkingen are named once the count is read and above zero. While it is out, the delete waits (the
+        // owner's ruling is that the count comes first); if it cannot be read, the sentence says so rather than delete
+        // other klassen's texts without a number.
+        gevolg={
+          verrijkingenWeg.isError
+            ? t("subthemabeheer.verwijderGevolgVerrijkingenOnbekend", {
+                activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
+                doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
+              })
+            : (verrijkingenWeg.data?.aantal ?? 0) > 0
+            ? t("subthemabeheer.verwijderGevolgMetVerrijkingen", {
+                activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
+                doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
+                verrijkingen: telWoord(
+                  verrijkingenWeg.data?.aantal ?? 0,
+                  "subthemabeheer.eenVerrijking",
+                  "subthemabeheer.aantalVerrijkingen",
+                ),
+              })
+            : t("subthemabeheer.verwijderGevolg", {
+                activiteiten: teVerwijderenSubthema?.activiteiten.length ?? 0,
+                doelen: teVerwijderenSubthema?.subdoelen.length ?? 0,
+              })
+        }
         bevestigLabel={t("themabeheer.verwijder")}
-        bezig={verwijderSubthema.isPending}
+        bezig={verwijderSubthema.isPending || (teVerwijderenSubthema !== null && verrijkingenWeg.isPending)}
         onSluit={() => setTeVerwijderenSubthema(null)}
         onBevestig={() => {
           if (!teVerwijderenSubthema) return;

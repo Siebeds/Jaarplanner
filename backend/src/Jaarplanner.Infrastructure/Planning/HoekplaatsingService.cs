@@ -43,7 +43,6 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         var plaatsingen = await _db.Hoekplaatsingen
             .AsNoTracking()
             .Where(p => p.KlasId == klasId && p.Van <= tot && p.Tot >= van)
-            .Include(p => p.Verrijkingen)
             .Include(p => p.Momenten)
             .OrderBy(p => p.Van)
             .ToListAsync(cancellationToken);
@@ -55,21 +54,7 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
             .ToDictionaryAsync(h => h.Id, h => h.Naam, cancellationToken);
 
         return plaatsingen
-            .Select(p => new HoekplaatsingWeergave(
-                p.Id,
-                p.HoekId,
-                namen.GetValueOrDefault(p.HoekId, string.Empty),
-                p.Van,
-                p.Tot,
-                p.Verrijkingen
-                    .OrderBy(v => v.Van)
-                    .Select(v => new HoekverrijkingWeergave(v.Id, v.Van, v.Tot, v.Tekst))
-                    .ToList(),
-                p.Momenten
-                    .OrderBy(m => m.Datum)
-                    .ThenBy(m => m.Begin)
-                    .Select(m => new HoekmomentWeergave(m.Id, m.Datum, m.Begin, m.Einde))
-                    .ToList()))
+            .Select(p => Weergave(p, namen.GetValueOrDefault(p.HoekId, string.Empty)))
             .ToList();
     }
 
@@ -88,8 +73,8 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
 
         if (hoek.KlasId != klasId)
         {
-            // Not a 404: the hoek exists, it is just in another classroom. Saying so lets the screen explain
-            // itself instead of claiming the corner was deleted.
+            // Not a 404: the hoek exists, it is just in another classroom. Saying so lets the screen explain itself
+            // instead of claiming the corner was deleted.
             throw new SchoolcontentValidatieFout("Die hoek hoort bij een andere klas.");
         }
 
@@ -111,13 +96,6 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         try
         {
             plaatsing = new Hoekplaatsing(klasId, hoek.Id, invoer.Van, invoer.Tot);
-
-            if (!string.IsNullOrWhiteSpace(invoer.Verrijking))
-            {
-                // Over the WHOLE window. The sheet asks for one enrichment because that is what a teacher has in
-                // mind while dragging; splitting it into sub-windows is what the detail screen is for.
-                plaatsing.VoegVerrijkingToe(invoer.Van, invoer.Tot, invoer.Verrijking);
-            }
 
             // Every placement gets its rows (owner, 2026-09-11: "elke hoek moet een tijdstip krijgen"), so a window
             // without a single teaching day in it would make a corner with nowhere to appear. Checked after the
@@ -147,19 +125,18 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
 
     public async Task VerwijderAsync(Guid plaatsingId, CancellationToken cancellationToken = default)
     {
-        // The children are LOADED so EF deletes them itself, rather than left to the database's own ON DELETE
-        // CASCADE. Both would work against PostgreSQL; only this one works everywhere, and the difference showed
-        // up immediately: the in-memory provider does not enforce a cascade, so the first version left the
-        // verrijkingen and the uurroosterrijen behind and its own test caught it. Depending on the provider to
-        // finish a delete is depending on the provider to define what the delete means.
+        // The rows are LOADED so EF deletes them itself, rather than left to the database's own ON DELETE CASCADE.
+        // Both would work against PostgreSQL; only this one works everywhere, and the difference showed up
+        // immediately: the in-memory provider does not enforce a cascade, so the first version left the
+        // uurroosterrijen behind and its own test caught it. Depending on the provider to finish a delete is
+        // depending on the provider to define what the delete means.
         var plaatsing = await _db.Hoekplaatsingen
-            .Include(p => p.Verrijkingen)
             .Include(p => p.Momenten)
             .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Hoekplaatsing {plaatsingId} is niet gevonden.");
 
         // Nothing is refused here: unlike an activiteit on a Tuesday, none of this is a record of teaching that
-        // happened, and the teacher deleting the run is deleting what she put in it.
+        // happened. The corner's verrijkingen are not touched: they belong to the hoek and the subthema (FB-020).
         _db.Hoekplaatsingen.Remove(plaatsing);
         await _db.SaveChangesAsync(cancellationToken);
     }
@@ -221,82 +198,13 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
         return await BewaarAsync(plaatsing, cancellationToken);
     }
 
-    public async Task<HoekplaatsingWeergave> VoegVerrijkingToeAsync(
-        Guid plaatsingId,
-        DateOnly van,
-        DateOnly tot,
-        string tekst,
-        CancellationToken cancellationToken = default)
-    {
-        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
-
-        try
-        {
-            plaatsing.VoegVerrijkingToe(van, tot, tekst);
-        }
-        catch (ArgumentException fout)
-        {
-            throw new SchoolcontentValidatieFout(fout.Message);
-        }
-
-        return await BewaarAsync(plaatsing, cancellationToken);
-    }
-
-    public async Task<HoekplaatsingWeergave> WijzigVerrijkingAsync(
-        Guid plaatsingId,
-        Guid verrijkingId,
-        DateOnly van,
-        DateOnly tot,
-        string tekst,
-        CancellationToken cancellationToken = default)
-    {
-        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
-
-        bool gevonden;
-        try
-        {
-            gevonden = plaatsing.WijzigVerrijking(verrijkingId, van, tot, tekst);
-        }
-        catch (ArgumentException fout)
-        {
-            throw new SchoolcontentValidatieFout(fout.Message);
-        }
-
-        if (!gevonden)
-        {
-            throw new SchoolcontentNietGevondenFout($"Hoekverrijking {verrijkingId} is niet gevonden.");
-        }
-
-        return await BewaarAsync(plaatsing, cancellationToken);
-    }
-
-    public async Task<HoekplaatsingWeergave> VerwijderVerrijkingAsync(
-        Guid plaatsingId,
-        Guid verrijkingId,
-        CancellationToken cancellationToken = default)
-    {
-        var plaatsing = await VoorWijzigingAsync(plaatsingId, cancellationToken);
-
-        if (!plaatsing.VerwijderVerrijking(verrijkingId))
-        {
-            throw new SchoolcontentNietGevondenFout($"Hoekverrijking {verrijkingId} is niet gevonden.");
-        }
-
-        return await BewaarAsync(plaatsing, cancellationToken);
-    }
-
     /// <summary>
-    /// One placement, with BOTH child collections loaded, ready to be changed.
-    /// <para>
-    /// Both, always, even where the verb only touches one of them. The aggregate checks its invariants
-    /// over the collection it is changing, so a half-loaded graph would let a check pass on a row it
-    /// could not see, and the answer carries the whole placement anyway.
-    /// </para>
+    /// One placement, with its timetable rows loaded, ready to be changed. The aggregate checks its invariants over
+    /// the rows it holds, so a half-loaded graph would let a check pass on a row it could not see.
     /// </summary>
     private async Task<Hoekplaatsing> VoorWijzigingAsync(Guid plaatsingId, CancellationToken cancellationToken) =>
         await _db.Hoekplaatsingen
             .Include(p => p.Momenten)
-            .Include(p => p.Verrijkingen)
             .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
         ?? throw new SchoolcontentNietGevondenFout($"Hoekplaatsing {plaatsingId} is niet gevonden.");
 
@@ -330,7 +238,6 @@ public sealed class HoekplaatsingService : IHoekplaatsingService
             hoekNaam,
             plaatsing.Van,
             plaatsing.Tot,
-            plaatsing.Verrijkingen.Select(v => new HoekverrijkingWeergave(v.Id, v.Van, v.Tot, v.Tekst)).ToList(),
             plaatsing.Momenten
                 .OrderBy(m => m.Datum)
                 .ThenBy(m => m.Begin)
