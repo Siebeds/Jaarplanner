@@ -1,26 +1,17 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { Subthemabalk } from "./Subthemabalk";
 import type { Subthemareeks } from "./subthemareeksen";
-import type { SubthemaperiodeVerrijkingen } from "../hoeken/gegevens";
 import { t } from "../../i18n";
 import { periode } from "../../lib/datum";
 import { themapaginaPad } from "../themas/themapagina";
 
 /**
- * The subthemabalk above the grid (FB-020): one button per subthema on screen, with a one-line preview of what the
- * hoeken hold while it runs. The preview's branches are pinned, because each may only say what its data proves.
- *
- * Since FB-037 it is also the keyboard's way to the themapagina: a link per thema in view, followed by its runs, and a
- * link beside each run's button to its chapter.
+ * The row above the grid: the keyboard's way to the themapagina (FB-037, ADR-0042), a link per thema in view followed
+ * by its runs, each a link to its chapter with its days beside it. Nothing else: what the hoeken hold is in the side
+ * panel (FB-038, ADR-0044).
  */
-const HOEKEN = [
-  { id: "h-boek", naam: "boekenhoek" },
-  { id: "h-bouw", naam: "bouwhoek" },
-  { id: "h-zand", naam: "zandtafel" },
-];
-
 const SEIZOENEN = { id: "t-seizoenen", naam: "Seizoenen" };
 
 const herfst: Subthemareeks = {
@@ -34,7 +25,6 @@ const herfst: Subthemareeks = {
   periodeId: "p-herfst",
 };
 
-// Drawn from its activiteiten alone: no stored window, so it cannot have a verrijking yet.
 const winter: Subthemareeks = {
   subthemaId: "s-winter",
   subthemaNaam: "De winter",
@@ -45,71 +35,31 @@ const winter: Subthemareeks = {
   aantalDagen: 2,
 };
 
-const gevuld: SubthemaperiodeVerrijkingen = {
-  subthemaperiodeId: "p-herfst",
-  subthemaId: "s-herfst",
-  subthemaNaam: "De herfst",
-  van: "2026-09-14",
-  tot: "2026-09-25",
-  // Listed out of the klas's order on purpose: the preview names the first CORNER, not the first row.
-  verrijkingen: [
-    { id: "v-2", hoekId: "h-bouw", tekst: "kastanjes en dennenappels" },
-    { id: "v-1", hoekId: "h-boek", tekst: "prentenboeken over de herfst" },
-  ],
-};
-
 function toon(opties: Partial<Parameters<typeof Subthemabalk>[0]> = {}) {
-  const onOpen = vi.fn();
   render(
     <MemoryRouter>
-      <Subthemabalk
-        themas={[SEIZOENEN]}
-        reeksen={[herfst, winter]}
-        verrijkingen={[gevuld]}
-        geladen
-        hoeken={HOEKEN}
-        magPlannen
-        onOpen={onOpen}
-        {...opties}
-      />
+      <Subthemabalk themas={[SEIZOENEN]} reeksen={[herfst, winter]} {...opties} />
     </MemoryRouter>,
   );
-  return { onOpen };
 }
 
 describe("Subthemabalk", () => {
-  it("toont elk subthema met zijn dagen, en het voorbeeld van de verrijkte hoeken in de volgorde van de klas", () => {
+  it("toont elk subthema met zijn dagen, en linkt het naar zijn hoofdstuk op de themapagina", () => {
     toon();
 
-    const lijst = screen.getByRole("list", { name: t("subthemabalk.label") });
-    expect(lijst).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: t("subthemabalk.label") })).toBeInTheDocument();
     expect(screen.getByText(periode("2026-09-14", "2026-09-25"))).toBeInTheDocument();
-    expect(screen.getByText(t("subthemabalk.verrijktAantal", { aantal: 2 }))).toBeInTheDocument();
-    expect(screen.getByText("boekenhoek: prentenboeken over de herfst")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: t("subthemabalk.naarSubthema", { naam: "De herfst" }) })).toHaveAttribute(
+      "href",
+      themapaginaPad("t-seizoenen", "s-herfst"),
+    );
   });
 
-  it("biedt wie mag plannen bij een subthema zonder verrijking aan om ze in te vullen", () => {
+  it("opent niets en zegt niets over hoeken: de verrijking staat in het zijpaneel (FB-038)", () => {
     toon();
 
-    expect(screen.getByRole("button", { name: new RegExp(`De winter.*${t("subthemabalk.invullen")}`) }))
-      .toBeInTheDocument();
-  });
-
-  it("zegt aan wie alleen mag bekijken pas dat er niets is als dat zeker is", () => {
-    // Read and empty: then it is true there is none.
-    const { onOpen } = toon({ magPlannen: false, verrijkingen: [{ ...gevuld, verrijkingen: [] }] });
-    expect(screen.getAllByText(t("subthemabalk.geen"))).toHaveLength(2);
-
-    fireEvent.click(screen.getByRole("button", { name: /De winter/ }));
-    expect(onOpen).toHaveBeenCalledWith(winter);
-  });
-
-  it("zegt niet dat er geen verrijking is terwijl die nog gelezen wordt", () => {
-    toon({ magPlannen: false, verrijkingen: [], geladen: false });
-
-    // De herfst has a window whose verrijkingen are still out; De winter has no window, so none is certain.
-    expect(screen.getByRole("button", { name: new RegExp(`De herfst.*${t("subthemabalk.bekijken")}`) })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: new RegExp(`De winter.*${t("subthemabalk.geen")}`) })).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText(/hoek/i)).toBeNull();
   });
 
   it("tekent niets als er in beeld geen thema en geen subthema loopt", () => {
@@ -120,21 +70,17 @@ describe("Subthemabalk", () => {
 });
 
 describe("Subthemabalk: de weg naar de themapagina met het toetsenbord (FB-037)", () => {
-  it("linkt naar het thema, en naast de knop van elk subthema naar zijn hoofdstuk", () => {
-    const { onOpen } = toon();
+  it("linkt naar het thema en naar elk subthema, de dagen buiten de link", () => {
+    toon();
 
     expect(screen.getByRole("link", { name: t("subthemabalk.naarThema", { naam: "Seizoenen" }) })).toHaveAttribute(
       "href",
       themapaginaPad("t-seizoenen"),
     );
-    const naarHerfst = screen.getByRole("link", { name: t("subthemabalk.naarSubthema", { naam: "De herfst" }) });
-    expect(naarHerfst).toHaveAttribute("href", themapaginaPad("t-seizoenen", "s-herfst"));
-    // Beside the button, never inside it: a link in a button is invalid and unreachable by keyboard.
-    expect(naarHerfst.closest("button")).toBeNull();
-
-    // The link goes; it does not also open the verrijkingen.
-    fireEvent.click(naarHerfst);
-    expect(onOpen).not.toHaveBeenCalled();
+    const naarWinter = screen.getByRole("link", { name: t("subthemabalk.naarSubthema", { naam: "De winter" }) });
+    expect(naarWinter).toHaveAttribute("href", themapaginaPad("t-seizoenen", "s-winter"));
+    // The visible label is the name alone, which the link's own name contains (SC 2.5.3); the days sit beside it.
+    expect(naarWinter).toHaveTextContent(/^De winter$/);
   });
 
   it("zet elk subthema achter zijn thema", () => {

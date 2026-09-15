@@ -15,7 +15,7 @@ import { Hoekensectie } from "./Hoekensectie";
 
 const GROEN = { id: "klas-groen", naam: "K3 groen", jaarFasen: ["K3"], jaarfase: "K3" } as KlasWeergave;
 const BLAUW = { id: "klas-blauw", naam: "K3 blauw", jaarFasen: ["K3"], jaarfase: "K3" } as KlasWeergave;
-const HOEK = { id: "h-1", klasId: GROEN.id, naam: "bouwhoek", omschrijving: null, aantalPlaatsingen: 0 } as HoekWeergave;
+const HOEK = { id: "h-1", klasId: GROEN.id, naam: "bouwhoek", omschrijving: null, aantalVerrijkingen: 0 } as HoekWeergave;
 
 function toon(ik: Ik) {
   vi.stubGlobal(

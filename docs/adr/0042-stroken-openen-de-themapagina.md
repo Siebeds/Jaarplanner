@@ -1,6 +1,8 @@
 # ADR-0042 — The agenda's thema and subthema bands open the themapagina
 
-- **Status:** Accepted
+- **Status:** Accepted. *The consequence that the month's subthemabalk makes FB-020's verrijkingen reachable no longer
+  holds: [ADR-0044](0044-hoekverrijking-in-het-zijpaneel.md) (FB-038) moved them to the side panel, and the subthemabalk
+  is its links only. Decision 3 stands.*
 - **Date:** 2026-09-15
 - **Deciders:** Project owner, in session on 2026-09-15: *"in de agenda wil ik op thema en subthema kunnen klikken om
   naar de detailpagina te navigeren hiervan"*, and three rulings the same day: a subthema opens its thema's page with

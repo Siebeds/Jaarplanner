@@ -55,6 +55,8 @@ home for that whole set.
   *Related ticket, 2026-09-15:* [FB-020](functionele-backlog/FB-020-leerkracht-vult-per-hoek-een-verrijking-in-voor.md)
   shows the hoekenverrijking preview in the same subthema rail above the grid that this story designs, and opens its
   sheet from a rail row. Whichever of the two is built first builds the rail; the other reuses it.
+  *Since FB-038 ([ADR-0044](../docs/adr/0044-hoekverrijking-in-het-zijpaneel.md)) the rail is a row of links only;
+  the verrijking is in the agenda's side panel.*
 
   > **⚠ Blocked on two things, and the first is hard.**
   > 1. **ADR-0025 does not exist.** Session `verbeteringen` removed `Subthema.KlasId` on 2026-08-30 and

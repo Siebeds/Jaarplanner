@@ -1,6 +1,8 @@
 # ADR-0041 — A hoekverrijking belongs to a hoek and a subthemaperiode
 
-- **Status:** Accepted
+- **Status:** Accepted. *Decision 5 and the consequence that the subthemabalk carries the verrijking are superseded by
+  [ADR-0044](0044-hoekverrijking-in-het-zijpaneel.md) (FB-038, owner 2026-09-15): the verrijking is read and written in
+  the agenda's side panel, and a hoek is no longer placed in the agenda. The model and decision 3 stand.*
 - **Date:** 2026-09-15
 - **Deciders:** Project owner, in session on 2026-09-15: *"een leerkracht moet de hoekenverrijking via de agenda kunnen
   invullen en bekijken, dit is geen activiteit in de agenda ... maar loopt overheen verschillende dagen (best linken aan

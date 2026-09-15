@@ -18,10 +18,10 @@ const WEEKDAG_LANG = new Intl.DateTimeFormat("nl-BE", { weekday: "long" });
  * What happens after an algemene fiche lands on a day: over which days, on which weekdays, and at what time
  * (owner, 2026-09-11: "elke maandag turnen op dit uur"; ADR-0029 decision 3).
  *
- * **The hoek's sheet, with the one question a hoek does not have.** A hoek runs on every teaching day of its window;
- * a fiche recurs on the weekdays she picks. So the window, the "Al ingepland" list and the hours are the hoek's own
- * arrangement (`Hoekplaatsingblad` gives the reasons), and between them sits a row of five day toggles. There is no
- * verrijking: what happens in a fiche is its description, written once in Instellingen.
+ * **A window, the weekdays in it, and the hours.** A fiche recurs on the weekdays she picks, so between the window and
+ * the hours sits a row of five day toggles. The "Al ingepland" list is there because a teacher planning turnen in
+ * november needs to see that it already ran in september. What happens in a fiche is its description, written once in
+ * Instellingen.
  *
  * **The day she dropped on decides two things, and only those.** It is the start of the window, and its weekday is
  * the first day switched on: dropping turnen on a Monday means Mondays far more often than not. The end stays empty,

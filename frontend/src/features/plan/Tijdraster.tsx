@@ -8,13 +8,12 @@ import {
   useState,
 } from "react";
 import { useDndMonitor, useDraggable, useDroppable } from "@dnd-kit/core";
-import { IcoonFiche, IcoonHoek } from "../../components/Iconen";
+import { IcoonFiche } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
-import { leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
@@ -44,33 +43,28 @@ import {
 } from "./tijd";
 import { KOLOM_ATTRIBUUT, VAN_ATTRIBUUT, doelTijd, kolomId } from "./tijdsleep";
 
-/** One appearance of a placed hoek on a day, as the grid draws it. */
-export interface Hoekblokje {
+/**
+ * One occurrence of a planned algemene fiche on a day, as the grid draws it: a fiche moment is a row a teacher can move
+ * on its own.
+ *
+ * Plus the fiche's goals, for the block's info icon (FB-018). Absent while the fiche list has not arrived, which draws
+ * no icon rather than one that would say the fiche has no goals.
+ */
+export interface Ficheblokje {
   plaatsingId: string;
   momentId: string;
   naam: string;
   datum: string;
   begin: string;
   einde: string;
-}
-
-/**
- * One occurrence of a planned algemene fiche, in the same shape: a fiche moment is a row a teacher can move on its
- * own, exactly like a hoek's, and only the endpoint that saves it differs.
- *
- * Plus the fiche's goals, for the block's info icon (FB-018). Absent while the fiche list has not arrived, which draws
- * no icon rather than one that would say the fiche has no goals.
- */
-export interface Ficheblokje extends Hoekblokje {
   doelen?: readonly Infodoel[];
   /** What the class does in it that day (FB-022), drawn in the block where there is room. */
   tekst?: string | null;
 }
 
-/** What a resize asks the screen to save. The three kinds live behind three endpoints; the grid knows which is which. */
+/** What a resize asks the screen to save. The two kinds live behind two endpoints; the grid knows which is which. */
 export type Tijddoel =
   | { soort: "activiteit"; plaatsingId: string }
-  | { soort: "hoek"; plaatsingId: string; momentId: string }
   | { soort: "fiche"; plaatsingId: string; momentId: string };
 
 /** A block on the grid, of either kind, with what it takes to draw and address it. */
@@ -80,10 +74,7 @@ type Rasterblok = Blokje & {
   onder: string;
   doel: Tijddoel;
   activiteit?: GeplandeActiviteit;
-  /**
-   * The goals the block works on, for its info icon (FB-018). Absent for a kind that has none to show: a hoek, until
-   * FB-019 gives hoeken goals of their own.
-   */
+  /** The goals the block works on, for its info icon (FB-018). */
   doelen?: readonly Infodoel[];
   /** An algemene fiche's day text (FB-022). Absent for every other kind, and for a day nobody wrote about. */
   tekst?: string;
@@ -115,7 +106,6 @@ type Rasterblok = Blokje & {
  */
 export function Tijdraster({
   dagen,
-  hoekmomenten,
   fichemomenten,
   reeksenPerDag,
   vakken,
@@ -123,7 +113,6 @@ export function Tijdraster({
   magPlannen,
   onVoegToe,
   onOpen,
-  onOpenHoek,
   onOpenFiche,
   onVanDag,
   onKiesDag,
@@ -131,9 +120,7 @@ export function Tijdraster({
 }: {
   /** The days to draw, in order. One for the day view, three on a phone's week, seven on a desktop's. */
   dagen: Agendadag[];
-  /** The hoek appearances of the visible range, in one flat list; the grid picks each day's own. */
-  hoekmomenten: readonly Hoekblokje[];
-  /** The occurrences of planned algemene fiches in the visible range, in the same flat list shape (ADR-0029). */
+  /** The occurrences of planned algemene fiches in the visible range, in one flat list; the grid picks each day's own. */
   fichemomenten: readonly Ficheblokje[];
   /** The subthema runs covering each day, for the band above the grid. */
   reeksenPerDag: Map<string, Subthemareeks[]>;
@@ -152,7 +139,6 @@ export function Tijdraster({
    */
   onVoegToe: (datum: string, begin: number, einde?: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
-  onOpenHoek: (plaatsingId: string) => void;
   /** A fiche block was opened: its placement, and the one occurrence it was opened from. */
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
   /**
@@ -166,8 +152,8 @@ export function Tijdraster({
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
 }) {
   const blokken = useMemo(
-    () => bouwBlokken(dagen, hoekmomenten, fichemomenten),
-    [dagen, hoekmomenten, fichemomenten],
+    () => bouwBlokken(dagen, fichemomenten),
+    [dagen, fichemomenten],
   );
   // The whole day, always. What a teacher sees of it is the scroller below; see `HEEL_DE_DAG`. `bereik` is an alias,
   // not a seam: it is kept because it is the origin every position in the grid is measured from, and because
@@ -200,7 +186,7 @@ export function Tijdraster({
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
       {/* THE DAY HEADINGS AND THE ALL-DAY BAND, outside the scroller so they stay put while the hours move.
           What is in the band is what is true of a whole day and has no hour: which themaperiode it belongs to and
-          which subthema runs on it. The hoeken used to be here too and are in the grid now, on their own time.
+          which subthema runs on it.
 
           THE SAME GUTTER AS THE SCROLLER BELOW, so every heading sits over its own column. The scroller's scrollbar
           takes its width from the hour columns and not from these headings, which drifted each column a little further
@@ -296,7 +282,6 @@ export function Tijdraster({
                 magPlannen={magPlannen}
                 onVoegToe={onVoegToe}
                 onOpen={onOpen}
-                onOpenHoek={onOpenHoek}
                 onOpenFiche={onOpenFiche}
                 onVanDag={onVanDag}
                 onWijzigTijd={onWijzigTijd}
@@ -391,12 +376,8 @@ const UREN = Array.from({ length: (HEEL_DE_DAG.tot - HEEL_DE_DAG.van) / 60 }, (_
 /** One line of an algemene fiche's day text on a block, in pixels: its `leading-[0.9375rem]` (FB-022). */
 const TEKSTREGEL = 15;
 
-/** Every block of every visible day, of all three kinds, in one list the layout and the range can both read. */
-function bouwBlokken(
-  dagen: Agendadag[],
-  hoekmomenten: readonly Hoekblokje[],
-  fichemomenten: readonly Ficheblokje[],
-): Rasterblok[] {
+/** Every block of every visible day, of both kinds, in one list the layout and the range can both read. */
+function bouwBlokken(dagen: Agendadag[], fichemomenten: readonly Ficheblokje[]): Rasterblok[] {
   const uit: Rasterblok[] = [];
 
   for (const dag of dagen) {
@@ -417,19 +398,6 @@ function bouwBlokken(
   }
 
   const zichtbaar = new Set(dagen.map((dag) => dag.datum));
-  for (const moment of hoekmomenten) {
-    if (!zichtbaar.has(moment.datum)) continue;
-    uit.push({
-      id: momentSleepId(moment.plaatsingId, moment.momentId),
-      datum: moment.datum,
-      begin: minuten(moment.begin),
-      einde: minuten(moment.einde),
-      naam: moment.naam,
-      onder: t("tijdraster.hoekenwerk"),
-      doel: { soort: "hoek", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
-    });
-  }
-
   for (const moment of fichemomenten) {
     if (!zichtbaar.has(moment.datum)) continue;
     uit.push({
@@ -558,7 +526,6 @@ function Dagkolom({
   magPlannen,
   onVoegToe,
   onOpen,
-  onOpenHoek,
   onOpenFiche,
   onVanDag,
   onWijzigTijd,
@@ -571,7 +538,6 @@ function Dagkolom({
   magPlannen: boolean;
   onVoegToe: (datum: string, begin: number, einde?: number) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
-  onOpenHoek: (plaatsingId: string) => void;
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
   onVanDag: (doel: Tijddoel, naam: string, datum: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
@@ -641,7 +607,6 @@ function Dagkolom({
           rasterVan={bereik.van}
           magPlannen={magPlannen}
           onOpen={onOpen}
-          onOpenHoek={onOpenHoek}
           onOpenFiche={onOpenFiche}
           onVanDag={onVanDag}
           onWijzigTijd={onWijzigTijd}
@@ -673,9 +638,9 @@ function useSleepvoorbeeld(datum: string): { begin: number; einde: number } | nu
         return;
       }
 
-      // A fiche out of the panel (a hoek's or an algemene one) has no duration yet, since its sheet asks for one, so
-      // the preview shows the default the sheet will offer rather than a block of no height.
-      const uitPaneel = leesFicheId(String(active.id)) !== null || leesAlgemeneFicheId(String(active.id)) !== null;
+      // An algemene fiche out of the panel has no duration yet, since its sheet asks for one, so the preview shows the
+      // default the sheet will offer rather than a block of no height.
+      const uitPaneel = leesAlgemeneFicheId(String(active.id)) !== null;
       const duur = uitPaneel ? STANDAARDDUUR : Number(active.data.current?.duur ?? STANDAARDDUUR);
 
       setVoorbeeld({ begin, einde: begin + duur });
@@ -867,15 +832,15 @@ function Landingsvak({ begin, einde, rasterVan }: { begin: number; einde: number
 }
 
 /**
- * One block: an activiteit, one appearance of a hoek, or one occurrence of an algemene fiche.
+ * One block: an activiteit, or one occurrence of an algemene fiche.
  *
  * **The whole block drags and the whole block opens**, which is the pattern every card in this agenda uses: the
  * pointer sensor wants six pixels of travel before a press counts as a drag, so a press that does not move is a
  * click. On a keyboard the two are two keys, Enter opens and Space picks up (`sleep.ts`).
  *
- * **A hoek and an algemene fiche carry no colour**, because the palette on a block means the activiteit's own colour
- * and neither of them has one. Each is told apart by its glyph and by the word under its name, which is also what
- * makes it readable without colour at all (Art. XII, WCAG 2.2 AA).
+ * **An algemene fiche carries no colour**, because the palette on a block means the activiteit's own colour and a fiche
+ * has none. It is told apart by its glyph and by the word under its name, which is also what makes it readable without
+ * colour at all (Art. XII, WCAG 2.2 AA).
  */
 function Blok({
   blok,
@@ -883,7 +848,6 @@ function Blok({
   rasterVan,
   magPlannen,
   onOpen,
-  onOpenHoek,
   onOpenFiche,
   onVanDag,
   onWijzigTijd,
@@ -894,7 +858,6 @@ function Blok({
   /** Without it the block only opens: no drag, no grip, no right-click menu, and no drag semantics on the button. */
   magPlannen: boolean;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
-  onOpenHoek: (plaatsingId: string) => void;
   onOpenFiche: (plaatsingId: string, momentId: string) => void;
   onVanDag: (doel: Tijddoel, naam: string, datum: string) => void;
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
@@ -904,8 +867,7 @@ function Blok({
     const doel = blok.doel;
     if (doel.soort === "activiteit") {
       if (blok.activiteit) onOpen(blok.activiteit, blok.datum);
-    } else if (doel.soort === "hoek") onOpenHoek(doel.plaatsingId);
-    else onOpenFiche(doel.plaatsingId, doel.momentId);
+    } else onOpenFiche(doel.plaatsingId, doel.momentId);
   };
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
@@ -926,7 +888,7 @@ function Blok({
     and the third was drawn clipped in half, which a browser pass found and no test could. Three tiers instead:
     an hour or more gets the subtitle as well, half an hour or more puts the name and the time on ONE line, and
     anything shorter keeps the name alone. What a screen reader needs is not lost with it: the accessible name carries
-    the name, the hours and, for a hoek or an algemene fiche, the word that says which kind it is.
+    the name, the hours and, for an algemene fiche, the word that says which kind it is.
   */
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
@@ -985,8 +947,8 @@ function Blok({
           ref={setNodeRef}
           type="button"
           onClick={open}
-          // The kind is spoken for a hoek and a fiche: they carry no colour, so the word under the name is the only
-          // thing that tells them from each other and from an activiteit, and a short block does not print it.
+          // The kind is spoken for a fiche: it carries no colour, so the word under the name is the only thing that
+          // tells it from an activiteit, and a short block does not print it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
             blok.doel.soort === "activiteit" ? "" : `, ${blok.onder}`
           }${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
@@ -1005,9 +967,7 @@ function Blok({
           {/* Clipped at its own edge, so in a block narrowed by a neighbour the time stops before the info icon rather
               than running under it (seen in the FB-018 browser pass). */}
           <span className="flex min-w-0 items-baseline gap-1 overflow-hidden">
-            {blok.doel.soort === "hoek" ? (
-              <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
-            ) : blok.doel.soort === "fiche" ? (
+            {blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
             <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
@@ -1103,8 +1063,8 @@ function Blok({
  *
  * **Pointer capture, so the edge keeps following the finger** once it has left the strip, which is what happens
  * immediately. Deliberately no keyboard role: an 8px edge is not a keyboard target. The same change is a pair of time
- * fields in the activiteit sheet; for a hoek, the detail sheet sets the hours of the whole run rather than of one day;
- * for an algemene fiche, its detail sheet opened from the block carries that one day's hours as fields.
+ * fields in the activiteit sheet; for an algemene fiche, its detail sheet opened from the block carries that one day's
+ * hours as fields.
  */
 function Rekgreep({
   onRek,

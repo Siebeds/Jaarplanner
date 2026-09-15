@@ -46,7 +46,6 @@ function toon(magPlannen: boolean) {
           ankerMaand="2026-09-08"
           vakken={[]}
           reeksenPerDag={new Map()}
-          hoekplaatsingen={[]}
           magPlannen={magPlannen}
           onKiesDag={() => {}}
           onOpen={onOpen}

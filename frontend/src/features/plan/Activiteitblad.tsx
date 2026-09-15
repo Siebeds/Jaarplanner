@@ -289,7 +289,7 @@ function Dagsectie({
         </div>
         <div className="min-w-24 flex-1">
           <label htmlFor="agenda-begin" className="text-meta font-medium text-inkt">
-            {t("hoekplaatsing.van")}
+            {t("activiteitplaatsing.van")}
           </label>
           <Invoer
             id="agenda-begin"
@@ -303,7 +303,7 @@ function Dagsectie({
         </div>
         <div className="min-w-24 flex-1">
           <label htmlFor="agenda-einde" className="text-meta font-medium text-inkt">
-            {t("hoekplaatsing.tot")}
+            {t("activiteitplaatsing.tot")}
           </label>
           <Invoer
             id="agenda-einde"

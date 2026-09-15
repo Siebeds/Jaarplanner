@@ -1,14 +1,11 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Blokmenu } from "./Blokmenu";
 import type { GeplandeActiviteit } from "../../lib/types";
-import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import type { Agendadag } from "./roosterdagen";
 import { dagNummer, maandVan, maandagVan, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
-import { Hoekstroken } from "../hoeken/Hoekstroken";
-import { hoekZin } from "../hoeken/hoekzin";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
@@ -38,7 +35,6 @@ export function Maandrooster({
   ankerMaand,
   vakken,
   reeksenPerDag,
-  hoekplaatsingen,
   magPlannen,
   onKiesDag,
   onOpen,
@@ -58,14 +54,6 @@ export function Maandrooster({
   vakken: readonly Themavak[];
   /** Which subthema runs cover each day, so a cell can name what is running on it. */
   reeksenPerDag: Map<string, Subthemareeks[]>;
-  /**
-   * The hoeken running in the visible range.
-   *
-   * A flat list rather than a map per day, unlike the subthema runs beside it: a hoekplaatsing is
-   * already a window, so a cell answers "am I inside it" with a comparison instead of a lookup, and
-   * there is no derivation step that could disagree with the calendar.
-   */
-  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   /** Whether this gebruiker may change this klas's planning (`mag.klasplanningBewerken`). */
   magPlannen: boolean;
   onKiesDag: (datum: string) => void;
@@ -113,7 +101,6 @@ export function Maandrooster({
               vak={vakOpDag(vakken, dag.datum)}
               isVandaag={dag.datum === nu}
               reeksen={reeksenPerDag.get(dag.datum) ?? LEEG}
-              hoekplaatsingen={hoekplaatsingen}
               magPlannen={magPlannen}
               onKiesDag={onKiesDag}
               onVoegToe={onVoegToe}
@@ -136,7 +123,6 @@ function Maandcel({
   vak,
   isVandaag,
   reeksen,
-  hoekplaatsingen,
   magPlannen,
   onKiesDag,
   onVoegToe,
@@ -148,7 +134,6 @@ function Maandcel({
   vak: Themavak | undefined;
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
-  hoekplaatsingen: readonly HoekplaatsingWeergave[];
   magPlannen: boolean;
   onKiesDag: (datum: string) => void;
   onVoegToe: (datum: string) => void;
@@ -171,7 +156,7 @@ function Maandcel({
       ref={setNodeRef}
       aria-current={isVandaag ? "date" : undefined}
       className={cn(
-        // SQUARE CORNERS, and the strips are why (owner, 2026-09-14, TB-012). The thema, subthema and hoek
+        // SQUARE CORNERS, and the strips are why (owner, 2026-09-14, TB-012). The thema and subthema
         // strips run full bleed along the top edge, so a rounded cell cut the first letters of the band
         // into a slant and drew its own border diagonally through the tick that marks where a run
         // starts. The rounding stays on what sits INSIDE a cell (chips, the plus, today's pill): the cell
@@ -208,8 +193,7 @@ function Maandcel({
               ? t("periode.openDagMet", { dag: volleDag(dag.datum), aantal: dag.activiteiten.length })
               : t("periode.openDag", { dag: volleDag(dag.datum) })) +
           themaZin(periode) +
-          subthemaZin(stroken) +
-          hoekZin(hoekplaatsingen, dag.datum)
+          subthemaZin(stroken)
         }
         className="absolute inset-0 z-0 transition-colors duration-150 hover:bg-vlak-diep/60"
       />
@@ -223,7 +207,6 @@ function Maandcel({
       <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col gap-px sm:flex">
         <Themastroken vak={periode} datum={dag.datum} dicht />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
-        <Hoekstroken plaatsingen={hoekplaatsingen} datum={dag.datum} dicht />
       </div>
 
       {/* Adding straight from the month, without the detour through the day.

@@ -95,7 +95,6 @@ function antwoord(pad: string): unknown {
       return { klasId: "klas-1", klasNaam: KLAS.naam, schooljaarId: "jaar-1", schooljaarNaam: "2026-2027", van, tot,
         dagen: dagen(van, tot), subthemaperiodes: [] };
     }
-    case "/api/klassen/klas-1/hoekplaatsingen":
     case "/api/klassen/klas-1/hoeken":
     case "/api/klassen/klas-1/hoekverrijkingen":
       return [];
@@ -172,16 +171,20 @@ async function openTurnen() {
 }
 
 describe("Agendascherm: de planning van een klas die je alleen mag bekijken", () => {
-  it("toont geen fichechips en geen zijpaneel, en opent een algemene fiche alleen om te lezen", async () => {
+  it("toont geen algemene fiches, wel de hoeken om te lezen, en opent een algemene fiche alleen om te lezen", async () => {
     // A leerkracht of K3, of another klas: she reads this klas's agenda (a klas of her jaarfase, FB-013) and plans only her own.
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-2"] }));
 
     expect(await screen.findByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeInTheDocument();
-    expect(chip(t("periode.hoekenfiches"))).toBeNull();
     expect(chip(t("periode.algemeneFiches"))).toBeNull();
-    // The activiteiten are for everyone who reads the agenda; their cards then plan nothing (owner, 2026-09-15).
+    // The hoeken and the activiteiten are for everyone who reads the agenda: what the corners hold this week and the
+    // cards, both to read (owner, 2026-09-15, FB-017 and FB-038).
+    expect(chip(t("periode.hoekenfiches"))).not.toBeNull();
     expect(chip(t("periode.activiteiten"))).not.toBeNull();
-    expect(paneel()).toBeNull();
+    // Open on the hoekenfiches (see `beforeEach`), and nothing in it that makes a corner.
+    expect(paneel()).not.toBeNull();
+    expect(await screen.findByText(t("hoekenpaneel.geenHoeken"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("hoeken.toevoegen") })).toBeNull();
 
     const blad = await openTurnen();
     expect(within(blad).getByText("turnen")).toBeInTheDocument();
@@ -204,6 +207,9 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
       expect(chips[i - 1]!.compareDocumentPosition(chips[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
     expect(paneel()).not.toBeNull();
+    // A hoek is no longer placed in the agenda (FB-038, ADR-0044): nothing asks for the placements an earlier one left.
+    const gevraagd = (vi.mocked(fetch).mock.calls as [string][]).map(([pad]) => String(pad));
+    expect(gevraagd.some((pad) => pad.includes("hoekplaatsingen"))).toBe(false);
 
     const blad = await openTurnen();
     expect(within(blad).getByRole("button", { name: t("fichedetail.verwijder") })).toBeInTheDocument();

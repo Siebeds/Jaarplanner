@@ -1,5 +1,4 @@
 import type { AlgemeneFicheWeergave, AlgemeneFicheplaatsingWeergave } from "../algemene-fiches/gegevens";
-import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import type { Tijddoel } from "./Tijdraster";
 
 /** One of the sentences that say what else goes when a block leaves its day. */
@@ -22,17 +21,11 @@ export type Gevolg = "blokmenu.tekstGaatMee" | "blokmenu.laatsteDag" | "blokmenu
 export function gevolgVanDag(
   doel: Tijddoel,
   lijsten: {
-    hoekplaatsingen: readonly HoekplaatsingWeergave[];
     fichePlaatsingen: readonly AlgemeneFicheplaatsingWeergave[];
     fiches: readonly AlgemeneFicheWeergave[];
   },
 ): Gevolg[] {
   if (doel.soort === "activiteit") return [];
-
-  if (doel.soort === "hoek") {
-    const plaatsing = lijsten.hoekplaatsingen.find((p) => p.id === doel.plaatsingId);
-    return plaatsing?.momenten.length === 1 ? ["blokmenu.laatsteDag"] : [];
-  }
 
   const plaatsing = lijsten.fichePlaatsingen.find((p) => p.id === doel.plaatsingId);
   if (!plaatsing) return [];

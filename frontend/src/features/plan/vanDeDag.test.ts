@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import type { AlgemeneFichedoel, AlgemeneFicheWeergave, AlgemeneFicheplaatsingWeergave } from "../algemene-fiches/gegevens";
-import type { HoekplaatsingWeergave } from "../hoeken/gegevens";
 import { gevolgVanDag } from "./vanDeDag";
 
 /**
@@ -25,37 +24,15 @@ function fichePlaatsing(momenten: { id: string; tekst: string | null }[]): Algem
   };
 }
 
-function hoekPlaatsing(aantal: number): HoekplaatsingWeergave {
-  return {
-    id: "hp-1",
-    hoekId: "h-1",
-    hoekNaam: "boekenhoek",
-    van: "2026-09-07",
-    tot: "2026-09-18",
-    momenten: Array.from({ length: aantal }, (_, i) => ({
-      id: `hm-${i + 1}`,
-      datum: `2026-09-0${7 + i}`,
-      begin: "13:30:00",
-      einde: "14:20:00",
-    })),
-  };
-}
-
 const FICHE_DOEL = { soort: "fiche", plaatsingId: "fp-1", momentId: "fm-1" } as const;
 
 function lijsten(over: Partial<Parameters<typeof gevolgVanDag>[1]>): Parameters<typeof gevolgVanDag>[1] {
-  return { hoekplaatsingen: [], fichePlaatsingen: [], fiches: [], ...over };
+  return { fichePlaatsingen: [], fiches: [], ...over };
 }
 
 describe("gevolgVanDag", () => {
   it("vraagt niets voor een activiteit", () => {
     expect(gevolgVanDag({ soort: "activiteit", plaatsingId: "ap-1" }, lijsten({}))).toEqual([]);
-  });
-
-  it("vraagt niets voor een hoek met nog andere dagen, en zegt het bij de laatste dag", () => {
-    const doel = { soort: "hoek", plaatsingId: "hp-1", momentId: "hm-1" } as const;
-    expect(gevolgVanDag(doel, lijsten({ hoekplaatsingen: [hoekPlaatsing(3)] }))).toEqual([]);
-    expect(gevolgVanDag(doel, lijsten({ hoekplaatsingen: [hoekPlaatsing(1)] }))).toEqual(["blokmenu.laatsteDag"]);
   });
 
   it("vraagt niets voor een fichedag zonder tekst die niet de laatste is", () => {
@@ -91,6 +68,5 @@ describe("gevolgVanDag", () => {
 
   it("raadt niet bij een plaatsing die de lijsten niet kennen", () => {
     expect(gevolgVanDag(FICHE_DOEL, lijsten({}))).toEqual([]);
-    expect(gevolgVanDag({ soort: "hoek", plaatsingId: "weg", momentId: "hm-1" }, lijsten({}))).toEqual([]);
   });
 });

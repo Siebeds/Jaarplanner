@@ -1,14 +1,18 @@
 /**
  * The drag ids the algemene fiches put into the agenda, and how to read them back.
  *
- * The agenda's drop handler is given ONE id and has to know what it was handed; `hoeken/sleepids.ts` explains why the
- * prefixes are load-bearing. These two add the fiche's own kinds beside the hoek's:
+ * The agenda's drop handler is given ONE id and has to know what it was handed, so the prefixes are load-bearing rather
+ * than cosmetic. A bare `plaatsingId` is an activiteit already on the grid; these two are the fiche's own kinds:
  *
  * - `algemenefiche:<ficheId>` is a fiche from the panel with no placement yet: ask her the days, weekdays and hours
  * - `fichemoment:<plaatsingId>:<momentId>` is one occurrence of a planned fiche: move that one hour
  *
- * Neither prefix is a prefix of a hoek's (`hoekfiche:`, `hoekmoment:`), so the order in which the handler tests them
- * does not matter.
+ * The moment id carries its placement with it because the endpoint that moves it is addressed by both. Neither prefix
+ * is a prefix of the activiteit card's (`activiteitkaart:`), so the order in which the handler tests them does not
+ * matter.
+ *
+ * **Its own module, not a second export from a component.** A file that exports both a component and a constant breaks
+ * React Fast Refresh for that whole file, so editing the panel would reload the page instead of the component.
  */
 export const ALGEMENE_FICHE_VOORVOEGSEL = "algemenefiche:";
 

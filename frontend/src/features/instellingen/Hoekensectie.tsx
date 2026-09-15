@@ -34,14 +34,9 @@ import {
  * controls rather than a heading.
  *
  * **What is NOT here is the verrijking.** What a teacher puts in the boekenhoek for a fortnight
- * belongs to a period and lives on the agenda; what belongs here is the corner itself, which is there
- * in september and still there in june. Splitting them is the whole point of the model, so a screen
- * that offered both would undo it.
- *
- * **The count of placements is a fact on the row, not a warning.** A corner standing three times in
- * the agenda cannot be deleted, and the row says the three before she reaches for the bin rather than
- * only afterwards. The refusal itself still comes from the server: this count is the one this screen
- * fetched, and the only count that may block a delete is the one the server sees at that moment.
+ * belongs to a subthema and lives in the agenda's side panel (ADR-0044); what belongs here is the corner
+ * itself, which is there in september and still there in june. Splitting them is the whole point of the
+ * model, so a screen that offered both would undo it.
  *
  * **A room's corners are that klas's planning** (E6-02, ADR-0030 §3, R7): directie and its own leerkrachten add,
  * edit, delete and take them over. Anyone else picks any room and reads its corners, with one quiet line naming the
@@ -182,8 +177,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
       )}
 
       {/* The delete the server refused, with the reason it gave. Under the list rather than in the
-          dialog because the dialog is closed by then, and the refusal names a count of placements,
-          which is a fact about a row that is still on screen. */}
+          dialog, because the dialog is closed by then and the row it is about is still on screen. */}
       {verwijder.isError ? (
         <p
           role="alert"
@@ -261,7 +255,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
   );
 }
 
-/** One corner: what it is called, what is permanently in it, and how often it stands in the agenda. */
+/** One corner: what it is called, and what is permanently in it. */
 function Hoekrij({
   hoek,
   onBewerk,
@@ -281,11 +275,6 @@ function Hoekrij({
         <p className="text-body font-medium text-inkt">{hoek.naam}</p>
         {hoek.omschrijving ? (
           <p className="mt-0.5 text-meta text-inkt-zacht">{hoek.omschrijving}</p>
-        ) : null}
-        {hoek.aantalPlaatsingen > 0 ? (
-          <p className="mt-2 text-meta text-inkt-zwak">
-            {telWoord(hoek.aantalPlaatsingen, "hoeken.eenPlaatsing", "hoeken.aantalPlaatsingen")}
-          </p>
         ) : null}
       </div>
 
