@@ -2,12 +2,12 @@
 id: TB-007
 titel: Thema-matching stuurt niet langer de hele doelencatalogus mee
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:36
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 18:45
+opgepakt-door: prompt-begrenzing
+branch: ticket/TB-007-prompt-begrenzing
 pr:
 geblokkeerd:
 fr: []
@@ -75,3 +75,5 @@ Beantwoord door de eigenaar op 2026-09-14:
 - 2026-09-14 11:36 · ai-doelsuggesties · geblokkeerd: wacht op de eigenaar: wat bij een thema zonder subthema's, en welke bovengrens voor de prompt
 - 2026-09-14 14:35 · ai-doelsuggesties · niet langer geblokkeerd
 - 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: bij een thema zonder subthema's kiest de gebruiker de jaarfasen; bovengrens is een configinstelling, standaard 50.000 tokens
+- 2026-09-15 18:45 · eigenaar · nieuw → klaar-voor-bouw: eigenaar gaf vrij voor bouw; de compactere promptvorm wacht op de meting van TB-004
+- 2026-09-15 18:45 · prompt-begrenzing · klaar-voor-bouw → in-uitvoering: opgepakt
