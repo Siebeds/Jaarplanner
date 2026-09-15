@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:49
+bijgewerkt: 2026-09-15 16:31
 opgepakt-door: dekking-overzicht
 branch: ticket/TB-022-dekking-overzicht
 pr:
@@ -90,3 +90,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 15:49 · dekking-overzicht · aangemaakt (status in-uitvoering)
+- 2026-09-15 16:31 · dekking-overzicht · Backend (discipline in de dekking) en frontend (overzicht per leergebied, actielijst per thema, Nog te doen met reden per rij) gebouwd. Gates groen: 95 unit + 52 integratie (PostgreSQL) voor dekking, frontend 607 tests, lint en dotnet format schoon. Browsercontrole op 1440 en 390 px op een wegwerpdatabase: volgorde, acties, redenen en rechten zoals verwacht, contrast minstens 7,58:1, geen horizontale overloop.

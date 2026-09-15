@@ -72,6 +72,27 @@ describe("de Nederlandse catalogus", () => {
   });
 });
 
+describe("het dekkingsoverzicht (TB-022)", () => {
+  const waarde = (sleutel: string) => SLEUTELS.find(([pad]) => pad === sleutel)?.[1];
+
+  it("zegt bij een doel zonder thema nooit dat er niets gekoppeld is", () => {
+    // GeenThema also holds a goal whose only link was rejected, or whose link belongs to another class (E5-05): "no
+    // thema covers it" is true there, "nothing is linked to it" is not.
+    for (const sleutel of ["dekking.oorzaakGeenThema", "dekking.zonderThemaEen", "dekking.zonderThema"]) {
+      expect(waarde(sleutel)).toBeDefined();
+      expect(waarde(sleutel)).not.toMatch(/koppel/i);
+    }
+  });
+
+  it("zegt bij een geweigerde plaatsing niet dat het thema nergens in het jaarplan staat", () => {
+    // A rejected placement is drawn in its period on the kalender (E5-05, ronde 1 MAJOR-1).
+    for (const sleutel of ["dekking.oorzaakWeigering", "dekking.actieWeigering"]) {
+      expect(waarde(sleutel)).toBeDefined();
+      expect(waarde(sleutel)).not.toMatch(/nergens|geen periode|niet ingepland/i);
+    }
+  });
+});
+
 describe("de Op.stap-import en het minimumdoelenregister (E1-22)", () => {
   it("zeggen niet dat de doelen uit een bestand komen", () => {
     // E1-12 and E1-21 made that false: both kinds of goal come from KOV's API now. The register said the minimumdoelen

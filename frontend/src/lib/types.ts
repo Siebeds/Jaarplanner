@@ -584,10 +584,20 @@ export interface Planningsrooster {
 
 export type Dekkingsbereik = "EigenJaarFase" | "HeelCurriculum";
 
+/**
+ * Why a goal is not covered, and so where closing it happens (E5-05). Ordered by how close the goal is to being
+ * covered; the server takes the first that applies.
+ */
+export type Lacuneoorzaak = "WachtOpBeslissing" | "PlaatsingGeweigerd" | "NietIngepland" | "KoppelingNietBeslist" | "GeenThema";
+
 export interface LeerplandoelDekking {
   code: string;
   doelsoort: Doelsoort;
   jaarFase: string;
+  /** The leergebied: the overview's top level (TB-022). */
+  disciplineNummer: string;
+  /** Null only when the number has no row on the server; show the number then. */
+  disciplineNaam: string | null;
   domein: string;
   subdomein: string;
   tekst: string;
@@ -600,6 +610,10 @@ export interface LeerplandoelDekking {
    * exactly when this or `dekkendeThemas` is non-empty, so neither list alone says whether a goal is covered.
    */
   dekkendeFiches: string[];
+  /** Why the goal is not covered (E5-05); null exactly when it is. */
+  oorzaak: Lacuneoorzaak | null;
+  /** The thema's a teacher would act on to close the gap, for its cause only. Empty for GeenThema. */
+  kandidaatThemas: string[];
 }
 
 /**

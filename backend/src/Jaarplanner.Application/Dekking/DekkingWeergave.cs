@@ -163,6 +163,14 @@ public sealed record DekkingWeergave(
 /// <param name="Code">The leerplandoel's unique, stable code (Art. III.5).</param>
 /// <param name="Doelsoort">The goal type, for the badge/design token (Art. XII) and the E5-03 filter.</param>
 /// <param name="JaarFase">The jaar/fase code (JK, K2, K3, L1–L6, or a fase for P/S).</param>
+/// <param name="DisciplineNummer">
+/// The discipline number ("2", "9.1"), the stable key of the overview's top level: the leergebied a teacher reads the
+/// overview by (owner ruling 2026-09-15, TB-022). The export does not read it.
+/// </param>
+/// <param name="DisciplineNaam">
+/// The discipline's name, or <c>null</c> when its number has no row in <c>disciplines</c>, which the FK forbids; the
+/// screen then shows the number, as the register does.
+/// </param>
 /// <param name="Domein">The domein — part of the composite browse key.</param>
 /// <param name="Subdomein">The subdomein — unique only together with the domein (Art. VII.0).</param>
 /// <param name="Tekst">The goal text (Excel J).</param>
@@ -236,6 +244,8 @@ public sealed record LeerplandoelDekking(
     string Code,
     Doelsoort Doelsoort,
     string JaarFase,
+    string DisciplineNummer,
+    string? DisciplineNaam,
     string Domein,
     string Subdomein,
     string Tekst,
