@@ -50,7 +50,8 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0037](0037-lichter-agentproces.md) | **A lighter agent process**: the groepschat and its claims are retired (a ticket's status is its claim, worktrees keep sessions apart, and shared files such as `nl.json` are merged, not locked); the antagonist audits a finished diff once, only CRITICAL and MAJOR findings block, at most two rounds; the technical lead runs only on request; CLAUDE.md and the constitution keep the rules in force, and the ratification log moves to `docs/constitutie-log.md`. Amends Art. X.7 and XIII, adds XI.4 | **Accepted** (owner, 2026-09-15) |
 | [0038](0038-schooluren-per-weekdag.md) | **The school's hours are school data**: one row per weekday (Monday to Friday) with a begin, an end and an optional middagpauze, set by directie (`Beheer`) and read by everyone; the agenda opens at the start of the school day and hatches the hours outside it, labelled in words; the grid still draws and plans every hour (supersedes ADR-0028 decision 5 in part) | Accepted |
 | [0039](0039-ai-knoppen-regenboogring.md) | **A control that calls the AI wears a rainbow ring**: every such control is an `AiKnop` with the wand before its label; a 2px sweep through five stops around the card surface, label in ink; still at rest, a glow on hover, the sweep travels while a run is busy; the AI's proposals keep their suggestiestatus colours (amends 0024 decision 4) | Accepted |
-| [0040](0040-hoekverrijking-per-subthemaperiode.md) | **A hoekverrijking belongs to a hoek and a subthemaperiode**: one text per (hoek, stored subthema window), outside the jaarplan; saving one for a subthema drawn from its activiteiten stores the window first; it goes with its hoek or subthema, counted before the delete; written from the subthemabalk above the grid and from the hoek's detail; old dated verrijkingen converted to the windows they overlapped | Accepted |
+| [0040](0040-klassen-inkijken-per-jaarfase.md) | **A leerkracht reads the klassen of her own jaarfase**: a hoofdleerkracht those of her appointed jaarfase, themabeheer and directie every klas, a gebruiker without a right none, in every schooljaar (a default); one matrix row, `KlasplanningBekijken`, is the E6-09 seam, on every read of one klas's planning and on the klassen list. Supersedes 0030 default I9; directie's confirmation (question 4) is outstanding | Accepted |
+| [0041](0041-hoekverrijking-per-subthemaperiode.md) | **A hoekverrijking belongs to a hoek and a subthemaperiode**: one text per (hoek, stored subthema window), outside the jaarplan; saving one for a subthema drawn from its activiteiten stores the window first; it goes with its hoek or subthema, counted before the delete; written from the subthemabalk above the grid and from the hoek's detail; old dated verrijkingen converted to the windows they overlapped | Accepted |
 
 ## Compliance traceability matrix
 
@@ -93,7 +94,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0037 | Art. X.7 and XIII (amended), XI.4 (added), XI (log moved); relates to 0033 | TB-021 | — (team process) |
 | 0038 | Art. VI.1, II.3, XII, IV.2, V.1; supersedes 0028 decision 5 in part | FB-023; enables FB-027 | FR-12.1 |
 | 0039 | Art. IV.1, XII, II.3; amends 0024 decision 4 | TB-023; the AI tickets still to be built | FR-4, FR-5; NFR-2 |
-| 0040 | Art. IV.2, IX.3, V.1 (unchanged), II.3; replaces the dated verrijking on a hoekplaatsing (2026-08-30, no ADR) | FB-020; FB-019, FB-021, E10-01 build on it | FR-3.1 |
+| 0040 | Art. VI.1, VI.7, XIV; supersedes 0030 default I9 and narrows its §4 (d) | FB-013 (takes over E6-08 and E6-09) | FR-10.1, FR-10.2 |
+| 0041 | Art. IV.2, IX.3, V.1 (unchanged), VI.1, II.3; replaces the dated verrijking on a hoekplaatsing (2026-08-30, no ADR); reads follow 0040 | FB-020; FB-019, FB-021, E10-01 build on it | FR-3.1 |
 
 ## Open decisions referenced by ADRs
 

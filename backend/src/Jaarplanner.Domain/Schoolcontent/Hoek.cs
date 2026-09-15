@@ -14,7 +14,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// </para>
 /// <para>
 /// <b>What changes per period is not the hoek but its <c>Hoekverrijking</c></b>, one per subthemaperiode the
-/// class plans (FB-020, ADR-0040). That split is the whole model: the hoek recurs, the verrijking is what makes this
+/// class plans (FB-020, ADR-0041). That split is the whole model: the hoek recurs, the verrijking is what makes this
 /// subthema's boekenhoek different from the last one's.
 /// </para>
 /// <para>

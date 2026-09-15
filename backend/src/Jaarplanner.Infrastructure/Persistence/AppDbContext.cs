@@ -128,7 +128,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Hoekplaatsing> Hoekplaatsingen => Set<Hoekplaatsing>();
 
     /// <summary>
-    /// What is in each corner, per subthemaperiode of its klas (FB-020, ADR-0040): one row per (hoek, window), an
+    /// What is in each corner, per subthemaperiode of its klas (FB-020, ADR-0041): one row per (hoek, window), an
     /// aggregate of its own.
     /// </summary>
     public DbSet<Hoekverrijking> Hoekverrijkingen => Set<Hoekverrijking>();

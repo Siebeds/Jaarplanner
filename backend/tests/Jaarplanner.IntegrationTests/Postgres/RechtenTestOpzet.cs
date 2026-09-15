@@ -57,6 +57,26 @@ internal sealed class RechtenTestOpzet
     }
 
     /// <summary>
+    /// A school year that ended a hundred days ago, with a K3 and a K2 klas: for reading the klassen of an earlier year
+    /// (FB-013, ADR-0040 default Z6).
+    /// </summary>
+    public async Task<VorigJaar> VorigSchooljaarAsync()
+    {
+        var jaar = new Schooljaar(TestSchooljaar.UniekeNaam("vorig"), Vandaag.AddDays(-400), Vandaag.AddDays(-100));
+        var k3 = jaar.VoegKlasToe($"K3v-{Guid.NewGuid():N}", "K3");
+        var k2 = jaar.VoegKlasToe($"K2v-{Guid.NewGuid():N}", "K2");
+
+        await using var context = _db.MaakContext();
+        context.Schooljaren.Add(jaar);
+        await context.SaveChangesAsync();
+        return new VorigJaar(jaar.Id, k3.Id, k2.Id);
+    }
+
+    /// <summary>The ids of the klassen <c>GET /api/klassen</c> offers this client.</summary>
+    public static async Task<List<Guid>> KlasIdsAsync(HttpClient client) =>
+        (await client.GetFromJsonAsync<List<IdDto>>("/api/klassen"))!.Select(k => k.Id).ToList();
+
+    /// <summary>
     /// A gebruiker with exactly these relations: directie, themabeheer, hoofdleerkracht of the given leeftijden in the
     /// school's year, and klastoewijzingen on the given klassen. With none of them, a gebruiker who may do nothing.
     /// </summary>
@@ -188,6 +208,8 @@ internal sealed class RechtenTestOpzet
     }
 
     public sealed record School(Guid SchooljaarId, Guid K3Blauw, Guid K3Groen, Guid K2Rood);
+
+    public sealed record VorigJaar(Guid SchooljaarId, Guid K3, Guid K2);
 
     public sealed record IdDto(Guid Id);
 

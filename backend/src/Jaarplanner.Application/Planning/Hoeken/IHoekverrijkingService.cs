@@ -1,7 +1,7 @@
 namespace Jaarplanner.Application.Planning.Hoeken;
 
 /// <summary>
-/// What each hoek of a class holds while a subthema runs (FB-020, ADR-0040): read per range for the agenda, written
+/// What each hoek of a class holds while a subthema runs (FB-020, ADR-0041): read per range for the agenda, written
 /// per subthemaperiode from the sheet the subthemabalk opens.
 /// <para>
 /// <b>Keyed on the subthemaperiode, the stored window a teacher marked off for a subthema in her klas's plan.</b> The

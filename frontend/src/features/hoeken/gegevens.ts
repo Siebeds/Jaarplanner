@@ -272,7 +272,7 @@ export function useZetHoekuren() {
 }
 
 /* ------------------------------------------------------------------------------------------------
-   WHAT IS IN THE CORNER WHILE A SUBTHEMA RUNS (FB-020, ADR-0040)
+   WHAT IS IN THE CORNER WHILE A SUBTHEMA RUNS (FB-020, ADR-0041)
 
    One text per hoek and per subthemaperiode: a window the klas's plan stores for a subthema. Written
    from the subthemabalk above the agenda, and from the hoek's detail sheet; never a block in the grid.

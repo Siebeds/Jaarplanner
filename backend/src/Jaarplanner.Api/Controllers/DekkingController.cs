@@ -1,4 +1,6 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Dekking;
+using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Jaarplanner.Api.Controllers;
@@ -24,10 +26,9 @@ namespace Jaarplanner.Api.Controllers;
 /// correcting one of them is when you are least likely to check the next.</i>
 /// </para>
 /// <para>
-/// <b>Who may read it.</b> Every route here needs a session since E6-01 (ADR-0031), and a signed-in gebruiker reads
-/// every klas's dekking: ADR-0030 §3 gates no read, and how far a gebruiker sees beyond their own klas is default I9,
-/// which directie may narrow behind the E6-09 seam. <i>Until E6-02 slice 3 (fix round 1) this paragraph called the read
-/// unauthenticated debt, blocked on E6-01 and E6-02; the first half ended with E6-01, and the second is answered by I9.</i>
+/// <b>Who may read it.</b> Every route here is the row <c>KlasplanningBekijken</c> (FB-013, ADR-0040): the klas's own
+/// leerkrachten, the leerkrachten and hoofdleerkrachten of its jaarfase, themabeheer and directie. That row is the E6-09
+/// seam, so a different answer from directie changes it there and nowhere here.
 /// </para>
 /// <para>
 /// <b>The payload is the whole in-scope curriculum, unpaged, with each goal's full text.</b> That is a deliberate
@@ -107,6 +108,7 @@ public sealed class DekkingController : ControllerBase
     /// </param>
     /// <param name="cancellationToken">Cancellation.</param>
     [HttpGet]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<DekkingWeergave>> Detail(
         Guid klasId,
         CancellationToken cancellationToken,
@@ -150,6 +152,7 @@ public sealed class DekkingController : ControllerBase
     /// <param name="bereik">Which leerplandoelen to measure against; same meaning and default as <see cref="Detail"/>.</param>
     /// <param name="jaarFase">Narrows the class's own scope to one of its codes; same meaning as <see cref="Detail"/>.</param>
     [HttpGet("voortgang")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<Dekkingsvooruitzicht>> Voortgang(
         Guid klasId,
         CancellationToken cancellationToken,
@@ -174,12 +177,9 @@ public sealed class DekkingController : ControllerBase
     /// is stated <i>inside</i> the document as well as beside the link, because the file outlives the screen.
     /// </para>
     /// <para>
-    /// <b>Who may download it:</b> like every read here, any signed-in gebruiker, for any klas (a session since E6-01;
-    /// the reach is default I9). Worth one extra sentence on this route specifically: it hands out a whole class's
-    /// planning and coverage as a single file, which is a larger blast radius than the JSON read beside it even though it
-    /// exposes not one field more, so a narrowing of I9 behind the E6-09 seam must cover this route too.
-    /// <i>Until E6-02 slice 3 (fix round 1) this said "unauthenticated … to anyone who can guess a klas id", which stopped
-    /// being true with E6-01.</i>
+    /// <b>Who may download it:</b> whoever may read the klas, the same row as the JSON read beside it
+    /// (<c>KlasplanningBekijken</c>, FB-013). It hands out a whole class's planning and coverage as a single file, a larger
+    /// blast radius than that read although it exposes not one field more, which is why it carries the row itself.
     /// </para>
     /// </summary>
     /// <param name="klasId">The class.</param>
@@ -187,6 +187,7 @@ public sealed class DekkingController : ControllerBase
     /// <param name="bereik">Which leerplandoelen to measure against; same meaning and default as <see cref="Detail"/>.</param>
     /// <param name="jaarFase">Narrows the class's own scope to one of its codes; same meaning as <see cref="Detail"/>.</param>
     [HttpGet("export")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<IActionResult> Export(
         Guid klasId,
         CancellationToken cancellationToken,

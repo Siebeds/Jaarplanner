@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Toegang;
@@ -17,6 +18,11 @@ namespace Jaarplanner.Api.Controllers;
 /// jaarplan placements, which must raise a review signal rather than move anything (directie 2026-07-28); that
 /// signal is E3-07/E3-09, and full schooljaarbeheer stays <b>E6-03</b>.
 /// </para>
+/// <para>
+/// <b>The klassen inside a schooljaar</b> are only those the gebruiker may read (FB-013, ADR-0040), the same list
+/// <c>GET /api/klassen</c> gives, so no route names a klas the planning routes would refuse. The schooljaar itself,
+/// its dates and its closures, is the school's calendar and stays readable to every signed-in gebruiker.
+/// </para>
 /// </summary>
 [ApiController]
 [Route("api/schooljaren")]
@@ -24,21 +30,36 @@ public sealed class SchooljarenController : ControllerBase
 {
     private readonly ISchooljaarBeheerService _service;
     private readonly IPlanningsroosterService _rooster;
+    private readonly IKlasBeheerService _klassen;
+    private readonly IAuthorizationService _autorisatie;
 
-    public SchooljarenController(ISchooljaarBeheerService service, IPlanningsroosterService rooster)
+    public SchooljarenController(
+        ISchooljaarBeheerService service,
+        IPlanningsroosterService rooster,
+        IKlasBeheerService klassen,
+        IAuthorizationService autorisatie)
     {
         _service = service;
         _rooster = rooster;
+        _klassen = klassen;
+        _autorisatie = autorisatie;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<SchooljaarWeergave>>> Lijst(CancellationToken cancellationToken) =>
-        Ok(await _service.HaalSchooljarenOpAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<SchooljaarWeergave>>> Lijst(CancellationToken cancellationToken)
+    {
+        var leesbaar = await LeesbareKlasIdsAsync(cancellationToken);
+        var jaren = await _service.HaalSchooljarenOpAsync(cancellationToken);
+        return Ok(jaren.Select(jaar => Gefilterd(jaar, leesbaar)).ToList());
+    }
 
-    /// <summary>One school year with its closures and the classes it contains (Art. IX.3).</summary>
+    /// <summary>One school year with its closures and the classes it contains that the gebruiker may read (Art. IX.3).</summary>
     [HttpGet("{schooljaarId:guid}")]
-    public async Task<ActionResult<SchooljaarWeergave>> Detail(Guid schooljaarId, CancellationToken cancellationToken) =>
-        Ok(await _service.HaalSchooljaarOpAsync(schooljaarId, cancellationToken));
+    public async Task<ActionResult<SchooljaarWeergave>> Detail(Guid schooljaarId, CancellationToken cancellationToken)
+    {
+        var jaar = await _service.HaalSchooljaarOpAsync(schooljaarId, cancellationToken);
+        return Ok(Gefilterd(jaar, await LeesbareKlasIdsAsync(cancellationToken)));
+    }
 
     /// <summary>
     /// The year's <b>derived planning grid</b> (E3-06, FR-6.1): every block of the requested tier, plus the
@@ -95,4 +116,12 @@ public sealed class SchooljarenController : ControllerBase
 
         return CreatedAtAction(nameof(Detail), new { schooljaarId = schooljaar.Id }, schooljaar);
     }
+
+    private async Task<HashSet<Guid>> LeesbareKlasIdsAsync(CancellationToken cancellationToken) =>
+        (await _autorisatie.LeesbaarAsync(User, await _klassen.HaalKlassenOpAsync(cancellationToken)))
+            .Select(klas => klas.Id)
+            .ToHashSet();
+
+    private static SchooljaarWeergave Gefilterd(SchooljaarWeergave jaar, HashSet<Guid> leesbaar) =>
+        jaar with { Klassen = jaar.Klassen.Where(klas => leesbaar.Contains(klas.Id)).ToList() };
 }

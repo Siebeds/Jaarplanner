@@ -2,13 +2,13 @@
 id: FB-013
 titel: Leerkracht ziet alleen de klassen van haar eigen jaarfase
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 17:41
+opgepakt-door: zichtbaarheid
+branch: ticket/FB-013-klassen-eigen-jaarfase
+pr: 89
 geblokkeerd:
 fr: [FR-10.1, FR-10.2]
 ---
@@ -45,14 +45,14 @@ Dit ticket neemt het werk van story E6-08 en E6-09 over.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht van een K3-klas, wanneer ze de klaskiezer opent, dan ziet ze alle K3-klassen en geen JK- of
+- [x] Gegeven een leerkracht van een K3-klas, wanneer ze de klaskiezer opent, dan ziet ze alle K3-klassen en geen JK- of
   K2-klas.
-- [ ] Gegeven die leerkracht, wanneer ze het adres van de agenda, het jaarplan of de dekking van een K2-klas opent of
+- [x] Gegeven die leerkracht, wanneer ze het adres van de agenda, het jaarplan of de dekking van een K2-klas opent of
   exporteert, dan weigert de app, ook in de API.
-- [ ] Gegeven een hoofdleerkracht van K2 zonder eigen klas, dan ziet ze alle K2-klassen en geen andere.
-- [ ] Gegeven een gebruiker met themabeheer, dan ziet ze alle klassen; gegeven de directie, ook.
-- [ ] Gegeven een gebruiker zonder enig recht, dan ziet ze geen enkele klas en zegt het scherm dat in gewone taal.
-- [ ] Gegeven een leerkracht met een K2- en een K3-klas, dan ziet ze de klassen van beide jaarfasen.
+- [x] Gegeven een hoofdleerkracht van K2 zonder eigen klas, dan ziet ze alle K2-klassen en geen andere.
+- [x] Gegeven een gebruiker met themabeheer, dan ziet ze alle klassen; gegeven de directie, ook.
+- [x] Gegeven een gebruiker zonder enig recht, dan ziet ze geen enkele klas en zegt het scherm dat in gewone taal.
+- [x] Gegeven een leerkracht met een K2- en een K3-klas, dan ziet ze de klassen van beide jaarfasen.
 
 ## Testscenario's
 
@@ -84,3 +84,9 @@ Dit ticket neemt het werk van story E6-08 en E6-09 over.
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 16:27 · eigenaar · nieuw → klaar-voor-bouw: vrijgegeven voor de bouw op vraag van de eigenaar
+- 2026-09-15 16:28 · zichtbaarheid · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 17:00 · zichtbaarheid · Gebouwd: rij KlasplanningBekijken (ADR-0039) op elke leesroute van een klas, klassenlijst gefilterd, hoeken overnemen vraagt de bronklas; frontend-zinnen voor een lege lijst en voor wie geen recht heeft; amendement Art. VI.1, VI.7, XIV. Unit 1597 groen, rechten-integratie 45 groen, frontend 743 groen, lint schoon
+- 2026-09-15 17:12 · zichtbaarheid · Criteria 1-6 afgevinkt: RechtenAfdwingingTests (FB-013-sectie) en de leessweep op PostgreSQL, curl op een draaiende API, browsercontrole op wegwerpdatabase (1440 en echte 390 via CDP, geen horizontale scroll); verslag in backlog/worklogs/FB-013/browsercheck.md. Volledige suite: unit 1597, integratie 488, frontend 743 groen; dotnet format en pnpm lint schoon. Antagonist loopt
+- 2026-09-15 17:35 · zichtbaarheid · Antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 5 MINOR, 1 vraag). MAJOR hersteld: het doelenregister toonde de algemene fiches van elke klas; nu enkel van klassen die je mag inkijken (zelfde rij). MINOR hersteld: standaard Z7, formulering besluiten-gevraagd, (e) in grondwet en ADR-0030, klassen in /api/schooljaren gefilterd, Klaskiezer tijdens laden en na fout. Main binnengehaald: ADR-0039 was genomen (TB-023), dit besluit is nu ADR-0040. Verslag in backlog/worklogs/FB-013/antagonist.md
+- 2026-09-15 17:39 · zichtbaarheid · in-uitvoering → te-testen: Klaar om te testen: een leerkracht en een hoofdleerkracht lezen alleen de klassen van hun eigen jaarfase (ook vorige schooljaren), themabeheer en directie alle, wie geen recht heeft geen enkele; ook het doelenregister en de schooljaren volgen die grens. Eén rij KlasplanningBekijken (ADR-0040), amendement Art. VI.1, VI.7, XIV. Antagonist ronde 2 COMPLIANT. Unit 1644, integratie 504, frontend 831 groen; format en lint schoon. Open vraag voor de eigenaar: standaard Z7 (zomer)
+- 2026-09-15 17:41 · zichtbaarheid · PR #89

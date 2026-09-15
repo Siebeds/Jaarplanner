@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// Hoekverrijkingen per subthemaperiode over HTTP and in the migration, against real PostgreSQL (FB-020, ADR-0040).
+/// Hoekverrijkingen per subthemaperiode over HTTP and in the migration, against real PostgreSQL (FB-020, ADR-0041).
 /// <para>
 /// The unit tests hold the service's rules on the in-memory provider, which enforces no foreign key and no cascade.
 /// This is where the three things only PostgreSQL can show are proven: the unique (hoek, window) pair, the cascade when

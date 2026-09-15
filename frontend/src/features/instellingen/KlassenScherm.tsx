@@ -8,7 +8,7 @@ import { IcoonPlus } from "../../components/Iconen";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useJaarfasen } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
-import { useRechten } from "../../lib/rechten";
+import { useGeenKlassenZin, useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Klasformulier } from "./Klasformulier";
@@ -50,6 +50,8 @@ export function KlassenScherm() {
   const [teVerwijderen, setTeVerwijderen] = useState<KlasWeergave | null>(null);
 
   const { mag } = useRechten();
+  // The list holds only the klassen this gebruiker may read (FB-013), so "no klassen" is said for them.
+  const geenKlassenZin = useGeenKlassenZin(t("klasbeheer.geenKlassen"));
   const isDirectie = mag.beheer;
   const beheer = useGebruikersOverzicht(isDirectie);
   const leerkrachten = leerkrachtenPerKlas(beheer.data?.gebruikers);
@@ -108,7 +110,7 @@ export function KlassenScherm() {
           {laadt ? (
             <Laadlijst rijen={3} />
           ) : klassen.length === 0 ? (
-            <p className="text-body text-inkt-zacht">{t("klasbeheer.geenKlassen")}</p>
+            <p className="text-body text-inkt-zacht">{geenKlassenZin}</p>
           ) : (
             <ul className="flex flex-col gap-2">
               {klassen.map((klas) => (

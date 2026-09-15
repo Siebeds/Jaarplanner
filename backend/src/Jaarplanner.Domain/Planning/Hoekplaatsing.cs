@@ -7,7 +7,7 @@ namespace Jaarplanner.Domain.Planning;
 /// in the timetable (owner, 2026-08-30).
 /// <para>
 /// <b>What is IN the corner is not here.</b> That is a <see cref="Hoekverrijking"/>, which since FB-020 belongs to the
-/// hoek and the subthemaperiode it runs in rather than to a placement (ADR-0040). A placement says when the corner is
+/// hoek and the subthemaperiode it runs in rather than to a placement (ADR-0041). A placement says when the corner is
 /// in the timetable; the verrijking says what the corner holds while a subthema runs, whether or not it is on the
 /// timetable that day.
 /// </para>

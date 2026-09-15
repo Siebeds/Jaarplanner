@@ -11,7 +11,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // FB-020 (ADR-0040): a verrijking moves from a hoekplaatsing with its own dates to a (hoek,
+            // FB-020 (ADR-0041): a verrijking moves from a hoekplaatsing with its own dates to a (hoek,
             // subthemaperiode) pair. The owner ruled on 2026-09-15 how existing rows travel: each one goes to EVERY
             // stored subthemaperiode of its klas that shares a day with it, and one that shares a day with none is
             // dropped. Two old rows landing on the same pair are joined in date order, so no text on a pair is lost.

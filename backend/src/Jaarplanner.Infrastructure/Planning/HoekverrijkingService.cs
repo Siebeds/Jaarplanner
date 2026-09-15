@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.Infrastructure.Planning;
 
 /// <summary>
-/// What each hoek of a class holds while a subthema runs, over EF Core (FB-020, ADR-0040).
+/// What each hoek of a class holds while a subthema runs, over EF Core (FB-020, ADR-0041).
 /// <para>
 /// <b>Every check comes before anything is written.</b> The hoeken are read and refused first, then the window is
 /// found or stored, then the texts are written in one save. A refusal therefore leaves no half-made state behind,

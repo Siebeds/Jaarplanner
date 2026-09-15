@@ -1,4 +1,4 @@
-# ADR-0040 — A hoekverrijking belongs to a hoek and a subthemaperiode
+# ADR-0041 — A hoekverrijking belongs to a hoek and a subthemaperiode
 
 - **Status:** Accepted
 - **Date:** 2026-09-15
@@ -48,9 +48,11 @@ writes, per hoek, what goes in it for that stretch. It is never a block in the t
 
 ## Consequences
 
-- One route family, `/api/klassen/{klasId}/hoekverrijkingen` (read per range, write per window, right
-  `KlasplanningBewerken`), and `/api/subthemas/{id}/hoekverrijkingen/aantal` for the delete confirmation. The
-  verrijking routes under `/api/hoekplaatsingen` are gone, and the placement sheet no longer asks for a text.
+- One route family, `/api/klassen/{klasId}/hoekverrijkingen`: read per range with `KlasplanningBekijken`, as every
+  read of one klas's planning ([ADR-0040](0040-klassen-inkijken-per-jaarfase.md)), written per window with
+  `KlasplanningBewerken`. And `/api/subthemas/{id}/hoekverrijkingen/aantal` for the delete confirmation, read with
+  `SubthemaBeheren`, the right that deletes the subthema. The verrijking routes under `/api/hoekplaatsingen` are gone,
+  and the placement sheet no longer asks for a text.
 - The weekplanning's `Subthemaperiodeweergave` carries the window's `Id`, so the agenda can address it.
 - A text is at most 2000 characters, checked on the server and stopped at the field.
 - The subthemabalk above the time grid is built here; E10-01's streefwoordenschat can hang off the same rows.

@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
 /// What one hoek of a class is enriched with while one subthema runs: "prentenboeken over de herfst, bladerenpers op
-/// tafel" (owner, meeting 2026-08-30; per subthemaperiode since 2026-09-15, FB-020, ADR-0040).
+/// tafel" (owner, meeting 2026-08-30; per subthemaperiode since 2026-09-15, FB-020, ADR-0041).
 /// <para>
 /// <b>One hoek and one <see cref="Subthemaplaatsing"/>, and that pair is the whole model.</b> The owner asked for the
 /// verrijking to belong to the subthema that is running: she clicks the subthema in the agenda and writes, per hoek,

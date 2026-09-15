@@ -5,7 +5,7 @@ import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPlus } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
-import { useRechten } from "../../lib/rechten";
+import { useGeenKlassenZin, useRechten } from "../../lib/rechten";
 import { t, telWoord } from "../../i18n";
 import type { KlasWeergave } from "../../lib/types";
 import { Hoekformulier } from "./Hoekformulier";
@@ -78,6 +78,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
 
   // `bekend`, not "not loading": a failed `/api/ik` proves nothing about rights (fix round 1, F3).
   const { mag, bekend: rechtenBekend } = useRechten();
+  const geenKlassenZin = useGeenKlassenZin(t("klasbeheer.geenKlassen"));
   const magBewerken = mag.klasplanningBewerken(klasId);
   const klasNaam = klassen.find((k) => k.id === klasId)?.naam;
 
@@ -143,9 +144,9 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
       ) : klassen.length === 0 ? (
-        // No class, no room. Said here rather than left as an empty list under a dead picker: she
-        // fixes it in Klassen, the part listed next to this one.
-        <p className="text-body text-inkt-zacht">{t("hoeken.geenKlassen")}</p>
+        // No class, no room. Said here rather than left as an empty list under a dead picker. Only directie makes
+        // klassen, in Klassen next to this part; anyone else is told what the list means for them (FB-013).
+        <p className="text-body text-inkt-zacht">{mag.beheer ? t("hoeken.geenKlassen") : geenKlassenZin}</p>
       ) : (hoeken ?? []).length === 0 ? (
         <p className="text-body text-inkt-zacht">{t("hoeken.geenHoeken")}</p>
       ) : (

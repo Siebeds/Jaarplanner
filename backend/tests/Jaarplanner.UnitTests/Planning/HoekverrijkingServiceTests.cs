@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// <see cref="HoekverrijkingService"/> over the in-memory provider (FB-020, ADR-0040): a text per hoek and per
+/// <see cref="HoekverrijkingService"/> over the in-memory provider (FB-020, ADR-0041): a text per hoek and per
 /// subthemaperiode of the klas.
 /// <para>
 /// <b>Storing a window is faked, and that is the one seam.</b> The service stores a missing window through

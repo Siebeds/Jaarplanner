@@ -129,6 +129,60 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Assert.True(verzonden >= 70, $"Expected the whole write surface, sent only {verzonden} requests.");
     }
 
+    /// <summary>
+    /// Read routes on one klas deliberately open to every signed-in gebruiker, keyed "GET route", each with why. Both read
+    /// shared content at the klas's leeftijden, which is school-wide and not the klas's planning (Art. IX.2, ADR-0040).
+    /// </summary>
+    private static readonly Dictionary<string, string> KlasleesroutesOpenVoorIedereen = new(StringComparer.Ordinal)
+    {
+        ["GET api/themas/{themaId:guid}/voor-klas/{klasId:guid}"] = "a shared thema, narrowed to the klas's leeftijden",
+        ["GET api/subthemas/voor-klas/{klasId:guid}"] = "the shared subthema's at the klas's leeftijden (a move's destinations)",
+    };
+
+    /// <summary>
+    /// FB-013's sweep (ADR-0040): <b>every</b> read route that names a klas refuses a gebruiker who holds no right at all
+    /// with the authorisation's own 403, unless it is on <see cref="KlasleesroutesOpenVoorIedereen"/>; and the klassen
+    /// list offers that gebruiker nothing. So a klas read added later fails here until someone decides its row.
+    /// </summary>
+    [PostgresFact]
+    public async Task Elke_leesroute_op_een_klas_weigert_een_gebruiker_zonder_enig_recht()
+    {
+        var zaad = await ZaaiAsync();
+        var opzet = new RechtenTestOpzet(_db, _factory);
+        using var client = opzet.Als(await opzet.GebruikerAsync());
+
+        var fouten = new List<string>();
+        var bestaand = new HashSet<string>(StringComparer.Ordinal);
+        var verzonden = 0;
+        foreach (var endpoint in Eindpunten().Where(e => Methoden(e).Contains("GET") && e.RoutePattern.GetParameter("klasId") is not null))
+        {
+            var route = endpoint.RoutePattern.RawText!.TrimStart('/');
+            var sleutel = $"GET {route}";
+            bestaand.Add(sleutel);
+            if (KlasleesroutesOpenVoorIedereen.ContainsKey(sleutel))
+            {
+                continue;
+            }
+
+            using var antwoord = await client.GetAsync("/" + VulIn(endpoint.RoutePattern, route, zaad));
+            verzonden++;
+
+            var detail = await RechtenTestOpzet.DetailAsync(antwoord);
+            if (antwoord.StatusCode != HttpStatusCode.Forbidden || detail != RechtenTestOpzet.GeenToegang)
+            {
+                fouten.Add(
+                    $"{sleutel} answered {(int)antwoord.StatusCode} \"{detail}\" to a gebruiker who holds no right at all. A read of one klas's"
+                    + " planning must declare [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, \"klasId\")]"
+                    + " (FB-013, ADR-0040); a route that reads no klas's planning goes on KlasleesroutesOpenVoorIedereen with why.");
+            }
+        }
+
+        Assert.True(fouten.Count == 0, string.Join(Environment.NewLine + Environment.NewLine, fouten));
+        Assert.All(KlasleesroutesOpenVoorIedereen.Keys, sleutel => Assert.Contains(sleutel, bestaand));
+        Assert.True(verzonden >= 12, $"Expected every read of a klas, sent only {verzonden} requests.");
+        Assert.Empty(await RechtenTestOpzet.KlasIdsAsync(client));
+    }
+
     private static string Melding(string sleutel, HttpStatusCode status, string? detail) =>
         $"{sleutel} answered {(int)status} \"{detail}\" to a gebruiker who holds no right at all; every write route must answer"
         + $" 403 \"{RechtenTestOpzet.GeenToegang}\" here." + Environment.NewLine

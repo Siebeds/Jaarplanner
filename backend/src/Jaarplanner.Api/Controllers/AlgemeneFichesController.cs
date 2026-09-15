@@ -24,6 +24,7 @@ public sealed class AlgemeneFichesController : ControllerBase
     public AlgemeneFichesController(IAlgemeneFicheBeheerService service) => _service = service;
 
     [HttpGet("/api/klassen/{klasId:guid}/algemene-fiches")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<IReadOnlyList<AlgemeneFicheWeergave>>> Lijst(Guid klasId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalFichesOpAsync(klasId, cancellationToken));
 

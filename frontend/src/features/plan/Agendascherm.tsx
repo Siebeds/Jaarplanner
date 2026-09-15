@@ -6,6 +6,7 @@ import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Klaskiezer } from "../../app/Klaskiezer";
 import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
+import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
 import {
@@ -120,7 +121,7 @@ function leegteDag(datum: string) {
  * having it.
  *
  * **Every write here is the klas's planning, which is directie's and the klas's own leerkrachten'** (E6-02,
- * ADR-0030 §3, R7, R15). Everyone else reads any klas's agenda (I9): the same calendar with nothing that adds, drags,
+ * ADR-0030 §3, R7, R15). Whoever else may read the klas (FB-013) sees its agenda: the same calendar with nothing that adds, drags,
  * stretches or plans, and one quiet line that says so, because a teacher who switched to a colleague's klas would
  * otherwise meet her own agenda with its controls gone and no reason. An activiteit's content is a different right
  * (the leeftijd's), so a block still opens its form for whoever holds that one.
@@ -703,7 +704,7 @@ export function Agendascherm() {
       <>
         <Schermkop titel={t("periode.titel")} rechts={<Klaskiezer />} />
         <Schermvlak>
-          <Leegte titel={t("plan.geenKlas")} />
+          <Geenklasleegte titel={t("plan.geenKlas")} />
         </Schermvlak>
       </>
     );

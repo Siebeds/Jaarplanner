@@ -5,6 +5,7 @@ import { Klaskiezer } from "../../app/Klaskiezer";
 import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Blad } from "../../components/ui/Blad";
 import { Leegte } from "../../components/ui/Leegte";
+import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
@@ -28,8 +29,9 @@ import { Themakiezer } from "./Themakiezer";
  * one selection: pressing a period in the strip scrolls to its section.
  *
  * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15): generating, adding
- * a thema to a period, and the verdict, lock, move and delete of a placement. Anyone else reads every klas's plan
- * (I9), with one quiet line that says so, as on the agenda this screen belongs to.
+ * a thema to a period, and the verdict, lock, move and delete of a placement. Anyone else who may read the klas (the
+ * klassen of their jaarfase, FB-013) reads its plan, with one quiet line that says so, as on the agenda this screen
+ * belongs to.
  */
 export function PlanScherm() {
   const { klasId, schooljaarId, klas } = useActieveSelectie();
@@ -107,7 +109,7 @@ export function PlanScherm() {
 
       <Schermvlak>
         {!klasId ? (
-          <Leegte titel={t("plan.geenKlas")} />
+          <Geenklasleegte titel={t("plan.geenKlas")} />
         ) : planFout ? (
           <Leegte titel={t("plan.fout")} />
         ) : planLaadt || roosterLaadt || !plan ? (

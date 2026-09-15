@@ -7,7 +7,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core mapping for <see cref="Hoekverrijking"/>: what one hoek holds while one subthemaperiode of its klas runs
-/// (FB-020, ADR-0040).
+/// (FB-020, ADR-0041).
 /// <para>
 /// <b>One row per (hoek, window), enforced by a unique index.</b> Two answers to "what is in the boekenhoek during de
 /// herfst" would leave the agenda unable to choose; the service writes the pair as an upsert, so the index is the
