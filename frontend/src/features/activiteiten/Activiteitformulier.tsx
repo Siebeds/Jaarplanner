@@ -2,16 +2,16 @@ import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer, Keuze } from "../../components/ui/Veld";
-import { Statusmerk } from "../../components/ui/Statusmerk";
-import { IcoonKruis } from "../../components/Iconen";
 import { ApiError } from "../../lib/api";
 import { ACTIVITEIT_TYPES } from "../../lib/types";
 import type { ActiviteitWeergave, ActiviteitType, OnderzoeksvraagWeergave } from "../../lib/types";
-import { t } from "../../i18n";
+import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { ACTIVITEITKLEUREN, KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "./kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
-import { Feit } from "../themas/Fiche";
+import { Doellijst, Feit } from "../themas/Fiche";
+import { Gekoppelddoel } from "../themas/Gekoppelddoel";
+import { Doeldetailblad } from "../themas/Doeldetailblad";
 import { Doelkoppelaar } from "./Doelkoppelaar";
 
 /**
@@ -71,6 +71,9 @@ export interface ActiviteitInvoer {
  * hold, also when a new activiteit carries codes on its create. So `magDoelen` gates the goal section in both branches,
  * and `alleenLezen` replaces the form with the facts for a gebruiker who may not change the content. A reader opening
  * an activiteit gets what it is, not a form whose Bewaren the server would refuse.
+ *
+ * **A goal reads as its text and opens its detail**, in all three states (TB-025): the row the thema page uses
+ * (`Gekoppelddoel`), and the doel's detail on top of this sheet, which gives focus back to the row when it closes.
  */
 export function Activiteitformulier({
   open,
@@ -122,6 +125,9 @@ export function Activiteitformulier({
   const [kleur, setKleur] = useState<Activiteitkleur | null>(activiteit?.kleur ?? null);
   const [lengte, setLengte] = useState(activiteit?.lengteInLesuren ?? 1);
   const [naamFout, setNaamFout] = useState(false);
+  // The goal whose detail is open over this sheet, with the row that opened it.
+  const [doel, setDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
+  const toonDoel = (code: string, knop: HTMLElement) => setDoel({ code, knop });
 
   // Only used while creating. Held here rather than written through, because there is nothing to write
   // to yet: they travel with the create request. See `ActiviteitInvoer.leerplandoelCodes`.
@@ -254,17 +260,18 @@ export function Activiteitformulier({
             <fieldset>
               <legend className="text-meta font-medium text-inkt">{t("activiteit.duur")}</legend>
               {/*
-                THE DEFAULT LENGTH, IN MINUTES SINCE ADR-0028, and the reason it is four buttons rather than a field.
+                THE DEFAULT LENGTH, and the reason it is four buttons rather than a field.
 
                 The answer is almost always the first or the second, and a stepper made the common case as much work
                 as the rare one. What the agenda then does with it is a starting point: the block lands this long and
-                the teacher drags its bottom edge to whatever that Thursday actually needs.
+                the teacher drags its bottom edge to whatever that Thursday actually needs (ADR-0028).
 
-                **It is still stored as a count of 50-minute units** (`lengteInLesuren`), which is why the four values
-                are multiples rather than free minutes. Renaming that column is owed and is written down in ADR-0028
-                decision 2; the label here says minutes because that is what a teacher now plans in.
+                **Named in lesuren, with the minutes under it.** The value is stored as a count of 50-minute units
+                (`lengteInLesuren`, ADR-0028 decision 2), a lesuur is the unit a teacher counts in, and the minutes say
+                how long the block will land in the agenda's clock times.
               */}
-              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              {/* Two by two on a phone, where four in a row do not fit and wrapping left the fourth alone. */}
+              <div className="mt-1.5 grid grid-cols-2 gap-1.5 @md:flex @md:flex-wrap @md:items-stretch">
                 {[1, 2, 3, 4].map((aantal) => {
                   const gekozen = lengte === aantal;
                   return (
@@ -275,20 +282,24 @@ export function Activiteitformulier({
                       aria-pressed={gekozen}
                       onClick={() => setLengte(aantal)}
                       className={cn(
-                        "mono h-raak rounded-veld border px-3 text-body font-medium transition-colors duration-150",
+                        "flex min-h-raak min-w-24 flex-col items-center justify-center rounded-veld border px-3 py-1.5",
+                        "transition-colors duration-150",
                         gekozen
                           ? "border-accent bg-accent text-accent-op"
                           : "border-lijn-veld bg-kaart text-inkt hover:border-inkt",
                       )}
                     >
-                      {aantal * STANDAARDDUUR}
+                      <span className="text-body font-medium">
+                        {telWoord(aantal, "activiteit.eenLesuur", "activiteit.lesuren")}
+                      </span>
+                      <span className={cn("mono text-micro", gekozen ? "text-accent-op" : "text-inkt-zacht")}>
+                        {t("activiteit.minutenKort", { aantal: aantal * STANDAARDDUUR })}
+                      </span>
                     </button>
                   );
                 })}
               </div>
-              <p className="mt-1.5 text-meta text-inkt-zacht">
-                {t("activiteit.duurUitleg", { aantal: lengte * STANDAARDDUUR })}
-              </p>
+              <p className="mt-1.5 text-meta text-inkt-zacht">{t("activiteit.duurUitleg")}</p>
             </fieldset>
 
             <fieldset>
@@ -378,31 +389,27 @@ export function Activiteitformulier({
             The explaining line therefore differs per branch. It has to: one of them would be false in the
             other, and a sentence may only assert what its own branch guarantees. */}
         {fiche ? (
-          <Feitdoelen activiteit={fiche} />
+          <Feitdoelen activiteit={fiche} onToon={toonDoel} />
         ) : activiteit ? (
           magDoelen && onKoppel && onOntkoppel ? (
             <section className="border-t border-lijn pt-5">
               <Doelenkop aantal={koppelingen.length} uitleg={t("activiteit.doelenDirect")} />
 
               {koppelingen.length > 0 ? (
-                <ul className="mt-2 flex flex-col gap-1">
-                  {koppelingen.map((koppeling) => (
-                    <li
-                      key={koppeling.id}
-                      className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
-                    >
-                      <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
-                        {koppeling.leerplandoelCode}
-                      </span>
-                      <Statusmerk status={koppeling.status} className="ml-auto" />
-                      <Weg
-                        label={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
-                        bezig={koppelenBezig}
-                        onClick={() => onOntkoppel(koppeling.id)}
+                <div className="mt-2">
+                  <Doellijst>
+                    {koppelingen.map((koppeling) => (
+                      <Gekoppelddoel
+                        key={koppeling.id}
+                        koppeling={koppeling}
+                        ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
+                        ontkoppelBezig={koppelenBezig}
+                        onOntkoppel={() => onOntkoppel(koppeling.id)}
+                        onToon={toonDoel}
                       />
-                    </li>
-                  ))}
-                </ul>
+                    ))}
+                  </Doellijst>
+                </div>
               ) : null}
 
               <div className="mt-3">
@@ -419,24 +426,21 @@ export function Activiteitformulier({
             <Doelenkop aantal={nieuweCodes.length} uitleg={t("activiteit.doelenBijBewaren")} />
 
             {nieuweCodes.length > 0 ? (
-              <ul className="mt-2 flex flex-col gap-1">
-                {nieuweCodes.map((code) => (
-                  <li
-                    key={code}
-                    className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
-                  >
-                    {/* No Statusmerk here. Nothing has a status yet: it becomes Manueel when the server
-                        stores it, and printing that beforehand would state a fact this row does not have. */}
-                    <span className="mono min-w-0 truncate text-meta font-medium text-inkt">{code}</span>
-                    <Weg
-                      label={t("activiteit.codeWeg", { code })}
-                      bezig={bezig}
-                      className="ml-auto"
-                      onClick={() => setNieuweCodes((vorige) => vorige.filter((c) => c !== code))}
+              <div className="mt-2">
+                <Doellijst>
+                  {/* No status here: nothing is stored yet. See `Gekoppelddoel`. */}
+                  {nieuweCodes.map((code) => (
+                    <Gekoppelddoel
+                      key={code}
+                      koppeling={{ leerplandoelCode: code }}
+                      ontkoppelLabel={t("activiteit.codeWeg", { code })}
+                      ontkoppelBezig={bezig}
+                      onOntkoppel={() => setNieuweCodes((vorige) => vorige.filter((c) => c !== code))}
+                      onToon={toonDoel}
                     />
-                  </li>
-                ))}
-              </ul>
+                  ))}
+                </Doellijst>
+              </div>
             ) : null}
 
             <div className="mt-3">
@@ -458,6 +462,8 @@ export function Activiteitformulier({
           </div>
         ) : null}
       </div>
+
+      <Doeldetailblad code={doel?.code ?? null} terugNaar={doel?.knop} onSluit={() => setDoel(null)} />
     </Blad>
   );
 }
@@ -502,7 +508,10 @@ function Feiten({
         <Feit label={t("activiteit.hoek")}>{activiteit.hoek}</Feit>
       ) : null}
       <Feit label={t("activiteit.duur")}>
-        {t("activiteit.minuten", { aantal: (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR })}
+        {t("activiteit.duurFeit", {
+          lesuren: telWoord(activiteit.lengteInLesuren ?? 1, "activiteit.eenLesuur", "activiteit.lesuren"),
+          minuten: (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR,
+        })}
       </Feit>
       {activiteit.kleur ? <Feit label={t("activiteit.kleur")}>{t(kleurSleutel(activiteit.kleur))}</Feit> : null}
       {activiteit.verwachteUitkomsten ? (
@@ -513,57 +522,33 @@ function Feiten({
   );
 }
 
-/** The facts' goals: listed, without a way to add or remove one. */
-function Feitdoelen({ activiteit }: { activiteit: ActiviteitMetKleur }) {
+/** The facts' goals: listed and opening their detail, without a way to add or remove one. */
+function Feitdoelen({
+  activiteit,
+  onToon,
+}: {
+  activiteit: ActiviteitMetKleur;
+  onToon: (code: string, knop: HTMLElement) => void;
+}) {
   return (
     <section className="border-t border-lijn pt-5">
       <Doelenkop aantal={activiteit.doelkoppelingen.length} />
       {activiteit.doelkoppelingen.length === 0 ? (
         <p className="mt-2 text-meta text-inkt-zacht">{t("activiteit.geenDoel")}</p>
       ) : (
-        <ul className="mt-2 flex flex-col gap-1">
-          {activiteit.doelkoppelingen.map((koppeling) => (
-            <li
-              key={koppeling.id}
-              className="flex items-center gap-2 rounded-veld border border-lijn bg-kaart px-3 py-1.5"
-            >
-              <span className="mono min-w-0 truncate text-meta font-medium text-inkt">
-                {koppeling.leerplandoelCode}
-              </span>
-              <Statusmerk status={koppeling.status} className="ml-auto" />
-            </li>
-          ))}
-        </ul>
+        <div className="mt-2">
+          <Doellijst>
+            {activiteit.doelkoppelingen.map((koppeling) => (
+              <Gekoppelddoel
+                key={koppeling.id}
+                koppeling={koppeling}
+                ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
+                onToon={onToon}
+              />
+            ))}
+          </Doellijst>
+        </div>
       )}
     </section>
-  );
-}
-
-/** Takes one goal off the list, wherever that list lives. */
-function Weg({
-  label,
-  bezig,
-  className,
-  onClick,
-}: {
-  label: string;
-  bezig?: boolean;
-  className?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={bezig}
-      aria-label={label}
-      onClick={onClick}
-      className={cn(
-        "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zwak",
-        "transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45",
-        className,
-      )}
-    >
-      <IcoonKruis aria-hidden="true" className="h-4 w-4" />
-    </button>
   );
 }

@@ -32,6 +32,9 @@ import { Ontkoppel } from "./Fiche";
  *
  * **The remove control only for whoever holds the link's row of the matrix** (E6-02, ADR-0030 §3): the caller passes
  * `onOntkoppel` only then, and without it the row still opens the detail and has nothing else to press.
+ *
+ * **No status on a doel that is not stored yet** (TB-025): a new activiteit holds its codes until Bewaren, and a
+ * status printed before the server wrote one would state a fact the row does not have.
  */
 export function Gekoppelddoel({
   koppeling,
@@ -41,7 +44,8 @@ export function Gekoppelddoel({
   onToon,
   voet,
 }: {
-  koppeling: DoelKoppelingWeergave;
+  /** Without `status` while the doel is only held by a form that has not been saved. */
+  koppeling: Pick<DoelKoppelingWeergave, "leerplandoelCode"> & Partial<Pick<DoelKoppelingWeergave, "status">>;
   /** A line under the text, such as the activiteiten that carry this doel (FB-010). Phrasing content only. */
   voet?: ReactNode;
   ontkoppelLabel: string;
@@ -77,7 +81,7 @@ export function Gekoppelddoel({
               {t("doel.vervallen")}
             </span>
           ) : null}
-          <Statusmerk status={koppeling.status} className="ml-auto" />
+          {koppeling.status ? <Statusmerk status={koppeling.status} className="ml-auto" /> : null}
         </span>
 
         {/* If the doel cannot be loaded the row keeps its code; the detail shows the load error. */}

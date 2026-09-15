@@ -74,11 +74,12 @@ function client(ik: Ik = ikMet({ leerkrachtLeeftijden: ["K3"], hoofdleerkrachtLe
   return metIk(qc, ik);
 }
 
-function Blad({ qc, magPlannen, fout, onVerplaats = vi.fn() }: {
+function Blad({ qc, magPlannen, fout, onVerplaats = vi.fn(), onVerwijder = vi.fn() }: {
   qc: QueryClient;
   magPlannen: boolean;
   fout: string | null;
   onVerplaats?: (datum: string, begin: string, einde: string) => void;
+  onVerwijder?: () => void;
 }) {
   return (
     <QueryClientProvider client={qc}>
@@ -92,12 +93,33 @@ function Blad({ qc, magPlannen, fout, onVerplaats = vi.fn() }: {
         bezig={false}
         fout={fout}
         onVerplaats={onVerplaats}
-        onVerwijder={vi.fn()}
+        onVerwijder={onVerwijder}
         onSluit={vi.fn()}
       />
     </QueryClientProvider>
   );
 }
+
+describe("Activiteitblad, de dag", () => {
+  it("haalt de activiteit uit de agenda met het vuilbakicoon, en heeft geen knop Haal weg meer (TB-025)", () => {
+    const verwijder = vi.fn();
+    render(<Blad qc={client()} magPlannen fout={null} onVerwijder={verwijder} />);
+
+    const blad = screen.getByRole("dialog");
+    expect(within(blad).queryByRole("button", { name: "Haal weg" })).toBeNull();
+    const bak = within(blad).getByRole("button", { name: t("periode.uitAgendaAria", { naam: "Bladerslinger" }) });
+    expect(bak).toHaveAttribute("title", t("periode.uitAgenda"));
+
+    fireEvent.click(bak);
+    expect(verwijder).toHaveBeenCalledTimes(1);
+  });
+
+  it("toont het icoon niet aan wie de klas niet mag plannen", () => {
+    render(<Blad qc={client()} magPlannen={false} fout={null} />);
+
+    expect(screen.queryByRole("button", { name: t("periode.uitAgendaAria", { naam: "Bladerslinger" }) })).toBeNull();
+  });
+});
 
 describe("Activiteitblad na een geweigerde dagactie", () => {
   it("meldt de weigering in het blad, en houdt ze staan als de dagsectie met de rechten verdwijnt", () => {

@@ -6,6 +6,7 @@ import { Invoer } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { useInBeeld } from "../../components/ui/inBeeld";
 import { Leegte } from "../../components/ui/Leegte";
+import { Verwijderknop } from "../../components/ui/Rijknoppen";
 import { useThemaVoorKlas } from "../../lib/queries";
 import { useRechten } from "../../lib/rechten";
 import type { GeplandeActiviteit } from "../../lib/types";
@@ -164,6 +165,7 @@ export function Activiteitblad({
           <>
             {magPlannen ? (
               <Dagsectie
+                naam={volledig.naam}
                 datum={datum}
                 begin={activiteit.begin}
                 einde={activiteit.einde}
@@ -216,8 +218,12 @@ function Dagfout({ fout }: { fout: string }) {
  * **This is also the keyboard route to a gesture that is otherwise a drag** (ADR-0028, WCAG 2.2 SC 2.5.7). Moving a
  * block and making it longer are a drag and an edge-drag in the grid; here they are three fields and a button, which
  * is why the section takes all three rather than only the day it used to.
+ *
+ * **Taking it off the day is a bin on the section's own heading** (TB-025), bordered because it acts on the whole
+ * plaatsing. Its label says the activiteit leaves the agenda, since the activiteit itself stays in its subthema.
  */
 function Dagsectie({
+  naam,
   datum,
   begin,
   einde,
@@ -228,6 +234,8 @@ function Dagsectie({
   onVerplaats,
   onVerwijder,
 }: {
+  /** The activiteit's name, for the label of the bin. */
+  naam: string;
   datum: string;
   /** `HH:mm:ss` from the server; the inputs work in `HH:mm` and the seconds are put back on submit. */
   begin: string;
@@ -251,7 +259,16 @@ function Dagsectie({
 
   return (
     <>
-      <h3 className="text-micro uppercase text-inkt-zwak">{t("periode.opDezeDag")}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-micro uppercase text-inkt-zwak">{t("periode.opDezeDag")}</h3>
+        <Verwijderknop
+          omrand
+          label={t("periode.uitAgendaAria", { naam })}
+          titel={t("periode.uitAgenda")}
+          disabled={bezig}
+          onClick={onVerwijder}
+        />
+      </div>
 
       <div className="mt-2 flex flex-wrap items-end gap-2">
         <div className="min-w-40 flex-1">
@@ -303,9 +320,6 @@ function Dagsectie({
           onClick={() => onVerplaats(nieuweDag, `${nieuwBegin}:00`, `${nieuwEinde}:00`)}
         >
           {t("periode.verplaats")}
-        </Knop>
-        <Knop rang="stil" disabled={bezig} onClick={onVerwijder}>
-          {t("periode.haalWeg")}
         </Knop>
       </div>
 
