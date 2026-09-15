@@ -2,10 +2,10 @@
 id: FB-020
 titel: Leerkracht vult per hoek een verrijking in voor het lopende subthema
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
+bijgewerkt: 2026-09-15 17:19
 opgepakt-door:
 branch:
 pr:
@@ -82,3 +82,4 @@ detail van die hoek. Ze heeft geen band met het subthema dat op dat moment loopt
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 17:19 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
