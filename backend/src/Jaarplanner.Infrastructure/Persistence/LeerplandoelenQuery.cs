@@ -1,5 +1,6 @@
 using System.Linq.Expressions;
 using Jaarplanner.Application.Curriculum;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Curriculum;
 using Microsoft.EntityFrameworkCore;
 
@@ -88,8 +89,11 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
     public async Task<LeerplandoelDetailWeergave?> HaalDetailAsync(
         string code,
         Koppelingzichtbaarheid zichtbaarheid,
+        Func<Klasinzage, bool> klasLeesbaar,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(klasLeesbaar);
+
         if (string.IsNullOrWhiteSpace(code))
         {
             return null;
@@ -130,7 +134,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             return null;
         }
 
-        var koppelingen = await HaalKoppelingenAsync(doel.Doel.Code, zichtbaarheid, cancellationToken);
+        var koppelingen = await HaalKoppelingenAsync(doel.Doel.Code, zichtbaarheid, klasLeesbaar, cancellationToken);
         var gerelateerdeDoelen = await HaalGerelateerdeDoelenAsync(doel.Doel.Code, doel.Doel.MinimumdoelRef, cancellationToken);
 
         return new LeerplandoelDetailWeergave(
@@ -405,6 +409,7 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
     private async Task<List<DoelKoppelingWeergave>> HaalKoppelingenAsync(
         string code,
         Koppelingzichtbaarheid zichtbaarheid,
+        Func<Klasinzage, bool> klasLeesbaar,
         CancellationToken cancellationToken)
     {
         // Every link is reached through Themas, because the thema name is what a teacher recognises and
@@ -478,21 +483,22 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                                 k.Status)))))
                 .ToListAsync(cancellationToken);
 
-            // The fifth layer (owner, 2026-09-11): an algemene fiche belongs to one klas, so it sits behind the same
-            // gate as the age-scoped layers and names that klas. No thema exists to name; see DoelKoppelingWeergave
-            // for how the two fields carry the fiche instead.
-            fiches = await (
+            // The fifth layer (owner, 2026-09-11): an algemene fiche belongs to one klas, so it names that klas. No thema
+            // exists to name; see DoelKoppelingWeergave for how the two fields carry the fiche instead. It is that klas's
+            // planning, so a fiche shows only when the reader may read its klas (FB-013, ADR-0040): the klas's id and
+            // stated jaarfase are read for that question and never leave this method.
+            var ficheRijen = await (
                 from fiche in _context.AlgemeneFiches.AsNoTracking()
                 join klas in _context.Klassen on fiche.KlasId equals klas.Id
                 from k in fiche.Doelkoppelingen
                 where k.LeerplandoelCode == code
-                select new DoelKoppelingWeergave(
-                    KoppelingHerkomst.AlgemeneFiche,
-                    fiche.Naam,
-                    klas.Naam,
-                    null,
-                    k.Status))
+                select new { FicheNaam = fiche.Naam, KlasId = klas.Id, KlasNaam = klas.Naam, klas.Jaarfase, k.Status })
                 .ToListAsync(cancellationToken);
+
+            fiches = ficheRijen
+                .Where(rij => klasLeesbaar(Klasinzage.Voor(rij.KlasId, rij.Jaarfase)))
+                .Select(rij => new DoelKoppelingWeergave(KoppelingHerkomst.AlgemeneFiche, rij.FicheNaam, rij.KlasNaam, null, rij.Status))
+                .ToList();
         }
 
         return

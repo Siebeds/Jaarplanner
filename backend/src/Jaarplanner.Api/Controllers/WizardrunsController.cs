@@ -60,7 +60,7 @@ public sealed class WizardrunsController : ControllerBase
         return CreatedAtAction(nameof(Detail), new { runId = run.Id }, run);
     }
 
-    /// <summary>The run: its thema, when it last wrote, whether it is open, and what it created. A read (I9).</summary>
+    /// <summary>The run: its thema, when it last wrote, whether it is open, and what it created. A read, open to every signed-in gebruiker like the thema it builds.</summary>
     [HttpGet("{runId:guid}")]
     public async Task<ActionResult<WizardrunWeergave>> Detail(Guid runId, CancellationToken cancellationToken) =>
         Ok(await _service.HaalOpAsync(runId, cancellationToken));

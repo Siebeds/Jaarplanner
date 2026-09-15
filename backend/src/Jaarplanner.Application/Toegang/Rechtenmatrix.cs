@@ -18,9 +18,13 @@ namespace Jaarplanner.Application.Toegang;
 /// the row has the plain TB column) passes.
 /// </para>
 /// <para>
+/// <b>Reading a klas's planning is a row too</b> (<see cref="KlasplanningBekijken"/>, FB-013, ADR-0040): the one place
+/// that decides which klassen a gebruiker reads, the E6-09 seam. Every read route on one klas's jaarplan, agenda or
+/// dekking declares it, and <c>GET /api/klassen</c> filters its list by it.
+/// </para>
+/// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
-/// reading and exporting another klas (I9) is every signed-in gebruiker today, which the fallback policy already gives,
-/// and narrowing it is E6-09's seam; and four of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶,
+/// and four of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶,
 /// ADR-0035), added on 2026-09-14, which get their policies with FB-002, FB-003, FB-006 and FB-007, since no route serves
 /// them before. <i>Since FB-001 (2026-09-15) two have one: <see cref="OntwikkelingsrapportLezen"/> and
 /// <see cref="LeerlingenBeheren"/>. Until then this sentence said all six had none. Since FB-002 (2026-09-15) a third
@@ -64,6 +68,7 @@ public static class Rechtenmatrix
         public const string DoelenKoppelen = "DoelenKoppelen";
         public const string ActiviteitVerplaatsen = "ActiviteitVerplaatsen";
         public const string KlasplanningBewerken = "KlasplanningBewerken";
+        public const string KlasplanningBekijken = "KlasplanningBekijken";
         public const string OntwikkelingsrapportLezen = "OntwikkelingsrapportLezen";
         public const string LeerlingenBeheren = "LeerlingenBeheren";
         public const string RapportsetBewerken = "RapportsetBewerken";
@@ -204,13 +209,30 @@ public static class Rechtenmatrix
         "Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21)",
         Kolom.LeerkrachtEigen);
 
+    /// <summary>
+    /// §3's two read rows as one policy, because they are the same question on the same resource: "Jaarplan, agenda en
+    /// dekking bekijken" and "Exporteren" (R3, R7; ADR-0040 Z1 to Z5, default Z6). Resource: <see cref="Klasinzage"/>.
+    /// <list type="bullet">
+    /// <item>Themabeheer and directie read every klas (Z3, Z5).</item>
+    /// <item>A hoofdleerkracht reads every klas of a jaarfase they are appointed for (Z2), and a leerkracht every klas
+    /// of the jaarfase of a klas they teach (Z1). Both relations count while their schooljaar has not ended (R20), as
+    /// they do for the shared content. The klas read may be of any schooljaar (default Z6).</item>
+    /// <item>A klastoewijzing reads its own klas, with no end date (I21).</item>
+    /// <item>Anyone else reads no klas (Z4).</item>
+    /// </list>
+    /// </summary>
+    public static readonly Matrixrij KlasplanningBekijken = new(
+        Beleid.KlasplanningBekijken,
+        "Jaarplan, agenda en dekking bekijken en exporteren: de eigen klassen en die van de eigen jaarfase, themabeheer alle klassen (R3, R7; ADR-0040 Z1-Z5, Z6)",
+        Kolom.Themabeheer | Kolom.HoofdleerkrachtLezen | Kolom.LeerkrachtLeeftijdLezen | Kolom.LeerkrachtEigenLezen);
+
     // --- Resource-based rows: the ontwikkelingsrapport of one K3 klas (footnote ⁶, ADR-0035 §3.3; FB-001). ---
 
     /// <summary>
     /// §3 "Een ontwikkelingsrapport lezen" (ADR-0035 R16, R17, R18, R26), which FB-001 also applies to reading the klas's
     /// leerlingen: the list of children is the first thing a report shows. Resource: <see cref="Rapportklas"/>.
-    /// <b>Reads are gated here, unlike every other read in the app</b>: I9 does not reach these rows, so a leerkracht of
-    /// another klas, a hoofdleerkracht and themabeheer read none of it (R17). Leerlingzorg (R18) joins this row with
+    /// <b>Stricter than <see cref="KlasplanningBekijken"/></b>: reading a klas's planning does not reach these rows, so a
+    /// leerkracht of another klas, a hoofdleerkracht and themabeheer read none of it (R17). Leerlingzorg (R18) joins this row with
     /// FB-008, as a relation of its own.
     /// </summary>
     public static readonly Matrixrij OntwikkelingsrapportLezen = new(
@@ -264,6 +286,7 @@ public static class Rechtenmatrix
         DoelenKoppelen,
         ActiviteitVerplaatsen,
         KlasplanningBewerken,
+        KlasplanningBekijken,
         OntwikkelingsrapportLezen,
         LeerlingenBeheren,
         RapportsetBewerken,
@@ -358,6 +381,27 @@ public static class Rechtenmatrix
             }
         }
 
+        // Reading a klas's planning (FB-013, ADR-0040): HL and "LK leeftijd" on a klas that stands for one of their
+        // leeftijden, and "LK eigen" on their own klas. Columns of their own, so a Klasinzage passes no other row, and no
+        // other resource passes this one.
+        if (bron is Klasinzage inzage)
+        {
+            if (kolommen.HasFlag(Kolom.HoofdleerkrachtLezen) && inzage.Leeftijden.Any(rechten.IsHoofdleerkrachtVan))
+            {
+                return true;
+            }
+
+            if (kolommen.HasFlag(Kolom.LeerkrachtLeeftijdLezen) && inzage.Leeftijden.Any(rechten.IsLeerkrachtVanLeeftijd))
+            {
+                return true;
+            }
+
+            if (kolommen.HasFlag(Kolom.LeerkrachtEigenLezen) && rechten.IsLeerkrachtVanKlas(inzage.KlasId))
+            {
+                return true;
+            }
+        }
+
         // Footnote ⁶: "LK eigen" on the ontwikkelingsrapport rows is the klas's K3 leerkracht, reading with no end date
         // and filling in only during the schooljaar (R26). Only a Rapportklas matches, so a planning resource never opens
         // a report and a report resource never opens the planning.
@@ -442,4 +486,19 @@ public enum Kolom
     /// the scale are one for all of K3 (R4, R5), so a K3 leerkracht of any klas edits them.
     /// </summary>
     Rapportsetleerkracht = 512,
+
+    /// <summary>
+    /// "HL" on the read row (FB-013, ADR-0040 Z2): a hoofdleerkracht of one of the <see cref="Klasinzage"/>'s leeftijden,
+    /// in a schooljaar that has not ended. The klas read may be of any schooljaar (Z6).
+    /// </summary>
+    HoofdleerkrachtLezen = 1024,
+
+    /// <summary>
+    /// "LK leeftijd" on the read row (FB-013, ADR-0040 Z1): a klas of one of the <see cref="Klasinzage"/>'s leeftijden,
+    /// in a schooljaar that has not ended. The klas read may be of any schooljaar (Z6).
+    /// </summary>
+    LeerkrachtLeeftijdLezen = 2048,
+
+    /// <summary>"LK eigen" on the read row: a klastoewijzing on the <see cref="Klasinzage"/>'s klas, with no end date (I21).</summary>
+    LeerkrachtEigenLezen = 4096,
 }

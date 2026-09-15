@@ -143,7 +143,7 @@ public sealed class AlgemeneFichesPostgresTests : IAsyncLifetime
 
         var register = new LeerplandoelenQuery(leescontext);
 
-        var detail = await register.HaalDetailAsync("FICHE-GEPLAND", Koppelingzichtbaarheid.Alles);
+        var detail = await register.HaalDetailAsync("FICHE-GEPLAND", Koppelingzichtbaarheid.Alles, _ => true);
         var regel = Assert.Single(detail!.Koppelingen);
         Assert.Equal(KoppelingHerkomst.AlgemeneFiche, regel.Herkomst);
         Assert.Equal("Turnen", regel.ThemaNaam);
@@ -151,8 +151,12 @@ public sealed class AlgemeneFichesPostgresTests : IAsyncLifetime
         Assert.Equal(KoppelingStatus.Manueel, regel.Status);
 
         // Behind the same gate as the other class-scoped layers.
-        var afgeschermd = await register.HaalDetailAsync("FICHE-GEPLAND", Koppelingzichtbaarheid.AlleenSchoolbreed);
+        var afgeschermd = await register.HaalDetailAsync("FICHE-GEPLAND", Koppelingzichtbaarheid.AlleenSchoolbreed, _ => true);
         Assert.Empty(afgeschermd!.Koppelingen);
+
+        // FB-013 (ADR-0040): a fiche is its klas's planning, so a reader who may not read that klas does not see it.
+        var nietLeesbaar = await register.HaalDetailAsync("FICHE-GEPLAND", Koppelingzichtbaarheid.Alles, _ => false);
+        Assert.Empty(nietLeesbaar!.Koppelingen);
     }
 
     /// <summary>A school year with two K3 classes, and every code these tests link to.</summary>

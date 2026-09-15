@@ -5,7 +5,7 @@ import { Veld, Keuze } from "../components/ui/Veld";
 import { IcoonChevron } from "../components/Iconen";
 import { useActieveSelectie } from "../lib/selectie";
 import { useWijzigKlas } from "../lib/queries";
-import { geenToegangZin, useRechten } from "../lib/rechten";
+import { geenToegangZin, useGeenKlassenZin, useRechten } from "../lib/rechten";
 import type { KlasWeergave } from "../lib/types";
 import { t } from "../i18n";
 
@@ -21,10 +21,12 @@ import { t } from "../i18n";
  */
 export function Klaskiezer() {
   const [open, setOpen] = useState(false);
-  const { klas, schooljaar, schooljaren, klassen, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  const { klas, schooljaar, schooljaren, klassen, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
   // The jaarfase travels over `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Everyone else
   // still picks a schooljaar and a klas here; those are a context, not a write.
   const { mag } = useRechten();
+  // The server offers only the klassen this gebruiker may read (FB-013), so an empty list is said for them.
+  const geenKlassenZin = useGeenKlassenZin(t("context.geenKlassen"));
 
   return (
     <>
@@ -64,7 +66,8 @@ export function Klaskiezer() {
             {(id) =>
               klassen.length === 0 ? (
                 <p className="text-meta text-inkt-zacht" id={id}>
-                  {t("context.geenKlassen")}
+                  {/* An empty list proves nothing while it loads or after it failed (the E5-03 rule). */}
+                  {fout ? t("context.klassenLaadFout") : laadt ? t("context.klassenLaden") : geenKlassenZin}
                 </p>
               ) : (
                 <Keuze id={id} value={klas?.id ?? ""} onChange={(e) => kiesKlas(e.target.value)}>

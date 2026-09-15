@@ -553,7 +553,7 @@ follows until the owner confirms or corrects it.
 | I6 | Whether a **shared** layer of activiteiten and subdoelen remains next to personal content. Statement 9 can also mean that all of them become personal. *2026-09-13:* R17 presupposes that a shared layer exists today. It does not say whether it remains once personal content exists. | Existing content stays as it is, and personal content is additive. Goes with open question (a). | E6-10 |
 | I7 | ~~**Several leerkrachten on one klas** (co-teacher, duobaan). Statement 1 says one teacher may have several klassen; the reverse is a design choice. FA §3.1 names the co-teacher, and statement 11's duobaan points the same way.~~ | ~~Allowed: the assignment is many-to-many.~~ **Ruled as defaulted by statement 18 (R15).** | E6-04 |
 | I8 | ~~Whether a hoofdleerkracht edits **thema's** by being hoofdleerkracht. Statement 2 says so; statement 8 says *"alleen de directie en een paar …"*.~~ | ~~No: a hoofdleerkracht edits thema's only when they also hold themabeheer.~~ **Ruled as defaulted by statement 21 (R18).** | E6-02 |
-| I9 | **How many** other klassen a leerkracht can view. Statement 1 says *"andere klassen"*, without a quantifier. *Extended in fix round 1:* a gebruiker with no klastoewijzing (a zorgcoördinator, an ICT-coördinator or a hoofdleerkracht who teaches no klas) matched no column of §3 and so could not even read. | Every gebruiker, including one without a klastoewijzing, can read and export every klas, read-only, decided in one place behind the E6-09 seam. | E6-08, E6-09 |
+| I9 | **How many** other klassen a leerkracht can view. Statement 1 says *"andere klassen"*, without a quantifier. *Extended in fix round 1:* a gebruiker with no klastoewijzing (a zorgcoördinator, an ICT-coördinator or a hoofdleerkracht who teaches no klas) matched no column of §3 and so could not even read. | ~~Every gebruiker, including one without a klastoewijzing, can read and export every klas, read-only, decided in one place behind the E6-09 seam.~~ **Superseded by [ADR-0040](0040-klassen-inkijken-per-jaarfase.md)** (owner, 2026-09-15): a leerkracht reads the klassen of her own jaarfase, a hoofdleerkracht those of her appointed jaarfase, themabeheer and directie every klas, anyone else none (Z1 to Z5). | E6-08, E6-09, FB-013 |
 | I10 | ~~**Who uses the thema-opbouw wizard's AI assist** (E2-07, `POST /api/thema-opbouw/themadoel-suggesties` and `…/subdoel-suggesties`). Statement 17 names the doelsuggesties of FR-4, the `doelsuggesties[]` of a thema. The wizard's two steps are separate calls that return advice without storing it. Today every gebruiker can call both.~~ | ~~Each step follows the content it proposes for. Step 2 (themadoelen): directie and themabeheer. Step 6 (subdoelen): directie and the hoofdleerkrachten of that leeftijd, because a subdoel is a goal link (R19, I14).~~ **Ruled differently by statement 29 (R29):** the whole wizard, both AI steps included, is for themabeheer and directie. | E6-02 |
 | I11 | ~~**Which schooljaar counts.** A hoofdleerkracht is appointed per (schooljaar, jaarfase), and a klas belongs to one schooljaar. But a subthema and its shared content are scoped by leeftijd alone and belong to no schooljaar (ADR-0025).~~ | ~~An appointment or a klastoewijzing counts while its schooljaar **has not yet ended** (today ≤ `Schooljaar.Eind`), including a schooljaar that has not started yet. Reasoning below the table.~~ **Ruled as defaulted by statement 23 (R20)**, for the shared content; a klas's own planning is I21. | E6-02, E6-04 |
 | I12 | **A klas without a stated jaarfase.** A row that predates ADR-0025 can have none. For dekking, `Klasleeftijden` then **widens**: every leeftijd, or all three kleuter codes for leerjaar 0. That is the safe direction for a figure and the unsafe one for a right. | Such a klas gives its leerkrachten **no** leeftijd right. The rights check reads the stated `Jaarfase` only and does not reuse the widening. Directie states the jaarfase on the beheerscherm, which already calls those rows out. | E6-02 |
@@ -610,8 +610,8 @@ draft before anything is enforced from it."*
   (footnote ⁶, ADR-0035 R31).
 - Whatever a row takes from an I-item of §2, or from a lettered question of §4, is a default and is not ratified
   with Art. VI.1.
-- **Every row cites at least one ruling.** The Op.stap row rests on R3; the Exporteren row on R3 and R7, with I9 for
-  its reach beyond one's own klas. *Fix round 1 named only the two wizard rows as uncited, and missed these two;
+- **Every row cites at least one ruling.** The Op.stap row rests on R3; the Exporteren row on R3 and R7, with ADR-0040
+  Z1 to Z5 for its reach beyond one's own klas (I9 until 2026-09-15). *Fix round 1 named only the two wizard rows as uncited, and missed these two;
   fix round 2 replaced the wizard rows with one row under R29, and fix round 3 split it again under R32.*
 
 *Revised 2026-09-13:* the doelsuggestie rows follow R14 and include "aanpassen". The shared-content rows follow R17
@@ -661,8 +661,8 @@ that this relation alone does not grant the action. It never takes away what ano
 | Een activiteit naar een ander thema verplaatsen (R19, R23; I19) | ✓ | – | ✓ | zonder koppelingen³ | – | – |
 | Eigen activiteiten en subdoelen onder een subthema plaatsen (R6; shape: E6-10) | ✓ | ✓¹ | ✓¹ | ✓ | ✓ | ✓¹ |
 | Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21) | ✓ | – | – | – | ✓ | – |
-| Jaarplan, agenda en dekking bekijken (R3, R7; I9) | ✓ | lezen | lezen | lezen | ✓ | lezen |
-| Exporteren (R3, R7; I9) | ✓ | lezen⁴ | lezen⁴ | lezen⁴ | ✓ | lezen⁴ |
+| Jaarplan, agenda en dekking bekijken (R3, R7; ADR-0040 Z1–Z5, Z6) | ✓ | lezen | lezen⁸ | lezen⁸ | ✓ | – |
+| Exporteren (R3, R7; ADR-0040 Z1–Z5, Z6) | ✓ | lezen⁴ | lezen⁴ ⁸ | lezen⁴ ⁸ | ✓ | – |
 | Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen (ADR-0035 R14, R15, R26; D8, D9) | ✓ | – | – | – | ✓⁶ | – |
 | Een ontwikkelingsrapport invullen: gradatie, tekst, besluit, kindtekening, AI-herwerking (ADR-0035 R16, R21, R22, R26) | ✓ | – | – | – | ✓⁶ | – |
 | Een ontwikkelingsrapport lezen (ADR-0035 R16, R17, R18, R26) | ✓ | –⁶ | –⁶ | –⁶ | ✓ | –⁶ |
@@ -682,7 +682,7 @@ start counting for the klassen that plan the other thema.
 
 ⁴ "lezen" on Exporteren means exporting what one may read. FA §3.2 gave the leerkracht of another klas "lezen" here.
 *Fix round 2 set TB, HL and "LK leeftijd" to the same value:* they had "–" while "Ander" had "lezen", although they
-are additive and never read less than an ordinary gebruiker. Its reach beyond one's own klas is I9.
+are additive and never read less than an ordinary gebruiker. Its reach beyond one's own klas is footnote ⁸.
 
 ⁵ Themabeheer creates subthema's, subdoelen and activiteiten **only through the wizard's own write actions, and only
 for a thema the wizard is building from scratch** (R32). Changing existing subthema's stays with the hoofdleerkracht.
@@ -723,6 +723,13 @@ placed in a jaarplan is deleted by nobody. *Added 2026-09-14:* §3 had no delete
 delete's cascade reached content R19, R24 and R25 reserve to directie and the hoofdleerkrachten. Only the directie
 column rests on a ruling (R3); the TB column is the default.
 
+⁸ **Reading a klas's planning** ([ADR-0040](0040-klassen-inkijken-per-jaarfase.md), FB-013, 2026-09-15). "HL" and "LK
+leeftijd" read only the klassen **of their own jaarfase**: a klas whose stated jaarfase, through the one klas→leeftijden
+mapping of Art. VI.1, is one they hold (Z1, Z2) while its own schooljaar has not ended (default Z7); the klas read may be of any
+schooljaar (default Z6). TB reads every klas (Z3), "LK eigen"
+its own klas, and "Ander" none (Z4). Enforced as the one row `KlasplanningBekijken`, the E6-09 seam. *Until then every
+column read every klas under I9.*
+
 TB and HL are **additive** to being a leerkracht, as the union rule above says.
 
 **How the matrix is enforced** *(E6-02, 2026-09-14)*. Each row is a named policy declared once in `Rechtenmatrix`
@@ -744,8 +751,8 @@ does not edit the set or the scale.*
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is
 E6-10's (open question (a)). *Until 2026-09-13 the two doelsuggestie rows did too, under R8. R14 removed that.*
-"Ander" also reads and exports the plans of other klassen, which is I9, a default, and deletes an activiteit it
-made, which is R33.
+"Ander" also deletes an activiteit it made, which is R33. It reads no klas's planning since ADR-0040 (Z4); until then
+it read and exported every klas under I9, a default.
 
 ## 4. Still open, named rather than guessed
 
@@ -784,11 +791,16 @@ settled", then "Five are open".*
     (question 4 in `docs/besluiten-gevraagd.md`). The Art. XIV bullet is therefore narrowed in the amendment, not
     removed.
   - E6-08 builds the read access **behind the E6-09 seam**.
+  - *Narrowed by the owner on 2026-09-15* ([ADR-0040](0040-klassen-inkijken-per-jaarfase.md), built by FB-013): a
+    leerkracht reads the klassen of her own jaarfase, a hoofdleerkracht those of her appointed jaarfase, themabeheer
+    and directie every klas, anyone else none. Directie's confirmation is still outstanding, so (d) stays open for them:
+    confirm, widen, narrow, or make it configurable, in the one row `KlasplanningBekijken`.
 
-  *Owners: E6-08 and E6-09.*
+  *Owners: E6-08 and E6-09, both taken over by FB-013.*
 - **(e) Zorgcoördinator rights.** FA §3.1 marks them *"eventueel beperkte bewerkrechten, ter beslissing"*, which is
-  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer, and R7 with I9 gives read
-  access. Anything beyond that is still open. The default is that such a gebruiker, or anyone holding none of the
+  an FA item and not an Art. XIV bullet. R4 lets a zorgcoördinator hold themabeheer; without another right they
+  read no klas's planning (ADR-0040 Z4; until 2026-09-15 R7 with I9 gave read access). Anything beyond that is still
+  open. The default is that such a gebruiker, or anyone holding none of the
   four rights, does nothing else, apart from the maker's delete right (R33). *Owner: E6-02.* *Since 2026-09-14
   ([ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) R18) there are five rights: directie may also give a
   zorgcoördinator Leerlingzorg, which reads every ontwikkelingsrapport and nothing else. The default above then reads

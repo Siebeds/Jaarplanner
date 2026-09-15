@@ -20,7 +20,7 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights (E6-02 slice 3):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (directie and the
 /// klas's own leerkrachten; ADR-0030 R7, R15, I21), against the klas in the route. The service finds a plaatsing only
-/// inside that klas's plan, so a route cannot reach another klas's week. Reads stay open (I9).
+/// inside that klas's plan, so a route cannot reach another klas's week. The read is <c>KlasplanningBekijken</c> (FB-013).
 /// <i>Until slice 3 this paragraph said the controller was unauthenticated, like the other thirteen; E6-01 gave every
 /// route a session and this story gave its writes a row.</i>
 /// </para>
@@ -42,6 +42,7 @@ public sealed class WeekplanningController : ControllerBase
     /// </para>
     /// </summary>
     [HttpGet]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> Weekplanning(
         Guid klasId,
         [FromQuery] DateOnly van,

@@ -33,6 +33,9 @@ public enum Rechtbron
     /// <summary>The planning of the klas an algemene ficheplaatsing is in.</summary>
     AlgemeneFicheplaatsing,
 
+    /// <summary>The klas in the route, as reading its planning needs it (<see cref="Application.Toegang.Klasinzage"/>, FB-013).</summary>
+    Klasinzage,
+
     /// <summary>The ontwikkelingsrapport of the klas in the route (<see cref="Application.Toegang.Rapportklas"/>, FB-001).</summary>
     Rapportklas,
 
@@ -142,6 +145,9 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
             case Rechtbron.AlgemeneFicheplaatsing:
                 return await bronnen.VoorAlgemeneFicheplaatsingAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {id} is niet gevonden.");
+            case Rechtbron.Klasinzage:
+                return await bronnen.VoorKlasinzageAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout($"Klas {id} is niet gevonden.");
             case Rechtbron.Rapportklas:
                 return await bronnen.VoorRapportklasAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout($"Klas {id} is niet gevonden.");
