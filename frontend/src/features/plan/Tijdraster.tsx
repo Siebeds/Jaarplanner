@@ -16,6 +16,7 @@ import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
+import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
@@ -53,8 +54,13 @@ export interface Hoekblokje {
 /**
  * One occurrence of a planned algemene fiche, in the same shape: a fiche moment is a row a teacher can move on its
  * own, exactly like a hoek's, and only the endpoint that saves it differs.
+ *
+ * Plus the fiche's goals, for the block's info icon (FB-018). Absent while the fiche list has not arrived, which draws
+ * no icon rather than one that would say the fiche has no goals.
  */
-export type Ficheblokje = Hoekblokje;
+export interface Ficheblokje extends Hoekblokje {
+  doelen?: readonly Infodoel[];
+}
 
 /** What a resize asks the screen to save. The three kinds live behind three endpoints; the grid knows which is which. */
 export type Tijddoel =
@@ -69,6 +75,11 @@ type Rasterblok = Blokje & {
   onder: string;
   doel: Tijddoel;
   activiteit?: GeplandeActiviteit;
+  /**
+   * The goals the block works on, for its info icon (FB-018). Absent for a kind that has none to show: a hoek, until
+   * FB-019 gives hoeken goals of their own.
+   */
+  doelen?: readonly Infodoel[];
 };
 
 /**
@@ -308,6 +319,8 @@ function bouwBlokken(
         onder: activiteit.subthemaNaam,
         doel: { soort: "activiteit", plaatsingId: activiteit.plaatsingId },
         activiteit,
+        // Codes only: the weekplanning row carries no goal text, and the info window fetches it when it opens.
+        doelen: activiteit.doelcodes.map((code) => ({ code })),
       });
     }
   }
@@ -336,6 +349,7 @@ function bouwBlokken(
       naam: moment.naam,
       onder: t("tijdraster.algemeneFiche"),
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
+      doelen: moment.doelen,
     });
   }
 
@@ -802,6 +816,14 @@ function Blok({
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
+  /*
+    THE INFO ICON FROM HALF AN HOUR UP (FB-018). A half-hour block is 28 pixels tall, which holds the 24-pixel target
+    WCAG 2.2 AA asks for; a quarter is 14, which holds nothing a finger can hit. Below half an hour the goals are in the
+    sheet the block opens, which lists them for an activiteit and an algemene fiche alike, so no block's goals are out of
+    reach. Measured on the saved length, not on an edge being pulled, so the icon does not blink in and out mid-resize.
+  */
+  const infodoelen = blok.doelen && blok.einde - blok.begin >= 30 ? blok.doelen : null;
+
   return (
     <div
       // Above its neighbours while its edge is being pulled, so the end-time tag hanging below it is never covered.
@@ -844,6 +866,8 @@ function Blok({
           className={cn(
             "block h-full w-full px-2 py-1 text-left",
             magPlannen && "cursor-grab touch-none active:cursor-grabbing",
+            // Room for the info icon in the corner, so the name and the time stop before it instead of under it.
+            infodoelen && "pr-7",
           )}
         >
           <span className="flex min-w-0 items-baseline gap-1">
@@ -868,6 +892,12 @@ function Blok({
             </>
           ) : null}
         </button>
+
+        {/* A sibling of the block's button, above it in the corner: pressing it opens the goals and nothing else. For
+            everyone who can see the block, since reading what a block works on is not planning. */}
+        {infodoelen ? (
+          <Doelinfo naam={blok.naam} doelen={infodoelen} className="absolute right-0.5 top-0.5 z-10" />
+        ) : null}
 
         {magPlannen ? (
           <Rekgreep

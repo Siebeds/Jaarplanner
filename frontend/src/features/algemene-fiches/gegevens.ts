@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { del, get, post, put } from "../../lib/api";
 import type { Doelsoort } from "../../lib/types";
+import type { Infodoel } from "../plan/Doelinfo";
 
 /**
  * A class's algemene fiches: the recurring activities that belong to no thema, the onthaal and the
@@ -34,6 +35,11 @@ export interface AlgemeneFicheWeergave {
   /** How often it stands in the agenda. Zero means its goals do not count for dekking yet. */
   aantalPlaatsingen: number;
   doelen: AlgemeneFichedoel[];
+}
+
+/** A fiche's goals as the agenda's info icon and the fiche sheet list them (FB-018): they arrive whole, text included. */
+export function alsInfodoelen(doelen: readonly AlgemeneFichedoel[]): Infodoel[] {
+  return doelen.map((doel) => ({ code: doel.leerplandoelCode, doelsoort: doel.doelsoort, tekst: doel.tekst }));
 }
 
 /** What a teacher states about a fiche. */

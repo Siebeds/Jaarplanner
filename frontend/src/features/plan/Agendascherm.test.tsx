@@ -149,7 +149,7 @@ const paneel = () => screen.queryByRole("complementary", { name: t("hoekenpaneel
 
 /** Opens turnen's sheet from its block in the grid, as a click on the block does. */
 async function openTurnen() {
-  fireEvent.click(await screen.findByRole("button", { name: /turnen/ }));
+  fireEvent.click(await screen.findByRole("button", { name: /^turnen/ }));
   return screen.findByRole("dialog");
 }
 
@@ -173,7 +173,7 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
 
     // Before the sheet opens: an open dialog hides the rest of the page from the accessibility tree.
-    await screen.findByRole("button", { name: /turnen/ });
+    await screen.findByRole("button", { name: /^turnen/ });
     expect(screen.queryByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeNull();
     expect(chip(t("periode.hoekenfiches"))).not.toBeNull();
     expect(chip(t("periode.algemeneFiches"))).not.toBeNull();

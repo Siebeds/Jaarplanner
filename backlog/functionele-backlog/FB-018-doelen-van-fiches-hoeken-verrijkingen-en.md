@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:53
+bijgewerkt: 2026-09-15 15:12
 opgepakt-door: FB-018
 branch: ticket/FB-018-doelen-info-icoon
 pr:
@@ -72,3 +72,4 @@ apart weekoverzicht.
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 14:52 · eigenaar · nieuw → klaar-voor-bouw: eigenaar vroeg in sessie om FB-018 op te nemen, zonder op FB-017 te wachten
 - 2026-09-15 14:53 · FB-018 · klaar-voor-bouw → in-uitvoering: opgepakt; de activiteitkaarten uit FB-017 krijgen het icoon van wie als tweede merget (eigenaar, 2026-09-15)
+- 2026-09-15 15:12 · FB-018 · info-icoon met doelvenster gebouwd: op tijdrasterblokken vanaf een half uur (activiteit, algemene fiche) en op de kaarten van algemene fiches in de zijbalk; kortere blokken tonen hun doelen in hun blad, daarvoor kreeg het fichedetailblad een doelensectie; lint en 588 frontendtests groen
