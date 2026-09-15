@@ -725,7 +725,8 @@ the goal-link right I27 asks) is enforced by the wizard service. Creating an act
 the goal-link row (R19), on the ordinary route and in the wizard. A sweep test enumerates every write route from
 the endpoint data source and fails, naming the route, for any that a gebruiker without rights can reach.
 *The ontwikkelingsrapport rows (footnote ⁶), added the same day from ADR-0035, have no policy in `Rechtenmatrix`
-yet: no route serves them until FR-13 is built, and each gets its policy then.*
+yet: no route serves them until FR-13 is built, and each gets its policy then.* *Since FB-001 (2026-09-15) two have:
+`OntwikkelingsrapportLezen` and `LeerlingenBeheren`; the other four get theirs with FB-002, FB-003, FB-006 and FB-007.*
 
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is

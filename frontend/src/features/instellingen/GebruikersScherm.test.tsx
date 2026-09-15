@@ -47,6 +47,8 @@ const IK: Ik = {
   hoofdleerkrachtLeeftijden: [],
   leerkrachtLeeftijden: [],
   eigenKlasIds: [],
+  rapportklasIds: [],
+  lopendeRapportklasIds: [],
 };
 
 function gebruiker(overrides: Partial<GebruikerBeheer> = {}): GebruikerBeheer {

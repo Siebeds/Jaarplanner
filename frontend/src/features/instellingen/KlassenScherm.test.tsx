@@ -46,6 +46,8 @@ const IK: Ik = {
   hoofdleerkrachtLeeftijden: ["K3"],
   leerkrachtLeeftijden: ["K3"],
   eigenKlasIds: [K3.id],
+  rapportklasIds: [],
+  lopendeRapportklasIds: [],
 };
 
 const OVERZICHT: GebruikersOverzicht = {

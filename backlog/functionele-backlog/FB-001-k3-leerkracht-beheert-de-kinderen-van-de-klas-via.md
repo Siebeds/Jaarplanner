@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 10:48
+bijgewerkt: 2026-09-15 11:06
 opgepakt-door: kindvolg
 branch: ticket/FB-001-kinderen-van-de-klas
 pr:
@@ -99,3 +99,4 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-15 10:48 · eigenaar · nieuw → klaar-voor-bouw
 - 2026-09-15 10:48 · kindvolg · klaar-voor-bouw → in-uitvoering: opgepakt; ontwerpkeuzes eigenaar: laptop boven Instellingen, telefoon via Instellingen
+- 2026-09-15 11:06 · kindvolg · frontend gebouwd: tab onderaan de zijbalk boven Instellingen (vanaf lg), op de telefoon via Instellingen, scherm Kinderen per K3-klas; pnpm lint groen, schermtests groen; backend loopt nog

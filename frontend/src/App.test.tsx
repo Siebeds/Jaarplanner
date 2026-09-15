@@ -36,6 +36,8 @@ vi.mock("./lib/aanmelding", async (importOriginal) => {
         hoofdleerkrachtLeeftijden: [],
         leerkrachtLeeftijden: [],
         eigenKlasIds: [],
+        rapportklasIds: [],
+        lopendeRapportklasIds: [],
       },
       isPending: false,
       isError: false,

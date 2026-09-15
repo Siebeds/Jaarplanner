@@ -181,6 +181,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         "activiteitId" => zaad.ActiviteitId.ToString(),
         "hoekId" => zaad.HoekId.ToString(),
         "ficheId" => zaad.FicheId.ToString(),
+        "leerlingId" => zaad.LeerlingId.ToString(),
         "runId" => zaad.RunId.ToString(),
         "plaatsingId" when route.StartsWith("api/hoekplaatsingen/", StringComparison.Ordinal) => zaad.HoekplaatsingId.ToString(),
         "plaatsingId" when route.StartsWith("api/algemene-ficheplaatsingen/", StringComparison.Ordinal) => zaad.FicheplaatsingId.ToString(),
@@ -227,6 +228,9 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             einde = "11:20:00",
         }));
 
+        // A child in the K3 klas (FB-001), so the leerling routes are sent one that exists. Made-up name (Art. VI.7).
+        var leerlingId = await IdAsync(client.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }));
+
         // An open run with one item of each kind it creates, so its item routes are sent the run's own items.
         var run = await RechtenTestOpzet.StartWizardAsync(client);
         var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
@@ -245,6 +249,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             hoekplaatsingId,
             ficheId,
             ficheplaatsingId,
+            leerlingId,
             run.Id,
             runSubthemaId,
             runSubdoelId,
@@ -268,6 +273,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Guid HoekplaatsingId,
         Guid FicheId,
         Guid FicheplaatsingId,
+        Guid LeerlingId,
         Guid RunId,
         Guid RunSubthemaId,
         Guid RunSubdoelId,

@@ -1,6 +1,7 @@
 ﻿using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -120,6 +121,21 @@ public sealed class KlasBeheerService : IKlasBeheerService
         VereisGeldigeJaarfase(wijziging.Jaarfase);
         await VereisVrijeNaamAsync(wijziging.Naam, uitgezonderd: klasId, cancellationToken);
 
+        // A klas with children in the ontwikkelingsrapport stays one that grants K3 (FB-001, D9). Otherwise the children
+        // would stay in the table and fall out of every route: the matrix gives a leerkracht no rapportklas that is not
+        // K3, so nobody but directie could see, rename or delete them, and nothing on screen would say they exist. The
+        // name is the klas's, which is no pupil data; the count is all that is said about the children.
+        if (!Leerling.KlasKanLeerlingenHebben(wijziging.Jaarfase))
+        {
+            var kinderen = await _context.Leerlingen.CountAsync(l => l.KlasId == klasId, cancellationToken);
+            if (kinderen > 0)
+            {
+                throw new SchoolcontentValidatieFout(
+                    $"Klas '{klas.Naam}' heeft nog {kinderen} kind(eren) in het ontwikkelingsrapport. Een klas met " +
+                    "kinderen blijft een klas van de derde kleuter. Verwijder die kinderen eerst bij Ontwikkelingsrapport.");
+            }
+        }
+
         // The domain owns the invariant (Klas.Wijzig validates naam once) — the service does not
         // re-implement it, and does not write through EF property metadata, which is a technique
         // reserved for keeping read-only curriculum content unmutatable (Art. III.1).
@@ -234,6 +250,19 @@ public sealed class KlasBeheerService : IKlasBeheerService
             throw new SchoolcontentValidatieFout(
                 $"Klas '{klas.Naam}' heeft een jaarplan met {beslotenDagen} ingeplande activiteit(en) en kan niet " +
                 "verwijderd worden. Haal die activiteiten eerst uit de weekplanning van deze klas.");
+        }
+
+        // The children in the klas's ontwikkelingsrapport (FB-001). `leerlingen` holds the klas by a Restrict FK
+        // (LeerlingConfiguration), so without this guard the delete fails as a raw 23503. Refused rather than cascaded,
+        // because a child takes their reports along (from FB-003), and deleting those is a deliberate act of its own: a
+        // leerling at a time on the report screen (D8), or a whole schooljaar by directie (D7). The remediation is real:
+        // DELETE /api/leerlingen/{leerlingId} removes one. The count only: the klas name is no pupil data, a child's is.
+        var kinderen = await _context.Leerlingen.CountAsync(l => l.KlasId == klasId, cancellationToken);
+        if (kinderen > 0)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Klas '{klas.Naam}' heeft nog {kinderen} kind(eren) in het ontwikkelingsrapport en kan niet verwijderd " +
+                "worden. Verwijder die kinderen eerst bij Ontwikkelingsrapport.");
         }
 
         _context.Klassen.Remove(klas);

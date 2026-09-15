@@ -17,6 +17,8 @@ export const NIEMAND: Ik = {
   hoofdleerkrachtLeeftijden: [],
   leerkrachtLeeftijden: [],
   eigenKlasIds: [],
+  rapportklasIds: [],
+  lopendeRapportklasIds: [],
 };
 
 export function ikMet(delen: Partial<Ik> = {}): Ik {
