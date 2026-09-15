@@ -78,10 +78,13 @@ describe("Aanmeldpoort", () => {
   });
 
   it("zegt het als de server niet antwoordt, en vraagt het opnieuw", async () => {
+    // The second answer is held back, so the page can be read while that request runs: the error still
+    // stands in the query then, and must not decide what the page says.
+    let antwoord!: (response: Response) => void;
     const fetchMock = vi
       .fn<() => Promise<Response>>()
       .mockResolvedValueOnce(json({}, 500))
-      .mockResolvedValue(json(IK));
+      .mockImplementationOnce(() => new Promise<Response>((los) => (antwoord = los)));
     vi.stubGlobal("fetch", fetchMock);
 
     renderPoort();
@@ -90,6 +93,11 @@ describe("Aanmeldpoort", () => {
     expect(screen.queryByText(t("aanmelding.tussenpagina.doorsturen"))).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: t("aanmelding.tussenpagina.opnieuw") }));
 
+    expect(await screen.findByRole("status")).toHaveTextContent(t("aanmelding.tussenpagina.openen"));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.queryByText(t("aanmelding.tussenpagina.doorsturen"))).not.toBeInTheDocument();
+
+    antwoord(json(IK));
     expect(await screen.findByText(SCHIL)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });

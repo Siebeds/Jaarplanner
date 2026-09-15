@@ -2,10 +2,10 @@
 id: TB-026
 titel: Nette tussenpagina bij het openen, geen glimp van de app voor de aanmelding
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:55
+bijgewerkt: 2026-09-15 20:00
 opgepakt-door: tussenpagina
 branch: ticket/tussenpagina-aanmelding
 pr:
@@ -55,3 +55,5 @@ Geen.
 - 2026-09-15 19:34 · tussenpagina · aangemaakt (status in-uitvoering)
 - 2026-09-15 19:47 · tussenpagina · Aanmeldpoort en tussenpagina gebouwd; vitest 876/876 groen, pnpm lint en pnpm build groen
 - 2026-09-15 19:55 · tussenpagina · Browserpas (headless Chrome, productiebuild, nep-API): geen nav bij laden of 401, 401 stuurt door naar /api/aanmelden, statusregel pas na 0,7 s, fout + Opnieuw proberen werkt, contrast 6,08:1 tot 16,58:1 licht en donker, 390px zonder scroll, reduced motion in rust; criteria afgevinkt
+- 2026-09-15 20:00 · tussenpagina · Antagonist: COMPLIANT, geen CRITICAL of MAJOR; de drie MINOR (routetest voor de aanmeldpagina's buiten de poort, index.html gelijk aan Tussenpagina, toestand tijdens opnieuw proberen) opgelost met tests, 30/30 groen, lint groen
+- 2026-09-15 20:00 · tussenpagina · in-uitvoering → klaar: Tussenpagina en aanmeldpoort gebouwd, browserpas en gates groen
