@@ -26,8 +26,8 @@ import { DIRECTIE, ikMet, metIk } from "../test/rechten";
   that never settles unless a test says otherwise: the signed-in row then draws nothing, and every test
   below sees the navigation exactly as it was before the row existed.
 
-  Since E6-02 slice 4 the hoekenfiches switch is also a planning right (ADR-0030 §3, R7), so the tests
-  that expect it put a directie in the cache first; directie plans every klas, with or without one chosen.
+  The switches wait for the rights (E6-02 slice 4, ADR-0030 §3, R7), and the algemene fiches' is a planning right, so
+  the tests that expect them put a directie in the cache first; directie plans every klas, with or without one chosen.
 */
 const rendermetPad = (pad: string, ik?: Ik) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -93,29 +93,32 @@ describe("Navigatie", () => {
     expect(schakelaar()).not.toBeInTheDocument();
   });
 
-  it("biedt hem niet aan wie de gekozen klas niet mag plannen, want elke fiche plant een hoek", () => {
+  it("biedt wie de gekozen klas niet mag plannen de hoeken en de activiteiten aan, maar geen algemene fiches", () => {
     // A hoofdleerkracht with themabeheer and no klas: every right but the planning of a klas.
     rendermetPad("/agenda", ikMet({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: ["K3"] }));
-    expect(schakelaar()).not.toBeInTheDocument();
-    // Nor the algemene fiches' switch: every fiche in that list plans one too.
+    // The hoeken are for everyone who reads the agenda (owner, 2026-09-15, FB-038): their verrijkingen, to read.
+    expect(schakelaar()).toBeInTheDocument();
+    // Not the algemene fiches' switch: every fiche in that list plans one.
     expect(screen.queryByRole("button", { name: t("hoekenpaneel.algemeenTitel") })).not.toBeInTheDocument();
     // The activiteiten's is there (owner, 2026-09-15, FB-017): its cards are read-only for whoever may not plan.
     expect(screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") })).toBeInTheDocument();
   });
 
-  it("sluit een fichelijst voor wie de klas niet mag plannen, maar laat de activiteiten open", async () => {
+  it("sluit de algemene fiches voor wie de klas niet mag plannen, maar laat de hoeken en de activiteiten open", async () => {
     // The selection answers, with no klas chosen, so the rights and the klas are both known and say no.
     vi.stubGlobal("fetch", vi.fn(async () => new Response("[]", { status: 200 })));
     const kijker = ikMet({ leerkrachtLeeftijden: ["K3"] });
 
-    useHoekenpaneel.setState({ open: true, soort: "activiteiten" });
-    const { unmount } = rendermetPad("/agenda", kijker);
-    await screen.findByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
-    await new Promise((r) => setTimeout(r, 50));
-    expect(useHoekenpaneel.getState().open).toBe(true);
-    unmount();
+    for (const soort of ["activiteiten", "hoeken"] as const) {
+      useHoekenpaneel.setState({ open: true, soort });
+      const { unmount } = rendermetPad("/agenda", kijker);
+      await screen.findByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
+      await new Promise((r) => setTimeout(r, 50));
+      expect(useHoekenpaneel.getState().open).toBe(true);
+      unmount();
+    }
 
-    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
     rendermetPad("/agenda", kijker);
     await waitFor(() => expect(useHoekenpaneel.getState().open).toBe(false));
   });

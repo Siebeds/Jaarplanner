@@ -126,8 +126,8 @@ export function useOntkoppelFicheDoel(klasId: string | null) {
 /* ------------------------------------------------------------------------------------------------
    PLANNING A FICHE IN THE AGENDA (ADR-0029 decision 3)
 
-   A separate read over its own range, like the hoekplaatsingen: a placement is outside the Jaarplan
-   aggregate, so it is outside the weekplanning read model too.
+   A separate read over its own range: a placement is outside the Jaarplan aggregate, so it is
+   outside the weekplanning read model too.
    ------------------------------------------------------------------------------------------------ */
 
 /** One occurrence in the time grid: this day, from this time to that one. Mirrors `AlgemeneFichemomentWeergave`. */
@@ -169,7 +169,7 @@ export interface AlgemeneFicheplaatsingInvoer {
 const plaatsingSleutel = (klasId: string | null, van: string, tot: string) =>
   ["algemene-ficheplaatsingen", klasId, van, tot] as const;
 
-/** The placements overlapping one date range, keyed on the range like the hoekplaatsingen beside them. */
+/** The placements overlapping one date range, keyed on the range like the weekplanning, so paging a month re-reads no year. */
 export function useAlgemeneFicheplaatsingen(klasId: string | null, van: string, tot: string) {
   return useQuery({
     queryKey: plaatsingSleutel(klasId, van, tot),
@@ -230,7 +230,7 @@ export interface FichemomentVerplaatsing {
  * Moves or resizes ONE occurrence. Only the placements are refetched: the placement still exists afterwards, so
  * whether the fiche counts for dekking cannot have changed.
  *
- * Not optimistic, for the reason `useVerplaatsHoekmoment` gives: the server refuses a day outside the window, a day
+ * Not optimistic: the server refuses a day outside the window, a day
  * without school (since E10-03) and a second start at the same time on one day, and she has to see that refusal
  * rather than watch the block jump back.
  */

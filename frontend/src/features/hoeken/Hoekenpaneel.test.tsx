@@ -3,34 +3,40 @@ import { DndContext } from "@dnd-kit/core";
 import { MemoryRouter } from "react-router-dom";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { Hoekenpaneel, type Paneelverrijking } from "./Hoekenpaneel";
+import { Hoekenpaneel } from "./Hoekenpaneel";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { zetSchermbreedte } from "../../test/setup";
 import { ikMet, metIk } from "../../test/rechten";
 import type { Ik } from "../../lib/aanmelding";
 import { STANDAARDDUUR } from "../plan/tijd";
 import type { Activiteitenweek } from "../plan/Activiteitensectie";
+import type { Subthemareeks } from "../plan/subthemareeksen";
+import type { Verrijkingenweek } from "./verrijkingenweek";
 import { t } from "../../i18n";
 
 /**
  * The side panel shows one list at a time, the one its switch opened (owner, 2026-09-14: "twee secties ... niet
- * gegroepeerd als fiches"), and a fiche chosen from it reaches the agenda as its own kind: a hoek and an algemene fiche
- * open different sheets and save through different endpoints. Both widths, because the panel has two shapes (see
- * `test/setup.ts`).
+ * gegroepeerd als fiches"). An algemene fiche chosen from it reaches the agenda to be planned; a hoek is never planned
+ * and opens the sheet that writes what it holds this week (FB-038, ADR-0044). Both widths, because the panel has two
+ * shapes (see `test/setup.ts`).
  */
 const antwoord = (data: unknown) =>
   new Response(JSON.stringify(data), { status: 200, headers: { "Content-Type": "application/json" } });
 
+const BOUWHOEK = { id: "h-1", klasId: "k-1", naam: "bouwhoek", omschrijving: null, aantalVerrijkingen: 0 };
+
 beforeEach(() => {
   vi.stubGlobal(
     "fetch",
-    vi.fn((pad: string) =>
+    vi.fn((pad: string, init?: RequestInit) =>
       Promise.resolve(
-        pad.includes("/algemene-fiches")
-          ? antwoord([
-              { id: "f-1", klasId: "k-1", naam: "turnen", omschrijving: null, aantalPlaatsingen: 0, doelen: [] },
-            ])
-          : antwoord([{ id: "h-1", klasId: "k-1", naam: "bouwhoek", omschrijving: null, aantalPlaatsingen: 0 }]),
+        init?.method === "PUT"
+          ? antwoord({})
+          : pad.includes("/algemene-fiches")
+            ? antwoord([
+                { id: "f-1", klasId: "k-1", naam: "turnen", omschrijving: null, aantalPlaatsingen: 0, doelen: [] },
+              ])
+            : antwoord([BOUWHOEK]),
       ),
     ),
   );
@@ -45,22 +51,50 @@ afterEach(() => {
 // The fiche tests do not look at the activiteiten list, so its week says only that nothing runs.
 const EEN_WEEK: Activiteitenweek = { maandag: "2026-09-14", nummer: 38, lopend: [] };
 
-function toon(
-  onKies = vi.fn(),
+const herfst: Subthemareeks = {
+  subthemaId: "s-herfst",
+  subthemaNaam: "De herfst",
+  themaId: "t-1",
+  themaNaam: "Seizoenen",
+  van: "2026-09-14",
+  tot: "2026-09-25",
+  aantalDagen: 4,
+  periodeId: "p-herfst",
+};
+
+/** A week in which "De herfst" runs, with the bouwhoek's text for it when one is given. */
+const weekMet = (tekst?: string): Verrijkingenweek => ({
+  status: "klaar",
+  reeksen: [herfst],
+  periodes: [
+    {
+      subthemaperiodeId: "p-herfst",
+      subthemaId: "s-herfst",
+      subthemaNaam: "De herfst",
+      van: "2026-09-14",
+      tot: "2026-09-25",
+      verrijkingen: tekst ? [{ id: "v-1", hoekId: "h-1", tekst }] : [],
+    },
+  ],
+});
+
+const GEEN_SUBTHEMA: Verrijkingenweek = { status: "klaar", reeksen: [], periodes: [] };
+
+function toon({
   onKiesAlgemeneFiche = vi.fn(),
-  klasId: string | null = "k-1",
-  verrijkingenWeek: ReadonlyMap<string, readonly Paneelverrijking[]> = new Map(),
-) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  klasId = "k-1" as string | null,
+  verrijkingenWeek = GEEN_SUBTHEMA,
+  magPlannen = true,
+} = {}) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <DndContext>
           <Hoekenpaneel
             klasId={klasId}
-            onKies={onKies}
             onKiesAlgemeneFiche={onKiesAlgemeneFiche}
-            magPlannen
+            magPlannen={magPlannen}
             activiteitenWeek={EEN_WEEK}
             verrijkingenWeek={verrijkingenWeek}
             onKiesActiviteit={vi.fn()}
@@ -69,27 +103,120 @@ function toon(
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  return { onKies, onKiesAlgemeneFiche, client };
+  return { onKiesAlgemeneFiche, client };
 }
 
-describe("Hoekenpaneel: de verrijking van de week onder elke hoek (FB-020)", () => {
-  it("toont onder de hoek wat hij bevat terwijl het subthema van deze week loopt, met de naam van dat subthema", async () => {
+const kaart = async (naam = "bouwhoek") => (await screen.findByText(naam)).closest("button")!;
+
+describe("Hoekenpaneel: de verrijking van de week onder elke hoek (FB-038)", () => {
+  beforeEach(() => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
-    toon(vi.fn(), vi.fn(), "k-1", new Map([["h-1", [{ subthemaNaam: "De herfst", tekst: "kastanjes en dennenappels" }]]]));
-
-    const kaart = (await screen.findByText("bouwhoek")).closest("button")!;
-    expect(within(kaart).getByText("kastanjes en dennenappels")).toBeInTheDocument();
-    expect(within(kaart).getByText("De herfst")).toBeInTheDocument();
   });
 
-  it("toont niets extra onder een hoek zonder verrijking deze week", async () => {
+  it("toont onder de hoek wat hij bevat terwijl het subthema van deze week loopt, met de naam van dat subthema", async () => {
+    toon({ verrijkingenWeek: weekMet("kastanjes en dennenappels") });
+
+    const hoek = await kaart();
+    expect(within(hoek).getByText("kastanjes en dennenappels")).toBeInTheDocument();
+    expect(within(hoek).getByText("De herfst")).toBeInTheDocument();
+  });
+
+  it("biedt onder een hoek zonder verrijking aan om er een in te vullen", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+
+    const hoek = await kaart();
+    expect(within(hoek).getByText("De herfst")).toBeInTheDocument();
+    expect(within(hoek).getByText(t("hoekenpaneel.verrijkingInvullen"))).toBeInTheDocument();
+  });
+
+  it("zegt niets onder een hoek zolang de week niet gelezen is, en niets in een week zonder subthema", async () => {
+    toon({ verrijkingenWeek: { status: "laadt" } });
+    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
+  });
+
+  it("zegt niets onder een hoek in een week waarin geen subthema loopt", async () => {
+    toon({ verrijkingenWeek: GEEN_SUBTHEMA });
+    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
+  });
+
+  it("opent bij een klik het blad van die hoek, bewaart alleen die hoek, en zet de focus terug op de kaart", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+
+    fireEvent.click(await kaart());
+    const blad = await screen.findByRole("dialog", { name: "bouwhoek" });
+    fireEvent.change(within(blad).getByLabelText("De herfst"), { target: { value: "kastanjes" } });
+    fireEvent.click(within(blad).getByRole("button", { name: t("hoekverrijkingblad.bewaren") }));
+
+    await waitFor(() => expect(blad).not.toBeInTheDocument());
+    const oproepen = vi.mocked(fetch).mock.calls as [string, RequestInit | undefined][];
+    const [pad, init] = oproepen.find(([, verzoek]) => verzoek?.method === "PUT")!;
+    expect(pad).toBe("/api/klassen/k-1/hoekverrijkingen");
+    expect(JSON.parse(String(init!.body))).toEqual({
+      subthemaperiodeId: "p-herfst",
+      verrijkingen: [{ hoekId: "h-1", tekst: "kastanjes" }],
+    });
+    // Back on the corner she pressed, not on <body>: `Blad` gives Radix no trigger to return focus to.
+    await waitFor(() => expect(screen.getByText("bouwhoek").closest("button")).toHaveFocus());
+  });
+
+  it("maakt van een hoek geen fiche om te slepen: een hoek gaat niet in de agenda", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+
+    // dnd-kit's attributes are what say "draggable" to a screen reader; the algemene fiche below has them.
+    expect(await kaart()).not.toHaveAttribute("aria-roledescription");
+  });
+
+  it("sluit op een telefoon eerst het paneelblad, en opent het weer wanneer het blad van de hoek sluit", async () => {
+    zetSchermbreedte(false);
+    toon({ verrijkingenWeek: weekMet() });
+
+    fireEvent.click(await kaart());
+    expect(useHoekenpaneel.getState().open).toBe(false);
+
+    const blad = await screen.findByRole("dialog", { name: "bouwhoek" });
+    fireEvent.click(within(blad).getByRole("button", { name: t("hoekverrijkingblad.annuleren") }));
+
+    // Back at the corners, to go on to the next one.
+    await waitFor(() => expect(useHoekenpaneel.getState().open).toBe(true));
+    expect(screen.queryByRole("dialog", { name: "bouwhoek" })).not.toBeInTheDocument();
+  });
+});
+
+describe("Hoekenpaneel: de hoeken voor wie de klas alleen mag bekijken (FB-038)", () => {
+  beforeEach(() => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
-    toon();
+  });
 
-    const kaart = (await screen.findByText("bouwhoek")).closest("button")!;
-    expect(kaart).toHaveTextContent(/^bouwhoek$/);
+  it("toont de hoeken met hun verrijking, zonder tegel, en opent het blad zonder velden", async () => {
+    toon({ magPlannen: false, verrijkingenWeek: weekMet("kastanjes") });
+
+    expect(screen.getByRole("complementary", { name: t("hoekenpaneel.titel") })).toBeInTheDocument();
+    expect(within(await kaart()).getByText("kastanjes")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("hoeken.toevoegen") })).not.toBeInTheDocument();
+
+    fireEvent.click(await kaart());
+    const blad = await screen.findByRole("dialog", { name: "bouwhoek" });
+    expect(within(blad).getByText("kastanjes")).toBeInTheDocument();
+    expect(within(blad).queryByRole("textbox")).toBeNull();
+  });
+
+  it("zegt onder een lege verrijking dat er niets is, en biedt niet aan om ze in te vullen", async () => {
+    toon({ magPlannen: false, verrijkingenWeek: weekMet() });
+
+    const hoek = await kaart();
+    expect(within(hoek).getByText(t("hoekenpaneel.geenVerrijking"))).toBeInTheDocument();
+    expect(within(hoek).queryByText(t("hoekenpaneel.verrijkingInvullen"))).toBeNull();
+  });
+
+  it("stuurt een lezer bij een klas zonder hoeken niet naar Instellingen om er te maken", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(antwoord([]))));
+    toon({ magPlannen: false });
+
+    expect(await screen.findByText(t("hoekenpaneel.geenHoeken"))).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: t("hoekenpaneel.naarInstellingen") })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("hoeken.toevoegen") })).not.toBeInTheDocument();
   });
 });
 
@@ -97,24 +224,26 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
   it("toont naast de agenda alleen de algemene fiches wanneer die schakelaar het opende", async () => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "algemeen" });
-    const { onKies, onKiesAlgemeneFiche } = toon();
+    const { onKiesAlgemeneFiche } = toon();
 
     expect(screen.getByRole("complementary", { name: t("hoekenpaneel.algemeenTitel") })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /^turnen/ }));
+    const turnen = await screen.findByRole("button", { name: /^turnen/ });
+    // An algemene fiche is still dragged onto the agenda.
+    expect(turnen).toHaveAttribute("aria-roledescription");
+    fireEvent.click(turnen);
     expect(onKiesAlgemeneFiche).toHaveBeenCalledWith("f-1");
-    expect(onKies).not.toHaveBeenCalled();
     // The corners are the other switch's list, not a second section of this one.
     expect(screen.queryByText("bouwhoek")).not.toBeInTheDocument();
   });
 
-  it("toont de hoekenfiches wanneer die schakelaar het opende, en geeft een hoek als hoek door", async () => {
+  it("toont de hoekenfiches wanneer die schakelaar het opende, en een klik plant niets maar opent de verrijking", async () => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
-    const { onKies, onKiesAlgemeneFiche } = toon();
+    const { onKiesAlgemeneFiche } = toon();
 
     expect(screen.getByRole("complementary", { name: t("hoekenpaneel.titel") })).toBeInTheDocument();
     fireEvent.click(await screen.findByRole("button", { name: /bouwhoek/ }));
-    expect(onKies).toHaveBeenCalledWith("h-1");
+    expect(await screen.findByRole("dialog", { name: "bouwhoek" })).toBeInTheDocument();
     expect(onKiesAlgemeneFiche).not.toHaveBeenCalled();
     expect(screen.queryByText("turnen")).not.toBeInTheDocument();
   });
@@ -186,8 +315,8 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     const { client } = toon();
     expect(await screen.findByRole("button", { name: /^turnen/ })).toBeInTheDocument();
 
-    // After every placement the fiche list is invalidated and refetched with the panel still open
-    // (`usePlaatsingVerversing`). A refetch that fails must not take away the list she was just dragging from.
+    // After every placement the fiche list is invalidated and refetched with the panel still open. A refetch that
+    // fails must not take away the list she was just dragging from.
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response("{}", { status: 500 }))));
     await client.invalidateQueries({ queryKey: ["algemene-fiches"] });
     await waitFor(() => expect(client.getQueryState(["algemene-fiches", "k-1"])?.status).toBe("error"));
@@ -220,7 +349,7 @@ function serverMet({ hoeken = [] as object[], fiches = [] as object[] } = {}) {
       if (init?.method === "POST") {
         const body = JSON.parse(String(init.body)) as object;
         posts.push({ pad, body });
-        const nieuw = { id: `n-${posts.length}`, klasId: "k-1", aantalPlaatsingen: 0, doelen: [], ...body };
+        const nieuw = { id: `n-${posts.length}`, klasId: "k-1", aantalPlaatsingen: 0, aantalVerrijkingen: 0, doelen: [], ...body };
         lijst.push(nieuw);
         return Promise.resolve(antwoord(nieuw));
       }
@@ -232,9 +361,7 @@ function serverMet({ hoeken = [] as object[], fiches = [] as object[] } = {}) {
 
 describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () => {
   it("maakt een hoek vanuit het paneel, en die hoek staat daarna in de lijst", async () => {
-    const posts = serverMet({
-      hoeken: [{ id: "h-1", klasId: "k-1", naam: "bouwhoek", omschrijving: null, aantalPlaatsingen: 0 }],
-    });
+    const posts = serverMet({ hoeken: [{ ...BOUWHOEK }] });
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
     toon();
@@ -275,7 +402,7 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
 
   it("houdt de focus op de tegel wanneer de eerste fiche de lege zin vervangt", async () => {
     // The refetch after the save is held until focus has returned, which is the order a browser usually gives: there
-    // the network tends to answer after the frame `sluitNieuw` waits for. In jsdom it would otherwise land first, and the
+    // the network tends to answer after the frame `sluitBlad` waits for. In jsdom it would otherwise land first, and the
     // test could not tell a kept tile from a remounted one.
     const fiches: object[] = [];
     const vastgehouden = { los: (_antwoord: Response) => {} };
@@ -324,7 +451,7 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
   });
 
   it("sluit op een telefoon eerst het paneelblad en opent het weer wanneer het formulier sluit", async () => {
-    serverMet({ hoeken: [{ id: "h-1", klasId: "k-1", naam: "bouwhoek", omschrijving: null, aantalPlaatsingen: 0 }] });
+    serverMet({ hoeken: [{ ...BOUWHOEK }] });
     zetSchermbreedte(false);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
     toon();
@@ -390,7 +517,7 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
   it("toont geen tegel zonder gekozen klas", () => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "algemeen" });
-    toon(undefined, undefined, null);
+    toon({ klasId: null });
 
     expect(screen.getByText(t("hoekenpaneel.geenKlas"))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("algemeneFiches.toevoegen") })).not.toBeInTheDocument();
@@ -469,11 +596,10 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
           <DndContext>
             <Hoekenpaneel
               klasId="k-1"
-              onKies={vi.fn()}
               onKiesAlgemeneFiche={vi.fn()}
               magPlannen={magPlannen}
               activiteitenWeek={{ maandag: WEEK, nummer: 38, lopend }}
-              verrijkingenWeek={new Map()}
+              verrijkingenWeek={GEEN_SUBTHEMA}
               onKiesActiviteit={onKiesActiviteit}
             />
           </DndContext>
@@ -617,9 +743,9 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
   it("toont de doelen van een kaart achter een info-icoon, alleen de aanvaarde en manuele", async () => {
     const { onKiesActiviteit } = toonActiviteiten({ lopend: ["s-2"] });
 
-    const kaart = await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
+    const kaartje = await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
     // One manual link and one proposal: a suggestion is not a goal of the card, so the mark says one.
-    expect(within(kaart).getByText(t("activiteit.eenDoel"))).toBeInTheDocument();
+    expect(within(kaartje).getByText(t("activiteit.eenDoel"))).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) }));
     expect(await screen.findByText("MUZ.1.1")).toBeInTheDocument();
@@ -628,8 +754,8 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     expect(onKiesActiviteit).not.toHaveBeenCalled();
   });
 
-  it("toont wie de klas niet mag plannen geen fichelijst", () => {
-    useHoekenpaneel.setState({ soort: "hoeken" });
+  it("toont wie de klas niet mag plannen geen algemene fiches", () => {
+    useHoekenpaneel.setState({ soort: "algemeen" });
     toonActiviteiten({ magPlannen: false });
 
     expect(screen.queryByRole("complementary")).not.toBeInTheDocument();

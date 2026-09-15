@@ -34,8 +34,8 @@ import {
  * so before she presses. It says nothing about whether a goal stays gedekt: a thema may carry the same goal, which
  * this sheet cannot see.
  *
- * **`alleenLezen` is the same sheet for a gebruiker who may not plan this klas** (E6-02, ADR-0030 §3, R7), as in
- * `Hoekdetailblad`: the period and the hours as they are, with the delete, the moment's fields and the sentence about
+ * **`alleenLezen` is the same sheet for a gebruiker who may not plan this klas** (E6-02, ADR-0030 §3, R7): the
+ * period and the hours as they are, with the delete, the moment's fields and the sentence about
  * what the delete costs left out, since all three are about changing the plan.
  *
  * **Opened from a block, it starts with that day's text** (FB-022): what the class does in this block today, the thing
@@ -92,7 +92,7 @@ export function Algemenefichedetailblad({
       voet={
         alleenLezen ? undefined : (
         <div className="flex flex-wrap items-center gap-2">
-          {/* The house style for a destructive confirm, as in `Hoekdetailblad`: ink fill, not a danger hue. */}
+          {/* The house style for a destructive confirm, as `Bevestiging` does it: ink fill, not a danger hue. */}
           <Knop
             rang="stil"
             type="button"
@@ -138,8 +138,7 @@ export function Algemenefichedetailblad({
 
         <div>
           <p className="text-micro uppercase text-inkt-zwak">{t("fichedetail.uurrooster")}</p>
-          {/* Per stretch of hours, the most common first, for the reason `Hoekdetailblad` prints them that way: after
-              one Monday moved, "the run's hours" read off the first day would be false for the others. */}
+          {/* Per stretch of hours, the most common first: after one Monday moved, "the run's hours" read off the first day would be false for the others. */}
           <div className="mt-0.5 flex flex-col">
             {groepen.map((groep) => (
               <p key={`${groep.begin}-${groep.einde}`} className="text-body text-inkt">
@@ -276,7 +275,8 @@ function Dagtekstvorm({
 /**
  * One occurrence's day and hours, as fields: the non-drag route to what the grid does by dragging.
  *
- * Not a `<form>`, for the reason `Hoekdetailblad`'s verrijking form gives: a sheet may sit inside one.
+ * Not a `<form>`: this sheet may sit inside one on some screens, and a nested form is invalid HTML that submits the
+ * wrong thing.
  */
 function Momentvorm({
   plaatsing,

@@ -1,10 +1,10 @@
 /**
  * The drag id an activiteit card in the side panel carries, and how to read it back (FB-017).
  *
- * `hoeken/sleepids.ts` explains why the agenda's drop handler needs a prefix: it is handed ONE id and has to know what
- * it was handed. A planned activiteit is dragged under its bare `plaatsingId`, so a card that has no placement yet needs
- * a prefix of its own. Not a prefix of any other kind's (`hoekfiche:`, `hoekmoment:`, `algemenefiche:`,
- * `fichemoment:`), so the order in which the handler tests them does not matter.
+ * `algemene-fiches/sleepids.ts` explains why the agenda's drop handler needs a prefix: it is handed ONE id and has to
+ * know what it was handed. A planned activiteit is dragged under its bare `plaatsingId`, so a card that has no placement
+ * yet needs a prefix of its own. Not a prefix of any other kind's (`algemenefiche:`, `fichemoment:`), so the order in
+ * which the handler tests them does not matter.
  */
 export const ACTIVITEIT_VOORVOEGSEL = "activiteitkaart:";
 

@@ -9,11 +9,10 @@ namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 /// <summary>
 /// CRUD for a class's corners (owner, meeting 2026-08-30), over EF Core.
 /// <para>
-/// <b>The delete guard is the only interesting thing in here, and it is not optional.</b>
-/// <c>hoekplaatsingen</c> has a <c>Restrict</c> foreign key to <c>hoeken</c>, so without a check in front of it
-/// a teacher deleting a placed corner gets a raw 23503 as an unhandled 500, on an ordinary action, with no route
-/// out. This repository has shipped exactly that once before, with a comment claiming a Dutch refusal that did
-/// not exist. So the count is read first and the refusal is a sentence she can act on (Art. II.3).
+/// <b>The delete is the only interesting thing in here.</b> <c>hoekplaatsingen</c> has a <c>Restrict</c> foreign key
+/// to <c>hoeken</c>, so a delete that left a placement standing would surface as a raw 23503. A hoek is no longer
+/// placed in the agenda (ADR-0044), so the rows an earlier agenda left are invisible, and a refusal naming them would
+/// send her looking for something no screen shows. They go with the hoek instead, without a word.
 /// </para>
 /// </summary>
 public sealed class HoekBeheerService : IHoekBeheerService
@@ -69,16 +68,13 @@ public sealed class HoekBeheerService : IHoekBeheerService
     {
         var hoek = await HaalOpAsync(hoekId, cancellationToken);
 
-        var geplaatst = await _db.Hoekplaatsingen.CountAsync(p => p.HoekId == hoekId, cancellationToken);
-        if (geplaatst > 0)
-        {
-            // The count and the way out, in one sentence. "Deze hoek is in gebruik" without saying where would
-            // leave her hunting through a school year for it.
-            throw new SchoolcontentValidatieFout(
-                geplaatst == 1
-                    ? $"'{hoek.Naam}' staat nog 1 keer in de agenda en kan niet verwijderd worden. Haal die hoek eerst uit de agenda."
-                    : $"'{hoek.Naam}' staat nog {geplaatst} keer in de agenda en kan niet verwijderd worden. Haal die hoeken eerst uit de agenda.");
-        }
+        // Its placements, with their momenten: loaded rather than left to the cascade, so the in-memory provider, which
+        // enforces none, deletes the same rows PostgreSQL does (owner, 2026-09-15: "stil mee weg").
+        _db.Hoekplaatsingen.RemoveRange(
+            await _db.Hoekplaatsingen
+                .Include(p => p.Momenten)
+                .Where(p => p.HoekId == hoekId)
+                .ToListAsync(cancellationToken));
 
         // Its verrijkingen go with it (FB-020): text about a corner that no longer exists. The confirmation before this
         // call has said how many. Removed here rather than left to the database's cascade, so the in-memory provider,

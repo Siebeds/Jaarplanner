@@ -100,29 +100,31 @@ public sealed class HoekBeheerServiceTests
     }
 
     [Fact]
-    public async Task Een_geplaatste_hoek_kan_niet_verwijderd_worden_en_de_melding_noemt_het_aantal()
+    public async Task Een_hoek_die_in_de_agenda_stond_gaat_weg_met_zijn_plaatsingen_en_hun_momenten()
     {
+        // FB-038 (ADR-0044): a hoek is no longer placed in the agenda, so the placements an earlier agenda left are
+        // invisible. They go with the hoek, momenten included, instead of blocking a delete no screen can unblock.
         var hoek = await Service().MaakHoekAsync(_k3a.Id, new HoekInvoer("boekenhoek"));
+        var ander = await Service().MaakHoekAsync(_k3a.Id, new HoekInvoer("bouwhoek"));
 
         await using (var context = Context())
         {
-            context.Hoekplaatsingen.Add(new Hoekplaatsing(
-                _k3a.Id, hoek.Id, new DateOnly(2026, 9, 1), new DateOnly(2026, 10, 16)));
+            var plaatsing = new Hoekplaatsing(_k3a.Id, hoek.Id, new DateOnly(2026, 9, 1), new DateOnly(2026, 10, 16));
+            plaatsing.PlanIn(new DateOnly(2026, 9, 2), new TimeOnly(9, 0), new TimeOnly(10, 0));
+            context.Hoekplaatsingen.AddRange(
+                plaatsing,
+                new Hoekplaatsing(_k3a.Id, ander.Id, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 11)));
             await context.SaveChangesAsync();
         }
 
-        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => Service().VerwijderHoekAsync(hoek.Id));
+        await Service().VerwijderHoekAsync(hoek.Id);
 
-        // THE ASSERTION THAT MATTERS: a Dutch sentence naming the corner, the count and the way out, in front of
-        // a Restrict FK that would otherwise surface as a bare 23503.
-        Assert.Contains("boekenhoek", fout.Message);
-        Assert.Contains("1 keer", fout.Message);
-        Assert.Contains("agenda", fout.Message);
-
-        // And nothing was deleted on the way to the refusal.
         await using var na = Context();
-        Assert.Equal(1, await na.Hoeken.CountAsync(h => h.Id == hoek.Id));
+        Assert.Equal(0, await na.Hoeken.CountAsync(h => h.Id == hoek.Id));
+        // The other corner's placement stays: only this hoek's rows go.
+        var over = Assert.Single(await na.Hoekplaatsingen.ToListAsync());
+        Assert.Equal(ander.Id, over.HoekId);
+        Assert.Empty(await na.Hoekmomenten.ToListAsync());
     }
 
     [Fact]

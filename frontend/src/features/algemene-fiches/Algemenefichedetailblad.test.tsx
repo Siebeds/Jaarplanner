@@ -97,8 +97,7 @@ const opUur = (begin: string, einde: string, dagen: string) =>
 
 /*
   E6-02: a planned algemene fiche is the klas's planning (ADR-0030 §3, R7). A gebruiker who may read the agenda and not
-  plan the klas opens the same sheet from a block and gets what the run is, with nothing that would change it: the
-  same shape as `Hoekdetailblad`'s reader case.
+  plan the klas opens the same sheet from a block and gets what the run is, with nothing that would change it.
 */
 describe("Algemenefichedetailblad voor wie de klas alleen mag bekijken", () => {
   it("toont periode en uren, zonder verwijderen, zonder dagvelden en zonder de zin over wat verwijderen kost", () => {

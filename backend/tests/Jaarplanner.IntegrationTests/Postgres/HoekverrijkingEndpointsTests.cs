@@ -13,8 +13,9 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// Hoekverrijkingen per subthemaperiode over HTTP and in the migration, against real PostgreSQL (FB-020, ADR-0041).
 /// <para>
 /// The unit tests hold the service's rules on the in-memory provider, which enforces no foreign key and no cascade.
-/// This is where the three things only PostgreSQL can show are proven: the unique (hoek, window) pair, the cascade when
-/// a subthema is deleted, and the migration that carries the old dated verrijkingen over to the windows they overlap.
+/// This is where the things only PostgreSQL can show are proven: the unique (hoek, window) pair, the cascade when a
+/// subthema is deleted, the migration that carries the old dated verrijkingen over to the windows they overlap, and a
+/// hoek deleted past the Restrict key of the placements an earlier agenda left (FB-038, ADR-0044).
 /// </para>
 /// </summary>
 public sealed class HoekverrijkingEndpointsTests : IAsyncLifetime
@@ -124,6 +125,29 @@ public sealed class HoekverrijkingEndpointsTests : IAsyncLifetime
         await using var na = _db.MaakContext();
         Assert.Empty(await na.Subthemaplaatsingen.ToListAsync());
         Assert.Empty(await na.Hoekverrijkingen.ToListAsync());
+    }
+
+    [PostgresFact]
+    public async Task Een_hoek_gaat_weg_met_de_plaatsingen_die_een_vroegere_agenda_achterliet()
+    {
+        // FB-038 (ADR-0044): hoekplaatsingen has a Restrict key to hoeken, so a placement left standing would turn the
+        // delete into a raw 23503. Only PostgreSQL enforces that key; the unit test's in-memory provider does not.
+        var zet = await ZetOpAsync();
+        await using (var context = _db.MaakContext())
+        {
+            var plaatsing = new Hoekplaatsing(zet.KlasId, zet.Boekenhoek, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 25));
+            plaatsing.PlanIn(new DateOnly(2026, 9, 15), new TimeOnly(9, 0), new TimeOnly(10, 0));
+            context.Hoekplaatsingen.Add(plaatsing);
+            await context.SaveChangesAsync();
+        }
+
+        var antwoord = await _factory.CreateClient().DeleteAsync($"/api/hoeken/{zet.Boekenhoek}");
+
+        Assert.True(antwoord.IsSuccessStatusCode, await antwoord.Content.ReadAsStringAsync());
+        await using var na = _db.MaakContext();
+        Assert.Empty(await na.Hoekplaatsingen.ToListAsync());
+        Assert.Empty(await na.Hoekmomenten.ToListAsync());
+        Assert.Equal(1, await na.Hoeken.CountAsync(h => h.KlasId == zet.KlasId));
     }
 
     /// <summary>

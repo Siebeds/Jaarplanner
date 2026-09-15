@@ -2,7 +2,7 @@ import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
+import { Tijdraster, type Ficheblokje } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { Schooldaguren } from "../schooluren/gegevens";
@@ -43,15 +43,6 @@ const dag = (activiteiten: GeplandeActiviteit[] = [], extra: Partial<Agendadag> 
   ...extra,
 });
 
-const hoek = (begin: string, einde: string): Hoekblokje => ({
-  plaatsingId: "hp-1",
-  momentId: "hm-1",
-  naam: "bouwhoek",
-  datum: "2026-09-08",
-  begin,
-  einde,
-});
-
 const fiche = (begin: string, einde: string): Ficheblokje => ({
   plaatsingId: "fp-1",
   momentId: "fm-1",
@@ -64,10 +55,8 @@ const fiche = (begin: string, einde: string): Ficheblokje => ({
 function toon(
   dagen: Agendadag[],
   opties: {
-    hoekmomenten?: Hoekblokje[];
     fichemomenten?: Ficheblokje[];
     onVoegToe?: (datum: string, begin: number) => void;
-    onOpenHoek?: (plaatsingId: string) => void;
     onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
     onOpenFiche?: (plaatsingId: string, momentId: string) => void;
     magPlannen?: boolean;
@@ -78,7 +67,6 @@ function toon(
     <DndContext>
       <Tijdraster
         dagen={dagen}
-        hoekmomenten={opties.hoekmomenten ?? []}
         fichemomenten={opties.fichemomenten ?? []}
         reeksenPerDag={new Map()}
         vakken={[]}
@@ -86,7 +74,6 @@ function toon(
         magPlannen={opties.magPlannen ?? true}
         onVoegToe={opties.onVoegToe ?? (() => {})}
         onOpen={opties.onOpen ?? (() => {})}
-        onOpenHoek={opties.onOpenHoek ?? (() => {})}
         onOpenFiche={opties.onOpenFiche ?? (() => {})}
         onWijzigTijd={() => {}}
       />
@@ -145,17 +132,6 @@ describe("Tijdraster", () => {
     expect(gevraagd).toHaveBeenCalledWith("2026-09-08", STANDAARDBEGIN);
   });
 
-  it("tekent een hoek als blok op de dag zelf en opent zijn plaatsing", () => {
-    const geopend = vi.fn();
-    toon([dag()], { hoekmomenten: [hoek("13:30:00", "14:20:00")], onOpenHoek: geopend });
-
-    const knop = screen.getByRole("button", { name: /bouwhoek/ });
-    expect(plaats(knop).top).toBe(`${810 * (56 / 60)}px`);
-
-    fireEvent.click(knop);
-    expect(geopend).toHaveBeenCalledWith("hp-1");
-  });
-
   /*
     E6-02: the grid's four gestures are the klas's planning (ADR-0030 §3, R7). A gebruiker who may not plan this klas
     reads it: blocks still open, and nothing invites a placement, stretches or drags. The drag semantics matter as much
@@ -209,7 +185,7 @@ describe("Tijdraster", () => {
 
     const knop = screen.getByRole("button", { name: /^turnen/ });
     expect(plaats(knop).top).toBe(`${630 * (56 / 60)}px`);
-    // Told apart from a hoek and an activiteit by a word, not by a hue (Art. XII): an hour is tall enough to print it.
+    // Told apart from an activiteit by a word, not by a hue (Art. XII): an hour is tall enough to print it.
     expect(screen.getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
 
     // The occurrence travels with the placement: its sheet offers that one day's hours without a drag.
@@ -355,7 +331,6 @@ describe("Tijdraster", () => {
   ];
   const midden = {
     magPlannen: true,
-    hoekmomenten: [],
     fichemomenten: [],
     schooluren: undefined,
     reeksenPerDag: new Map([
@@ -369,7 +344,6 @@ describe("Tijdraster", () => {
     ],
     onVoegToe: () => {},
     onOpen: () => {},
-    onOpenHoek: () => {},
     onOpenFiche: () => {},
     onWijzigTijd: () => {},
   };
@@ -438,7 +412,6 @@ describe("Tijdraster", () => {
       <DndContext>
         <Tijdraster
           dagen={[dag(), dag([], { datum: "2026-09-09" })]}
-          hoekmomenten={[]}
           fichemomenten={[]}
           reeksenPerDag={new Map()}
           vakken={[]}
@@ -446,7 +419,6 @@ describe("Tijdraster", () => {
           magPlannen
           onVoegToe={() => {}}
           onOpen={() => {}}
-          onOpenHoek={() => {}}
           onOpenFiche={() => {}}
           onKiesDag={geopend}
           onWijzigTijd={() => {}}
@@ -744,12 +716,6 @@ describe("Tijdraster: doelen van een blok", () => {
     toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], { magPlannen: false });
 
     expect(screen.getByRole("button", info("kringgesprek"))).toBeInTheDocument();
-  });
-
-  it("zet geen icoon op een hoek, want een hoek heeft nog geen doelen", () => {
-    toon([dag()], { hoekmomenten: [hoek("13:30:00", "14:20:00")] });
-
-    expect(screen.queryByRole("button", info("bouwhoek"))).not.toBeInTheDocument();
   });
 
   it("zet een icoon op een algemene fiche met haar doelen, en niet zolang die doelen er niet zijn", () => {

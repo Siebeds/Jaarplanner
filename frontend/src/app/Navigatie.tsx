@@ -72,11 +72,11 @@ import { cn } from "../lib/cn";
  * the inline reservation in `Schil` both follow the store through `useZijkolom`, so without it a teacher who
  * navigated away kept a 56px rail and 296px of reserved width beside a screen with no panel in it.
  *
- * **The fiche switches are only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every fiche in
- * the panel plans a hoek or an algemene fiche, and `Hoekenpaneel` draws neither list for anyone else. For the same reason as
- * the reset above, a fiche panel is closed once the rights and the klas are known and say no: a picker switched to a
- * colleague's klas would otherwise leave the rail and the reservation dressed for a panel that no longer renders. An
- * activiteiten panel stays open, since its cards are for everyone who reads the agenda.
+ * **The algemene fiches' switch is only for whoever may plan the klas on screen** (E6-02, ADR-0030 §3, R7), because every
+ * fiche in that list plans one, and `Hoekenpaneel` draws it for nobody else. For the same reason as the reset above, that
+ * panel is closed once the rights and the klas are known and say no: a picker switched to a colleague's klas would
+ * otherwise leave the rail and the reservation dressed for a panel that no longer renders. The activiteiten and the
+ * hoekenfiches stay open, since their cards are for everyone who reads the agenda (FB-017; FB-038, ADR-0044).
  */
 export function Navigatie() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
@@ -108,8 +108,8 @@ export function Navigatie() {
   */
   const magNiet = !rechtenLaden && !selectieLaadt && !magPlannen;
   useLayoutEffect(() => {
-    // The activiteiten list stays for whoever may only read the klas (FB-017); the fiche lists do not.
-    if (paneelOpen && (!opAgenda || (magNiet && paneelSoort !== "activiteiten"))) zetPaneel(false);
+    // The activiteiten and the hoeken stay for whoever may only read the klas (FB-017, FB-038); the algemene fiches do not.
+    if (paneelOpen && (!opAgenda || (magNiet && paneelSoort === "algemeen"))) zetPaneel(false);
   }, [opAgenda, magNiet, paneelOpen, paneelSoort, zetPaneel]);
 
   return (
@@ -161,23 +161,21 @@ export function Navigatie() {
               onWissel={() => kiesPaneel("activiteiten")}
             />
             {magPlannen ? (
-              <>
-                <Paneelschakelaar
-                  naam={t("hoekenpaneel.algemeenTitel")}
-                  Icoon={IcoonFiche}
-                  aan={paneelOpen && paneelSoort === "algemeen"}
-                  smal={smal}
-                  onWissel={() => kiesPaneel("algemeen")}
-                />
-                <Paneelschakelaar
-                  naam={t("hoekenpaneel.titel")}
-                  Icoon={IcoonHoek}
-                  aan={paneelOpen && paneelSoort === "hoeken"}
-                  smal={smal}
-                  onWissel={() => kiesPaneel("hoeken")}
-                />
-              </>
+              <Paneelschakelaar
+                naam={t("hoekenpaneel.algemeenTitel")}
+                Icoon={IcoonFiche}
+                aan={paneelOpen && paneelSoort === "algemeen"}
+                smal={smal}
+                onWissel={() => kiesPaneel("algemeen")}
+              />
             ) : null}
+            <Paneelschakelaar
+              naam={t("hoekenpaneel.titel")}
+              Icoon={IcoonHoek}
+              aan={paneelOpen && paneelSoort === "hoeken"}
+              smal={smal}
+              onWissel={() => kiesPaneel("hoeken")}
+            />
           </li>
         ) : null}
 

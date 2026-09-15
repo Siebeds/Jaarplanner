@@ -15,14 +15,15 @@ import { del, get, post, put } from "../../lib/api";
  * it anyway would refetch every dekking on screen to prove a number that cannot have changed.
  */
 
-/** A corner as the beheerscherm reads it. Mirrors `HoekWeergave` on the server. */
+/**
+ * A corner as the beheerscherm reads it. Mirrors `HoekWeergave` on the server, less its count of placements: a hoek is
+ * no longer placed in the agenda (ADR-0044), and no screen reads the rows an earlier agenda left.
+ */
 export interface HoekWeergave {
   id: string;
   klasId: string;
   naam: string;
   omschrijving: string | null;
-  /** How often this corner is currently placed on the agenda. Zero for one that is only defined. */
-  aantalPlaatsingen: number;
   /** How many verrijkingen were written for it, over every subthemaperiode: what deleting it takes along (FB-020). */
   aantalVerrijkingen: number;
 }
@@ -76,10 +77,8 @@ export function useWijzigHoek(klasId: string | null) {
 }
 
 /**
- * Deleting is refused by the server while the corner still stands in the agenda, with the count in
- * the message. That refusal is surfaced verbatim rather than pre-empted here: the count this screen
- * holds is the one it fetched, and the only count that may block a delete is the one the server sees
- * at the moment of the delete.
+ * Deletes a corner with its verrijkingen, and with any placement an earlier agenda left, which no screen shows any more
+ * (ADR-0044). A refusal the server does send is surfaced verbatim by the screen that asked.
  */
 export function useVerwijderHoek(klasId: string | null) {
   const ververs = useHoekVerversing(klasId);
@@ -110,172 +109,10 @@ export function useNeemHoekenOver(klasId: string | null) {
 }
 
 /* ------------------------------------------------------------------------------------------------
-   PLACING A HOEK ON THE AGENDA
+   WHAT IS IN THE CORNER WHILE A SUBTHEMA RUNS (FB-020, ADR-0041; FB-038, ADR-0044)
 
-   A separate read from the weekplanning, over its own range, because a hoekplaatsing is not part of
-   the jaarplan and must not be part of the read model that projects one. One extra request buys the
-   property the model exists for: a (re)generation cannot reach what it cannot see.
-   ------------------------------------------------------------------------------------------------ */
-
-/** One appearance in the time grid: this day, from this time to that one (ADR-0028). */
-export interface HoekmomentWeergave {
-  id: string;
-  datum: string;
-  /** `HH:mm:ss`, as the server sends a TimeOnly. */
-  begin: string;
-  einde: string;
-}
-
-/** A placed hoek as the agenda reads it. What is in the corner is not here: see the verrijkingen below. */
-export interface HoekplaatsingWeergave {
-  id: string;
-  hoekId: string;
-  hoekNaam: string;
-  van: string;
-  tot: string;
-  momenten: HoekmomentWeergave[];
-}
-
-/** What the teacher answered in the sheet after dropping a fiche on a day. */
-export interface HoekplaatsingInvoer {
-  hoekId: string;
-  van: string;
-  tot: string;
-  /**
-   * When it opens and closes on every teaching day of the window, as `HH:mm:ss`.
-   *
-   * Required since 2026-09-11 (owner: "elke hoek moet een tijdstip krijgen", ADR-0028). "Niet in het uurrooster"
-   * was an answer until then, and it left a corner running over its days with no hour and no block on any day.
-   */
-  begin: string;
-  einde: string;
-}
-
-const plaatsingSleutel = (klasId: string | null, van: string, tot: string) =>
-  ["hoekplaatsingen", klasId, van, tot] as const;
-
-/**
- * The placements overlapping one date range.
- *
- * Keyed on the range like the weekplanning beside it, so paging a month does not re-read a year, and
- * so the two answers on screen were fetched for the same window.
- */
-export function useHoekplaatsingen(klasId: string | null, van: string, tot: string) {
-  return useQuery({
-    queryKey: plaatsingSleutel(klasId, van, tot),
-    queryFn: () =>
-      get<HoekplaatsingWeergave[]>(
-        `/api/klassen/${klasId}/hoekplaatsingen?van=${van}&tot=${tot}`,
-      ),
-    enabled: klasId !== null && van.length > 0 && tot.length > 0,
-  });
-}
-
-/**
- * Invalidates every range at once.
- *
- * The keys carry a range, and a placement made in september changes what a screen showing november
- * must draw whenever the window spans both. Matching on the prefix refetches whichever ranges are
- * actually mounted, which is one or two, rather than trying to work out which of them overlap.
- */
-function usePlaatsingVerversing() {
-  const qc = useQueryClient();
-  return () => void qc.invalidateQueries({ queryKey: ["hoekplaatsingen"] });
-}
-
-export function usePlaatsHoek(klasId: string | null) {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: (invoer: HoekplaatsingInvoer) =>
-      post<HoekplaatsingWeergave>(`/api/klassen/${klasId}/hoekplaatsingen`, invoer),
-    onSuccess: ververs,
-  });
-}
-
-/**
- * Removes a placement, with its timetable rows. The corner's verrijkingen stay: they belong to the hoek and a
- * subthemaperiode, not to a run in the timetable (FB-020).
- *
- * The way back out of a mistake, which is what makes placing safe to offer at all: a teacher who
- * drags a fiche onto the wrong fortnight can undo it without a support call.
- */
-export function useVerwijderHoekplaatsing() {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: (plaatsingId: string) => del(`/api/hoekplaatsingen/${plaatsingId}`),
-    onSuccess: ververs,
-  });
-}
-
-/** Where one appearance of a placed hoek should move to, or how long it should run. */
-export interface HoekmomentVerplaatsing {
-  plaatsingId: string;
-  momentId: string;
-  datum: string;
-  /** `HH:mm:ss`. A resize sends the unchanged begin with a new einde. */
-  begin: string;
-  einde: string;
-}
-
-/**
- * Moves or resizes ONE appearance of a placed hoek (owner, 2026-08-31; clock times since ADR-0028).
- *
- * The rows are stored per day rather than derived exactly so that this is possible: the hoek runs all
- * fortnight and on this one Thursday it happens after the break, or half an hour longer. Moving the
- * whole run is a different verb and is not this hook.
- *
- * **It does not invalidate optimistically and it is not meant to.** The server refuses a day outside
- * the placement's window, a day without school (a weekend day or a closure, TB-011) and a second
- * appearance of the same hoek starting at the same time, and all three refusals are things the teacher
- * has to see rather than watch get undone.
- */
-export function useVerplaatsHoekmoment() {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: ({ plaatsingId, momentId, datum, begin, einde }: HoekmomentVerplaatsing) =>
-      put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/momenten/${momentId}`, {
-        datum,
-        begin,
-        einde,
-      }),
-    onSuccess: ververs,
-  });
-}
-
-/** The hours every day of a run should have, as `HH:mm:ss`. */
-export interface Hoekuren {
-  plaatsingId: string;
-  begin: string;
-  einde: string;
-}
-
-/**
- * Gives every appearance of a run the same hours, each on the day it is already on (owner, 2026-09-11).
- *
- * **Every day, the ones moved by hand included**: the owner's ruling of the same day. The detail sheet says so before
- * saving when a day currently differs.
- *
- * **One request for the whole run**, not one `useVerplaatsHoekmoment` per day. Fifteen requests of which the eighth
- * fails leave a run half at the old hours, which is worse than not saving at all; the server does it in one save.
- */
-export function useZetHoekuren() {
-  const ververs = usePlaatsingVerversing();
-
-  return useMutation({
-    mutationFn: ({ plaatsingId, begin, einde }: Hoekuren) =>
-      put<HoekplaatsingWeergave>(`/api/hoekplaatsingen/${plaatsingId}/uren`, { begin, einde }),
-    onSuccess: ververs,
-  });
-}
-
-/* ------------------------------------------------------------------------------------------------
-   WHAT IS IN THE CORNER WHILE A SUBTHEMA RUNS (FB-020, ADR-0041)
-
-   One text per hoek and per subthemaperiode: a window the klas's plan stores for a subthema. Written
-   from the subthemabalk above the agenda, and from the hoek's detail sheet; never a block in the grid.
+   One text per hoek and per subthemaperiode: a window the klas's plan stores for a subthema. Read and
+   written in the agenda's side panel, a sheet per hoek; never a block in the grid.
    ------------------------------------------------------------------------------------------------ */
 
 /** The longest text one verrijking may hold. The server refuses anything longer, with the same number. */

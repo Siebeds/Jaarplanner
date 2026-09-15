@@ -44,7 +44,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { Maandrooster } from "./Maandrooster";
-import { Tijdraster, type Ficheblokje, type Hoekblokje, type Tijddoel } from "./Tijdraster";
+import { Tijdraster, type Ficheblokje, type Tijddoel } from "./Tijdraster";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { eindeVan, type Gevraagdeplek } from "./gevraagdeplek";
@@ -59,19 +59,9 @@ import { Activiteitplaatsingblad } from "./Activiteitplaatsingblad";
 import { kaartLanding, leesActiviteitkaartId, type Activiteitkaartdata } from "./activiteitkaart";
 import type { Activiteitenweek, GekozenActiviteit } from "./Activiteitensectie";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
-import { FICHE_VOORVOEGSEL, leesFicheId, momentSleepId } from "../hoeken/sleepids";
-import { Hoekplaatsingblad } from "../hoeken/Hoekplaatsingblad";
-import { Hoekdetailblad } from "../hoeken/Hoekdetailblad";
-import { Verrijkingenblad } from "../hoeken/Verrijkingenblad";
 import { Subthemabalk } from "./Subthemabalk";
-import {
-  useHoekplaatsingen,
-  useHoekverrijkingen,
-  usePlaatsHoek,
-  useVerplaatsHoekmoment,
-  useVerwijderHoekplaatsing,
-  useHoeken,
-} from "../hoeken/gegevens";
+import { useHoekverrijkingen } from "../hoeken/gegevens";
+import { reeksenVanWeek, type Verrijkingenweek } from "../hoeken/verrijkingenweek";
 import { Algemeneficheplaatsingblad } from "../algemene-fiches/Algemeneficheplaatsingblad";
 import { Algemenefichedetailblad } from "../algemene-fiches/Algemenefichedetailblad";
 import {
@@ -91,7 +81,6 @@ import {
   subthemareeksen,
   subthemasInWeek,
   voorstelReeks,
-  type Subthemareeks,
 } from "./subthemareeksen";
 import { themaIdsOpDag, themasInBereik, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
@@ -158,19 +147,12 @@ export function Agendascherm() {
   const paneelOpen = useHoekenpaneel((s) => s.open);
   const paneelSoort = useHoekenpaneel((s) => s.soort);
   const kiesPaneel = useHoekenpaneel((s) => s.kies);
-  // The fiche that was dropped, the day it landed on, and the minute of it when the drop named one. Null means no
-  // sheet; a null `begin` means the gesture said nothing about an hour, which is what a month or week drop is.
-  const [gevallenFiche, setGevallenFiche] = useState<{ hoekId: string; datum: string; begin: number | null } | null>(
-    null,
-  );
-  // The placement whose detail sheet is open, by id rather than by value: the list is refetched after
-  // a delete, and holding a copy would keep a sheet describing a row that is gone.
-  const [geopendeHoek, setGeopendeHoek] = useState<string | null>(null);
-  // The run of the subthemabalk whose verrijkingen sheet is open (FB-020).
-  const [geopendeReeks, setGeopendeReeks] = useState<Subthemareeks | null>(null);
-  // The same pair for an algemene fiche (ADR-0029): the one that landed, and the planned one that is open. The open
-  // one also remembers the occurrence it was opened from, because that day is what its sheet lets her change without
-  // a drag; opened from a list of whole periods it names none.
+  // The algemene fiche that was dropped, the day it landed on, and the minute of it when the drop named one (ADR-0029).
+  // Null means no sheet; a null `begin` means the gesture said nothing about an hour, which is what a month or week drop
+  // is. And the planned one whose detail sheet is open, by id rather than by value: the list is refetched after a
+  // delete, and holding a copy would keep a sheet describing a row that is gone. The open one also remembers the
+  // occurrence it was opened from, because that day is what its sheet lets her change without a drag; opened from a
+  // list of whole periods it names none.
   const [gevallenAlgemeneFiche, setGevallenAlgemeneFiche] = useState<{
     ficheId: string;
     datum: string;
@@ -262,20 +244,10 @@ export function Agendascherm() {
 
   const { data: planning, isPending } = useWeekplanning(klasId, van, tot);
 
-  // The hoeken running in the visible range, read separately from the weekplanning: a hoekplaatsing
-  // is not part of the jaarplan, so it is not part of the read model that projects one.
-  const { data: hoekplaatsingen } = useHoekplaatsingen(klasId, van, tot);
-  // Every run of every corner over the whole school year, for the placement sheet's "Al ingepland"
-  // (owner, 2026-09-10). The visible range above is not enough: a teacher planning the boekenhoek in
-  // november needs to see that it already ran in september, which the month on screen does not reach.
-  const { data: jaarHoekplaatsingen } = useHoekplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
-  const { data: hoeken, isError: hoekenMislukt } = useHoeken(klasId);
-  const plaatsHoek = usePlaatsHoek(klasId);
-  const verwijderPlaatsing = useVerwijderHoekplaatsing();
-  const verplaatsMoment = useVerplaatsHoekmoment();
-
-  // The algemene fiches, read the way the hoeken are and for the same reasons: their own request over the visible
-  // range, and a second one over the whole year for the placement sheet's "Al ingepland".
+  // The algemene fiches, read separately from the weekplanning: a placement of one is not part of the jaarplan, so it
+  // is not part of the read model that projects one. Their own request over the visible range, and a second one over
+  // the whole year for the placement sheet's "Al ingepland" (owner, 2026-09-10): a teacher planning turnen in november
+  // needs to see that it already ran in september, which the month on screen does not reach.
   const { data: fichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, van, tot);
   const { data: jaarFichePlaatsingen } = useAlgemeneFicheplaatsingen(klasId, rooster?.start ?? "", rooster?.eind ?? "");
   const { data: algemeneFiches } = useAlgemeneFiches(klasId);
@@ -318,75 +290,35 @@ export function Agendascherm() {
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
 
+  // The runs the subthemabalk names: the ones touching the days on screen, as the strips in the headings do.
+  const reeksenInBeeld = useMemo(
+    () => reeksen.filter((reeks) => reeks.van <= tot && reeks.tot >= van),
+    [reeksen, van, tot],
+  );
+
   /**
-   * WHAT THE HOEKEN HOLD WHILE EACH SUBTHEMA RUNS (FB-020), read over the same range as the runs, so the subthemabalk,
-   * the side panel's week and the sheet all answer from one request.
+   * WHAT THE HOEKEN HOLD WHILE THE SUBTHEMA'S OF THE WEEK RUN (FB-038, ADR-0044), for the side panel's hoekenfiches.
+   *
+   * The week is the one the activiteiten list speaks about too: Monday to Sunday of the anchored day, whatever the view.
+   * The windows are read over the same range as the runs, so both come from reads of one range, and the answer is
+   * "klaar" only once both are in: a card may not say "nothing written", nor the sheet "no subthema this week", on the
+   * strength of a read that has not answered.
    */
   const verrijkingen = useHoekverrijkingen(klasId, reeksVan, reeksTot);
-  // The runs the balk above the grid names: the ones touching the days on screen, as the strips in the headings do.
-  // A run drawn from its activiteiten alone may still share days with a stored window of the same subthema that began
-  // in the previous themaperiode, which the runs do not fold in. The server writes onto that window rather than store a
-  // second one, so the balk and the sheet name it too, instead of offering to store a period that exists.
-  const reeksenInBeeld = useMemo(
-    () =>
-      reeksen
-        .filter((reeks) => reeks.van <= tot && reeks.tot >= van)
-        .map((reeks) => {
-          if (reeks.periodeId) return reeks;
-          const venster = (verrijkingen.data ?? []).find(
-            (p) => p.subthemaId === reeks.subthemaId && p.van <= reeks.tot && p.tot >= reeks.van,
-          );
-          return venster ? { ...reeks, periodeId: venster.subthemaperiodeId } : reeks;
-        }),
-    [reeksen, van, tot, verrijkingen.data],
-  );
-  // Under each hoek in the side panel: its verrijking for every stored subthemaperiode touching the anchored week,
-  // the week the activiteiten list speaks about too.
-  const verrijkingenWeek = useMemo(() => {
-    const maandag = maandagVan(anker);
-    const zondag = verschuif(maandag, 6);
-    const perHoek = new Map<string, { subthemaNaam: string; tekst: string }[]>();
-    for (const periode of verrijkingen.data ?? []) {
-      if (periode.tot < maandag || zondag < periode.van) continue;
-      for (const verrijking of periode.verrijkingen) {
-        perHoek.set(verrijking.hoekId, [
-          ...(perHoek.get(verrijking.hoekId) ?? []),
-          { subthemaNaam: periode.subthemaNaam, tekst: verrijking.tekst },
-        ]);
-      }
-    }
-    return perHoek;
-  }, [verrijkingen.data, anker]);
+  const verrijkingenWeek = useMemo<Verrijkingenweek>(() => {
+    if ((verrijkingen.isError && !verrijkingen.data) || (reeksbronMislukt && !reeksbron)) return { status: "mislukt" };
+    if (!verrijkingen.data || !reeksbron) return { status: "laadt" };
+    return {
+      status: "klaar",
+      reeksen: reeksenVanWeek(reeksen, verrijkingen.data, maandagVan(anker)),
+      periodes: verrijkingen.data,
+    };
+  }, [verrijkingen.data, verrijkingen.isError, reeksbron, reeksbronMislukt, reeksen, anker]);
 
-  /**
-   * The hoek appearances of the visible range, as blocks the time grid can draw.
-   *
-   * Built from the placements' own momenten rather than from their windows: a moment is a row a
-   * teacher can move on its own, so a hoek running all fortnight can genuinely sit after lunch on
-   * Monday and in the morning on Thursday. Deriving it from the window would draw the same hour
-   * every day and quietly contradict what is stored.
-   *
-   * The placement id travels with the name because a block opens the placement, which is the same
-   * sheet the panel's period row opens.
-   */
-  const hoekblokjes = useMemo<Hoekblokje[]>(
-    () =>
-      (hoekplaatsingen ?? []).flatMap((plaatsing) =>
-        plaatsing.momenten.map((moment) => ({
-          plaatsingId: plaatsing.id,
-          momentId: moment.id,
-          naam: plaatsing.hoekNaam,
-          datum: moment.datum,
-          begin: moment.begin,
-          einde: moment.einde,
-        })),
-      ),
-    [hoekplaatsingen],
-  );
-
-  // The algemene fiches' occurrences, built the same way and for the same reason: each is a row she can move alone.
-  // Each carries its fiche's goals for the block's info icon (FB-018), read from the fiche list rather than from the
-  // placement, which does not carry them.
+  // The algemene fiches' occurrences, as blocks the time grid can draw: built from the placements' own momenten rather
+  // than from their windows, because each is a row she can move alone, and deriving it from the window would draw the
+  // same hour every day and quietly contradict what is stored. Each carries its fiche's goals for the block's info icon
+  // (FB-018), read from the fiche list rather than from the placement, which does not carry them.
   const ficheblokjes = useMemo<Ficheblokje[]>(() => {
     const doelenPerFiche = new Map((algemeneFiches ?? []).map((fiche) => [fiche.id, alsInfodoelen(fiche.doelen)]));
     return (fichePlaatsingen ?? []).flatMap((plaatsing) =>
@@ -498,24 +430,15 @@ export function Agendascherm() {
   // Every DRAGGABLE thing on screen, by the id dnd-kit will hand back, so a drag announcement and the
   // overlay can name the thing being carried after the grid has re-rendered without it.
   //
-  // The hoekenfiches are in here under their prefixed id (owner, 2026-08-31). Without them a fiche
-  // drag carried nothing visible and the announcer said "op woensdag 14 oktober gezet" with an empty
-  // name, which is the one gesture in this agenda where a teacher most needs to see what she has hold
-  // of: the panel is chrome and the fiche leaves it.
+  // The algemene fiches are in here under their prefixed id, from the panel and in the grid (owner, 2026-08-31). Without
+  // them a fiche drag carried nothing visible and the announcer said "op woensdag 14 oktober gezet" with an empty name,
+  // which is the one gesture in this agenda where a teacher most needs to see what she has hold of: the panel is chrome
+  // and the fiche leaves it.
   const opNaam = useMemo(() => {
     const kaart = new Map<string, string>();
     for (const dag of planning?.dagen ?? []) {
       for (const activiteit of dag.activiteiten) kaart.set(activiteit.plaatsingId, activiteit.activiteitNaam);
     }
-    for (const hoek of hoeken ?? []) kaart.set(`${FICHE_VOORVOEGSEL}${hoek.id}`, hoek.naam);
-    // The appearances of a placed hoek too, since 2026-08-31: they drag inside the lesurenraster, and a
-    // drag that names nothing is what this map exists to prevent.
-    for (const plaatsing of hoekplaatsingen ?? []) {
-      for (const moment of plaatsing.momenten) {
-        kaart.set(momentSleepId(plaatsing.id, moment.id), plaatsing.hoekNaam);
-      }
-    }
-    // The algemene fiches, from the panel and in the grid, for the same reason.
     for (const fiche of algemeneFiches ?? []) kaart.set(`${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`, fiche.naam);
     for (const plaatsing of fichePlaatsingen ?? []) {
       for (const moment of plaatsing.momenten) {
@@ -523,7 +446,7 @@ export function Agendascherm() {
       }
     }
     return kaart;
-  }, [planning, hoeken, hoekplaatsingen, algemeneFiches, fichePlaatsingen]);
+  }, [planning, algemeneFiches, fichePlaatsingen]);
 
   function schuif(richting: -1 | 1) {
     // A week view showing three days pages by three, so nothing is skipped and nothing repeats.
@@ -551,7 +474,7 @@ export function Agendascherm() {
 
   /**
    * Every block on screen, by the id dnd-kit hands back: which day it is on, how long it runs, and which endpoint
-   * owns it. A drop needs all three, and looking them up twice (once for the activiteiten, once for the hoeken) is
+   * owns it. A drop needs all three, and looking them up twice (once for the activiteiten, once for the fiches) is
    * what made the old handler a hundred lines.
    */
   const blokOpSleepId = useMemo(() => {
@@ -568,15 +491,6 @@ export function Agendascherm() {
       }
     }
 
-    for (const blokje of hoekblokjes) {
-      kaart.set(momentSleepId(blokje.plaatsingId, blokje.momentId), {
-        datum: blokje.datum,
-        begin: minuten(blokje.begin),
-        duur: minuten(blokje.einde) - minuten(blokje.begin),
-        doel: { soort: "hoek", plaatsingId: blokje.plaatsingId, momentId: blokje.momentId },
-      });
-    }
-
     for (const blokje of ficheblokjes) {
       kaart.set(fichemomentSleepId(blokje.plaatsingId, blokje.momentId), {
         datum: blokje.datum,
@@ -587,7 +501,7 @@ export function Agendascherm() {
     }
 
     return kaart;
-  }, [planning, hoekblokjes, ficheblokjes]);
+  }, [planning, ficheblokjes]);
 
   /**
    * Saves a block's day and times, through whichever endpoint owns its kind.
@@ -599,14 +513,6 @@ export function Agendascherm() {
     if (doel.soort === "activiteit") {
       acties.verplaats.mutate({
         plaatsingId: doel.plaatsingId,
-        datum,
-        begin: alsTijd(begin),
-        einde: alsTijd(einde),
-      });
-    } else if (doel.soort === "hoek") {
-      verplaatsMoment.mutate({
-        plaatsingId: doel.plaatsingId,
-        momentId: doel.momentId,
         datum,
         begin: alsTijd(begin),
         einde: alsTijd(einde),
@@ -626,7 +532,6 @@ export function Agendascherm() {
     setSleepNaam(null);
     setSleepFout(null);
     acties.verplaats.reset();
-    verplaatsMoment.reset();
     verplaatsFichemoment.reset();
 
     const sleepId = String(active.id);
@@ -644,20 +549,10 @@ export function Agendascherm() {
     if (!over) return;
     const datum = kolom ?? String(over.id);
 
-    // TWO KINDS OF DRAGGED THING, and the id says which (see `sleepids.ts`). A hoekfiche comes from the panel and
-    // has no placement yet, so it opens the sheet instead of moving anything: which days, with what in it and at
-    // what time are three questions a drop cannot answer.
-    const hoekId = leesFicheId(sleepId);
-    if (hoekId !== null) {
-      // The hour is kept when the drop landed on one. A month cell says nothing about an hour, so the sheet gets
-      // null and offers its own default rather than inventing one from where the pointer happened to be.
-      plaatsHoek.reset();
-      setGevallenFiche({ hoekId, datum, begin: doelBegin });
-      return;
-    }
-
-    // An algemene fiche from the panel is the same case with one more question (which weekdays), so it opens its own
-    // sheet with the same three facts the drop carries.
+    // THE KIND OF DRAGGED THING, and the id says which (see `algemene-fiches/sleepids.ts`). An algemene fiche from the
+    // panel has no placement yet, so it opens its sheet instead of moving anything: which days, which weekdays and at
+    // what time are questions a drop cannot answer. The hour is kept when the drop landed on one; a month cell says
+    // nothing about an hour, so the sheet gets null and offers its own default rather than inventing one.
     const algemeneFicheId = leesAlgemeneFicheId(sleepId);
     if (algemeneFicheId !== null) {
       plaatsFiche.reset();
@@ -764,24 +659,21 @@ export function Agendascherm() {
                 sheet. So this chip is `lg:hidden` and `Navigatie` carries the switch from `lg`
                 upward. One control per viewport, never two at once, which is what made a single
                 control in the toolbar the earlier answer.
-
-                Only for whoever may plan this klas: a fiche is dragged or clicked to plan a hoek.
               */}
               {/* Two chips since 2026-09-14, one per list, for the reason the sidebar has two switches (owner: "twee
                   secties ... niet gegroepeerd als fiches"), and a third for the activiteiten since 2026-09-15 (FB-017).
-                  The fiche chips only for a gebruiker who may plan this klas; the activiteiten chip for everyone who
-                  reads the agenda, whose cards then plan nothing (owner, 2026-09-15). In the sidebar's order: Activiteiten,
-                  Algemene fiches, Hoekenfiches (owner, TB-024). */}
+                  The algemene fiches' chip only for a gebruiker who may plan this klas; the activiteiten and hoekenfiches
+                  chips for everyone who reads the agenda, whose cards then plan and write nothing (owner, 2026-09-15,
+                  FB-017 and FB-038). In the sidebar's order: Activiteiten, Algemene fiches, Hoekenfiches (owner,
+                  TB-024). */}
               {/* None until the rights are known, so the fiche chips do not appear after the activiteiten chip a moment
                   later, as the sidebar does. */}
               {([
                 { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
                 ...(magPlannen
-                  ? ([
-                      { soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche },
-                      { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
-                    ] as const)
+                  ? ([{ soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche }] as const)
                   : []),
+                { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
               ] as const)
                 .filter(() => rechtenBekend)
                 .map(({ soort, label, Icoon }) => {
@@ -906,22 +798,15 @@ export function Agendascherm() {
             eindigSleep();
           }}
         >
-          {/* INSIDE the context, and it has to be: a fiche is dragged FROM here ONTO the grid below,
-              and dnd-kit registers a draggable through React context rather than through the DOM. The
-              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree.
-              For a gebruiker who may not plan this klas it holds only the activiteiten, as cards that plan
-              nothing (owner, 2026-09-15, FB-017): every fiche plans a hoek or an algemene fiche, and every create
-              tile makes one. */}
+          {/* INSIDE the context, and it has to be: an algemene fiche or an activiteit card is dragged FROM here ONTO
+              the grid below, and dnd-kit registers a draggable through React context rather than through the DOM. The
+              panel is `fixed`, so where it sits on screen owes nothing to where it sits in this tree. For a gebruiker
+              who may not plan this klas it holds the activiteiten and the hoeken, to read (owner, 2026-09-15, FB-017
+              and FB-038), and no algemene fiches: every one of those plans one. A hoek plans nothing for anyone; its
+              card opens what the corner holds this week, which the panel writes itself (ADR-0044). */}
           <Hoekenpaneel
               klasId={klasId}
               magPlannen={magPlannen}
-              onKies={(hoekId) => {
-                // A click has no landing point, so the window opens on the day the agenda is standing
-                // on and the sheet offers its own default hour. On a phone the panel closes its own
-                // sheet first; see `Hoekenpaneel`.
-                plaatsHoek.reset();
-                setGevallenFiche({ hoekId, datum: anker, begin: null });
-              }}
               onKiesAlgemeneFiche={(ficheId) => {
                 plaatsFiche.reset();
                 setGevallenAlgemeneFiche({ ficheId, datum: anker, begin: null });
@@ -950,27 +835,15 @@ export function Agendascherm() {
               />
             ) : (
               <>
-              {/* THE SUBTHEMABALK (FB-020): the subthema's on screen, each with what the hoeken hold while it runs. A
-                  verrijking is never a block in the grid below; this is where she reads and writes it. It is also the
-                  keyboard's way to the themapagina the bands in the grid link to (FB-037, ADR-0042), so it stands above
-                  the month as well. */}
-              <Subthemabalk
-                themas={themasInBeeld}
-                reeksen={reeksenInBeeld}
-                verrijkingen={verrijkingen.data ?? []}
-                // "None yet" needs both reads: the preview is built from the klas's hoeken as well.
-                geladen={verrijkingen.isSuccess && hoeken !== undefined}
-                hoeken={hoeken ?? []}
-                magPlannen={magPlannen}
-                onOpen={(reeks) => setGeopendeReeks(reeks)}
-              />
+              {/* THE SUBTHEMABALK: the thema's and subthema's on screen, as links. It is the keyboard's way to the
+                  themapagina the bands in the grid link to (FB-037, ADR-0042), so it stands above the month as well. */}
+              <Subthemabalk themas={themasInBeeld} reeksen={reeksenInBeeld} />
               {weergave === "maand" ? (
                 <Maandrooster
                   dagen={zichtbareDagen}
                   ankerMaand={anker}
                   vakken={vakken}
                   reeksenPerDag={stroken}
-                  hoekplaatsingen={hoekplaatsingen ?? []}
                   magPlannen={magPlannen}
                   onKiesDag={openDag}
                   onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
@@ -984,7 +857,6 @@ export function Agendascherm() {
                  a phone. */}
               <Tijdraster
                 dagen={zichtbareDagen.length > 0 ? zichtbareDagen : [leegteDag(anker)]}
-                hoekmomenten={hoekblokjes}
                 fichemomenten={ficheblokjes}
                 reeksenPerDag={stroken}
                 vakken={vakken}
@@ -992,10 +864,6 @@ export function Agendascherm() {
                 magPlannen={magPlannen}
                 onVoegToe={(datum, tijd, einde) => setKiezer({ datum, begin: tijd, einde })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
-                onOpenHoek={(plaatsingId) => {
-                  verwijderPlaatsing.reset();
-                  setGeopendeHoek(plaatsingId);
-                }}
                 onOpenFiche={(plaatsingId, momentId) => {
                   verwijderFichePlaatsing.reset();
                   setGeopendeFiche({ plaatsingId, momentId });
@@ -1029,7 +897,7 @@ export function Agendascherm() {
             F7). The picker renders only while this gebruiker may plan. */}
         <Agendamelding
           sleepFout={sleepFout}
-          fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error, verplaatsFichemoment.error]}
+          fouten={[acties.plaats.error, acties.verplaats.error, verplaatsFichemoment.error]}
           kiezerOpen={magPlannen && kiezer !== null}
           bladOpen={nieuw !== null || geopend !== null || plannerOpen || (magPlannen && gekozenActiviteit !== null)}
         />
@@ -1079,86 +947,12 @@ export function Agendascherm() {
         }}
       />
 
-      {/* WHAT A DROPPED OR CLICKED FICHE OPENS.
-
-          Keyed on the fiche and the day, so dropping a second corner refills the sheet instead of
-          showing the first one's half-made window. Mounted only while a fiche has actually landed:
-          the sheet's own state (which days, what text, which hours) is per drop and must not survive
-          one. Opening one of its listed runs closes it, for the reason the Activiteitkiezer gives:
-          two sheets deep for one intention is a stack she has to unwind. */}
-      {gevallenFiche && rooster ? (
-        <Hoekplaatsingblad
-          open
-          key={`${gevallenFiche.hoekId}-${gevallenFiche.datum}-${gevallenFiche.begin ?? "geen"}`}
-          hoekId={gevallenFiche.hoekId}
-          hoekNaam={(hoeken ?? []).find((h) => h.id === gevallenFiche.hoekId)?.naam ?? ""}
-          startdag={gevallenFiche.datum}
-          startuur={gevallenFiche.begin}
-          loopt={looptSubthema}
-          ingepland={(jaarHoekplaatsingen ?? []).filter((p) => p.hoekId === gevallenFiche.hoekId)}
-          schooljaarVan={rooster.start}
-          schooljaarTot={rooster.eind}
-          bezig={plaatsHoek.isPending}
-          fout={plaatsHoek.error}
-          onOpenPlaatsing={(plaatsingId) => {
-            setGevallenFiche(null);
-            verwijderPlaatsing.reset();
-            setGeopendeHoek(plaatsingId);
-          }}
-          onSluit={() => setGevallenFiche(null)}
-          onPlaats={(invoer) =>
-            plaatsHoek.mutate(invoer, { onSuccess: () => setGevallenFiche(null) })
-          }
-        />
-      ) : null}
-
-      {/* WHAT THE HOEKEN HOLD WHILE A SUBTHEMA RUNS (FB-020), opened from a row of the subthemabalk. Keyed on the run,
-          so opening a second row fills the fields afresh instead of showing the first one's draft. */}
-      {geopendeReeks ? (
-        <Verrijkingenblad
-          key={`${geopendeReeks.subthemaId}-${geopendeReeks.van}`}
-          klasId={klasId}
-          reeks={geopendeReeks}
-          periode={(verrijkingen.data ?? []).find((p) => p.subthemaperiodeId === geopendeReeks.periodeId)}
-          hoeken={hoeken}
-          status={
-            (verrijkingen.isError && !verrijkingen.data) || (hoekenMislukt && !hoeken)
-              ? "mislukt"
-              : verrijkingen.isSuccess && hoeken
-                ? "klaar"
-                : "laadt"
-          }
-          magPlannen={magPlannen}
-          onSluit={() => setGeopendeReeks(null)}
-        />
-      ) : null}
-
-      {/* THE WAY BACK OUT for a placed hoek. Looked up by id on every render, so the sheet disappears by itself when
-          the placement it describes does. In the year's list as well as the visible range's: the placement sheet opens
-          runs from any month, and one outside the range on screen would otherwise open nothing at all. */}
-      {(() => {
-        const open =
-          (hoekplaatsingen ?? []).find((p) => p.id === geopendeHoek) ??
-          (jaarHoekplaatsingen ?? []).find((p) => p.id === geopendeHoek);
-        return open ? (
-          <Hoekdetailblad
-            open
-            klasId={klasId}
-            plaatsing={open}
-            alleenLezen={!magPlannen}
-            bezig={verwijderPlaatsing.isPending}
-            fout={verwijderPlaatsing.error}
-            onSluit={() => setGeopendeHoek(null)}
-            onVerwijder={() =>
-              verwijderPlaatsing.mutate(open.id, { onSuccess: () => setGeopendeHoek(null) })
-            }
-          />
-        ) : null;
-      })()}
-
-      {/* THE ALGEMENE FICHE'S PAIR OF SHEETS, arranged as the hoek's pair above and for the same reasons: the
-          placement sheet is mounted only while a fiche has landed and keyed on the drop, and the detail sheet is
-          looked up by id on every render, in the visible range and in the year, so it disappears with its row. */}
+      {/* THE ALGEMENE FICHE'S PAIR OF SHEETS (ADR-0029). What a dropped or clicked fiche opens is keyed on the fiche and
+          the day, so dropping a second one refills the sheet instead of showing the first one's half-made window, and
+          it is mounted only while a fiche has actually landed: the sheet's own state is per drop and must not survive
+          one. Opening one of its listed runs closes it, for the reason the Activiteitkiezer gives: two sheets deep for
+          one intention is a stack she has to unwind. The detail sheet is looked up by id on every render, in the
+          visible range and in the year, so it disappears with its row. */}
       {gevallenAlgemeneFiche && rooster ? (
         <Algemeneficheplaatsingblad
           open
