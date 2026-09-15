@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { t } from "../../i18n";
@@ -20,8 +21,8 @@ import { Ontkoppel } from "./Fiche";
  *
  * **The text is fetched per row**, from the same endpoint the detail reads, so opening the detail is
  * served from the cache. That is a heavy read for two fields: the detail endpoint runs up to seven
- * queries, once per linked doel on the page (up to three themadoelen plus the subdoelen of every
- * leeftijd's subthema), and again after every write on this screen. It is accepted for now because the
+ * queries, once per linked doel on the page (up to three themadoelen, plus the subdoelen and, since
+ * FB-010, the other activiteit doelen of every open subthema chapter), and again after every write on this screen. It is accepted for now because the
  * thema's own read view, where the text belongs, is being reworked by E6-02; TB-017 moves it there.
  *
  * **The whole row is the button, and the remove control sits above it.** A stretched `::after` on the
@@ -38,8 +39,11 @@ export function Gekoppelddoel({
   ontkoppelBezig,
   onOntkoppel,
   onToon,
+  voet,
 }: {
   koppeling: DoelKoppelingWeergave;
+  /** A line under the text, such as the activiteiten that carry this doel (FB-010). Phrasing content only. */
+  voet?: ReactNode;
   ontkoppelLabel: string;
   ontkoppelBezig?: boolean;
   /** Absent without the right to remove this link: the row then only opens the detail. */
@@ -83,6 +87,7 @@ export function Gekoppelddoel({
           // A span, not `Laadvlak`: that one is a `div`, and a button may only hold phrasing content.
           <span aria-hidden="true" className="mt-1.5 block h-4 w-3/4 animate-pulse rounded-veld bg-vlak-diep" />
         ) : null}
+        {voet ? <span className="mt-1.5 block">{voet}</span> : null}
       </button>
 
       {onOntkoppel ? (
