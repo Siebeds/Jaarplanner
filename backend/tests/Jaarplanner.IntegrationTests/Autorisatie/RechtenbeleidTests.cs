@@ -59,15 +59,31 @@ public sealed class RechtenbeleidTests : IClassFixture<JaarplannerApiFactory>
     }
 
     [Fact]
-    public async Task Directie_mag_elke_rij_ook_via_een_attribuut()
+    public async Task Directie_mag_elke_rij_behalve_de_rapportset_ook_via_een_attribuut()
     {
         var handler = new MatrixHandler(new VasteRechten(Directie()));
 
         foreach (var rij in Rechtenmatrix.Rijen)
         {
             var context = await BeoordeelAsync(handler, rij, Principal(), new DefaultHttpContext());
-            Assert.True(context.HasSucceeded, rij.Beleid);
+            Assert.True(context.HasSucceeded == !rij.ZonderDirectie, rij.Beleid);
         }
+
+        // ADR-0035 R31, asserted by name: directie views the K3 set and does not edit it.
+        var rapportset = await BeoordeelAsync(handler, Rechtenmatrix.RapportsetBewerken, Principal(), new DefaultHttpContext());
+        Assert.False(rapportset.HasSucceeded);
+    }
+
+    [Fact]
+    public async Task Een_K3_leerkracht_van_een_lopend_schooljaar_mag_de_rapportset_via_een_attribuut()
+    {
+        // The row needs no resource, so the attribute's HttpContext is enough: FB-002 puts it on its routes that way.
+        var klas = Guid.NewGuid();
+        var lopend = new MatrixHandler(new VasteRechten(new Rechten(An, false, false, [], ["K3"], [klas], [klas], [klas])));
+        var afgelopen = new MatrixHandler(new VasteRechten(new Rechten(An, false, false, [], [], [klas], [klas], [])));
+
+        Assert.True((await BeoordeelAsync(lopend, Rechtenmatrix.RapportsetBewerken, Principal(), new DefaultHttpContext())).HasSucceeded);
+        Assert.False((await BeoordeelAsync(afgelopen, Rechtenmatrix.RapportsetBewerken, Principal(), new DefaultHttpContext())).HasSucceeded);
     }
 
     [Fact]

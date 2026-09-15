@@ -10,7 +10,8 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// goal link, themabeheer on the ordinary subthema route.
 /// <para>
 /// <b>Why these exist beside the ~150 older tests.</b> Those run as the default directie identity, which every row
-/// admits, so they prove that nothing broke for directie and nothing about denial (slice 1's audit). These use seeded
+/// admits but one (<c>RapportsetBewerken</c>, ADR-0035 R31, pinned in <see cref="RapportsetEndpointsTests"/>), so they
+/// prove that nothing broke for directie and nothing about denial (slice 1's audit). These use seeded
 /// gebruikers holding exactly the relation under test. "Reaches the controller" is pinned by the status the service
 /// then answers (201, 200, a 400 for a missing file, a 404 for an id that names nothing), never by "not 403" alone
 /// where a precise answer exists.

@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:08
+bijgewerkt: 2026-09-15 16:15
 opgepakt-door: themapagina
 branch: ticket/FB-011-subthemas-ingeklapt
-pr:
+pr: 81
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -61,3 +61,4 @@ Niets.
 - 2026-09-15 15:01 · themapagina · gebouwd en nagekeken: Vitest 574 groen, lint groen; headless Chrome op desktop en 390px: dicht bij aankomst, klik en Enter/Spatie klappen open en dicht, ander thema weer dicht, geen horizontaal scrollen, geen consolefouten
 - 2026-09-15 15:08 · themapagina · antagonist: COMPLIANT; de kleine bevinding over de testhulp is opgelost (die controleert nu dat beide hoofdstukken open zijn), TB-017 kreeg een werklogregel
 - 2026-09-15 15:08 · themapagina · in-uitvoering → te-testen: subthema's staan standaard ingeklapt; Vitest 574 groen, lint groen, browser desktop en 390px nagekeken, antagonist COMPLIANT
+- 2026-09-15 16:15 · themapagina · PR #81

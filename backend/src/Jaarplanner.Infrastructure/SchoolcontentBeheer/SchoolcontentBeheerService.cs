@@ -1,5 +1,6 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -334,6 +335,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // Nullable at binding, as on the create: a missing leeftijd is refused as a blank one.
         var leeftijd = wijziging.Leeftijd ?? string.Empty;
         VereisLeeftijd(leeftijd);
+        var vorigeLeeftijd = subthema.Leeftijd;
 
         try
         {
@@ -345,6 +347,20 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
             throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        // ADR-0035 D12 (FB-002): a subthema that leaves K3 takes its subdoelen out of every rapportdoel, in this same
+        // SaveChanges. The rapportdoelen read filters on the subthema's leeftijd as well, but a filter alone would put them
+        // back, unasked, when the subthema later returns to K3; "leaves" means the rows go. Both PUT paths come here: the
+        // ordinary route and the wizard's (IWizardrunService.WijzigSubthemaAsync). The rapportdoel keeps its titel.
+        if (string.Equals(vorigeLeeftijd, Rapportdoel.SubdoelLeeftijd, StringComparison.Ordinal)
+            && !string.Equals(subthema.Leeftijd, Rapportdoel.SubdoelLeeftijd, StringComparison.Ordinal))
+        {
+            var subdoelIds = subthema.Subdoelen.Select(sd => sd.Id).ToList();
+            var gebundeld = await _context.RapportdoelSubdoelen
+                .Where(rs => subdoelIds.Contains(rs.SubdoelId))
+                .ToListAsync(cancellationToken);
+            _context.RapportdoelSubdoelen.RemoveRange(gebundeld);
         }
 
         // Reconcile onderzoeksvragen: replace the whole collection with the payload.

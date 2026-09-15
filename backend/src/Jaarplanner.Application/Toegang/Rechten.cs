@@ -9,7 +9,8 @@ namespace Jaarplanner.Application.Toegang;
 /// applies on the next request.
 /// <para>
 /// <b>These are the raw relations, not the answers.</b> A directie holds every right whatever these lists say (R3),
-/// and <see cref="Rechtenmatrix.StaatToe"/> is the one place that turns relations into "may do this". A gebruiker
+/// except editing the one K3 set of rapportdoelen and the scale, which only these lists can grant (ADR-0035 R31), and
+/// <see cref="Rechtenmatrix.StaatToe"/> is the one place that turns relations into "may do this". A gebruiker
 /// holds the union of every relation that applies (§3's union rule), which is why they are separate fields rather
 /// than one "role".
 /// </para>
@@ -51,7 +52,10 @@ public sealed class Rechten
     /// <summary>Whose rights these are. The maker column compares against it.</summary>
     public Guid GebruikerId { get; }
 
-    /// <summary>"Directie" (R3, R16): passes every row of the matrix.</summary>
+    /// <summary>
+    /// "Directie" (R3, R16): passes every row of the matrix but <see cref="Rechtenmatrix.RapportsetBewerken"/> (ADR-0035
+    /// R31).
+    /// </summary>
     public bool IsDirectie { get; }
 
     /// <summary>"TB": holds themabeheer (R4).</summary>
@@ -82,6 +86,7 @@ public sealed class Rechten
     /// <summary>
     /// The <see cref="RapportklasIds"/> whose schooljaar has not ended: "LK eigen" for filling in and for the klas's
     /// leerlingen (footnote ⁶, R26, which overrides I21 for these rows). After the schooljaar the leerkracht still reads.
+    /// Any id here also makes them a K3 leerkracht who edits the one K3 set and scale (FB-002, ADR-0035 D4).
     /// </summary>
     public IReadOnlyList<Guid> LopendeRapportklasIds { get; }
 

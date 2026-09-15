@@ -219,14 +219,19 @@ describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
     expect(rapport()).toBeInTheDocument();
   });
 
-  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K3", () => {
+  it("staat er voor een hoofdleerkracht van K3 zonder klas, voor de set en de schaal (eigenaar, 2026-09-15)", () => {
+    rendermetPad("/doelen", ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+    expect(rapport()).toBeInTheDocument();
+  });
+
+  it("staat er niet voor een leerkracht zonder K3-klas, ook niet met themabeheer of als hoofdleerkracht van K2", () => {
     rendermetPad(
       "/doelen",
       ikMet({
         eigenKlasIds: ["k2"],
         leerkrachtLeeftijden: ["K2"],
         heeftThemabeheer: true,
-        hoofdleerkrachtLeeftijden: ["K3"],
+        hoofdleerkrachtLeeftijden: ["K2"],
       }),
     );
     expect(rapport()).not.toBeInTheDocument();
