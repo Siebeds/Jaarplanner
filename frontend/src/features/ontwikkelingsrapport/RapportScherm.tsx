@@ -221,7 +221,10 @@ function Tekeningvak({ rapport, magInvullen }: { rapport: Rapport; magInvullen: 
           )}
         </div>
       ) : (
-        <p className="text-body text-inkt-zacht">{t("ontwikkelingsrapport.nogGeenTekening")}</p>
+        // "Nog" only for who can still add one: to a reader after the schooljaar no drawing is coming.
+        <p className="text-body text-inkt-zacht">
+          {t(magInvullen ? "ontwikkelingsrapport.nogGeenTekening" : "ontwikkelingsrapport.geenTekening")}
+        </p>
       )}
 
       {magInvullen ? (

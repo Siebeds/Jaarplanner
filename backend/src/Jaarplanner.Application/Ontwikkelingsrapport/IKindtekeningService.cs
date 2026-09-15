@@ -43,7 +43,11 @@ public interface IKindtekeningService
 /// </summary>
 public static class Kindtekeningregels
 {
-    /// <summary>The largest upload accepted, in MB, as the refusal names it.</summary>
+    /// <summary>
+    /// The largest upload accepted, in MB, as the refusal names it. <b>Mirrored by hand</b> in the frontend's
+    /// <c>MAX_TEKENING_MB</c> (<c>features/ontwikkelingsrapport/rapporten.ts</c>), whose refusal names the same number:
+    /// change both.
+    /// </summary>
     public const int MaxMegabytes = 20;
 
     /// <summary><see cref="MaxMegabytes"/> in bytes.</summary>

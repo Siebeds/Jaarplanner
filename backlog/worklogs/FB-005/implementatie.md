@@ -52,6 +52,27 @@ worden als JPEG of PNG. Kies een foto of scan als JPEG- of PNG-bestand." (also f
   the link, under the report's existing "Dit schooljaar is voorbij…" sentence.
 - The image address carries `?versie=`, so a replaced drawing is fetched anew.
 
+## Antagonist
+
+One audit on the finished branch: **COMPLIANT**, no CRITICAL or MAJOR. Three MINOR findings, all fixed without a new
+round (ADR-0037):
+- `ReadFormAsync` buffered an upload above 64 KB to a temp file, so the original photo with its GPS position lay on the
+  server's disk for the length of the request. The route now sets `[RequestFormLimits(MemoryBufferThreshold = 21 MB)]`
+  (only that threshold), so the form stays in memory.
+- The 20 MB limit is copied by hand into the frontend. Both sides now name the other as its mirror.
+- "Nog geen tekening." asserted a drawing is still to come to a reader who can no longer add one: a reader now sees
+  "Geen tekening."; "Nog geen tekening." only who may add one.
+
+Gates after the fixes: `dotnet format --verify-no-changes` exit 0; integration tests for the drawing, the report and
+the route rights 22/22; frontend report and i18n tests 62/62; `pnpm lint` exit 0.
+
+**Question for the owner (D16), not blocking:** the NuGet packages are MIT (checked in their nuspecs), but the
+`THIRD-PARTY-NOTICES.txt` of `SkiaSharp.NativeAssets.Linux.NoDependencies` 4.152.0 lists parts under other licences:
+Skia's old GIF decoder and `mozzconf.h` under an MPL 1.1 / GPL 2.0 / LGPL 2.1 tri-licence (lines 316 and 2712), LGPL
+text (from line 1477), and IJG, libpng, zlib and FreeType's FTL. D16 names "MIT, Apache or BSD". Whether it judges the
+package's own licence or everything compiled into the native library is the owner's reading. Practical exposure is low:
+a GIF is refused before any decoding, and the app is hosted, not distributed.
+
 ## Choices the owner may want to revisit
 
 - **The limits**: 20 MB, 40 megapixels, and scaling to 2400 px. A modern phone photo (12 to 50 MP) is accepted up to 40

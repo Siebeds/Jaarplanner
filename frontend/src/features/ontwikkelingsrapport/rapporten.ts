@@ -117,7 +117,10 @@ export function useBewaarBeoordeling(leerlingId: string, moment: number) {
 
 // --- The kindtekening (FB-005, R10, ADR-0035 §3.6). ---
 
-/** The server's `Kindtekeningregels`: the size limit, which the screen checks before sending, and the two formats. */
+/**
+ * The server's `Kindtekeningregels`: the size limit, which the screen checks before sending, and the two formats.
+ * Copied by hand from `Kindtekeningregels.MaxMegabytes`; the refusal names this number, so change both.
+ */
 export const MAX_TEKENING_MB = 20;
 export const TEKENINGTYPES = ["image/jpeg", "image/png"] as const;
 

@@ -596,6 +596,7 @@
     "tekening": "Tekening",
     "tekeningVan": "Tekening van {naam}",
     "nogGeenTekening": "Nog geen tekening.",
+    "geenTekening": "Geen tekening.",
     "tekeningUitleg": "Fotografeer alleen de tekening: geen kinderen en geen geschreven naam. JPEG of PNG, tot {mb} MB.",
     "tekeningToevoegen": "Tekening toevoegen",
     "tekeningVervangen": "Tekening vervangen",

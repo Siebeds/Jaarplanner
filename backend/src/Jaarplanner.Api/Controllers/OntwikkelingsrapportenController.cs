@@ -95,6 +95,11 @@ public sealed class OntwikkelingsrapportenController : ControllerBase
     [HttpPut("tekening")]
     [RechtOp(Rechtenmatrix.Beleid.RapportInvullen, Rechtbron.Leerling, "leerlingId")]
     [RequestSizeLimit(TekeningAanvraagLimiet)]
+    // The whole form stays in memory. Above the default 64 KB, ASP.NET Core would buffer the upload to a temp file,
+    // and the photo as it came in, GPS position and all, would lie on the server's disk until the request ends
+    // (ADR-0035 §3.6: nothing of it is stored before the re-encode). Only this threshold is set: a smaller multipart
+    // limit here would cut the form off as an English 400 before the service can refuse it in Dutch.
+    [RequestFormLimits(MemoryBufferThreshold = (int)TekeningAanvraagLimiet)]
     public async Task<ActionResult<TekeningWeergave>> BewaarTekening(Guid leerlingId, int moment, CancellationToken cancellationToken)
     {
         var bestand = Request.HasFormContentType
