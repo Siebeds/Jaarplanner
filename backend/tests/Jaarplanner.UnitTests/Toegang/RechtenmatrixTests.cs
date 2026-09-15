@@ -7,8 +7,8 @@ namespace Jaarplanner.UnitTests.Toegang;
 /// The ADR-0030 §3 matrix as <see cref="Rechtenmatrix"/> declares it, row by row and column by column (E6-02, Art.
 /// VI.1): each row allows exactly the relations §3 gives it, on a resource of that row's kind, and nothing else.
 /// Directie passes every row (R3) except <c>RapportsetBewerken</c> (ADR-0035 R31); a missing or foreign resource fails
-/// closed. Three of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001 and
-/// one since FB-002; the other three get their tests with their policies (FB-003, FB-006, FB-007).
+/// closed. Four of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001,
+/// one since FB-002 and one since FB-003; the other two get their tests with their policies (FB-006, FB-007).
 /// </summary>
 public sealed class RechtenmatrixTests
 {
@@ -65,6 +65,7 @@ public sealed class RechtenmatrixTests
         // only during the schooljaar. Nobody else but directie, not HL, TB or "LK leeftijd" (R17).
         [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen"],
         [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Directie", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.RapportInvullen] = ["Directie", "LK K3 lopend"],
         // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even directie.
         // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
         // running rapportklassen (the D9 function), not the stated jaarfase.

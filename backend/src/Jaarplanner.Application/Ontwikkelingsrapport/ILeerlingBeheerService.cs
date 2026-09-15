@@ -30,8 +30,8 @@ public interface ILeerlingBeheerService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Deletes a child, and from FB-003 on every report of that child with it (D8: for a child who leaves the school, or a
-    /// parent who asks for erasure). 404 when the child no longer exists.
+    /// Deletes a child with every report of theirs (D8: for a child who leaves the school, or a parent who asks for
+    /// erasure), through the database cascade. 404 when the child no longer exists.
     /// </summary>
     Task VerwijderLeerlingAsync(Guid leerlingId, CancellationToken cancellationToken = default);
 }

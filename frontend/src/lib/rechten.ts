@@ -41,6 +41,7 @@ export type Rij =
   | "KlasplanningBekijken"
   | "OntwikkelingsrapportLezen"
   | "LeerlingenBeheren"
+  | "RapportInvullen"
   | "RapportsetBewerken";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
@@ -96,6 +97,8 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // `/api/ik` rather than `eigenKlasIds`, which has no end date (I21). Leerlingzorg joins the read row with FB-008.
   OntwikkelingsrapportLezen: ["LeerkrachtRapportLezen"],
   LeerlingenBeheren: ["LeerkrachtRapportInvullen"],
+  // FB-003: the star, the text and the besluit of a report, by the same column as the children.
+  RapportInvullen: ["LeerkrachtRapportInvullen"],
   // FB-002 (R6, D4): a klastoewijzing on a klas that can hold children, in a running schooljaar, which is exactly
   // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so directie's
   // graadklas decision moves this row with it. Directie does NOT pass it: see `ZONDER_DIRECTIE`.
@@ -298,6 +301,8 @@ export interface Mag {
   ontwikkelingsrapportLezen: (klasId: string) => boolean;
   /** Adding, renaming and deleting this klas's children: directie, and its K3 leerkrachten during its year (R26, D8). */
   leerlingenBeheren: (klasId: string) => boolean;
+  /** Filling in a report of this klas (star, text, besluit): directie, and its K3 leerkrachten during its year (R26). */
+  rapportInvullen: (klasId: string) => boolean;
   /**
    * Whether this gebruiker reads this klas's children only because they taught it in a schooljaar that has ended:
    * a K3 leerkracht of the klas, not directie, and no longer allowed to write (R26). Exactly the case a screen may
@@ -369,6 +374,7 @@ export function magVoor(ik: Ik | undefined): Mag {
     ontwikkelingsrapportZien: ik?.isDirectie === true || (ik?.rapportklasIds ?? []).length > 0,
     ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
     leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
+    rapportInvullen: (klasId) => rij("RapportInvullen", { soort: "rapportklas", klasId }),
     rapportAlleenNogLezen: (klasId) =>
       ik !== undefined &&
       !ik.isDirectie &&

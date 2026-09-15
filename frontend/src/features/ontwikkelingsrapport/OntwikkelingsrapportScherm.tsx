@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefObject } from "react";
+import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Aandachtsmelding } from "../../components/ui/Aandachtsmelding";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -21,6 +22,7 @@ import {
   type LeerlingInvoer,
 } from "./leerlingen";
 import { Foutregel } from "./Foutregel";
+import { rapportadres } from "./rapportdelen";
 import { foutzin } from "./rapporthulp";
 import { Rapportwissel } from "./Rapportwissel";
 
@@ -255,7 +257,13 @@ function Kindrij({
     <div className="flex min-h-14 items-center justify-between gap-3 px-4 py-2">
       {/* The voornaam carries the weight: it is the name a kleuterleerkracht says all day. */}
       <p className="min-w-0 break-words text-body text-inkt">
-        <span className="font-medium">{kind.voornaam}</span> {kind.achternaam}
+        {/* The name opens the child's report (FB-003), with the underline that says it is a link. */}
+        <Link
+          to={rapportadres(kind.id, 1)}
+          className="underline decoration-lijn-sterk underline-offset-4 transition-colors duration-150 hover:decoration-inkt"
+        >
+          <span className="font-medium">{kind.voornaam}</span> {kind.achternaam}
+        </Link>
       </p>
       {onBewerk || onVerwijder ? (
         <div ref={knoppen} className="flex shrink-0 items-center gap-1">

@@ -22,6 +22,11 @@ export function rapportpad(deel: Rapportdeel): string {
   return `/ontwikkelingsrapport/${deel}`;
 }
 
+/** One child's report at one moment (FB-003), under the children so the part switch keeps "Kinderen" current. */
+export function rapportadres(leerlingId: string, moment: number): string {
+  return `${rapportpad("kinderen")}/${leerlingId}/rapport/${moment}`;
+}
+
 /** The parts this person may open, in order. The children only for whoever may read a report (D18). */
 export function useZichtbareRapportdelen() {
   const { mag } = useRechten();

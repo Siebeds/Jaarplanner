@@ -175,6 +175,7 @@ public static class DependencyInjection
         // The one K3 set of rapportdoelen and the sterrenschaal (FB-002, Art. IX.4). Not pupil data; beside the leerlingen
         // because both belong to the ontwikkelingsrapport.
         services.AddScoped<IRapportsetService, RapportsetService>();
+        services.AddScoped<IOntwikkelingsrapportService, OntwikkelingsrapportService>();
 
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —

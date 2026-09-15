@@ -2,13 +2,13 @@
 id: FB-003
 titel: Leerkracht vult het ontwikkelingsrapport van een kind in, per evaluatiemoment
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 17:43
+opgepakt-door: rapport-invullen
+branch: ticket/FB-003-rapport-invullen
+pr: 90
 geblokkeerd:
 fr: [FR-13.3, FR-13.7, FR-13.9]
 ---
@@ -45,12 +45,12 @@ is `manueel`) en ADR-0035 §3.1 tot §3.3. Geen namen, teksten of sterren in een
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een kind in een K3-klas, wanneer de leerkracht Rapport 1 opent, dan staat elk rapportdoel van de K3-set er met zijn titel, de subdoelen die het bundelt, een keuze uit de sterren van de schaal en een tekstvak, en is er een vak voor het algemeen besluit.
-- [ ] Gegeven een ingevuld en bewaard Rapport 1, wanneer de leerkracht Rapport 2 opent, dan is dat leeg, en staat Rapport 1 na herladen nog zoals het ingevuld werd.
-- [ ] Gegeven een leerkracht van een andere klas, of een gebruiker zonder recht op het rapport, wanneer die het rapport probeert te openen, ook via het adres, dan weigert de app; de directie kan het lezen en invullen.
-- [ ] Gegeven een schooljaar dat voorbij is, wanneer de leerkracht van de klas het rapport opent, dan kan die het lezen maar niets wijzigen.
-- [ ] Gegeven een gradatie of rapportdoel die in een bewaard rapport gebruikt is, wanneer een K3-leerkracht ze wil verwijderen, dan weigert de app met een uitleg; hernoemen lukt, en de nieuwe naam staat daarna op het rapport.
-- [ ] Gegeven ingevulde rapporten, wanneer iemand het dekkingsoverzicht van de klas opent, dan is dat hetzelfde als ervoor.
+- [x] Gegeven een kind in een K3-klas, wanneer de leerkracht Rapport 1 opent, dan staat elk rapportdoel van de K3-set er met zijn titel, de subdoelen die het bundelt, een keuze uit de sterren van de schaal en een tekstvak, en is er een vak voor het algemeen besluit.
+- [x] Gegeven een ingevuld en bewaard Rapport 1, wanneer de leerkracht Rapport 2 opent, dan is dat leeg, en staat Rapport 1 na herladen nog zoals het ingevuld werd.
+- [x] Gegeven een leerkracht van een andere klas, of een gebruiker zonder recht op het rapport, wanneer die het rapport probeert te openen, ook via het adres, dan weigert de app; de directie kan het lezen en invullen.
+- [x] Gegeven een schooljaar dat voorbij is, wanneer de leerkracht van de klas het rapport opent, dan kan die het lezen maar niets wijzigen.
+- [x] Gegeven een gradatie of rapportdoel die in een bewaard rapport gebruikt is, wanneer een K3-leerkracht ze wil verwijderen, dan weigert de app met een uitleg; hernoemen lukt, en de nieuwe naam staat daarna op het rapport.
+- [x] Gegeven ingevulde rapporten, wanneer iemand het dekkingsoverzicht van de klas opent, dan is dat hetzelfde als ervoor.
 
 ## Testscenario's
 
@@ -83,3 +83,9 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-15 16:48 · eigenaar · nieuw → klaar-voor-bouw: klaar voor bouw (eigenaar)
+- 2026-09-15 16:48 · rapport-invullen · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 17:16 · rapport-invullen · Backend en scherm gebouwd: rapport per kind en moment, ster en tekst per rapportdoel, algemeen besluit, bewaren zonder knop; een gebruikte ster of rapportdoel kan niet meer weg (D1).
+- 2026-09-15 17:33 · rapport-invullen · Antagonist ronde 1: COMPLIANT, drie kleine punten opgelost. Browsercheck op 1440 en 390 px: AC1, AC2, AC3 en AC5 in de browser; AC4 en AC6 met integratie- en schermtests. Criteria afgevinkt.
+- 2026-09-15 17:33 · rapport-invullen · in-uitvoering → te-testen: Gebouwd: rapport per kind en per moment (ster en tekst per rapportdoel, algemeen besluit), bewaren zonder knop, D1 en D8; alle tests groen, lint en format schoon.
+- 2026-09-15 17:43 · rapport-invullen · PR #90
