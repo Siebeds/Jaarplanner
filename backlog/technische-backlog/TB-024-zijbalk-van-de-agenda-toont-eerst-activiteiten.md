@@ -5,10 +5,10 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 17:05
+bijgewerkt: 2026-09-15 17:11
 opgepakt-door: zijbalk-volgorde
 branch: ticket/zijbalk-volgorde
-pr:
+pr: 87
 geblokkeerd:
 fr: []
 ---
@@ -49,3 +49,4 @@ Geen.
 
 - 2026-09-15 17:01 · zijbalk-volgorde · aangemaakt (status in-uitvoering)
 - 2026-09-15 17:05 · zijbalk-volgorde · Volgorde omgedraaid in de zijbalk (Navigatie) en de gsm-chips (Agendascherm), met een test op de volgorde voor elk. Vitest 775/775, lint groen.
+- 2026-09-15 17:11 · zijbalk-volgorde · PR #87
