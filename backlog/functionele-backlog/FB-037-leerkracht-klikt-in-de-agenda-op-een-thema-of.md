@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:47
+bijgewerkt: 2026-09-15 19:57
 opgepakt-door: stroken-doorklik
 branch: ticket/FB-037-stroken-doorklik
 pr:
@@ -42,15 +42,15 @@ menu Thema's zoeken.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week waarin een thema loopt, wanneer de leerkracht op de themastrook van eender welke dag klikt, dan
+- [x] Gegeven een week waarin een thema loopt, wanneer de leerkracht op de themastrook van eender welke dag klikt, dan
   opent de themapagina van dat thema.
-- [ ] Gegeven een week waarin een subthema loopt, wanneer de leerkracht op de subthemastrook klikt, dan opent de
+- [x] Gegeven een week waarin een subthema loopt, wanneer de leerkracht op de subthemastrook klikt, dan opent de
   themapagina van het bovenliggende thema met dat subthema opengeklapt en in beeld, en de andere subthema's ingeklapt.
-- [ ] Gegeven de maandweergave en de dagweergave, dan werkt de klik op beide stroken daar ook.
-- [ ] Gegeven een leerkracht die alleen het toetsenbord gebruikt, dan bereikt ze vanuit de subthemabalk de themapagina
+- [x] Gegeven de maandweergave en de dagweergave, dan werkt de klik op beide stroken daar ook.
+- [x] Gegeven een leerkracht die alleen het toetsenbord gebruikt, dan bereikt ze vanuit de subthemabalk de themapagina
   van het thema en van het subthema, en krijgen de stroken per dag geen eigen tabstop.
-- [ ] Gegeven een periode zonder thema, dan is die strook niet aanklikbaar.
-- [ ] Gegeven de themapagina die zo geopend werd, wanneer de leerkracht op de terugknop van de browser drukt, dan staat
+- [x] Gegeven een periode zonder thema, dan is die strook niet aanklikbaar.
+- [x] Gegeven de themapagina die zo geopend werd, wanneer de leerkracht op de terugknop van de browser drukt, dan staat
   ze weer in dezelfde week van de agenda.
 
 ## Testscenario's
@@ -82,3 +82,4 @@ Geen.
 - 2026-09-15 19:29 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15)
 - 2026-09-15 19:30 · stroken-doorklik · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-15 19:47 · stroken-doorklik · gebouwd: thema- en subthemastroken zijn links (muis en aanraking, zonder tabstop), subthemabalk met themalink en subthemalink per rij ook boven de maand, themapagina opent het gevraagde subthema; ADR-0042 vervangt ADR-0026 beslissing 5 deels; lint schoon, Vitest 884/884 groen
+- 2026-09-15 19:57 · stroken-doorklik · browsercontrole geslaagd (headless Chrome over CDP, wegwerpdatabank jp_fb037, 1440 en 390, licht en donker): 35 van 35 controles groen, klik in week, dag en maand, toetsenbord via de subthemabalk, terugknop, lege periode, contrast 5,02 tot 10,82:1, console leeg; criteria afgevinkt; verslag in backlog/worklogs/FB-037/verification.md; antagonist loopt
