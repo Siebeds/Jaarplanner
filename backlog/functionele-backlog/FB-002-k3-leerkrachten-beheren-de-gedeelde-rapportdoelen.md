@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 14:07
+bijgewerkt: 2026-09-15 14:50
 opgepakt-door: kindvolg
 branch: ticket/FB-002-rapportdoelen-sterrenschaal
 pr:
@@ -92,3 +92,4 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 - 2026-09-15 14:02 · kindvolg · klaar-voor-bouw → in-uitvoering: opgepakt, bovenop FB-001 (eigenaar 2026-09-15); de schaal start met het voorbeeld van de eigenaar
 - 2026-09-15 14:07 · kindvolg · eigenaar 2026-09-15: de schaal start met zijn voorbeeld (groen 'Volledig bereikt', oranje 'Nog niet volledig'); vaste kleurenlijst van zes (groen, lichtgroen, geel, oranje, rood, blauw), elk met een donkerdere rand; op het invulscherm (FB-003) geen statusbolletje naast de subdoelen
 - 2026-09-15 14:07 · kindvolg · let op: geen enkele weg in de app zet vandaag een subdoel op geweigerd (alle schrijfacties maken manueel), dus testscenario 6 kan niet via de app; D11 wordt gedekt door het filter bij het lezen, en een subdoel dat verwijderd wordt, verlaat elk rapportdoel
+- 2026-09-15 14:50 · kindvolg · browsercheck geslaagd op 1440 en 390: startschaal van de eigenaar, gradatie toevoegen (zonder kleur geweigerd), verschuiven, rapportdoel met alleen een titel, directie ziet alles zonder knoppen; sterranden halen 3:1 in licht en donker; verslag in backlog/worklogs/FB-002/browsercheck.md

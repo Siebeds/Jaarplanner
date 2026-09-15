@@ -72,6 +72,16 @@
   creates `manueel`. D11 is covered by the server's read filter, and a deleted subdoel leaves every rapportdoel. This is
   recorded in the ticket Werklog.
 
-## Gates
+## Gates (2026-09-15, on `6b5a4c9` with FB-001's fix rounds merged in)
 
-*Filled in once the backend half has landed; see below.*
+- **Backend** (the session's own run, not only the implementer's):
+  - `dotnet build`: 0 warnings;
+  - `dotnet format --verify-no-changes`: exit 0;
+  - UnitTests: 1596 passed, 4 skipped;
+  - IntegrationTests: 491 passed, 1 skipped (the live KOV import), against the Docker Postgres through
+    `JAARPLANNER_TEST_POSTGRES`;
+  - no stray files in the tree.
+- **Frontend:**
+  - oxlint and `tsc` clean;
+  - vitest: 69 files, 682 tests passed.
+- **Browser:** the pass at 1440 and 390 is in `browsercheck.md`, including the stars' contrast in both themes.
