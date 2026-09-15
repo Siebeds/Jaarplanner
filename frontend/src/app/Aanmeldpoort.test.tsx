@@ -5,23 +5,19 @@ import { Aanmeldpoort } from "./Aanmeldpoort";
 import { aanmeldOmleiding } from "../lib/api";
 import type { Ik } from "../lib/aanmelding";
 import { t } from "../i18n";
+import { ikMet } from "../test/rechten";
 
 /**
  * The gate in front of the shell (TB-026). Behaviour only: how the tussenpagina looks, and that it
  * matches the static copy in `index.html`, is a browser pass, since jsdom applies no stylesheet.
  */
-const IK: Ik = {
+// Built on the shared `ikMet`, so a relation added to `Ik` later (as FB-008 added Leerlingzorg) gets its
+// default here too instead of breaking the type check.
+const IK: Ik = ikMet({
   id: "7e57a000-0000-4000-8000-000000000001",
   naam: "An Peeters",
   email: "an@school.be",
-  isDirectie: false,
-  heeftThemabeheer: false,
-  hoofdleerkrachtLeeftijden: [],
-  leerkrachtLeeftijden: [],
-  eigenKlasIds: [],
-  rapportklasIds: [],
-  lopendeRapportklasIds: [],
-};
+});
 
 const SCHIL = "schil-van-de-app";
 
