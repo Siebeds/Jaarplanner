@@ -1094,12 +1094,6 @@
     "loopt": "{van} tot {tot}",
     "geenSubthema": "In deze maand loopt er geen subthema."
   },
-  "subthemabalk": {
-    "label": "Thema's en subthema's in beeld",
-    "labelThemas": "Thema's in beeld",
-    "naarThema": "Open thema {naam}",
-    "naarSubthema": "Open subthema {naam} op de themapagina"
-  },
   "hoekverrijkingblad": {
     "periodeVastleggen": "Voor deze dagen is nog geen periode van dit subthema vastgelegd. Bewaren legt ze vast: {periode}.",
     "voorbeeld": "prentenboeken over de herfst, bladerenpers op tafel",

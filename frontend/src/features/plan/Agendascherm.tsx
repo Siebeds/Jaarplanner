@@ -59,7 +59,6 @@ import { Activiteitplaatsingblad } from "./Activiteitplaatsingblad";
 import { kaartLanding, leesActiviteitkaartId, type Activiteitkaartdata } from "./activiteitkaart";
 import type { Activiteitenweek, GekozenActiviteit } from "./Activiteitensectie";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
-import { Subthemabalk } from "./Subthemabalk";
 import { useHoekverrijkingen } from "../hoeken/gegevens";
 import { reeksenVanWeek, type Verrijkingenweek } from "../hoeken/verrijkingenweek";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -85,7 +84,7 @@ import {
   subthemasInWeek,
   voorstelReeks,
 } from "./subthemareeksen";
-import { themaIdsOpDag, themasInBereik, themavakken } from "./themavakken";
+import { themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
@@ -335,12 +334,6 @@ export function Agendascherm() {
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
 
-  // The runs the subthemabalk names: the ones touching the days on screen, as the strips in the headings do.
-  const reeksenInBeeld = useMemo(
-    () => reeksen.filter((reeks) => reeks.van <= tot && reeks.tot >= van),
-    [reeksen, van, tot],
-  );
-
   /**
    * WHAT THE HOEKEN HOLD WHILE THE SUBTHEMA'S OF THE WEEK RUN (FB-038, ADR-0044), for the side panel's hoekenfiches.
    *
@@ -425,8 +418,6 @@ export function Agendascherm() {
     () => themavakken(rooster?.blokken ?? [], plan?.plaatsingen ?? []),
     [rooster, plan],
   );
-  // The thema's the bands on screen can open, for the subthemabalk (FB-037): it is where a keyboard reaches their page.
-  const themasInBeeld = useMemo(() => themasInBereik(vakken, van, tot), [vakken, van, tot]);
 
   // The thema's running in this period are what the activity picker may offer.
   const themaIdsInPeriode = useMemo(() => {
@@ -878,24 +869,19 @@ export function Agendascherm() {
                   ) : undefined
                 }
               />
+            ) : weergave === "maand" ? (
+              <Maandrooster
+                dagen={zichtbareDagen}
+                ankerMaand={anker}
+                vakken={vakken}
+                reeksenPerDag={stroken}
+                magPlannen={magPlannen}
+                onKiesDag={openDag}
+                onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
+                onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
+                onVanDag={(activiteit) => haalVanDag({ soort: "activiteit", plaatsingId: activiteit.plaatsingId })}
+              />
             ) : (
-              <>
-              {/* THE SUBTHEMABALK: the thema's and subthema's on screen, as links. It is the keyboard's way to the
-                  themapagina the bands in the grid link to (FB-037, ADR-0042), so it stands above the month as well. */}
-              <Subthemabalk themas={themasInBeeld} reeksen={reeksenInBeeld} />
-              {weergave === "maand" ? (
-                <Maandrooster
-                  dagen={zichtbareDagen}
-                  ankerMaand={anker}
-                  vakken={vakken}
-                  reeksenPerDag={stroken}
-                  magPlannen={magPlannen}
-                  onKiesDag={openDag}
-                  onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
-                  onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
-                  onVanDag={(activiteit) => haalVanDag({ soort: "activiteit", plaatsingId: activiteit.plaatsingId })}
-                />
-              ) : (
               <>
               {/* THE DAY AND THE WEEK ARE ONE GRID (ADR-0028), which is what makes them agree: they were a row of
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
@@ -919,8 +905,6 @@ export function Agendascherm() {
                 onKiesDag={weergave === "week" ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
               />
-              </>
-              )}
               </>
             )}
           </div>
