@@ -85,17 +85,17 @@ export function IcoonFiche(props: IconProps) {
 }
 
 /**
- * Activiteit: one sheet of the thema's stack (FB-017).
+ * Activiteit: a puzzle piece, one piece of the thema (TB-031).
  *
- * `IcoonThemas` draws a thema as stacked sheets, a stack of subthema's and activiteiten, so one activiteit is one of
- * those sheets, lying on its own with a line of what it holds. It stands beside the hoek and the algemene fiche in the
- * side panel's switches, where the three need to be told apart without a hue.
+ * It used to be one sheet lifted off the `IcoonThemas` stack, but a single flat sheet is a rhombus, and at 20 pixels it
+ * read as an eye or a diamond. A puzzle piece keeps the idea (a part that fits into the whole), is at home in a
+ * kleuterklas, and names no one kind of activiteit, as scissors or a brush would. It stands beside the hoek and the
+ * algemene fiche in the side panel's switches, where the three need to be told apart without a hue.
  */
 export function IcoonActiviteit(props: IconProps) {
   return (
     <Icoon {...props}>
-      <path d="M4 12 12 8l8 4-8 4z" />
-      <path d="M10 12h4" />
+      <path d="M4 8h4.2a2.4 2.4 0 1 1 3.6 0H16v4.2a2.4 2.4 0 1 1 0 3.6V20H4z" />
     </Icoon>
   );
 }
