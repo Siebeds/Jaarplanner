@@ -5,6 +5,8 @@ import { Invoer } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
 import { periode as periodeTekst, volleDag, weekdagIndex } from "../../lib/datum";
 import { toonBereik } from "../plan/tijd";
+import { Doelregels, type Infodoel } from "../plan/Doelinfo";
+import { Doeldetailblad } from "../themas/Doeldetailblad";
 import { t, telWoord } from "../../i18n";
 import {
   useVerplaatsFichemoment,
@@ -38,6 +40,7 @@ export function Algemenefichedetailblad({
   plaatsing,
   momentId,
   enigePeriodeMetDoelen,
+  doelen,
   bezig,
   fout,
   alleenLezen = false,
@@ -50,6 +53,11 @@ export function Algemenefichedetailblad({
   momentId: string | null;
   /** This is the fiche's one placement AND the fiche has goals: the case in which deleting moves dekking. */
   enigePeriodeMetDoelen: boolean;
+  /**
+   * The fiche's goals (FB-018), or undefined while the fiche list has not arrived: the sheet then leaves the section
+   * out rather than saying the fiche has none.
+   */
+  doelen: readonly Infodoel[] | undefined;
   bezig: boolean;
   fout?: unknown;
   /** The gebruiker may read this klas's planning and not change it. */
@@ -60,6 +68,8 @@ export function Algemenefichedetailblad({
   const groepen = useMemo(() => uurgroepen(plaatsing.momenten), [plaatsing.momenten]);
   const moment = momentId === null ? undefined : plaatsing.momenten.find((m) => m.id === momentId);
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
+  // The goal whose detail is open over this sheet, with the row that opened it, which gets focus back when it closes.
+  const [doel, setDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
 
   return (
     <Blad
@@ -108,6 +118,27 @@ export function Algemenefichedetailblad({
             ))}
           </div>
         </div>
+
+        {/* THE FICHE'S GOALS, for everyone who can open the sheet (FB-018). A block too short to hold the info icon keeps
+            its goals here, so this is the one place they are reachable from every block. With the period and the
+            hours, above the one day's fields: what the fiche is comes before what she can change about one day of it.
+            A goal opens its detail on top of this sheet, and closing that brings her back to it. */}
+        {doelen ? (
+          <div>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-micro uppercase text-inkt-zwak">{t("fichedetail.doelen")}</p>
+              <span className="mono shrink-0 text-micro text-inkt-zwak">{doelen.length}</span>
+            </div>
+            {doelen.length === 0 ? (
+              <p className="mt-0.5 text-body text-inkt-zacht">{t("doelinfo.geen")}</p>
+            ) : (
+              <div className="mt-1.5 overflow-hidden rounded-veld border border-lijn">
+                <Doelregels doelen={doelen} onKies={(code, knop) => setDoel({ code, knop })} />
+              </div>
+            )}
+            <Doeldetailblad code={doel?.code ?? null} terugNaar={doel?.knop} onSluit={() => setDoel(null)} />
+          </div>
+        ) : null}
 
         {moment && !alleenLezen ? (
           // Keyed on the moment's saved values, so a refetch after a save (or a drag in another view) refills the

@@ -71,6 +71,7 @@ import {
 import { Algemeneficheplaatsingblad } from "../algemene-fiches/Algemeneficheplaatsingblad";
 import { Algemenefichedetailblad } from "../algemene-fiches/Algemenefichedetailblad";
 import {
+  alsInfodoelen,
   useAlgemeneFicheplaatsingen,
   useAlgemeneFiches,
   usePlaatsAlgemeneFiche,
@@ -331,20 +332,22 @@ export function Agendascherm() {
   );
 
   // The algemene fiches' occurrences, built the same way and for the same reason: each is a row she can move alone.
-  const ficheblokjes = useMemo<Ficheblokje[]>(
-    () =>
-      (fichePlaatsingen ?? []).flatMap((plaatsing) =>
-        plaatsing.momenten.map((moment) => ({
-          plaatsingId: plaatsing.id,
-          momentId: moment.id,
-          naam: plaatsing.ficheNaam,
-          datum: moment.datum,
-          begin: moment.begin,
-          einde: moment.einde,
-        })),
-      ),
-    [fichePlaatsingen],
-  );
+  // Each carries its fiche's goals for the block's info icon (FB-018), read from the fiche list rather than from the
+  // placement, which does not carry them.
+  const ficheblokjes = useMemo<Ficheblokje[]>(() => {
+    const doelenPerFiche = new Map((algemeneFiches ?? []).map((fiche) => [fiche.id, alsInfodoelen(fiche.doelen)]));
+    return (fichePlaatsingen ?? []).flatMap((plaatsing) =>
+      plaatsing.momenten.map((moment) => ({
+        plaatsingId: plaatsing.id,
+        momentId: moment.id,
+        naam: plaatsing.ficheNaam,
+        datum: moment.datum,
+        begin: moment.begin,
+        einde: moment.einde,
+        doelen: doelenPerFiche.get(plaatsing.algemeneFicheId),
+      })),
+    );
+  }, [fichePlaatsingen, algemeneFiches]);
 
   /**
    * The subthema runs as the placement sheet wants them: a name and a window.
@@ -1097,6 +1100,7 @@ export function Agendascherm() {
             // The count is placements, not occurrences (`AlgemeneFicheWeergave.AantalPlaatsingen`), so one means this
             // placement is the fiche's only one.
             enigePeriodeMetDoelen={fiche !== undefined && fiche.aantalPlaatsingen === 1 && fiche.doelen.length > 0}
+            doelen={fiche ? alsInfodoelen(fiche.doelen) : undefined}
             alleenLezen={!magPlannen}
             bezig={verwijderFichePlaatsing.isPending}
             fout={verwijderFichePlaatsing.error}

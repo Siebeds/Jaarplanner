@@ -10,7 +10,8 @@ import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
 import { useHoeken, useMaakHoek } from "./gegevens";
 import { FICHE_VOORVOEGSEL } from "./sleepids";
-import { useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gegevens";
+import { alsInfodoelen, useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gegevens";
+import { Doelinfo, type Infodoel } from "../plan/Doelinfo";
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
 import { Hoekformulier } from "../instellingen/Hoekformulier";
 import { Algemeneficheformulier } from "../instellingen/Algemeneficheformulier";
@@ -169,6 +170,7 @@ export function Hoekenpaneel({
             sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
             naam: fiche.naam,
             omschrijving: fiche.omschrijving,
+            doelen: alsInfodoelen(fiche.doelen),
           })),
           leeg: t("hoekenpaneel.geenAlgemeneFiches"),
           naarInstellingen: { pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") },
@@ -299,6 +301,8 @@ interface Paneelfiche {
   sleepId: string;
   naam: string;
   omschrijving: string | null;
+  /** The goals, for the card's info icon (FB-018). Absent for a kind with none to show: a hoek, until FB-019. */
+  doelen?: readonly Infodoel[];
 }
 
 /** The list the panel is showing, with everything that differs between the two kinds. */
@@ -397,6 +401,9 @@ function Fichelijst({
  * the click that follows an activated drag, so a drop does not also open the sheet from the agenda's own day; a press
  * that does not travel is a click. On a keyboard Space picks the fiche up, as on every draggable in this agenda. On a
  * phone the fiche is only tapped.
+ *
+ * **Its goals behind an info icon in the corner, beside the button and not in it** (FB-018): pressing the fiche plans
+ * it, pressing the icon only shows what it works on. Only for a kind that has goals to show.
  */
 function Fiche({
   fiche,
@@ -410,25 +417,33 @@ function Fiche({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: fiche.sleepId });
 
   return (
-    <button
-      type="button"
-      ref={sleepbaar ? setNodeRef : undefined}
-      onClick={() => onKies(fiche.id)}
-      {...(sleepbaar ? listeners : {})}
-      {...(sleepbaar ? attributes : {})}
-      className={cn(
-        "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
-        "transition-colors duration-150 hover:border-accent",
-        // The grabbing hand says this can be picked up (owner, 2026-08-31); `touch-none` so a touch drag lifts the
-        // fiche instead of scrolling the panel. Only where it drags.
-        sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
-        isDragging && "opacity-40",
-      )}
-    >
-      <p className="text-meta font-medium text-inkt">{fiche.naam}</p>
-      {fiche.omschrijving ? (
-        <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
+    <div className="relative">
+      <button
+        type="button"
+        ref={sleepbaar ? setNodeRef : undefined}
+        onClick={() => onKies(fiche.id)}
+        {...(sleepbaar ? listeners : {})}
+        {...(sleepbaar ? attributes : {})}
+        className={cn(
+          "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
+          "transition-colors duration-150 hover:border-accent",
+          // The grabbing hand says this can be picked up (owner, 2026-08-31); `touch-none` so a touch drag lifts the
+          // fiche instead of scrolling the panel. Only where it drags.
+          sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
+          // Room for the icon, so a long name wraps before it rather than running under it.
+          fiche.doelen && "pr-9",
+          isDragging && "opacity-40",
+        )}
+      >
+        <p className="text-meta font-medium text-inkt">{fiche.naam}</p>
+        {fiche.omschrijving ? (
+          <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
+        ) : null}
+      </button>
+
+      {fiche.doelen ? (
+        <Doelinfo naam={fiche.naam} doelen={fiche.doelen} className="absolute right-1.5 top-1.5" />
       ) : null}
-    </button>
+    </div>
   );
 }

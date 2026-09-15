@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Algemenefichedetailblad } from "./Algemenefichedetailblad";
 import type { AlgemeneFichemomentWeergave, AlgemeneFicheplaatsingWeergave } from "./gegevens";
 import { toonBereik } from "../plan/tijd";
+import type { Infodoel } from "../plan/Doelinfo";
 import { t } from "../../i18n";
 import { volleDag } from "../../lib/datum";
 
@@ -55,7 +56,8 @@ function toon({
   momentId = null,
   enige = false,
   alleenLezen = false,
-}: { momentId?: string | null; enige?: boolean; alleenLezen?: boolean } = {}) {
+  doelen,
+}: { momentId?: string | null; enige?: boolean; alleenLezen?: boolean; doelen?: readonly Infodoel[] } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
@@ -64,6 +66,7 @@ function toon({
         plaatsing={turnen}
         momentId={momentId}
         enigePeriodeMetDoelen={enige}
+        doelen={doelen}
         alleenLezen={alleenLezen}
         bezig={false}
         onVerwijder={() => {}}
@@ -170,5 +173,65 @@ describe("Algemenefichedetailblad", () => {
 
     toon({ enige: false });
     expect(screen.queryByText(t("fichedetail.laatstePeriode"))).not.toBeInTheDocument();
+  });
+});
+
+/*
+  FB-018: the fiche's goals in its own sheet. A block too short to hold the info icon keeps them here, so this is the one
+  place they are reachable from every block.
+*/
+describe("Algemenefichedetailblad: doelen", () => {
+  const groeten: Infodoel = { code: "1.1.GK3.1", doelsoort: "Gemeenschappelijk", tekst: "Groet de anderen." };
+
+  it("somt de doelen van de fiche op, ook voor wie de klas alleen mag bekijken", () => {
+    toon({ doelen: [groeten], alleenLezen: true });
+
+    expect(screen.getByText(t("fichedetail.doelen"))).toBeInTheDocument();
+    expect(screen.getByText("Groet de anderen.")).toBeInTheDocument();
+  });
+
+  it("zegt dat er nog geen doelen gekoppeld zijn", () => {
+    toon({ doelen: [] });
+
+    expect(screen.getByText(t("doelinfo.geen"))).toBeInTheDocument();
+  });
+
+  it("zegt niets over doelen zolang de fichelijst er niet is", () => {
+    toon();
+
+    expect(screen.queryByText(t("fichedetail.doelen"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("doelinfo.geen"))).not.toBeInTheDocument();
+  });
+
+  it("opent het detail van een doel boven het blad", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "1.1.GK3.1",
+          doelsoort: "Gemeenschappelijk",
+          jaarFase: "K3",
+          disciplineNummer: "1",
+          disciplineNaam: "Taal",
+          domein: "Mondelinge taalvaardigheid",
+          subdomein: "Spreken",
+          cluster: null,
+          tekst: "Groet de anderen.",
+          voorbeelden: null,
+          toelichting: null,
+          woordenschat: null,
+          minimumdoelRef: null,
+          minimumdoel: null,
+          nietMeerInOpstap: false,
+          koppelingen: [],
+          gerelateerdeDoelen: [],
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    toon({ doelen: [groeten] });
+
+    fireEvent.click(screen.getByRole("button", { name: /Groet de anderen\./ }));
+
+    expect(await screen.findByRole("dialog", { name: t("doel.titel") })).toBeInTheDocument();
   });
 });

@@ -73,7 +73,7 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     const { onKies, onKiesAlgemeneFiche } = toon();
 
     expect(screen.getByRole("complementary", { name: t("hoekenpaneel.algemeenTitel") })).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole("button", { name: /turnen/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^turnen/ }));
     expect(onKiesAlgemeneFiche).toHaveBeenCalledWith("f-1");
     expect(onKies).not.toHaveBeenCalled();
     // The corners are the other switch's list, not a second section of this one.
@@ -90,6 +90,54 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     expect(onKies).toHaveBeenCalledWith("h-1");
     expect(onKiesAlgemeneFiche).not.toHaveBeenCalled();
     expect(screen.queryByText("turnen")).not.toBeInTheDocument();
+  });
+
+  // FB-018: the goals of an algemene fiche one press away in the panel, without planning it. A hoek has none yet (FB-019).
+  it("toont de doelen van een algemene fiche via haar info-icoon, zonder haar in te plannen", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          antwoord([
+            {
+              id: "f-1",
+              klasId: "k-1",
+              naam: "turnen",
+              omschrijving: null,
+              aantalPlaatsingen: 0,
+              doelen: [
+                {
+                  koppelingId: "dk-1",
+                  leerplandoelCode: "6.1.G1.1",
+                  doelsoort: "Gemeenschappelijk",
+                  jaarFase: "K3",
+                  tekst: "Beweegt vlot.",
+                },
+              ],
+            },
+          ]),
+        ),
+      ),
+    );
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
+    const { onKiesAlgemeneFiche } = toon();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("doelinfo.open", { naam: "turnen" }) }));
+
+    const venster = screen.getByRole("dialog", { name: "turnen" });
+    expect(within(venster).getByText("6.1.G1.1")).toBeInTheDocument();
+    expect(within(venster).getByText("Beweegt vlot.")).toBeInTheDocument();
+    expect(onKiesAlgemeneFiche).not.toHaveBeenCalled();
+  });
+
+  it("zet geen info-icoon op een hoekenfiche", async () => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    toon();
+
+    await screen.findByRole("button", { name: /^bouwhoek/ });
+    expect(screen.queryByRole("button", { name: t("doelinfo.open", { naam: "bouwhoek" }) })).not.toBeInTheDocument();
   });
 
   it("zegt bij een mislukte lijst niet dat de klas geen fiches heeft", async () => {
@@ -109,7 +157,7 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "algemeen" });
     const { client } = toon();
-    expect(await screen.findByRole("button", { name: /turnen/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^turnen/ })).toBeInTheDocument();
 
     // After every placement the fiche list is invalidated and refetched with the panel still open
     // (`usePlaatsingVerversing`). A refetch that fails must not take away the list she was just dragging from.
@@ -117,7 +165,7 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     await client.invalidateQueries({ queryKey: ["algemene-fiches"] });
     await waitFor(() => expect(client.getQueryState(["algemene-fiches", "k-1"])?.status).toBe("error"));
 
-    expect(screen.getByRole("button", { name: /turnen/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^turnen/ })).toBeInTheDocument();
     expect(screen.queryByText(t("hoekenpaneel.mislukt"))).not.toBeInTheDocument();
   });
 
@@ -126,7 +174,7 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     useHoekenpaneel.setState({ open: true, soort: "algemeen" });
     const { onKiesAlgemeneFiche } = toon();
 
-    fireEvent.click(await screen.findByRole("button", { name: /turnen/ }));
+    fireEvent.click(await screen.findByRole("button", { name: /^turnen/ }));
     expect(onKiesAlgemeneFiche).toHaveBeenCalledWith("f-1");
     expect(useHoekenpaneel.getState().open).toBe(false);
   });
@@ -192,7 +240,7 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
     fireEvent.change(screen.getByLabelText(t("algemeneFiches.naam")), { target: { value: "onthaal" } });
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
 
-    expect(await screen.findByRole("button", { name: /onthaal/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^onthaal/ })).toBeInTheDocument();
     expect(posts).toEqual([
       { pad: "/api/klassen/k-1/algemene-fiches", body: { naam: "onthaal", omschrijving: null } },
     ]);
@@ -232,7 +280,7 @@ describe("Hoekenpaneel: de tegel onderaan maakt een nieuwe fiche (TB-015)", () =
     expect(screen.getByText(t("hoekenpaneel.geenAlgemeneFiches"))).toBeInTheDocument();
 
     vastgehouden.los(antwoord(fiches));
-    expect(await screen.findByRole("button", { name: /onthaal/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /^onthaal/ })).toBeInTheDocument();
     // The same node, still focused: a remounted tile would be a different element and would have lost the focus.
     expect(screen.getByRole("button", { name: t("algemeneFiches.toevoegen") })).toBe(tegel);
     expect(tegel).toHaveFocus();

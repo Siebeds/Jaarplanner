@@ -38,3 +38,14 @@ window.matchMedia = (query: string): MediaQueryList =>
     removeListener: () => {},
     dispatchEvent: () => false,
   }) as MediaQueryList;
+
+/**
+ * jsdom has no `ResizeObserver` either, and Radix's popover measures the element it hangs from with one (FB-018).
+ * A stub that never reports is the honest answer for the reason given above: jsdom lays nothing out, so there is no
+ * size to report. Where the window sits is the browser pass's to check.
+ */
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;

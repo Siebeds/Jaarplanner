@@ -2,13 +2,13 @@
 id: FB-018
 titel: Doelen van fiches, hoeken, verrijkingen en activiteiten via een info-icoon in de agenda
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 15:52
+opgepakt-door: FB-018
+branch: ticket/FB-018-doelen-info-icoon
+pr: 78
 geblokkeerd:
 fr: [FR-3.2, FR-6.1]
 ---
@@ -39,13 +39,13 @@ apart weekoverzicht.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een algemene fiche met twee doelen in de zijbalk, wanneer ik op haar info-icoon klik, dan zie ik die twee
+- [x] Gegeven een algemene fiche met twee doelen in de zijbalk, wanneer ik op haar info-icoon klik, dan zie ik die twee
   doelen, en er opent geen plaatsingsblad.
-- [ ] Gegeven een ingeplande activiteit op het tijdraster, wanneer ik op haar info-icoon klik, dan zie ik haar doelen
+- [x] Gegeven een ingeplande activiteit op het tijdraster, wanneer ik op haar info-icoon klik, dan zie ik haar doelen
   zonder dat het activiteitblad opent of het blok verschuift.
-- [ ] Gegeven een blok zonder doelen, dan zegt het venster dat er nog geen doelen gekoppeld zijn.
-- [ ] Gegeven het venster, wanneer ik een doel aanklik, dan opent het detail van dat doel.
-- [ ] Het icoon is met het toetsenbord bereikbaar, heeft een doel van minstens 24 bij 24 pixels, en is in een echte
+- [x] Gegeven een blok zonder doelen, dan zegt het venster dat er nog geen doelen gekoppeld zijn.
+- [x] Gegeven het venster, wanneer ik een doel aanklik, dan opent het detail van dat doel.
+- [x] Het icoon is met het toetsenbord bereikbaar, heeft een doel van minstens 24 bij 24 pixels, en is in een echte
   browser nagekeken op desktop en ~390px.
 
 ## Testscenario's
@@ -66,7 +66,22 @@ apart weekoverzicht.
 
 - Een kort blok (een kwartier) heeft weinig ruimte. Waar staat het icoon dan: in het blok, of alleen in het blad?
   Te beslissen in de ontwerpstap.
+  - **Beslist in de ontwerpstap (2026-09-15):** het icoon staat in het blok vanaf een half uur. Een blok van een half
+    uur is 28 pixels hoog en past een doel van 24 bij 24; een kwartier is 14 pixels en past niets dat een vinger raakt.
+    Een korter blok toont zijn doelen alleen in het blad dat het opent: het activiteitblad deed dat al, en het blad van
+    een algemene fiche kreeg daarvoor een sectie Doelen.
+- Een doel dat uit Op.stap verdwenen is, draagt in het venster het label "Vervallen in Op.stap" bij een activiteit,
+  maar niet bij een algemene fiche: de doelen van een fiche komen zonder die vlag van de server, en dat was al zo voor
+  dit ticket (antagonist, 2026-09-15).
+  - **Aanvaard door de eigenaar (2026-09-15):** fichedoelen tonen het label voorlopig niet; geen apart ticket.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 14:52 · eigenaar · nieuw → klaar-voor-bouw: eigenaar vroeg in sessie om FB-018 op te nemen, zonder op FB-017 te wachten
+- 2026-09-15 14:53 · FB-018 · klaar-voor-bouw → in-uitvoering: opgepakt; de activiteitkaarten uit FB-017 krijgen het icoon van wie als tweede merget (eigenaar, 2026-09-15)
+- 2026-09-15 15:12 · FB-018 · info-icoon met doelvenster gebouwd: op tijdrasterblokken vanaf een half uur (activiteit, algemene fiche) en op de kaarten van algemene fiches in de zijbalk; kortere blokken tonen hun doelen in hun blad, daarvoor kreeg het fichedetailblad een doelensectie; lint en 588 frontendtests groen
+- 2026-09-15 15:26 · FB-018 · browsercontrole op wegwerpdatabank jp_fb018 (headless Chrome, 1440 en 390 px): alle vijf acceptatiecriteria gezien, icoon 24x24, contrast 5,97 tot 6,51:1, focus keert terug naar het icoon; open vraag beslist: icoon vanaf een half uur, korter blok toont doelen in zijn blad
+- 2026-09-15 15:45 · FB-018 · antagonist ronde 1: VIOLATIONS FOUND, een zware bevinding (op een blok van een half uur lag de rekgreep over het onderste derde van het icoon) en vijf kleinere; opgelost: icoon boven de greep (z-20), commentaar over de starttijd rechtgezet, ADR-0024 kreeg een amendement voor de popover, focustest toegevoegd; herbemeten in de browser: alle 1653 punten binnen de cirkel van 24 px raken het icoon op drie blokken; lint en 589 frontendtests groen
+- 2026-09-15 15:52 · FB-018 · in-uitvoering → te-testen: gebouwd: info-icoon met doelvenster op tijdrasterblokken vanaf een half uur en op de kaarten van algemene fiches, doelen van een fiche in haar blad; antagonist ronde 2 COMPLIANT; na merge van main lint en 606 frontendtests groen; klaar om te testen
+- 2026-09-15 15:52 · FB-018 · PR #78

@@ -725,6 +725,12 @@
     "algemeneFiche": "algemene fiche",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },
+  "doelinfo": {
+    "open": "Doelen van {naam}",
+    "geen": "Nog geen doelen gekoppeld.",
+    "eenDoel": "1 doel",
+    "aantalDoelen": "{aantal} doelen"
+  },
   "hoeken": {
     "toevoegen": "Hoek toevoegen",
     "klas": "Klas",
@@ -836,6 +842,7 @@
   },
   "fichedetail": {
     "periode": "Periode",
+    "doelen": "Doelen",
     "uurrooster": "In het uurrooster",
     "opUur": "{periode}, op {dagen}",
     "eenSchooldag": "1 schooldag",

@@ -16,6 +16,7 @@ import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { leesFicheId, momentSleepId } from "../hoeken/sleepids";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
+import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
 import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
@@ -55,8 +56,13 @@ export interface Hoekblokje {
 /**
  * One occurrence of a planned algemene fiche, in the same shape: a fiche moment is a row a teacher can move on its
  * own, exactly like a hoek's, and only the endpoint that saves it differs.
+ *
+ * Plus the fiche's goals, for the block's info icon (FB-018). Absent while the fiche list has not arrived, which draws
+ * no icon rather than one that would say the fiche has no goals.
  */
-export type Ficheblokje = Hoekblokje;
+export interface Ficheblokje extends Hoekblokje {
+  doelen?: readonly Infodoel[];
+}
 
 /** What a resize asks the screen to save. The three kinds live behind three endpoints; the grid knows which is which. */
 export type Tijddoel =
@@ -71,6 +77,11 @@ type Rasterblok = Blokje & {
   onder: string;
   doel: Tijddoel;
   activiteit?: GeplandeActiviteit;
+  /**
+   * The goals the block works on, for its info icon (FB-018). Absent for a kind that has none to show: a hoek, until
+   * FB-019 gives hoeken goals of their own.
+   */
+  doelen?: readonly Infodoel[];
 };
 
 /**
@@ -384,6 +395,8 @@ function bouwBlokken(
         onder: activiteit.subthemaNaam,
         doel: { soort: "activiteit", plaatsingId: activiteit.plaatsingId },
         activiteit,
+        // Codes only: the weekplanning row carries no goal text, and the info window fetches it when it opens.
+        doelen: activiteit.doelcodes.map((code) => ({ code })),
       });
     }
   }
@@ -412,6 +425,7 @@ function bouwBlokken(
       naam: moment.naam,
       onder: t("tijdraster.algemeneFiche"),
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
+      doelen: moment.doelen,
     });
   }
 
@@ -887,6 +901,14 @@ function Blok({
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
+  /*
+    THE INFO ICON FROM HALF AN HOUR UP (FB-018). A half-hour block is 28 pixels tall, which holds the 24-pixel target
+    WCAG 2.2 AA asks for; a quarter is 14, which holds nothing a finger can hit. Below half an hour the goals are in the
+    sheet the block opens, which lists them for an activiteit and an algemene fiche alike, so no block's goals are out of
+    reach. Measured on the saved length, not on an edge being pulled, so the icon does not blink in and out mid-resize.
+  */
+  const infodoelen = blok.doelen && blok.einde - blok.begin >= 30 ? blok.doelen : null;
+
   return (
     <div
       // Above its neighbours while its edge is being pulled, so the end-time tag hanging below it is never covered.
@@ -929,18 +951,29 @@ function Blok({
           className={cn(
             "block h-full w-full px-2 py-1 text-left",
             magPlannen && "cursor-grab touch-none active:cursor-grabbing",
+            // Room for the info icon in the corner, so the name and the time stop before it instead of under it.
+            infodoelen && "pr-7",
           )}
         >
-          <span className="flex min-w-0 items-baseline gap-1">
+          {/* Clipped at its own edge, so in a block narrowed by a neighbour the time stops before the info icon rather
+              than running under it (seen in the FB-018 browser pass). */}
+          <span className="flex min-w-0 items-baseline gap-1 overflow-hidden">
             {blok.doel.soort === "hoek" ? (
               <IcoonHoek aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
             <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
-            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped. */}
+            {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped.
+                Not on a phone when the block also carries the info icon: a column there is about a hundred pixels,
+                and the name was left one letter wide. What that costs is the start time for a sighted phone user: the
+                hour gutter prints whole hours only, so a block at 9:15 shows its quarter nowhere on the grid. Accepted,
+                because a name one letter wide says nothing at all; the time stays in the block's accessible name and
+                in the sheet it opens. */}
             {toont === "tijd" ? (
-              <span className="mono shrink-0 text-[0.625rem] text-inkt-zacht">{toonTijd(blok.begin)}</span>
+              <span className={cn("mono shrink-0 text-[0.625rem] text-inkt-zacht", infodoelen && "max-sm:hidden")}>
+                {toonTijd(blok.begin)}
+              </span>
             ) : null}
           </span>
 
@@ -953,6 +986,16 @@ function Blok({
             </>
           ) : null}
         </button>
+
+        {/* A sibling of the block's button, above it in the corner: pressing it opens the goals and nothing else. For
+            everyone who can see the block, since reading what a block works on is not planning.
+
+            ABOVE THE RESIZE GRIP (z-20 over its z-10). On a half-hour block the grip's 8-pixel strip runs across the
+            bottom of the 24-pixel icon, and as the later sibling at the same z it painted over it and took the press:
+            the icon's lower third started a resize instead (antagonist, FB-018). The grip keeps the rest of the edge. */}
+        {infodoelen ? (
+          <Doelinfo naam={blok.naam} doelen={infodoelen} className="absolute right-0.5 top-0.5 z-20" />
+        ) : null}
 
         {magPlannen ? (
           <Rekgreep

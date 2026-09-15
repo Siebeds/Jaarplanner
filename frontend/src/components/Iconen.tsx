@@ -274,3 +274,19 @@ export function IcoonGreep(props: IconProps) {
     </Icoon>
   );
 }
+
+/**
+ * Info: a circle with an i, the mark a teacher already reads as "tell me more about this" (FB-018).
+ *
+ * In the agenda it opens what a block or a fiche works on, its goals, without opening the thing itself. Not the Doelen
+ * target: that one is a destination in the navigation, and this goes nowhere.
+ */
+export function IcoonInfo(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="12" cy="12" r="8.25" />
+      <path d="M12 11v5" />
+      <circle cx="12" cy="7.9" r="0.6" fill="currentColor" />
+    </Icoon>
+  );
+}
