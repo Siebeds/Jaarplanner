@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "./api";
 import type { Ik } from "./aanmelding";
-import { RECHTENMATRIX, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
+import { RECHTENMATRIX, ZONDER_DIRECTIE, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
 import { t } from "../i18n";
 
 /**
@@ -29,6 +29,8 @@ function ik(delen: Partial<Ik>): Ik {
     hoofdleerkrachtLeeftijden: [],
     leerkrachtLeeftijden: [],
     eigenKlasIds: [],
+    rapportklasIds: [],
+    lopendeRapportklasIds: [],
     ...delen,
   };
 }
@@ -42,6 +44,9 @@ const RELATIES: Record<string, Ik> = {
   "LK leeftijd": ik({ leerkrachtLeeftijden: [LEEFTIJD] }),
   "LK andere leeftijd": ik({ leerkrachtLeeftijden: ["L1"] }),
   "LK eigen": ik({ eigenKlasIds: [EIGEN_KLAS] }),
+  // "LK eigen" for the ontwikkelingsrapport (ADR-0030 footnote ⁶): the klas grants K3, during its schooljaar or after it.
+  "LK rapport": ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }),
+  "LK rapport voorbij": ik({ rapportklasIds: [EIGEN_KLAS] }),
   Ander: ik({}),
 };
 
@@ -64,11 +69,17 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   StreefwoordenschatAanpassen: ["Directie", "HL", "LK leeftijd"],
   GedeeldeActiviteitBewerken: ["Directie", "HL", "LK leeftijd"],
   KlasplanningBewerken: ["Directie", "LK eigen"],
+  // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
+  OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij"],
+  LeerlingenBeheren: ["Directie", "LK rapport"],
+  // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
+  RapportsetBewerken: ["LK rapport"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
 function bronVoor(rij: Rij): Rechtbron | undefined {
   if (rij === "KlasplanningBewerken") return { soort: "klas", klasId: EIGEN_KLAS };
+  if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren") return { soort: "rapportklas", klasId: EIGEN_KLAS };
   const kolommen = RECHTENMATRIX[rij];
   return kolommen.some((kolom) => kolom === "Hoofdleerkracht" || kolom === "LeerkrachtLeeftijd")
     ? { soort: "leeftijd", leeftijd: LEEFTIJD }
@@ -94,15 +105,33 @@ describe("de rechtenmatrix van de frontend", () => {
   it("heeft een verwachting voor elke rij, en elke rij van de server", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
-    // The server's `Rechtenmatrix.Rijen`, by policy name: eighteen rows.
-    expect(rijen).toHaveLength(18);
+    // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set row.
+    expect(rijen).toHaveLength(21);
   });
 
-  it("laat directie elke rij toe, met of zonder bron", () => {
+  it("geeft een leerkracht de kinderen van een andere K3-klas niet, en de klasplanning geen rapport (R17)", () => {
+    const rapportklas = (klasId: string): Rechtbron => ({ soort: "rapportklas", klasId });
+    expect(staatToe(RELATIES["LK rapport"], "OntwikkelingsrapportLezen", rapportklas(ANDERE_KLAS))).toBe(false);
+    expect(staatToe(RELATIES["LK rapport"], "LeerlingenBeheren", rapportklas(ANDERE_KLAS))).toBe(false);
+    // The planning resource of the same klas is a different resource: it fails closed on a report row.
+    expect(staatToe(RELATIES["LK rapport"], "OntwikkelingsrapportLezen", { soort: "klas", klasId: EIGEN_KLAS })).toBe(
+      false,
+    );
+  });
+
+  it("laat directie elke rij toe, met of zonder bron, behalve de K3-set (R31)", () => {
     for (const rij of Object.keys(RECHTENMATRIX) as Rij[]) {
+      if (ZONDER_DIRECTIE.has(rij)) continue;
       expect(staatToe(RELATIES.Directie, rij)).toBe(true);
       expect(staatToe(RELATIES.Directie, rij, activiteit(null, true))).toBe(true);
     }
+    expect([...ZONDER_DIRECTIE]).toEqual(["RapportsetBewerken"]);
+    expect(staatToe(RELATIES.Directie, "RapportsetBewerken")).toBe(false);
+    expect(magVoor(RELATIES.Directie).rapportsetBewerken).toBe(false);
+    // Not even with a running K3 klas of its own (owner, 2026-09-15, "Nooit wie directie heeft"); the same klas makes a
+    // plain gebruiker pass, so the refusal comes from the directie right.
+    expect(staatToe(ik({ isDirectie: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(false);
+    expect(staatToe(ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(true);
   });
 
   it("faalt dicht zonder of met de verkeerde bron, en voor niemand", () => {
@@ -266,6 +295,48 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(tb.menselijkeBeslissingenVerwijderen).toBe(false);
     expect(tb.curriculumbeheer).toBe(false);
     expect(tb.schoolcontentImporteren).toBe(true);
+  });
+});
+
+describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
+  it("biedt de bestemming aan directie en aan een leerkracht van een K3-klas, ook na het schooljaar", () => {
+    expect(magVoor(RELATIES.Directie).ontwikkelingsrapportZien).toBe(true);
+    expect(magVoor(RELATIES["LK rapport"]).ontwikkelingsrapportZien).toBe(true);
+    expect(magVoor(RELATIES["LK rapport voorbij"]).ontwikkelingsrapportZien).toBe(true);
+  });
+
+  it("biedt ze niemand anders aan: geen klasplanning, geen themabeheer, geen hoofdleerkracht van K3", () => {
+    for (const relatie of ["LK eigen", "TB", "HL", "LK leeftijd", "Ander"]) {
+      expect(magVoor(RELATIES[relatie]).ontwikkelingsrapportZien).toBe(false);
+    }
+    expect(magVoor(undefined).ontwikkelingsrapportZien).toBe(false);
+  });
+
+  it("zegt 'alleen nog lezen' alleen voor de leerkracht van wie het schooljaar voorbij is, nooit voor directie", () => {
+    expect(magVoor(RELATIES["LK rapport voorbij"]).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(true);
+    expect(magVoor(RELATIES["LK rapport"]).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
+    expect(magVoor(RELATIES.Directie).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
+    // Someone who cannot read the klas at all is not "reading only".
+    expect(magVoor(RELATIES["LK rapport voorbij"]).rapportAlleenNogLezen(ANDERE_KLAS)).toBe(false);
+  });
+
+  it("biedt de bestemming ook een hoofdleerkracht van K3 aan, en geen hoofdleerkracht van een andere leeftijd", () => {
+    expect(magVoor(RELATIES.HL).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.HL).ontwikkelingsrapportZien).toBe(false);
+    expect(magVoor(RELATIES["HL andere leeftijd"]).ontwikkelingsrapportTab).toBe(false);
+    expect(magVoor(RELATIES["LK rapport voorbij"]).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.Directie).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.TB).ontwikkelingsrapportTab).toBe(false);
+    expect(magVoor(undefined).ontwikkelingsrapportTab).toBe(false);
+  });
+
+  it("faalt dicht op een /api/ik-antwoord zonder de twee lijsten", () => {
+    const oud = { ...RELATIES["LK eigen"] } as Partial<Ik>;
+    delete oud.rapportklasIds;
+    delete oud.lopendeRapportklasIds;
+    const mag = magVoor(oud as Ik);
+    expect(mag.ontwikkelingsrapportZien).toBe(false);
+    expect(mag.ontwikkelingsrapportLezen(EIGEN_KLAS)).toBe(false);
   });
 });
 

@@ -697,8 +697,18 @@ R31). It is the one exception to R3.
 - **The column definitions widen for these rows only.**
   - "LK eigen" covers the klas's leerlingen and their reports as well as its planning. It fills in only during the klas's
     schooljaar; after it, it reads (ADR-0035 R26) and downloads (a default) only, which overrides I21 for these rows.
+    *Added 2026-09-15 (FB-001, antagonist round 1):* §3 has no read row of its own for a klas's leerlingen, and reading
+    that list follows the row "Een ontwikkelingsrapport lezen" (`OntwikkelingsrapportLezen`), because a child's name
+    is the first thing a report shows. So whoever holds that row reads the klas's name list too; once FB-008 puts
+    Leerlingzorg on it, Leerlingzorg reads every K3 klas's names, which follows from R18 ("alle
+    ontwikkelingsrapporten lezen").
   - "LK leeftijd" covers the one K3 set of rapportdoelen and the scale, and means a klastoewijzing on a klas that grants
     K3, in a schooljaar that has not ended (ADR-0035 D4).
+    *Added 2026-09-15 (FB-002):* this row enforces it as a klastoewijzing on a klas that can hold leerlingen, in a
+    schooljaar that has not ended. That is the D9 function (`Leerling.KlasKanLeerlingenHebben`), and it is not the stated
+    jaarfase "K3" that "LK leeftijd" reads on the shared-content rows. The reason is the graadklas decision (Art. XIV):
+    both go through the one klas→leeftijden mapping (`Leeftijdsrechten`), so that decision moves who edits the set
+    together with who has leerlingen and reports. The column needs no resource, because the set is one for all of K3.
 - **A seventh relation applies to these rows only: Leerlingzorg**, a right directie gives. It reads every
   ontwikkelingsrapport and does nothing else (ADR-0035 R18); in particular it does not download (ADR-0035 D5). It has no
   column because it grants on no other row.
@@ -725,7 +735,11 @@ the goal-link right I27 asks) is enforced by the wizard service. Creating an act
 the goal-link row (R19), on the ordinary route and in the wizard. A sweep test enumerates every write route from
 the endpoint data source and fails, naming the route, for any that a gebruiker without rights can reach.
 *The ontwikkelingsrapport rows (footnote ⁶), added the same day from ADR-0035, have no policy in `Rechtenmatrix`
-yet: no route serves them until FR-13 is built, and each gets its policy then.*
+yet: no route serves them until FR-13 is built, and each gets its policy then.* *Since FB-001 (2026-09-15) two have:
+`OntwikkelingsrapportLezen` and `LeerlingenBeheren`; the other four get theirs with FB-002, FB-003, FB-006 and FB-007.*
+*Since FB-002 (2026-09-15) the rapportdoelen row has its policy too: `RapportsetBewerken`, the one row directie does not pass (R31).
+The owner read R31 as "never a person holding directie" on 2026-09-15: a directeur who also has a K3 klastoewijzing still
+does not edit the set or the scale.*
 
 One row grants ✓ to "Ander", and it cites the ruling that does so: **the personal-content row** follows R6.
 Personal content belongs to a person, not to a klas, so "ander" has no klas to be other than. Its final shape is

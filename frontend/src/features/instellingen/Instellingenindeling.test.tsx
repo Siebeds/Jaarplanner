@@ -85,16 +85,18 @@ const IK: Ik = {
   hoofdleerkrachtLeeftijden: ["K3"],
   leerkrachtLeeftijden: ["K3"],
   eigenKlasIds: ["klas-1"],
+  rapportklasIds: [],
+  lopendeRapportklasIds: [],
 };
 
 /** `/api/ik` answers as this person; every other request never settles. */
-function stubIk(isDirectie: boolean) {
+function stubIk(isDirectie: boolean, delen: Partial<Ik> = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) =>
       url.endsWith("/api/ik")
         ? Promise.resolve(
-            new Response(JSON.stringify({ ...IK, isDirectie }), {
+            new Response(JSON.stringify({ ...IK, isDirectie, ...delen }), {
               status: 200,
               headers: { "Content-Type": "application/json" },
             }),
@@ -211,6 +213,48 @@ describe("het onderdeel Gebruikers (E6-04)", () => {
     renderPoort();
 
     expect(await screen.findByText("gebruikers-scherm")).toBeInTheDocument();
+  });
+});
+
+/*
+  The ontwikkelingsrapport on a phone (FB-001; owner, 2026-09-15: "Via Instellingen"). jsdom applies no stylesheet, so
+  `lg:hidden` is invisible here: what these pin is who is offered the link, not in which viewport.
+*/
+describe("het ontwikkelingsrapport bovenaan Instellingen (FB-001)", () => {
+  const rapport = () => screen.queryByRole("link", { name: t("navigatie.ontwikkelingsrapport") });
+
+  it("staat er voor een leerkracht van een K3-klas, en leidt naar het rapport", async () => {
+    stubIk(false, { rapportklasIds: ["klas-1"], lopendeRapportklasIds: ["klas-1"] });
+    rendermetPad("/instellingen/klassen");
+
+    expect(await screen.findByRole("link", { name: t("navigatie.ontwikkelingsrapport") })).toHaveAttribute(
+      "href",
+      "/ontwikkelingsrapport",
+    );
+  });
+
+  it("staat er voor directie", async () => {
+    stubIk(true);
+    rendermetPad("/instellingen/klassen");
+
+    expect(await screen.findByRole("link", { name: t("navigatie.ontwikkelingsrapport") })).toBeInTheDocument();
+  });
+
+  it("staat er voor een hoofdleerkracht van K3, voor de set en de schaal (eigenaar, 2026-09-15)", async () => {
+    stubIk(false);
+    rendermetPad("/instellingen/klassen");
+
+    // `IK` holds a hoofdleerkracht appointment for K3 and no K3 klas.
+    expect(await screen.findByRole("link", { name: t("navigatie.ontwikkelingsrapport") })).toBeInTheDocument();
+  });
+
+  it("staat er niet voor wie geen rapport mag lezen en geen hoofdleerkracht van K3 is, ook niet met themabeheer", async () => {
+    stubIk(false, { hoofdleerkrachtLeeftijden: ["K2"] });
+    rendermetPad("/instellingen/klassen");
+
+    // The name in the signed-in row says `/api/ik` has answered, so the absence below is a decision.
+    expect(await screen.findByText(IK.naam)).toBeInTheDocument();
+    expect(rapport()).not.toBeInTheDocument();
   });
 });
 

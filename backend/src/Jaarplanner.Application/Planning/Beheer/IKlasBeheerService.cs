@@ -35,12 +35,18 @@ public interface IKlasBeheerService
         KlasCreatie creatie,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Renames a class group or changes its jaarfase. <i>Since FB-001:</i> refused with a validation fault when the new
+    /// jaarfase no longer grants K3 while the klas has leerlingen in the ontwikkelingsrapport (D9).
+    /// </summary>
     Task<KlasWeergave> WijzigKlasAsync(Guid klasId, KlasCreatie wijziging, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a class group. Refused with a validation fault while any subthema still references it —
     /// deleting would orphan class-scoped content (the FK is <c>Restrict</c>), so this reports the
     /// blocking count instead of surfacing a database error (ADR-0006 §4).
+    /// <i>Since 2026-08-30 the subthema guard is gone (see the implementation); the refusals are a jaarplan holding human
+    /// decisions and, since FB-001, leerlingen in the ontwikkelingsrapport (another <c>Restrict</c> FK).</i>
     /// </summary>
     Task VerwijderKlasAsync(Guid klasId, CancellationToken cancellationToken = default);
 }
@@ -135,6 +141,12 @@ public sealed record KlasCreatie(string Naam, string? Jaarfase = null);
 /// field that cannot be corrected.
 /// </para>
 /// </param>
+/// <param name="KanLeerlingenHebben">
+/// Whether this klas can hold children in the ontwikkelingsrapport (FB-001, ADR-0035 D9), as
+/// <c>Leerling.KlasKanLeerlingenHebben</c> answers it through the one klas→leeftijden mapping (Art. VI.1). From the
+/// server for the same reason as <paramref name="JaarFasen"/>: a screen that compared the jaarfase to "K3" itself would
+/// be a second answer, and directie's graadklas decision (Art. XIV) would then have to change two places.
+/// </param>
 public sealed record KlasWeergave(
     Guid Id,
     Guid SchooljaarId,
@@ -143,4 +155,5 @@ public sealed record KlasWeergave(
     int AantalSubthemas,
     IReadOnlyList<string> JaarFasen,
     string? Jaarfase = null,
-    IReadOnlyList<string>? MogelijkeJaarfasen = null);
+    IReadOnlyList<string>? MogelijkeJaarfasen = null,
+    bool KanLeerlingenHebben = false);

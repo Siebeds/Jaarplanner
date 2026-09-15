@@ -20,7 +20,9 @@ import type {
   MinimumdoelFilterQuery,
   MinimumdoelenPagina,
   SchooljaarSamenvatting,
+  SubthemaBestemming,
   ThemaBibliotheekItem,
+  ThemaDoelenoverzicht,
   ThemaWeergave,
   Weekplanning,
 } from "./types";
@@ -252,6 +254,18 @@ export function useThema(themaId: string | undefined) {
   });
 }
 
+/**
+ * The doelen a thema reaches per leeftijd (FB-009). Under the thema's own key, so every write that refreshes the thema
+ * (a prefix invalidation of `themaSleutels.detail`) refreshes this too, and it can never lag the lists beside it.
+ */
+export function useThemaDoelenoverzicht(themaId: string | undefined) {
+  return useQuery({
+    queryKey: [...themaSleutels.detail(themaId ?? ""), "doelenoverzicht"] as const,
+    queryFn: () => get<ThemaDoelenoverzicht>(`/api/themas/${themaId}/doelenoverzicht`),
+    enabled: Boolean(themaId),
+  });
+}
+
 export function useDoelsuggesties(themaId: string | undefined) {
   return useQuery({
     queryKey: themaSleutels.suggesties(themaId ?? ""),
@@ -450,6 +464,19 @@ export function usePlaatsSubthemaperiode(klasId: string | null) {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["weekplanning"] });
     },
+  });
+}
+
+/**
+ * Every subthema at an age this klas teaches, each named with its thema (FB-017): what the agenda's activiteiten list
+ * offers to choose from. Under the `thema-bibliotheek` family on purpose: a new, renamed or deleted subthema goes
+ * through `useSchoolcontentMutatie`, which invalidates that family, so the list cannot go on offering one that is gone.
+ */
+export function useSubthemaBestemmingen(klasId: string | null) {
+  return useQuery({
+    queryKey: [...themaSleutels.bibliotheek(), "bestemmingen", klasId],
+    queryFn: () => get<SubthemaBestemming[]>(`/api/subthemas/voor-klas/${klasId}`),
+    enabled: Boolean(klasId),
   });
 }
 

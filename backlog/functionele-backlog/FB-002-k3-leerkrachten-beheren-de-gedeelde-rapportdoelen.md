@@ -2,13 +2,13 @@
 id: FB-002
 titel: K3-leerkrachten beheren de gedeelde rapportdoelen en de sterrenschaal
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 10:48
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-15 16:31
+opgepakt-door: kindvolg
+branch: ticket/FB-002-rapportdoelen-sterrenschaal
+pr: 84
 geblokkeerd:
 fr: [FR-13.2]
 ---
@@ -50,11 +50,11 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een K3-leerkracht, wanneer die een rapportdoel maakt met een titel en er K3-subdoelen aan koppelt, dan ziet elke K3-leerkracht van de school hetzelfde rapportdoel met dezelfde subdoelen.
-- [ ] Gegeven de keuzelijst van subdoelen, dan staan er alleen K3-subdoelen in waarvan het doel aanvaard of manueel is.
-- [ ] Gegeven de sterrenschaal, wanneer een K3-leerkracht een gradatie toevoegt met een label en een kleur uit de vaste lijst, dan toont de schaal elke ster met haar label ernaast, in de gekozen volgorde.
-- [ ] Gegeven een subdoel in een rapportdoel, wanneer het doel ervan geweigerd wordt of het subdoel verwijderd wordt, dan verdwijnt het uit het rapportdoel, en blijft het rapportdoel met zijn titel bestaan.
-- [ ] Gegeven de directie, of een hoofdleerkracht van K3 zonder klastoewijzing op een K3-klas, wanneer die de set of de schaal opent, dan kan die ze bekijken maar niets wijzigen, ook niet via het adres.
+- [x] Gegeven een K3-leerkracht, wanneer die een rapportdoel maakt met een titel en er K3-subdoelen aan koppelt, dan ziet elke K3-leerkracht van de school hetzelfde rapportdoel met dezelfde subdoelen.
+- [x] Gegeven de keuzelijst van subdoelen, dan staan er alleen K3-subdoelen in waarvan het doel aanvaard of manueel is.
+- [x] Gegeven de sterrenschaal, wanneer een K3-leerkracht een gradatie toevoegt met een label en een kleur uit de vaste lijst, dan toont de schaal elke ster met haar label ernaast, in de gekozen volgorde.
+- [x] Gegeven een subdoel in een rapportdoel, wanneer het doel ervan geweigerd wordt of het subdoel verwijderd wordt, dan verdwijnt het uit het rapportdoel, en blijft het rapportdoel met zijn titel bestaan.
+- [x] Gegeven de directie, of een hoofdleerkracht van K3 zonder klastoewijzing op een K3-klas, wanneer die de set of de schaal opent, dan kan die ze bekijken maar niets wijzigen, ook niet via het adres.
 
 ## Testscenario's
 
@@ -89,3 +89,18 @@ Dit is bouwticket 2 van ADR-0035 §6. **Bouwvolgorde:** na E6-02 en FB-001 (de t
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-15 10:48 · eigenaar · nieuw → klaar-voor-bouw
+- 2026-09-15 14:02 · kindvolg · klaar-voor-bouw → in-uitvoering: opgepakt, bovenop FB-001 (eigenaar 2026-09-15); de schaal start met het voorbeeld van de eigenaar
+- 2026-09-15 14:07 · kindvolg · eigenaar 2026-09-15: de schaal start met zijn voorbeeld (groen 'Volledig bereikt', oranje 'Nog niet volledig'); vaste kleurenlijst van zes (groen, lichtgroen, geel, oranje, rood, blauw), elk met een donkerdere rand; op het invulscherm (FB-003) geen statusbolletje naast de subdoelen
+- 2026-09-15 14:07 · kindvolg · let op: geen enkele weg in de app zet vandaag een subdoel op geweigerd (alle schrijfacties maken manueel), dus testscenario 6 kan niet via de app; D11 wordt gedekt door het filter bij het lezen, en een subdoel dat verwijderd wordt, verlaat elk rapportdoel
+- 2026-09-15 14:50 · kindvolg · browsercheck geslaagd op 1440 en 390: startschaal van de eigenaar, gradatie toevoegen (zonder kleur geweigerd), verschuiven, rapportdoel met alleen een titel, directie ziet alles zonder knoppen; sterranden halen 3:1 in licht en donker; verslag in backlog/worklogs/FB-002/browsercheck.md
+- 2026-09-15 15:36 · kindvolg · antagonist ronde 1: VIOLATIONS FOUND (1 MAJOR, 3 MINOR, 3 QUESTION); verslag in backlog/worklogs/FB-002/antagonist-ronde-1.md
+- 2026-09-15 15:36 · kindvolg · eigenaar 2026-09-15: een rapportdoel heeft altijd minstens één subdoel, bij aanmaken en bij wijzigen; het laatste subdoel haal je er niet uit, dan verwijder je het rapportdoel
+- 2026-09-15 15:37 · kindvolg · eigenaar 2026-09-15: R31 betekent 'nooit wie directie heeft'; een directeur met een eigen K3-klas past de set en de schaal ook niet aan
+- 2026-09-15 15:37 · kindvolg · eigenaar 2026-09-15: de tab Ontwikkelingsrapport staat ook bij een hoofdleerkracht van K3, met alleen Rapportdoelen en Sterrenschaal (D18 verruimd)
+- 2026-09-15 15:38 · kindvolg · eigenaar 2026-09-15: rood en blauw blijven zoals voorgesteld; hij zag dat rood de tint deelt met geweigerd, niet gedekt en gevaar, en blauw met doelsoort MD en voorgesteld
+- 2026-09-15 15:38 · kindvolg · correctie op de regel van 14:50: die browsercheck toonde de subdoelkiezer niet, want de testdatabank had nog geen leerplandoelen; die check volgt in ronde 2 van browsercheck.md
+- 2026-09-15 16:01 · kindvolg · browsercheck ronde 2 op 1440 en 390 met echte K3-subdoelen: kiezen, zoeken, weigering zonder subdoel, ingeklapte lijst; hoofdleerkracht K3 ziet de tab en alleen Rapportdoelen en Sterrenschaal; twee fouten gevonden en hersteld (melding bleef staan na aanvinken, subdoelen te smal op 390); verslag in browsercheck.md
+- 2026-09-15 16:13 · kindvolg · in-uitvoering → te-testen: klaar om te testen: antagonist ronde 2 COMPLIANT, de laatste ronde (eigenaar); bewijs per criterium: 1 en 2 RapportsetEndpointsTests en browsercheck ronde 2; 3 de sterrenschaaltests en browsercheck ronde 1; 4 de lidmaatschaps- en D3-test (geweigerd alleen via het leesfilter, zie 14:07); 5 de rechtentests en de browsercheck (directie, hoofdleerkracht K3, ook via het adres)
+- 2026-09-15 16:14 · kindvolg · PR #80
+- 2026-09-15 16:31 · kindvolg · PR #84
+- 2026-09-15 16:31 · kindvolg · PR #80 werd gemerged in de branch van FB-001 nadat #75 al op main stond, dus FB-002 stond niet op main; main in FB-002 gemerged en de migratie opnieuw gemaakt na Schooluren (20260915141929, zelfde startschaal); gates groen (frontend 756, unit 1619, integratie 494); nieuwe PR #84 naar main

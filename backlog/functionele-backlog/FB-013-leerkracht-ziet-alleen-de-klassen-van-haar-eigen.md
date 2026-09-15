@@ -2,10 +2,10 @@
 id: FB-013
 titel: Leerkracht ziet alleen de klassen van haar eigen jaarfase
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:09
+bijgewerkt: 2026-09-15 16:27
 opgepakt-door:
 branch:
 pr:
@@ -83,3 +83,4 @@ Dit ticket neemt het werk van story E6-08 en E6-09 over.
 ## Werklog
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 16:27 · eigenaar · nieuw → klaar-voor-bouw: vrijgegeven voor de bouw op vraag van de eigenaar

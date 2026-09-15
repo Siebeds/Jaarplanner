@@ -6,7 +6,8 @@ namespace Jaarplanner.Application.Toegang;
 /// every <see cref="Rijen"/> entry under its <see cref="Matrixrij.Beleid"/> name, and <see cref="StaatToe"/> is the
 /// only code that decides whether a gebruiker's <see cref="Rechten"/> satisfy a row.
 /// <para>
-/// <b>How a row is applied.</b> A row whose columns need no resource (directie, the plain TB column) goes on a route as
+/// <b>How a row is applied.</b> A row whose columns need no resource (directie, the plain TB column, the K3 set's
+/// <see cref="Kolom.Rapportsetleerkracht"/>) goes on a route as
 /// <c>[Authorize(Policy = Rechtenmatrix.Beleid.X)]</c>. A row with any column that needs a resource is resource-based:
 /// HL, "LK leeftijd", "LK eigen", the maker, and themabeheer on a thema that holds no one else's content (I26). The Api
 /// builds the resource (<see cref="Leeftijdsinhoud"/>, <see cref="Klasplanning"/>, <see cref="Activiteitbron"/> or
@@ -19,8 +20,11 @@ namespace Jaarplanner.Application.Toegang;
 /// <para>
 /// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal content (R6) waits for E6-10's shape;
 /// reading and exporting another klas (I9) is every signed-in gebruiker today, which the fallback policy already gives,
-/// and narrowing it is E6-09's seam; and the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), added
-/// on 2026-09-14, get their policies with FR-13, since no route serves them before it.
+/// and narrowing it is E6-09's seam; and four of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶,
+/// ADR-0035), added on 2026-09-14, which get their policies with FB-002, FB-003, FB-006 and FB-007, since no route serves
+/// them before. <i>Since FB-001 (2026-09-15) two have one: <see cref="OntwikkelingsrapportLezen"/> and
+/// <see cref="LeerlingenBeheren"/>. Until then this sentence said all six had none. Since FB-002 (2026-09-15) a third
+/// has one: <see cref="RapportsetBewerken"/>, the one row directie does not pass (R31).</i>
 /// </para>
 /// <para>
 /// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row
@@ -60,6 +64,9 @@ public static class Rechtenmatrix
         public const string DoelenKoppelen = "DoelenKoppelen";
         public const string ActiviteitVerplaatsen = "ActiviteitVerplaatsen";
         public const string KlasplanningBewerken = "KlasplanningBewerken";
+        public const string OntwikkelingsrapportLezen = "OntwikkelingsrapportLezen";
+        public const string LeerlingenBeheren = "LeerlingenBeheren";
+        public const string RapportsetBewerken = "RapportsetBewerken";
     }
 
     // --- Resource-free rows: directie, and themabeheer where the row has it. ---
@@ -197,6 +204,45 @@ public static class Rechtenmatrix
         "Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21)",
         Kolom.LeerkrachtEigen);
 
+    // --- Resource-based rows: the ontwikkelingsrapport of one K3 klas (footnote ⁶, ADR-0035 §3.3; FB-001). ---
+
+    /// <summary>
+    /// §3 "Een ontwikkelingsrapport lezen" (ADR-0035 R16, R17, R18, R26), which FB-001 also applies to reading the klas's
+    /// leerlingen: the list of children is the first thing a report shows. Resource: <see cref="Rapportklas"/>.
+    /// <b>Reads are gated here, unlike every other read in the app</b>: I9 does not reach these rows, so a leerkracht of
+    /// another klas, a hoofdleerkracht and themabeheer read none of it (R17). Leerlingzorg (R18) joins this row with
+    /// FB-008, as a relation of its own.
+    /// </summary>
+    public static readonly Matrixrij OntwikkelingsrapportLezen = new(
+        Beleid.OntwikkelingsrapportLezen,
+        "Een ontwikkelingsrapport lezen, en de leerlingen van de klas (ADR-0035 R16, R17, R18, R26)",
+        Kolom.LeerkrachtRapportLezen);
+
+    /// <summary>
+    /// §3 "Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen" (ADR-0035 R14, R15, R26; D8, D9). Resource:
+    /// <see cref="Rapportklas"/>. The klas's leerkrachten only during its schooljaar (R26); directie always (R3). That the
+    /// klas grants K3 at all (D9) is also the service's check, because directie passes this row for any klas.
+    /// </summary>
+    public static readonly Matrixrij LeerlingenBeheren = new(
+        Beleid.LeerlingenBeheren,
+        "Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen (ADR-0035 R14, R15, R26; D8, D9)",
+        Kolom.LeerkrachtRapportInvullen);
+
+    // --- Resource-free row without directie: the one K3 set (footnote ⁶, ADR-0035 §3.3; FB-002). ---
+
+    /// <summary>
+    /// §3 "De K3-rapportdoelen en de sterrenschaal aanpassen" (ADR-0035 R4, R5, R6, R31; D4). Column
+    /// <see cref="Kolom.Rapportsetleerkracht"/>: every K3 leerkracht, on the one set and scale of all of K3, so no resource.
+    /// <b>The one row directie does not pass</b> (<see cref="Matrixrij.ZonderDirectie"/>): the owner ruled that only the K3
+    /// leerkrachten edit the set, and directie views it (R31). Reading the set is every signed-in gebruiker's, like every
+    /// read that is not pupil data.
+    /// </summary>
+    public static readonly Matrixrij RapportsetBewerken = new(
+        Beleid.RapportsetBewerken,
+        "De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6, R31; D4)",
+        Kolom.Rapportsetleerkracht,
+        ZonderDirectie: true);
+
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
     public static IReadOnlyList<Matrixrij> Rijen { get; } =
     [
@@ -218,12 +264,19 @@ public static class Rechtenmatrix
         DoelenKoppelen,
         ActiviteitVerplaatsen,
         KlasplanningBewerken,
+        OntwikkelingsrapportLezen,
+        LeerlingenBeheren,
+        RapportsetBewerken,
     ];
 
     /// <summary>
     /// Whether <paramref name="rechten"/> may do what <paramref name="rij"/> describes, on <paramref name="bron"/>.
     /// <list type="number">
-    /// <item><b>Directie passes every row</b>, with or without a resource (R3).</item>
+    /// <item><b>Directie passes every row but one</b>, with or without a resource (R3). The exception is a row marked
+    /// <see cref="Matrixrij.ZonderDirectie"/>, <see cref="RapportsetBewerken"/> only (ADR-0035 R31), which <b>no one
+    /// holding directie passes, not even as a leerkracht of a K3 klas</b> (owner, 2026-09-15, "Nooit wie directie heeft").
+    /// Directie maintains the klastoewijzingen, so letting the union rule apply here would make R31 a switch directie
+    /// could flip for itself. <i>The first version applied the union rule; the owner ruled it out.</i></item>
     /// <item>Otherwise the gebruiker holds the union of every column that applies (§3): any one column that matches is
     /// enough, and a column that does not match never takes away what another grants.</item>
     /// <item>A column that needs a resource matches only a resource of the right type. A missing or foreign resource
@@ -237,12 +290,22 @@ public static class Rechtenmatrix
 
         if (rechten.IsDirectie)
         {
-            return true;
+            // R31, as the owner read it: a ZonderDirectie row is closed to directie outright, whatever else it holds.
+            return !rij.ZonderDirectie;
         }
 
         var kolommen = rij.Kolommen;
 
         if (kolommen.HasFlag(Kolom.Themabeheer) && rechten.HeeftThemabeheer)
+        {
+            return true;
+        }
+
+        // Footnote ⁶, ADR-0035 D4: "K3-leerkracht" is a klastoewijzing on a klas that can hold leerlingen (the D9 function,
+        // Leerling.KlasKanLeerlingenHebben) in a schooljaar that has not ended, which is exactly the running rapportklassen.
+        // Deliberately not IsLeerkrachtVanLeeftijd("K3"): through the one klas→leeftijden mapping, directie's graadklas
+        // decision (Art. XIV) moves this together with the leerlingen and the reports.
+        if (kolommen.HasFlag(Kolom.Rapportsetleerkracht) && rechten.LopendeRapportklasIds.Count > 0)
         {
             return true;
         }
@@ -295,6 +358,22 @@ public static class Rechtenmatrix
             }
         }
 
+        // Footnote ⁶: "LK eigen" on the ontwikkelingsrapport rows is the klas's K3 leerkracht, reading with no end date
+        // and filling in only during the schooljaar (R26). Only a Rapportklas matches, so a planning resource never opens
+        // a report and a report resource never opens the planning.
+        if (bron is Rapportklas rapport)
+        {
+            if (kolommen.HasFlag(Kolom.LeerkrachtRapportLezen) && rechten.IsRapportleerkrachtVan(rapport.KlasId))
+            {
+                return true;
+            }
+
+            if (kolommen.HasFlag(Kolom.LeerkrachtRapportInvullen) && rechten.VultRapportIn(rapport.KlasId))
+            {
+                return true;
+            }
+        }
+
         return kolommen.HasFlag(Kolom.LeerkrachtEigen)
             && bron is Klasplanning planning
             && rechten.IsLeerkrachtVanKlas(planning.KlasId);
@@ -303,13 +382,17 @@ public static class Rechtenmatrix
 
 /// <summary>
 /// One row of the ADR-0030 §3 matrix: its policy name, the action as §3 words it, and the columns (besides directie,
-/// which every row grants) that allow it.
+/// which every row but one grants) that allow it.
 /// </summary>
-public sealed record Matrixrij(string Beleid, string Actie, Kolom Kolommen);
+/// <param name="ZonderDirectie">
+/// True for the one row whose "Directie" cell is "–" (ADR-0030 §3 footnote ⁶, ADR-0035 R31): directie then passes only
+/// through the row's own columns. False everywhere else, where directie passes whatever the columns say (R3).
+/// </param>
+public sealed record Matrixrij(string Beleid, string Actie, Kolom Kolommen, bool ZonderDirectie = false);
 
 /// <summary>
-/// The columns of ADR-0030 §3 other than "Directie", which every row grants (R3), and "Ander", which grants no row
-/// that is enforced today.
+/// The columns of ADR-0030 §3 other than "Directie", which every row but <see cref="Rechtenmatrix.RapportsetBewerken"/>
+/// grants (R3, R31), and "Ander", which grants no row that is enforced today.
 /// </summary>
 [Flags]
 public enum Kolom
@@ -340,4 +423,23 @@ public enum Kolom
     /// and none of those carrying a goal link at a leeftijd where the gebruiker may not link goals (the owner's Q4 ruling).
     /// </summary>
     ThemabeheerZonderAndermansInhoud = 64,
+
+    /// <summary>
+    /// "LK eigen" on an ontwikkelingsrapport row, reading (footnote ⁶, ADR-0035 R16, R26): a klastoewijzing on the
+    /// <see cref="Rapportklas"/>'s klas when that klas grants K3, with no end date.
+    /// </summary>
+    LeerkrachtRapportLezen = 128,
+
+    /// <summary>
+    /// "LK eigen" on an ontwikkelingsrapport row, filling in and keeping the leerlingen: the same, only while the klas's
+    /// schooljaar has not ended (footnote ⁶, R26, which overrides I21 for these rows).
+    /// </summary>
+    LeerkrachtRapportInvullen = 256,
+
+    /// <summary>
+    /// "LK leeftijd" on the rapportdoelen row (footnote ⁶, ADR-0035 D4): a klastoewijzing on a klas that grants K3, in a
+    /// schooljaar that has not ended, i.e. any <see cref="Rechten.LopendeRapportklasIds"/>. Needs no resource: the set and
+    /// the scale are one for all of K3 (R4, R5), so a K3 leerkracht of any klas edits them.
+    /// </summary>
+    Rapportsetleerkracht = 512,
 }

@@ -19,6 +19,8 @@ const IK: Ik = {
   hoofdleerkrachtLeeftijden: [],
   leerkrachtLeeftijden: [],
   eigenKlasIds: [],
+  rapportklasIds: [],
+  lopendeRapportklasIds: [],
 };
 const ENTRA_AFMELDING = "https://login.voorbeeld.test/logout";
 

@@ -4,6 +4,7 @@ using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Application.Curriculum;
 using Jaarplanner.Application.Curriculum.Import;
 using Jaarplanner.Application.Dekking;
+using Jaarplanner.Application.Ontwikkelingsrapport;
 using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.AlgemeneFiches;
 using Jaarplanner.Application.Planning.Beheer;
@@ -19,6 +20,7 @@ using Jaarplanner.Infrastructure.AiAuthoring;
 using Jaarplanner.Infrastructure.AiMatching;
 using Jaarplanner.Infrastructure.Dekking;
 using Jaarplanner.Infrastructure.Demo;
+using Jaarplanner.Infrastructure.Ontwikkelingsrapport;
 using Jaarplanner.Infrastructure.OpstapImport;
 using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
@@ -83,6 +85,7 @@ public static class DependencyInjection
         // thema. "Linked" = a DoelKoppeling with status aanvaard/manueel (Art. V), computed per call so
         // the list tracks the current link state. Pure read over read-only reference data (Art. III.1).
         services.AddScoped<IOngekoppeldeDoelenQuery, OngekoppeldeDoelenQuery>();
+        services.AddScoped<IThemaDoelenoverzichtQuery, ThemaDoelenoverzichtQuery>();
 
         // The Op.stap leerplandoel register behind the Doelen screen (E1-16, FR-2.4): filter, search, page
         // and open one doel. A pure read over read-only reference data (Art. III.1) — the interface has no
@@ -164,6 +167,14 @@ public static class DependencyInjection
         // between the class's own list and its planning, and the planning kept out of the jaarplan for the same reason.
         services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();
         services.AddScoped<IAlgemeneFicheplaatsingService, AlgemeneFicheplaatsingService>();
+
+        // The children of a K3 klas, for the ontwikkelingsrapport (FB-001, Art. VI.7). Beside the other per-klas beheer
+        // services because a leerling hangs off a klas directly; it is the one pupil-data service, and it logs nothing.
+        services.AddScoped<ILeerlingBeheerService, LeerlingBeheerService>();
+
+        // The one K3 set of rapportdoelen and the sterrenschaal (FB-002, Art. IX.4). Not pupil data; beside the leerlingen
+        // because both belong to the ontwikkelingsrapport.
+        services.AddScoped<IRapportsetService, RapportsetService>();
 
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —

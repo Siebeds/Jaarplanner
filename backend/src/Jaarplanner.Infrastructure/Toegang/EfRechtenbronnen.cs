@@ -118,6 +118,23 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
             _context.AlgemeneFicheplaatsingen.AsNoTracking().Where(p => p.Id == plaatsingId).Select(p => p.KlasId),
             cancellationToken);
 
+    public async Task<Rapportklas?> VoorRapportklasAsync(Guid klasId, CancellationToken cancellationToken = default) =>
+        await _context.Klassen.AsNoTracking().AnyAsync(k => k.Id == klasId, cancellationToken)
+            ? new Rapportklas(klasId)
+            : null;
+
+    /// <summary>The leerling's klas, read as an id only: a rights check has no business loading a child's name.</summary>
+    public async Task<Rapportklas?> VoorLeerlingAsync(Guid leerlingId, CancellationToken cancellationToken = default)
+    {
+        var gevonden = await _context.Leerlingen
+            .AsNoTracking()
+            .Where(l => l.Id == leerlingId)
+            .Select(l => (Guid?)l.KlasId)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return gevonden is { } klasId ? new Rapportklas(klasId) : null;
+    }
+
     /// <summary>The klas of the one row the query selects, as a planning resource, or <c>null</c> when there is none.</summary>
     private static async Task<Klasplanning?> PlanningVanAsync(IQueryable<Guid> klasIds, CancellationToken cancellationToken)
     {

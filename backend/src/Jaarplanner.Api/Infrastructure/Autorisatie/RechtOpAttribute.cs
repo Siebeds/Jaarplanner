@@ -32,6 +32,12 @@ public enum Rechtbron
 
     /// <summary>The planning of the klas an algemene ficheplaatsing is in.</summary>
     AlgemeneFicheplaatsing,
+
+    /// <summary>The ontwikkelingsrapport of the klas in the route (<see cref="Application.Toegang.Rapportklas"/>, FB-001).</summary>
+    Rapportklas,
+
+    /// <summary>The ontwikkelingsrapport of the klas a leerling is in (FB-001).</summary>
+    Leerling,
 }
 
 /// <summary>
@@ -136,6 +142,15 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
             case Rechtbron.AlgemeneFicheplaatsing:
                 return await bronnen.VoorAlgemeneFicheplaatsingAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {id} is niet gevonden.");
+            case Rechtbron.Rapportklas:
+                return await bronnen.VoorRapportklasAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout($"Klas {id} is niet gevonden.");
+            case Rechtbron.Leerling:
+                // Names no child and no id: this sentence can reach a log (ADR-0035 §3.8), and it is the service's own.
+                // It says only what the lookup proves: no child has this id. Not that one existed, nor who removed it
+                // (antagonist round 1: it also answers an id that never existed, and a caller with no right at all).
+                return await bronnen.VoorLeerlingAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit kind is niet gevonden.");
             default:
                 throw new InvalidOperationException($"No resource resolver for {Bron}.");
         }

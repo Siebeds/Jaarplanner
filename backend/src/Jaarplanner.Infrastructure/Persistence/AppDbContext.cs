@@ -1,4 +1,5 @@
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
@@ -172,6 +173,24 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// wizard's own write actions can tell a thema built from scratch from any other.
     /// </summary>
     public DbSet<Wizardrun> Wizardruns => Set<Wizardrun>();
+
+    /// <summary>
+    /// The children of the K3 klassen, for the ontwikkelingsrapport (FB-001, Art. IX.4). <b>Pupil data</b> (Art. VI.7):
+    /// a voornaam, an achternaam and the klas, nothing else, and never in a log.
+    /// </summary>
+    public DbSet<Leerling> Leerlingen => Set<Leerling>();
+
+    /// <summary>The one K3 sterrenschaal (FB-002, Art. IX.4). Not pupil data, and no schooljaar (ADR-0035 R7).</summary>
+    public DbSet<Gradatie> Gradaties => Set<Gradatie>();
+
+    /// <summary>The one K3 set of rapportdoelen (FB-002, Art. IX.4). Not pupil data, and no schooljaar (ADR-0035 R7).</summary>
+    public DbSet<Rapportdoel> Rapportdoelen => Set<Rapportdoel>();
+
+    /// <summary>
+    /// Which subdoelen each rapportdoel bundles. A set of its own so a subthema re-scope can drop its subdoelen from every
+    /// rapportdoel without loading the set (ADR-0035 D12); a subdoel delete drops them through the database cascade (D3).
+    /// </summary>
+    public DbSet<RapportdoelSubdoel> RapportdoelSubdoelen => Set<RapportdoelSubdoel>();
 
     /// <summary>
     /// The ASP.NET Core Data Protection keys that encrypt the session cookie (ADR-0031 decision 5). Kept here so a

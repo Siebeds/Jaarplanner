@@ -136,6 +136,8 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("toont bij een subdoel de doeltekst", async () => {
     toon();
+    // The chapter starts shut (FB-011); its subdoelen show once it is opened.
+    fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
 
     expect(await screen.findByText(SUBDOELTEKST)).toBeInTheDocument();
     expect(screen.getByText("1.2.GK2.1")).toBeInTheDocument();
@@ -172,6 +174,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("opent ook de detail van een subdoel", async () => {
     toon();
+    fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
     await screen.findByText(SUBDOELTEKST);
 
     fireEvent.click(screen.getByRole("button", { name: new RegExp(SUBDOELTEKST) }));

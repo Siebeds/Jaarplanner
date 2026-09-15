@@ -276,6 +276,87 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("opstapversies", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Gradatie", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Kleur")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("gradaties", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Leerling", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Achternaam")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<Guid>("KlasId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Voornaam")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KlasId");
+
+                    b.ToTable("leerlingen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Titel")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Volgorde")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("rapportdoelen", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.RapportdoelSubdoel", b =>
+                {
+                    b.Property<Guid>("RapportdoelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SubdoelId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("RapportdoelId", "SubdoelId");
+
+                    b.HasIndex("SubdoelId");
+
+                    b.ToTable("rapportdoel_subdoelen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
                 {
                     b.Property<Guid>("Id")
@@ -972,6 +1053,30 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Leerling", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
+                        .WithMany()
+                        .HasForeignKey("KlasId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.RapportdoelSubdoel", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", null)
+                        .WithMany("Subdoelen")
+                        .HasForeignKey("RapportdoelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subdoel", null)
+                        .WithMany()
+                        .HasForeignKey("SubdoelId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Activiteitplaatsing", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
@@ -1605,6 +1710,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasForeignKey("KlasId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Ontwikkelingsrapport.Rapportdoel", b =>
+                {
+                    b.Navigation("Subdoelen");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Planning.AlgemeneFicheplaatsing", b =>

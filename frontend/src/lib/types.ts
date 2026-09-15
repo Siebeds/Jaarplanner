@@ -320,6 +320,12 @@ export interface KlasWeergave {
    * answer to "what may this class teach?". Same rule as `jaarFasen` itself.
    */
   mogelijkeJaarfasen: string[];
+  /**
+   * Whether this klas can hold children in the ontwikkelingsrapport (FB-001, ADR-0035 D9). From the server's one
+   * klas→leeftijden mapping, for the same reason as the two above: comparing `jaarfase` to "K3" here would be a
+   * second mapping, and directie's graadklas decision (Art. XIV) would then have to change it too.
+   */
+  kanLeerlingenHebben: boolean;
 }
 
 export interface SchooljaarSamenvatting {
@@ -448,6 +454,61 @@ export interface ThemaWeergave {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   subthemas: SubthemaWeergave[];
+}
+
+/** Where in a thema a leerplandoel is linked (FB-009). */
+export type DoelPlaatsSoort = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
+
+export interface DoelPlaats {
+  soort: DoelPlaatsSoort;
+  /** The subthema's name for a subdoel, the activiteit's for an activiteit doel; null for a themadoel. */
+  naam: string | null;
+}
+
+/** A leerplandoel a thema reaches at one leeftijd, once, with every place it is linked. */
+export interface OverzichtLeerplandoel {
+  code: string;
+  doelsoort: Doelsoort;
+  tekst: string;
+  nietMeerInOpstap: boolean;
+  minimumdoelRef: string | null;
+  plaatsen: DoelPlaats[];
+}
+
+/** A minimumdoel the leeftijd's leerplandoelen concord to, with the codes that lead there. */
+export interface OverzichtMinimumdoel {
+  ref: string;
+  leeftijd: string;
+  nr: string;
+  omschrijving: string;
+  leerplandoelen: string[];
+}
+
+export interface LeeftijdDoelen {
+  leeftijd: string;
+  leerplandoelen: OverzichtLeerplandoel[];
+  minimumdoelen: OverzichtMinimumdoel[];
+}
+
+/**
+ * What a thema reaches per leeftijd (FB-009): computed by the server from the decided links under it, never stored, and
+ * never dekking (that belongs to a klas with a plan, Art. V.1).
+ */
+export interface ThemaDoelenoverzicht {
+  themaId: string;
+  leeftijden: LeeftijdDoelen[];
+}
+
+/**
+ * A subthema at an age this klas teaches, named with its thema (`GET /api/subthemas/voor-klas/{klasId}`). A thin row
+ * for a picker, not a subtree: the agenda's activiteiten list offers these and loads the chosen one's activiteiten.
+ */
+export interface SubthemaBestemming {
+  id: string;
+  naam: string;
+  leeftijd: string;
+  themaId: string;
+  themaNaam: string;
 }
 
 export interface ThemaBibliotheekItem {

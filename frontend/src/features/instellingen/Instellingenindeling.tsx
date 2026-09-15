@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { Aanmeldregel } from "../../app/Aanmeldregel";
 import { Schermvlak } from "../../app/Schermkop";
-import { IcoonKruis } from "../../components/Iconen";
+import { RAPPORT } from "../../app/routes";
+import { IcoonKruis, IcoonPijlRechts } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { useRechten } from "../../lib/rechten";
 import { padVan, useZichtbareOnderdelen } from "./onderdelen";
 
 /**
@@ -38,8 +40,27 @@ import { padVan, useZichtbareOnderdelen } from "./onderdelen";
  */
 export function Instellingenindeling() {
   const onderdelen = useZichtbareOnderdelen();
+  const { mag } = useRechten();
   return (
     <>
+      {/* The ontwikkelingsrapport on a phone (owner, 2026-09-15, "Via Instellingen", over a sixth tab). The bottom bar
+          keeps its five tabs, so the report is one press from the top of Instellingen, for whoever is offered the
+          destination (`mag.ontwikkelingsrapportTab`: ADR-0035 D18, and a hoofdleerkracht of K3 since 2026-09-15). From
+          `lg` the sidebar carries it instead (`Navigatie`), so a viewport offers it once. It is a destination, not a part
+          of Instellingen, so it is a link above the page rather than an entry in its parts. */}
+      {mag.ontwikkelingsrapportTab ? (
+        <div className="mx-auto max-w-[57.5rem] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 lg:hidden">
+          <Link
+            to={RAPPORT.pad}
+            className="flex min-h-14 items-center gap-3 rounded-kaart border border-lijn bg-kaart px-4 text-body font-medium text-inkt transition-colors duration-150 hover:bg-vlak"
+          >
+            <RAPPORT.Icoon aria-hidden="true" className="h-5 w-5 shrink-0 text-inkt-zacht" />
+            <span className="flex-1">{t(RAPPORT.labelSleutel)}</span>
+            <IcoonPijlRechts aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />
+          </Link>
+        </div>
+      ) : null}
+
       <nav
         aria-labelledby="instellingen-kolom"
         className="fixed inset-y-0 left-14 z-20 hidden w-60 flex-col border-r border-lijn bg-kaart lg:flex"

@@ -27,24 +27,34 @@ type Keuze = { soort: "leerplandoel"; code: string } | { soort: "minimumdoel"; r
  */
 export function Doeldetailblad({
   code,
+  minimumdoelRef = null,
   terugNaar,
   onSluit,
 }: {
   code: string | null;
+  /** Open on a minimumdoel instead, from the doelen per leeftijd (FB-009); `code` is then null. */
+  minimumdoelRef?: string | null;
   /** The element that opened the sheet, to receive focus again when it closes. */
   terugNaar?: HTMLElement | null;
   onSluit: () => void;
 }) {
-  const [keuze, setKeuze] = useState<Keuze | null>(code ? { soort: "leerplandoel", code } : null);
+  const gevraagd: Keuze | null = code
+    ? { soort: "leerplandoel", code }
+    : minimumdoelRef
+      ? { soort: "minimumdoel", ref: minimumdoelRef }
+      : null;
+  // One key for what the page asked for, so a leerplandoel and a minimumdoel with the same text never look alike.
+  const sleutel = code ?? (minimumdoelRef ? `minimumdoel:${minimumdoelRef}` : null);
+  const [keuze, setKeuze] = useState<Keuze | null>(gevraagd);
   const [terug, setTerug] = useState<HTMLElement | null>(terugNaar ?? null);
-  const [gevolgd, setGevolgd] = useState(code);
+  const [gevolgd, setGevolgd] = useState(sleutel);
 
   // Adjusting state during render rather than in an effect, so the sheet never paints one frame of the
   // previous doel after a new one was pressed.
-  if (code !== gevolgd) {
-    setGevolgd(code);
-    if (code) {
-      setKeuze({ soort: "leerplandoel", code });
+  if (sleutel !== gevolgd) {
+    setGevolgd(sleutel);
+    if (gevraagd) {
+      setKeuze(gevraagd);
       setTerug(terugNaar ?? null);
     }
   }
@@ -53,7 +63,7 @@ export function Doeldetailblad({
 
   return (
     <Blad
-      open={code !== null}
+      open={sleutel !== null}
       onOpenChange={(open) => !open && onSluit()}
       titel={keuze?.soort === "minimumdoel" ? t("minimumdoel.titel") : t("doel.titel")}
       onCloseAutoFocus={(event) => {

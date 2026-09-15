@@ -1,4 +1,4 @@
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { InputHTMLAttributes, ReactNode, Ref, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { useId } from "react";
 import { cn } from "../../lib/cn";
 import { IcoonChevron } from "../Iconen";
@@ -16,9 +16,15 @@ export function Veld({ label, children }: { label: string; children: (id: string
   );
 }
 
-export function Invoer({ className, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+/** `ref` is a plain prop since React 19, so a caller that moves focus (the next child's name, FB-001) can pass one. */
+export function Invoer({
+  className,
+  ref,
+  ...props
+}: InputHTMLAttributes<HTMLInputElement> & { ref?: Ref<HTMLInputElement> }) {
   return (
     <input
+      ref={ref}
       className={cn(
         "h-raak w-full rounded-veld border border-lijn-veld bg-kaart px-3 text-body text-inkt",
         "placeholder:text-inkt-zwak",

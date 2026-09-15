@@ -42,22 +42,27 @@ export const sleepUitleg: ScreenReaderInstructions = {
  * The identifiers dnd-kit hands back are the values this app already keys on: a draggable is a
  * plaatsingId and a droppable is an ISO date, so the date is spoken in full rather than as the
  * "2026-11-11" that is on the wire.
+ *
+ * The draggable's own `data` is handed along as well (FB-017): an activiteit card from the side panel has no
+ * placement yet, so the agenda cannot look its name up, and the card carries it in its drag instead.
  */
-export function kalenderMeldingen(naamVan: (plaatsingId: string) => string): Announcements {
+export function kalenderMeldingen(naamVan: (plaatsingId: string, data?: unknown) => string): Announcements {
   // A drop target is a day, whether it is a column of the time grid or a month cell; the column's id carries a
   // prefix, so it is unwrapped before being spoken. **The hour is deliberately not announced**: it follows the
   // pointer and would have to be read out on every pixel of travel, and a keyboard drag, which is who these
   // announcements are for, does not name one at all (see `tijdsleep`).
   const dag = (id: string | number) => volleDag(leesKolomId(String(id)) ?? String(id));
   return {
-    onDragStart: ({ active }) => t("slepen.opgepakt", { naam: naamVan(String(active.id)) }),
+    onDragStart: ({ active }) => t("slepen.opgepakt", { naam: naamVan(String(active.id), active.data.current) }),
     onDragOver: ({ active, over }) =>
-      over ? t("slepen.boven", { naam: naamVan(String(active.id)), dag: dag(over.id) }) : undefined,
+      over
+        ? t("slepen.boven", { naam: naamVan(String(active.id), active.data.current), dag: dag(over.id) })
+        : undefined,
     onDragEnd: ({ active, over }) =>
       over
-        ? t("slepen.neer", { naam: naamVan(String(active.id)), dag: dag(over.id) })
-        : t("slepen.afgebroken", { naam: naamVan(String(active.id)) }),
-    onDragCancel: ({ active }) => t("slepen.afgebroken", { naam: naamVan(String(active.id)) }),
+        ? t("slepen.neer", { naam: naamVan(String(active.id), active.data.current), dag: dag(over.id) })
+        : t("slepen.afgebroken", { naam: naamVan(String(active.id), active.data.current) }),
+    onDragCancel: ({ active }) => t("slepen.afgebroken", { naam: naamVan(String(active.id), active.data.current) }),
   };
 }
 
