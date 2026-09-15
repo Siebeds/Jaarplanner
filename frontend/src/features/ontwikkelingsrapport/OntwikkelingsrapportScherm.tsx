@@ -45,7 +45,7 @@ import {
  */
 export function OntwikkelingsrapportScherm() {
   const { mag, laadt: rechtenLaden, bekend } = useRechten();
-  const { schooljaar, schooljaren, klassen, klasId, laadt, kiesSchooljaar, kiesKlas } = useActieveSelectie();
+  const { schooljaar, schooljaren, klassen, klasId, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
 
   const rapportklassen = klassen.filter(
     (kandidaat) => kandidaat.kanLeerlingenHebben && mag.ontwikkelingsrapportLezen(kandidaat.id),
@@ -103,6 +103,10 @@ export function OntwikkelingsrapportScherm() {
           </p>
         ) : !mag.ontwikkelingsrapportZien ? (
           <Leegte titel={t("ontwikkelingsrapport.geenToegang")} />
+        ) : fout ? (
+          // The schooljaren or the klassen did not load: an empty list then proves nothing, so neither sentence below
+          // may be said (antagonist round 2, the E5-03 rule).
+          <Foutregel zin={t("ontwikkelingsrapport.selectieLaadFout")} />
         ) : schooljaren.length === 0 ? (
           // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).
           <Leegte titel={t("ontwikkelingsrapport.geenSchooljaar")} />

@@ -68,6 +68,42 @@
 - **An empty klas said "0 kinderen" beside "Nog geen kinderen in deze klas.", the same fact twice.** The count now
   shows only when there is at least one child. Screen tests (10) and `oxlint` + `tsc` were rerun and are green.
 
+## Addendum, 2026-09-15: after fix round 1 (antagonist round 2, finding C)
+
+- **The rebuilt API.** The API was stopped, rebuilt from `7cdefc9` and restarted on 5186, against the same `jp_fb001`.
+  As directie, the klas choice on `/ontwikkelingsrapport` then offered exactly K3 blauw and K3 groen, now from the
+  server's `kanLeerlingenHebben` rather than from the jaarfase. K2 rood and the demo L3 klas were not offered.
+- **The no-access sentence** is now "Je hebt geen toegang tot het ontwikkelingsrapport." (round 1, finding 8). The line
+  above quoting Bram's screen shows the wording at the time of that pass and is left as it was.
+- **Contrast.** Measured in the running app (Chromium, Playwright) from the resolved tokens. The dark theme was measured
+  by setting `data-weergave="donker"` on `<html>`.
+
+  | Pair (where on this screen) | Light | Dark |
+  | --- | --- | --- |
+  | inkt on vlak (title) | 16.58 | 14.62 |
+  | inkt-zacht on vlak (explanations, the "voorbij" sentence) | 6.08 | 8.44 |
+  | inkt on kaart (names in the list) | 17.78 | 13.12 |
+  | inkt-zacht on kaart (field labels, the count) | 6.51 | 7.58 |
+  | inkt-zwak on kaart (row buttons at rest, an icon: 3:1 is the bar) | 4.97 | 5.78 |
+  | accent-op on accent ("Kind toevoegen") | 6.10 | 7.06 |
+  | accent on accent-zacht (the active destination) | 5.51 | 5.13 |
+  | attentie-inkt on attentie-zacht (error lines) | 9.39 | 8.00 |
+  | lijn-veld on kaart (an input's border, a component: 3:1) | 3.20 | 3.40 |
+
+  Every text pair clears 4.5:1, and every non-text pair clears 3:1.
+- **The phone card and the safe area.** `index.html` sets `viewport-fit=cover`. The card at the top of Instellingen
+  pads `env(safe-area-inset-top)`, and so does the sticky `Schermkop` of the part under it. On a phone with a notch,
+  where the inset is not zero, that leaves one extra inset of space between the card and the part's title while the
+  page is at rest. This is **accepted, not fixed**, for three reasons:
+  - Both paddings are needed. The card's keeps it clear of the notch when it is the first thing on the page. The
+    header's keeps the title clear of the notch once it sticks at the top while scrolling, when the card has scrolled
+    away.
+  - Removing either one breaks exactly that case, and the cost of keeping both is some white space above a title.
+  - In a phone browser tab the browser's own bar holds the top, so the inset is 0 there. The gap only appears when the
+    app runs full screen.
+
+  The Chromium pass at 390 px reports an inset of 0 and cannot show it; this is the reasoning, not a measurement.
+
 ## Not covered here
 
 - Contrast was not measured; the screen uses existing tokens only (`inkt`, `inkt-zacht`, `accent` on the primary
