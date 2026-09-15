@@ -66,10 +66,15 @@ const selectie = vi.hoisted(() => {
     kiesSchooljaar: () => {},
     kiesKlas: () => {},
   });
-  return { standaard, huidig: { waarde: standaard() } };
+  return { standaard, huidig: { waarde: standaard() }, bron: { laatste: undefined as string | undefined } };
 });
 
-vi.mock("../../lib/selectie", () => ({ useActieveSelectie: () => selectie.huidig.waarde }));
+vi.mock("../../lib/selectie", () => ({
+  useActieveSelectie: (bron?: string) => {
+    selectie.bron.laatste = bron;
+    return selectie.huidig.waarde;
+  },
+}));
 
 const LEERKRACHT_BLAUW = ikMet({
   eigenKlasIds: [BLAUW.id],
@@ -294,6 +299,38 @@ describe("OntwikkelingsrapportScherm, wie wat mag", () => {
     expect(await screen.findByText(t("ontwikkelingsrapport.geenToegang"))).toBeInTheDocument();
     expect(screen.queryByRole("combobox", { name: t("context.klas") })).not.toBeInTheDocument();
     expect(verzoeken.some((verzoek) => verzoek.pad.includes("/leerlingen"))).toBe(false);
+  });
+
+  it("kiest de klas uit de klassen van het rapport, niet uit die van de planning (FB-008)", async () => {
+    toon(LEERKRACHT_BLAUW);
+    await screen.findByText(kind("Fien Proefmans"));
+    expect(selectie.bron.laatste).toBe("rapport");
+  });
+
+  it("laat Leerlingzorg elke K3-klas lezen, zonder iets te wijzigen en zonder te zeggen dat het jaar voorbij is (R18)", async () => {
+    const verzoeken = toon(ikMet({ heeftLeerlingzorg: true }));
+
+    expect(await screen.findByText(kind("Fien Proefmans"))).toBeInTheDocument();
+    const keuze = screen.getByRole("combobox", { name: t("context.klas") });
+    expect(within(keuze).getAllByRole("option").map((optie) => optie.textContent)).toEqual([
+      BLAUW.naam,
+      GROEN.naam,
+      "Menggroep",
+    ]);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: t("ontwikkelingsrapport.toevoegen") })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("ontwikkelingsrapport.wijzigKind", { naam: "Fien Proefmans" }) })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("ontwikkelingsrapport.verwijderKind", { naam: "Fien Proefmans" }) })).not.toBeInTheDocument();
+    expect(screen.queryByText(t("ontwikkelingsrapport.alleenLezen"))).not.toBeInTheDocument();
+    expect(verzoeken.every((verzoek) => verzoek.methode === "GET")).toBe(true);
+  });
+
+  it("zegt Leerlingzorg bij een jaar zonder K3-klas dat het schooljaar er geen heeft, niet dat het zelf geen klas heeft", async () => {
+    selectie.huidig.waarde = { ...selectie.standaard(), klassen: [] };
+    toon(ikMet({ heeftLeerlingzorg: true }), []);
+
+    expect(await screen.findByText(t("ontwikkelingsrapport.geenK3Klas"))).toBeInTheDocument();
+    expect(screen.queryByText(t("ontwikkelingsrapport.geenEigenK3Klas"))).not.toBeInTheDocument();
   });
 
   it("zegt een K3-leerkracht zonder K3-klas in dit schooljaar precies dat", async () => {

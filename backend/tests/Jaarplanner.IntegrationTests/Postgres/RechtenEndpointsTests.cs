@@ -76,7 +76,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
         Assert.Equal(
             [
-                "eigenKlasIds", "email", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isDirectie",
+                "eigenKlasIds", "email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isDirectie",
                 "leerkrachtLeeftijden", "lopendeRapportklasIds", "naam", "rapportklasIds",
             ],
             json.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));

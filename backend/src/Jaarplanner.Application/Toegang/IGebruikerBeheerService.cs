@@ -46,6 +46,12 @@ public interface IGebruikerBeheerService
     /// <summary>Takes themabeheer away (R4). Idempotent. What they built stays.</summary>
     Task<GebruikerBeheerWeergave> NeemThemabeheerAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
 
+    /// <summary>Gives Leerlingzorg (ADR-0035 R18, FB-008). Idempotent.</summary>
+    Task<GebruikerBeheerWeergave> GeefLeerlingzorgAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+
+    /// <summary>Takes Leerlingzorg away (ADR-0035 R18, FB-008). Idempotent.</summary>
+    Task<GebruikerBeheerWeergave> NeemLeerlingzorgAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Removes a gebruiker. Their klastoewijzingen and appointments go with them (cascade); the activiteiten they made
     /// stay, with no maker, and so become purely shared (ADR-0030 I17). A directie may remove themselves while another
@@ -93,6 +99,7 @@ public sealed record GebruikersOverzicht(
 /// <param name="Email">The Microsoft sign-in name (UPN) they were invited under, normalised.</param>
 /// <param name="IsDirectie">Holds the directie right.</param>
 /// <param name="HeeftThemabeheer">Holds themabeheer.</param>
+/// <param name="HeeftLeerlingzorg">Holds Leerlingzorg (FB-008).</param>
 /// <param name="IsAangemeld">
 /// Whether a first login has bound the invitation to a Microsoft account. <c>false</c> is the state in which ADR-0031
 /// decision 3's residual risk lives: a sign-in name reassigned before the first login binds to whoever holds it then.
@@ -105,6 +112,7 @@ public sealed record GebruikerBeheerWeergave(
     string Email,
     bool IsDirectie,
     bool HeeftThemabeheer,
+    bool HeeftLeerlingzorg,
     bool IsAangemeld,
     IReadOnlyList<KlastoewijzingBeheerWeergave> Klastoewijzingen,
     IReadOnlyList<AanstellingBeheerWeergave> Hoofdleerkrachtaanstellingen);
@@ -158,11 +166,13 @@ public sealed class GebruikerbeheerOpties
 /// <param name="Naam">The name to show until their first login supplies one; blank falls back to the sign-in name.</param>
 /// <param name="IsDirectie">Give the directie right straight away.</param>
 /// <param name="HeeftThemabeheer">Give themabeheer straight away.</param>
+/// <param name="HeeftLeerlingzorg">Give Leerlingzorg straight away (FB-008).</param>
 public sealed record GebruikerUitnodiging(
     string? Email,
     string? Naam,
     bool IsDirectie = false,
-    bool HeeftThemabeheer = false);
+    bool HeeftThemabeheer = false,
+    bool HeeftLeerlingzorg = false);
 
 /// <summary>The gebruiker, klas or schooljaar a beheer request names does not exist (404).</summary>
 public sealed class GebruikerbeheerNietGevondenFout : Exception

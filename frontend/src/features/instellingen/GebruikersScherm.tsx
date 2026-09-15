@@ -219,6 +219,7 @@ function Gebruikerrij({
   const feiten: string[] = [];
   if (gebruiker.isDirectie) feiten.push(t("gebruikers.directie"));
   if (gebruiker.heeftThemabeheer) feiten.push(t("gebruikers.themabeheer"));
+  if (gebruiker.heeftLeerlingzorg) feiten.push(t("gebruikers.leerlingzorg"));
 
   const klassen = gebruiker.klastoewijzingen.filter((k) => k.schooljaarId === jaarId).map((k) => k.klasNaam);
   if (klassen.length === 1) feiten.push(t("gebruikers.eenKlas", { namen: klassen[0] }));

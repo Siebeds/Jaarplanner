@@ -173,11 +173,26 @@ export function useSchooljaren() {
  * POST only, for creating a klas, and a GET against it answers 405. Measured, not assumed. Each klas
  * carries its own `schooljaarId`, so the caller narrows to one school year itself.
  */
-export function useKlassen() {
+export function useKlassen(ingeschakeld = true) {
   return useQuery({
     queryKey: ["klassen"],
     queryFn: () => get<KlasWeergave[]>("/api/klassen"),
     staleTime: 5 * 60_000,
+    enabled: ingeschakeld,
+  });
+}
+
+/**
+ * The klassen whose ontwikkelingsrapporten this gebruiker may read (FB-008), of every schooljaar: the server asks each
+ * K3 klas the report's own read row. Not `useKlassen`, which is the planning's: Leerlingzorg reads no klas's planning,
+ * and a hoofdleerkracht of K3 reads no report. Under `["klassen", …]`, so whatever refreshes the klassen refreshes this.
+ */
+export function useRapportklassen(ingeschakeld = true) {
+  return useQuery({
+    queryKey: ["klassen", "rapportklassen"],
+    queryFn: () => get<KlasWeergave[]>("/api/rapportklassen"),
+    staleTime: 5 * 60_000,
+    enabled: ingeschakeld,
   });
 }
 

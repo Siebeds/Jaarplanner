@@ -23,8 +23,24 @@ public sealed class RechtenberekeningTests
         IEnumerable<AanstellingFeit>? aanstellingen = null,
         DateOnly? vandaag = null,
         bool isDirectie = false,
-        bool themabeheer = false) =>
-        Rechtenberekening.Bereken(An, isDirectie, themabeheer, toewijzingen ?? [], aanstellingen ?? [], vandaag ?? Vandaag);
+        bool themabeheer = false,
+        bool leerlingzorg = false) =>
+        Rechtenberekening.Bereken(
+            An, isDirectie, themabeheer, toewijzingen ?? [], aanstellingen ?? [], vandaag ?? Vandaag, leerlingzorg);
+
+    // --- Leerlingzorg: the right directie gave, with no schooljaar and no klas (ADR-0035 R18, FB-008). ---
+
+    [Fact]
+    public void Leerlingzorg_komt_van_de_gebruiker_en_hangt_van_geen_klas_of_schooljaar_af()
+    {
+        var alleen = Bereken(leerlingzorg: true);
+
+        Assert.True(alleen.HeeftLeerlingzorg);
+        Assert.False(alleen.HeeftThemabeheer);
+        Assert.Empty(alleen.EigenKlasIds);
+        Assert.Empty(alleen.RapportklasIds);
+        Assert.False(Bereken().HeeftLeerlingzorg);
+    }
 
     // --- HL: the appointment, while its schooljaar has not ended (R5, R20, I20). ---
 
@@ -212,6 +228,7 @@ public sealed class RechtenberekeningTests
         Assert.Equal(An, geen.GebruikerId);
         Assert.False(geen.IsDirectie);
         Assert.False(geen.HeeftThemabeheer);
+        Assert.False(geen.HeeftLeerlingzorg);
         Assert.Empty(geen.HoofdleerkrachtLeeftijden);
         Assert.Empty(geen.LeerkrachtLeeftijden);
         Assert.Empty(geen.EigenKlasIds);

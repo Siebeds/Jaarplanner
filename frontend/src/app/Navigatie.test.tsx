@@ -233,6 +233,11 @@ describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
     expect(rapport()).toBeInTheDocument();
   });
 
+  it("staat er voor wie alleen Leerlingzorg heeft (FB-008, ADR-0035 D18)", () => {
+    rendermetPad("/doelen", ikMet({ heeftLeerlingzorg: true }));
+    expect(rapport()).toHaveAttribute("href", "/ontwikkelingsrapport");
+  });
+
   it("staat er voor een hoofdleerkracht van K3 zonder klas, voor de set en de schaal (eigenaar, 2026-09-15)", () => {
     rendermetPad("/doelen", ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
     expect(rapport()).toBeInTheDocument();

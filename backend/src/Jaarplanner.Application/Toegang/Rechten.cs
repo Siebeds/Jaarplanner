@@ -25,6 +25,7 @@ public sealed class Rechten
     /// The same, filling in. Kept to a subset of <paramref name="rapportklasIds"/>: an id that is not also there is dropped,
     /// so no caller can give the right to fill in a report without the right to read it.
     /// </param>
+    /// <param name="heeftLeerlingzorg">Leerlingzorg (FB-008). Optional for the same reason; left out, it is not held.</param>
     public Rechten(
         Guid gebruikerId,
         bool isDirectie,
@@ -33,7 +34,8 @@ public sealed class Rechten
         IEnumerable<string> leerkrachtLeeftijden,
         IEnumerable<Guid> eigenKlasIds,
         IEnumerable<Guid>? rapportklasIds = null,
-        IEnumerable<Guid>? lopendeRapportklasIds = null)
+        IEnumerable<Guid>? lopendeRapportklasIds = null,
+        bool heeftLeerlingzorg = false)
     {
         ArgumentNullException.ThrowIfNull(hoofdleerkrachtLeeftijden);
         ArgumentNullException.ThrowIfNull(leerkrachtLeeftijden);
@@ -42,6 +44,7 @@ public sealed class Rechten
         GebruikerId = gebruikerId;
         IsDirectie = isDirectie;
         HeeftThemabeheer = heeftThemabeheer;
+        HeeftLeerlingzorg = heeftLeerlingzorg;
         HoofdleerkrachtLeeftijden = Geordend(hoofdleerkrachtLeeftijden);
         LeerkrachtLeeftijden = Geordend(leerkrachtLeeftijden);
         EigenKlasIds = eigenKlasIds.Distinct().Order().ToList();
@@ -60,6 +63,12 @@ public sealed class Rechten
 
     /// <summary>"TB": holds themabeheer (R4).</summary>
     public bool HeeftThemabeheer { get; }
+
+    /// <summary>
+    /// "Leerlingzorg" (ADR-0035 R18, FB-008): reads every ontwikkelingsrapport, of every schooljaar, and does nothing
+    /// else. Needs no schooljaar and no klas: directie gave it, and it holds until directie takes it away.
+    /// </summary>
+    public bool HeeftLeerlingzorg { get; }
 
     /// <summary>
     /// "HL": the jaarfasen this gebruiker is appointed hoofdleerkracht of, in a schooljaar that has not ended (R5, R20).

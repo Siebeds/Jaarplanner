@@ -625,6 +625,8 @@
     "themabeheer": "Themabeheer",
     "directieUitleg": "Ziet en bewerkt alles, en beheert gebruikers en rechten.",
     "themabeheerUitleg": "Past thema's aan en laadt thema's en activiteiten in.",
+    "leerlingzorg": "Leerlingzorg",
+    "leerlingzorgUitleg": "Leest elk ontwikkelingsrapport van de derde kleuter, maar wijzigt er niets aan.",
     "eenKlas": "Klas: {namen}",
     "klassen": "Klassen: {namen}",
     "hoofdleerkrachtVan": "Hoofdleerkracht van {fasen}",

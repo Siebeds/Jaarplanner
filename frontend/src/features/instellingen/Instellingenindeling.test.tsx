@@ -82,6 +82,7 @@ const IK: Ik = {
   email: "an@school.be",
   isDirectie: false,
   heeftThemabeheer: true,
+  heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: ["K3"],
   leerkrachtLeeftijden: ["K3"],
   eigenKlasIds: ["klas-1"],

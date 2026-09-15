@@ -14,6 +14,7 @@ export const NIEMAND: Ik = {
   email: "test@school.be",
   isDirectie: false,
   heeftThemabeheer: false,
+  heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: [],
   leerkrachtLeeftijden: [],
   eigenKlasIds: [],
