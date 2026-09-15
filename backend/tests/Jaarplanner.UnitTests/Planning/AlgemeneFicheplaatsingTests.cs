@@ -145,6 +145,62 @@ public sealed class AlgemeneFicheplaatsingTests
         Assert.Empty(plaatsing.Momenten);
     }
 
+    /// <summary>
+    /// FB-022: wero every afternoon, and on Monday the teacher writes what the class does in it. The text is that day's:
+    /// the next Monday stays empty, and moving Monday's block to Tuesday afternoon takes the text along, because it is
+    /// the same row.
+    /// </summary>
+    [Fact]
+    public void Een_tekst_hoort_bij_die_ene_dag_en_verhuist_mee_met_het_moment()
+    {
+        var plaatsing = new AlgemeneFicheplaatsing(Guid.NewGuid(), Guid.NewGuid(), Start, new DateOnly(2026, 9, 30));
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 8, 31), HalfElf, TwintigOverElf);
+        var volgende = plaatsing.PlanIn(new DateOnly(2026, 9, 14), HalfElf, TwintigOverElf);
+
+        Assert.True(plaatsing.ZetTekst(maandag.Id, "  We bouwen een toren met kapla.  "));
+
+        Assert.Equal("We bouwen een toren met kapla.", maandag.Tekst);
+        Assert.Null(volgende.Tekst);
+
+        plaatsing.VerplaatsMoment(maandag.Id, new DateOnly(2026, 9, 1), new TimeOnly(13, 30), new TimeOnly(14, 15), Jaar());
+        Assert.Equal("We bouwen een toren met kapla.", maandag.Tekst);
+
+        Assert.False(plaatsing.ZetTekst(Guid.NewGuid(), "Iets"));
+    }
+
+    [Fact]
+    public void Een_leeggemaakte_tekst_maakt_de_dag_weer_leeg()
+    {
+        var plaatsing = new AlgemeneFicheplaatsing(Guid.NewGuid(), Guid.NewGuid(), Start, new DateOnly(2026, 9, 30));
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 8, 31), HalfElf, TwintigOverElf);
+
+        plaatsing.ZetTekst(maandag.Id, "Kapla");
+        plaatsing.ZetTekst(maandag.Id, "   ");
+        Assert.Null(maandag.Tekst);
+
+        plaatsing.ZetTekst(maandag.Id, "Kapla");
+        plaatsing.ZetTekst(maandag.Id, null);
+        Assert.Null(maandag.Tekst);
+    }
+
+    [Fact]
+    public void Een_te_lange_tekst_wordt_geweigerd_en_laat_de_vorige_staan()
+    {
+        var plaatsing = new AlgemeneFicheplaatsing(Guid.NewGuid(), Guid.NewGuid(), Start, new DateOnly(2026, 9, 30));
+        var maandag = plaatsing.PlanIn(new DateOnly(2026, 8, 31), HalfElf, TwintigOverElf);
+        plaatsing.ZetTekst(maandag.Id, "Kapla");
+
+        var fout = Assert.Throws<ArgumentException>(() =>
+            plaatsing.ZetTekst(maandag.Id, new string('a', AlgemeneFichemoment.MaxTekstLengte + 1)));
+
+        Assert.Contains("hoogstens 500 tekens", fout.Message);
+        Assert.Equal("Kapla", maandag.Tekst);
+
+        // Exactly the limit is allowed, and so is whitespace around it: the limit is on what is kept.
+        plaatsing.ZetTekst(maandag.Id, $" {new string('a', AlgemeneFichemoment.MaxTekstLengte)} ");
+        Assert.Equal(AlgemeneFichemoment.MaxTekstLengte, maandag.Tekst!.Length);
+    }
+
     [Fact]
     public void Een_periode_die_eindigt_voor_ze_begint_bestaat_niet()
     {

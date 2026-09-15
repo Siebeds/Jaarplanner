@@ -216,6 +216,31 @@ describe("Tijdraster", () => {
     expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
   });
 
+  // FB-022: an algemene fiche's day text on its block, in whole lines of the room the block has.
+  it("toont het begin van de dagtekst op een blok dat er plaats voor heeft, en niet op een kort blok", () => {
+    toon([dag()], {
+      fichemomenten: [
+        { ...fiche("13:15:00", "14:00:00"), tekst: "We bouwen een toren met kapla." },
+        { ...fiche("10:30:00", "11:00:00"), momentId: "fm-2", naam: "onthaal", tekst: "Kringgesprek over het weekend." },
+      ],
+    });
+
+    // Three quarters of an hour holds one line under the name and the time.
+    expect(screen.getByText("We bouwen een toren met kapla.")).toBeInTheDocument();
+    // Half an hour holds only the name-and-time line; the text stays in the sheet and in the block's accessible name.
+    expect(screen.queryByText("Kringgesprek over het weekend.")).toBeNull();
+    expect(screen.getByRole("button", { name: /^onthaal.*Kringgesprek over het weekend\.$/ })).toBeInTheDocument();
+  });
+
+  it("zet de dagtekst op een blok van een uur in de plaats van het onderschrift", () => {
+    toon([dag()], { fichemomenten: [{ ...fiche("10:30:00", "11:30:00"), tekst: "Buiten met de fietsjes." }] });
+
+    expect(screen.getByText("Buiten met de fietsjes.")).toBeInTheDocument();
+    // The glyph and the accessible name still say it is an algemene fiche.
+    expect(screen.queryByText(t("tijdraster.algemeneFiche"))).toBeNull();
+    expect(screen.getByRole("button", { name: new RegExp(t("tijdraster.algemeneFiche")) })).toBeInTheDocument();
+  });
+
   it("biedt een gesloten dag niets aan en zegt waarom", () => {
     const gevraagd = vi.fn();
     toon([dag([], { isLesdag: false, sluitingsnaam: "Herfstvakantie" })], { onVoegToe: gevraagd });

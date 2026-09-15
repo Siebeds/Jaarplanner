@@ -57,6 +57,36 @@ public sealed class AlgemeneFichemoment
     /// <summary>When it ends that day.</summary>
     public TimeOnly Einde { get; private set; }
 
+    /// <summary>The longest <see cref="Tekst"/>, in characters: a few sentences about one block of one day.</summary>
+    public const int MaxTekstLengte = 500;
+
+    /// <summary>
+    /// What the class does in this block on this one day, "vandaag lezen we het prentenboek over de egel", or
+    /// <c>null</c> while nothing is filled in (FB-022, owner 2026-09-15).
+    /// <para>
+    /// <b>On the occurrence, not on the fiche or the placement</b>, because it is about one day: the fiche says what wero
+    /// is, and this says what happened in it on Tuesday. Being on the row is also what makes a moved occurrence keep its
+    /// text without a rule for it.
+    /// </para>
+    /// </summary>
+    public string? Tekst { get; private set; }
+
+    /// <summary>
+    /// Sets this day's text, or clears it with an empty one: an emptied field means "nothing for this day", which is
+    /// the state every other day of the run is in. Reached through <see cref="AlgemeneFicheplaatsing.ZetTekst"/>.
+    /// </summary>
+    /// <exception cref="ArgumentException">Longer than <see cref="MaxTekstLengte"/>. Dutch: she typed it.</exception>
+    internal void ZetTekst(string? tekst)
+    {
+        var schoon = string.IsNullOrWhiteSpace(tekst) ? null : tekst.Trim();
+        if (schoon is { Length: > MaxTekstLengte })
+        {
+            throw new ArgumentException($"Een tekst voor één dag is hoogstens {MaxTekstLengte} tekens lang. Maak hem korter.");
+        }
+
+        Tekst = schoon;
+    }
+
     /// <summary>
     /// Moves or resizes this one occurrence. Reached only through <see cref="AlgemeneFicheplaatsing.VerplaatsMoment"/>,
     /// which is the layer that can see whether the new day is still inside the placement.

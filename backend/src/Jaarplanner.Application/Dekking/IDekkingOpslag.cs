@@ -178,6 +178,16 @@ public interface IDekkingOpslag
     Task<int> TelAlleLeerplandoelenAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The name of every discipline, keyed by its number (TB-022): the top level the dekkingsoverzicht groups under.
+    /// <para>
+    /// Read on its own rather than joined onto <see cref="HaalLeerplandoelenAsync"/>, which returns the domain entity
+    /// and has no place for a name. It is seeded reference data of thirteen rows (Art. VII.0), so one read per
+    /// computation costs nothing. A goal whose number has no entry keeps a null name, as in the register.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyDictionary<string, string>> HaalDisciplinenamenAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The class's <c>Leerjaar</c> ordinal, or <c>null</c> when no such class exists (E5-02).
     /// <para>
     /// <b>Why the coverage computation needs it, and why it is not read off the jaarplan projection.</b> Scoping the

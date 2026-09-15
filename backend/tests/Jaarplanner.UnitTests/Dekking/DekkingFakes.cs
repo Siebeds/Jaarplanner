@@ -195,6 +195,15 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     public int AantalTelAanroepen { get; private set; }
 
     /// <summary>
+    /// The discipline names by number (TB-022). Empty by default, which leaves every goal's name null: the state every
+    /// test written before the overview grouped by discipline runs in.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Disciplinenamen { get; set; } = new Dictionary<string, string>();
+
+    public Task<IReadOnlyDictionary<string, string>> HaalDisciplinenamenAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(Disciplinenamen);
+
+    /// <summary>
     /// The class's leerjaar, or null to simulate a class that is gone. Settable because it is the input to the
     /// scope derivation, which is the behaviour E5-02 adds.
     /// </summary>

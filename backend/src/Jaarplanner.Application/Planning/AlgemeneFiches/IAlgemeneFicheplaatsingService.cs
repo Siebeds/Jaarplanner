@@ -44,6 +44,16 @@ public interface IAlgemeneFicheplaatsingService
         TimeOnly begin,
         TimeOnly einde,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sets what the class does in ONE occurrence that day, or clears it with an empty text (FB-022).
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">The text is too long.</exception>
+    Task<AlgemeneFicheplaatsingWeergave> ZetMomenttekstAsync(
+        Guid plaatsingId,
+        Guid momentId,
+        string? tekst,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the teacher answered in the sheet.</summary>
@@ -83,4 +93,5 @@ public sealed record AlgemeneFicheplaatsingWeergave(
     IReadOnlyList<AlgemeneFichemomentWeergave> Momenten);
 
 /// <summary>One occurrence: this day, from this time to that one.</summary>
-public sealed record AlgemeneFichemomentWeergave(Guid Id, DateOnly Datum, TimeOnly Begin, TimeOnly Einde);
+/// <param name="Tekst">What the class does in it that day, or <c>null</c> when nothing is filled in (FB-022).</param>
+public sealed record AlgemeneFichemomentWeergave(Guid Id, DateOnly Datum, TimeOnly Begin, TimeOnly Einde, string? Tekst);
