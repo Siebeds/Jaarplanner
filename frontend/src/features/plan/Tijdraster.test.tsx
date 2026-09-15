@@ -2,7 +2,7 @@ import { DndContext } from "@dnd-kit/core";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { Tijdraster, type Ficheblokje, type Hoekblokje } from "./Tijdraster";
+import { Tijdraster, type Ficheblokje, type Hoekblokje, type Tijddoel } from "./Tijdraster";
 import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { Schooldaguren } from "../schooluren/gegevens";
@@ -70,6 +70,7 @@ function toon(
     onOpenHoek?: (plaatsingId: string) => void;
     onOpen?: (activiteit: GeplandeActiviteit, datum: string) => void;
     onOpenFiche?: (plaatsingId: string, momentId: string) => void;
+    onVanDag?: (doel: Tijddoel, naam: string, datum: string) => void;
     magPlannen?: boolean;
     schooluren?: Schooldaguren[];
   } = {},
@@ -88,6 +89,7 @@ function toon(
         onOpen={opties.onOpen ?? (() => {})}
         onOpenHoek={opties.onOpenHoek ?? (() => {})}
         onOpenFiche={opties.onOpenFiche ?? (() => {})}
+        onVanDag={opties.onVanDag ?? (() => {})}
         onWijzigTijd={() => {}}
       />
     </DndContext>,
@@ -99,6 +101,35 @@ function plaats(knop: HTMLElement) {
   const vak = knop.closest("div[style]") as HTMLElement;
   return { top: vak.style.top, height: vak.style.height, left: vak.style.left, width: vak.style.width };
 }
+
+describe("het rechtermuisklikmenu van een blok (TB-030)", () => {
+  it("haalt op een fiche het aangeklikte moment van zijn dag, en bewerken opent het blad van dat moment", async () => {
+    const onOpenFiche = vi.fn();
+    const onVanDag = vi.fn();
+    toon([dag()], { fichemomenten: [fiche("10:30:00", "11:20:00")], onOpenFiche, onVanDag });
+    const blok = screen.getByRole("button", { name: /^turnen/ });
+
+    fireEvent.contextMenu(blok);
+    fireEvent.click(screen.getByRole("menuitem", { name: t("blokmenu.vanDag") }));
+    await vi.waitFor(() =>
+      expect(onVanDag).toHaveBeenCalledWith({ soort: "fiche", plaatsingId: "fp-1", momentId: "fm-1" }, "turnen", "2026-09-08"),
+    );
+    expect(onOpenFiche).not.toHaveBeenCalled();
+
+    fireEvent.contextMenu(blok);
+    fireEvent.click(screen.getByRole("menuitem", { name: t("blokmenu.bewerk") }));
+    await vi.waitFor(() => expect(onOpenFiche).toHaveBeenCalledWith("fp-1", "fm-1"));
+    expect(onVanDag).toHaveBeenCalledTimes(1);
+  });
+
+  it("geeft wie de klas alleen mag inkijken geen eigen menu", () => {
+    toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00")])], { magPlannen: false });
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: /^kringgesprek/ }));
+
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
 
 describe("Tijdraster", () => {
   it("tekent een blok op de hoogte van zijn eigen uren", () => {
@@ -371,6 +402,7 @@ describe("Tijdraster", () => {
     onOpen: () => {},
     onOpenHoek: () => {},
     onOpenFiche: () => {},
+    onVanDag: () => {},
     onWijzigTijd: () => {},
   };
   // The bands are links to the themapagina (FB-037), so these rows need a router.
@@ -448,6 +480,7 @@ describe("Tijdraster", () => {
           onOpen={() => {}}
           onOpenHoek={() => {}}
           onOpenFiche={() => {}}
+          onVanDag={() => {}}
           onKiesDag={geopend}
           onWijzigTijd={() => {}}
         />

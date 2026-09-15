@@ -19,6 +19,7 @@ export function Bevestiging({
   gevolg,
   bevestigLabel,
   bezig,
+  terugNaar,
   onBevestig,
   onSluit,
 }: {
@@ -28,6 +29,11 @@ export function Bevestiging({
   gevolg?: string;
   bevestigLabel: string;
   bezig?: boolean;
+  /**
+   * Where focus goes when the question closes, for a caller that opened it without a trigger (the agenda's right-click
+   * menu, TB-030). Skipped when that element has left the page, which is what a confirmed delete does to it.
+   */
+  terugNaar?: HTMLElement | null;
   onBevestig: () => void;
   onSluit: () => void;
 }) {
@@ -35,6 +41,15 @@ export function Bevestiging({
     <Blad
       open={open}
       onOpenChange={(o) => !o && onSluit()}
+      onCloseAutoFocus={
+        terugNaar === undefined
+          ? undefined
+          : (event) => {
+              if (!terugNaar?.isConnected) return;
+              event.preventDefault();
+              terugNaar.focus();
+            }
+      }
       titel={titel}
       voet={
         <div className="flex items-center gap-2">

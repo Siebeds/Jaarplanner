@@ -83,6 +83,59 @@ public sealed class AlgemeneFicheplaatsingServiceTests
         Assert.Equal("Kapla", (await context.AlgemeneFichemomenten.SingleAsync(m => m.Id == dinsdag.Id)).Tekst);
     }
 
+    /// <summary>TB-030: one day taken off leaves the rest of the period, and its day text goes with it.</summary>
+    [Fact]
+    public async Task Een_dag_weghalen_laat_de_andere_dagen_van_de_periode_staan()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            Invoer(_ficheId, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 18), [1, 2]));
+        var maandag = plaatsing.Momenten.Single(m => m.Datum == new DateOnly(2026, 9, 14));
+        await Service().ZetMomenttekstAsync(plaatsing.Id, maandag.Id, "Kapla");
+
+        await Service().VerwijderMomentAsync(plaatsing.Id, maandag.Id);
+
+        await using var context = new AppDbContext(_options);
+        var over = Assert.Single(await context.AlgemeneFichemomenten.ToListAsync());
+        Assert.Equal(new DateOnly(2026, 9, 15), over.Datum);
+        Assert.True(await context.AlgemeneFicheplaatsingen.AnyAsync(p => p.Id == plaatsing.Id));
+    }
+
+    /// <summary>
+    /// TB-030: the last day takes the placement along. Dekking asks whether a placement row exists
+    /// (<c>EfDekkingOpslag</c>), so the row being gone is the fiche no longer counting through this period.
+    /// </summary>
+    [Fact]
+    public async Task De_laatste_dag_weghalen_neemt_de_plaatsing_mee()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            Invoer(_ficheId, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 14), [1]));
+
+        await Service().VerwijderMomentAsync(plaatsing.Id, Assert.Single(plaatsing.Momenten).Id);
+
+        await using var context = new AppDbContext(_options);
+        Assert.False(await context.AlgemeneFicheplaatsingen.AnyAsync());
+        Assert.False(await context.AlgemeneFichemomenten.AnyAsync());
+    }
+
+    [Fact]
+    public async Task Een_dag_weghalen_van_een_onbekende_plaatsing_of_een_onbekend_moment_is_niet_gevonden()
+    {
+        var plaatsing = await Service().PlaatsAsync(
+            _klasId,
+            Invoer(_ficheId, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 14), [1]));
+        var moment = Assert.Single(plaatsing.Momenten);
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().VerwijderMomentAsync(Guid.NewGuid(), moment.Id));
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
+            Service().VerwijderMomentAsync(plaatsing.Id, Guid.NewGuid()));
+
+        await using var context = new AppDbContext(_options);
+        Assert.Equal(1, await context.AlgemeneFichemomenten.CountAsync());
+    }
+
     [Fact]
     public async Task Elke_maandag_levert_een_rij_per_maandag_met_school_op_het_gekozen_lesuur()
     {

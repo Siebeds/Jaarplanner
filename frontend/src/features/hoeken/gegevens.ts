@@ -209,6 +209,24 @@ export function useVerwijderHoekplaatsing() {
   });
 }
 
+/**
+ * Takes ONE appearance off its day (TB-030), from the agenda's right-click menu. The last one takes the run along on the
+ * server, which changes the hoek's `aantalPlaatsingen`, so the corners are refetched too.
+ */
+export function useVerwijderHoekmoment() {
+  const ververs = usePlaatsingVerversing();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, momentId }: { plaatsingId: string; momentId: string }) =>
+      del(`/api/hoekplaatsingen/${plaatsingId}/momenten/${momentId}`),
+    onSuccess: () => {
+      ververs();
+      void qc.invalidateQueries({ queryKey: ["hoeken"] });
+    },
+  });
+}
+
 /** Where one appearance of a placed hoek should move to, or how long it should run. */
 export interface HoekmomentVerplaatsing {
   plaatsingId: string;

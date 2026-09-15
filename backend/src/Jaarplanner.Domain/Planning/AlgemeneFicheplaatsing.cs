@@ -189,6 +189,14 @@ public sealed class AlgemeneFicheplaatsing
         return true;
     }
 
+    /// <summary>
+    /// Takes ONE occurrence out of the agenda, with its day text, leaving the placement and its other days alone
+    /// (TB-030). Whether a placement left without occurrences should go too is the service's call: it is the layer that
+    /// knows the row still counts for dekking.
+    /// </summary>
+    /// <returns><c>false</c> when this placement holds no occurrence with that id.</returns>
+    public bool VerwijderMoment(Guid momentId) => _momenten.RemoveAll(m => m.Id == momentId) > 0;
+
     private void BewaakDag(DateOnly datum, TimeOnly begin, Guid? negeer)
     {
         if (!Omvat(datum))

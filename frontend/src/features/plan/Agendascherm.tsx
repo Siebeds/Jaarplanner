@@ -69,9 +69,12 @@ import {
   useHoekverrijkingen,
   usePlaatsHoek,
   useVerplaatsHoekmoment,
+  useVerwijderHoekmoment,
   useVerwijderHoekplaatsing,
   useHoeken,
 } from "../hoeken/gegevens";
+import { Bevestiging } from "../../components/ui/Bevestiging";
+import { gevolgVanDag } from "./vanDeDag";
 import { Algemeneficheplaatsingblad } from "../algemene-fiches/Algemeneficheplaatsingblad";
 import { Algemenefichedetailblad } from "../algemene-fiches/Algemenefichedetailblad";
 import {
@@ -81,6 +84,7 @@ import {
   usePlaatsAlgemeneFiche,
   useVerplaatsFichemoment,
   useVerwijderAlgemeneFicheplaatsing,
+  useVerwijderFichemoment,
 } from "../algemene-fiches/gegevens";
 import { ALGEMENE_FICHE_VOORVOEGSEL, fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { useSchooluren } from "../schooluren/gegevens";
@@ -285,6 +289,53 @@ export function Agendascherm() {
   const plaatsFiche = usePlaatsAlgemeneFiche(klasId);
   const verwijderFichePlaatsing = useVerwijderAlgemeneFicheplaatsing();
   const verplaatsFichemoment = useVerplaatsFichemoment();
+
+  // Taking one block off its day, from the right-click menu (TB-030).
+  const verwijderHoekmoment = useVerwijderHoekmoment();
+  const verwijderFichemoment = useVerwijderFichemoment();
+  // The block whose leaving would take more than itself, waiting for a yes (owner, 2026-09-15: only when something is
+  // lost), with the sentences that say what and the block that had focus. Kept after the question closes, so the sheet
+  // keeps its title while it slides away and can still hand focus back; `vanDagOpen` is what opens and closes it.
+  const [vanDagVraag, setVanDagVraag] = useState<{
+    doel: Tijddoel;
+    naam: string;
+    datum: string;
+    gevolgen: ReturnType<typeof gevolgVanDag>;
+    terugNaar: HTMLElement | null;
+  } | null>(null);
+  const [vanDagOpen, setVanDagOpen] = useState(false);
+
+  /** Takes one block off its day through its own kind's route. A failure left from an earlier try is cleared first. */
+  function haalVanDag(doel: Tijddoel) {
+    if (doel.soort === "activiteit") {
+      acties.verwijder.reset();
+      acties.verwijder.mutate(doel.plaatsingId);
+    } else if (doel.soort === "hoek") {
+      verwijderHoekmoment.reset();
+      verwijderHoekmoment.mutate({ plaatsingId: doel.plaatsingId, momentId: doel.momentId });
+    } else {
+      verwijderFichemoment.reset();
+      verwijderFichemoment.mutate({ plaatsingId: doel.plaatsingId, momentId: doel.momentId });
+    }
+  }
+
+  /** The menu's bin: at once when only the block goes, after a question when more does (`gevolgVanDag`). */
+  function vraagVanDag(doel: Tijddoel, naam: string, datum: string) {
+    const gevolgen = gevolgVanDag(doel, {
+      hoekplaatsingen: hoekplaatsingen ?? [],
+      fichePlaatsingen: fichePlaatsingen ?? [],
+      fiches: algemeneFiches ?? [],
+    });
+    if (gevolgen.length === 0) {
+      haalVanDag(doel);
+      return;
+    }
+    // The menu has handed focus back to the block by now (`Blokmenu` runs its action after that), so this is the
+    // block, for the question to give focus back to when she cancels.
+    const terugNaar = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setVanDagVraag({ doel, naam, datum, gevolgen, terugNaar });
+    setVanDagOpen(true);
+  }
 
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
@@ -975,6 +1026,7 @@ export function Agendascherm() {
                   onKiesDag={openDag}
                   onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
                   onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
+                  onVanDag={(activiteit) => haalVanDag({ soort: "activiteit", plaatsingId: activiteit.plaatsingId })}
                 />
               ) : (
               <>
@@ -1000,6 +1052,7 @@ export function Agendascherm() {
                   verwijderFichePlaatsing.reset();
                   setGeopendeFiche({ plaatsingId, momentId });
                 }}
+                onVanDag={vraagVanDag}
                 // In the week a column heading opens that day; in the day view it would go where it already is.
                 onKiesDag={weergave === "week" ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
@@ -1029,7 +1082,16 @@ export function Agendascherm() {
             F7). The picker renders only while this gebruiker may plan. */}
         <Agendamelding
           sleepFout={sleepFout}
-          fouten={[acties.plaats.error, acties.verplaats.error, verplaatsMoment.error, verplaatsFichemoment.error]}
+          // The menu's bin (TB-030) opens no sheet of its own to show a failure in, so its three routes report here.
+          fouten={[
+            acties.plaats.error,
+            acties.verplaats.error,
+            verplaatsMoment.error,
+            verplaatsFichemoment.error,
+            acties.verwijder.error,
+            verwijderHoekmoment.error,
+            verwijderFichemoment.error,
+          ]}
           kiezerOpen={magPlannen && kiezer !== null}
           bladOpen={nieuw !== null || geopend !== null || plannerOpen || (magPlannen && gekozenActiviteit !== null)}
         />
@@ -1361,6 +1423,21 @@ export function Agendascherm() {
           if (!geopend) return;
           acties.verwijder.mutate(geopend.activiteit.plaatsingId, { onSuccess: () => setGeopend(null) });
         }}
+      />
+
+      {/* THE QUESTION BEFORE A BLOCK LEAVES ITS DAY, asked only when more than the block goes with it (TB-030): its
+          day text, or the whole period because this was its last day. `gevolgVanDag` decides and words it. */}
+      <Bevestiging
+        open={vanDagOpen}
+        titel={vanDagVraag ? t("blokmenu.bevestigTitel", { naam: vanDagVraag.naam, dag: volleDag(vanDagVraag.datum) }) : ""}
+        gevolg={vanDagVraag?.gevolgen.map((sleutel) => t(sleutel)).join(" ")}
+        bevestigLabel={t("blokmenu.bevestigLabel")}
+        terugNaar={vanDagVraag?.terugNaar ?? null}
+        onBevestig={() => {
+          if (vanDagVraag) haalVanDag(vanDagVraag.doel);
+          setVanDagOpen(false);
+        }}
+        onSluit={() => setVanDagOpen(false)}
       />
     </>
   );
