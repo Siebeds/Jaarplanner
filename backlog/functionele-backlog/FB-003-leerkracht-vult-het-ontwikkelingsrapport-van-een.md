@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 17:33
+bijgewerkt: 2026-09-15 17:43
 opgepakt-door: rapport-invullen
 branch: ticket/FB-003-rapport-invullen
-pr:
+pr: 90
 geblokkeerd:
 fr: [FR-13.3, FR-13.7, FR-13.9]
 ---
@@ -88,3 +88,4 @@ Geen.
 - 2026-09-15 17:16 · rapport-invullen · Backend en scherm gebouwd: rapport per kind en moment, ster en tekst per rapportdoel, algemeen besluit, bewaren zonder knop; een gebruikte ster of rapportdoel kan niet meer weg (D1).
 - 2026-09-15 17:33 · rapport-invullen · Antagonist ronde 1: COMPLIANT, drie kleine punten opgelost. Browsercheck op 1440 en 390 px: AC1, AC2, AC3 en AC5 in de browser; AC4 en AC6 met integratie- en schermtests. Criteria afgevinkt.
 - 2026-09-15 17:33 · rapport-invullen · in-uitvoering → te-testen: Gebouwd: rapport per kind en per moment (ster en tekst per rapportdoel, algemeen besluit), bewaren zonder knop, D1 en D8; alle tests groen, lint en format schoon.
+- 2026-09-15 17:43 · rapport-invullen · PR #90
