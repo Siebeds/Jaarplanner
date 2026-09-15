@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 20:30
+bijgewerkt: 2026-09-15 20:32
 opgepakt-door: kindtekening
 branch: ticket/aanmeldpoort-leerlingzorg
-pr:
+pr: 101
 geblokkeerd:
 fr: []
 ---
@@ -44,3 +44,4 @@ Geen.
 
 - 2026-09-15 20:27 · kindtekening · aangemaakt (status in-uitvoering)
 - 2026-09-15 20:30 · kindtekening · in-uitvoering → klaar: Aanmeldpoort.test.tsx bouwt zijn gebruiker met ikMet; pnpm lint exit 0, frontend 929/929 groen; geen antagonist: alleen een test, geen code of recht
+- 2026-09-15 20:32 · kindtekening · PR #101
