@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 11:08
+bijgewerkt: 2026-09-15 14:14
 opgepakt-door: demo-deploy-skill
 branch: ticket/demo-deploy-skill
-pr:
+pr: 72
 geblokkeerd:
 fr: []
 ---
@@ -71,3 +71,4 @@ Geen.
 - 2026-09-15 10:49 · demo-deploy-skill · antagonist ronde 1: 3 MAJOR, 5 MINOR, verwerkt: stoppen bij een leeg, dirty of niet-main stempel; Up() lezen voor de migratie, met een bredere lijst en een faaltak, migratie in de achtergrond; claim deploy-azure-demo geregistreerd in de groepschat-tabel en infra/README.md (ook voor seed), scope daartoe verbreed; skill hernoemd naar deploy-demo (Art. II.2/II.6); herziene commando's opnieuw uitgevoerd tegen de demo; ronde 2 loopt
 - 2026-09-15 11:01 · demo-deploy-skill · antagonist ronde 2: 6 MINOR, verwerkt: stap 2 heeft een GO/STOP-poort (dirty, leeg, onzin en niet-main geven STOP) en LIVE staat tussen aanhalingstekens, zodat een lege LIVE luid faalt; eerst de claim, dan pas app of database starten; chatcontrole scherper; wijzigingen aan deploy-app.ps1 en migrate-db.ps1 eerst lezen; titel met de hand naar 'Skill deploy-demo' (bestandsnaam blijft); stap 2 en 4 opnieuw letterlijk uitgevoerd tegen de demo (GO, live ea6c5c6, twee nieuwe migraties, DMR leeg); ronde 3 loopt
 - 2026-09-15 11:08 · demo-deploy-skill · in-uitvoering → klaar: antagonist ronde 3: 5 MINOR, verwerkt (claim overal gelijk gedefinieerd, ook starten/stoppen/herstarten; claim vrijgeven bij elke stop; claims-map en grep per sessie in stap 1; afmelden ook anoniem; README-wijziging ingedeeld in stap 4), niet opnieuw geaudit; nieuwe stap-1-commando's uitgevoerd; criteria 1-3 afgevinkt op de skilltekst, een volledige run met migraties wacht op de eigenaar (PR #71); geen code, dus geen dotnet format of pnpm lint; skill deploy-demo, README-verwijzing en groepschat-claim klaar
+- 2026-09-15 14:14 · demo-deploy-skill · PR #72
