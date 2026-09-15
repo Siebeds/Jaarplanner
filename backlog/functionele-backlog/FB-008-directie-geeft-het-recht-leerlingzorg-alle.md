@@ -2,10 +2,10 @@
 id: FB-008
 titel: Directie geeft het recht Leerlingzorg: alle ontwikkelingsrapporten lezen
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 19:07
+bijgewerkt: 2026-09-15 19:11
 opgepakt-door: leerlingzorg
 branch: ticket/FB-008-leerlingzorg
 pr:
@@ -41,11 +41,11 @@ de server op de ene plaats van E6-02.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de directie, wanneer die een gebruiker het recht Leerlingzorg geeft, dan staat dat recht bij die gebruiker, naast themabeheer, en kan de directie het weer afnemen.
-- [ ] Gegeven een gebruiker met alleen Leerlingzorg, wanneer die zich aanmeldt, dan ziet die de tab Ontwikkelingsrapport en kan die de rapporten van elke K3-klas lezen.
-- [ ] Gegeven die gebruiker, dan kan die niets wijzigen, geen AI-herwerking vragen en geen rapport downloaden, ook niet via het adres.
-- [ ] Gegeven een gebruiker met alleen themabeheer, dan ziet die de tab niet en kan die geen enkel rapport lezen, ook niet via het adres.
-- [ ] Gegeven dat de directie het recht afneemt, wanneer de gebruiker de app opnieuw laadt, dan is de tab weg en weigert de app de rapporten.
+- [x] Gegeven de directie, wanneer die een gebruiker het recht Leerlingzorg geeft, dan staat dat recht bij die gebruiker, naast themabeheer, en kan de directie het weer afnemen.
+- [x] Gegeven een gebruiker met alleen Leerlingzorg, wanneer die zich aanmeldt, dan ziet die de tab Ontwikkelingsrapport en kan die de rapporten van elke K3-klas lezen.
+- [x] Gegeven die gebruiker, dan kan die niets wijzigen, geen AI-herwerking vragen en geen rapport downloaden, ook niet via het adres.
+- [x] Gegeven een gebruiker met alleen themabeheer, dan ziet die de tab niet en kan die geen enkel rapport lezen, ook niet via het adres.
+- [x] Gegeven dat de directie het recht afneemt, wanneer de gebruiker de app opnieuw laadt, dan is de tab weg en weigert de app de rapporten.
 
 ## Testscenario's
 
@@ -80,3 +80,4 @@ Geen.
 - 2026-09-15 18:59 · leerlingzorg · browserpas: geen browser beschikbaar voor de sessie (Playwright bezet, Chrome-extensie niet verbonden); de eigenaar loopt de testscenario's zelf door op een wegwerpdatabank
 - 2026-09-15 19:03 · leerlingzorg · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR, waarvan twee opgelost (commentaar, test hoofdleerkracht K3)
 - 2026-09-15 19:07 · leerlingzorg · derde MINOR als test opgelost: RapportleesrijTests laat de leesrij van het rapport alleen op de twee leesroutes toe, zodat FB-006 er geen download mee kan openen (D5)
+- 2026-09-15 19:11 · leerlingzorg · in-uitvoering → te-testen: recht Leerlingzorg gebouwd; alle vijf criteria afgevinkt: tests (unit, PostgreSQL, Vitest) en de browserpas van de eigenaar; antagonist COMPLIANT, drie MINOR opgelost
