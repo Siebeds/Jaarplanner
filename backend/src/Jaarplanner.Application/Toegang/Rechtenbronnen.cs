@@ -138,7 +138,7 @@ public sealed record Klasinzage
 /// schooljaar (R26). A planning resource can therefore never pass a report row, nor a report resource a planning row.
 /// <para>
 /// It is built for any klas that exists, K3 or not. Whether that klas can have leerlingen at all (D9) is the matrix's
-/// question for a leerkracht and the service's for directie.
+/// question for a leerkracht and the service's for directie and Leerlingzorg (FB-008), who pass the read row on any klas.
 /// </para>
 /// </summary>
 /// <param name="KlasId">The klas.</param>

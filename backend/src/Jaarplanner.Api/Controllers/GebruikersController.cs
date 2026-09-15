@@ -71,6 +71,15 @@ public sealed class GebruikersController : ControllerBase
     public async Task<ActionResult<GebruikerBeheerWeergave>> NeemThemabeheerAf(Guid gebruikerId, CancellationToken cancellationToken) =>
         Ok(await _service.NeemThemabeheerAfAsync(gebruikerId, cancellationToken));
 
+    /// <summary>Gives Leerlingzorg (ADR-0035 R18, FB-008): reading every ontwikkelingsrapport.</summary>
+    [HttpPut("{gebruikerId:guid}/leerlingzorg")]
+    public async Task<ActionResult<GebruikerBeheerWeergave>> GeefLeerlingzorg(Guid gebruikerId, CancellationToken cancellationToken) =>
+        Ok(await _service.GeefLeerlingzorgAsync(gebruikerId, cancellationToken));
+
+    [HttpDelete("{gebruikerId:guid}/leerlingzorg")]
+    public async Task<ActionResult<GebruikerBeheerWeergave>> NeemLeerlingzorgAf(Guid gebruikerId, CancellationToken cancellationToken) =>
+        Ok(await _service.NeemLeerlingzorgAfAsync(gebruikerId, cancellationToken));
+
     /// <summary>Makes the gebruiker a leerkracht of the klas (R15).</summary>
     [HttpPut("{gebruikerId:guid}/klassen/{klasId:guid}")]
     public async Task<ActionResult<GebruikerBeheerWeergave>> WijsKlasToe(Guid gebruikerId, Guid klasId, CancellationToken cancellationToken) =>

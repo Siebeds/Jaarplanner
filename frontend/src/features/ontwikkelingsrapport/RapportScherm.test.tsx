@@ -262,6 +262,22 @@ describe("RapportScherm, het ontwikkelingsrapport van een kind", () => {
     expect(screen.getByText(t("ontwikkelingsrapport.nogGeenBesluit"))).toBeInTheDocument();
   });
 
+  it("toont Leerlingzorg het rapport om te lezen, zonder velden en zonder de zin over een voorbij schooljaar (R18)", async () => {
+    const verzoeken = toon(ikMet({ heeftLeerlingzorg: true }), {
+      begin: {
+        ...leegRapport(1),
+        rapportdoelen: [{ ...LUISTEREN, gradatieId: "g-volledig", tekst: "Luistert goed.", tekstStatus: "Manueel" }, TELLEN],
+      },
+    });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    expect(screen.getByText("Luistert goed.")).toBeInTheDocument();
+    expect(screen.queryByText(t("ontwikkelingsrapport.rapportAlleenLezen"))).not.toBeInTheDocument();
+    expect(verzoeken.every((verzoek) => verzoek.methode === "GET")).toBe(true);
+  });
+
   it("laat de directie invullen, zonder de zin over een voorbij schooljaar", async () => {
     toon(DIRECTIE);
     await screen.findByRole("heading", { name: LUISTEREN.titel });

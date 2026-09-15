@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 18:27
+bijgewerkt: 2026-09-15 18:55
 opgepakt-door: leerlingzorg
 branch: ticket/FB-008-leerlingzorg
 pr:
@@ -74,3 +74,6 @@ Geen.
 - 2026-09-14 14:39 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-15 18:27 · eigenaar · nieuw → klaar-voor-bouw: eigenaar zet het ticket klaar voor bouw
 - 2026-09-15 18:27 · leerlingzorg · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:44 · leerlingzorg · recht Leerlingzorg gebouwd: kolom op de leesrij van het rapport, vinkje in het Rechtenblad, eigen lijst /api/rapportklassen; unittests groen (1702)
+- 2026-09-15 18:46 · leerlingzorg · frontend groen: pnpm lint en Vitest (81 bestanden, 889 tests)
+- 2026-09-15 18:55 · leerlingzorg · backend groen: unittests 1702, integratietests op PostgreSQL 523 geslaagd (1 live-KOV overgeslagen), incl. sweep met een gebruiker met alleen Leerlingzorg; dotnet format schoon

@@ -86,6 +86,7 @@ public sealed class AanmeldController : ControllerBase
             gebruiker.Email,
             rechten.IsDirectie,
             rechten.HeeftThemabeheer,
+            rechten.HeeftLeerlingzorg,
             rechten.HoofdleerkrachtLeeftijden,
             rechten.LeerkrachtLeeftijden,
             rechten.EigenKlasIds,
@@ -105,6 +106,10 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 /// </summary>
 /// <param name="IsDirectie">"Directie": every action but editing the K3 rapportdoelen and the sterrenschaal (R31).</param>
 /// <param name="HeeftThemabeheer">"TB".</param>
+/// <param name="HeeftLeerlingzorg">
+/// "Leerlingzorg" (FB-008): reads every ontwikkelingsrapport and nothing else, so it also shows the Ontwikkelingsrapport
+/// tab (ADR-0035 D18).
+/// </param>
 /// <param name="HoofdleerkrachtLeeftijden">"HL": the jaarfasen they are hoofdleerkracht of in a schooljaar that has not ended.</param>
 /// <param name="LeerkrachtLeeftijden">"LK leeftijd": the stated jaarfasen of their klassen in a schooljaar that has not ended.</param>
 /// <param name="EigenKlasIds">"LK eigen": every klas they hold a klastoewijzing on.</param>
@@ -124,6 +129,7 @@ public sealed record IkWeergave(
     string Email,
     bool IsDirectie,
     bool HeeftThemabeheer,
+    bool HeeftLeerlingzorg,
     IReadOnlyList<string> HoofdleerkrachtLeeftijden,
     IReadOnlyList<string> LeerkrachtLeeftijden,
     IReadOnlyList<Guid> EigenKlasIds,

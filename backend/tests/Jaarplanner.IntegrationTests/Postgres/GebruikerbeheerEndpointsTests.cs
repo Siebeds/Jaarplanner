@@ -178,7 +178,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
             ["gebruikers", "voorbijeSchooljaarIds"],
             document.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.Equal(
-            ["email", "heeftThemabeheer", "hoofdleerkrachtaanstellingen", "id", "isAangemeld", "isDirectie", "klastoewijzingen", "naam"],
+            ["email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtaanstellingen", "id", "isAangemeld", "isDirectie", "klastoewijzingen", "naam"],
             document.RootElement.GetProperty("gebruikers")[0].EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
 
         var overzicht = document.RootElement.Deserialize<OverzichtDto>(Json)!;
@@ -218,13 +218,14 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         using var antwoord = await client.PostAsJsonAsync(
             "/api/gebruikers",
-            new { email = "  Carla.Maes@School.be ", naam = " Carla Maes ", heeftThemabeheer = true });
+            new { email = "  Carla.Maes@School.be ", naam = " Carla Maes ", heeftThemabeheer = true, heeftLeerlingzorg = true });
 
         Assert.Equal(HttpStatusCode.Created, antwoord.StatusCode);
         var weergave = (await antwoord.Content.ReadFromJsonAsync<GebruikerDto>(Json))!;
         Assert.Equal("carla.maes@school.be", weergave.Email);
         Assert.Equal("Carla Maes", weergave.Naam);
         Assert.True(weergave.HeeftThemabeheer);
+        Assert.True(weergave.HeeftLeerlingzorg);
         Assert.False(weergave.IsDirectie);
         Assert.False(weergave.IsAangemeld);
         Assert.EndsWith($"/api/gebruikers/{weergave.Id}", antwoord.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
@@ -277,6 +278,33 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal("Een aanmeldnaam is hoogstens 320 tekens lang.", await DetailAsync(langeAanmeldnaam));
         await using var context = _db.MaakContext();
         Assert.Equal(0, await context.Gebruikers.CountAsync());
+    }
+
+    // --- Leerlingzorg (ADR-0035 R18, §3.4; FB-008): given and taken where themabeheer is. ---
+
+    [PostgresFact]
+    public async Task Leerlingzorg_geven_en_afnemen_naast_themabeheer()
+    {
+        var an = await BewaarGebruikerAsync(themabeheer: true);
+        using var client = Client();
+
+        var met = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/leerlingzorg");
+        var opnieuw = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/leerlingzorg");
+        Assert.True(met.HeeftLeerlingzorg);
+        Assert.True(opnieuw.HeeftLeerlingzorg);
+        // Beside themabeheer, not instead of it.
+        Assert.True(met.HeeftThemabeheer);
+
+        var zonder = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{an.Id}/leerlingzorg");
+        var nogmaals = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{an.Id}/leerlingzorg");
+        Assert.False(zonder.HeeftLeerlingzorg);
+        Assert.False(nogmaals.HeeftLeerlingzorg);
+        Assert.True(zonder.HeeftThemabeheer);
+
+        await using var context = _db.MaakContext();
+        var bewaard = await context.Gebruikers.SingleAsync(g => g.Id == an.Id);
+        Assert.False(bewaard.HeeftLeerlingzorg);
+        Assert.True(bewaard.HeeftThemabeheer);
     }
 
     // --- Themabeheer and the directie right (R4, R16). ---
@@ -864,6 +892,8 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         (HttpMethod.Delete, $"/api/gebruikers/{doel}/directierecht", null),
         (HttpMethod.Put, $"/api/gebruikers/{doel}/themabeheer", null),
         (HttpMethod.Delete, $"/api/gebruikers/{doel}/themabeheer", null),
+        (HttpMethod.Put, $"/api/gebruikers/{doel}/leerlingzorg", null),
+        (HttpMethod.Delete, $"/api/gebruikers/{doel}/leerlingzorg", null),
         (HttpMethod.Put, $"/api/gebruikers/{doel}/klassen/{klasId}", null),
         (HttpMethod.Delete, $"/api/gebruikers/{doel}/klassen/{klasId}", null),
         (HttpMethod.Put, $"/api/gebruikers/{doel}/hoofdleerkracht/{schooljaarId}/K3", null),
@@ -978,6 +1008,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         string Email,
         bool IsDirectie,
         bool HeeftThemabeheer,
+        bool HeeftLeerlingzorg,
         bool IsAangemeld,
         List<KlastoewijzingDto> Klastoewijzingen,
         List<AanstellingDto> Hoofdleerkrachtaanstellingen);

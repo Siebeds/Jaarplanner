@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useActieveSelectie } from "./selectie";
+import { useActieveSelectie, type Klassenbron } from "./selectie";
 
 /**
  * When `useActieveSelectie` says a list failed to load (FB-001, antagonist rounds 2 and 3), over a real query client:
@@ -32,12 +32,12 @@ function json(inhoud: unknown, status = 200) {
 /** Which of the two routes answer 500 right now; a test flips them between loads. */
 const faalt = { schooljaren: false, klassen: false };
 
-function gebruik() {
+function gebruik(bron?: Klassenbron) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
-  return { client, ...renderHook(() => useActieveSelectie(), { wrapper }) };
+  return { client, ...renderHook(() => useActieveSelectie(bron), { wrapper }) };
 }
 
 beforeEach(() => {
@@ -49,6 +49,7 @@ beforeEach(() => {
       const pad = String(invoer);
       if (pad.endsWith("/api/schooljaren")) return faalt.schooljaren ? json({}, 500) : json([JAAR]);
       if (pad.endsWith("/api/klassen")) return faalt.klassen ? json({}, 500) : json([KLAS]);
+      if (pad.endsWith("/api/rapportklassen")) return json([{ ...KLAS, id: "k3-groen", naam: "K3 groen" }]);
       return json({}, 404);
     }),
   );
@@ -98,5 +99,26 @@ describe("useActieveSelectie, fout", () => {
     expect(result.current.fout).toBe(false);
     expect(result.current.schooljaren).toHaveLength(1);
     expect(result.current.klassen).toHaveLength(1);
+  });
+});
+
+describe("useActieveSelectie, de klassen van het rapport (FB-008)", () => {
+  it("kiest uit de rapportklassen en vraagt de klassen van de planning niet op", async () => {
+    const { result } = gebruik("rapport");
+
+    await waitFor(() => expect(result.current.laadt).toBe(false));
+    expect(result.current.klassen.map((klas) => klas.id)).toEqual(["k3-groen"]);
+    expect(result.current.klasId).toBe("k3-groen");
+    const gevraagd = vi.mocked(fetch).mock.calls.map(([pad]) => String(pad));
+    expect(gevraagd.some((pad) => pad.endsWith("/api/rapportklassen"))).toBe(true);
+    expect(gevraagd.some((pad) => pad.endsWith("/api/klassen"))).toBe(false);
+  });
+
+  it("kiest zonder bron uit de klassen van de planning, zoals voorheen", async () => {
+    const { result } = gebruik();
+
+    await waitFor(() => expect(result.current.laadt).toBe(false));
+    expect(result.current.klassen.map((klas) => klas.id)).toEqual(["k3-blauw"]);
+    expect(vi.mocked(fetch).mock.calls.some(([pad]) => String(pad).endsWith("/api/rapportklassen"))).toBe(false);
   });
 });

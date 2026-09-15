@@ -40,7 +40,7 @@ public sealed class RechtenService : IRechtenService
         var gebruiker = await _context.Gebruikers
             .AsNoTracking()
             .Where(g => g.Id == gebruikerId)
-            .Select(g => new { g.IsDirectie, g.HeeftThemabeheer })
+            .Select(g => new { g.IsDirectie, g.HeeftThemabeheer, g.HeeftLeerlingzorg })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (gebruiker is null)
@@ -69,7 +69,8 @@ public sealed class RechtenService : IRechtenService
             gebruiker.HeeftThemabeheer,
             klastoewijzingen,
             aanstellingen,
-            Schoolklok.Vandaag(_tijd, _logger));
+            Schoolklok.Vandaag(_tijd, _logger),
+            gebruiker.HeeftLeerlingzorg);
 
         _gelezen[gebruikerId] = rechten;
         return rechten;

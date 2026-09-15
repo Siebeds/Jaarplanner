@@ -31,4 +31,30 @@ public static class Klasinzagefilter
 
         return leesbaar;
     }
+
+    /// <summary>
+    /// The klassen whose ontwikkelingsrapporten a gebruiker may read (FB-008, ADR-0035 §3.3): each klas that can hold
+    /// children (<see cref="KlasWeergave.KanLeerlingenHebben"/>, D9) is asked the row <c>OntwikkelingsrapportLezen</c> on
+    /// its own <see cref="Rapportklas"/>, the question the report routes ask. <b>Stricter and wider than
+    /// <see cref="LeesbaarAsync"/> at once</b>: a hoofdleerkracht of K3 reads a K3 klas's planning and none of its
+    /// reports (R17), and Leerlingzorg reads every K3 klas's reports and none of their planning (R18).
+    /// </summary>
+    public static async Task<IReadOnlyList<KlasWeergave>> RapportleesbaarAsync(
+        this IAuthorizationService autorisatie,
+        ClaimsPrincipal gebruiker,
+        IEnumerable<KlasWeergave> klassen)
+    {
+        ArgumentNullException.ThrowIfNull(klassen);
+
+        var leesbaar = new List<KlasWeergave>();
+        foreach (var klas in klassen.Where(k => k.KanLeerlingenHebben))
+        {
+            if (await autorisatie.MagAsync(gebruiker, new Rapportklas(klas.Id), Rechtenmatrix.Beleid.OntwikkelingsrapportLezen))
+            {
+                leesbaar.Add(klas);
+            }
+        }
+
+        return leesbaar;
+    }
 }

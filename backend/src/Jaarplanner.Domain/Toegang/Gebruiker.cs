@@ -62,6 +62,18 @@ public sealed class Gebruiker
     /// <summary>Takes themabeheer away. Idempotent. What they built stays; only the right goes.</summary>
     public void NeemThemabeheerAf() => HeeftThemabeheer = false;
 
+    /// <summary>
+    /// Leerlingzorg (ADR-0035 R18, §3.4; Art. VI.1): reads every ontwikkelingsrapport and does nothing else. Directie
+    /// gives it, as it gives themabeheer (FA FR-12.2). A zorgcoördinator holds it because directie gave it, not by a title.
+    /// </summary>
+    public bool HeeftLeerlingzorg { get; private set; }
+
+    /// <summary>Gives this gebruiker Leerlingzorg. Idempotent.</summary>
+    public void GeefLeerlingzorg() => HeeftLeerlingzorg = true;
+
+    /// <summary>Takes Leerlingzorg away. Idempotent.</summary>
+    public void NeemLeerlingzorgAf() => HeeftLeerlingzorg = false;
+
     /// <summary>Gives this gebruiker the directie right (ADR-0030 R16: directie may give it to someone else). Idempotent.</summary>
     public void GeefDirectierecht() => IsDirectie = true;
 
