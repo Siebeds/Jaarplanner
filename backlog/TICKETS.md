@@ -158,8 +158,9 @@ statussen op hun branch (oppakken, te testen, teruggeven).
 - **Agent-sessie:** werkt volgens de skill `ticket-uitvoeren`, op de pc van de eigenaar. Heeft het werk nog geen
   ticket en geen story, dan maakt de agent **eerst** een TB-ticket aan, vóór er een bestand verandert.
 
-Wie in de gedeelde checkout `C:\source\Jaarplanner` een `git switch` of `git pull` doet terwijl er sessies lopen,
-claimt eerst `maintree` in de groepschat. In de eigen clone van de architect speelt dat niet.
+Sessies werken elk in hun eigen worktree onder `.claude/worktrees/`. Een `git switch` of `git pull` in de gedeelde
+checkout `C:\source\Jaarplanner` stoort ze dus niet; alleen een dev-server die vanuit die checkout draait, ziet de
+wijziging.
 
 Lange verslagen (antagonist, testrapport, schermafbeeldingen) gaan zoals voorheen naar `backlog/worklogs/<id>/`;
 het werklog in het ticket zelf houdt één regel per gebeurtenis.

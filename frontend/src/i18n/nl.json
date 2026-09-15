@@ -388,6 +388,7 @@
     "schooljaar": "Schooljaar",
     "hoeken": "Hoeken",
     "algemeneFiches": "Algemene fiches",
+    "schooluren": "Schooluren",
     "sluiten": "Instellingen sluiten"
   },
   "weergave": {
@@ -396,6 +397,27 @@
     "licht": "Licht",
     "donker": "Donker",
     "dezeBrowser": "Geldt alleen in deze browser."
+  },
+  "schooluren": {
+    "uitleg": "Deze uren gelden voor alle klassen. De agenda opent op het begin van de schooldag en arceert de uren daarbuiten.",
+    "schooldag": "Schooldag",
+    "middagpauze": "Middagpauze",
+    "van": "van",
+    "tot": "tot",
+    "bewaar": "Schooluren bewaren",
+    "bewaard": "De schooluren zijn bewaard.",
+    "bewaarMislukt": "De schooluren zijn niet bewaard.",
+    "laadFout": "De schooluren konden niet geladen worden.",
+    "onvolledig": "Vul op {dag} een begin en een einde in, of laat allebei leeg.",
+    "pauzeOnvolledig": "Vul op {dag} het begin en het einde van de middagpauze in, of vink de middagpauze uit.",
+    "nietIngesteld": "Niet ingesteld",
+    "geenPauze": "Geen middagpauze",
+    "pauzeLijst": "Middagpauze {bereik}",
+    "beginRaster": "begin {tijd}",
+    "eindeRaster": "einde {tijd}",
+    "pauzeRaster": "middagpauze",
+    "dagZin": ", schooldag van {begin} tot {einde}",
+    "pauzeZin": ", middagpauze van {begin} tot {einde}"
   },
   "klasbeheer": {
     "toevoegen": "Klas toevoegen",

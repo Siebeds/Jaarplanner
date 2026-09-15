@@ -15,7 +15,7 @@ description: >-
 What the demo is and why it exists: [ADR-0034](../../../docs/adr/0034-demo-omgeving-op-azure.md) and
 [`infra/README.md`](../../../infra/README.md). This skill is that README's *Later deployments* section plus the checks
 and traps that the deploys of 2026-09-13 to 2026-09-15 turned up. **Where the two disagree, the README wins**: fix
-this file. Talk to the owner in **Dutch**; groepschat lines stay English.
+this file. Talk to the owner in **Dutch**.
 
 | What | Name |
 | --- | --- |
@@ -39,32 +39,21 @@ HOST=https://$APP.azurewebsites.net
 LOGS=<your scratchpad directory>   # never the repo
 ```
 
-## 1. The claim first, then the preconditions
+## 1. The lock first, then the preconditions
 
-Join the groepschat (`groepschat` skill) and claim **`deploy-azure-demo`** before anything else. It is the lock for
-every write to the demo, including starting, stopping or restarting the app or the database, and so for
-`deploy-app.ps1`, `migrate-db.ps1` and `seed-demo.ps1`. A refused claim means another session is doing one of those:
-post `ASK` and wait.
-
-**Whenever you stop and the owner does not tell you to go on, release the claim** (step 7) and say so in the chat.
-A claim left behind on a stop locks every seed and migration out of the demo until the technical lead breaks it.
-
-A granted claim proves only that no session *that takes this claim* is busy. Sessions on branches that predate the
-rule read an older groepschat table and README, which do not say that seeding takes it too. So also look at the live
-state and its history:
+Take the lock **`deploy-azure-demo`** before anything else. It guards every write to the demo, including starting,
+stopping or restarting the app or the database, and so `deploy-app.ps1`, `migrate-db.ps1` and `seed-demo.ps1`. The
+lock is a file whose existence is the lock; `set -C` makes creating it atomic, so two sessions cannot both get it:
 
 ```bash
-ls $COORD/claims                                                        # what is held right now
-grep -i -E 'demo|seed|migrat|deploy' $COORD/groepschat.md | tail -15    # who worked on the demo lately
-grep -F '| <session> |' $COORD/groepschat.md | tail                     # per session the line above shows
+mkdir -p $COORD/claims; LOCK=$COORD/claims/deploy-azure-demo.md
+( set -C; printf 'owner: %s\ntaken: %s\nwhy: %s\n' "<session>" "$(date '+%Y-%m-%d %H:%M')" "deploy main" > $LOCK ) \
+  2>/dev/null && echo "OK: the lock is yours" || { echo "REFUSED:"; cat $LOCK; }
 ```
 
-A session's demo seed, migration or deploy (an `INFO` announcing it, or a claim that belongs to it, such as the port
-of a seed's local API) counts as still running while that claim is in `claims/`, and until the session posts a `DONE`
-saying the demo run ended, a `RELEASE` of `deploy-azure-demo`, or a `LEAVE`. A `DONE` or `RELEASE` about other work
-does not end it. The per-session grep is what shows the port claims and the `LEAVE` lines, which the second command
-misses when the session's name holds none of its words. Ask that session before you go on; if its session file in
-`$COORD/sessions/` has gone quiet, ask the owner instead of waiting.
+A refused lock means another session is deploying, migrating or seeding the demo: tell the owner who holds it and
+since when, and wait. **Whenever you stop and the owner does not tell you to go on, remove the lock** (step 7) and say
+so. A lock left behind blocks every seed and migration of the demo; only the owner decides to remove someone else's.
 
 ```bash
 az account show --query name -o tsv            # signed in? if not, ask the owner to run `! az login`
@@ -100,20 +89,19 @@ in step 4 misses migrations and puts new code on an old schema. The `git log` li
 `GO`. On `STOP`:
 
 - **`RAW` is empty:** Kudu did not answer (expired sign-in, stopped app, a recreated environment). Find the cause.
-  The groepschat's last `DONE` line is a hint, never a substitute for the stamp.
 - **`RAW` ends in "(with uncommitted changes)":** someone deployed with `-AllowDirty`. **Not on main:** someone
   deployed a branch. Either way the database may hold a migration that `main` does not know. Tell the owner what the
   stamp says and go on only on their word.
 
 After `GO`:
 
-- **`LIVE` equals `TARGET`:** nothing to deploy. Run step 6 anyway, tell the owner, release the claim.
+- **`LIVE` equals `TARGET`:** nothing to deploy. Run step 6 anyway, tell the owner, remove the lock.
 - **Database `Stopped`:** the owner stops it between demos to save cost (infra/README.md). Ask before starting it
   with `az postgres flexible-server start -g $RG -n $PG`; `/health/ready` answers 503 until it runs.
 
 ## 3. Put the deploy worktree on origin/main
 
-Never deploy from the main tree: a checkout there moves HEAD under every other session (the `maintree` rule). The
+Never deploy from the main tree: a checkout there moves HEAD under whoever runs from it, the owner's app for one. The
 deploy worktree is detached, so moving it costs nobody anything.
 
 ```bash
@@ -157,7 +145,7 @@ git -C $WT diff --stat "$LIVE" "$TARGET" -- infra
    `RenameTable`, `RenameColumn`, `AlterColumn`, `DeleteData`, `UpdateData`, and any `Sql(...)`. Tell them which
    migration and what it does. An additive migration can still change behaviour, for instance a rights column that
    starts out empty for every existing user: name such a one in your report.
-2. **Post an `INFO`** naming the migrations.
+2. **Tell the owner** which migrations you are about to run.
 3. **Run it in the background** (`run_in_background: true`). The script builds the API first; the run of 2026-09-14
    took about four minutes, longer than the Bash tool's default timeout, and a killed run skips the script's
    `finally`, which is what removes its firewall rule.
@@ -182,10 +170,8 @@ git -C $WT diff --stat "$LIVE" "$TARGET" -- infra
 
 ## 5. Build and deploy
 
-Post an `INFO`: *"deploying origin/main <sha> to jaarplanner-demo-ertren from .claude/worktrees/deploy-main; live was
-<sha>; migrations: <none, or their names>. Please do not deploy, migrate, seed, start, stop or restart the demo until
-my DONE"*. Then run it in the **background** (`run_in_background: true`), because the build, the upload and the
-restart take several minutes:
+Keep holding the lock of step 1. Run it in the **background** (`run_in_background: true`), because the build, the
+upload and the restart take several minutes:
 
 ```bash
 cd $WT && PATH="/c/Windows/System32:$PATH" powershell -NoProfile -ExecutionPolicy Bypass \
@@ -240,13 +226,11 @@ When something is off:
 - **Anything else:** `az webapp log tail -g $RG -n $APP` streams the app's log, including a startup exception. (Not
   needed on any deploy so far, so not yet run from this recipe.)
 
-## 7. Release and report
+## 7. Unlock and report
 
-Post a `DONE` in the groepschat naming the commit, the PRs it brings, the migrations (or "no migrations since
-<live>") and the check results. Release `deploy-azure-demo` with the groepschat `release` helper. **If the deploy was
-your session's whole task**, confirm `mine` prints nothing and post `LEAVE`; if you were asked to deploy in the middle
-of other work, release only this claim and carry on. Leave the worktree where it is, detached at the deployed commit:
-the next run moves it.
+Remove the lock, after checking with `cat $LOCK` that it is yours: `rm -- $COORD/claims/deploy-azure-demo.md`, then
+`ls $COORD/claims` to see it is gone. Leave the worktree where it is, detached at the deployed commit: the next run
+moves it.
 
 Tell the owner, in Dutch: the commit and the PRs it brings since the previous deploy, whether migrations ran, each
 check with its result, and what did **not** go along: an open PR they may think is in, or infra that was not
