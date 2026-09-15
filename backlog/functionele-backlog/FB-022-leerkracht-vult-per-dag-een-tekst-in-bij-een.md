@@ -2,12 +2,12 @@
 id: FB-022
 titel: Leerkracht vult per dag een tekst in bij een ingeplande algemene fiche, zoals wero
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-15 16:08
+opgepakt-door: fichetekst
+branch: ticket/FB-022-fiche-dagtekst
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -62,3 +62,5 @@ algemene fiche.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-15 16:07 · eigenaar · nieuw → klaar-voor-bouw: naar klaar-voor-bouw op vraag van de eigenaar; open vraag beslist: waarschuwen bij verwijderen van een plaatsing met teksten
+- 2026-09-15 16:08 · fichetekst · klaar-voor-bouw → in-uitvoering: opgepakt
