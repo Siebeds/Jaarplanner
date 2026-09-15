@@ -65,8 +65,9 @@ public static class MatchingPromptBuilder
     /// <param name="thema">The school thema whose themadoelen/subthema's/activiteiten need goal matches.</param>
     /// <param name="leerdoelen">The relevant, already-loaded Op.stap leerplandoelen to choose from.</param>
     /// <param name="minimumdoelen">
-    /// Optional concorded minimumdoelen (Op.stap data) that give the model the eindterm omschrijving
-    /// behind a leerplandoel's <c>minimumdoelRef</c>; defaults to none.
+    /// Optional minimumdoelen (Op.stap data), written as a section of their own; defaults to none, which is what the
+    /// matching service passes. The compact goal list (TB-007) does not name each goal's <c>minimumdoelRef</c>, so the
+    /// section is context only and is not tied to the listed goals.
     /// </param>
     /// <returns>The grounded request (system + user prompt), ready for <see cref="IAiClient"/>.</returns>
     public static AiRequest Bouw(
@@ -198,50 +199,9 @@ public static class MatchingPromptBuilder
         }
     }
 
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen)
-    {
-        Line(sb, "# Beschikbare Op.stap-leerplandoelen");
-        Line(sb, string.Empty);
-        if (leerdoelen.Count == 0)
-        {
-            Line(sb, "- (geen leerplandoelen aangeleverd)");
-            return;
-        }
-
-        // Order by the stable code so the prompt is identical regardless of caller ordering.
-        foreach (var doel in leerdoelen.OrderBy(d => d.Code, StringComparer.Ordinal))
-        {
-            SchrijfLeerplandoel(sb, doel);
-        }
-    }
-
-    private static void SchrijfLeerplandoel(StringBuilder sb, Leerplandoel doel)
-    {
-        var taxonomie = doel.Cluster is null
-            ? $"{doel.Domein} > {doel.Subdomein}"
-            : $"{doel.Domein} > {doel.Subdomein} > {doel.Cluster}";
-        Line(sb, $"- {doel.Code} | {doel.Doelsoort.ToCode()} | {doel.JaarFase} | {taxonomie}");
-        Line(sb, $"  Tekst: {doel.Tekst}");
-        if (doel.Voorbeelden is not null)
-        {
-            Line(sb, $"  Voorbeelden: {doel.Voorbeelden}");
-        }
-
-        if (doel.Toelichting is not null)
-        {
-            Line(sb, $"  Toelichting: {doel.Toelichting}");
-        }
-
-        if (doel.Woordenschat is not null)
-        {
-            Line(sb, $"  Woordenschat: {doel.Woordenschat}");
-        }
-
-        if (doel.MinimumdoelRef is not null)
-        {
-            Line(sb, $"  Minimumdoel: {doel.MinimumdoelRef}");
-        }
-    }
+    // The goal list is the one the authoring prompts end with too, compact since TB-007: see LeerplandoelPromptlijst.
+    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
+        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
 
     private static void SchrijfMinimumdoelen(StringBuilder sb, IReadOnlyCollection<Minimumdoel> minimumdoelen)
     {

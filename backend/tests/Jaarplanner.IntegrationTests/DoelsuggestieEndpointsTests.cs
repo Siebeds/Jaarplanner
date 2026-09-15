@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Jaarplanner.Application.Ai;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,7 +121,9 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         Assert.Equal(HttpStatusCode.OK, post.StatusCode);
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.True(resultaat!.IsGeslaagd);
-        Assert.Equal(3, resultaat.AantalKandidaten);
+        // The thema's one subthema is K3, so only the two K3 goals were candidates (TB-007).
+        Assert.Equal(2, resultaat.AantalKandidaten);
+        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
         var voorgesteld = Assert.Single(resultaat.Bewaard);
         Assert.Equal("Voorgesteld", voorgesteld.Status);
 
@@ -170,6 +174,39 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.True(resultaat!.IsGeslaagd);
         Assert.Equal(1, resultaat.AantalKandidaten);
+    }
+
+    [Fact]
+    public async Task Een_thema_zonder_subthemas_en_zonder_keuze_geeft_400_en_roept_de_ai_niet_aan()
+    {
+        // TB-007: without a jaar/fase the run would search the whole catalogue, so it is refused before the model.
+        var client = _factory.CreateClient();
+        var themaId = await _factory.SeedThemaZonderSubthemasAsync();
+        var voor = _factory.AantalAiAanroepen;
+
+        var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        var probleem = await post.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.Equal("Kies eerst voor welke leeftijden je doelsuggesties wil.", probleem!.Detail);
+        Assert.Equal(voor, _factory.AantalAiAanroepen);
+    }
+
+    [Fact]
+    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_jaarfasen()
+    {
+        var client = _factory.CreateClient();
+        var themaId = await _factory.SeedThemaZonderSubthemasAsync();
+        _factory.AiAntwoord = """{"suggesties":[]}""";
+
+        var post = await client.PostAsJsonAsync(
+            $"/api/themas/{themaId}/doelsuggesties/genereer",
+            new { selectie = new { jaarFasen = new[] { "K3" } } });
+
+        Assert.Equal(HttpStatusCode.OK, post.StatusCode);
+        var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.Equal(2, resultaat!.AantalKandidaten);
+        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
     }
 
     [Fact]
@@ -273,6 +310,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         bool IsGeslaagd,
         string? Fout,
         int AantalKandidaten,
+        List<string> JaarFasen,
         List<SuggestieDto> Bewaard,
         List<string> OvergeslagenOnbekend,
         List<string> OvergeslagenDuplicaat);
@@ -288,13 +326,16 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     /// and one already carrying a <c>voorgesteld</c> suggestion, for the review tests.
     /// </para>
     /// </summary>
-    public sealed class Factory : JaarplannerApiFactory
+    public class Factory : JaarplannerApiFactory
     {
         private const string LeerdoelCode = "NAT-K3-01";
         private readonly string _dbNaam = $"e2_05_endpoints_{Guid.NewGuid():N}";
 
         /// <summary>The canned completion the stub AI client returns; set per test before generating.</summary>
         public string AiAntwoord { get; set; } = """{"suggesties":[]}""";
+
+        /// <summary>How often the stub AI client was called, so a test can prove a refused run never reached it.</summary>
+        public int AantalAiAanroepen { get; private set; }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -318,8 +359,26 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
                 services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_dbNaam));
 
                 // Reads the canned answer at call time so a test can set it after the host is built.
-                services.AddSingleton<IAiClient>(new StubAiClient(() => AiAntwoord));
+                services.AddSingleton<IAiClient>(new StubAiClient(() =>
+                {
+                    AantalAiAanroepen++;
+                    return AiAntwoord;
+                }));
             });
+        }
+
+        /// <summary>Creates a thema with no subthema's, so no leeftijd can be taken from it (TB-007).</summary>
+        public async Task<Guid> SeedThemaZonderSubthemasAsync()
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await SeedLeerplandoelenAsync(db);
+
+            var thema = new Thema("Water", duurWeken: 4);
+            db.Themas.Add(thema);
+            await db.SaveChangesAsync();
+
+            return thema.Id;
         }
 
         /// <summary>Creates a thema with one <c>voorgesteld</c> doelsuggestie and returns (themaId, suggestieId).</summary>
@@ -377,6 +436,46 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
 
             public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
                 Task.FromResult(new AiCompletion { Content = _antwoord() });
+        }
+    }
+}
+
+/// <summary>
+/// The prompt ceiling of TB-007 through the real endpoint and the real configuration binding: with
+/// <c>AiPrompt:MaxTokens</c> set to 10 every run is over it, so the answer is a 400 carrying the Dutch sentence, the model
+/// is not called and nothing lands in the database.
+/// </summary>
+public sealed class DoelsuggestiePromptgrensTests : IClassFixture<DoelsuggestiePromptgrensTests.KleineGrensFactory>
+{
+    private readonly KleineGrensFactory _factory;
+
+    public DoelsuggestiePromptgrensTests(KleineGrensFactory factory) => _factory = factory;
+
+    [Fact]
+    public async Task Boven_de_grens_geeft_400_roept_de_ai_niet_aan_en_bewaart_niets()
+    {
+        var client = _factory.CreateClient();
+        var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
+        _factory.AiAntwoord = """{"suggesties":[{"code":"NAT-K3-01","motivatie":"past"}]}""";
+
+        var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
+
+        Assert.Equal(HttpStatusCode.BadRequest, post.StatusCode);
+        var probleem = await post.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.Contains("en de grens is 10.", probleem!.Detail, StringComparison.Ordinal);
+        Assert.Equal(0, _factory.AantalAiAanroepen);
+
+        var na = await client.GetFromJsonAsync<List<JsonElement>>($"/api/themas/{themaId}/doelsuggesties");
+        Assert.Empty(na!);
+    }
+
+    /// <summary>The endpoint host of <see cref="DoelsuggestieEndpointsTests"/>, with a ceiling every prompt is over.</summary>
+    public sealed class KleineGrensFactory : DoelsuggestieEndpointsTests.Factory
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            base.ConfigureWebHost(builder);
+            builder.UseSetting("AiPrompt:MaxTokens", "10");
         }
     }
 }

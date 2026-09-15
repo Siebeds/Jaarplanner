@@ -63,43 +63,75 @@ public sealed class DoelMatchingService
     private readonly IAiClient _aiClient;
     private readonly IDoelMatchOpslag _opslag;
     private readonly ILeerdoelCatalogus _catalogus;
+    private readonly Promptbegrenzing _begrenzing;
 
-    /// <summary>Constructs the service around the injected AI client, persistence port and curriculum query (DI / tests).</summary>
-    public DoelMatchingService(IAiClient aiClient, IDoelMatchOpslag opslag, ILeerdoelCatalogus catalogus)
+    /// <summary>
+    /// Constructs the service around the injected AI client, persistence port and curriculum query, and the prompt
+    /// ceiling of TB-007 (DI / tests).
+    /// </summary>
+    public DoelMatchingService(
+        IAiClient aiClient,
+        IDoelMatchOpslag opslag,
+        ILeerdoelCatalogus catalogus,
+        Promptbegrenzing begrenzing)
     {
         ArgumentNullException.ThrowIfNull(aiClient);
         ArgumentNullException.ThrowIfNull(opslag);
         ArgumentNullException.ThrowIfNull(catalogus);
+        ArgumentNullException.ThrowIfNull(begrenzing);
         _aiClient = aiClient;
         _opslag = opslag;
         _catalogus = catalogus;
+        _begrenzing = begrenzing;
     }
 
     /// <summary>
-    /// Runs a match for a thema over the leerplandoelen the given <paramref name="selectie"/> resolves to
-    /// (E2-08, FR-4.1) — the callable trigger behind <c>POST …/doelsuggesties/genereer</c>.
+    /// Runs a match for a thema (E2-08, FR-4.1), the trigger behind <c>POST …/doelsuggesties/genereer</c>, over the
+    /// leerplandoelen of the jaar/fasen the run is for.
     /// <para>
-    /// <paramref name="selectie"/> is <b>optional and comes from the caller</b>; <c>null</c> resolves to
-    /// <see cref="LeerdoelSelectie.Alles"/>. That default lives here, in one documented place, rather than
-    /// as a literal buried in a controller, because "which disciplines first" is an open Art. XIV decision:
-    /// the run's scope must stay the teacher's visible, per-run choice. The resulting candidate count is
-    /// reported back in <see cref="DoelMatchResultaat.AantalKandidaten"/> so the scope is observable.
+    /// <b>Which jaar/fasen (TB-007).</b> The ones in <paramref name="selectie"/> when the caller chose any, and otherwise
+    /// the leeftijden of the thema's subthema's. With neither, the run is refused with a
+    /// <see cref="JaarfaseKeuzeNodigFout"/> before anything is read: a run never searches the whole catalogue, which since
+    /// the Op.stap import holds some 5,800 goals. The other dimensions of the selection pass through unchanged, and which
+    /// disciplines come first stays open (Art. XIV). The result reports the jaar/fasen
+    /// (<see cref="DoelMatchResultaat.JaarFasen"/>) and the candidate count, so the scope of a run is visible.
     /// </para>
     /// <para>
-    /// Minimumdoelen are <b>not</b> passed as extra grounding: no <c>Minimumdoel</c> row can exist yet
-    /// (the decreed-minimumdoelen import is E1-12, blocked on the source file), so requesting them would be
-    /// dead code pretending to be a feature. The concordance still reaches minimumdoel level through each
-    /// leerplandoel's own <c>minimumdoelRef</c>, which the prompt already carries.
+    /// Minimumdoelen are <b>not</b> passed as extra grounding, and the compact goal list carries no minimumdoel reference
+    /// either: the model proposes leerplandoelen, and the concordance to minimumdoelen is applied by the dekking
+    /// computation, not by the model.
     /// </para>
     /// </summary>
     /// <exception cref="ThemaNietGevondenFout">The thema does not exist.</exception>
+    /// <exception cref="JaarfaseKeuzeNodigFout">No jaar/fase was chosen and no subthema has a known leeftijd.</exception>
+    /// <exception cref="PromptTeGrootFout">The prompt is over the configured ceiling; the model was not called.</exception>
     public async Task<DoelMatchResultaat> GenereerSuggestiesAsync(
         Guid themaId,
         LeerdoelSelectie? selectie = null,
         CancellationToken cancellationToken = default)
     {
-        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(selectie ?? LeerdoelSelectie.Alles, cancellationToken);
-        return await MatchThemaAsync(themaId, leerdoelen, minimumdoelen: null, cancellationToken);
+        var thema = await _opslag.LaadThemaAsync(themaId, cancellationToken)
+            ?? throw new ThemaNietGevondenFout($"Thema {themaId} bestaat niet.");
+
+        var basis = selectie ?? new LeerdoelSelectie();
+        var gekozen = basis.GekozenJaarFasen();
+        var jaarFasen = gekozen.Count > 0 ? gekozen : LeeftijdenVan(thema);
+        if (jaarFasen.Count == 0)
+        {
+            throw new JaarfaseKeuzeNodigFout("Kies eerst voor welke leeftijden je doelsuggesties wil.");
+        }
+
+        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(basis with { JaarFasen = jaarFasen }, cancellationToken);
+        var resultaat = await MatchAsync(thema, leerdoelen, minimumdoelen: null, cancellationToken);
+        return resultaat with { JaarFasen = jaarFasen };
+    }
+
+    // The thema's own leeftijden, in the order of the vocabulary (JK first). A leeftijd outside the nine codes, which an
+    // older import can hold, matches no leerplandoel, so it is left out rather than sent as a filter that finds nothing.
+    private static IReadOnlyList<string> LeeftijdenVan(Thema thema)
+    {
+        var leeftijden = thema.Subthemas.Select(s => s.Leeftijd.Trim()).ToHashSet(StringComparer.Ordinal);
+        return Jaarfasen.Alle.Where(leeftijden.Contains).ToList();
     }
 
     /// <summary>
@@ -117,6 +149,7 @@ public sealed class DoelMatchingService
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>A success result (with what was persisted/skipped) or an explicit failure — nothing persisted on failure.</returns>
     /// <exception cref="ThemaNietGevondenFout">The thema does not exist.</exception>
+    /// <exception cref="PromptTeGrootFout">The prompt is over the configured ceiling; the model was not called.</exception>
     public async Task<DoelMatchResultaat> MatchThemaAsync(
         Guid themaId,
         IReadOnlyCollection<Leerplandoel> leerdoelen,
@@ -128,6 +161,17 @@ public sealed class DoelMatchingService
         var thema = await _opslag.LaadThemaAsync(themaId, cancellationToken)
             ?? throw new ThemaNietGevondenFout($"Thema {themaId} bestaat niet.");
 
+        return await MatchAsync(thema, leerdoelen, minimumdoelen, cancellationToken);
+    }
+
+    // The run itself, for a thema already loaded: the one place in this service where the model is called and
+    // suggestions are persisted.
+    private async Task<DoelMatchResultaat> MatchAsync(
+        Thema thema,
+        IReadOnlyCollection<Leerplandoel> leerdoelen,
+        IReadOnlyCollection<Minimumdoel>? minimumdoelen,
+        CancellationToken cancellationToken)
+    {
         // Only codes that actually exist in the loaded set are resolvable — never fabricate (Art. III.5/IV.4).
         // Indexed rather than a bare HashSet so a persisted suggestion can be enriched with the goal's own
         // text/doelsoort for the review row (FR-4.2) without a second query.
@@ -151,6 +195,10 @@ public sealed class DoelMatchingService
 
         // 1–3: build the grounded prompt, call the model, validate the raw completion (E2-02/01/03).
         var request = MatchingPromptBuilder.Bouw(thema, leerdoelen, minimumdoelen);
+
+        // Over the ceiling the model is not called and nothing is persisted: the PromptTeGrootFout carries a Dutch
+        // sentence saying how to make the run smaller (TB-007).
+        _begrenzing.Bewaak(request, leerdoelen);
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = DoelMatchResponseParser.Parse(completion);
 

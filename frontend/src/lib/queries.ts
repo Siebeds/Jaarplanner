@@ -275,15 +275,22 @@ export function useDoelsuggesties(themaId: string | undefined) {
 }
 
 /**
- * Asks the model for goal matches on one thema (FR-4.1).
+ * Asks the model for goal matches on one thema (FR-4.1), among the goals of the given jaarfasen.
  *
  * Everything it returns lands as `Voorgesteld` and nothing is applied (Art. IV): the mutation
  * refreshes the suggestion list and the thema, and the teacher decides one by one.
+ *
+ * An empty list sends no choice, and the server then takes the leeftijden of the thema's subthema's (TB-007); the
+ * screen sends one only when it knows the jaarfasen to offer.
  */
 export function useGenereerDoelsuggesties(themaId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => post<DoelMatchResultaat>(`/api/themas/${themaId}/doelsuggesties/genereer`, {}),
+    mutationFn: (jaarFasen: string[]) =>
+      post<DoelMatchResultaat>(
+        `/api/themas/${themaId}/doelsuggesties/genereer`,
+        jaarFasen.length > 0 ? { selectie: { jaarFasen } } : {},
+      ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });

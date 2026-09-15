@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.UnitTests.Ai;
@@ -38,10 +39,16 @@ public sealed class ThemaOpbouwAssistServiceTests
         Onderzoeksvraag = "Hoe stroomt water?",
     };
 
-    private static ThemaOpbouwAssistService Service(FakeAiClient client, out FakeLeerdoelCatalogus catalogus)
+    // Step 2 needs chosen jaar/fasen (TB-007); these tests choose K3, the age of every goal in the set.
+    private static readonly LeerdoelSelectie K3 = new() { JaarFasen = ["K3"] };
+
+    private static ThemaOpbouwAssistService Service(
+        FakeAiClient client,
+        out FakeLeerdoelCatalogus catalogus,
+        Promptbegrenzing? begrenzing = null)
     {
         catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet());
-        return new ThemaOpbouwAssistService(client, catalogus);
+        return new ThemaOpbouwAssistService(client, catalogus, begrenzing ?? new Promptbegrenzing());
     }
 
     [Fact]
@@ -52,7 +59,7 @@ public sealed class ThemaOpbouwAssistServiceTests
         var service = Service(fake, out var catalogus);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
-            new ThemadoelSuggestieVerzoek { Thema = EenThema() });
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = K3 });
 
         Assert.True(resultaat.IsGeslaagd);
         var advies = Assert.Single(resultaat.Suggesties);
@@ -122,7 +129,7 @@ public sealed class ThemaOpbouwAssistServiceTests
         var service = Service(fake, out _);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
-            new ThemadoelSuggestieVerzoek { Thema = EenThema() });
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = K3 });
 
         Assert.True(resultaat.IsGeslaagd);
         Assert.Equal("WAT-K3-01", Assert.Single(resultaat.Suggesties).Code);
@@ -136,7 +143,7 @@ public sealed class ThemaOpbouwAssistServiceTests
         var service = Service(fake, out _);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
-            new ThemadoelSuggestieVerzoek { Thema = EenThema() });
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = K3 });
 
         Assert.False(resultaat.IsGeslaagd);
         Assert.NotNull(resultaat.Fout);
@@ -164,7 +171,7 @@ public sealed class ThemaOpbouwAssistServiceTests
         var service = Service(fake, out _);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
-            new ThemadoelSuggestieVerzoek { Thema = EenThema() });
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = K3 });
 
         Assert.True(resultaat.IsGeslaagd);
         Assert.Empty(resultaat.Suggesties);
@@ -180,15 +187,94 @@ public sealed class ThemaOpbouwAssistServiceTests
         await service.StelThemadoelenVoorAsync(
             new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = selectie });
 
-        Assert.Same(selectie, catalogus.LaatsteSelectie);
+        Assert.Equal(new[] { "9" }, catalogus.LaatsteSelectie!.Disciplines!);
+        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie.JaarFasen!);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // TB-007 — never the whole catalogue, and never over the prompt ceiling.
+    // ---------------------------------------------------------------------------------------------
+
+    [Fact]
+    public async Task Stap2_zonder_jaarfasen_roept_de_ai_niet_aan()
+    {
+        // A thema being authored has no subthema to take a leeftijd from, so step 2 needs the choice.
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out var catalogus);
+
+        var fout = await Assert.ThrowsAsync<JaarfaseKeuzeNodigFout>(() => service.StelThemadoelenVoorAsync(
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = new LeerdoelSelectie { Disciplines = ["9"] } }));
+
+        Assert.Equal("Kies eerst voor welke leeftijden je themadoelen wil laten voorstellen.", fout.Message);
+        Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.Equal(0, fake.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Stap6_zonder_keuze_neemt_de_leeftijd_van_het_subthema_in_de_canonieke_vorm()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out var catalogus);
+
+        await service.StelSubdoelenVoorAsync(new SubdoelSuggestieVerzoek { Thema = EenThema(), Subthema = EenSubthema() });
+
+        // The subthema says "3K"; the catalogue stores "K3".
+        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
+        Assert.Equal(1, fake.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Stap6_met_een_keuze_gaat_de_keuze_voor()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out var catalogus);
+
+        await service.StelSubdoelenVoorAsync(new SubdoelSuggestieVerzoek
+        {
+            Thema = EenThema(),
+            Subthema = EenSubthema(),
+            Selectie = new LeerdoelSelectie { JaarFasen = ["K2"] },
+        });
+
+        Assert.Equal(new[] { "K2" }, catalogus.LaatsteSelectie!.JaarFasen!);
+    }
+
+    [Fact]
+    public async Task Stap6_zonder_keuze_en_zonder_leeftijd_roept_de_ai_niet_aan()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var service = Service(fake, out var catalogus);
+
+        await Assert.ThrowsAsync<JaarfaseKeuzeNodigFout>(() => service.StelSubdoelenVoorAsync(new SubdoelSuggestieVerzoek
+        {
+            Thema = EenThema(),
+            Subthema = EenSubthema() with { Leeftijd = " " },
+        }));
+
+        Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.Equal(0, fake.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Boven_de_grens_roept_de_assist_de_ai_niet_aan()
+    {
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"WAT-K3-01\",\"motivatie\":\"x\"}]}");
+        var service = Service(fake, out _, new Promptbegrenzing(maxTokens: 10));
+
+        await Assert.ThrowsAsync<PromptTeGrootFout>(() => service.StelSubdoelenVoorAsync(
+            new SubdoelSuggestieVerzoek { Thema = EenThema(), Subthema = EenSubthema() }));
+
+        Assert.Equal(0, fake.AantalAanroepen);
     }
 
     [Fact]
     public void Service_verwerpt_null_afhankelijkheden()
     {
         Assert.Throws<ArgumentNullException>(
-            () => new ThemaOpbouwAssistService(null!, new FakeLeerdoelCatalogus(EenLeerdoelenSet())));
+            () => new ThemaOpbouwAssistService(null!, new FakeLeerdoelCatalogus(EenLeerdoelenSet()), new Promptbegrenzing()));
         Assert.Throws<ArgumentNullException>(
-            () => new ThemaOpbouwAssistService(new FakeAiClient(), null!));
+            () => new ThemaOpbouwAssistService(new FakeAiClient(), null!, new Promptbegrenzing()));
+        Assert.Throws<ArgumentNullException>(
+            () => new ThemaOpbouwAssistService(new FakeAiClient(), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), null!));
     }
 }

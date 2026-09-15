@@ -20,7 +20,8 @@ public interface ILeerdoelCatalogus
     /// <summary>
     /// Loads the read-only Op.stap leerplandoelen that match <paramref name="selectie"/>. Never
     /// mutates curriculum data (Art. III.1). An empty selection dimension means "no filter on that
-    /// dimension"; <see cref="LeerdoelSelectie.Alles"/> loads the full set. Matching is
+    /// dimension", so an empty selection loads the full set; a flow that calls the model never passes an
+    /// empty jaar/fase dimension (TB-007). Matching is
     /// <b>case-insensitive</b> on every dimension — the values are typed by a teacher, so <c>k3</c> must
     /// find <c>K3</c> rather than silently returning nothing.
     /// </summary>

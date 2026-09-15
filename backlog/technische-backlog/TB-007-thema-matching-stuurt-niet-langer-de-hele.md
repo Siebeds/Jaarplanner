@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 18:45
+bijgewerkt: 2026-09-15 19:12
 opgepakt-door: prompt-begrenzing
 branch: ticket/TB-007-prompt-begrenzing
 pr:
@@ -69,6 +69,12 @@ Beantwoord door de eigenaar op 2026-09-14:
 - **De bovengrens:** één instelling in de configuratie, standaard 50.000 tokens, aan te passen zonder codewijziging
   (bijvoorbeeld na de meting van TB-004). Niet per model.
 
+Beantwoord door de eigenaar op 2026-09-15:
+
+- **De promptvorm:** meteen compact, niet pas na TB-004. Per doel code, doelsoort, jaarfase, domein, subdomein en tekst.
+  Gemeten op de volledige Op.stap-import is alleen K3 in de oude vorm ongeveer 54.000 tokens, boven de grens, en compact
+  ongeveer 22.000. TB-004 kan de vorm later nog bijsturen.
+
 ## Werklog
 
 - 2026-09-14 11:33 · ai-doelsuggesties · aangemaakt (status nieuw)
@@ -77,3 +83,5 @@ Beantwoord door de eigenaar op 2026-09-14:
 - 2026-09-14 14:36 · ai-doelsuggesties · eigenaar besliste: bij een thema zonder subthema's kiest de gebruiker de jaarfasen; bovengrens is een configinstelling, standaard 50.000 tokens
 - 2026-09-15 18:45 · eigenaar · nieuw → klaar-voor-bouw: eigenaar gaf vrij voor bouw; de compactere promptvorm wacht op de meting van TB-004
 - 2026-09-15 18:45 · prompt-begrenzing · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-15 18:50 · prompt-begrenzing · eigenaar besliste: compacte promptvorm nu (code, doelsoort, jaarfase, domein, subdomein, tekst), want in de huidige vorm is alleen K3 al ~54.000 tokens (gemeten op de lokale databank met de volledige Op.stap-import)
+- 2026-09-15 19:12 · prompt-begrenzing · gevonden: EfDoelMatchOpslag laadde de subthema's van een thema niet mee, dus de matchingprompt schreef altijd '(nog geen)' subthema's en activiteiten; nu laadt ze subthema's, onderzoeksvragen en activiteiten, nodig voor de standaardjaarfasen

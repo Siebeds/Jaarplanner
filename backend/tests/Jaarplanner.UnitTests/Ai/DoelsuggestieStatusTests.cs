@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
@@ -31,7 +32,8 @@ public sealed class DoelsuggestieStatusTests
         var service = new DoelMatchingService(
             new FakeAiClient(cannedContent: "{\"suggesties\":[]}"),
             opslag,
-            new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet()));
+            new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet()),
+            new Promptbegrenzing());
         return (service, opslag, suggestie);
     }
 
@@ -90,7 +92,8 @@ public sealed class DoelsuggestieStatusTests
         var service = new DoelMatchingService(
             new FakeAiClient(cannedContent: "{\"suggesties\":[]}"),
             new FakeDoelMatchOpslag(thema: null),
-            new FakeLeerdoelCatalogus(EenLeerdoelenSet()));
+            new FakeLeerdoelCatalogus(EenLeerdoelenSet()),
+            new Promptbegrenzing());
 
         await Assert.ThrowsAsync<ThemaNietGevondenFout>(
             () => service.WijzigSuggestieStatusAsync(ThemaId, Guid.NewGuid(), KoppelingStatus.Aanvaard));
