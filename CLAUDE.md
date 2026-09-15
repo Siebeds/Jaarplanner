@@ -37,7 +37,8 @@ child. The users are leerkrachten and directie: non-technical, and the UI is Dut
 - **No work without a ticket or a story** ([ADR-0033](docs/adr/0033-ticketbacklog-en-kanbanbord.md)). Epic stories
   (`E<n>-<nn>`) go through the `jaarplan-build` skill. For anything else, find the ticket, or first create a TB ticket
   with `ticket-aanmaken`, then work it with `ticket-uitvoeren`. A ticket's status and Werklog change only through
-  `node tools/backlog-board/tickets.mjs`; never work around a refusal. Only the owner moves an FB ticket's status.
+  `node tools/backlog-board/tickets.mjs`; never work around a refusal. Only the owner moves an FB ticket's status by
+  hand; a session moves it only through the CLI while working it.
   Exempt: questions, read-only investigation, edits to ticket files, and backlog bookkeeping.
 - **Parallel sessions each work in their own worktree** under `.claude/worktrees/`, never by switching branches in the
   shared checkout. There are no file locks: any session may edit `nl.json` or another shared file, and conflicts are

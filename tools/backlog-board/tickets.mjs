@@ -456,8 +456,7 @@ async function cmdNextId(positionals) {
 
 // A number is reserved through the claim directory under COORD when this machine has one, so two
 // sessions creating a ticket at the same moment cannot both take it. The claim (`ticketnr-<ID>`) lives
-// only until the file exists: from then on every session's `next-id` sees the file itself. It is not
-// logged as CLAIM/RELEASE; the INFO line announcing the new ticket is the record.
+// only until the file exists: from then on every session's `next-id` sees the file itself.
 async function reserve(id, by) {
   const dir = path.join(COORD, 'claims');
   if (!existsSync(dir)) return { release: async () => {} };
@@ -469,12 +468,6 @@ async function reserve(id, by) {
     throw e;
   }
   return { release: () => fs.rm(file, { force: true }) };
-}
-
-async function announce(by, id, text) {
-  const chat = path.join(COORD, 'groepschat.md');
-  if (!existsSync(chat)) return;
-  await fs.appendFile(chat, `${timestamp()} | ${by} | ${id} | INFO | ${text}\n`);
 }
 
 async function cmdNew(values, positionals) {
@@ -517,7 +510,6 @@ async function cmdNew(values, positionals) {
       await fs.mkdir(dir, { recursive: true });
       const text = renderNewTicket({ prefix, number: next, title, status, priority, by, branch, fr });
       await fs.writeFile(path.join(dir, file), text, { encoding: 'utf8', flag: 'wx' });
-      await announce(by, id, `created ${id} (${status}): ${title}`);
       const rel = `${FOLDERS[prefix]}/${file}`;
       console.log(`Aangemaakt: ${rel}`);
       console.log(

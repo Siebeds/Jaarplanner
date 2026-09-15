@@ -2,10 +2,10 @@
 id: TB-021
 titel: Claude-instellingen opkuisen: antagonist beperken, groepschat weg, CLAUDE.md en constitutie inkorten
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:59
+bijgewerkt: 2026-09-15 15:20
 opgepakt-door: claude-opkuis
 branch: ticket/claude-config-opkuis
 pr:
@@ -37,15 +37,15 @@ grotendeels geschiedenis bevatten.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een antagonistaudit met alleen MINOR-bevindingen, wanneer de sessie het verdict leest, dan is dat
+- [x] Gegeven een antagonistaudit met alleen MINOR-bevindingen, wanneer de sessie het verdict leest, dan is dat
   COMPLIANT en volgt er geen nieuwe ronde.
-- [ ] Gegeven een fixronde, wanneer de antagonist opnieuw draait, dan controleert hij alleen de open blokkerende
+- [x] Gegeven een fixronde, wanneer de antagonist opnieuw draait, dan controleert hij alleen de open blokkerende
   bevindingen, en er zijn nooit meer dan twee rondes.
-- [ ] Gegeven de repo na deze wijziging, wanneer je zoekt in `CLAUDE.md`, `.claude/` en `backlog/TICKETS.md`, dan vraagt
+- [x] Gegeven de repo na deze wijziging, wanneer je zoekt in `CLAUDE.md`, `.claude/` en `backlog/TICKETS.md`, dan vraagt
   geen enkele actieve instructie nog een groepschat-claim, en de skill `groepschat` bestaat niet meer.
-- [ ] Gegeven de nieuwe `CONSTITUTION.md`, wanneer die naast de versie van `f5804bc` gelegd wordt, dan staat elke
+- [x] Gegeven de nieuwe `CONSTITUTION.md`, wanneer die naast de versie van `f5804bc` gelegd wordt, dan staat elke
   geldende regel er nog in, en staat het ratificatielog volledig in `docs/constitutie-log.md`.
-- [ ] Gegeven de tests van het bord, wanneer ze draaien, dan zijn ze groen.
+- [x] Gegeven de tests van het bord, wanneer ze draaien, dan zijn ze groen.
 
 ## Buiten scope
 
@@ -62,3 +62,5 @@ Geen.
 
 - 2026-09-15 14:37 · claude-opkuis · aangemaakt (status in-uitvoering)
 - 2026-09-15 14:59 · claude-opkuis · Antagonist begrensd, groepschat verwijderd (demo-slot blijft als lockbestand), CLAUDE.md 45 naar 12 KB, constitutie 99 naar 64 KB met het log in docs/constitutie-log.md, ADR-0037; bordtests 84/84 groen
+- 2026-09-15 15:10 · claude-opkuis · Antagonist ronde 1: 1 MAJOR (drie regels uit de opgeloste lijst van Art. XIV ontbraken), 4 MINOR, 1 vraag; alles verwerkt, verslag in backlog/worklogs/TB-021/antagonist.md
+- 2026-09-15 15:20 · claude-opkuis · in-uitvoering → klaar: Antagonist ronde 2 COMPLIANT; bordtests 84/84 groen. Groepschat weg, antagonist begrensd (ADR-0037), CLAUDE.md 45 naar 12 KB, constitutie 99 naar 65 KB
