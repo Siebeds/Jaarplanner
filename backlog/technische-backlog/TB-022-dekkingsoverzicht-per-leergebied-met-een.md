@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 16:58
+bijgewerkt: 2026-09-15 17:01
 opgepakt-door: dekking-overzicht
 branch: ticket/TB-022-dekking-overzicht
-pr:
+pr: 86
 geblokkeerd:
 fr: [FR-9.1, FR-9.2]
 ---
@@ -94,3 +94,4 @@ Geen.
 - 2026-09-15 16:33 · dekking-overzicht · Correctie op de regel van 16:31: in de browser is alleen directie nagekeken (de links staan er); het geval zonder planrecht (acties zonder link) is getest in DekkingScherm.test.tsx, niet in de browser. Ingehouden toestand in de browser nagekeken: geen tellers, geen actielijst, geen cijfer in attributen, reden per rij blijft. Code gecommit als 9811f01.
 - 2026-09-15 16:58 · dekking-overzicht · Antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR. Zes MINOR verwerkt: het NUL-teken in de sleutel is weg, 'Plan {thema} alsnog in' vervangt 'Herbekijk de weigering' (de kaart heeft geen knop meer om een weigering terug te draaien), de kop is 'Wat nog ontbreekt', de link naar Thema's is getest, de code zegt discipline in plaats van leergebied (Art. XII), het commentaar over doelen zonder thema klopt en de meter leest dezelfde poort. De vraag over Art. V.3 (doelsoortfilter) ligt bij de eigenaar. Verslag: backlog/worklogs/TB-022/antagonist-ronde-1.md.
 - 2026-09-15 16:58 · dekking-overzicht · in-uitvoering → klaar: Klaar. Gates groen na de fixes: dekking unit 95 en integratie 52 (PostgreSQL), frontend 609 tests in 68 bestanden, lint en dotnet format schoon. Bewijs: AC1, AC2 en AC4 met DekkingScherm.test, overzicht.test en de browser op 1440 en 390 px; AC3 met DekkingScherm.test (directie, leerkracht van de klas, iemand zonder rechten); AC5 met DekkingScherm.test en de browser (geen tellers, geen actielijst, geen cijfer in attributen); AC6 met de browser, contrast minstens 7,58:1, en de export ongewijzigd. Klas en schooljaar reizen via de selectie mee, niet via de URL (antagonist: aanvaardbaar).
+- 2026-09-15 17:01 · dekking-overzicht · PR #86
