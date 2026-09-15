@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 14:57
+bijgewerkt: 2026-09-15 14:58
 opgepakt-door: kindvolg
 branch: ticket/FB-001-kinderen-van-de-klas
-pr:
+pr: 75
 geblokkeerd:
 fr: [FR-13.1, FR-13.7, FR-13.10]
 ---
@@ -51,12 +51,12 @@ test met verzonnen namen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht met een klastoewijzing op een K3-klas, wanneer die de app opent, dan staat onderaan de linkerzijbalk, in een eigen sectie onder een lijn en ver onder de fiches, de tab Ontwikkelingsrapport; een gebruiker zonder K3-klas en zonder directierecht ziet die tab niet.
-- [ ] Gegeven die tab, wanneer de leerkracht een kind toevoegt met voornaam en achternaam, dan staat het kind in de lijst van de klas, en vraagt het scherm geen enkel ander gegeven over het kind.
-- [ ] Gegeven een kind in de lijst, wanneer de leerkracht de naam wijzigt of het kind verwijdert, dan is dat na herladen bewaard, en zegt de bevestiging bij het verwijderen dat de rapporten van het kind mee verdwijnen.
-- [ ] Gegeven een leerkracht van een andere klas, wanneer die de kinderen van deze klas probeert te openen, ook via het adres in de browser, dan weigert de app.
-- [ ] Gegeven een schooljaar dat voorbij is, wanneer de leerkracht van de klas de lijst opent, dan kan die de kinderen zien maar niet toevoegen, wijzigen of verwijderen; de directie kan dat nog wel.
-- [ ] Gegeven een klas die geen K3 geeft, dan kan niemand er een kind aan toevoegen.
+- [x] Gegeven een leerkracht met een klastoewijzing op een K3-klas, wanneer die de app opent, dan staat onderaan de linkerzijbalk, in een eigen sectie onder een lijn en ver onder de fiches, de tab Ontwikkelingsrapport; een gebruiker zonder K3-klas en zonder directierecht ziet die tab niet.
+- [x] Gegeven die tab, wanneer de leerkracht een kind toevoegt met voornaam en achternaam, dan staat het kind in de lijst van de klas, en vraagt het scherm geen enkel ander gegeven over het kind.
+- [x] Gegeven een kind in de lijst, wanneer de leerkracht de naam wijzigt of het kind verwijdert, dan is dat na herladen bewaard, en zegt de bevestiging bij het verwijderen dat de rapporten van het kind mee verdwijnen.
+- [x] Gegeven een leerkracht van een andere klas, wanneer die de kinderen van deze klas probeert te openen, ook via het adres in de browser, dan weigert de app.
+- [x] Gegeven een schooljaar dat voorbij is, wanneer de leerkracht van de klas de lijst opent, dan kan die de kinderen zien maar niet toevoegen, wijzigen of verwijderen; de directie kan dat nog wel.
+- [x] Gegeven een klas die geen K3 geeft, dan kan niemand er een kind aan toevoegen.
 
 ## Testscenario's
 
@@ -106,3 +106,5 @@ Te beslissen in de `frontend-design`-stap van dit ticket en te tonen aan de eige
 - 2026-09-15 14:32 · kindvolg · antagonist ronde 3: 3 MINOR; fixronde 3: 'fout' geldt alleen voor een mislukte eerste lading (een mislukte herlading houdt de lijsten en de getypte naam), zin zegt minder, eigen test voor de hook, verouderde regel in het browserverslag doorgehaald; oxlint en tsc schoon, 66 bestanden en 653 tests groen
 - 2026-09-15 14:43 · kindvolg · antagonist ronde 4: F, G en H opgelost (met mutatietests nagegaan), 1 MINOR in een codecommentaar; fixronde 4 past die ene bijzin aan (geen codewijziging)
 - 2026-09-15 14:57 · kindvolg · in-uitvoering → te-testen: klaar om te testen: antagonist ronde 5 COMPLIANT; controles groen (backend 1561 unit en 480 integratie, frontend 66 bestanden en 653 tests, browsercheck op 1440 en 390). Antwoorden op de open vragen (eigenaar 2026-09-15): op de laptop staat de tab boven Instellingen, op de telefoon bereik je het rapport bovenaan Instellingen. Testen met verzonnen namen.
+- 2026-09-15 14:58 · kindvolg · PR #75
+- 2026-09-15 14:58 · kindvolg · acceptatiecriteria afgevinkt met bewijs: 1 tab (Navigatie.test en browsercheck: Lotte ziet ze, Bram niet); 2 alleen voornaam en achternaam (schermtest, LeerlingTests, browser); 3 wijzigen en verwijderen blijven na herladen, bevestiging noemt de rapporten (browser, schermtest); 4 andere klas geweigerd, ook via het adres (LeerlingEndpointsTests 403, browser Bram); 5 na het schooljaar alleen lezen, directie wel (browser Lotte 2025-2026, LeerlingEndpointsTests); 6 geen kind in een klas zonder K3 (LeerlingEndpointsTests 400)
