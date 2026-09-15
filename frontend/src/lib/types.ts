@@ -450,6 +450,49 @@ export interface ThemaWeergave {
   subthemas: SubthemaWeergave[];
 }
 
+/** Where in a thema a leerplandoel is linked (FB-009). */
+export type DoelPlaatsSoort = "Themadoel" | "Subdoel" | "Activiteit";
+
+export interface DoelPlaats {
+  soort: DoelPlaatsSoort;
+  /** The subthema's name for a subdoel, the activiteit's for an activiteit doel; null for a themadoel. */
+  naam: string | null;
+}
+
+/** A leerplandoel a thema reaches at one leeftijd, once, with every place it is linked. */
+export interface OverzichtLeerplandoel {
+  code: string;
+  doelsoort: Doelsoort;
+  tekst: string;
+  nietMeerInOpstap: boolean;
+  minimumdoelRef: string | null;
+  plaatsen: DoelPlaats[];
+}
+
+/** A minimumdoel the leeftijd's leerplandoelen concord to, with the codes that lead there. */
+export interface OverzichtMinimumdoel {
+  ref: string;
+  leeftijd: string;
+  nr: string;
+  omschrijving: string;
+  leerplandoelen: string[];
+}
+
+export interface LeeftijdDoelen {
+  leeftijd: string;
+  leerplandoelen: OverzichtLeerplandoel[];
+  minimumdoelen: OverzichtMinimumdoel[];
+}
+
+/**
+ * What a thema reaches per leeftijd (FB-009): computed by the server from the decided links under it, never stored, and
+ * never dekking (that belongs to a klas with a plan, Art. V.1).
+ */
+export interface ThemaDoelenoverzicht {
+  themaId: string;
+  leeftijden: LeeftijdDoelen[];
+}
+
 export interface ThemaBibliotheekItem {
   id: string;
   naam: string;

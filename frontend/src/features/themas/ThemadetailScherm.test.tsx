@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from "@testing-librar
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import type { ActiviteitWeergave, DoelMatchSuggestie, ThemaWeergave } from "../../lib/types";
+import type { ActiviteitWeergave, DoelMatchSuggestie, ThemaDoelenoverzicht, ThemaWeergave } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
 import { STANDAARDDUUR } from "../plan/tijd";
@@ -86,7 +86,7 @@ function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
 }
 
-function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave } = {}) {
+function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave; overzicht?: ThemaDoelenoverzicht } = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string, init?: RequestInit) => {
@@ -97,6 +97,9 @@ function toon(ik: Ik, opties: { weiger?: boolean; thema?: ThemaWeergave } = {}) 
       }
       if (pad.endsWith("/doelsuggesties")) return json([SUGGESTIE]);
       if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1"]);
+      if (pad.endsWith("/api/themas/thema-1/doelenoverzicht")) {
+        return json(opties.overzicht ?? { themaId: "thema-1", leeftijden: [] });
+      }
       if (pad.endsWith("/api/themas/thema-1")) return json(opties.thema ?? THEMA);
       return json({}, 404);
     }),
@@ -409,5 +412,88 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
 
     const regel = rij(groep(t("thema.subdoelenTitel")), "WIS-7");
     expect(regel).not.toHaveTextContent(t("thema.nogGeenActiviteit"));
+  });
+});
+
+describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
+  const OVERZICHT: ThemaDoelenoverzicht = {
+    themaId: "thema-1",
+    leeftijden: [
+      {
+        leeftijd: "K3",
+        leerplandoelen: [
+          {
+            code: "WIS-1",
+            doelsoort: "Gemeenschappelijk",
+            tekst: "Tellen tot tien",
+            nietMeerInOpstap: false,
+            minimumdoelRef: "K-7",
+            plaatsen: [
+              { soort: "Subdoel", naam: "Bladeren" },
+              { soort: "Activiteit", naam: "Eigen spel" },
+              { soort: "Activiteit", naam: "Andermans spel" },
+            ],
+          },
+          {
+            code: "NED-1",
+            doelsoort: "Gemeenschappelijk",
+            tekst: "Luisteren naar een verhaal",
+            nietMeerInOpstap: false,
+            minimumdoelRef: null,
+            plaatsen: [{ soort: "Themadoel", naam: null }],
+          },
+        ],
+        minimumdoelen: [{ ref: "K-7", leeftijd: "K-", nr: "7", omschrijving: "Getallen tot tien", leerplandoelen: ["WIS-1"] }],
+      },
+    ],
+  };
+
+  const leeftijdrij = () => screen.findByRole("button", { name: /^K3/, expanded: false });
+  const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
+
+  it("toont per leeftijd een ingeklapte rij met hoeveel leerplandoelen en minimumdoelen", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+
+    const rij = await leeftijdrij();
+    expect(rij).toHaveTextContent(telWoord(2, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
+    expect(rij).toHaveTextContent(telWoord(1, "thema.overzichtEenMinimumdoel", "thema.overzichtMinimumdoelen"));
+    expect(screen.queryByRole("heading", { name: t("thema.overzichtLeerplandoelenTitel") })).toBeNull();
+  });
+
+  it("toont opengeklapt waar elk leerplandoel hangt, en langs welke leerplandoelen een minimumdoel bereikt wordt", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+    fireEvent.click(await leeftijdrij());
+
+    const leerplandoelen = groep(t("thema.overzichtLeerplandoelenTitel"));
+    const plaatsen = [
+      t("thema.plaatsSubdoel", { naam: "Bladeren" }),
+      telWoord(2, "thema.plaatsEenActiviteit", "thema.plaatsActiviteiten"),
+    ].join(", ");
+    expect(within(leerplandoelen).getByRole("button", { name: /WIS-1/ })).toHaveTextContent(
+      t("thema.overzichtVia", { lijst: plaatsen }),
+    );
+    expect(within(leerplandoelen).getByRole("button", { name: /NED-1/ })).toHaveTextContent(
+      t("thema.overzichtVia", { lijst: t("thema.plaatsThemadoel") }),
+    );
+    expect(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByRole("button", { name: /K-7/ })).toHaveTextContent(
+      t("thema.overzichtVia", { lijst: "WIS-1" }),
+    );
+  });
+
+  it("opent een minimumdoel in het detailblad", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+    fireEvent.click(await leeftijdrij());
+
+    fireEvent.click(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByRole("button", { name: /K-7/ }));
+
+    expect(await screen.findByRole("dialog", { name: t("minimumdoel.titel") })).toBeInTheDocument();
+  });
+
+  it("toont geen blok zolang het thema geen beslist gekoppelde doelen heeft", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+
+    // It shows its heading while loading, so this waits until the answer (no leeftijden) has removed it.
+    await waitFor(() => expect(screen.queryByRole("heading", { name: t("thema.overzichtTitel") })).toBeNull());
   });
 });

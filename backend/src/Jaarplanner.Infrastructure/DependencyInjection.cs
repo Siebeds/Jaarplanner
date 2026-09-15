@@ -83,6 +83,7 @@ public static class DependencyInjection
         // thema. "Linked" = a DoelKoppeling with status aanvaard/manueel (Art. V), computed per call so
         // the list tracks the current link state. Pure read over read-only reference data (Art. III.1).
         services.AddScoped<IOngekoppeldeDoelenQuery, OngekoppeldeDoelenQuery>();
+        services.AddScoped<IThemaDoelenoverzichtQuery, ThemaDoelenoverzichtQuery>();
 
         // The Op.stap leerplandoel register behind the Doelen screen (E1-16, FR-2.4): filter, search, page
         // and open one doel. A pure read over read-only reference data (Art. III.1) — the interface has no

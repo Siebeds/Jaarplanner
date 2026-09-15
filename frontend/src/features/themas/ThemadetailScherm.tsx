@@ -29,6 +29,7 @@ import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
 import { Blok, Doellijst, Feit, Groep, Kop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { Doeldetailblad } from "./Doeldetailblad";
+import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { themabalans } from "./themabalans";
 import {
   useKoppelActiviteitdoel,
@@ -116,10 +117,15 @@ export function ThemadetailScherm() {
     activiteitId?: string;
   } | null>(null);
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
-  // The leerplandoel whose detail is open (TB-016), from a themadoel or from any subthema's subdoelen,
-  // and the row button that opened it, which gets focus back when the sheet closes.
-  const [getoondDoel, setGetoondDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
-  const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, knop });
+  // The doel whose detail is open (TB-016): a leerplandoel from any list on the page, or a minimumdoel from the doelen
+  // per leeftijd (FB-009), and the row button that opened it, which gets focus back when the sheet closes.
+  const [getoondDoel, setGetoondDoel] = useState<{
+    code: string | null;
+    ref: string | null;
+    knop: HTMLElement;
+  } | null>(null);
+  const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, ref: null, knop });
+  const toonMinimumdoel = (ref: string, knop: HTMLElement) => setGetoondDoel({ code: null, ref, knop });
 
   const wijzig = useWijzigThema(id);
   const verwijder = useVerwijderThema();
@@ -447,6 +453,9 @@ export function ThemadetailScherm() {
           </Kop>
         </Blok>
 
+        {/* WHAT THE THEMA REACHES, PER LEEFTIJD (FB-009), between its anchors and the chapters it is computed from. */}
+        <Themadoelenoverzicht themaId={id} onToonDoel={toonDoel} onToonMinimumdoel={toonMinimumdoel} />
+
         {/* THE HEADING AND ITS CHAPTERS SIT IN ONE TRAY (owner, 2026-08-31: "ik vind het wat
             verwarrend dat de subthemas niet een sectie is"). The chapters are still not nested
             INSIDE the heading's block: they are siblings hanging off the same margin, which is what
@@ -529,6 +538,7 @@ export function ThemadetailScherm() {
 
       <Doeldetailblad
         code={getoondDoel?.code ?? null}
+        minimumdoelRef={getoondDoel?.ref ?? null}
         terugNaar={getoondDoel?.knop}
         onSluit={() => setGetoondDoel(null)}
       />
