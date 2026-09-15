@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:11
+bijgewerkt: 2026-09-15 21:40
 opgepakt-door: rechtermuismenu
 branch: ticket/TB-030-agenda-rechtermuismenu
 pr:
@@ -80,3 +80,5 @@ Geen.
 ## Werklog
 
 - 2026-09-15 21:11 · rechtermuismenu · aangemaakt (status in-uitvoering)
+- 2026-09-15 21:32 · rechtermuismenu · Gebouwd: menu, twee DELETE-routes per moment, bevestiging bij verlies; backendtests, pnpm lint, dotnet format en Vitest groen
+- 2026-09-15 21:40 · rechtermuismenu · Antagonist ronde 1: COMPLIANT, 4 MINOR; rechtensweep op Postgres 4/4 groen met de nieuwe routes; ADR-0024 kreeg een amendement voor het contextmenu

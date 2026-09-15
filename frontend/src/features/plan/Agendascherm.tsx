@@ -294,13 +294,16 @@ export function Agendascherm() {
   const verwijderHoekmoment = useVerwijderHoekmoment();
   const verwijderFichemoment = useVerwijderFichemoment();
   // The block whose leaving would take more than itself, waiting for a yes (owner, 2026-09-15: only when something is
-  // lost), with the sentences that say what.
+  // lost), with the sentences that say what and the block that had focus. Kept after the question closes, so the sheet
+  // keeps its title while it slides away and can still hand focus back; `vanDagOpen` is what opens and closes it.
   const [vanDagVraag, setVanDagVraag] = useState<{
     doel: Tijddoel;
     naam: string;
     datum: string;
     gevolgen: ReturnType<typeof gevolgVanDag>;
+    terugNaar: HTMLElement | null;
   } | null>(null);
+  const [vanDagOpen, setVanDagOpen] = useState(false);
 
   /** Takes one block off its day through its own kind's route. A failure left from an earlier try is cleared first. */
   function haalVanDag(doel: Tijddoel) {
@@ -323,8 +326,15 @@ export function Agendascherm() {
       fichePlaatsingen: fichePlaatsingen ?? [],
       fiches: algemeneFiches ?? [],
     });
-    if (gevolgen.length === 0) haalVanDag(doel);
-    else setVanDagVraag({ doel, naam, datum, gevolgen });
+    if (gevolgen.length === 0) {
+      haalVanDag(doel);
+      return;
+    }
+    // The menu has handed focus back to the block by now (`Blokmenu` runs its action after that), so this is the
+    // block, for the question to give focus back to when she cancels.
+    const terugNaar = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setVanDagVraag({ doel, naam, datum, gevolgen, terugNaar });
+    setVanDagOpen(true);
   }
 
   // The planner spreads over the whole period, so it needs every day of it rather than the days the
@@ -1418,15 +1428,16 @@ export function Agendascherm() {
       {/* THE QUESTION BEFORE A BLOCK LEAVES ITS DAY, asked only when more than the block goes with it (TB-030): its
           day text, or the whole period because this was its last day. `gevolgVanDag` decides and words it. */}
       <Bevestiging
-        open={vanDagVraag !== null}
+        open={vanDagOpen}
         titel={vanDagVraag ? t("blokmenu.bevestigTitel", { naam: vanDagVraag.naam, dag: volleDag(vanDagVraag.datum) }) : ""}
         gevolg={vanDagVraag?.gevolgen.map((sleutel) => t(sleutel)).join(" ")}
         bevestigLabel={t("blokmenu.bevestigLabel")}
+        terugNaar={vanDagVraag?.terugNaar ?? null}
         onBevestig={() => {
           if (vanDagVraag) haalVanDag(vanDagVraag.doel);
-          setVanDagVraag(null);
+          setVanDagOpen(false);
         }}
-        onSluit={() => setVanDagVraag(null)}
+        onSluit={() => setVanDagOpen(false)}
       />
     </>
   );

@@ -119,3 +119,16 @@ Escape and on a press outside, and stay on screen at 390 pixels when the trigger
 last is collision-aware positioning, which is what the package brings in (`@floating-ui/*` through Radix's popper);
 writing that here would be the hand-rolled version of what the dialog was taken to avoid. Nothing else changes: no
 shadcn, no styling from the package, and `src/components/ui/` still holds the app's own components.
+
+## Amendment (2026-09-15) — a fourth primitive, the context menu
+
+TB-030 adds **`@radix-ui/react-context-menu`**, for the menu a right click opens on a block of the agenda: edit it,
+or take it off this day (`frontend/src/features/plan/Blokmenu.tsx`). It earns its weight on the popover's grounds and
+two more. A menu opened at the pointer has to catch the `contextmenu` event that the mouse, the Menu key and
+Shift+F10 all fire; it has to move focus in, rove it between its rows with the arrow keys, run a row on Enter, close
+on Escape and on a press outside, and hand focus back to the block; and it has to stay on screen wherever the pointer
+was. Roving focus and pointer-anchored collision handling are what the package brings in (`@radix-ui/react-menu`,
+`@radix-ui/react-roving-focus`, and `@floating-ui/*` through the popper the popover already uses). Written here they
+would be the hand-rolled menu this decision exists to avoid. Nothing else changes: the menu wears the popover's
+surface and the existing tokens (`vlak-diep`, and `gevaar` on the delete row only while it is highlighted, as
+`Verwijderknop` does), and it is drawn only for whoever may plan the klas.
