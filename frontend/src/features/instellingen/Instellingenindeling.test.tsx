@@ -240,8 +240,16 @@ describe("het ontwikkelingsrapport bovenaan Instellingen (FB-001)", () => {
     expect(await screen.findByRole("link", { name: t("navigatie.ontwikkelingsrapport") })).toBeInTheDocument();
   });
 
-  it("staat er niet voor wie geen rapport mag lezen, ook niet met themabeheer en als hoofdleerkracht van K3", async () => {
+  it("staat er voor een hoofdleerkracht van K3, voor de set en de schaal (eigenaar, 2026-09-15)", async () => {
     stubIk(false);
+    rendermetPad("/instellingen/klassen");
+
+    // `IK` holds a hoofdleerkracht appointment for K3 and no K3 klas.
+    expect(await screen.findByRole("link", { name: t("navigatie.ontwikkelingsrapport") })).toBeInTheDocument();
+  });
+
+  it("staat er niet voor wie geen rapport mag lezen en geen hoofdleerkracht van K3 is, ook niet met themabeheer", async () => {
+    stubIk(false, { hoofdleerkrachtLeeftijden: ["K2"] });
     rendermetPad("/instellingen/klassen");
 
     // The name in the signed-in row says `/api/ik` has answered, so the absence below is a decision.

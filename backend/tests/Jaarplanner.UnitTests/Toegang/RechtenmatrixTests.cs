@@ -6,9 +6,9 @@ namespace Jaarplanner.UnitTests.Toegang;
 /// <summary>
 /// The ADR-0030 §3 matrix as <see cref="Rechtenmatrix"/> declares it, row by row and column by column (E6-02, Art.
 /// VI.1): each row allows exactly the relations §3 gives it, on a resource of that row's kind, and nothing else.
-/// Directie passes every row (R3); a missing or foreign resource fails closed. Two of the six ontwikkelingsrapport rows of
-/// §3 (footnote ⁶) are declared since FB-001 and tested here; the other four get their tests with their policies
-/// (FB-002, FB-003, FB-006, FB-007).
+/// Directie passes every row (R3) except <c>RapportsetBewerken</c> (ADR-0035 R31); a missing or foreign resource fails
+/// closed. Three of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001 and
+/// one since FB-002; the other three get their tests with their policies (FB-003, FB-006, FB-007).
 /// </summary>
 public sealed class RechtenmatrixTests
 {
@@ -61,6 +61,10 @@ public sealed class RechtenmatrixTests
         // only during the schooljaar. Nobody else but directie, not HL, TB or "LK leeftijd" (R17).
         [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen"],
         [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Directie", "LK K3 lopend"],
+        // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even directie.
+        // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
+        // running rapportklassen (the D9 function), not the stated jaarfase.
+        [Rechtenmatrix.Beleid.RapportsetBewerken] = ["LK K3 lopend"],
     };
 
     private static readonly string[] ActiviteitRijen =
@@ -115,7 +119,7 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Directie_mag_elke_rij_met_of_zonder_bron()
+    public void Directie_mag_elke_rij_behalve_de_rapportset_met_of_zonder_bron()
     {
         var directie = Relaties["Directie"];
         object?[] bronnen =
@@ -128,8 +132,14 @@ public sealed class RechtenmatrixTests
             new Activiteitbron(Guid.NewGuid(), "L6", MakerId: null, HeeftDoelkoppelingen: true),
         ];
 
-        Assert.All(Rechtenmatrix.Rijen, rij =>
+        Assert.All(Rechtenmatrix.Rijen.Where(rij => !rij.ZonderDirectie), rij =>
             Assert.All(bronnen, bron => Assert.True(Rechtenmatrix.StaatToe(directie, rij, bron))));
+
+        // R31: exactly one row is closed to directie as such, and it is the K3 set. With any resource.
+        Assert.Equal(
+            [Rechtenmatrix.Beleid.RapportsetBewerken],
+            Rechtenmatrix.Rijen.Where(rij => rij.ZonderDirectie).Select(rij => rij.Beleid));
+        Assert.All(bronnen, bron => Assert.False(Rechtenmatrix.StaatToe(directie, Rechtenmatrix.RapportsetBewerken, bron)));
     }
 
     // --- Resources that are missing or of the wrong kind fail closed. ---
@@ -297,6 +307,9 @@ public sealed class RechtenmatrixTests
         Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.KlasplanningBewerken, new Klasplanning(EigenKlas)));
         Assert.False(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(EigenKlas)));
         Assert.False(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.LeerlingenBeheren, new Rapportklas(EigenKlas)));
+
+        // FB-002 (D4): nor a K3 leerkracht who may edit the K3 set.
+        Assert.False(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.RapportsetBewerken, bron: null));
     }
 
     [Fact]
@@ -346,6 +359,57 @@ public sealed class RechtenmatrixTests
         // A report resource never opens a planning or leeftijd row either.
         Assert.False(Rechtenmatrix.StaatToe(k3, Rechtenmatrix.KlasplanningBewerken, new Rapportklas(EigenKlas)));
         Assert.False(Rechtenmatrix.StaatToe(k3, Rechtenmatrix.GedeeldeActiviteitBewerken, new Rapportklas(EigenKlas)));
+    }
+
+    // --- The one K3 set of rapportdoelen and the scale (footnote ⁶, ADR-0035 R6, R31, D4; FB-002). ---
+
+    [Fact]
+    public void Elke_K3_leerkracht_wijzigt_de_rapportset_tijdens_het_schooljaar_met_of_zonder_bron()
+    {
+        // Through the real computation: a K3 klas whose schooljaar runs. Which klas does not matter, the set is one for
+        // all of K3 (R4, R5), so no resource is needed and none takes the right away.
+        var vandaag = new DateOnly(2026, 9, 15);
+        var rechten = Rechtenberekening.Bereken(
+            Ik, false, false, [new KlastoewijzingFeit(AndereKlas, "K3", new DateOnly(2027, 6, 30))], [], vandaag);
+        object?[] bronnen = [null, new object(), new Rapportklas(EigenKlas), new Leeftijdsinhoud("L1")];
+
+        Assert.All(bronnen, bron => Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.RapportsetBewerken, bron)));
+    }
+
+    [Fact]
+    public void Na_het_schooljaar_wijzigt_de_K3_leerkracht_de_rapportset_niet_meer()
+    {
+        // D4: "in a schooljaar that has not ended". The same leerkracht still reads the klas's reports (R26).
+        var vandaag = new DateOnly(2027, 7, 1);
+        var rechten = Rechtenberekening.Bereken(
+            Ik, false, false, [new KlastoewijzingFeit(EigenKlas, "K3", vandaag.AddDays(-1))], [], vandaag);
+
+        Assert.False(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(EigenKlas)));
+    }
+
+    [Fact]
+    public void Een_hoofdleerkracht_van_K3_zonder_klastoewijzing_en_themabeheer_wijzigen_de_rapportset_niet()
+    {
+        // D4 names the hoofdleerkracht of K3 without a K3 klastoewijzing explicitly.
+        Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.RapportsetBewerken, bron: null));
+    }
+
+    [Fact]
+    public void Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_rapportset_toch_niet()
+    {
+        // R31 as the owner read it on 2026-09-15 ("Nooit wie directie heeft"): the union rule does not reach this row for
+        // directie. The same klastoewijzing makes a plain gebruiker a K3 leerkracht who passes, which the second assert
+        // pins, so the refusal comes from the directie right and not from the klas.
+        var vandaag = new DateOnly(2026, 9, 15);
+        var toewijzing = new KlastoewijzingFeit(EigenKlas, "K3", new DateOnly(2027, 6, 30));
+        var directeur = Rechtenberekening.Bereken(Ik, true, false, [toewijzing], [], vandaag);
+        var leerkracht = Rechtenberekening.Bereken(Ik, false, false, [toewijzing], [], vandaag);
+
+        Assert.False(Rechtenmatrix.StaatToe(directeur, Rechtenmatrix.RapportsetBewerken, bron: null));
+        Assert.True(Rechtenmatrix.StaatToe(leerkracht, Rechtenmatrix.RapportsetBewerken, bron: null));
     }
 
     private static bool Verwijderen(Rechten rechten, Guid? maker, bool koppelingen) =>

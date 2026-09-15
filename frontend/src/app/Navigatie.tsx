@@ -48,7 +48,9 @@ import { cn } from "../lib/cn";
  * D17; owner, 2026-09-15). It takes the push to the bottom edge and a rule of its own, so Instellingen follows it over
  * a second rule and stays last before the sign-in row. It is `lg` only: on a phone the bar keeps its five tabs and the
  * report is reached from the top of Instellingen (`Instellingenindeling`), which is the owner's choice over a sixth tab.
- * It shows only to whoever may read a report (D18), since for anyone else it would lead to nothing.
+ * It shows to whoever may read a report (D18), and since 2026-09-15 also to a hoofdleerkracht of K3, who may view
+ * the K3 set and scale though not the children (owner, after FB-002's antagonist round 1). See
+ * `mag.ontwikkelingsrapportTab`.
  *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
@@ -84,7 +86,7 @@ export function Navigatie() {
   const { klasId, laadt: selectieLaadt } = useActieveSelectie();
   const { mag, laadt: rechtenLaden } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
-  const toonRapport = mag.ontwikkelingsrapportZien;
+  const toonRapport = mag.ontwikkelingsrapportTab;
 
   /*
     The two routes `Agendascherm` answers, and so the only two that mount a hoekenpaneel. Matched as
