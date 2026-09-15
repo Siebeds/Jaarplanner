@@ -33,7 +33,7 @@ export function Aanmeldpoort({ children }: { children: ReactNode }) {
       <Tussenpagina>
         <div role="alert" className="mt-8 max-w-[30rem]">
           <p className="text-body font-medium text-inkt">{t("aanmelding.tussenpagina.fout")}</p>
-          <p className="mt-1 text-body text-inkt-zacht">{t("aanmelding.tussenpagina.foutUitleg")}</p>
+          <p className="mt-1 text-balance text-body text-inkt-zacht">{t("aanmelding.tussenpagina.foutUitleg")}</p>
         </div>
         <Knop rang="hoofd" className="mt-6" onClick={() => void ik.refetch()}>
           {t("aanmelding.tussenpagina.opnieuw")}

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:47
+bijgewerkt: 2026-09-15 19:55
 opgepakt-door: tussenpagina
 branch: ticket/tussenpagina-aanmelding
 pr:
@@ -35,11 +35,11 @@ door naar `/api/aanmelden`.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een browser zonder sessie, wanneer ik de app open, dan zie ik tot de doorsturing naar Microsoft alleen de tussenpagina en nooit de navigatie of een scherm van de app.
-- [ ] Gegeven een aangemelde gebruiker, wanneer die de app opent, dan gaat de tussenpagina zonder flitsende tekst over in de app.
-- [ ] Gegeven dat `/api/ik` faalt met iets anders dan 401, wanneer de tussenpagina dat merkt, dan toont ze een melding en een knop "Opnieuw proberen" die de vraag opnieuw stelt.
-- [ ] Gegeven `/geen-toegang` of `/aanmelden-mislukt`, wanneer ik die open, dan werken ze zoals voorheen en vragen ze de API niets bij het openen.
-- [ ] De tussenpagina haalt WCAG 2.2 AA (contrast gemeten in de browser, statusregel via `role="status"`), in licht en donker, op desktop en op ~390px.
+- [x] Gegeven een browser zonder sessie, wanneer ik de app open, dan zie ik tot de doorsturing naar Microsoft alleen de tussenpagina en nooit de navigatie of een scherm van de app.
+- [x] Gegeven een aangemelde gebruiker, wanneer die de app opent, dan gaat de tussenpagina zonder flitsende tekst over in de app.
+- [x] Gegeven dat `/api/ik` faalt met iets anders dan 401, wanneer de tussenpagina dat merkt, dan toont ze een melding en een knop "Opnieuw proberen" die de vraag opnieuw stelt.
+- [x] Gegeven `/geen-toegang` of `/aanmelden-mislukt`, wanneer ik die open, dan werken ze zoals voorheen en vragen ze de API niets bij het openen.
+- [x] De tussenpagina haalt WCAG 2.2 AA (contrast gemeten in de browser, statusregel via `role="status"`), in licht en donker, op desktop en op ~390px.
 
 ## Buiten scope
 
@@ -54,3 +54,4 @@ Geen.
 
 - 2026-09-15 19:34 · tussenpagina · aangemaakt (status in-uitvoering)
 - 2026-09-15 19:47 · tussenpagina · Aanmeldpoort en tussenpagina gebouwd; vitest 876/876 groen, pnpm lint en pnpm build groen
+- 2026-09-15 19:55 · tussenpagina · Browserpas (headless Chrome, productiebuild, nep-API): geen nav bij laden of 401, 401 stuurt door naar /api/aanmelden, statusregel pas na 0,7 s, fout + Opnieuw proberen werkt, contrast 6,08:1 tot 16,58:1 licht en donker, 390px zonder scroll, reduced motion in rust; criteria afgevinkt
