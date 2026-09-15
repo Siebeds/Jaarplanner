@@ -2,10 +2,10 @@
 id: FB-038
 titel: Leerkracht vult hoekverrijkingen in het zijpaneel in; hoeken gaan niet meer in de agenda
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:10
+bijgewerkt: 2026-09-15 21:12
 opgepakt-door:
 branch:
 pr:
@@ -105,3 +105,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 21:10 · wensen-hoeken · aangemaakt (status nieuw)
+- 2026-09-15 21:12 · eigenaar · nieuw → klaar-voor-bouw: op klaar-voor-bouw gezet door de eigenaar (in sessie, 2026-09-15): meteen bouwen
