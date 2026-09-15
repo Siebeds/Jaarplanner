@@ -22,8 +22,7 @@ import { Blok, Doellijst, Kop, Subkop } from "./Fiche";
  * summary a teacher can scan without opening it. Opened, the two lists use the page's own list frame, and each row opens
  * the doel's detail in the page's one sheet.
  *
- * **Nothing at all while nothing is decided.** The thema's facts already say "Nog geen doelen gekoppeld"; a second empty
- * block would say it twice.
+ * **Nothing at all while no decided link exists**: an empty block would only announce its own emptiness.
  */
 export function Themadoelenoverzicht({
   themaId,
@@ -208,13 +207,15 @@ function Minimumdoelregel({
 }
 
 /**
- * Where a leerplandoel hangs, in the order a teacher reads the thema: the thema itself, then each subthema that makes it
- * a subdoel by name, then how many activiteiten carry it. Activiteiten are counted rather than named: a doel on eight of
+ * Where a leerplandoel hangs, in the order a teacher reads the thema: the thema itself (a themadoel, or an accepted
+ * doelsuggestie, which is never called a themadoel: Art. IX.2 keeps the two apart), then each subthema that makes it a
+ * subdoel by name, then how many activiteiten carry it. Activiteiten are counted rather than named: a doel on eight of
  * them would otherwise push its own text off the row.
  */
 function waar(plaatsen: DoelPlaats[]): string {
   const delen: string[] = [];
   if (plaatsen.some((p) => p.soort === "Themadoel")) delen.push(t("thema.plaatsThemadoel"));
+  if (plaatsen.some((p) => p.soort === "Doelsuggestie")) delen.push(t("thema.plaatsDoelsuggestie"));
   for (const plaats of plaatsen) {
     if (plaats.soort === "Subdoel") delen.push(t("thema.plaatsSubdoel", { naam: plaats.naam ?? "" }));
   }

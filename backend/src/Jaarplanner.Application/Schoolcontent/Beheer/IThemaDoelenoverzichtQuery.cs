@@ -23,10 +23,15 @@ public interface IThemaDoelenoverzichtQuery
     Task<ThemaDoelenoverzicht> HaalOpAsync(Guid themaId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>Where in the thema a leerplandoel is linked.</summary>
+/// <summary>
+/// Where in the thema a leerplandoel is linked. An accepted doelsuggestie is a place of its own and never a themadoel: the
+/// 2–3 themadoelen are the thema's curated anchors and the suggesties are kept apart from them (Art. IX.2); accepting one
+/// changes its status and nothing else.
+/// </summary>
 public enum DoelPlaatsSoort
 {
     Themadoel,
+    Doelsuggestie,
     Subdoel,
     Activiteit,
 }

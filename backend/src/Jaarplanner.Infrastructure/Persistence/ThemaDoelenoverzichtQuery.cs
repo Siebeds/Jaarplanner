@@ -36,12 +36,24 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
         // Every decided link as (leeftijd, code, place). A null leeftijd means "the leerplandoel's own jaar/fase", which is
         // only known once the leerplandoel is read: the themadoelen and doelsuggesties hang on the whole thema.
         var vondsten = new List<(string? Leeftijd, string Code, DoelPlaats Plaats)>();
-        var themaCodes = thema.Themadoelen.Where(td => Beslist(td.Koppeling.Status)).Select(td => td.Koppeling.LeerplandoelCode)
-            .Concat(thema.Doelsuggesties.Where(k => Beslist(k.Status)).Select(k => k.LeerplandoelCode))
+        var themadoelCodes = thema.Themadoelen
+            .Where(td => Beslist(td.Koppeling.Status))
+            .Select(td => td.Koppeling.LeerplandoelCode)
             .Distinct(StringComparer.Ordinal);
-        foreach (var code in themaCodes)
+        foreach (var code in themadoelCodes)
         {
             vondsten.Add((null, code, new DoelPlaats(DoelPlaatsSoort.Themadoel, null)));
+        }
+
+        // An accepted doelsuggestie is its own place: accepting one changes its status and makes it no themadoel, and the
+        // 2–3 themadoelen are kept apart from the suggesties (Art. IX.2). A code that is both shows both.
+        var suggestieCodes = thema.Doelsuggesties
+            .Where(k => Beslist(k.Status))
+            .Select(k => k.LeerplandoelCode)
+            .Distinct(StringComparer.Ordinal);
+        foreach (var code in suggestieCodes)
+        {
+            vondsten.Add((null, code, new DoelPlaats(DoelPlaatsSoort.Doelsuggestie, null)));
         }
 
         foreach (var subthema in thema.Subthemas)

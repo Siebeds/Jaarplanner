@@ -489,10 +489,45 @@ describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
     expect(await screen.findByRole("dialog", { name: t("minimumdoel.titel") })).toBeInTheDocument();
   });
 
+  it("noemt een aanvaarde doelsuggestie zo, en zegt het wanneer geen leerplandoel naar een minimumdoel leidt", async () => {
+    toon(DIRECTIE, {
+      overzicht: {
+        themaId: "thema-1",
+        leeftijden: [
+          {
+            leeftijd: "K3",
+            leerplandoelen: [
+              {
+                code: "TAAL-2",
+                doelsoort: "Gemeenschappelijk",
+                tekst: "Een prentenboek navertellen",
+                nietMeerInOpstap: false,
+                minimumdoelRef: null,
+                plaatsen: [{ soort: "Doelsuggestie", naam: null }],
+              },
+            ],
+            minimumdoelen: [],
+          },
+        ],
+      },
+    });
+    fireEvent.click(await leeftijdrij());
+
+    const regel = within(groep(t("thema.overzichtLeerplandoelenTitel"))).getByRole("button", { name: /TAAL-2/ });
+    expect(regel).toHaveTextContent(t("thema.overzichtVia", { lijst: t("thema.plaatsDoelsuggestie") }));
+    expect(regel).not.toHaveTextContent(t("thema.plaatsThemadoel"));
+    expect(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByText(t("thema.overzichtGeenMinimumdoel")))
+      .toBeInTheDocument();
+  });
+
   it("toont geen blok zolang het thema geen beslist gekoppelde doelen heeft", async () => {
     toon(DIRECTIE);
     await screen.findByText("Bladeren");
 
+    // First that the overview was asked for at all, so the absence below is an answer and not a component never mounted.
+    await waitFor(() =>
+      expect(vi.mocked(fetch).mock.calls.some(([pad]) => String(pad).endsWith("/doelenoverzicht"))).toBe(true),
+    );
     // It shows its heading while loading, so this waits until the answer (no leeftijden) has removed it.
     await waitFor(() => expect(screen.queryByRole("heading", { name: t("thema.overzichtTitel") })).toBeNull());
   });

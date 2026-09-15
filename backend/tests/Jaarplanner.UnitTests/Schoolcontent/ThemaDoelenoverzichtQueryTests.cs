@@ -88,7 +88,7 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Telt_een_aanvaarde_doelsuggestie_mee_en_een_keer_naast_hetzelfde_themadoel()
+    public async Task Toont_een_aanvaarde_doelsuggestie_als_doelsuggestie_ook_naast_hetzelfde_themadoel()
     {
         var thema = new Thema("Herfst", 4);
         thema.VoegThemadoelToe(Manueel("4.1.GK3.1"));
@@ -99,7 +99,11 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
 
         var k3 = Assert.Single(overzicht.Leeftijden);
         Assert.Equal(["4.1.GK3.1", "4.2.GK3.2"], k3.Leerplandoelen.Select(l => l.Code));
-        Assert.All(k3.Leerplandoelen, l => Assert.Equal([new DoelPlaats(DoelPlaatsSoort.Themadoel, null)], l.Plaatsen));
+        // Accepting a suggestion makes it no themadoel (Art. IX.2), so it is never shown as one.
+        Assert.Equal(
+            [new DoelPlaats(DoelPlaatsSoort.Themadoel, null), new DoelPlaats(DoelPlaatsSoort.Doelsuggestie, null)],
+            k3.Leerplandoelen[0].Plaatsen);
+        Assert.Equal([new DoelPlaats(DoelPlaatsSoort.Doelsuggestie, null)], k3.Leerplandoelen[1].Plaatsen);
     }
 
     [Fact]

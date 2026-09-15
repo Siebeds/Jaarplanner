@@ -451,7 +451,7 @@ export interface ThemaWeergave {
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
-export type DoelPlaatsSoort = "Themadoel" | "Subdoel" | "Activiteit";
+export type DoelPlaatsSoort = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
 
 export interface DoelPlaats {
   soort: DoelPlaatsSoort;
