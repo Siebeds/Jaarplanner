@@ -52,6 +52,9 @@ home for that whole set.
   *Rights (ADR-0030 R28, ratified 2026-09-14):* streefwoordenschat is shared content. Directie, that jaar's
   hoofdleerkrachten and every leerkracht with a klas of that leeftijd edit it, so the done-when stands. See ADR-0026's
   status pointer.
+  *Related ticket, 2026-09-15:* [FB-020](functionele-backlog/FB-020-leerkracht-vult-per-hoek-een-verrijking-in-voor.md)
+  shows the hoekenverrijking preview in the same subthema rail above the grid that this story designs, and opens its
+  sheet from a rail row. Whichever of the two is built first builds the rail; the other reuses it.
 
   > **⚠ Blocked on two things, and the first is hard.**
   > 1. **ADR-0025 does not exist.** Session `verbeteringen` removed `Subthema.KlasId` on 2026-08-30 and

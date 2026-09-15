@@ -113,6 +113,7 @@
   - while the run is open, the wizard may also **edit and delete** what that same run created, and nothing else.
 
   The combined E6-02/E6-04 build writes the wizard's write actions and their authorisation, so this story builds the screens that call them.
+  *Related ticket, 2026-09-15:* [FB-024](functionele-backlog/FB-024-ai-stelt-een-thema-met-subthema-s-per-leeftijd.md) has the AI propose a whole thema with its subthema's per leeftijd; an accepted proposal is built through this wizard's write actions for a new thema. It takes nothing over from this story, and it needs an owner ruling on Art. IV.8 first.
 
 ### Overzichten & samenwerking
 
@@ -128,11 +129,13 @@
   Teachers can view colleagues' jaarplannen (read-only per permissions) to align.
   *Done when:* a teacher reads another class's plan iff allowed. Ref: FR-10.1.
   *Owner ruling 2026-09-11 (ADR-0030 R7):* a leerkracht can view other klassen. How many is not ruled: the build's default is every other klas (ADR-0030 I9). Directie has not yet confirmed that scope (Art. XIV, FR-10.2), so **build the read access behind the E6-09 seam**: one place decides which klassen a leerkracht may read. That seam, not this story, is what a narrower directie answer changes.
+  *Taken over 2026-09-15 by [FB-013](functionele-backlog/FB-013-leerkracht-ziet-alleen-de-klassen-van-haar-eigen.md).* The owner ruled how many: a leerkracht reads only the klassen of her own jaarfase, for the agenda, the jaarplan and the dekking; a hoofdleerkracht reads the klassen of the jaarfase she is appointed for; themabeheer and directie read every klas; a gebruiker with none of the rights reads none. Build it there, not here.
 
 - [!] **E6-09 — Visibility scope** — *blocked: Art. XIV teacher visibility*
   Configure visibility (school-wide / per graad / narrower).
   *Done when:* the scope rule is configurable per directie decision. Ref: FR-10.2.
   *Narrowed 2026-09-11:* the owner ruled the default (every klas, read-only) and that directie sees everything (ADR-0030 rulings 3 and 7). Whether directie wants it narrower or configurable is still theirs to decide (question 4 in [`docs/besluiten-gevraagd.md`](../docs/besluiten-gevraagd.md)), so this stays `[!]`.
+  *Taken over 2026-09-15 by [FB-013](functionele-backlog/FB-013-leerkracht-ziet-alleen-de-klassen-van-haar-eigen.md).* The owner narrowed the scope to the leerkracht's own jaarfase (see E6-08). Directie's confirmation of question 4 is still outstanding, so FB-013 builds the rule in this one seam, where a different directie answer changes one place.
 
 ### Eigen inhoud per leerkracht
 
@@ -141,3 +144,4 @@
   *Done when:* a teacher can add, edit and delete their own activiteit or subdoel under a subthema; nobody but that teacher and directie can edit it; the shared content of that jaar is unchanged for every other klas; Art. IX.2 is amended to say so. Ref: FR-3, Art. IX.2, ADR-0030.
   *Owner question first (ADR-0030 open (a)):* does personal content belong to the **leerkracht** (it follows them into next year) or to their **klas** (it stays with the planning)? Can colleagues see it, and does it count only for the coverage of the owner's klas? Nothing personal is built until this is answered.
   *Since the ratification of 2026-09-14:* the activiteit **maker** (ADR-0030 R26, R33) is not personal content; the activiteit stays shared. The shared layer exists and is edited by every leerkracht of that leeftijd (R17, R23). Whether it remains next to personal content is I6. Open question (a) is unchanged, and part 2 of the amendment is owed with this story.
+  *Activiteiten half taken over 2026-09-15 by [FB-015](functionele-backlog/FB-015-leerkracht-maakt-een-eigen-activiteit-die.md) and [FB-016](functionele-backlog/FB-016-leerkracht-stelt-haar-eigen-activiteit-voor-aan.md)*, on owner rulings that answer open question (a) for activiteiten: a new activiteit a leerkracht makes is **hers** by default and follows her into the next schooljaar; the leerkrachten of the same jaarfase read it and may use it, which gives them their own editable copy; she links its goals herself, and they count for her klas once it is planned in that klas's agenda; proposing it to the subthema gives a shared copy when a hoofdleerkracht accepts. Part 2 of the amendment moves with FB-015. **Personal subdoelen were not asked about and stay here.**
