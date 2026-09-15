@@ -2,10 +2,10 @@
 id: TB-030
 titel: Rechtermuisklik op een blok in de agenda: bewerken of van deze dag halen
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:40
+bijgewerkt: 2026-09-15 21:48
 opgepakt-door: rechtermuismenu
 branch: ticket/TB-030-agenda-rechtermuismenu
 pr:
@@ -51,20 +51,20 @@ periode laten meetellen. Een activiteit gebruikt de bestaande `DELETE` op de wee
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven wie de klas mag plannen, wanneer die rechtsklikt op een activiteit, algemene fiche of hoek in de week- of
+- [x] Gegeven wie de klas mag plannen, wanneer die rechtsklikt op een activiteit, algemene fiche of hoek in de week- of
   dagweergave, of op een activiteit in de maandweergave, dan opent een menu met *Bewerken* (potlood) en *Van deze dag
   halen* (prullenbak) in plaats van het menu van de browser.
-- [ ] Gegeven dat menu, wanneer *Bewerken* gekozen wordt, dan opent hetzelfde blad als bij een klik op het blok.
-- [ ] Gegeven een algemene fiche of hoek over meerdere dagen, wanneer *Van deze dag halen* gekozen wordt, dan verdwijnt
+- [x] Gegeven dat menu, wanneer *Bewerken* gekozen wordt, dan opent hetzelfde blad als bij een klik op het blok.
+- [x] Gegeven een algemene fiche of hoek over meerdere dagen, wanneer *Van deze dag halen* gekozen wordt, dan verdwijnt
   alleen dat blok en blijven de andere dagen van de periode staan.
-- [ ] Gegeven een fichemoment met een dagtekst, of het laatste blok van een periode, wanneer *Van deze dag halen*
+- [x] Gegeven een fichemoment met een dagtekst, of het laatste blok van een periode, wanneer *Van deze dag halen*
   gekozen wordt, dan vraagt de app eerst bevestiging en zegt ze wat er verloren gaat; een activiteit of een gewoon
   moment gaat meteen weg.
-- [ ] Gegeven het laatste moment van een ficheplaatsing, wanneer het weggehaald wordt, dan verdwijnt de plaatsing mee
+- [x] Gegeven het laatste moment van een ficheplaatsing, wanneer het weggehaald wordt, dan verdwijnt de plaatsing mee
   en telt de fiche via die plaatsing niet meer voor de dekking (backendtest).
-- [ ] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer die rechtsklikt op een blok, dan verschijnt geen
+- [x] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer die rechtsklikt op een blok, dan verschijnt geen
   eigen menu, en de server weigert de nieuwe routes met 403.
-- [ ] Gegeven een blok met focus, wanneer de menutoets of Shift+F10 ingedrukt wordt, dan opent hetzelfde menu, te
+- [x] Gegeven een blok met focus, wanneer de menutoets of Shift+F10 ingedrukt wordt, dan opent hetzelfde menu, te
   bedienen met de pijltjes, Enter en Escape.
 
 ## Buiten scope
@@ -82,3 +82,5 @@ Geen.
 - 2026-09-15 21:11 · rechtermuismenu · aangemaakt (status in-uitvoering)
 - 2026-09-15 21:32 · rechtermuismenu · Gebouwd: menu, twee DELETE-routes per moment, bevestiging bij verlies; backendtests, pnpm lint, dotnet format en Vitest groen
 - 2026-09-15 21:40 · rechtermuismenu · Antagonist ronde 1: COMPLIANT, 4 MINOR; rechtensweep op Postgres 4/4 groen met de nieuwe routes; ADR-0024 kreeg een amendement voor het contextmenu
+- 2026-09-15 21:47 · rechtermuismenu · Criteria afgevinkt: browser (fiche, hoek, Shift+F10, bevestiging bij dagtekst en laatste dag, focus terug) en Vitest; activiteit alleen via Vitest, testdata had geen geplande activiteit
+- 2026-09-15 21:48 · rechtermuismenu · in-uitvoering → klaar: Klaar: menu op blokken (week, dag, maand), een dag weghalen voor fiche en hoek, bevestiging alleen bij verlies, focus terug naar het blok; gates groen, antagonist COMPLIANT, browserpas desktop en 390px
