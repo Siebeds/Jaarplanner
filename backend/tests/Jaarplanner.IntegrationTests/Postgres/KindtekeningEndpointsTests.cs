@@ -219,6 +219,26 @@ public sealed class KindtekeningEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Leerlingzorg_ziet_de_tekening_maar_vervangt_of_verwijdert_ze_niet()
+    {
+        // Leerlingzorg reads every report (R18, FB-008), and the drawing is part of the report; it changes nothing (TB-028).
+        var o = await OpzetAsync();
+        using var lk = _opzet.Als(o.LeerkrachtId);
+        await BewaarAsync(lk, o.Kind, 1, Testbeelden.Jpeg(), "tekening.jpg", "image/jpeg");
+
+        using var zorg = _opzet.Als(await _opzet.GebruikerAsync(o.School, leerlingzorg: true));
+        using (var gezien = await zorg.GetAsync(Tekening(o.Kind, 1)))
+        {
+            Assert.Equal(HttpStatusCode.OK, gezien.StatusCode);
+            Assert.Equal("image/jpeg", gezien.Content.Headers.ContentType?.MediaType);
+        }
+
+        Assert.NotNull((await LeesRapportAsync(zorg, o.Kind, 1)).Tekening);
+        await Verwacht403Async(Upload(zorg, o.Kind, 1, Testbeelden.Png(), "andere.png", "image/png"));
+        await Verwacht403Async(zorg.DeleteAsync(Tekening(o.Kind, 1)));
+    }
+
+    [PostgresFact]
     public async Task Na_het_schooljaar_ziet_de_leerkracht_de_tekening_nog_maar_vervangt_of_verwijdert_ze_niet()
     {
         var voorbij = new Schooljaar(TestSchooljaar.UniekeNaam("voorbij"), Vandaag.AddDays(-400), Vandaag.AddDays(-35));

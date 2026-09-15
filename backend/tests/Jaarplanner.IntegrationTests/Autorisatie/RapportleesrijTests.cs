@@ -10,8 +10,8 @@ namespace Jaarplanner.IntegrationTests.Autorisatie;
 /// <summary>
 /// The report's read row stays a read (FB-008, ADR-0035 D5): <c>OntwikkelingsrapportLezen</c> is the one row Leerlingzorg
 /// passes, and Leerlingzorg downloads nothing. A download or any other route that declared this row would hand the
-/// right more than R18 gives it, so the row sits on exactly the two reads below. A route added later (FB-006's download,
-/// say) that reuses it fails here until it declares a row of its own.
+/// right more than R18 gives it, so the row sits on exactly the three reads below. A route added later (FB-006's
+/// download, say) that reuses it fails here until it declares a row of its own.
 /// <para>
 /// <b>Enumerated from the endpoint data source</b>, like <c>ElkeRouteVraagtEenSessieTests</c>, so the check covers
 /// every route the app maps, whether it declares the row through <c>[RechtOp]</c> or <c>[Authorize(Policy = …)]</c>.
@@ -19,11 +19,16 @@ namespace Jaarplanner.IntegrationTests.Autorisatie;
 /// </summary>
 public sealed class RapportleesrijTests : IClassFixture<JaarplannerApiFactory>
 {
-    /// <summary>The children of a klas, and one child's report at one moment: what reading a report is.</summary>
+    /// <summary>
+    /// The children of a klas, one child's report at one moment, and that report's kindtekening (FB-005): what reading a
+    /// report is. The drawing is part of the report (Art. VI.7), shown on the report screen through its own route because
+    /// it is an image; serving it for the screen is a read, not the download D5 keeps from Leerlingzorg.
+    /// </summary>
     private static readonly string[] Leesroutes =
     [
         "GET api/klassen/{klasId:guid}/leerlingen",
         "GET api/leerlingen/{leerlingId:guid}/rapporten/{moment:int:range(1,3)}",
+        "GET api/leerlingen/{leerlingId:guid}/rapporten/{moment:int:range(1,3)}/tekening",
     ];
 
     private readonly JaarplannerApiFactory _factory;
@@ -31,7 +36,7 @@ public sealed class RapportleesrijTests : IClassFixture<JaarplannerApiFactory>
     public RapportleesrijTests(JaarplannerApiFactory factory) => _factory = factory;
 
     [Fact]
-    public void De_leesrij_van_het_rapport_staat_alleen_op_de_twee_leesroutes()
+    public void De_leesrij_van_het_rapport_staat_alleen_op_de_drie_leesroutes()
     {
         const string rij = Rechtenmatrix.Beleid.OntwikkelingsrapportLezen;
 

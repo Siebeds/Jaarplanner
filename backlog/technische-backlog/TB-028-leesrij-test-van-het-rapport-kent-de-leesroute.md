@@ -2,10 +2,10 @@
 id: TB-028
 titel: Leesrij-test van het rapport kent de leesroute van de kindtekening
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 20:01
+bijgewerkt: 2026-09-15 20:15
 opgepakt-door: kindtekening
 branch: ticket/TB-028-rapportleesrij-tekening
 pr:
@@ -30,10 +30,10 @@ backend-check.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven `main` met FB-005 en FB-008, wanneer de backendtests draaien, dan slaagt `RapportleesrijTests`.
-- [ ] Gegeven een rapport met een tekening, wanneer een gebruiker met Leerlingzorg het adres van de tekening opent, dan
+- [x] Gegeven `main` met FB-005 en FB-008, wanneer de backendtests draaien, dan slaagt `RapportleesrijTests`.
+- [x] Gegeven een rapport met een tekening, wanneer een gebruiker met Leerlingzorg het adres van de tekening opent, dan
   ziet die de tekening; vervangen of verwijderen weigert de app.
-- [ ] Gegeven een nieuwe route die het leesrecht van het rapport draagt (zoals een download), dan faalt
+- [x] Gegeven een nieuwe route die het leesrecht van het rapport draagt (zoals een download), dan faalt
   `RapportleesrijTests` nog altijd tot die route een eigen recht krijgt.
 
 ## Buiten scope
@@ -47,3 +47,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 20:01 · kindtekening · aangemaakt (status in-uitvoering)
+- 2026-09-15 20:15 · kindtekening · in-uitvoering → klaar: leesrij-test kent nu drie leesroutes (met de tekening); nieuwe test: Leerlingzorg ziet de tekening en wijzigt ze niet; backend unit 1749 en integratie 541 groen, 0 gefaald; format schoon; geen antagonist: alleen een testlijst, de route zelf werd in FB-005 geauditeerd
