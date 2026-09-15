@@ -2,10 +2,10 @@
 id: TB-027
 titel: Test Z1_Z6 vergelijkt klassen in een vaste volgorde en faalt daardoor willekeurig
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 19:51
+bijgewerkt: 2026-09-15 19:56
 opgepakt-door: woordweb
 branch: ticket/flaky-z1z6
 pr:
@@ -29,8 +29,8 @@ de gevallen. De test sorteert voortaan beide kanten voor de vergelijking. Alleen
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de test Z1_Z6, wanneer hij tien keer na elkaar draait tegen PostgreSQL, dan slaagt hij elke keer.
-- [ ] De test controleert nog altijd dat de leerkracht in het lopende schooljaar precies K3 blauw en K3 groen ziet.
+- [x] Gegeven de test Z1_Z6, wanneer hij tien keer na elkaar draait tegen PostgreSQL, dan slaagt hij elke keer.
+- [x] De test controleert nog altijd dat de leerkracht in het lopende schooljaar precies K3 blauw en K3 groen ziet.
 
 ## Buiten scope
 
@@ -43,3 +43,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 19:51 · woordweb · aangemaakt (status in-uitvoering)
+- 2026-09-15 19:56 · woordweb · in-uitvoering → klaar: beide kanten gesorteerd voor de vergelijking; test 10 van 10 groen tegen PostgreSQL, dotnet format schoon
