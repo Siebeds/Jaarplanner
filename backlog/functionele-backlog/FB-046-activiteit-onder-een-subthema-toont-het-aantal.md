@@ -2,10 +2,10 @@
 id: FB-046
 titel: Activiteit onder een subthema toont het aantal doelen, niet hun codes
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:32
+bijgewerkt: 2026-09-16 14:41
 opgepakt-door: claude-fb-046
 branch: ticket/FB-046-activiteit-aantal-doelen
 pr:
@@ -62,3 +62,4 @@ activiteit wordt de lijst lang en onrustig.
 - 2026-09-16 14:28 · claude-fb-046 · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 14:31 · claude-fb-046 · activiteitregel toont alleen nog het doelmerk (aantal of 'Nog geen doel'), de codes zijn weg; koppelknop blijft; Vitest 968 groen, lint groen
 - 2026-09-16 14:32 · claude-fb-046 · antagonist: COMPLIANT, geen blokkerende bevindingen; drie MINOR (browsercheck noteren, test strakker, naam 'codes')
+- 2026-09-16 14:41 · claude-fb-046 · in-uitvoering → te-testen: gebouwd: activiteitregel toont het aantal doelen, geen codes; koppelknop blijft; browsercheck PASS op desktop en 390px (backlog/worklogs/FB-046), Vitest 968 en lint groen, antagonist COMPLIANT; MINOR open: test telt op het hele scherm, variabele heet nog codes
