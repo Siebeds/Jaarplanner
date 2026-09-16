@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:34
+bijgewerkt: 2026-09-16 22:40
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -81,3 +81,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 
 - 2026-09-16 15:31 · claude-fb043 · aangemaakt (status nieuw)
 - 2026-09-16 22:34 · claude-fb053 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
+- 2026-09-16 22:40 · claude-fb053 · Constitutie Art. V.1 en IX.2 aangepast en ADR-0049 vastgelegd: doelsuggesties bij een thema zijn minimumdoelen en tellen niet meer mee voor leerplandoelen.

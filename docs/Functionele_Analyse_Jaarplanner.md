@@ -175,7 +175,7 @@ Leerkrachten beheren hun eigen inhoudelijke bouwstenen: thema's, subthema's en d
 
 Dit is de kern van de tool: de AI stelt voor welke thema's en activiteiten bij welke leerdoelen passen.
 
-- **FR-4.1** — De tool stelt per thema/activiteit voor met welke leerdoelen het overeenkomt.
+- **FR-4.1** — De tool stelt per thema/activiteit voor met welke leerdoelen het overeenkomt. *(Verfijnd door de beslissing van 16-09-2026, [ADR-0049](adr/0049-doelsuggesties-zijn-minimumdoelen.md): bij een thema stelt de AI alleen minimumdoelen voor als themadoel; een aanvaard voorstel wordt een themadoel, een geweigerd komt niet terug. Leerplandoelen komen via de subthema's.)*
 - **FR-4.2** — Elke suggestie krijgt een korte motivatie ("waarom past dit doel hier?") zodat de leerkracht ze kan beoordelen.
 - **FR-4.3** — De leerkracht kan elke suggestie aanvaarden, weigeren of aanpassen. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): voor de doelsuggesties bij een thema zijn dat de directie en wie themabeheer heeft, en enkel zij laten ze ook maken. Dat geldt ook voor "de leerkracht" in FR-4.2.)*
 - **FR-4.4** — De tool toont welke leerdoelen (nog) niet aan een thema gekoppeld zijn.
