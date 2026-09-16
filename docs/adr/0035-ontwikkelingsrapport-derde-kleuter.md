@@ -1,6 +1,6 @@
 # ADR-0035 — The ontwikkelingsrapport for the derde kleuter: pupil data enters scope, for this report only
 
-- **Status:** Accepted for the owner's rulings in §1 (project owner, 2026-09-14).
+- **Status:** Accepted for the owner's rulings in §1 (project owner, 2026-09-14). **§3.5's "EU only" superseded in part by [ADR-0048](0048-claude-api-als-tweede-ai-provider.md) on 2026-09-16**: on a deployment that picks the Claude API, the rewrite path is not held to the EU data zone. The text below is left as written.
   - **Everything else in §2 and §3 is the recording session's design**, except where it cites an R. The items numbered
     **D** are the ones a reader is most likely to want changed. None of the session's design is ratified by the owner,
     and the build follows it until he changes it.

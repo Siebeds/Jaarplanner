@@ -299,7 +299,7 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
 - **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie. *(Behalve de herwerking van een tekst in het ontwikkelingsrapport, FR-13.4: daar ziet de leerkracht de oude en de nieuwe tekst naast elkaar, zonder motivatie. Bijgewerkt op 14-09-2026.)*
 - **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen. *(Bij de herwerking van een tekst in het ontwikkelingsrapport krijgt de AI alleen die tekst, zonder de namen van de kinderen van de klas. Bijgewerkt op 14-09-2026.)*
 - **Beperkingen** — AI-suggesties kunnen fouten of hiaten bevatten. De eindverantwoordelijkheid voor de correcte dekking ligt bij de leerkracht en de directie. De tool ondersteunt, maar vervangt geen pedagogische beoordeling.
-- **Aandachtspunt** — verwerking van schoolgegevens door een AI-dienst gebeurt bij voorkeur binnen een Europese, AVG-conforme omgeving (bv. Azure AI Foundry met EU-datazone) — te bevestigen.
+- **Aandachtspunt** — verwerking van schoolgegevens door een AI-dienst gebeurt bij voorkeur binnen een Europese, AVG-conforme omgeving (bv. Azure AI Foundry met EU-datazone) — te bevestigen. *(Bijgewerkt 2026-09-16, ADR-0048, beslissing van de projecteigenaar: een omgeving met de Claude API is niet aan de EU gebonden.)*
 
 ## 8. Technische architectuur (indicatief)
 
@@ -308,7 +308,7 @@ Dit hoofdstuk is bestemd voor de ontwikkelaar en is indicatief. De directie hoef
 - **Frontend** — webtoepassing in een modern JavaScript-framework (React of Vue), met een interactieve kalender en drag-and-drop.
 - **Backend** — een API in .NET (C#), verantwoordelijk voor de logica, de rechten en de communicatie met de AI-dienst.
 - **Database** — PostgreSQL voor de opslag van schooljaren, klassen, leerplandoelen (met doelsoort, code, jaar/fase, domein en concordantie met de minimumdoelen), thema's, activiteiten en jaarplannen.
-- **AI** — Azure AI Foundry voor het genereren van de doel-matching en de jaarplanning.
+- **AI** — Azure AI Foundry of de Anthropic Claude API, per omgeving gekozen, voor het genereren van de doel-matching en de jaarplanning. *(Bijgewerkt 2026-09-16, ADR-0048, beslissing van de projecteigenaar: met de Claude API is de verwerking niet aan de EU gebonden.)*
 - **Hosting** — Microsoft Azure.
 - **Koppeling leerplandoelen** — de leerplandoelen en minimumdoelen worden door de backend ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen en in de eigen databank bewaard; de tool raadpleegt de API nooit op het moment dat een leerkracht werkt. Wat een nieuwe versie verandert, wordt eerst ter controle getoond en pas na bevestiging doorgevoerd. *(Bijgewerkt 2026-09-11, ADR-0032. De Excel-import was het basismechanisme en is niet langer de bron. Bijgewerkt 2026-09-13, beslissing van de projecteigenaar: de Excel-import blijft beschikbaar tot de eerste import van de leerplandoelen via de API en weigert daarna elk bestand. Van doelen die via Excel buiten de gemeenschappelijke doelen (G) werden ingelezen, kan de tekst niet meer bijgewerkt worden; verdwijnt zo'n doel uit Op.stap, dan wordt het nog wel gemarkeerd.)*
 

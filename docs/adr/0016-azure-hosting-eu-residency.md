@@ -1,6 +1,6 @@
 # ADR-0016 — Azure hosting & EU data residency
 
-- **Status:** Accepted. **Its *no pupil PII* constraint narrowed by [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) on 2026-09-14**: the ontwikkelingsrapport for the derde kleuter holds pupil data under Art. VI.7, in the same EU region and AI data zone. Everywhere else the constraint stands. The text below is left as written.
+- **Status:** Accepted. **Its *no pupil PII* constraint narrowed by [ADR-0035](0035-ontwikkelingsrapport-derde-kleuter.md) on 2026-09-14**: the ontwikkelingsrapport for the derde kleuter holds pupil data under Art. VI.7, in the same EU region and AI data zone. Everywhere else the constraint stands. **Its EU AI data zone superseded in part by [ADR-0048](0048-claude-api-als-tweede-ai-provider.md) on 2026-09-16**: a deployment that picks the Claude API is not held to it. The text below is left as written.
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 - **Ratified:** 2026-06-29 — **Azure + EU hosting and EU AI data zone confirmed** (directie/auteur). The Art. XIV "Hosting/AI sign-off" open decision is hereby closed.

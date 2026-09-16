@@ -69,7 +69,7 @@ Start any new screen, or any change to how one looks, with the **`frontend-desig
 ## Tech stack
 - **Frontend:** React 19 + TypeScript + Vite; Tailwind CSS v4 (configured in `frontend/src/index.css`, no `tailwind.config.js`); Radix primitives where they earn it, the rest of `src/components/ui/` written here; `@dnd-kit/core`; TanStack Query; Zustand.
 - **Backend:** ASP.NET Core Web API (C#) on the .NET LTS pinned in `global.json`; EF Core + Npgsql; ClosedXML (never EPPlus).
-- **Database:** PostgreSQL (local via Docker). **AI:** Azure AI Foundry, backend only, EU data zone. **Hosting:** Azure.
+- **Database:** PostgreSQL (local via Docker). **AI:** Azure AI Foundry (EU data zone) or the Anthropic Claude API (no EU guarantee), picked by `Ai:Provider` ([ADR-0048](docs/adr/0048-claude-api-als-tweede-ai-provider.md)), backend only. **Hosting:** Azure.
 
 ## Repository structure
 ```
@@ -92,8 +92,8 @@ tools/backlog-board/   ticket CLI and local kanban board
 
 ## Architecture
 - SPA over REST/JSON, organised by feature. Anchor screens: the **kalender with drag-and-drop** and the **dekkingsoverzicht**.
-- Backend layered pragmatically: `Domain` ← `Application` (use cases, AI orchestration) ← `Infrastructure` (EF Core, imports, Azure AI); `Api` is thin. A small app: clarity over ceremony.
-- **AI flow:** the backend builds a prompt from the school's own doelen and thema's, calls Azure AI Foundry, validates a **structured JSON** response, and returns suggestions with a motivation and `status = voorgesteld`. The client sits behind an interface and is faked in tests. The one exception to grounding on school data alone is a woordweb's words (Art. IV.4, ADR-0043).
+- Backend layered pragmatically: `Domain` ← `Application` (use cases, AI orchestration) ← `Infrastructure` (EF Core, imports, AI clients); `Api` is thin. A small app: clarity over ceremony.
+- **AI flow:** the backend builds a prompt from the school's own doelen and thema's, calls the configured provider, validates a **structured JSON** response, and returns suggestions with a motivation and `status = voorgesteld`. The client sits behind an interface and is faked in tests. The one exception to grounding on school data alone is a woordweb's words (Art. IV.4, ADR-0043).
 - **Op.stap goals** come from KOV's Op.stap API, backend only, G goals for now ([ADR-0032](docs/adr/0032-opstap-api-als-importbron.md), Art. VII.2). The minimumdoelen mapping is `OnderwijsdoelMapping`, the leerplandoelen mapping `CurriculumdoelMapping`, each kept in one place. The per-discipline Excel route (Art. VII.1) refuses every file once a leerplandoelen snapshot has been applied. School thema's and activiteiten arrive by Excel upload (FR-1).
 
 ## Domain model
