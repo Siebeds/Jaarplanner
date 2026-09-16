@@ -865,20 +865,23 @@ function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
 }
 
 /**
- * What a doelsuggestie run did, in one line (TB-007): how many proposals it added, out of how many goals, of which
- * leeftijden. Every figure is read off the server's answer, so the line states what the run searched, not what the
- * buttons say now. With no candidates the server answers before calling the model, which is what that sentence claims.
+ * What a doelsuggestie run did, in one line (TB-007, FB-053): how many proposals it added, out of how many minimumdoelen,
+ * of which mijlpalen ("mijlpaal K"). Every figure is read off the server's answer, so the line states what the run
+ * searched, not what the buttons say now. With no candidates the server answers before calling the model, which is what
+ * that sentence claims.
  */
 function resultaatZin(resultaat: DoelMatchResultaat): string {
-  const leeftijden = opsomming(resultaat.jaarFasen);
-  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { leeftijden });
+  const korte = resultaat.mijlpalen.map((code) => code.replace(/-$/, ""));
+  const mijlpalen =
+    korte.length === 1 ? t("thema.mijlpaalEen", { naam: korte[0] }) : t("thema.mijlpalenMeer", { lijst: opsomming(korte) });
+  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { mijlpalen });
 
   const doelen = telWoord(resultaat.aantalKandidaten, "thema.kandidaatEen", "thema.kandidatenMeer");
   const nieuw = resultaat.bewaard.length;
-  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, leeftijden });
+  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, mijlpalen });
   return nieuw === 1
-    ? t("thema.suggestiesEenNieuw", { doelen, leeftijden })
-    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, leeftijden });
+    ? t("thema.suggestiesEenNieuw", { doelen, mijlpalen })
+    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, mijlpalen });
 }
 
 /** "K3", "K3 en L1", "JK, K2 en K3". */

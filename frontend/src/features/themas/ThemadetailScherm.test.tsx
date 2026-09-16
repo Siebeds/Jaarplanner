@@ -104,6 +104,8 @@ function toon(
     genereer?: (body: unknown) => Response;
     /** Where the page opens, for a link that asks for one subthema (FB-037). */
     pad?: string;
+    /** The thema's doelsuggesties, in the order the server sends them. */
+    suggesties?: DoelMatchSuggestie[];
   } = {},
 ) {
   vi.stubGlobal(
@@ -117,7 +119,7 @@ function toon(
           ? json({ title: "Geen toegang", detail: "Je hebt geen toegang tot deze actie." }, 403)
           : json({});
       }
-      if (pad.endsWith("/doelsuggesties")) return json([SUGGESTIE]);
+      if (pad.endsWith("/doelsuggesties")) return json(opties.suggesties ?? [SUGGESTIE]);
       if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1"]);
       if (pad.endsWith("/api/themas/thema-1/doelenoverzicht")) {
         return json(opties.overzicht ?? { themaId: "thema-1", leeftijden: [] });
@@ -272,11 +274,13 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
     vraag();
 
+    // The mijlpalen the result names, not the leeftijden the buttons show (FB-053).
     const zin = t("thema.suggestiesNieuw", {
       aantal: 3,
       doelen: t("thema.kandidatenMeer", { aantal: 535 }),
-      leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }),
+      mijlpalen: t("thema.mijlpalenMeer", { lijst: t("thema.opsommingEn", { eerste: "K", laatste: "4" }) }),
     });
+    expect(zin).toBe("3 nieuwe voorstellen uit 535 minimumdoelen van mijlpalen K en 4.");
     expect(await screen.findByText(zin)).toBeInTheDocument();
     expect(verzonden).toEqual([{ jaarFasen: ["K3", "L1"] }]);
   });
@@ -305,7 +309,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
       thema: { ...THEMA, subthemas: [] },
       genereer: (body) => {
         verzonden.push(body);
-        return json(resultaat({ bewaard: [], aantalKandidaten: 1, jaarFasen: ["K2"] }));
+        return json(resultaat({ bewaard: [], aantalKandidaten: 1, jaarFasen: ["K2"], mijlpalen: ["K-"] }));
       },
     });
 
@@ -320,7 +324,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     vraag();
 
     expect(
-      await screen.findByText(t("thema.suggestiesGeenNieuwe", { doelen: t("thema.kandidaatEen"), leeftijden: "K2" })),
+      await screen.findByText(t("thema.suggestiesGeenNieuwe", { doelen: t("thema.kandidaatEen"), mijlpalen: "mijlpaal K" })),
     ).toBeInTheDocument();
     expect(verzonden).toEqual([{ jaarFasen: ["K2"] }]);
   });
@@ -333,7 +337,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
     expect(
       await screen.findByText(
-        t("thema.suggestiesGeenDoelen", { leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }) }),
+        t("thema.suggestiesGeenDoelen", { mijlpalen: t("thema.mijlpalenMeer", { lijst: t("thema.opsommingEn", { eerste: "K", laatste: "4" }) }) }),
       ),
     ).toBeInTheDocument();
   });
@@ -524,6 +528,25 @@ describe("ThemadetailScherm: wie wat mag", () => {
     await waitFor(() => expect(within(kaart).getByRole("button", { name: t("thema.weiger") })).toBeEnabled());
     fireEvent.click(within(kaart).getByRole("button", { name: t("thema.weiger") }));
     await waitFor(() => expect(beslissingen()).toEqual([{ status: "Aanvaard" }, { status: "Geweigerd" }]));
+  });
+
+  it("toont de voorstellen in de volgorde van de server, het best passende eerst", async () => {
+    // Owner ruling 2026-09-16: the model's order, which the server keeps as a rank. Not sorted by code here.
+    toon(ikMet({ heeftThemabeheer: true }), {
+      suggesties: [
+        { ...SUGGESTIE, id: "sug-b", minimumdoelRef: "K-9.9.9", aiMotivatie: "Past het best." },
+        { ...SUGGESTIE, id: "sug-a", minimumdoelRef: "K-1.1.1", aiMotivatie: "Past ook." },
+        { ...SUGGESTIE, id: "sug-c", minimumdoelRef: "K-5.5.5", aiMotivatie: "Beslist.", status: "Geweigerd" },
+      ],
+    });
+
+    await screen.findByText("Past het best.");
+    const volgorde = screen
+      .getAllByText(/^Past /)
+      .map((p) => p.textContent);
+    expect(volgorde).toEqual(["Past het best.", "Past ook."]);
+    // A decided proposal is not shown as open.
+    expect(screen.queryByText("Beslist.")).toBeNull();
   });
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {

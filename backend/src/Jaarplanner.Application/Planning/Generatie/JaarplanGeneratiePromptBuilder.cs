@@ -501,9 +501,6 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, $"  Kernwoordenschat: {string.Join(", ", thema.Kernwoordenschat)}");
         }
 
-        // Only the goals the teacher actually stands behind (aanvaard/manueel, Art. V.1) — a `voorgesteld`
-        // suggestion is not yet a goal of this thema, and a `geweigerd` one never was. Feeding the model
-        // unconfirmed links would let the AI reason about goals the teacher has rejected.
         // The minimumdoelen the thema aims at, its themadoelen (FB-053): what a thema covers for a klas (Art. V.1).
         var minimumdoelen = thema.Minimumdoelen
             .Select(m => m.MinimumdoelRef)
@@ -515,6 +512,9 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, $"  Themadoelen, minimumdoelen ({minimumdoelen.Count}): {string.Join(", ", minimumdoelen)}");
         }
 
+        // Only the goals the teacher actually stands behind (aanvaard/manueel, Art. V.1) — a `voorgesteld`
+        // suggestion is not yet a goal of this thema, and a `geweigerd` one never was. Feeding the model
+        // unconfirmed links would let the AI reason about goals the teacher has rejected.
         var doelcodes = ThemaDoelcodes(thema);
         if (doelcodes.Count > 0)
         {

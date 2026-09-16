@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:03
+bijgewerkt: 2026-09-17 00:06
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -93,3 +93,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-17 00:01 · claude-fb053 · Een gelijktijdige koppeling met de hand bij het aanvaarden geeft nu een 409 met een Nederlandse zin in plaats van een 500 (Postgres-test).
 - 2026-09-17 00:02 · claude-fb053 · Eigenaar 2026-09-16: geen 'aanpassen' (D2 blijft); een voorstel wordt aanvaard of geweigerd, een ander minimumdoel koppel je met de hand. Constitutie IV.2, VI.1 en XII aangepast, ADR-0049 O6-O8.
 - 2026-09-17 00:03 · claude-fb053 · Eigenaar 2026-09-16: de prognose in het generatierapport (minimumdoelen tellen) wordt een apart ticket.
+- 2026-09-17 00:06 · claude-fb053 · Kleine punten van de antagonist opgelost: IX.2 noemt de gekozen leeftijden, de resultaatzin noemt de mijlpaal ('van mijlpaal K'), commentaar in de jaarplanprompt terug op zijn plaats, D4 voor D5 in ADR-0049; de voorstellen staan in rangvolgorde op het scherm (Vitest).
