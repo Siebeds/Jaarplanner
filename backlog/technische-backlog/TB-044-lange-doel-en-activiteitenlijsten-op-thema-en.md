@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:04
+bijgewerkt: 2026-09-16 23:53
 opgepakt-door: lange-lijsten
 branch: ticket/lange-lijsten-inklappen
 pr:
@@ -82,3 +82,4 @@ Geen.
 - 2026-09-16 22:43 · lange-lijsten · aangemaakt (status in-uitvoering)
 - 2026-09-16 22:52 · lange-lijsten · Inklaplijst gebouwd en toegepast op themadoelen, activiteiten, subdoelen en andere doelen; vitest 1020 groen, lint groen.
 - 2026-09-16 23:04 · lange-lijsten · Browsercheck op kopie jaarplanner_tb044 (desktop en 390px): lijsten ingeklapt, laad meer, zoeken, geen plus in activiteitregels, themakaarten zonder klassen; vitest 1023 groen.
+- 2026-09-16 23:53 · lange-lijsten · Subthemahoofdstuk herschikt (woordweb eerst, koppen als vouwknop met klein plus- en zoekicoon, kaartknoppen naast de titel); browser desktop en 390px nagekeken; vitest 1023 groen.
