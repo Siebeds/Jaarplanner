@@ -2,10 +2,10 @@
 id: TB-049
 titel: Themalijst in de mockmodus toont het aantal subthema's, activiteiten en doelen
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:21
+bijgewerkt: 2026-09-17 00:24
 opgepakt-door: mock-thematellers
 branch: ticket/mock-thematellers
 pr:
@@ -26,8 +26,8 @@ doelkoppelingen, en stuurt ze mee. Een test in `frontend/src/mocks/routes.test.t
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de mockmodus, wanneer je Thema's opent, dan toont elk thema zijn werkelijke aantal subthema's, activiteiten en doelen, niet nul.
-- [ ] `pnpm lint` en `pnpm test` zijn groen.
+- [x] Gegeven de mockmodus, wanneer je Thema's opent, dan toont elk thema zijn werkelijke aantal subthema's, activiteiten en doelen, niet nul.
+- [x] `pnpm lint` en `pnpm test` zijn groen.
 
 ## Buiten scope
 
@@ -40,3 +40,5 @@ Geen.
 ## Werklog
 
 - 2026-09-17 00:21 · mock-thematellers · aangemaakt (status in-uitvoering)
+- 2026-09-17 00:24 · mock-thematellers · mockbibliotheek stuurt de drie tellers zoals de server ze telt; test in routes.test.ts, browser toont 3/31/64 en 3/18/37; lint en 1018 tests groen; antagonist COMPLIANT, MINOR open: inline type weg zodra de tellers in ThemaBibliotheekItem staan
+- 2026-09-17 00:24 · mock-thematellers · in-uitvoering → klaar: themalijst in de mockmodus toont de echte tellers; gates groen, antagonist COMPLIANT
