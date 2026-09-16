@@ -79,6 +79,28 @@ public sealed class WeekplanningServiceTests
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
+    [Fact]
+    public async Task Een_eigen_activiteit_plant_alleen_haar_eigenaar_of_de_directie()
+    {
+        // ADR-0049 D6: a colleague uses it first and plans her copy; without a planner it fails closed.
+        var eigenaar = Guid.NewGuid();
+        var collega = new Jaarplanner.Application.Toegang.Rechten(Guid.NewGuid(), false, false, [], ["K3"], []);
+        var eigen = new Jaarplanner.Application.Toegang.Rechten(eigenaar, false, false, [], ["K3"], []);
+        var directie = new Jaarplanner.Application.Toegang.Rechten(Guid.NewGuid(), true, false, [], [], []);
+        var (service, opslag, klas, _) = Maak(inhoud: [Inhoud("K3") with { EigenaarId = eigenaar }]);
+
+        var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde, collega));
+        Assert.Contains("Gebruiken", fout.Message, StringComparison.Ordinal);
+        await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
+            service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde));
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde, eigen);
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, new TimeOnly(10, 0), new TimeOnly(10, 50), directie);
+        Assert.Equal(2, opslag.AantalKeerBewaard);
+    }
+
     /// <summary>
     /// The response is the ISO week (Monday–Sunday) containing the affected day, so a client never re-fetches after a
     /// drag. Monday is the week start because a Flemish school week is.

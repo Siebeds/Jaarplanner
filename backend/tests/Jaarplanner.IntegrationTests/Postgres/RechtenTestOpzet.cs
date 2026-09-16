@@ -174,6 +174,21 @@ internal sealed class RechtenTestOpzet
         return (await antwoord.Content.ReadFromJsonAsync<ActiviteitDto>())!;
     }
 
+    /// <summary>
+    /// A SHARED activiteit with <paramref name="makerId"/> as its maker, written straight to the database: since ADR-0049
+    /// a leerkracht's create over HTTP is her own activiteit, so no route makes this pair for her any more. It stands for
+    /// the shared activiteiten a leerkracht made before that rule.
+    /// </summary>
+    public async Task<ActiviteitDto> GedeeldeActiviteitMetMakerAsync(Guid subthemaId, Guid makerId)
+    {
+        await using var context = _db.MaakContext();
+        var subthema = await context.Subthemas.Include(s => s.Activiteiten).SingleAsync(s => s.Id == subthemaId);
+        var activiteit = subthema.VoegActiviteitToe($"Proef {Guid.NewGuid():N}", ActiviteitType.Experiment, makerId: makerId);
+        context.Activiteiten.Add(activiteit);
+        await context.SaveChangesAsync();
+        return new ActiviteitDto(activiteit.Id, makerId);
+    }
+
     /// <summary>Links a goal to an activiteit, as directie. Returns the link's id.</summary>
     public async Task<Guid> KoppelAsync(Guid activiteitId, string code)
     {
@@ -241,7 +256,7 @@ internal sealed class RechtenTestOpzet
 
     public sealed record IdDto(Guid Id);
 
-    public sealed record ActiviteitDto(Guid Id, Guid? MakerId);
+    public sealed record ActiviteitDto(Guid Id, Guid? MakerId, Guid? EigenaarId = null, string? EigenaarNaam = null);
 
     public sealed record RunDto(
         Guid Id,

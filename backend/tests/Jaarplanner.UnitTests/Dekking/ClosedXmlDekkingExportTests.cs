@@ -82,7 +82,8 @@ public class ClosedXmlDekkingExportTests
         // in this file asserts that absence rather than leaving it to the default's silence.
         Lacuneoorzaak? oorzaak = Lacuneoorzaak.GeenThema,
         IReadOnlyList<string>? kandidaten = null,
-        IReadOnlyList<string>? fiches = null) =>
+        IReadOnlyList<string>? fiches = null,
+        IReadOnlyList<string>? activiteiten = null) =>
         new(
             code,
             doelsoort,
@@ -100,7 +101,8 @@ public class ClosedXmlDekkingExportTests
             gedekt ? null : oorzaak,
             kandidaten ?? Array.Empty<string>(),
             gedekt ? Dekkingsstap.Gedekt : Dekkingsstap.Geen,
-            Array.Empty<string>());
+            Array.Empty<string>(),
+            activiteiten ?? Array.Empty<string>());
 
     private static DekkingWeergave Weergave(
         IReadOnlyList<LeerplandoelDekking>? doelen = null,
@@ -328,6 +330,24 @@ public class ClosedXmlDekkingExportTests
         Assert.Equal("Herfst; Turnen (algemene fiche)", blad.Cell(eerste, (int)DekkingKolom.DekkendeThemas).GetString());
         Assert.Equal("Ja", blad.Cell(eerste + 1, (int)DekkingKolom.Gedekt).GetString());
         Assert.Equal("Onthaal (algemene fiche)", blad.Cell(eerste + 1, (int)DekkingKolom.DekkendeThemas).GetString());
+    }
+
+    [Fact]
+    public void Een_eigen_activiteit_staat_na_de_fiches_en_zegt_dat_ze_een_eigen_activiteit_is()
+    {
+        // ADR-0049 D7: an own activiteit is neither a thema nor a subthema, so the document says what it is.
+        var doelen = new[]
+        {
+            Doel("LO-1", gedekt: true, themas: new[] { "Herfst" }, fiches: new[] { "Turnen" }, activiteiten: new[] { "Bladeren drogen" }),
+        };
+
+        var bestand = Export().Genereer(Weergave(doelen));
+        var blad = Blad(bestand, out var workbook);
+        using var _ = workbook;
+
+        Assert.Equal(
+            "Herfst; Turnen (algemene fiche); Bladeren drogen (eigen activiteit)",
+            blad.Cell(Kopregel(blad) + 1, (int)DekkingKolom.DekkendeThemas).GetString());
     }
 
     [Fact]

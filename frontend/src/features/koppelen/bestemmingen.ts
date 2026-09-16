@@ -104,14 +104,18 @@ export function filterBestemmingen(
 }
 
 /** The rights the sheet's link controls ask for, as `Themarij` asks them. A test passes `magVoor(ik)`. */
-export type Koppelrechten = Pick<Mag, "subdoelenBeheren" | "doelenKoppelen" | "activiteitBewerken">;
+export type Koppelrechten = Pick<
+  Mag,
+  "subdoelenBeheren" | "doelenKoppelen" | "activiteitDoelenKoppelen" | "eigenActiviteitMaken" | "gedeeldeActiviteitMaken"
+>;
 
 /**
  * The thema's where this gebruiker has a link control to press (E6-02 slice 4, fix round 2; the E3-06 rule).
  *
  * Mirrors `Themarij` level by level. A thema itself takes no leerplandoel (FB-043), so what counts is a subthema's
- * "Koppel aan subthema" where they may manage subdoelen (R24); its activiteiten, and a new activiteit with the doel on it, where
- * they may link goals (R19, with R17 for the new one). A thema with none of these opened onto rows with nothing to
+ * "Koppel aan subthema" where they may manage subdoelen (R24); an activiteit whose goals they may link (R19, or its
+ * owner, ADR-0049 E3); and a new activiteit with the doel on it, which is an own one for a leerkracht of that leeftijd
+ * and a shared one, with R19, for a hoofdleerkracht. A thema with none of these opened onto rows with nothing to
  * press: a hoofdleerkracht of K3 met it on a thema without subthema's.
  *
  * Only whole thema's are dropped. Inside one that stays, `Themarij` already leaves out each control the gebruiker
@@ -122,8 +126,11 @@ export function themasMetKoppelactie(themas: readonly ThemaWeergave[], mag: Kopp
     thema.subthemas.some(
       (subthema) =>
         mag.subdoelenBeheren(subthema.leeftijd) ||
-        (mag.doelenKoppelen(subthema.leeftijd) &&
-          (subthema.activiteiten.length > 0 || mag.activiteitBewerken(subthema.leeftijd))),
+        mag.eigenActiviteitMaken(subthema.leeftijd) ||
+        (mag.gedeeldeActiviteitMaken(subthema.leeftijd) && mag.doelenKoppelen(subthema.leeftijd)) ||
+        subthema.activiteiten.some((activiteit) =>
+          mag.activiteitDoelenKoppelen({ ...activiteit, leeftijd: subthema.leeftijd }),
+        ),
     ),
   );
 }

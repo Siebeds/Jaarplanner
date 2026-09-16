@@ -23,7 +23,8 @@ public sealed class Activiteit
         ActiviteitType? activiteitType,
         string? hoek = null,
         string? verwachteUitkomsten = null,
-        Guid? makerId = null)
+        Guid? makerId = null,
+        Guid? eigenaarId = null)
     {
         SubthemaId = subthemaId;
         Naam = Require(naam, nameof(naam));
@@ -31,6 +32,7 @@ public sealed class Activiteit
         Hoek = Optional(hoek);
         VerwachteUitkomsten = Optional(verwachteUitkomsten);
         MakerId = makerId == Guid.Empty ? null : makerId;
+        EigenaarId = eigenaarId == Guid.Empty ? null : eigenaarId;
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -50,6 +52,20 @@ public sealed class Activiteit
     /// <para>Set once, at creation, and never by the import's overwrite path.</para>
     /// </summary>
     public Guid? MakerId { get; private set; }
+
+    /// <summary>
+    /// The gebruiker whose <b>own activiteit</b> this is (ADR-0049 E1), or <c>null</c> for a shared one.
+    /// <para>
+    /// Set once, at creation, and by nothing else. The database sets it to <c>null</c> when that gebruiker is removed,
+    /// which makes the activiteit shared (D8). An own activiteit is read by its leeftijd's leerkrachten and
+    /// hoofdleerkrachten, edited only by its owner and directie, and counts for dekking only where it is planned
+    /// (Art. V.1, VI.1). Who may do what is the rights matrix's; this type holds no rights logic.
+    /// </para>
+    /// </summary>
+    public Guid? EigenaarId { get; private set; }
+
+    /// <summary>Whether this is an own activiteit rather than a shared one (ADR-0049).</summary>
+    public bool IsEigen => EigenaarId is not null;
 
     /// <summary>The activiteit name.</summary>
     public string Naam { get; private set; }
