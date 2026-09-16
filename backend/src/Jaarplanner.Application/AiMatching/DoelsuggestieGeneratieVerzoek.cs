@@ -1,22 +1,15 @@
-using Jaarplanner.Application.AiAuthoring;
-
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// What the teacher asks for when they trigger a match run for a thema (E2-08, FR-4.1): optionally,
-/// <b>which</b> Op.stap leerplandoelen the AI may choose from.
+/// What the person asks for when they request doelsuggesties for a thema (FB-053, FR-4.1): optionally, for which
+/// leeftijden. The minimumdoelen searched are those of the mijlpalen these leeftijden meet (ADR-0052 O3).
 /// <para>
-/// <b>The jaar/fasen bound the run</b> (TB-007). The ones in <see cref="Selectie"/> when it names any; otherwise the
-/// leeftijden of the thema's subthema's. A thema without subthema's and a selection without jaar/fasen is refused, so a
-/// run never sends the whole catalogue. The screen offers the choice, pre-set to the subthema's leeftijden.
-/// </para>
-/// <para>
-/// <b>The discipline dimension stays the caller's.</b> "Which disciplines does the school start with?" is still an open
-/// Art. XIV decision, so neither the controller nor the service picks one.
+/// Without leeftijden the leeftijden of the thema's subthema's apply; a thema without subthema's is then refused, so the
+/// person picks them first (TB-007). The screen offers the choice, pre-set to the subthema's leeftijden.
 /// </para>
 /// </summary>
 public sealed record DoelsuggestieGeneratieVerzoek
 {
-    /// <summary>The bounding selection for the candidate leerplandoelen; without jaar/fasen the thema's own leeftijden apply.</summary>
-    public LeerdoelSelectie? Selectie { get; init; }
+    /// <summary>The jaar/fase codes (JK, K2, K3, L1–L6) the run is for; null or empty means the subthema's leeftijden.</summary>
+    public IReadOnlyCollection<string>? JaarFasen { get; init; }
 }

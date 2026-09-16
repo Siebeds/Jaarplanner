@@ -32,7 +32,7 @@ public interface IRechtenbronnen
     /// <summary>The leeftijd of a proposed new subthema (FB-057, ADR-0050): for deciding it.</summary>
     Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default);
 
-    /// <summary>An activiteitvoorstel with its asker and its subthema's leeftijd (FB-025, ADR-0052): for deciding it.</summary>
+    /// <summary>An activiteitvoorstel with its asker and its subthema's leeftijd (FB-025, ADR-0054): for deciding it.</summary>
     Task<Activiteitvoorstelbron?> VoorActiviteitvoorstelAsync(Guid activiteitvoorstelId, CancellationToken cancellationToken = default);
 
     /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
@@ -84,7 +84,7 @@ public interface IRechtenbronnen
 public sealed record Woordwebbron(Guid WoordwebId, Guid EigenaarId);
 
 /// <summary>
-/// One AI activiteitvoorstel (FB-025, ADR-0052): the resource of the <c>ActiviteitvoorstelBeslissen</c> row, whose one
+/// One AI activiteitvoorstel (FB-025, ADR-0054): the resource of the <c>ActiviteitvoorstelBeslissen</c> row, whose one
 /// column is its asker while she may still make an own activiteit at that leeftijd. A type of its own, so it opens no
 /// other row. Directie passes the row as it passes every row (R3, A3).
 /// </summary>

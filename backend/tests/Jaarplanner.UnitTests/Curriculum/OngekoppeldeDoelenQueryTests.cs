@@ -37,17 +37,13 @@ public sealed class OngekoppeldeDoelenQueryTests
                 Leerdoel("D-GEWEIGERD"),
                 Leerdoel("E-ONGEKOPPELD"));
 
-            // One thema carrying four thema-level doelsuggesties, one per status.
+            // One activiteit carrying four goal links, one per status.
             var thema = new Thema("Herfst", duurWeken: 4);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("A-AANVAARD", KoppelingStatus.Voorgesteld, "m"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("B-MANUEEL", KoppelingStatus.Voorgesteld, "m"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("C-VOORGESTELD", KoppelingStatus.Voorgesteld, "m"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("D-GEWEIGERD", KoppelingStatus.Voorgesteld, "m"));
-
-            // Teacher decisions (E2-05): accept A, adjust B to manueel, reject D — C stays voorgesteld.
-            thema.Doelsuggesties.Single(k => k.LeerplandoelCode == "A-AANVAARD").WijzigStatus(KoppelingStatus.Aanvaard);
-            thema.Doelsuggesties.Single(k => k.LeerplandoelCode == "B-MANUEEL").WijzigStatus(KoppelingStatus.Manueel);
-            thema.Doelsuggesties.Single(k => k.LeerplandoelCode == "D-GEWEIGERD").WijzigStatus(KoppelingStatus.Geweigerd);
+            var activiteit = thema.VoegSubthemaToe("Bladeren", 2, "K3").VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek);
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("A-AANVAARD", KoppelingStatus.Aanvaard, "m"));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("B-MANUEEL", KoppelingStatus.Manueel, "m"));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("C-VOORGESTELD", KoppelingStatus.Voorgesteld, "m"));
+            activiteit.VoegDoelkoppelingToe(new DoelKoppeling("D-GEWEIGERD", KoppelingStatus.Geweigerd, "m"));
 
             ctx.Themas.Add(thema);
             await ctx.SaveChangesAsync();

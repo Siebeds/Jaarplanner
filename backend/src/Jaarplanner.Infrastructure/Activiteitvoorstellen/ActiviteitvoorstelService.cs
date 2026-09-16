@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 namespace Jaarplanner.Infrastructure.Activiteitvoorstellen;
 
 /// <summary>
-/// EF Core implementation of <see cref="IActiviteitvoorstelService"/> (FB-025, ADR-0052). The AI step is prompt, call,
+/// EF Core implementation of <see cref="IActiviteitvoorstelService"/> (FB-025, ADR-0054). The AI step is prompt, call,
 /// shape check, then <see cref="ActiviteitvoorstelValidator"/>; accepting writes the same own activiteit a leerkracht
 /// creates by hand, with its goal links <c>aanvaard</c>, so every reader of activiteiten counts an accepted proposal as
 /// an own activiteit and none counts an open one.

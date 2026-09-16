@@ -450,6 +450,16 @@
   }
 }
 
+/* A week without a schooldag on the year timeline (ADR-0053): hatched in the page's own two surfaces, so a vacation
+   reads as a gap without spending a hue. The name inside the gap carries the meaning. */
+@utility vakantiegat {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--color-vlak-diep) 0 6px,
+    var(--color-vlak) 6px 12px
+  );
+}
+
 @utility waas-in {
   animation: waas-in 160ms ease-out;
 }

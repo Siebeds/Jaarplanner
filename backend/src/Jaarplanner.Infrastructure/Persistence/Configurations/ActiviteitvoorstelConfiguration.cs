@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Activiteitvoorstel"/> (FB-025, ADR-0052). It goes with its subthema and with its asker
+/// EF Core mapping for <see cref="Activiteitvoorstel"/> (FB-025, ADR-0054). It goes with its subthema and with its asker
 /// (D9), as a woordweb does; the activiteit an accepted one became outlives it as ordinary content, so that link is
 /// cleared, not cascaded. The goal codes are a text array: they name goals the proposal holds no link to, and an
 /// accepted proposal's goals live on the activiteit's own links.

@@ -51,57 +51,40 @@ public sealed class DekkingsprognoseTests
     [Fact]
     public async Task Het_thema_inplannen_volstaat_niet_voor_een_subdoel()
     {
-        // D3: the thema above is placed, the subthema is not. Only a doelsuggestie of the thema would follow the thema.
-        var (service, opslag) = Maak(
+        // D3: the thema above is placed, the subthema is not. Since ADR-0052 nothing on the thema reaches a leerplandoel.
+        var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
-            subthemas: [new Subthemakoppeling("K3-01", "Herfst", "Bladeren", IsIngepland: false)]);
+            subthemas: [new Subthemakoppeling("K3-01", "Herfst", "Bladeren", IsIngepland: false)],
+            themaMinimumdoelen: [new Themaminimumdoelkoppeling("K-1", HerfstId, "Herfst")],
+            leerplandoelMinimumdoel: "K-1");
 
         var dekking = await service.BerekenAsync(KlasId);
 
         Assert.Equal(Dekkingsstap.Prognose, Doel(dekking, "K3-01").Stap);
-        Assert.Equal([HerfstId], opslag.GevraagdeThemaIds);
+        Assert.Equal(Dekkingsstap.Gedekt, Minimumdoel(dekking, "K-1").Stap);
     }
 
     [Fact]
-    public async Task Een_aanvaarde_doelsuggestie_staat_in_de_prognose_en_is_gedekt_met_het_ingeplande_thema()
+    public async Task Een_voorgestelde_themaplaatsing_laat_een_leerplandoel_niet_wachten_op_een_beslissing()
     {
-        var kandidaat = new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: true, IsDoelsuggestie: true);
-
-        var (voor, _) = Maak(kandidaten: [kandidaat]);
-        var zonderPlaatsing = Doel(await voor.BerekenAsync(KlasId), "K3-01");
-        Assert.Equal(Dekkingsstap.Prognose, zonderPlaatsing.Stap);
-        Assert.Equal(["Herfst"], zonderPlaatsing.PrognoseBronnen);
-        Assert.Equal(Lacuneoorzaak.NietIngepland, zonderPlaatsing.Oorzaak);
-
-        var (na, _) = Maak(
-            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
-            koppelingen: [new DekkendeKoppeling("K3-01", "Herfst")],
-            kandidaten: [kandidaat]);
-        var metPlaatsing = Doel(await na.BerekenAsync(KlasId), "K3-01");
-        Assert.Equal(Dekkingsstap.Gedekt, metPlaatsing.Stap);
-        Assert.Equal(["Herfst"], metPlaatsing.DekkendeThemas);
-    }
-
-    [Fact]
-    public async Task Een_voorgestelde_themaplaatsing_laat_een_aanvaarde_doelsuggestie_wachten_op_een_beslissing()
-    {
+        // ADR-0052: accepting the thema's placement would not cover the leerplandoel, so the cause is its subthema.
         var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
-            kandidaten: [new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: true, IsDoelsuggestie: true)],
+            kandidaten: [new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: true)],
             subthemas: [new Subthemakoppeling("K3-01", "Herfst", "Bladeren", IsIngepland: false)]);
 
         var doel = Doel(await service.BerekenAsync(KlasId), "K3-01");
 
         Assert.Equal(Dekkingsstap.Prognose, doel.Stap);
-        Assert.Equal(Lacuneoorzaak.WachtOpBeslissing, doel.Oorzaak);
-        Assert.Equal(["Herfst"], doel.KandidaatThemas);
+        Assert.Equal(Lacuneoorzaak.NietIngepland, doel.Oorzaak);
+        Assert.Equal(["Bladeren (Herfst)"], doel.KandidaatThemas);
     }
 
     [Fact]
     public async Task Een_onbesliste_koppeling_alleen_zet_een_doel_niet_in_de_prognose()
     {
         var (service, _) = Maak(
-            kandidaten: [new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: false, IsDoelsuggestie: false)]);
+            kandidaten: [new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: false)]);
 
         var doel = Doel(await service.BerekenAsync(KlasId), "K3-01");
 
@@ -277,11 +260,11 @@ public sealed class DekkingsprognoseTests
     // ── Vooruitzicht ────────────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Het_vooruitzicht_telt_een_ingepland_subthema_in_beide_cijfers_en_een_voorstel_alleen_in_het_plafond()
+    public async Task Het_vooruitzicht_telt_een_ingepland_subthema_in_beide_cijfers_en_een_themavoorstel_in_geen_van_beide()
     {
-        var (service, opslag) = Maak(
+        var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
-            koppelingen: [new DekkendeKoppeling("K3-02", "Herfst")],
+            themaMinimumdoelen: [new Themaminimumdoelkoppeling("K-1", HerfstId, "Herfst")],
             subthemas:
             [
                 new Subthemakoppeling("K3-01", "Winter", "Sneeuw", IsIngepland: true),
@@ -291,8 +274,7 @@ public sealed class DekkingsprognoseTests
         var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
 
         Assert.Equal(1, vooruitzicht.AantalGedekt);
-        Assert.Equal(2, vooruitzicht.AantalMogelijkGedekt);
-        Assert.Equal([HerfstId], opslag.GevraagdeThemaIds);
+        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
     }
 
     // ── Jaarfasen.MijlpalenVoor ─────────────────────────────────────────────────────────────────────────────────
@@ -311,7 +293,6 @@ public sealed class DekkingsprognoseTests
 
     private static (DekkingService Service, FakeDekkingOpslag Opslag) Maak(
         IReadOnlyList<ThemaplaatsingWeergave>? plaatsingen = null,
-        IReadOnlyList<DekkendeKoppeling>? koppelingen = null,
         IReadOnlyList<Subthemakoppeling>? subthemas = null,
         IReadOnlyList<KandidaatKoppeling>? kandidaten = null,
         IReadOnlyList<Themaminimumdoelkoppeling>? themaMinimumdoelen = null,
@@ -321,7 +302,6 @@ public sealed class DekkingsprognoseTests
     {
         var fase = Jaarfasen.IsBekend(jaarfase) ? jaarfase : "K3";
         var opslag = new FakeDekkingOpslag(
-            koppelingen ?? [],
             [
                 Leerplandoel("K3-01", fase, leerplandoelMinimumdoel),
                 Leerplandoel("K3-02", fase),
@@ -347,9 +327,12 @@ public sealed class DekkingsprognoseTests
             "Testklas",
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             "2026-2027",
-            "themaperiode (4-6 weken)",
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2027, 6, 30),
             plaatsingen ?? [],
-            []);
+            // Dekking reads neither the lesweken nor the balance, and must not start to.
+            [],
+            new JaarbalansWeergave(0, 0, 0));
 
         return (new DekkingService(new FakeJaarplanLezer(plan), opslag), opslag);
     }
@@ -367,16 +350,15 @@ public sealed class DekkingsprognoseTests
             Guid.NewGuid(),
             themaId,
             themaNaam,
-            "Themaperiode",
             new DateOnly(2026, 9, 1),
-            isVervallen ? null : new DateOnly(2026, 10, 9),
-            isVervallen ? null : 1,
+            new DateOnly(2026, 10, 9),
             isVervallen,
             status.ToString(),
             null,
             false,
             [],
-            4);
+            4,
+            null);
 
     private static LeerplandoelDekking Doel(DekkingWeergave dekking, string code) =>
         dekking.Doelen.Single(d => d.Code == code);

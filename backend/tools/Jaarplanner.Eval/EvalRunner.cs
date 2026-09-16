@@ -314,8 +314,8 @@ public sealed class EvalRunner
         // The production parser: an answer production would reject counts as "nothing proposed" here (Art. IV.5).
         var parse = DoelMatchResponseParser.Parse(completion);
 
-        // As production step 6 does (ThemaOpbouwAssistService): a themadoel already chosen is never proposed again,
-        // so such a code is dropped before scoring rather than counted as a hit or an error.
+        // A code the evalset lists as a chosen themadoel is dropped before scoring rather than counted as a hit or an
+        // error. (Production step 6 no longer does this: since FB-053 the chosen themadoelen are minimumdoel refs.)
         var themadoelen = new HashSet<string>(
             (geval.Thema.GekozenThemadoelCodes ?? []).Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()),
             StringComparer.Ordinal);

@@ -12,7 +12,7 @@ import type {
 
 const sleutel = (subthemaId: string) => ["activiteitvoorstellen", subthemaId] as const;
 
-/** The signed-in gebruiker's open activiteit proposals under one subthema (FB-025, ADR-0052 D2). */
+/** The signed-in gebruiker's open activiteit proposals under one subthema (FB-025, ADR-0054 D2). */
 export function useActiviteitvoorstellen(subthemaId: string, ingeschakeld: boolean) {
   return useQuery({
     queryKey: sleutel(subthemaId),

@@ -29,6 +29,7 @@ const SMAL = "max-w-[57.5rem]";
  */
 export function Schermkop({
   titel,
+  icoon,
   boven,
   rechts,
   onder,
@@ -36,6 +37,8 @@ export function Schermkop({
   smal,
 }: {
   titel: string;
+  /** An emoji before the title, decorative (a thema's, FB-060). */
+  icoon?: string | null;
   boven?: string;
   rechts?: ReactNode;
   onder?: ReactNode;
@@ -56,7 +59,14 @@ export function Schermkop({
           {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
               deep in a week needs to be told which period those dates belong to. */}
           {boven ? <p className="text-micro uppercase text-inkt-zwak">{boven}</p> : null}
-          <h1 className="font-display text-scherm text-inkt sm:text-[2rem]">{titel}</h1>
+          <h1 className="font-display text-scherm text-inkt sm:text-[2rem]">
+            {icoon ? (
+              <span aria-hidden="true" className="mr-[0.3em]">
+                {icoon}
+              </span>
+            ) : null}
+            {titel}
+          </h1>
         </div>
         {rechts}
       </div>

@@ -15,7 +15,7 @@ public sealed record PromptOnderzoeksvraag(string Sleutel, Guid Id, string Vraag
 public sealed record BestaandeActiviteit(string Naam, ActiviteitType? ActiviteitType);
 
 /// <summary>
-/// What the AI is told for one subthema and one asker (FB-025, ADR-0052). Only the school's own data: the thema, the
+/// What the AI is told for one subthema and one asker (FB-025, ADR-0054). Only the school's own data: the thema, the
 /// subthema with its onderzoeksvragen and decided subdoelen, the activiteiten already there (the shared ones and the
 /// asker's own) and the names she rejected. No gebruiker and no pupil data.
 /// </summary>
@@ -34,7 +34,7 @@ public sealed record ActiviteitvoorstelContext(
 /// Builds the activiteitvoorstellen request for <see cref="IAiClient"/>. A pure function of its input, like the other
 /// builders, so it is snapshot-testable.
 /// <para>
-/// <b>The third prompt that lets the model use its own knowledge</b> (Art. IV.4, ADR-0052 A1): for an activiteit's name,
+/// <b>The third prompt that lets the model use its own knowledge</b> (Art. IV.4, ADR-0054 A1): for an activiteit's name,
 /// soort, expected outcomes and length. Every goal it links must be one of the subdoelen listed, by its exact code, and
 /// it writes no lesson material (Art. I.2).
 /// </para>

@@ -16,7 +16,7 @@ public sealed record ActiviteitPlan(
 public sealed record ActiviteitvoorstelPlan(IReadOnlyList<ActiviteitPlan> Activiteiten, int AantalOvergeslagen);
 
 /// <summary>
-/// Keeps only what ADR-0052 D3, D5, D6 and D7 allow of a readable answer, item by item, and drops the rest. A pure
+/// Keeps only what ADR-0054 D3, D5, D6 and D7 allow of a readable answer, item by item, and drops the rest. A pure
 /// function, so every rule is a unit test. The first item with a name wins; a later one with the same name is dropped,
 /// and so is every item past <see cref="ActiviteitvoorstelContext.Aantal"/>.
 /// </summary>

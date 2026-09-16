@@ -1,5 +1,3 @@
-using Jaarplanner.Application.Ai;
-using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
@@ -11,9 +9,9 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// Persistence of <see cref="Jaarplan"/> + its owned <see cref="Themaplaatsing"/> collection, and the Schooljaar↔Klas
-/// containment, against real PostgreSQL (E3-01, Art. IX.3). Owned collections, the <c>DateOnly</c> → <c>date</c>
-/// mapping of the block key, the enum-as-name columns, the unique indexes and the FK behaviours are all things the
-/// EF in-memory provider cannot honestly verify — the E1 reopening proved exactly that.
+/// containment, against real PostgreSQL (Art. IX.3, ADR-0053). Owned collections, the <c>DateOnly</c> → <c>date</c>
+/// mapping of a placement's days, the enum-as-name columns, the unique indexes and the FK behaviours are all things the
+/// EF in-memory provider cannot honestly verify.
 /// </summary>
 public sealed class JaarplanPersistentieTests : IAsyncLifetime
 {
@@ -37,22 +35,18 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
-    /// <summary>
-    /// The whole aggregate round-trips: the placement's block <b>start date</b>, its tier, its status, its motivation
-    /// and — the flag E4 consumes — its <c>vergrendeld</c> value.
-    /// </summary>
+    /// <summary>The whole aggregate round-trips: a placement's days, its status, its motivation and its lock.</summary>
     [PostgresFact]
     public async Task Jaarplan_met_plaatsingen_rondtript()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "seizoen past hier");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "seizoen past hier");
             var vergrendeld = jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Subthemaperiode, blokStart, KoppelingStatus.Aanvaard, "fijnere periode");
+                themaId, D(2026, 10, 5), D(2026, 10, 16), KoppelingStatus.Aanvaard, "later");
             vergrendeld.StelVergrendelingIn(true);
 
             context.Jaarplannen.Add(jaarplan);
@@ -66,35 +60,31 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             Assert.Equal(klasId, opnieuw.KlasId);
             Assert.Equal(2, opnieuw.Plaatsingen.Count);
 
-            var grof = opnieuw.Plaatsingen.Single(p => p.BlokNiveau == Planningsblokniveau.Themaperiode);
-            Assert.Equal(blokStart, grof.BlokStart);
-            Assert.Equal(KoppelingStatus.Voorgesteld, grof.Status);
-            Assert.Equal("seizoen past hier", grof.AiMotivatie);
-            Assert.False(grof.Vergrendeld);
+            var eerste = opnieuw.Plaatsingen[0];
+            Assert.Equal((D(2026, 9, 1), D(2026, 9, 30)), (eerste.Van, eerste.Tot));
+            Assert.Equal(KoppelingStatus.Voorgesteld, eerste.Status);
+            Assert.Equal("seizoen past hier", eerste.AiMotivatie);
+            Assert.False(eerste.Vergrendeld);
 
-            // The lock survived storage — without this, `vergrendeld` would be a flag that quietly resets and E4's
-            // regeneration would overwrite a thema the teacher pinned.
-            var fijn = opnieuw.Plaatsingen.Single(p => p.BlokNiveau == Planningsblokniveau.Subthemaperiode);
-            Assert.True(fijn.Vergrendeld);
-            Assert.Equal(KoppelingStatus.Aanvaard, fijn.Status);
+            var tweede = opnieuw.Plaatsingen[1];
+            Assert.Equal((D(2026, 10, 5), D(2026, 10, 16)), (tweede.Van, tweede.Tot));
+            Assert.True(tweede.Vergrendeld);
+            Assert.Equal(KoppelingStatus.Aanvaard, tweede.Status);
         }
     }
 
     /// <summary>
-    /// The block key is stored as a real <c>date</c> and the two enums by name — legible in the database, and, more
-    /// to the point, there is <b>no ordinal column at all</b> (ADR-0020 §3): the schema offers no way to persist an
-    /// unstable key even by mistake.
+    /// A placement's days are real <c>date</c> columns and nothing of the old period key is left (ADR-0053 decision 1).
     /// </summary>
     [PostgresFact]
-    public async Task De_bloksleutel_is_een_datum_en_er_is_geen_ordinaalkolom()
+    public async Task De_dagen_zijn_datums_en_er_is_geen_periodesleutel()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "x");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "x");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
@@ -104,28 +94,15 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
             var kolommen = await context.Database
                 .SqlQueryRaw<string>(
                     """
-                    SELECT column_name AS "Value" FROM information_schema.columns
+                    SELECT column_name || ':' || data_type AS "Value" FROM information_schema.columns
                     WHERE table_name = 'themaplaatsingen' ORDER BY column_name
                     """)
                 .ToListAsync();
 
-            Assert.Contains("BlokStart", kolommen);
-            Assert.DoesNotContain("Ordinaal", kolommen);
-            Assert.DoesNotContain("BlokOrdinaal", kolommen);
-
-            var type = await context.Database
-                .SqlQueryRaw<string>(
-                    """
-                    SELECT data_type AS "Value" FROM information_schema.columns
-                    WHERE table_name = 'themaplaatsingen' AND column_name = 'BlokStart'
-                    """)
-                .SingleAsync();
-            Assert.Equal("date", type);
-
-            var niveaus = await context.Database
-                .SqlQueryRaw<string>("""SELECT "BlokNiveau" AS "Value" FROM themaplaatsingen""")
-                .ToListAsync();
-            Assert.Equal(["Themaperiode"], niveaus);
+            Assert.Contains("Van:date", kolommen);
+            Assert.Contains("Tot:date", kolommen);
+            Assert.DoesNotContain(kolommen, k => k.StartsWith("BlokStart:") || k.StartsWith("BlokNiveau:"));
+            Assert.DoesNotContain(kolommen, k => k.Contains("Ordinaal"));
 
             var statussen = await context.Database
                 .SqlQueryRaw<string>("""SELECT "Status" AS "Value" FROM themaplaatsingen""")
@@ -135,41 +112,26 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// <b>A placement added to an ALREADY PERSISTED plan is inserted, not "updated".</b> This pins a real defect found
-    /// on 2026-07-30 while building E3-04's persistence half: <c>Themaplaatsing.Id</c> is assigned in the constructor,
-    /// and EF's default <c>OnAdd</c> value generation on a Guid key makes <c>DetectChanges</c> read "the key is already
-    /// set" as "this row already exists". A brand-new placement on a loaded <see cref="Jaarplan"/> was therefore tracked
-    /// as <c>Modified</c>, and <c>SaveChanges</c> issued an UPDATE for a row that did not exist:
-    /// <c>DbUpdateConcurrencyException: Attempted to update or delete an entity that does not exist in the store</c>. The
-    /// key is now <c>ValueGeneratedNever</c>.
-    /// <para>
-    /// <b>Why it was invisible.</b> Every green path so far either created the plan and its placements in one
-    /// <c>SaveChanges</c>, or regenerated with an AI answer that added nothing (empty, refused or duplicate). A second
-    /// generation run that actually adds a thema — the ordinary FR-8 case, and the case E3-04's kept parameters exist
-    /// for — was never exercised. That is the whole lesson: the flow nobody tested was not an edge case, it was the
-    /// second time a teacher presses the button.
-    /// </para>
+    /// <b>A placement added to an ALREADY PERSISTED plan is inserted, not "updated"</b> — the
+    /// <c>ValueGeneratedNever</c> key defect found on 2026-07-30 (a constructor-assigned Guid read as an existing row).
     /// </summary>
     [PostgresFact]
     public async Task Een_plaatsing_toevoegen_aan_een_bestaand_plan_slaagt()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "eerste run");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "eerste");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
 
         await using (var context = _db.MaakContext())
         {
-            // The second run: the plan already exists in the database and gains a placement.
             var jaarplan = await context.Jaarplannen.SingleAsync();
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart.AddDays(70), KoppelingStatus.Voorgesteld, "tweede run");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 11, 9), D(2026, 11, 20), KoppelingStatus.Voorgesteld, "tweede");
             await context.SaveChangesAsync();
         }
 
@@ -177,280 +139,22 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         {
             var jaarplan = await context.Jaarplannen.SingleAsync();
             Assert.Equal(2, jaarplan.Plaatsingen.Count);
-            Assert.Contains(jaarplan.Plaatsingen, p => p.AiMotivatie == "tweede run");
+            Assert.Contains(jaarplan.Plaatsingen, p => p.AiMotivatie == "tweede");
 
-            var aantal = await context.Database
-                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
-                .SingleAsync();
-            Assert.Equal(2, aantal);
+            Assert.Equal(2, await TelRijenAsync(context));
         }
     }
 
     /// <summary>
-    /// <b>E4-06 / FR-8.4, on the real stack: a locked placement survives a full regeneration while an unlocked
-    /// proposal beside it is replaced.</b>
-    /// <para>
-    /// The unit suite already pins the rule in <c>JaarplanGeneratieServiceTests.Hergeneratie_behoudt_vergrendelde_en_besliste_plaatsingen</c>,
-    /// against a fake storage port that models no EF at all, and <c>JaarplanEndpointsTests.Beslissing_en_vergrendeling_overleven_een_herlaad</c>
-    /// drives the endpoints over the in-memory provider. Neither proves this. The fake keeps the aggregate in a field,
-    /// so "the placement survived" cannot fail there; and the endpoint test locks a placement it has <i>also</i> accepted
-    /// and then regenerates with an <b>empty</b> AI answer, so <see cref="Themaplaatsing.Vergrendeld"/> is not the
-    /// variable under test in either direction: the placement would have survived on its status alone, and nothing was
-    /// proposed that could have displaced it.
-    /// </para>
-    /// <para>
-    /// So this test isolates the flag. Both placements are <c>Voorgesteld</c> and differ <b>only</b> in the lock, and the
-    /// model answers with a real plan, so the run genuinely discards one of the two. And it runs against real Postgres
-    /// because the discard is a removal from an <i>owned collection</i>: the in-memory provider can accept that with no
-    /// DELETE ever reaching a table, which is the exact class of defect this file exists for. Asserted on the rows, not
-    /// only on the aggregate.
-    /// </para>
-    /// <para>
-    /// <b>Full regeneration only.</b> Per-period regeneration is E4-05 and does not exist — <c>GenereerAsync</c> takes no
-    /// period scope — so nothing here claims the partial half of FR-8.4.
-    /// </para>
+    /// A hand-placement through the production service creates the plan when the class has none, and stores the thema
+    /// in two rows when a vacation lies inside it (ADR-0053 R3). The herfstvakantie runs 2–8 November; a 5-week thema
+    /// from Monday 19 October ends before Monday 30 November, split around it.
     /// </summary>
     [PostgresFact]
-    public async Task Een_vergrendeld_voorstel_overleeft_een_volledige_hergeneratie()
+    public async Task Een_handmatige_plaatsing_maakt_het_jaarplan_en_splitst_rond_een_vakantie()
     {
-        var (klasId, vastThemaId, losThemaId, losThemaNaam) = await SeedTweeThemasAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
-        Guid vastId;
-        Guid losId;
+        var (klasId, themaId) = await SeedAsync();
 
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = new Jaarplan(klasId);
-
-            // The two differ in ONE bit. Same status, same tier, both AI proposals.
-            var vast = jaarplan.VoegPlaatsingToe(
-                vastThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Voorgesteld, "vastgezet");
-            vast.StelVergrendelingIn(true);
-
-            var los = jaarplan.VoegPlaatsingToe(
-                losThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "los voorstel");
-
-            context.Jaarplannen.Add(jaarplan);
-            await context.SaveChangesAsync();
-            vastId = vast.Id;
-            losId = los.Id;
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            // The production service on the production storage port; only the model is stubbed (Art. IV.6). It proposes
-            // the loose thema in a THIRD period, so the run has something to place and something to discard.
-            var service = new JaarplanGeneratieService(
-                new VastAntwoordAiClient(
-                    $$"""
-                    {"plaatsingen":[{"blokStart":"{{blokken[2].Start:yyyy-MM-dd}}","thema":"{{losThemaNaam}}","motivatie":"nieuw voorstel"}]}
-                    """),
-                new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-                new EfJaarplanOpslag(context));
-
-            var resultaat = await service.GenereerAsync(klasId);
-
-            Assert.True(resultaat.IsGeslaagd);
-            Assert.Equal(1, resultaat.AantalNieuw);
-
-            // Exactly one placement was kept, and exactly one was thrown away — the lock is the only reason either way.
-            Assert.Equal(1, resultaat.AantalBehouden);
-            Assert.Equal(1, resultaat.AantalVervangen);
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
-
-            // The locked one is untouched: same id, same period, still locked, still carrying its motivation.
-            var vast = jaarplan.VindPlaatsing(vastId);
-            Assert.NotNull(vast);
-            Assert.Equal(blokken[0].Start, vast!.BlokStart);
-            Assert.True(vast.Vergrendeld);
-            Assert.Equal(KoppelingStatus.Voorgesteld, vast.Status);
-            Assert.Equal("vastgezet", vast.AiMotivatie);
-
-            // The unlocked twin is gone, and gone from the TABLE — an owned element dropped from its parent's backing
-            // list is exactly what the in-memory provider can appear to accept without issuing a DELETE.
-            Assert.Null(jaarplan.VindPlaatsing(losId));
-            var overlevendeIds = await context.Database
-                .SqlQueryRaw<Guid>("""SELECT "Id" AS "Value" FROM themaplaatsingen""")
-                .ToListAsync();
-            Assert.Contains(vastId, overlevendeIds);
-            Assert.DoesNotContain(losId, overlevendeIds);
-
-            // And the run's own proposal landed, as an unlocked `voorgesteld` one (Art. IV.1/IV.2).
-            var nieuw = Assert.Single(jaarplan.Plaatsingen, p => p.Id != vastId);
-            Assert.Equal(blokken[2].Start, nieuw.BlokStart);
-            Assert.False(nieuw.Vergrendeld);
-            Assert.Equal(KoppelingStatus.Voorgesteld, nieuw.Status);
-        }
-    }
-
-    /// <summary>
-    /// <b>E4-04 / FR-8.1 on the real stack: what a teacher has <i>decided</i> survives a full regeneration, and the
-    /// untouched proposal beside it does not.</b>
-    /// <para>
-    /// The sibling above isolates the <b>lock</b>; this one isolates the other half of the same rule.
-    /// <c>Themaplaatsing.IsVervangbaar</c> is <c>Voorgesteld &amp;&amp; !Vergrendeld</c>, so it is falsified in two
-    /// independent ways, and until now only one of them had ever met a real database: "a decided placement survives"
-    /// was covered by unit tests over a <i>fake</i> storage port, where a removal from an owned collection cannot fail
-    /// to be a DELETE because there is no table to delete from. That is exactly the class <b>E7-16</b> exists for, and
-    /// the discard here is the same owned-collection removal the in-memory provider has already been caught accepting
-    /// silently. <b>All three</b> surviving statuses are covered: <c>Aanvaard</c> (E4-02's accept), <c>Manueel</c>
-    /// (E4-03's hand-placement, and what a drag leaves behind) and <c>Geweigerd</c>.
-    /// <para>
-    /// <b><c>Geweigerd</c> is in here on the antagonist's finding, and it is the one a teacher cannot check by
-    /// looking.</b> The first version said "both surviving statuses" and covered two, while the new copy promises the
-    /// teacher four things survive. A rejected card looks identical whether it survived the run or was deleted and
-    /// re-proposed, so the screen gives no feedback; and its survival is what keeps the AI from proposing that thema
-    /// in that period again, which is the promise <c>kalender.weigeringUitleg</c> makes in so many words. It had unit
-    /// coverage over the fake port only, which is exactly the argument this test makes for <c>Aanvaard</c>.
-    /// </para>
-    /// </para>
-    /// <para>
-    /// <b>Nothing here is E4-04's own code</b>, and that is the point worth recording rather than hiding: E4-04
-    /// changed only the client, because the server has been able to do this since E3-01 and could not say so to
-    /// anyone. What the story owed was proof at the level a teacher's data lives at, for the half that had none.
-    /// </para>
-    /// <para>
-    /// <b>Full regeneration only.</b> Per-period regeneration is E4-05 and does not exist, so nothing here says
-    /// anything about it.
-    /// </para>
-    /// </summary>
-    [PostgresFact]
-    public async Task Een_beslist_thema_overleeft_een_volledige_hergeneratie_en_het_losse_voorstel_niet()
-    {
-        var (klasId, beslistThemaId, losThemaId, losThemaNaam) = await SeedTweeThemasAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
-        Guid aanvaardId;
-        Guid manueelId;
-        Guid geweigerdId;
-        Guid losId;
-
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = new Jaarplan(klasId);
-
-            // Four placements, none of them locked, so the LOCK cannot be the reason any of them survives — the
-            // status is the only variable. Two blocks are enough: a block may hold several thema's (Art. IX.3), and
-            // only the same thema twice in one block is refused.
-            var aanvaard = jaarplan.VoegPlaatsingToe(
-                beslistThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard, "aanvaard door de leerkracht");
-
-            var manueel = jaarplan.VoegPlaatsingToe(
-                losThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Manueel);
-
-            var geweigerd = jaarplan.VoegPlaatsingToe(
-                losThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Geweigerd, "geweigerd door de leerkracht");
-
-            var los = jaarplan.VoegPlaatsingToe(
-                beslistThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "los voorstel");
-
-            context.Jaarplannen.Add(jaarplan);
-            await context.SaveChangesAsync();
-            aanvaardId = aanvaard.Id;
-            manueelId = manueel.Id;
-            geweigerdId = geweigerd.Id;
-            losId = los.Id;
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            // The production service on the production storage port; only the model is stubbed (Art. IV.6). It
-            // proposes into a third period, so the run has something to add as well as something to throw away.
-            var service = new JaarplanGeneratieService(
-                new VastAntwoordAiClient(
-                    $$"""
-                    {"plaatsingen":[{"blokStart":"{{blokken[2].Start:yyyy-MM-dd}}","thema":"{{losThemaNaam}}","motivatie":"nieuw voorstel"}]}
-                    """),
-                new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-                new EfJaarplanOpslag(context));
-
-            var resultaat = await service.GenereerAsync(klasId);
-
-            Assert.True(resultaat.IsGeslaagd);
-            Assert.Equal(1, resultaat.AantalNieuw);
-
-            // The three the teacher decided on were kept; the one they had not looked at was replaced. These are the
-            // figures the run reports to the screen, so they are asserted here rather than left to the client.
-            Assert.Equal(3, resultaat.AantalBehouden);
-            Assert.Equal(1, resultaat.AantalVervangen);
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
-
-            // Untouched in every field a teacher can see, not merely present: a run that silently reset a status or
-            // dropped a motivation would still satisfy "it survived".
-            var aanvaard = jaarplan.VindPlaatsing(aanvaardId);
-            Assert.NotNull(aanvaard);
-            Assert.Equal(blokken[0].Start, aanvaard!.BlokStart);
-            Assert.Equal(KoppelingStatus.Aanvaard, aanvaard.Status);
-            Assert.False(aanvaard.Vergrendeld);
-            Assert.Equal("aanvaard door de leerkracht", aanvaard.AiMotivatie);
-
-            var manueel = jaarplan.VindPlaatsing(manueelId);
-            Assert.NotNull(manueel);
-            Assert.Equal(blokken[0].Start, manueel!.BlokStart);
-            Assert.Equal(KoppelingStatus.Manueel, manueel.Status);
-
-            // The rejection survives as a rejection. Both halves matter: were it deleted, the AI could propose this
-            // thema in this period again on the next run, which is the opposite of what the teacher decided and of
-            // what `kalender.weigeringUitleg` promises them; were it silently reset to Voorgesteld, the card would
-            // come back looking undecided.
-            var geweigerd = jaarplan.VindPlaatsing(geweigerdId);
-            Assert.NotNull(geweigerd);
-            Assert.Equal(blokken[1].Start, geweigerd!.BlokStart);
-            Assert.Equal(KoppelingStatus.Geweigerd, geweigerd.Status);
-
-            // And the untouched proposal is gone from the TABLE. Asserted in SQL for the reason this whole file
-            // exists: an owned element dropped from its parent's backing list is precisely what the in-memory
-            // provider can appear to accept with no DELETE ever issued.
-            Assert.Null(jaarplan.VindPlaatsing(losId));
-            var overlevendeIds = await context.Database
-                .SqlQueryRaw<Guid>("""SELECT "Id" AS "Value" FROM themaplaatsingen""")
-                .ToListAsync();
-            Assert.Contains(aanvaardId, overlevendeIds);
-            Assert.Contains(manueelId, overlevendeIds);
-            Assert.Contains(geweigerdId, overlevendeIds);
-            Assert.DoesNotContain(losId, overlevendeIds);
-
-            // The run's own proposal landed as an unlocked `voorgesteld` one, which is what makes it replaceable by
-            // the next press (Art. IV.1/IV.2). Without this the test would pass on a run that placed nothing.
-            var nieuw = Assert.Single(
-                jaarplan.Plaatsingen,
-                p => p.Id != aanvaardId && p.Id != manueelId && p.Id != geweigerdId);
-            Assert.Equal(blokken[2].Start, nieuw.BlokStart);
-            Assert.Equal(KoppelingStatus.Voorgesteld, nieuw.Status);
-            Assert.False(nieuw.Vergrendeld);
-        }
-    }
-
-    /// <summary>
-    /// <b>E4-03 / FR-7.2 on the real stack: a class with no jaarplan at all gets one from a hand-placement, and the AI
-    /// is never reached.</b>
-    /// <para>
-    /// This is the case the unit suite cannot honestly verify, and E7-16 is the story that says so. Two distinct things
-    /// happen in one <c>SaveChanges</c> here: a new <see cref="Jaarplan"/> is inserted <i>and</i> an owned
-    /// <see cref="Themaplaatsing"/> is inserted with it, through <c>IJaarplanOpslag.VoegJaarplanToe</c> on a class that
-    /// had no row. The fake storage port keeps the aggregate in a field, so "it was created" cannot fail there; and the
-    /// Guid key on the owned element is the exact spot where <c>ValueGenerated.Never</c> is load-bearing (see
-    /// <see cref="Een_plaatsing_toevoegen_aan_een_bestaand_plan_slaagt"/> for the defect that taught this project so).
-    /// </para>
-    /// <para>
-    /// <b>The AI client throws rather than counting.</b> "Los van de AI" is the requirement, so the strongest available
-    /// statement is a stack in which any model call fails the test outright, on the production service over the
-    /// production storage port. Asserted on the rows, not only on the aggregate.
-    /// </para>
-    /// </summary>
-    [PostgresFact]
-    public async Task Een_handmatige_plaatsing_maakt_het_jaarplan_en_haar_rij_zonder_ai()
-    {
-        var (klasId, themaId, blokStart) = await SeedAsync();
-
-        // The precondition, asserted rather than assumed: no plan exists for this class.
         await using (var context = _db.MaakContext())
         {
             Assert.Empty(await context.Jaarplannen.Where(j => j.KlasId == klasId).ToListAsync());
@@ -458,60 +162,42 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            var weergave = await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokStart);
+            var weergave = await MaakService(context).PlaatsThemaAsync(klasId, themaId, D(2026, 10, 19), tot: null);
 
-            var geplaatst = Assert.Single(weergave.Plaatsingen);
-            Assert.Equal("Manueel", geplaatst.Status);
-            Assert.Null(geplaatst.AiMotivatie);
+            Assert.Equal(2, weergave.Plaatsingen.Count);
+            Assert.All(weergave.Plaatsingen, p => Assert.Equal("Manueel", p.Status));
+            Assert.All(weergave.Plaatsingen, p => Assert.Null(p.AiMotivatie));
         }
 
         await using (var context = _db.MaakContext())
         {
-            // The plan itself was created by the hand-placement.
             var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
-            var plaatsing = Assert.Single(jaarplan.Plaatsingen);
-            Assert.Equal(themaId, plaatsing.ThemaId);
-            Assert.Equal(blokStart, plaatsing.BlokStart);
-            Assert.Equal(Planningsblokniveau.Themaperiode, plaatsing.BlokNiveau);
-            Assert.Equal(KoppelingStatus.Manueel, plaatsing.Status);
-            Assert.Null(plaatsing.AiMotivatie);
-            Assert.False(plaatsing.Vergrendeld);
+            Assert.Equal(
+                [(D(2026, 10, 19), D(2026, 10, 30)), (D(2026, 11, 9), D(2026, 11, 27))],
+                jaarplan.Plaatsingen.Select(p => (p.Van, p.Tot)));
+            Assert.All(jaarplan.Plaatsingen, p => Assert.Equal(KoppelingStatus.Manueel, p.Status));
 
-            // And the INSERT really reached the table, with the status stored as a name and no motivation column value.
-            var rijen = await context.Database
-                .SqlQueryRaw<string>("""SELECT "Status" AS "Value" FROM themaplaatsingen""")
-                .ToListAsync();
-            Assert.Equal(["Manueel"], rijen);
-
-            var zonderMotivatie = await context.Database
-                .SqlQueryRaw<int>(
-                    """SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen WHERE "AiMotivatie" IS NULL""")
-                .SingleAsync();
-            Assert.Equal(1, zonderMotivatie);
+            Assert.Equal(2, await TelRijenAsync(context));
         }
     }
 
     /// <summary>
-    /// A <b>second</b> hand-placement, onto a plan that is already in the database. Separated from the test above
-    /// because it exercises a different EF path — growing an already-persisted aggregate rather than inserting a fresh
-    /// one — and that is precisely the path whose failure (<c>DbUpdateConcurrencyException</c>) shipped to <c>main</c>
-    /// once already while every in-memory test stayed green.
+    /// A second hand-placement, onto a plan already in the database, is inserted — the path whose failure
+    /// (<c>DbUpdateConcurrencyException</c>) shipped once while every in-memory test stayed green.
     /// </summary>
     [PostgresFact]
     public async Task Een_tweede_handmatige_plaatsing_op_een_bestaand_plan_wordt_ingevoegd()
     {
-        var (klasId, themaId, _) = await SeedAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(klasId));
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
-            await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokken[0].Start);
+            await MaakService(context).PlaatsThemaAsync(klasId, themaId, D(2026, 9, 1), D(2026, 9, 30));
         }
 
         await using (var context = _db.MaakContext())
         {
-            // A different period, same thema: allowed, and it lands on a plan that already has a row.
-            var weergave = await MaakService(context).VoegPlaatsingToeAsync(klasId, themaId, blokken[2].Start);
+            var weergave = await MaakService(context).PlaatsThemaAsync(klasId, themaId, D(2027, 1, 4), D(2027, 1, 29));
             Assert.Equal(2, weergave.Plaatsingen.Count);
         }
 
@@ -519,12 +205,39 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         {
             var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
             Assert.Equal(2, jaarplan.Plaatsingen.Count);
-            Assert.All(jaarplan.Plaatsingen, p => Assert.Equal(KoppelingStatus.Manueel, p.Status));
+            Assert.Equal(2, await TelRijenAsync(context));
+        }
+    }
 
-            var aantal = await context.Database
-                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
-                .SingleAsync();
-            Assert.Equal(2, aantal);
+    /// <summary>Giving a placement new days through the service updates its row, and a shift writes the new days.</summary>
+    [PostgresFact]
+    public async Task Nieuwe_dagen_en_een_verschuiving_bereiken_de_rij()
+    {
+        var (klasId, themaId) = await SeedAsync();
+        Guid plaatsingId;
+
+        await using (var context = _db.MaakContext())
+        {
+            var weergave = await MaakService(context).PlaatsThemaAsync(klasId, themaId, D(2026, 9, 7), D(2026, 9, 18));
+            plaatsingId = Assert.Single(weergave.Plaatsingen).Id;
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            await MaakService(context).WijzigDatumsAsync(klasId, plaatsingId, D(2026, 9, 7), D(2026, 9, 25));
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            // Fifteen schooldagen, moved two weeks later.
+            await MaakService(context).VerschuifAsync(klasId, plaatsingId, D(2026, 9, 21));
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var plaatsing = Assert.Single((await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId)).Plaatsingen);
+            Assert.Equal(plaatsingId, plaatsing.Id);
+            Assert.Equal((D(2026, 9, 21), D(2026, 10, 9)), (plaatsing.Van, plaatsing.Tot));
         }
     }
 
@@ -532,7 +245,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_klas_heeft_ten_hoogste_een_jaarplan()
     {
-        var (klasId, _, _) = await SeedAsync();
+        var (klasId, _) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
@@ -549,18 +262,19 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         }
     }
 
-    /// <summary>The same thema cannot be placed twice in the same block — the domain invariant, held in the database.</summary>
+    /// <summary>
+    /// Two placements of one plan cannot start on the same day: the part of "no overlap" the database holds itself.
+    /// </summary>
     [PostgresFact]
-    public async Task Dezelfde_plaatsing_kan_niet_twee_keer_bestaan()
+    public async Task Twee_plaatsingen_kunnen_niet_op_dezelfde_dag_beginnen()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
         Guid jaarplanId;
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "eerste");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "eerste");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
             jaarplanId = jaarplan.Id;
@@ -569,38 +283,32 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using (var context = _db.MaakContext())
         {
             // Inserted around the aggregate on purpose: the point is that the DATABASE refuses it, not the entity.
-            var ex = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => context.Database.ExecuteSqlRawAsync(
-                """
-                INSERT INTO themaplaatsingen ("Id", "JaarplanId", "ThemaId", "BlokNiveau", "BlokStart", "Status", "Vergrendeld")
-                VALUES ({0}, {1}, {2}, 'Themaperiode', {3}, 'Voorgesteld', false)
-                """.Replace("{0}", $"'{Guid.NewGuid()}'")
-                   .Replace("{1}", $"'{jaarplanId}'")
-                   .Replace("{2}", $"'{themaId}'")
-                   .Replace("{3}", $"'{blokStart:yyyy-MM-dd}'")));
+            var ex = await Assert.ThrowsAsync<Npgsql.PostgresException>(() => context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO themaplaatsingen ("Id", "JaarplanId", "ThemaId", "Van", "Tot", "Status", "Vergrendeld")
+                VALUES ({Guid.NewGuid()}, {jaarplanId}, {themaId}, {D(2026, 9, 1)}, {D(2026, 9, 4)}, 'Voorgesteld', false)
+                """));
 
             Assert.Equal("23505", ex.SqlState);
         }
     }
 
     /// <summary>
-    /// Removing one placement actually deletes its <b>row</b>, and leaves the rest of the plan alone. Asserted against
-    /// real Postgres because an owned-collection element removed from its parent's backing list is exactly the kind of
-    /// change the in-memory provider can appear to accept without a corresponding DELETE reaching a database.
+    /// Removing one placement deletes its <b>row</b>, whatever its status or lock, and leaves the rest of the plan alone.
     /// </summary>
     [PostgresFact]
     public async Task Een_plaatsing_verwijderen_verwijdert_haar_rij()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
         Guid teVerwijderen;
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
             var eerste = jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "aanvaard");
+                themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Aanvaard, "aanvaard");
             eerste.StelVergrendelingIn(true);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Subthemaperiode, blokStart, KoppelingStatus.Voorgesteld, "blijft");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 10, 5), D(2026, 10, 16), KoppelingStatus.Voorgesteld, "blijft");
 
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
@@ -609,43 +317,30 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            var jaarplan = await context.Jaarplannen.SingleAsync();
-
-            // Accepted AND locked — removal is an explicit human act and must not be blocked by either (Art. IV.2).
-            jaarplan.VerwijderPlaatsing(jaarplan.VindPlaatsing(teVerwijderen)!);
-            await context.SaveChangesAsync();
+            await MaakService(context).VerwijderPlaatsingAsync(klasId, teVerwijderen);
         }
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = await context.Jaarplannen.SingleAsync();
             var overgebleven = Assert.Single(jaarplan.Plaatsingen);
-            Assert.Equal(Planningsblokniveau.Subthemaperiode, overgebleven.BlokNiveau);
+            Assert.Equal("blijft", overgebleven.AiMotivatie);
             Assert.Null(jaarplan.VindPlaatsing(teVerwijderen));
 
-            // One row, not two — the DELETE really reached the table.
-            var aantal = await context.Database
-                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
-                .SingleAsync();
-            Assert.Equal(1, aantal);
+            Assert.Equal(1, await TelRijenAsync(context));
         }
     }
 
-    /// <summary>
-    /// A thema still placed in a jaarplan cannot be deleted: the RESTRICT FK on <c>themaplaatsingen.ThemaId</c> is
-    /// real. This is the database half of the guard added to <c>SchoolcontentBeheerService.VerwijderThemaAsync</c> —
-    /// the guard exists to turn this <c>23503</c> into an actionable 400 instead of an unhandled 500.
-    /// </summary>
+    /// <summary>A thema still placed in a jaarplan cannot be deleted: the RESTRICT FK on <c>ThemaId</c> is real.</summary>
     [PostgresFact]
     public async Task Een_geplaatst_thema_kan_niet_uit_de_database_verwijderd_worden()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "voorstel");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "voorstel");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
@@ -663,13 +358,12 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     [PostgresFact]
     public async Task Verwijderen_neemt_de_plaatsingen_mee()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "x");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "x");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
@@ -683,66 +377,44 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         await using (var context = _db.MaakContext())
         {
             Assert.Empty(await context.Jaarplannen.ToListAsync());
-            var resterend = await context.Database
-                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
-                .SingleAsync();
-            Assert.Equal(0, resterend);
+            Assert.Equal(0, await TelRijenAsync(context));
         }
     }
 
     /// <summary>
-    /// The relational cascade itself: deleting the <b>klas</b> row removes its jaarplan and every placement. This is
-    /// the destructive behaviour <c>KlasBeheerService.VerwijderKlasAsync</c> guards against for reviewed/locked
-    /// placements, and it is asserted here around the service on purpose — the guard is only worth having if the
-    /// cascade underneath it is real, and the in-memory provider enforces no FK at all so it cannot show this.
-    /// <para>
-    /// Note the earlier <c>Verwijderen_neemt_de_plaatsingen_mee</c> deletes the <i>jaarplan</i>, never the
-    /// <i>klas</i> — which is exactly why the silent-destruction defect went unnoticed.
-    /// </para>
+    /// The relational cascade itself: deleting the <b>klas</b> row removes its jaarplan and every placement — the
+    /// destructive behaviour <c>KlasBeheerService.VerwijderKlasAsync</c> guards against for decided placements.
     /// </summary>
     [PostgresFact]
     public async Task Een_klas_verwijderen_neemt_haar_jaarplan_en_plaatsingen_mee()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
+        var (klasId, themaId) = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "voorstel");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 9, 30), KoppelingStatus.Voorgesteld, "voorstel");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
 
         await using (var context = _db.MaakContext())
         {
-            // Raw DELETE, so the database's own ON DELETE CASCADE is what is under test — not EF's change tracker.
-            //
-            // NOTE the interpolation hole carries NO surrounding quotes. ExecuteSqlAsync takes a FormattableString
-            // and turns every hole into a DbParameter, splicing the placeholder NAME into the SQL. Quoting it would
-            // emit `WHERE "Id" = '@p0'` — a text literal — which Postgres rejects with 22P02 (invalid input syntax
-            // for type uuid: "@p0"), so the assertion below would never be reached. The first version of this test
-            // had exactly that bug and could never have passed in CI.
-            var verwijderd = await context.Database.ExecuteSqlAsync(
-                $"""DELETE FROM klassen WHERE "Id" = {klasId}""");
+            // No quotes around the hole: ExecuteSqlAsync turns it into a parameter.
+            var verwijderd = await context.Database.ExecuteSqlAsync($"""DELETE FROM klassen WHERE "Id" = {klasId}""");
             Assert.Equal(1, verwijderd);
         }
 
         await using (var context = _db.MaakContext())
         {
             Assert.Empty(await context.Jaarplannen.Where(j => j.KlasId == klasId).ToListAsync());
-
-            var resterend = await context.Database
-                .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
-                .SingleAsync();
-            Assert.Equal(0, resterend);
+            Assert.Equal(0, await TelRijenAsync(context));
         }
     }
 
     /// <summary>
-    /// Art. IX.3's "Schooljaar contains multiple klassen", as a real FK: a class cannot exist without a school year,
-    /// the containment loads back, and deleting the year is <b>refused</b> while it still holds classes rather than
-    /// cascading away a class, its jaarplan and its school content.
+    /// Art. IX.3's "Schooljaar contains multiple klassen", as a real FK: deleting the year is <b>refused</b> while it
+    /// still holds classes.
     /// </summary>
     [PostgresFact]
     public async Task Een_schooljaar_bevat_klassen_en_kan_niet_zomaar_verdwijnen()
@@ -790,35 +462,19 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// <b>E3-09 / FR-6.4 on the real stack: the te-vol figures reach the plain jaarplan read.</b>
-    /// <para>
-    /// This is the change most able to be silently wrong, because it is a payload field. Before E3-09 the weeks
-    /// arithmetic existed only on the <i>generation</i> response, while the board renders from this read plus
-    /// <c>/rooster</c> — which is why the kalender carried a threshold of its own that counted thema's and disagreed
-    /// with the server for months. If <c>Blokken</c> arrives empty here, the board silently flags nothing and every
-    /// frontend test still passes on its own fixture.
-    /// </para>
-    /// <para>
-    /// Read through <c>HaalJaarplanAsync</c> on a fresh context, so the placements come back out of Postgres rather
-    /// than out of the tracker that wrote them.
-    /// </para>
+    /// The plain read, from a fresh context, carries the lesweken and the balance (ADR-0053 decision 6). The year with
+    /// its four vacations has 38 lesweken; a 5-week placement from Tuesday 1 September covers the first six (it ends on
+    /// Monday 5 October, the last schooldag before Tuesday 6 October).
     /// </summary>
     [PostgresFact]
-    public async Task Het_leespad_levert_de_belasting_per_periode()
+    public async Task Het_leespad_levert_de_lesweken_en_de_balans()
     {
-        var (klasId, themaId, blokStart) = await SeedAsync();
-        var schooljaar = await LaadSchooljaarAsync(klasId);
-        var blokken = Blokken(schooljaar);
+        var (klasId, themaId) = await SeedAsync();
 
-        // Two placements of the seeded 5-week thema: one in the first period, one in the second. 5 weeks against a
-        // 4-to-6-week period is not te vol, which makes the negative half of the assertion meaningful.
         await using (var context = _db.MaakContext())
         {
             var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "eerste");
-            jaarplan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Voorgesteld, "tweede");
+            jaarplan.VoegPlaatsingToe(themaId, D(2026, 9, 1), D(2026, 10, 5), KoppelingStatus.Aanvaard, "september");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }
@@ -827,113 +483,34 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
         {
             var weergave = await MaakService(context).HaalJaarplanAsync(klasId);
 
-            // Every period of the year is described, not only the filled ones: an empty period is where there is room.
-            Assert.Equal(blokken.Count, weergave.Blokken.Count);
-            Assert.Equal(
-                blokken.Select(b => b.Start),
-                weergave.Blokken.Select(b => b.Start));
+            Assert.Equal(D(2026, 9, 1), weergave.EersteSchooldag);
+            Assert.Equal(D(2027, 6, 30), weergave.LaatsteSchooldag);
+            Assert.Equal(38, weergave.Lesweken.Count);
+            Assert.Equal(new JaarbalansWeergave(38, 6, 32), weergave.Balans);
+            Assert.Equal(D(2026, 8, 31), weergave.Lesweken[0].Maandag);
+            Assert.True(weergave.Lesweken[5].HeeftThema);
+            Assert.False(weergave.Lesweken[6].HeeftThema);
 
-            var eerste = weergave.Blokken.Single(b => b.Start == blokStart);
-            Assert.Equal(5, eerste.BenodigdeWeken);
-            Assert.True(eerste.BeschikbareWeken >= 4, $"a themaperiode offers 4-6 weeks, got {eerste.BeschikbareWeken}");
-            Assert.False(eerste.IsOverbelast);
-
-            // The thema's own length rides along on the placement, which is what lets the board predict a drop before
-            // it happens rather than only report it afterwards.
-            Assert.All(weergave.Plaatsingen, p => Assert.Equal(5, p.DuurWeken));
-
-            // A period holding nothing needs no weeks. Stated because "0 needed" is what makes `IsOverbelast` false for
-            // an empty period, and a null-ish default would have made every empty period te vol or none of them.
-            var leeg = weergave.Blokken.First(b => b.AantalThemas == 0);
-            Assert.Equal(0, leeg.BenodigdeWeken);
-            Assert.False(leeg.IsOverbelast);
+            var plaatsing = Assert.Single(weergave.Plaatsingen);
+            Assert.False(plaatsing.IsVervallen);
+            Assert.Equal(5, plaatsing.DuurWeken);
+            Assert.NotNull(plaatsing.Reeks);
+            Assert.False(plaatsing.Reeks!.EindeAangepast);
+            Assert.Equal(5, plaatsing.Reeks.Weken);
         }
     }
 
-    /// <summary>
-    /// A period is te vol on the read path too, and a <b>rejected</b> thema does not make it so.
-    /// <para>
-    /// Both halves in one test on purpose: they are the same arithmetic seen from either side, and separating them
-    /// would let a filter defect pass whichever one was written first. The rejected placement is the one this project
-    /// has already got wrong once, in the E3-02 code review, where a period was reported overbelast on the strength of
-    /// a thema the teacher had thrown out.
-    /// </para>
-    /// </summary>
-    [PostgresFact]
-    public async Task Een_geweigerd_thema_maakt_een_periode_niet_te_vol_op_het_leespad()
-    {
-        var (klasId, _, blokStart) = await SeedAsync();
-        Guid zwaarId;
-        Guid geweigerdId;
+    private static DateOnly D(int jaar, int maand, int dag) => new(jaar, maand, dag);
 
-        // 4 + 8 = 12 weeks in one period. The durations straddle the period's own length deliberately: the default
-        // themaperiode is 5 weeks, so together they are over it and the surviving 4-week thema is comfortably under.
-        // An earlier revision used 6 and 6, which left 6 weeks in a 5-week period after the rejection and so still
-        // reported te vol — the test failed while the filter it was testing worked perfectly.
-        await using (var context = _db.MaakContext())
-        {
-            var zwaar = new Thema($"Licht-{Guid.NewGuid():N}", duurWeken: 4);
-            var geweigerd = new Thema($"Feesten-{Guid.NewGuid():N}", duurWeken: 8);
-            context.Themas.AddRange(zwaar, geweigerd);
-            await context.SaveChangesAsync();
-            zwaarId = zwaar.Id;
-            geweigerdId = geweigerd.Id;
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = new Jaarplan(klasId);
-            jaarplan.VoegPlaatsingToe(
-                zwaarId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Aanvaard, "zwaar");
-            jaarplan.VoegPlaatsingToe(
-                geweigerdId, Planningsblokniveau.Themaperiode, blokStart, KoppelingStatus.Voorgesteld, "ook zwaar");
-            context.Jaarplannen.Add(jaarplan);
-            await context.SaveChangesAsync();
-        }
-
-        // Both counted: 12 weeks in a period that offers 4 to 6.
-        await using (var context = _db.MaakContext())
-        {
-            var blok = (await MaakService(context).HaalJaarplanAsync(klasId))
-                .Blokken.Single(b => b.Start == blokStart);
-
-            Assert.Equal(12, blok.BenodigdeWeken);
-            Assert.True(blok.IsOverbelast);
-
-            // Pinned rather than assumed, because the two durations above are chosen relative to it: if the configured
-            // grain ever changes, this fails here with the reason instead of further down as a puzzling verdict.
-            Assert.InRange(blok.BeschikbareWeken, 4, 6);
-        }
-
-        // The teacher rejects one. Nothing is taught in this period on its account, so the period stops being te vol.
-        await using (var context = _db.MaakContext())
-        {
-            var jaarplan = await context.Jaarplannen.SingleAsync(j => j.KlasId == klasId);
-            var plaatsing = jaarplan.Plaatsingen.Single(p => p.ThemaId == geweigerdId);
-            await MaakService(context).WijzigPlaatsingStatusAsync(klasId, plaatsing.Id, KoppelingStatus.Geweigerd);
-        }
-
-        await using (var context = _db.MaakContext())
-        {
-            var weergave = await MaakService(context).HaalJaarplanAsync(klasId);
-            var blok = weergave.Blokken.Single(b => b.Start == blokStart);
-
-            Assert.Equal(4, blok.BenodigdeWeken);
-            Assert.False(blok.IsOverbelast);
-
-            // And the rejected card is still THERE — excluded from the arithmetic, not deleted from the plan. A human
-            // decision is not the tool's to discard (Art. IV.1), and a teacher must be able to see what they threw out.
-            Assert.Equal(2, weergave.Plaatsingen.Count);
-            Assert.Contains(weergave.Plaatsingen, p => p.Status == "Geweigerd");
-        }
-    }
+    private static async Task<int> TelRijenAsync(Jaarplanner.Infrastructure.Persistence.AppDbContext context) =>
+        await context.Database
+            .SqlQueryRaw<int>("""SELECT COUNT(*)::int AS "Value" FROM themaplaatsingen""")
+            .SingleAsync();
 
     /// <summary>
-    /// Seeds a school year, a class inside it, a leerplandoel and a thema, and returns (klasId, themaId, the first
-    /// derived themaperiode's start date). The start date is taken from the year's own first teaching day, which the
-    /// E3-05 suite pins as the first block's start.
+    /// Seeds a school year with the four standard vacations, a class inside it, a leerplandoel and a 5-week thema.
     /// </summary>
-    private async Task<(Guid KlasId, Guid ThemaId, DateOnly BlokStart)> SeedAsync()
+    private async Task<(Guid KlasId, Guid ThemaId)> SeedAsync()
     {
         await using var context = _db.MaakContext();
 
@@ -951,75 +528,10 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        return (klas.Id, thema.Id, schooljaar.Start);
+        return (klas.Id, thema.Id);
     }
 
-    /// <summary>
-    /// Seeds a school year, a class inside it and <b>two</b> thema's, and returns the loose one's <i>name</i> as well as
-    /// its id: the generation contract keys a proposal on the thema name (never an id, which no model can know), so the
-    /// stubbed answer below has to speak that name. Names carry a guid because thema names are unique school-wide.
-    /// </summary>
-    private async Task<(Guid KlasId, Guid VastThemaId, Guid LosThemaId, string LosThemaNaam)> SeedTweeThemasAsync()
-    {
-        await using var context = _db.MaakContext();
-
-        var schooljaar = TestSchooljaar.MetVakanties(TestSchooljaar.UniekeNaam("slot"));
-        var klas = schooljaar.VoegKlasToe($"L3-{Guid.NewGuid():N}", "L3");
-        context.Schooljaren.Add(schooljaar);
-
-        var vast = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
-        var los = new Thema($"Water-{Guid.NewGuid():N}", duurWeken: 4);
-        context.Themas.AddRange(vast, los);
-
-        await context.SaveChangesAsync();
-
-        return (klas.Id, vast.Id, los.Id, los.Naam);
-    }
-
-    /// <summary>Reloads the class's school year with its closures, so the derived grid matches what the service sees.</summary>
-    private async Task<Schooljaar> LaadSchooljaarAsync(Guid klasId)
-    {
-        await using var context = _db.MaakContext();
-        var klas = await context.Klassen.SingleAsync(k => k.Id == klasId);
-
-        return await context.Schooljaren
-            .Include("_sluitingen")
-            .SingleAsync(s => s.Id == klas.SchooljaarId);
-    }
-
-    /// <summary>The same configured grid seam the API resolves, so the test never hard-codes a period boundary.</summary>
-    private static IReadOnlyList<Planningsblok> Blokken(Schooljaar schooljaar) =>
-        new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
-            .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-
-    /// <summary>
-    /// The production service over the production storage port, with a model that must never be called (E4-03). Used by
-    /// the hand-placement tests, which are about a path where the AI has no part to play.
-    /// </summary>
-    private static JaarplanGeneratieService MaakService(Jaarplanner.Infrastructure.Persistence.AppDbContext context) =>
-        new(new OntploffendeAiClient(),
-            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-            new EfJaarplanOpslag(context));
-
-    /// <summary>
-    /// An <see cref="IAiClient"/> that fails the test if it is reached at all. Stronger than counting calls: FR-7.2's
-    /// "los van de AI" is a claim about the path, and a path that cannot tolerate a model call is the claim itself.
-    /// </summary>
-    private sealed class OntploffendeAiClient : IAiClient
-    {
-        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException(
-                "The AI client was called on a path that must not involve the model (E4-03, FR-7.2).");
-    }
-
-    /// <summary>A model stand-in that always answers the same canned completion: no network (Art. IV.6).</summary>
-    private sealed class VastAntwoordAiClient : IAiClient
-    {
-        private readonly string _antwoord;
-
-        public VastAntwoordAiClient(string antwoord) => _antwoord = antwoord;
-
-        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AiCompletion { Content = _antwoord });
-    }
+    /// <summary>The production planning service over the production storage port.</summary>
+    private static JaarplanService MaakService(Jaarplanner.Infrastructure.Persistence.AppDbContext context) =>
+        new(new EfJaarplanOpslag(context));
 }

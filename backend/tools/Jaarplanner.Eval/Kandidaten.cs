@@ -335,6 +335,18 @@ public sealed class CachingCatalogus : ILeerdoelCatalogus
         return doelen;
     }
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+        IReadOnlyCollection<string> mijlpalen,
+        CancellationToken cancellationToken = default) =>
+        _source.HaalMinimumdoelenAsync(mijlpalen, cancellationToken);
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenOpRefAsync(
+        IReadOnlyCollection<string> refs,
+        CancellationToken cancellationToken = default) =>
+        _source.HaalMinimumdoelenOpRefAsync(refs, cancellationToken);
+
     private static string KeyPart(IReadOnlyCollection<string>? values) =>
         string.Join(",", (values ?? []).Select(v => v.Trim().ToLowerInvariant()).Order(StringComparer.Ordinal));
 }

@@ -114,19 +114,24 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
     }
 
     /// <summary>
-    /// An AI doelsuggestie added to a thema that is already stored (E2-04/FR-4.1) — the owned-collection
-    /// shape, whose composite key <c>(ThemaId, Id)</c> makes it a different case from the ones above.
+    /// An AI doelsuggestie added to a thema that is already stored, then accepted in a later unit of work (FB-053): the
+    /// proposal and the themadoel its acceptance makes are both new children of a loaded thema.
     /// </summary>
     [PostgresFact]
-    public async Task Bestaand_thema_krijgt_een_doelsuggestie()
+    public async Task Bestaand_thema_krijgt_een_doelsuggestie_en_na_aanvaarden_een_themadoel()
     {
         var seed = await SeedAsync();
 
         await using (var context = _db.MaakContext())
         {
+            if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == "GROEI-K-1"))
+            {
+                context.Minimumdoelen.Add(new Minimumdoel("GROEI-K-1", "K-", "1", "Tekst van GROEI-K-1"));
+                await context.SaveChangesAsync();
+            }
+
             var thema = await context.Themas.Include(t => t.Doelsuggesties).SingleAsync(t => t.Id == seed.ThemaId);
-            thema.VoegDoelsuggestieToe(
-                new DoelKoppeling(seed.TweedeCode, KoppelingStatus.Voorgesteld, "past bij de invalshoek"));
+            thema.VoegDoelsuggestieToe("GROEI-K-1", "past bij de invalshoek");
             await context.SaveChangesAsync();
         }
 
@@ -134,8 +139,17 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         {
             var thema = await context.Themas.Include(t => t.Doelsuggesties).SingleAsync(t => t.Id == seed.ThemaId);
             var suggestie = Assert.Single(thema.Doelsuggesties);
-            Assert.Equal(seed.TweedeCode, suggestie.LeerplandoelCode);
+            Assert.Equal("GROEI-K-1", suggestie.MinimumdoelRef);
             Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
+            thema.AanvaardDoelsuggestie(suggestie);
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            var thema = await context.Themas.Include(t => t.Doelsuggesties).SingleAsync(t => t.Id == seed.ThemaId);
+            Assert.Equal(KoppelingStatus.Aanvaard, Assert.Single(thema.Doelsuggesties).Status);
+            Assert.Contains(thema.Minimumdoelen, m => m.MinimumdoelRef == "GROEI-K-1");
         }
     }
 
@@ -275,7 +289,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         {
             var plan = new Jaarplan(seed.KlasId);
             plan.VoegPlaatsingToe(
-                seed.ThemaId, Planningsblokniveau.Themaperiode, seed.SchooljaarStart, KoppelingStatus.Voorgesteld);
+                seed.ThemaId, seed.SchooljaarStart, seed.SchooljaarStart.AddDays(7), KoppelingStatus.Voorgesteld);
             context.Jaarplannen.Add(plan);
             await context.SaveChangesAsync();
         }
@@ -285,8 +299,8 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
             var plan = await context.Jaarplannen.SingleAsync(j => j.KlasId == seed.KlasId);
             plan.VoegPlaatsingToe(
                 seed.ThemaId,
-                Planningsblokniveau.Subthemaperiode,
                 seed.SchooljaarStart.AddDays(14),
+                seed.SchooljaarStart.AddDays(21),
                 KoppelingStatus.Voorgesteld);
             await context.SaveChangesAsync();
         }

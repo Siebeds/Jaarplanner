@@ -138,12 +138,9 @@ public static class DependencyInjection
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
-        // Planningsblok-indeling seam (E3-05, ADR-0013, Art. IX.3/XIV). The planning grain is DATA-DRIVEN:
-        // the two-tier default ratified by directie on 2026-07-14 (themaperiode 4–6 wk + subthemaperiode
-        // ~2 wk) lives in the `Planning:Blokindeling` configuration section, never as a literal in planning
-        // logic, and never as a calendar month. Generation (E3-01), the calendar (E3-06/08) and
-        // drag-and-drop (E3-07) all consume Planningsblok, so changing the grain is a config edit.
-        // Stateless once bound → singleton-safe, matching the discipline-selection seam.
+        // Planningsblok-indeling seam (E3-05, ADR-0013). Since ADR-0053 nothing in the planning consumes it: a thema
+        // placement carries its own dates. It is kept, with its configuration, for the generation's rework, which
+        // decides whether blocks survive as a hint for the model (ADR-0053 decision 9).
         services.Configure<PlanningsblokOptions>(
             configuration.GetSection(PlanningsblokOptions.SectionName));
         services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
@@ -198,10 +195,8 @@ public static class DependencyInjection
         // school organisation that directie sets, and apart from it because it belongs to the school and not to a year.
         services.AddScoped<ISchoolurenService, SchoolurenService>();
 
-        // The derived planning grid as a read model (E3-06). The calendar must render EMPTY periods and the
-        // vacation gaps between them, which JaarplanWeergave cannot express — it returns placements only. Kept
-        // server-side on purpose: re-deriving the grid in TypeScript would duplicate the ADR-0013 seam and
-        // disagree with it the moment `Planning:Blokindeling` changes.
+        // The school year's frame as a read model: its span and its vacations, which the timeline and the agenda are
+        // drawn in (ADR-0053).
         services.AddScoped<IPlanningsroosterService, PlanningsroosterService>();
 
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
@@ -214,7 +209,7 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
         services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
-        // The AI's activiteit proposals under a subthema (FB-025, ADR-0052), with the per-request limit of D3. A limit
+        // The AI's activiteit proposals under a subthema (FB-025, ADR-0054), with the per-request limit of D3. A limit
         // outside 1 to 10 stops the app at startup, where a deploy sees it.
         services.AddOptions<Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties>()
             .Bind(configuration.GetSection(Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties.SectionName))
@@ -257,18 +252,13 @@ public static class DependencyInjection
         // is fakeable with no database in tests. EF Core implementation over AppDbContext.
         services.AddScoped<IDoelMatchOpslag, EfDoelMatchOpslag>();
 
-        // The read-only Op.stap leerplandoel query (E2-07). Shared by the authoring assist and — since
-        // E2-08 — by the matching service, which needs it to resolve the candidate set a match run may
-        // choose from and to check that an "aanpassen" substitution names a code Op.stap really carries
-        // (Art. III.1/III.5). Registered once, above both consumers.
+        // The read-only Op.stap goal query (E2-07): leerplandoelen and minimumdoelen. Shared by the authoring assist and
+        // the doelsuggesties, which read their candidates through it (Art. III.1/III.5). Registered once, above both.
         services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
 
-        // The AI goal-matching service (FR-4), wired end-to-end (E2-08 candidate selection → E2-02 prompt →
-        // E2-01 client → E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on
-        // IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against the
-        // fakes in tests (Art. IV.6). It is reachable through DoelsuggestiesController — POST
-        // /api/themas/{themaId}/doelsuggesties/genereer — rather than only from its own unit tests, which
-        // was the entire defect E2-08 exists to fix.
+        // A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel, stored as `voorgesteld`.
+        // It depends only on IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against
+        // the fakes in tests (Art. IV.6). Reached through DoelsuggestiesController.
         services.AddScoped<DoelMatchingService>();
 
         // Goal-first authoring assist (E2-07, Art. IV.8, Gap A.7): the wizard's step 2 (themadoel) and
@@ -285,26 +275,24 @@ public static class DependencyInjection
         services.AddScoped<IWizardrunService, WizardrunService>();
         // --- end E6-02 slice 3 ---
 
-        // AI jaarplan generation (E3-01, FR-5.1, Art. IV). The persistence port keeps EF Core out of the service;
-        // the service itself depends only on IAiClient (E2-01), IPlanningsblokIndeling (E3-05) and this port, so
-        // the whole flow runs against fakes with no network and no database in tests (Art. IV.6). It is reachable
-        // through JaarplanController — POST /api/klassen/{klasId}/jaarplan/generatie — rather than only from tests.
+        // The jaarplan (FR-6, FR-7, ADR-0053). The persistence port keeps EF Core out of the services, so they run
+        // against fakes with no database in tests. The generation service is switched off and only refuses and reads the
+        // kept parameters (ADR-0053 decision 9).
         services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
+        services.AddScoped<JaarplanService>();
         services.AddScoped<JaarplanGeneratieService>();
 
         // The read half of the jaarplan, registered as its own seam (E5-01). Resolved from the SAME scoped
-        // JaarplanGeneratieService instance rather than as a second one, so a request that both reads the plan and
-        // computes dekking sees one DbContext and one projection — two instances could answer differently about
-        // staleness within a single request, which is exactly the disagreement IJaarplanLezer exists to prevent.
-        services.AddScoped<IJaarplanLezer>(sp => sp.GetRequiredService<JaarplanGeneratieService>());
+        // JaarplanService instance rather than as a second one, so a request that both reads the plan and computes
+        // dekking sees one DbContext and one projection.
+        services.AddScoped<IJaarplanLezer>(sp => sp.GetRequiredService<JaarplanService>());
 
         // Day-level planning inside the plan (E9-03, FR-6.2/FR-7.2). A SECOND seam beside IJaarplanOpslag rather than
         // four more methods on it: that port documents itself as the generation flow's, and a fake for one flow that
         // has to implement the other's methods is how a test ends up asserting against a stub it never exercises.
         //
-        // It shares IPlanningsblokIndeling with generation on purpose — that is what makes "this activiteit falls
-        // outside its thema's period" measured against the same grid the board draws, rather than a second opinion
-        // about which tier a thema lives on. Reachable through WeekplanningController, not only from tests.
+        // "This activiteit falls outside its thema's days" is measured against the placements themselves (ADR-0053).
+        // Reachable through WeekplanningController, not only from tests.
         services.AddScoped<IWeekplanningOpslag, EfWeekplanningOpslag>();
         services.AddScoped<IWeekplanningService, WeekplanningService>();
 

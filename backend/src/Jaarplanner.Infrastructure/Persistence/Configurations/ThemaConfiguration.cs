@@ -21,6 +21,7 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
         builder.Property(t => t.Naam).HasMaxLength(256).IsRequired();
         builder.Property(t => t.Invalshoeken);
         builder.Property(t => t.DuurWeken).IsRequired();
+        builder.Property(t => t.Icoon).HasMaxLength(ThemaIcoon.MaxLengte);
 
         // School-wide two-tier vocabulary — Npgsql maps List<string> to text[] (Art. IX.2).
         builder.PrimitiveCollection(t => t.Kernwoordenschat)
@@ -57,14 +58,12 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
             .HasField("_subthemas")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Thema-level AI match suggestions (E2-04, FR-4) — an owned collection of DoelKoppeling in its
-        // own table, distinct from the capped themadoelen. Each is persisted as `voorgesteld` +
-        // aiMotivatie (Art. IV.2) and shares the single DoelKoppeling column/FK mapping.
-        builder.OwnsMany(t => t.Doelsuggesties, ownedBuilder =>
-        {
-            ownedBuilder.ToTable("thema_doelsuggesties");
-            DoelKoppelingMapping.Configure(ownedBuilder);
-        });
+        // The AI's proposals of a minimumdoel as themadoel (FB-053, ADR-0052), open and decided, in their own table.
+        // Not auto-included: only the suggestion flow reads them.
+        builder.HasMany(t => t.Doelsuggesties)
+            .WithOne()
+            .HasForeignKey(s => s.ThemaId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(t => t.Doelsuggesties)
             .HasField("_doelsuggesties")
             .UsePropertyAccessMode(PropertyAccessMode.Field);

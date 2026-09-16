@@ -46,7 +46,6 @@ public sealed class ThemaMinimumdoelenMigratieTests : IAsyncLifetime
             var thema = new Thema("Water", 4);
             thema.VoegThemadoelToe(new DoelKoppeling("MIG-01", KoppelingStatus.Manueel));
             thema.VoegThemadoelToe(new DoelKoppeling("MIG-02", KoppelingStatus.Aanvaard));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("MIG-02", KoppelingStatus.Voorgesteld, "motivatie"));
             thema.VoegSubthemaToe("Regen", 2, "K3").VoegSubdoelToe("K3", new DoelKoppeling("MIG-01", KoppelingStatus.Manueel));
             context.Themas.Add(thema);
             await context.SaveChangesAsync();
@@ -68,8 +67,8 @@ public sealed class ThemaMinimumdoelenMigratieTests : IAsyncLifetime
             .SingleAsync(t => t.Id == themaId);
         Assert.Empty(geladen.Themadoelen);
         Assert.Empty(geladen.Minimumdoelen);
-        // The thema, its doelsuggesties, its subdoelen and the read-only leerplandoelen are untouched.
-        Assert.Equal("MIG-02", Assert.Single(geladen.Doelsuggesties).LeerplandoelCode);
+        // The thema, its subdoelen and the read-only leerplandoelen are untouched.
+        Assert.Empty(geladen.Doelsuggesties);
         Assert.Equal("MIG-01", Assert.Single(Assert.Single(geladen.Subthemas).Subdoelen).Koppeling.LeerplandoelCode);
         Assert.Equal(2, await na.Leerplandoelen.CountAsync(l => l.Code.StartsWith("MIG-")));
     }

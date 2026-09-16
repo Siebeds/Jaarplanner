@@ -4,7 +4,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Activiteitvoorstellen;
 
 /// <summary>
-/// The activiteitvoorstellen use cases (FB-025, ADR-0052): the AI proposes activiteiten under a subthema to the gebruiker
+/// The activiteitvoorstellen use cases (FB-025, ADR-0054): the AI proposes activiteiten under a subthema to the gebruiker
 /// who asked, and she or directie decides them (A3). Rights are the Api's: asking is <c>EigenActiviteitMaken</c> at the
 /// subthema's leeftijd, deciding <c>ActiviteitvoorstelBeslissen</c> on the proposal.
 /// </summary>

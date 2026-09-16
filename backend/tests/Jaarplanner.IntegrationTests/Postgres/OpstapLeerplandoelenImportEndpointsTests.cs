@@ -610,13 +610,11 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString()!;
 
     /// <summary>
-    /// An L3 class with a thema placed in its jaarplan, the thema carrying <paramref name="code"/> as an accepted themadoel.
-    /// The block start comes from the real <see cref="IPlanningsblokIndeling"/>, as in <c>DekkingEndpointsTests</c>.
+    /// An L3 class with a thema placed in its jaarplan, and its L3 subthema, carrying <paramref name="code"/> as a subdoel,
+    /// placed in the agenda (Art. V.1).
     /// </summary>
     private async Task<Guid> ZetGeplaatstThemaOpAsync(string code)
     {
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
         await using var context = _db.MaakContext();
 
         var schooljaar = new Schooljaar($"2026-2027-{Guid.NewGuid():N}"[..20], new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
@@ -624,17 +622,19 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema("Getallen tot 1000", duurWeken: 5);
-        thema.VoegDoelsuggestieToe(new DoelKoppeling(code, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        var subthema = thema.VoegSubthemaToe("Honderdtallen", 2, "L3");
+        subthema.VoegSubdoelToe("L3", new DoelKoppeling(code, KoppelingStatus.Manueel));
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klas.Id);
         jaarplan.VoegPlaatsingToe(
             thema.Id,
-            JaarplanGeneratieService.GeneratieNiveau,
-            indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0].Start,
+            schooljaar.Start,
+            schooljaar.Start.AddDays(25),
             KoppelingStatus.Aanvaard,
             null);
         context.Jaarplannen.Add(jaarplan);
+        context.Subthemaplaatsingen.Add(new Subthemaplaatsing(jaarplan.Id, subthema.Id, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 25)));
 
         await context.SaveChangesAsync();
         return klas.Id;

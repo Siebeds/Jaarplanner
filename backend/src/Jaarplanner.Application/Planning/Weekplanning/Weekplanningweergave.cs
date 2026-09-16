@@ -4,12 +4,12 @@ namespace Jaarplanner.Application.Planning.Weekplanning;
 
 /// <summary>
 /// One stretch of days with the activiteiten scheduled on them (E9-03, read side of FR-6.2/FR-7.2) — what the week
-/// view inside a themaperiode renders from.
+/// view of the agenda renders from.
 /// <para>
 /// <b>It reports days, not weeks, and that is deliberate.</b> A week is a grouping the client draws; the server has no
 /// opinion on where a week starts, because that is a display convention (Monday, here) rather than school data. Sending
-/// weeks would put a calendar unit in the contract — the same thing <c>Planningsblokniveau</c> is guarded against
-/// gaining — and it would force the server to decide what a partial week at a period boundary means.
+/// weeks would put a calendar unit in the contract, and it would force the server to decide what a partial week at a
+/// thema boundary means.
 /// </para>
 /// <para>
 /// <b>Every day in the range is returned, including the closed ones.</b> A week view that silently omitted
@@ -129,11 +129,11 @@ public sealed record Dagweergave(
 /// </para>
 /// </param>
 /// <param name="ValtBuitenThemaperiode">
-/// True when this day lies outside the period its thema is placed in.
+/// True when this day lies outside every placement of its thema (ADR-0053 decision 11).
 /// <para>
 /// <b>Reported, never refused</b> (E9-03's stated invariant). A teacher who front-loads one activiteit is not making a
 /// mistake, and refusing it would be the tool inventing a rule the school never stated. Null-free by construction: a
-/// thema that is not placed at all yields <c>false</c> rather than "unknown", because there is then no period for the
+/// thema that is not placed at all yields <c>false</c> rather than "unknown", because there are then no days for the
 /// day to fall outside of, and a screen must not report a mismatch against nothing.
 /// </param>
 public sealed record GeplandeActiviteitWeergave(

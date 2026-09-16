@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import type { DoelMatchSuggestie, LeerplandoelDetail, ThemaWeergave } from "../../lib/types";
 import { DIRECTIE, metIk } from "../../test/rechten";
+import { openLijsten } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -91,19 +92,10 @@ const THEMA: ThemaWeergave = {
   ],
 };
 
-const SUGGESTIE: DoelMatchSuggestie = {
-  id: "s-1",
-  leerplandoelCode: "6.5.GK2.3",
-  status: "Voorgesteld",
-  aiMotivatie: "Past bij het verkleden.",
-  tekst: THEMADOELTEKST,
-  doelsoort: "Gemeenschappelijk",
-};
 let suggesties: DoelMatchSuggestie[] = [];
 
 const fetchMock = vi.fn((pad: string, init?: RequestInit) => {
   if (init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
-  if (init?.method === "PUT") return Promise.resolve(antwoord({ ...SUGGESTIE, status: "Aanvaard" }));
   const leerplandoel = /\/api\/leerplandoelen\/([^/?]+)$/.exec(pad);
   if (leerplandoel) return Promise.resolve(antwoord(DOELEN[decodeURIComponent(leerplandoel[1])]));
   if (pad.endsWith("/doelsuggesties")) return Promise.resolve(antwoord(suggesties));
@@ -140,6 +132,8 @@ function toon() {
 /** The chapter starts shut (FB-011); its subdoelen show once it is opened. */
 async function openHoofdstuk() {
   fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
+  // Its lists, and the thema's own, start shut as well (TB-051).
+  openLijsten();
 }
 
 describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => {
@@ -207,12 +201,22 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
   // What this does NOT guard: that the remove control sits ABOVE the row's stretched click area. jsdom does no hit
   // testing, so removing the control's `relative z-10` still passes here while a real browser would open the sheet on
   // an unlink. The TB-016 browser pass checks it with `elementFromPoint` (see the ticket's Werklog).
-  it("ontkoppelt zonder de detail te openen", async () => {
+  it("vraagt eerst bevestiging met de gevolgen voor de dekking, en opent de detail niet (TB-051)", async () => {
     toon();
     await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
 
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
+
+    const vraag = await screen.findByRole("dialog", { name: t("thema.subdoelOntkoppelTitel", { code: "6.5.GK2.3" }) });
+    expect(vraag).toHaveTextContent(
+      t("thema.subdoelOntkoppelGevolg", { code: "6.5.GK2.3", subthema: "De stoet", leeftijd: "K2" }),
+    );
+    // No activiteit of this subthema carries the doel.
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: "DELETE" }));
+
+    fireEvent.click(within(vraag).getByRole("button", { name: t("thema.ontkoppelBevestig") }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -220,7 +224,20 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
         expect.objectContaining({ method: "DELETE" }),
       ),
     );
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  });
+
+  it("ontkoppelt niets wanneer de bevestiging geannuleerd wordt (TB-051)", async () => {
+    toon();
+    await openHoofdstuk();
+    await screen.findByText(THEMADOELTEKST);
+
+    fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
+    const vraag = await screen.findByRole("dialog");
+    fireEvent.keyDown(vraag, { key: "Escape" });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: "DELETE" }));
   });
 
   it("leest de doeldetail opnieuw na een ontkoppeling, zodat Gebruikt in niet achterloopt", async () => {
@@ -233,21 +250,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     const voor = detailReads();
 
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
-
-    await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
-  });
-
-  it("leest de doeldetail opnieuw na een oordeel over een doelsuggestie", async () => {
-    suggesties = [SUGGESTIE];
-    toon();
-    await openHoofdstuk();
-    await screen.findByText(THEMADOELTEKST);
-    const detailReads = () =>
-      fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
-        .length;
-    const voor = detailReads();
-
-    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "6.5.GK2.3" }) }));
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.ontkoppelBevestig") }));
 
     await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
   });

@@ -9,7 +9,7 @@ import { beslisFout, useBeslisActiviteitvoorstel, useStelActiviteitenVoor, vraag
 import { Aimerk, Beslisknoppen, Voorsteldoel } from "./Subdoelplaatsing";
 
 /**
- * The AI's activiteit proposals in a subthema chapter (FB-025, ADR-0052).
+ * The AI's activiteit proposals in a subthema chapter (FB-025, ADR-0054).
  *
  * **They sit under the activiteiten they would join**, in the faint ring of ADR-0051 with the wand, the status mark and
  * the quiet check, pencil and cross of the subdoelplaatsing, so a teacher meets one shape for "the AI proposes, you
@@ -124,7 +124,7 @@ function Voorstelkaart({
       ) : (
         <>
           <p className="mt-1.5 text-body font-medium text-inkt">{voorstel.naam}</p>
-          {/* Only directie is sent someone else's proposal (ADR-0052 A3); an acceptance makes it the asker's own. */}
+          {/* Only directie is sent someone else's proposal (ADR-0054 A3); an acceptance makes it the asker's own. */}
           {voorstel.isEigen ? null : (
             <p className="mt-0.5 text-meta text-inkt-zacht">
               {t("activiteitvoorstel.vanCollega", { naam: voorstel.aanvragerNaam })}

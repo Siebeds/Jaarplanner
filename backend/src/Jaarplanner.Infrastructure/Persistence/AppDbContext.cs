@@ -52,9 +52,8 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Klas> Klassen => Set<Klas>();
 
     /// <summary>
-    /// The school years with their vakantie-/periodestructuur (Art. IX.3, E3-05). Note there is
-    /// deliberately no <c>Planningsblokken</c> set: blocks are derived from a schooljaar by the
-    /// <c>IPlanningsblokIndeling</c> seam, so no row commits the school to a granularity (ADR-0013).
+    /// The school years with their vacations and free days (Art. IX.3). A vacation splits a thema placement
+    /// (ADR-0053); there are no periods to store.
     /// </summary>
     public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
 
@@ -86,6 +85,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>The minimumdoelen each thema aims at as its themadoelen (FB-043).</summary>
     public DbSet<ThemaMinimumdoel> ThemaMinimumdoelen => Set<ThemaMinimumdoel>();
+
+    /// <summary>The AI's proposals of a minimumdoel as a themadoel (FB-053).</summary>
+    public DbSet<Minimumdoelsuggestie> Minimumdoelsuggesties => Set<Minimumdoelsuggestie>();
 
     /// <summary>The class/age-scoped subthema's (Art. IX.2).</summary>
     public DbSet<Subthema> Subthemas => Set<Subthema>();
@@ -195,7 +197,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The AI's proposed places for a thema's open leerplandoelen (FB-057, ADR-0050). Never read by the dekking.</summary>
     public DbSet<Subdoelvoorstel> Subdoelvoorstellen => Set<Subdoelvoorstel>();
 
-    /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0052).</summary>
+    /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0054).</summary>
     public DbSet<Activiteitvoorstel> Activiteitvoorstellen => Set<Activiteitvoorstel>();
 
     /// <summary>

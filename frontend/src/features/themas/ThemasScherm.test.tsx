@@ -47,6 +47,42 @@ describe("ThemasScherm", () => {
   });
 });
 
+describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
+  it("telt de minimumdoelen van het thema, en geen klassen of doelen van alle niveaus", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify([
+            {
+              id: "t-1",
+              naam: "Winter",
+              duurWeken: 5,
+              invalshoeken: null,
+              kernwoordenschat: [],
+              rijkeWoordenschat: [],
+              heeftVoldoendeThemadoelen: true,
+              themadoelen: [],
+              minimumdoelen: ["K-1.1.1", "K-1.1.2", "K-1.1.3"].map((ref, i) => ({ id: `m-${i}`, minimumdoelRef: ref })),
+              aantalAfgeleideLeeftijden: 3,
+              aantalSubthemas: 9,
+              aantalActiviteiten: 40,
+              aantalDoelkoppelingen: 460,
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    toon("themas", LEERKRACHT);
+
+    const kaart = await screen.findByRole("link", { name: /Winter/ });
+    expect(kaart).toHaveTextContent(`3 ${t("themas.minimumdoelMeer")}`);
+    expect(kaart).not.toHaveTextContent(/klas/);
+    expect(kaart).not.toHaveTextContent("460");
+  });
+});
+
 describe("DoelenScherm", () => {
   it("biedt een leerkracht geen Inladen", () => {
     toon("doelen", LEERKRACHT);

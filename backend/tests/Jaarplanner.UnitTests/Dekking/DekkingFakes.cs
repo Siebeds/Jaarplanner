@@ -27,78 +27,22 @@ internal sealed class FakeJaarplanLezer : IJaarplanLezer
 }
 
 /// <summary>
-/// An in-memory <see cref="IDekkingOpslag"/>. It records the arguments it was asked with, because two of this
-/// story's rules are only observable in the <b>request</b> rather than in the answer: that a rejected or stale
-/// placement's thema is never asked about at all, and that the klas is passed through so the class-scoped layers can
-/// be filtered. A fake that only returned data could not prove either.
+/// An in-memory <see cref="IDekkingOpslag"/>. It records the arguments it was asked with, because some rules are only
+/// observable in the <b>request</b> rather than in the answer: that the klas is passed through so the class-scoped
+/// layers can be filtered, and which jaar/fasen and mijlpalen the scope asked for.
 /// </summary>
 internal sealed class FakeDekkingOpslag : IDekkingOpslag
 {
-    private readonly IReadOnlyList<DekkendeKoppeling> _koppelingen;
     private readonly IReadOnlyList<Leerplandoel> _doelen;
 
-    public FakeDekkingOpslag(
-        IReadOnlyList<DekkendeKoppeling> koppelingen,
-        IReadOnlyList<Leerplandoel> doelen)
+    public FakeDekkingOpslag(IReadOnlyList<Leerplandoel> doelen)
     {
-        _koppelingen = koppelingen;
         _doelen = doelen;
     }
 
     /// <summary>The klas the service scoped the class-level layers to, or null when it never asked.</summary>
     public Guid? GevraagdeKlasId { get; private set; }
 
-    /// <summary>The thema ids the service asked about, or null when it never asked.</summary>
-    public IReadOnlyCollection<Guid>? GevraagdeThemaIds { get; private set; }
-
-    public int AantalKoppelingAanroepen { get; private set; }
-
-    /// <summary>
-    /// Links per thema, for the tests that need the answer to <b>depend</b> on which thema's were asked about
-    /// (E3-03). When set, it is used instead of the flat list.
-    /// <para>
-    /// <b>Why the flat list is not enough for the vooruitzicht.</b> That computation asks this port twice — once for
-    /// the decided placements and once for those plus the standing proposals — and the difference between the two
-    /// answers <i>is</i> the figure under test. A fake that returns everything both times makes
-    /// <c>AantalGedekt</c> and <c>AantalMogelijkGedekt</c> equal by construction, so a service that ignored the
-    /// distinction entirely would pass. The dekking tests below need no such thing, which is why this is opt-in and
-    /// the unfiltered default stays exactly as documented above.
-    /// </para>
-    /// </summary>
-    public IReadOnlyDictionary<Guid, IReadOnlyList<DekkendeKoppeling>>? KoppelingenPerThema { get; set; }
-
-    public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-        IReadOnlyCollection<Guid> themaIds,
-        CancellationToken cancellationToken = default)
-    {
-        AantalKoppelingAanroepen++;
-        GevraagdeThemaIds = themaIds;
-
-        if (KoppelingenPerThema is not null)
-        {
-            return Task.FromResult<IReadOnlyList<DekkendeKoppeling>>(
-                themaIds
-                    .SelectMany(id => KoppelingenPerThema.TryGetValue(id, out var lijst) ? lijst : [])
-                    .ToList());
-        }
-
-        // Returns everything it was given, UNFILTERED. An earlier revision of this comment claimed the fake filtered
-        // by themaIds "so it cannot hand back coverage the service did not request"; it never did, and a documented
-        // guard that does not exist is worse than none — the next test to rely on it would pass silently.
-        //
-        // No filter is needed, and that is a property of the tests rather than an accident: the cases where the
-        // service must NOT count a thema (rejected, stale, voorgesteld) are asserted by
-        // `AantalKoppelingAanroepen == 0` plus `GevraagdeThemaIds` being null, i.e. by proving the port was never
-        // reached at all. That is a stronger assertion than a filtered answer, because a filtered fake could still
-        // hide a service that asked about the wrong thema and got an empty list back. `GevraagdeThemaIds` is what
-        // pins which ids were asked for.
-        return Task.FromResult<IReadOnlyList<DekkendeKoppeling>>(_koppelingen.ToList());
-    }
-
-    /// <summary>
-    /// The candidate links the gap-analyse classifies from (E5-05). Empty by default, which is the state every
-    /// pre-E5-05 test was written in and which classifies every gap as <c>GeenThema</c>.
-    /// </summary>
     /// <summary>The decided subdoel and activiteit links at the klas's leeftijd, with their placement (ADR-0047).</summary>
     public IReadOnlyList<Subthemakoppeling> Subthemakoppelingen { get; set; } = [];
 
@@ -137,9 +81,8 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     public Guid? GevraagdeKandidaatKlasId { get; private set; }
 
     /// <summary>
-    /// Unfiltered, like <see cref="HaalDekkendeKoppelingenAsync"/> and for a stronger reason than there: the whole
-    /// point of this read is that it is <b>not</b> narrowed to the placed thema's, so a fake that narrowed it would
-    /// make the <c>NietIngepland</c> cause unreachable and its tests vacuous.
+    /// Unfiltered: the whole point of this read is that it is <b>not</b> narrowed to what is placed, so a fake that
+    /// narrowed it would make the <c>NietIngepland</c> cause unreachable and its tests vacuous.
     /// </summary>
     public Task<IReadOnlyList<KandidaatKoppeling>> HaalKandidaatKoppelingenAsync(
         Guid klasId,
@@ -191,13 +134,9 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     /// <summary>
     /// The curriculum, filtered to <paramref name="jaarFasen"/> when a scope is given (E5-02).
     /// <para>
-    /// <b>This fake filters where <see cref="HaalDekkendeKoppelingenAsync"/> deliberately does not, and the asymmetry
-    /// has a reason.</b> There, filtering would weaken the test: the rules under test are proven by the port never
-    /// being reached, and a filtered answer could hide a service asking about the wrong thema. Here the rule under
-    /// test is arithmetic <i>over</i> the answer — <c>AantalLeerplandoelen</c> and <c>AantalBuitenBereik</c> — which
-    /// cannot be observed at all unless a scope actually removes rows. The request is still pinned separately by
-    /// <see cref="GevraagdeJaarFasen"/>, so a service that passed the wrong codes and a fake that filtered them
-    /// wrongly cannot cancel out. That the <i>real</i> query filters the same way is
+    /// It filters because the rule under test is arithmetic <i>over</i> the answer (<c>AantalLeerplandoelen</c> and
+    /// <c>AantalBuitenBereik</c>), which cannot be observed unless a scope removes rows. The request is still pinned
+    /// separately by <see cref="GevraagdeJaarFasen"/>. That the <i>real</i> query filters the same way is
     /// <c>DekkingEndpointsTests</c>'s job, against PostgreSQL.
     /// </para>
     /// </summary>

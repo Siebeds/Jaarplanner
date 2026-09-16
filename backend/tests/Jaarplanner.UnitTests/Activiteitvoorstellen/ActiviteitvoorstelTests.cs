@@ -5,7 +5,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Activiteitvoorstellen;
 
 /// <summary>
-/// The activiteitvoorstellen contract (FB-025, ADR-0052): the answer's shape (Art. IV.5), which items survive validation
+/// The activiteitvoorstellen contract (FB-025, ADR-0054): the answer's shape (Art. IV.5), which items survive validation
 /// (D3, D5 to D7), what the prompt holds and forbids (Art. I.2, IV.4), and the proposal entity (D8).
 /// </summary>
 public sealed class ActiviteitvoorstelTests

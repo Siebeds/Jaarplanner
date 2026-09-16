@@ -126,26 +126,29 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
     // --- Doelsuggesties (R14) and the wizard's AI assist (R29): directie, themabeheer. ---
 
     [PostgresFact]
-    public async Task Doelsuggesties_en_de_wizardhulp_zijn_van_themabeheer_niet_van_de_hoofdleerkracht()
+    public async Task Doelsuggesties_en_de_wizardhulp_zijn_van_themabeheer_niet_van_een_leerkracht_of_hoofdleerkracht()
     {
+        // FB-053, criterion 5: a leerkracht and a hoofdleerkracht may neither ask for nor decide a thema's
+        // doelsuggesties, and the server refuses them before anything is read.
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         var themaId = await opzet.ThemaAsync();
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
+        using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
         var suggestie = Guid.NewGuid();
         var status = new { status = "Aanvaard" };
-        var vervanging = new { leerplandoelCode = Doelcode };
 
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsync($"/api/themas/{themaId}/doelsuggesties/genereer", null)));
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/status", status)));
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/leerplandoel", vervanging)));
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsJsonAsync("/api/thema-opbouw/themadoel-suggesties", new { })));
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsJsonAsync("/api/thema-opbouw/subdoel-suggesties", new { })));
+        foreach (var client in new[] { hoofdleerkracht, leerkracht })
+        {
+            Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { jaarFasen = new[] { "K3" } })));
+            Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/status", status)));
+            Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client.PostAsJsonAsync("/api/thema-opbouw/themadoel-suggesties", new { })));
+            Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(client.PostAsJsonAsync("/api/thema-opbouw/subdoel-suggesties", new { })));
+        }
 
         // Themabeheer reaches the service, which answers for the suggestion that does not exist.
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(themabeheer.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/status", status)));
-        Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(themabeheer.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/leerplandoel", vervanging)));
     }
 
     // --- Subthema's van een jaar (R5, R21; I13, I16): directie, the hoofdleerkracht of that leeftijd. ---
@@ -686,9 +689,9 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         // Empty, so themabeheer holds the right to delete it; but a klas planned it.
         using (var directie = opzet.Directie())
         {
-            var rooster = await directie.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{school.SchooljaarId}/rooster");
+            var plan = await directie.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Blauw}/jaarplan");
             Assert.Equal(HttpStatusCode.OK, await StatusAsync(directie.PostAsJsonAsync(
-                $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, blokStart = rooster!.Blokken[0].Start })));
+                $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, van = plan!.EersteSchooldag })));
         }
 
         string naam;
@@ -706,9 +709,8 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
 
     private sealed record NaamDto(string Naam);
 
-    private sealed record RoosterDto(List<BlokDto> Blokken);
+    private sealed record PlanDto(DateOnly EersteSchooldag);
 
-    private sealed record BlokDto(DateOnly Start);
 
     // --- A missing leeftijd (test-runner D2): the write's Dutch 400, and a 403 first wherever the right needs no body. ---
 

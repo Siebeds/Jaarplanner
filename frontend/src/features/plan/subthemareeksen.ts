@@ -3,13 +3,11 @@ import { t } from "../../i18n";
 import { datumsTussen, maandagVan, valtBinnen, verschuif, weekdagIndex } from "../../lib/datum";
 
 /**
- * The stretch of days one subthema runs over, inside one themaperiode.
+ * The stretch of days one subthema runs over, inside one thema placement.
  *
- * `van`/`tot` are the FIRST and LAST day carrying an activiteit of the subthema, so the range is
- * measured rather than intended: nothing in the model records a subthemaperiode. The server's
- * `Subthemaperiode` tier is a grid of empty two-week slots derived from the school year; it says
- * when a slot is, never which subthema sits in it. What a teacher can see is where the activiteiten
- * landed, and that is what this reports.
+ * `van`/`tot` are the FIRST and LAST day carrying an activiteit of the subthema, widened by the window the teacher
+ * marked off for it, when there is one. What a teacher can see is where the activiteiten landed, and that is what
+ * this reports.
  */
 export interface Subthemareeks {
   subthemaId: string;
@@ -30,16 +28,15 @@ export interface Subthemareeks {
 }
 
 /**
- * Every subthema run in `dagen`, split per themaperiode.
+ * Every subthema run in `dagen`, split per thema placement (`blokken`, ADR-0053).
  *
- * **The split is on the periode boundary, not on a gap of N days.** A subthema planned in september
+ * **The split is on the placement boundary, not on a gap of N days.** A subthema planned in september
  * and again in march is two runs, and joining them would draw a band across half the school year.
  * The obvious alternative is to break a run wherever the gap gets "big enough", which needs a
- * threshold nobody can defend: two weeks of vakantie inside one themaperiode is not a new run, and
- * three teaching days across a periode boundary is. The periode is the unit the plan is built in, so
- * it is the unit a run belongs to.
+ * threshold nobody can defend. The thema placement is the unit the plan is built in, so it is the unit a
+ * run belongs to; a thema split around a vacation is two placements, and a run splits with it.
  *
- * Days outside every periode (between two blocks, which is a legitimate place for an activiteit to
+ * Days outside every placement (a day without a thema, which is a legitimate place for an activiteit to
  * sit) group together as their own bucket rather than being dropped.
  *
  * Two activiteiten of one subthema on one day count as one day: `aantalDagen` answers "on how many
@@ -142,13 +139,13 @@ export function reeksenPerDag(reeksen: readonly Subthemareeks[]): Map<string, Su
 
 /**
  * The range the subthema runs are read over: the days on screen and the whole week of the anchored day, widened to
- * every themaperiode they touch.
+ * every thema placement they touch.
  *
- * **Whole periodes**, because a run is measured over its periode: measured over the visible month, a run that began in
+ * **Whole placements**, because a run is measured over its placement: measured over the visible month, a run that began in
  * the last week of september would be reported as starting on 1 october (see `subthemareeksen`).
  *
  * **And the whole week of the anchored day** (FB-017), because the activiteiten list speaks about that week. A day
- * view, or a phone's three days, loads less than a week, and a day outside every periode loads only itself, so a run
+ * view, or a phone's three days, loads less than a week, and a day outside every placement loads only itself, so a run
  * later that week would go unread and the list would say that nothing runs (antagonist FB-017, round 2).
  */
 export function reeksbereik(
@@ -226,11 +223,11 @@ export function naamOpDezeDag(datum: string, reeksen: readonly Subthemareeks[]):
  * in the middle of a week offered a thema the teacher had not touched in that period at all.
  *
  * The run COVERING the day if there is one, otherwise the last one that has already finished. Both
- * inside the themaperiode the day falls in, because that is the unit a plan is built in: a subthema
- * from the period before is not what a teacher continuing this week means, and suggesting it would be
+ * inside the thema placement the day falls in, because that is the unit a plan is built in: a subthema
+ * from the thema before is not what a teacher continuing this week means, and suggesting it would be
  * worse than suggesting nothing.
  *
- * Between two periodes there is no answer and it says so. The screen that asks cannot place an
+ * On a day without a thema there is no answer and it says so. The screen that asks cannot place an
  * activiteit there either, since no thema is running to own one.
  */
 export function voorstelReeks(

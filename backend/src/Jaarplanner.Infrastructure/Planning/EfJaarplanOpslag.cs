@@ -141,14 +141,13 @@ public sealed class EfJaarplanOpslag : IJaarplanOpslag
 
     /// <inheritdoc />
     /// <remarks>
-    /// Themadoelen + doelsuggesties are needed to describe a thema's goals in the prompt and the read view (only
-    /// <c>aanvaard</c>/<c>manueel</c> count — Art. V.1). Subthema's are deliberately not loaded: E3-01 places thema's
+    /// Themadoelen are needed to describe a thema's goals in the prompt and the read view (only <c>aanvaard</c>/
+    /// <c>manueel</c> count, Art. V.1); the minimumdoelen are auto-included. Subthema's are deliberately not loaded: E3-01 places thema's
     /// on the coarse tier, and pulling the whole class/age subtree would be a large read for no consumer.
     /// </remarks>
     public async Task<IReadOnlyList<Thema>> LaadThemasAsync(CancellationToken cancellationToken = default) =>
         await _context.Themas
             .Include(t => t.Themadoelen)
-            .Include(t => t.Doelsuggesties)
             .OrderBy(t => t.Naam)
             .ToListAsync(cancellationToken);
 
