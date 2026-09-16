@@ -194,7 +194,8 @@ function aiFout(fout: unknown): string {
   const geweigerd = geenToegangZin(fout);
   if (geweigerd) return geweigerd;
   if (fout instanceof ApiError && fout.status === 422) return t("woordweb.aiOngeldig");
-  if (fout instanceof ApiError && fout.status === 400 && fout.detail) return fout.detail;
+  // 400 is a refusal the server words for the teacher; 502 is an answer cut off at the output ceiling (TB-043).
+  if (fout instanceof ApiError && (fout.status === 400 || fout.status === 502) && fout.detail) return fout.detail;
   return t("woordweb.aiMislukt");
 }
 

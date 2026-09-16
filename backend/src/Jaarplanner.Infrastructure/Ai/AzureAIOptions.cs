@@ -57,6 +57,10 @@ public sealed class AzureAIOptions
     /// Optional <c>max_completion_tokens</c>, the ceiling reasoning models accept instead of <c>max_tokens</c>. Left
     /// out of the request when unset.
     /// </summary>
+    /// <remarks>
+    /// A reasoning model spends its hidden reasoning tokens out of this same ceiling, so it must leave room for them on
+    /// top of the answer. An answer that reaches it is cut off and rejected as an <c>AiAntwoordAfgekaptFout</c> (TB-043).
+    /// </remarks>
     public int? MaxCompletionTokens { get; init; }
 }
 
