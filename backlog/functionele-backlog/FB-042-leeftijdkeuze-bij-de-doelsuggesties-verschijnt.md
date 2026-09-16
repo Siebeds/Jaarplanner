@@ -2,10 +2,10 @@
 id: FB-042
 titel: Leeftijdkeuze bij de doelsuggesties verschijnt pas na 'Vraag suggesties'
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:34
+bijgewerkt: 2026-09-16 14:42
 opgepakt-door: claude-fb-042
 branch: ticket/FB-042-leeftijdkeuze-na-klik
 pr:
@@ -68,3 +68,4 @@ Geen.
 - 2026-09-16 14:28 · claude-fb-042 · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 14:32 · claude-fb-042 · leeftijdkeuze verschijnt pas na 'Vraag suggesties', met Verstuur (AI-knop) en Annuleer; Vitest 968 groen, lint groen; browsercheck en antagonist volgen
 - 2026-09-16 14:34 · claude-fb-042 · antagonist: COMPLIANT; de ring op 'Vraag suggesties' volgt ADR-0039 zoals 'Genereren' op het jaarplan; vier MINOR
+- 2026-09-16 14:42 · claude-fb-042 · in-uitvoering → te-testen: gebouwd: leeftijdkeuze pas na 'Vraag suggesties', met Verstuur en Annuleer; browsercheck PASS op desktop, 390px en toetsenbord (backlog/worklogs/FB-042), Vitest en lint groen, antagonist COMPLIANT; MINOR open: test vinkt K3 uit i.p.v. K2, geen test voor een mislukte vraag
