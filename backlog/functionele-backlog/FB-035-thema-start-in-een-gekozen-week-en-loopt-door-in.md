@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 23:43
+bijgewerkt: 2026-09-17 00:04
 opgepakt-door: fb035-datums
 branch: ticket/FB-035-themas-met-datums
-pr:
+pr: 124
 geblokkeerd:
 fr: [FR-6.4]
 ---
@@ -160,3 +160,4 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 - 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-045). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.
 - 2026-09-16 23:37 · fb035-datums · Eigenaar na het bekijken: blokjes 'Geen thema' weg, geen melding of oranje rand voor een aangepast einde, knoppen week vroeger/later en vergrendeld weg, smallere datumvelden. Wordt op deze branch aangepast.
 - 2026-09-16 23:43 · fb035-datums · Aanpassingen na het bekijken gebouwd: geen blokjes 'Geen thema', geen melding of oranje rand voor een aangepast einde, geen week- en slotknoppen, smalle datumvelden, neutrale jaarbalans. Browserpas ronde 4 groen; frontendtests en lint groen.
+- 2026-09-17 00:04 · fb035-datums · PR #124
