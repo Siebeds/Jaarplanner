@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-16 11:06
+bijgewerkt: 2026-09-16 13:03
 opgepakt-door: rapport-herwerken
 branch: ticket/FB-004-rapporttekst-herwerken
-pr:
+pr: 107
 geblokkeerd:
 fr: [FR-13.4]
 ---
@@ -94,3 +94,4 @@ Geen.
 - 2026-09-16 10:50 · rapport-herwerken · antagonist ronde 1: COMPLIANT, 0 critical, 0 major, 8 minor; 6 minor opgelost (zie backlog/worklogs/FB-004/antagonist.md), 3 bewust gelaten met reden
 - 2026-09-16 11:03 · rapport-herwerken · browserpass ronde 2 na de antagonist-fixes: overnemen, weigeren, aanpassen en de weigering op een intussen gewijzigde tekst allemaal groen; paneel toont links nu de tekst waarvoor het voorstel gemaakt werd
 - 2026-09-16 11:06 · rapport-herwerken · in-uitvoering → te-testen: AI herwerkt de tekst van een rapportdoel en het algemeen besluit: namen van de klas vervangen (D14), voorstel met zegel (D13), overnemen/aanpassen/weigeren; geen voorstel bewaard. Poorten groen: 1877 unit + 550 integratietests, 965 fronttests, dotnet format en pnpm lint schoon, antagonist COMPLIANT, browserpass op 1440 en 390px. Let op: de AI-antwoorden zijn getest tegen een lokale nep-Foundry; een echt model is nog niet geprobeerd
+- 2026-09-16 13:03 · rapport-herwerken · PR #107
