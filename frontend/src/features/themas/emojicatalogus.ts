@@ -111,9 +111,11 @@ export function zoekEmoji(zoekterm: string): Emojigroep[] {
   })).filter((groep) => groep.emoji.length > 0);
 }
 
-// What makes a grapheme an emoji here: a pictograph, a regional indicator (half of a flag), or the keycap mark that
-// turns a digit into one. The server applies its own rule; this only decides what a typed character selects.
-const EMOJITEKEN = /\p{Extended_Pictographic}|\p{Regional_Indicator}|⃣/u;
+// What makes a grapheme an emoji here: a character that displays as an emoji by default, a pictograph asked to
+// (U+FE0F), a regional indicator (half of a flag), or the keycap mark that turns a digit into one. A bare arrow or
+// square is text, so typing one searches instead. The server applies its own rule; this only decides what a typed
+// character selects.
+const EMOJITEKEN = /\p{Emoji_Presentation}|\p{Extended_Pictographic}️|\p{Regional_Indicator}|⃣/u;
 
 /**
  * The first emoji in `tekst`, as a whole grapheme (a family, a flag or a skin tone stays one), or null when there is

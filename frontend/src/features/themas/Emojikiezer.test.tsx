@@ -92,6 +92,16 @@ describe("Emojikiezer", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
+  it("sluit het raster met Escape zonder iets te kiezen", () => {
+    const { onKies } = toon("🐮");
+    const raster = open(t("emojikiezer.wijzig", { emoji: "🐮" }));
+
+    fireEvent.keyDown(within(raster).getByRole("searchbox"), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(onKies).not.toHaveBeenCalled();
+  });
+
   it("gaat met de pijltjes door het raster", () => {
     toon();
     const raster = open();
@@ -117,6 +127,10 @@ describe("eersteEmoji", () => {
   it("vindt niets in gewone tekst of cijfers", () => {
     expect(eersteEmoji("herfst")).toBeNull();
     expect(eersteEmoji("12")).toBeNull();
+    // A bare arrow or square is text: typing one searches.
+    expect(eersteEmoji("→")).toBeNull();
+    expect(eersteEmoji("■")).toBeNull();
+    expect(eersteEmoji("➡️")).toBe("➡️");
     expect(eersteEmoji("")).toBeNull();
   });
 });

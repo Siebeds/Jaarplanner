@@ -66,7 +66,7 @@ export function Emojikiezer({
           "inline-flex h-raak w-raak shrink-0 items-center justify-center rounded-veld border bg-kaart",
           "transition-colors duration-150 hover:bg-vlak-diep disabled:opacity-60",
           waarde ? "border-lijn-veld text-2xl leading-none" : "border-dashed border-lijn-veld text-inkt-zacht",
-          open && "border-accent ring-1 ring-accent",
+          open && "border-inkt ring-1 ring-inkt",
         )}
       >
         {waarde ? (

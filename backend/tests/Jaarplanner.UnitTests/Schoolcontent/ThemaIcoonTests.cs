@@ -26,6 +26,10 @@ public sealed class ThemaIcoonTests
     [InlineData("🏴󠁧󠁢󠁳󠁣󠁴󠁿")]
     [InlineData("❤️‍🔥")]
     [InlineData("⤴️")]
+    [InlineData("➡️")]
+    [InlineData("⭐")]
+    [InlineData("⌛")]
+    [InlineData("©️")]
     public void Een_emoji_wordt_aanvaard(string emoji) =>
         Assert.Equal(emoji, ThemaIcoon.Normaliseer(emoji));
 
@@ -49,6 +53,10 @@ public sealed class ThemaIcoonTests
     [InlineData("🍂 herfst")]
     [InlineData(":)")]
     [InlineData("→a")]
+    [InlineData("→")]
+    [InlineData("■")]
+    [InlineData("⌀")]
+    [InlineData("©")]
     public void Tekst_of_meer_dan_een_emoji_wordt_geweigerd(string waarde)
     {
         var fout = Assert.Throws<ArgumentException>(() => ThemaIcoon.Normaliseer(waarde));
