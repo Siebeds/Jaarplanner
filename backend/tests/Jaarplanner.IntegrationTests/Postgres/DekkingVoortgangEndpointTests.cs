@@ -220,9 +220,10 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
     /// <summary>
     /// A thema with a themadoel linked as <c>Manueel</c> — a link the teacher stands behind, so only the
-    /// <i>placement</i>'s status is left to vary between tests.
+    /// <i>placement</i>'s status is left to vary between tests. Written straight to the database, the way the FR-1
+    /// import still writes one: no route adds a leerplandoel as a themadoel any more (FB-043).
     /// </summary>
-    private static async Task<Guid> MaakThemaMetDoelAsync(HttpClient client, Opzet opzet)
+    private async Task<Guid> MaakThemaMetDoelAsync(HttpClient client, Opzet opzet)
     {
         var themaResp = await client.PostAsJsonAsync(
             "/api/themas",
@@ -230,10 +231,12 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, themaResp.StatusCode);
         var thema = await themaResp.Content.ReadFromJsonAsync<IdDto>();
 
-        var koppel = await client.PostAsJsonAsync(
-            $"/api/themas/{thema!.Id}/themadoelen",
-            new { leerplandoelCode = "VOR-01" });
-        Assert.Equal(HttpStatusCode.OK, koppel.StatusCode);
+        await using (var context = _db.MaakContext())
+        {
+            var geladen = await context.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == thema!.Id);
+            context.Themadoelen.Add(geladen.VoegThemadoelToe(new DoelKoppeling("VOR-01", KoppelingStatus.Manueel)));
+            await context.SaveChangesAsync();
+        }
 
         return thema.Id;
     }

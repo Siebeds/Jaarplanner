@@ -108,7 +108,7 @@ function antwoord(pad: string): unknown {
     case "/api/themas/t-1/voor-klas/klas-1":
       return {
         id: "t-1", naam: "Herfst", duurWeken: 6, invalshoeken: null, kernwoordenschat: [], rijkeWoordenschat: [],
-        heeftVoldoendeThemadoelen: true, themadoelen: [],
+        heeftVoldoendeThemadoelen: true, themadoelen: [], minimumdoelen: [],
         subthemas: [{ id: "s-1", themaId: "t-1", naam: "De eekhoorn", duurWeken: 2, leeftijd: "K3", onderzoeksvragen: [],
           subdoelen: [], activiteiten: [{ id: "a-1", naam: "Eikels rapen", activiteitType: "Kring", hoek: null,
             verwachteUitkomsten: null, onderzoeksvraagId: null, kleur: null, lengteInLesuren: 1, doelkoppelingen: [] }] }],

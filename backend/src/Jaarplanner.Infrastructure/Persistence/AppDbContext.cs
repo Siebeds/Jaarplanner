@@ -81,8 +81,11 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The school's thema's — school-scoped autonomous content (Art. IX.2).</summary>
     public DbSet<Thema> Themas => Set<Thema>();
 
-    /// <summary>The school-wide themadoelen anchoring each thema (Art. IX.2).</summary>
+    /// <summary>The school-wide themadoelen that link a leerplandoel (Art. IX.2).</summary>
     public DbSet<Themadoel> Themadoelen => Set<Themadoel>();
+
+    /// <summary>The minimumdoelen each thema aims at as its themadoelen (FB-043).</summary>
+    public DbSet<ThemaMinimumdoel> ThemaMinimumdoelen => Set<ThemaMinimumdoel>();
 
     /// <summary>The class/age-scoped subthema's (Art. IX.2).</summary>
     public DbSet<Subthema> Subthemas => Set<Subthema>();

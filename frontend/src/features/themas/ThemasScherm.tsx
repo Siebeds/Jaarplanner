@@ -127,7 +127,7 @@ export function ThemasScherm() {
                       <Cijfer waarde={tellingen.doelen} enkel="themas.doelEen" meer="themas.doelMeer" />
                     </p>
 
-                    {/* Art. IX.2 wants two or three school-wide themadoelen per thema. The server
+                    {/* Art. IX.2 wants at least two school-wide themadoelen (minimumdoelen) per thema. The server
                         computes whether this thema has them; the card says so where it is decided. */}
                     {!thema.heeftVoldoendeThemadoelen ? (
                       <p className="rounded bg-attentie-zacht px-2 py-1 text-[0.6875rem] font-medium text-attentie-inkt">

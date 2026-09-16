@@ -43,6 +43,9 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         _klasB = schooljaar.VoegKlasToe("L2 — tweede leerjaar", "L2");
         seed.Schooljaren.Add(schooljaar);
 
+        seed.Minimumdoelen.AddRange(
+            new Minimumdoel("MD-1", "K-", "1", "minimumdoeltekst"),
+            new Minimumdoel("MD-2", "K-", "2", "minimumdoeltekst"));
         seed.Leerplandoelen.AddRange(
             Leerdoel("NL-001"),
             Leerdoel("NL-002"),
@@ -70,8 +73,8 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie(
             "Water", DuurWeken: 5, Invalshoeken: "natuur", Kernwoordenschat: ["plas"], RijkeWoordenschat: ["waterkringloop"]));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-002");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-2");
 
         var bibliotheek = await NieuweService().HaalThemaBibliotheekOpAsync();
 
@@ -81,7 +84,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         Assert.Equal("natuur", item.Invalshoeken);
         Assert.Equal(["plas"], item.Kernwoordenschat);
         Assert.Equal(["waterkringloop"], item.RijkeWoordenschat);
-        Assert.Equal(2, item.Themadoelen.Count);
+        Assert.Equal(2, item.Minimumdoelen.Count);
         Assert.True(item.HeeftVoldoendeThemadoelen);
     }
 
@@ -199,7 +202,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie(
             "Water", DuurWeken: 5, Invalshoeken: "natuur", Kernwoordenschat: ["plas"], RijkeWoordenschat: ["waterkringloop"]));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
         var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         var subB = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (B)", 2, "L2"));
 
@@ -218,7 +221,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         Assert.Equal("natuur", biblioItem.Invalshoeken);
         Assert.Equal(["plas"], biblioItem.Kernwoordenschat);
         Assert.Equal(["waterkringloop"], biblioItem.RijkeWoordenschat);
-        Assert.Equal("NL-001", Assert.Single(biblioItem.Themadoelen).Koppeling.LeerplandoelCode);
+        Assert.Equal("MD-1", Assert.Single(biblioItem.Minimumdoelen).MinimumdoelRef);
 
         // Class B's derivation is untouched.
         var voorB = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasB.Id);
@@ -266,7 +269,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
     public async Task Deleting_class_A_subthema_leaves_shared_thema_and_class_B_intact()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 5, Kernwoordenschat: ["plas"]));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
         var subA = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen (A)", 2, "L1"));
         var actA = await NieuweService().MaakActiviteitAsync(subA.Id, null, new ActiviteitCreatie("Meten (A)", ActiviteitType.Onderzoek));
         await NieuweService().KoppelActiviteitAanDoelAsync(actA.Id, "WIS-001");
@@ -278,7 +281,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         var biblioItem = Assert.Single(await NieuweService().HaalThemaBibliotheekOpAsync());
         Assert.Equal("Water", biblioItem.Naam);
         Assert.Equal(["plas"], biblioItem.Kernwoordenschat);
-        Assert.Equal("NL-001", Assert.Single(biblioItem.Themadoelen).Koppeling.LeerplandoelCode);
+        Assert.Equal("MD-1", Assert.Single(biblioItem.Minimumdoelen).MinimumdoelRef);
         // Only one class derives now (klas B).
         Assert.Equal(1, biblioItem.AantalAfgeleideLeeftijden);
 
@@ -322,7 +325,7 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         // School-level edit: rename + re-vocab + add themadoel. This is the ONLY path that touches the shared layer.
         await NieuweService().WijzigThemaAsync(thema.Id, new ThemaWijziging(
             "Waterwereld", DuurWeken: 6, Invalshoeken: "techniek", Kernwoordenschat: ["plas", "druppel"], RijkeWoordenschat: ["waterkringloop"]));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
 
         var item = Assert.Single(await NieuweService().HaalThemaBibliotheekOpAsync());
         Assert.Equal("Waterwereld", item.Naam);
@@ -330,12 +333,12 @@ public sealed class GedeeldeThemaBibliotheekTests : IDisposable
         Assert.Equal("techniek", item.Invalshoeken);
         Assert.Equal(["plas", "druppel"], item.Kernwoordenschat);
         Assert.Equal(["waterkringloop"], item.RijkeWoordenschat);
-        Assert.Equal("NL-001", Assert.Single(item.Themadoelen).Koppeling.LeerplandoelCode);
+        Assert.Equal("MD-1", Assert.Single(item.Minimumdoelen).MinimumdoelRef);
 
         // The per-klas derivation reflects the same (single) shared school-wide layer — the two views are coherent.
         var voorA = await NieuweService().HaalThemaVoorKlasAsync(thema.Id, _klasA.Id);
         Assert.Equal("Waterwereld", voorA.Naam);
         Assert.Equal(["plas", "druppel"], voorA.Kernwoordenschat);
-        Assert.Equal("NL-001", Assert.Single(voorA.Themadoelen).Koppeling.LeerplandoelCode);
+        Assert.Equal("MD-1", Assert.Single(voorA.Minimumdoelen).MinimumdoelRef);
     }
 }

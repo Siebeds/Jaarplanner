@@ -175,26 +175,30 @@ export function useVerplaatsActiviteit(themaId: string) {
 // --- Manual goal links, at all three levels ----------------------------------------------------
 
 /**
- * A link a teacher made themselves. The body carries only the leerplandoel CODE: the goal itself is
- * read-only reference data (Art. III.5), so there is nothing else about it a client may send.
+ * A themadoel is a minimumdoel (FB-043). The body carries only its REF: the minimumdoel is read-only reference data
+ * (Art. III.5), and the leerplandoelen it brings along are read through the concordance, never sent.
+ */
+export function useKoppelMinimumdoel(themaId: string) {
+  return useSchoolcontentMutatie<string, unknown>(
+    (minimumdoelRef) => post(`/api/themas/${themaId}/minimumdoelen`, { minimumdoelRef }),
+    themaId,
+  );
+}
+
+export function useOntkoppelMinimumdoel(themaId: string) {
+  return useSchoolcontentMutatie<string, void>(
+    (koppelingId) => del<void>(`/api/themas/${themaId}/minimumdoelen/${koppelingId}`),
+    themaId,
+  );
+}
+
+/**
+ * A link a teacher made themselves on a subthema or an activiteit. The body carries only the leerplandoel CODE: the
+ * goal itself is read-only reference data (Art. III.5), so there is nothing else about it a client may send.
  *
  * These arrive as `Manueel`, which is a different thing from an accepted AI suggestion and stays
  * visibly different in the list. Nothing here can produce a `Voorgesteld` row.
  */
-export function useKoppelThemadoel(themaId: string) {
-  return useSchoolcontentMutatie<string, unknown>(
-    (leerplandoelCode) => post(`/api/themas/${themaId}/themadoelen`, { leerplandoelCode }),
-    themaId,
-  );
-}
-
-export function useOntkoppelThemadoel(themaId: string) {
-  return useSchoolcontentMutatie<string, void>(
-    (themadoelId) => del<void>(`/api/themas/${themaId}/themadoelen/${themadoelId}`),
-    themaId,
-  );
-}
-
 export function useKoppelSubdoel(themaId: string) {
   return useSchoolcontentMutatie<{ subthemaId: string; leerplandoelCode: string }, unknown>(
     ({ subthemaId, leerplandoelCode }) =>

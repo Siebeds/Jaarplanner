@@ -214,16 +214,37 @@ public class SchoolContentEntitiesTests
     // --- E1-10 CRUD mutators (Art. III autonomous content; level scoping preserved). ---
 
     [Fact]
-    public void Thema_advises_when_it_has_fewer_than_two_themadoelen()
+    public void Thema_advises_when_it_aims_at_fewer_than_two_minimumdoelen()
     {
         var thema = new Thema("Water", duurWeken: 4);
         Assert.False(thema.HeeftVoldoendeThemadoelen);
 
+        thema.KoppelMinimumdoel("MD-A");
+        // A leerplandoel themadoel the import wrote is no themadoel a teacher sees, so it does not count (FB-043).
         thema.VoegThemadoelToe(Voorstel("A"));
         Assert.False(thema.HeeftVoldoendeThemadoelen);
 
-        thema.VoegThemadoelToe(Voorstel("B"));
+        thema.KoppelMinimumdoel("MD-B");
         Assert.True(thema.HeeftVoldoendeThemadoelen);
+    }
+
+    [Fact]
+    public void Thema_links_any_number_of_minimumdoelen_once_each()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        foreach (var minimumdoelRef in new[] { "MD-1", "MD-2", "MD-3", "MD-4", "MD-5" })
+        {
+            var koppeling = thema.KoppelMinimumdoel(minimumdoelRef);
+            Assert.Equal(thema.Id, koppeling.ThemaId);
+        }
+
+        Assert.Equal(5, thema.Minimumdoelen.Count);
+        Assert.Throws<InvalidOperationException>(() => thema.KoppelMinimumdoel(" MD-3 "));
+        Assert.Throws<ArgumentException>(() => thema.KoppelMinimumdoel(" "));
+        Assert.Equal(5, thema.Minimumdoelen.Count);
+
+        thema.OntkoppelMinimumdoel(thema.Minimumdoelen[2]);
+        Assert.Equal(["MD-1", "MD-2", "MD-4", "MD-5"], thema.Minimumdoelen.Select(m => m.MinimumdoelRef));
     }
 
     [Fact]

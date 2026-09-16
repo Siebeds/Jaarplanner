@@ -38,6 +38,7 @@ function doel(code: string, tekst: string): LeerplandoelDetail {
   };
 }
 
+// Linked as subdoelen: a themadoel is a minimumdoel since FB-043, and the row under test is the subdoel's.
 const THEMADOELTEKST = "De kleuter verkent materialen om iets vorm te geven.";
 const SUBDOELTEKST = "De kleuter luistert naar een verhaal.";
 
@@ -54,11 +55,12 @@ const THEMA: ThemaWeergave = {
   invalshoeken: null,
   kernwoordenschat: [],
   rijkeWoordenschat: [],
-  heeftVoldoendeThemadoelen: true,
+  heeftVoldoendeThemadoelen: false,
+  // An older leerplandoel themadoel, as the FR-1 import may still write one: the page no longer shows it (FB-043).
   themadoelen: [
-    { id: "td-1", koppeling: { id: "k-1", leerplandoelCode: "6.5.GK2.3", status: "Manueel", aiMotivatie: null } },
-    { id: "td-2", koppeling: { id: "k-2", leerplandoelCode: "6.4.GJK.1", status: "Manueel", aiMotivatie: null } },
+    { id: "td-1", koppeling: { id: "k-1", leerplandoelCode: "9.9.GK2.9", status: "Manueel", aiMotivatie: null } },
   ],
+  minimumdoelen: [],
   subthemas: [
     {
       id: "st-1",
@@ -72,6 +74,16 @@ const THEMA: ThemaWeergave = {
           id: "sd-1",
           leeftijd: "K2",
           koppeling: { id: "k-3", leerplandoelCode: "1.2.GK2.1", status: "Aanvaard", aiMotivatie: null },
+        },
+        {
+          id: "sd-2",
+          leeftijd: "K2",
+          koppeling: { id: "k-4", leerplandoelCode: "6.5.GK2.3", status: "Manueel", aiMotivatie: null },
+        },
+        {
+          id: "sd-3",
+          leeftijd: "K2",
+          koppeling: { id: "k-5", leerplandoelCode: "6.4.GJK.1", status: "Manueel", aiMotivatie: null },
         },
       ],
       activiteiten: [],
@@ -125,19 +137,26 @@ function toon() {
   );
 }
 
+/** The chapter starts shut (FB-011); its subdoelen show once it is opened. */
+async function openHoofdstuk() {
+  fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
+}
+
 describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => {
-  it("toont bij elk themadoel de doeltekst naast de code", async () => {
+  it("toont bij elk subdoel de doeltekst naast de code, en geen leerplandoel als themadoel", async () => {
     toon();
+    await openHoofdstuk();
 
     expect(await screen.findByText(THEMADOELTEKST)).toBeInTheDocument();
     expect(await screen.findByText("De kleuter beweegt op muziek.")).toBeInTheDocument();
     expect(screen.getByText("6.5.GK2.3")).toBeInTheDocument();
+    expect(screen.getByText(t("thema.geenThemadoelen"))).toBeInTheDocument();
+    expect(screen.queryByText("9.9.GK2.9")).not.toBeInTheDocument();
   });
 
   it("toont bij een subdoel de doeltekst", async () => {
     toon();
-    // The chapter starts shut (FB-011); its subdoelen show once it is opened.
-    fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
+    await openHoofdstuk();
 
     expect(await screen.findByText(SUBDOELTEKST)).toBeInTheDocument();
     expect(screen.getByText("1.2.GK2.1")).toBeInTheDocument();
@@ -145,6 +164,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("opent bij een klik de volledige doeldetail, zonder koppelknop", async () => {
     toon();
+    await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
 
     // By role, not by text: a click on the text bubbles to any ancestor with a handler, so an `<li onClick>` that no
@@ -160,6 +180,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("geeft de focus terug aan de regel wanneer de detail sluit", async () => {
     toon();
+    await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
     const knop = screen.getByRole("button", { name: new RegExp(THEMADOELTEKST) });
 
@@ -174,7 +195,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("opent ook de detail van een subdoel", async () => {
     toon();
-    fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
+    await openHoofdstuk();
     await screen.findByText(SUBDOELTEKST);
 
     fireEvent.click(screen.getByRole("button", { name: new RegExp(SUBDOELTEKST) }));
@@ -188,13 +209,14 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
   // an unlink. The TB-016 browser pass checks it with `elementFromPoint` (see the ticket's Werklog).
   it("ontkoppelt zonder de detail te openen", async () => {
     toon();
+    await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
 
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
-        expect.stringContaining("td-1"),
+        expect.stringContaining("/subdoelen/sd-2"),
         expect.objectContaining({ method: "DELETE" }),
       ),
     );
@@ -203,6 +225,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
 
   it("leest de doeldetail opnieuw na een ontkoppeling, zodat Gebruikt in niet achterloopt", async () => {
     toon();
+    await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
     const detailReads = () =>
       fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
@@ -217,6 +240,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
   it("leest de doeldetail opnieuw na een oordeel over een doelsuggestie", async () => {
     suggesties = [SUGGESTIE];
     toon();
+    await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
     const detailReads = () =>
       fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
@@ -233,6 +257,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     DOELEN["6.4.GJK.1"] = { ...oud, nietMeerInOpstap: true };
     try {
       toon();
+      await openHoofdstuk();
 
       const rij = await screen.findByRole("button", { name: /De kleuter beweegt op muziek\./ });
       expect(within(rij).getByText(t("doel.vervallen"))).toBeInTheDocument();

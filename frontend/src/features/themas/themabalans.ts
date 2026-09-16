@@ -14,7 +14,7 @@ import type { ThemaWeergave } from "../../lib/types";
  * second thing that can disagree with the list rendered next to it.
  */
 export interface Themabalans {
-  /** Links on the thema itself: school-wide anchors (Art. IX.2). */
+  /** The thema's own themadoelen: the minimumdoelen it aims at (Art. IX.2, FB-043). */
   themadoelen: number;
   /** Links on a subthema, one age's derivation of the thema. */
   subdoelen: number;
@@ -28,7 +28,7 @@ export interface Themabalans {
 }
 
 export function themabalans(thema: ThemaWeergave): Themabalans {
-  const themadoelen = thema.themadoelen.length;
+  const themadoelen = thema.minimumdoelen.length;
   let subdoelen = 0;
   let activiteitdoelen = 0;
   let activiteiten = 0;

@@ -147,6 +147,15 @@ export function useMinimumdoelenPaginas(filter: MinimumdoelFilterQuery) {
   });
 }
 
+/** One page of the minimumdoelen register under the filter, for a search that needs no paging. */
+export function useMinimumdoelen(filter: MinimumdoelFilterQuery, opties?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: minimumdoelSleutels.lijst(filter),
+    queryFn: () => get<MinimumdoelenPagina>(`/api/minimumdoelen${minimumdoelQuery(filter)}`),
+    enabled: opties?.enabled ?? true,
+  });
+}
+
 /** One minimumdoel with the leerplandoelen that concord to it per jaar/fase (TB-010). */
 export function useMinimumdoel(ref: string | null) {
   return useQuery({

@@ -22,28 +22,27 @@ import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { DoelMatchResultaat, SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
-import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
-import { Blok, Doellijst, Feit, Groep, Kop } from "./Fiche";
-import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Blok, Feit, Groep, Kop } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
+import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
 import { themabalans } from "./themabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
+  useKoppelMinimumdoel,
   useKoppelSubdoel,
-  useKoppelThemadoel,
   useMaakActiviteit,
   useMaakSubthema,
   useOntkoppelActiviteitdoel,
+  useOntkoppelMinimumdoel,
   useOntkoppelSubdoel,
-  useOntkoppelThemadoel,
   useVerwijderActiviteit,
   useVerwijderSubthema,
   useVerwijderThema,
@@ -149,8 +148,8 @@ export function ThemadetailScherm() {
   const maakActiviteit = useMaakActiviteit(id);
   const wijzigActiviteit = useWijzigActiviteit(id);
   const verwijderActiviteit = useVerwijderActiviteit(id);
-  const koppelThemadoel = useKoppelThemadoel(id);
-  const ontkoppelThemadoel = useOntkoppelThemadoel(id);
+  const koppelMinimumdoel = useKoppelMinimumdoel(id);
+  const ontkoppelMinimumdoel = useOntkoppelMinimumdoel(id);
   const koppelSubdoel = useKoppelSubdoel(id);
   const ontkoppelSubdoel = useOntkoppelSubdoel(id);
   const koppelActiviteitdoel = useKoppelActiviteitdoel(id);
@@ -224,8 +223,8 @@ export function ThemadetailScherm() {
     (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
 
   const geweigerd = [
-    koppelThemadoel,
-    ontkoppelThemadoel,
+    koppelMinimumdoel,
+    ontkoppelMinimumdoel,
     koppelSubdoel,
     ontkoppelSubdoel,
     koppelActiviteitdoel,
@@ -342,16 +341,18 @@ export function ThemadetailScherm() {
           </dl>
         </Blok>
 
-        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. A doelsuggestie is a proposed themadoel:
-            accepting one makes it a themadoel, in this very list. As a sibling section it cost a
-            second heading, a second empty state and a permanent "Geen open suggesties" line.
+        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. As a sibling section the suggesties cost a second heading, a
+            second empty state and a permanent "Geen open suggesties" line.
+
+            A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
+            that lead there. The doelsuggesties still propose leerplandoelen; what becomes of them is another ticket.
 
             The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
             with its motivation and still has to be accepted or rejected by hand, and "Vraag
             suggesties" is always reachable rather than appearing only when the list is empty. */}
         <Blok
-          figuur={thema.themadoelen.length}
-          onder={t(thema.themadoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
+          figuur={thema.minimumdoelen.length}
+          onder={t(thema.minimumdoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
         >
           <Kop
             titel={t("thema.themadoelen")}
@@ -360,10 +361,10 @@ export function ThemadetailScherm() {
               mag.themaBewerken || mag.doelsuggestiesMaken ? (
                 <>
                   {mag.themaBewerken ? (
-                    <Doelkoppelaar
-                      onKies={(code) => koppelThemadoel.mutate(code)}
-                      bezig={koppelThemadoel.isPending}
-                      alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+                    <Minimumdoelkoppelaar
+                      onKies={(ref) => koppelMinimumdoel.mutate(ref)}
+                      bezig={koppelMinimumdoel.isPending}
+                      alGekozen={thema.minimumdoelen.map((m) => m.minimumdoelRef)}
                     />
                   ) : null}
                   {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
@@ -401,24 +402,26 @@ export function ThemadetailScherm() {
               <p className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
             ) : null}
 
-            {thema.themadoelen.length === 0 ? (
+            {thema.minimumdoelen.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
             ) : (
-              <Doellijst>
-                {thema.themadoelen.map((themadoel) => (
-                  <Gekoppelddoel
-                    key={themadoel.id}
-                    koppeling={themadoel.koppeling}
-                    ontkoppelLabel={t("activiteit.ontkoppel", {
-                      code: themadoel.koppeling.leerplandoelCode,
-                    })}
-                    ontkoppelBezig={ontkoppelThemadoel.isPending}
-                    onOntkoppel={mag.themaBewerken ? () => ontkoppelThemadoel.mutate(themadoel.id) : undefined}
-                    onToon={toonDoel}
-                  />
-                ))}
-              </Doellijst>
+              <Themaminimumdoelen
+                koppelingen={thema.minimumdoelen}
+                ontkoppelBezig={ontkoppelMinimumdoel.isPending}
+                onOntkoppel={mag.themaBewerken ? (koppelingId) => ontkoppelMinimumdoel.mutate(koppelingId) : undefined}
+                onToonDoel={toonDoel}
+              />
             )}
+
+            {/* A link that did not happen, other than a refusal (the page's line below says that): an already linked
+                minimumdoel or one no longer loaded. The server's own Dutch sentence. */}
+            {koppelMinimumdoel.isError && geenToegangZin(koppelMinimumdoel.error) === null ? (
+              <p role="alert" className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {koppelMinimumdoel.error instanceof ApiError && koppelMinimumdoel.error.detail
+                  ? koppelMinimumdoel.error.detail
+                  : t("thema.minimumdoelKoppelMislukt")}
+              </p>
+            ) : null}
 
             {/* A refusal's own Dutch sentence where the server wrote one (too many goals, no leeftijd). A 422 is a bad
                 model answer and its detail is an English operator diagnostic (Art. II.3), so the catalogue line stands

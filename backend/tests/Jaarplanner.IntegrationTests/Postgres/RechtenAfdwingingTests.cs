@@ -25,6 +25,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTests.Omgeving>
 {
     private const string Doelcode = "AFDW-01";
+    private const string Minimumdoelref = "AFDW-MD-01";
 
     private readonly Omgeving _omgeving;
 
@@ -74,9 +75,24 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.Created, gemaakt.StatusCode);
         var themaId = (await gemaakt.Content.ReadFromJsonAsync<RechtenTestOpzet.IdDto>())!.Id;
 
-        var doel = new { leerplandoelCode = Doelcode };
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsJsonAsync($"/api/themas/{themaId}/themadoelen", doel)));
-        Assert.Equal(HttpStatusCode.OK, await StatusAsync(themabeheer.PostAsJsonAsync($"/api/themas/{themaId}/themadoelen", doel)));
+        // A themadoel is a minimumdoel (FB-043): linking and unlinking it are the thema's row too.
+        var doel = new { minimumdoelRef = Minimumdoelref };
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", doel)));
+        using var gekoppeld = await themabeheer.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", doel);
+        Assert.Equal(HttpStatusCode.OK, gekoppeld.StatusCode);
+        var koppelingId = (await gekoppeld.Content.ReadFromJsonAsync<RechtenTestOpzet.IdDto>())!.Id;
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.DeleteAsync($"/api/themas/{themaId}/minimumdoelen/{koppelingId}")));
+        using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(leerkracht.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", doel)));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(leerkracht.DeleteAsync($"/api/themas/{themaId}/minimumdoelen/{koppelingId}")));
+        // Everyone reads which minimumdoelen the thema aims at.
+        var gelezen = await leerkracht.GetFromJsonAsync<JsonElement>($"/api/themas/{themaId}");
+        Assert.Equal(Minimumdoelref, Assert.Single(gelezen.GetProperty("minimumdoelen").EnumerateArray()).GetProperty("minimumdoelRef").GetString());
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(themabeheer.DeleteAsync($"/api/themas/{themaId}/minimumdoelen/{koppelingId}")));
+        // No route adds a leerplandoel as a themadoel any more (the SPA fallback answers the path, hence 405).
+        Assert.Contains(
+            await StatusAsync(themabeheer.PostAsJsonAsync($"/api/themas/{themaId}/themadoelen", new { leerplandoelCode = Doelcode })),
+            new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
 
         var wijziging = new { naam = $"Hernoemd {Guid.NewGuid():N}", duurWeken = 5, kernwoordenschat = new[] { "regen" } };
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PutAsJsonAsync($"/api/themas/{themaId}", wijziging)));
@@ -736,6 +752,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
             Db = await PostgresTestDatabase.MaakAsync("afdwinging");
             Factory = new PostgresApiFactory(Db.ConnectionString);
             await RechtenTestOpzet.ZaaiDoelAsync(Db, Doelcode);
+            await RechtenTestOpzet.ZaaiMinimumdoelAsync(Db, Minimumdoelref);
         }
 
         public async Task DisposeAsync()

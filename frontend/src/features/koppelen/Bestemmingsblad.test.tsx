@@ -58,6 +58,7 @@ function thema(id: string, naam: string, subthemas: ThemaWeergave["subthemas"]):
     rijkeWoordenschat: [],
     heeftVoldoendeThemadoelen: false,
     themadoelen: [],
+    minimumdoelen: [],
     subthemas,
   };
 }
@@ -97,6 +98,7 @@ function bibliotheekItem(item: ThemaWeergave): ThemaBibliotheekItem {
     rijkeWoordenschat: [],
     heeftVoldoendeThemadoelen: false,
     themadoelen: [],
+    minimumdoelen: [],
     aantalAfgeleideKlassen: 0,
   };
 }
@@ -138,13 +140,16 @@ describe("Bestemmingsblad", () => {
     expect(within(blad).queryByText("Leeg thema")).toBeNull();
   });
 
-  it("toont directie en themabeheer ook het lege thema, waar ze op themaniveau koppelen", () => {
-    for (const ik of [DIRECTIE, ikMet({ heeftThemabeheer: true })]) {
-      const { blad } = toon(ik, [HERFST, LEEG]);
-      expect(within(blad).getByText("Herfst")).toBeInTheDocument();
-      expect(within(blad).getByText("Leeg thema")).toBeInTheDocument();
-      cleanup();
-    }
+  // FB-043: a thema itself takes no leerplandoel any more, so an empty thema offers nothing, to anyone.
+  it("toont ook directie het lege thema niet, en zegt themabeheer alleen dat er niets te koppelen is", () => {
+    const { blad } = toon(DIRECTIE, [HERFST, LEEG]);
+    expect(within(blad).getByText("Herfst")).toBeInTheDocument();
+    expect(within(blad).queryByText("Leeg thema")).toBeNull();
+    cleanup();
+
+    const themabeheer = toon(ikMet({ heeftThemabeheer: true }), [HERFST, LEEG]);
+    expect(within(themabeheer.blad).getByText(t("koppelen.nietsTeKoppelen"))).toBeInTheDocument();
+    expect(within(themabeheer.blad).queryByText("Leeg thema")).toBeNull();
   });
 
   it("zegt dat er niets te koppelen is als er thema's zijn maar geen enkele knop, niet dat er geen thema's zijn", () => {

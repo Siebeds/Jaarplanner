@@ -545,7 +545,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
   });
   const thema = (id: string, naam: string, subthemas: unknown[]) => ({
     id, naam, duurWeken: 6, invalshoeken: null, kernwoordenschat: [], rijkeWoordenschat: [],
-    heeftVoldoendeThemadoelen: true, themadoelen: [], subthemas,
+    heeftVoldoendeThemadoelen: true, themadoelen: [], minimumdoelen: [], subthemas,
   });
 
   const THEMAS: Record<string, unknown> = {

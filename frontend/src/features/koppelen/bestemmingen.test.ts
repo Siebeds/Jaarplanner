@@ -61,6 +61,7 @@ function thema(naam: string, subthemas: SubthemaWeergave[], codes: string[] = []
       id: `themadoel-${naam}-${i}`,
       koppeling: { id: `k-${naam}-${i}`, leerplandoelCode: code, status: "Manueel" as const, aiMotivatie: null },
     })),
+    minimumdoelen: [],
     subthemas,
   };
 }
@@ -99,15 +100,6 @@ describe("filterBestemmingen", () => {
   it("markeert een themadoel dat het doel al draagt", () => {
     const [herfst] = filterBestemmingen([HERFST], "NED-1.1", "");
     expect(herfst.alGekoppeld).toBe(true);
-  });
-
-  it("meldt een vol thema, zodat de knop niet in een 400 loopt", () => {
-    const vol = thema("Vol", [], ["A-1", "A-2", "A-3"]);
-    const [tak] = filterBestemmingen([vol], "WIS-3.14", "");
-    expect(tak.themaVol).toBe(true);
-
-    const [ruimte] = filterBestemmingen([HERFST], "WIS-3.14", "");
-    expect(ruimte.themaVol).toBe(false);
   });
 
   it("houdt bij een treffer op thema alles eronder overeind", () => {
@@ -155,7 +147,7 @@ describe("filterBestemmingen", () => {
 
 describe("themasMetKoppelactie", () => {
   // Fix round 2 (the E3-06 rule): only thema's where the gebruiker has a link control to press. HERFST has two K3
-  // subthema's with activiteiten; LEEG has no subthema at all, so only its thema level can take the doel.
+  // subthema's with activiteiten; LEEG has no subthema at all, and a thema itself takes no leerplandoel (FB-043).
   const LEEG = thema("Leeg thema", []);
   const namen = (ik: Parameters<typeof magVoor>[0]) =>
     themasMetKoppelactie([HERFST, LEEG], magVoor(ik)).map((item) => item.naam);
@@ -164,9 +156,10 @@ describe("themasMetKoppelactie", () => {
     expect(namen(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }))).toEqual(["Herfst en bladeren"]);
   });
 
-  it("laat directie en themabeheer beide zien, want zij koppelen ook op themaniveau", () => {
-    expect(namen(DIRECTIE)).toEqual(["Herfst en bladeren", "Leeg thema"]);
-    expect(namen(ikMet({ heeftThemabeheer: true }))).toEqual(["Herfst en bladeren", "Leeg thema"]);
+  it("laat ook directie en themabeheer het lege thema niet zien: op het thema zelf koppelt niemand nog een doel", () => {
+    expect(namen(DIRECTIE)).toEqual(["Herfst en bladeren"]);
+    // Themabeheer alone holds no subdoel or activiteit right, so nothing here takes the doel from them.
+    expect(namen(ikMet({ heeftThemabeheer: true }))).toEqual([]);
   });
 
   it("laat een hoofdleerkracht van een andere leeftijd, en wie niets heeft, geen van beide zien", () => {
