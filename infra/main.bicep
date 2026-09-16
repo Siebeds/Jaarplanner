@@ -27,6 +27,14 @@ param postgresAdminLogin string = 'jaarplanner'
 @description('PostgreSQL administrator password. At rest it is stored only in Key Vault, inside the connection string.')
 param postgresAdminPassword string
 
+@description('Which model provider serves the AI calls (Ai:Provider, ADR-0048). Anthropic needs the Key Vault secret Anthropic--ApiKey; an empty value means Azure AI Foundry, which the demo does not configure.')
+@allowed([
+  ''
+  'AzureAI'
+  'Anthropic'
+])
+param aiProvider string = 'Anthropic'
+
 var appName = 'jaarplanner-demo-${suffix}'
 var keyVaultName = 'kv-jpdemo-${suffix}'
 var postgresName = 'pg-jaarplanner-demo-${suffix}'
@@ -221,6 +229,11 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'Authenticatie__EersteDirectie'
           value: eersteDirectie
+        }
+        {
+          // The key itself is the Key Vault secret Anthropic--ApiKey, never an app setting (Art. VI.4).
+          name: 'Ai__Provider'
+          value: aiProvider
         }
       ]
     }
