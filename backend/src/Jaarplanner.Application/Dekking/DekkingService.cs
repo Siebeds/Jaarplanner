@@ -16,7 +16,9 @@ namespace Jaarplanner.Application.Dekking;
 /// placed. Nothing else makes it either (D2).</item>
 /// <item>A <b>leerplandoel</b> is in the prognose when a subdoel or activiteit link of a subthema at the klas's
 /// leeftijd carries it, or an accepted doelsuggestie does (D3, S1, S2); it is gedekt when that subthema is placed in
-/// the klas's agenda, when the doelsuggestie's thema is placed, or when a planned algemene fiche carries it (D4).</item>
+/// the klas's agenda, when the doelsuggestie's thema is placed, or when a planned algemene fiche carries it (D4). An own
+/// activiteit's link never counts through its subthema: it is in the prognose of its owner's klassen and of a klas that
+/// plans it, and gedekt where it is planned (ADR-0049 D7).</item>
 /// </list>
 /// <para>
 /// A thema counts as placed when its placement is <c>aanvaard</c> or <c>manueel</c> and not stale (S3). It reads the
@@ -78,8 +80,9 @@ public sealed class DekkingService
             {
                 var dekkendeThemas = bronnen.DekkendPerCode.GetValueOrDefault(l.Code, []);
                 var dekkendeFiches = bronnen.FichesPerCode.GetValueOrDefault(l.Code, []);
+                var dekkendeActiviteiten = bronnen.EigenActiviteitenPerCode.GetValueOrDefault(l.Code, []);
                 var prognose = bronnen.PrognosePerCode.GetValueOrDefault(l.Code, []);
-                var stap = dekkendeThemas.Count > 0 || dekkendeFiches.Count > 0
+                var stap = dekkendeThemas.Count > 0 || dekkendeFiches.Count > 0 || dekkendeActiviteiten.Count > 0
                     ? Dekkingsstap.Gedekt
                     : prognose.Count > 0 ? Dekkingsstap.Prognose : Dekkingsstap.Geen;
                 var lacune = stap == Dekkingsstap.Gedekt
@@ -107,7 +110,8 @@ public sealed class DekkingService
                     lacune.Oorzaak,
                     lacune.Themas,
                     stap,
-                    prognose);
+                    prognose,
+                    dekkendeActiviteiten);
             })
             .OrderBy(d => d.Domein, StringComparer.Ordinal)
             .ThenBy(d => d.Subdomein, StringComparer.Ordinal)
@@ -169,6 +173,9 @@ public sealed class DekkingService
         vasteCodes.UnionWith((await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken))
             .Where(k => k.IsIngepland)
             .Select(k => k.LeerplandoelCode));
+        vasteCodes.UnionWith((await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken))
+            .Where(k => k.IsIngepland)
+            .Select(k => k.LeerplandoelCode));
 
         var nuGedekt = await TelGedekteDoelenAsync(beslist, vasteCodes, scope.Leerplandoelen, cancellationToken);
 
@@ -203,25 +210,35 @@ public sealed class DekkingService
             : await _opslag.HaalDekkendeKoppelingenAsync(geplaatsteThemaIds, cancellationToken);
         var subthemas = await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken);
         var fiches = await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken);
+        var eigen = await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken);
 
         var dekkend = suggesties.Select(k => (k.LeerplandoelCode, Naam: k.ThemaNaam))
             .Concat(subthemas.Where(k => k.IsIngepland).Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k))));
 
         // The prognose is what the school's content aims at, placed or not: every decided subthema link at the klas's
-        // leeftijd, and every accepted doelsuggestie (S1, S2).
+        // leeftijd, every accepted doelsuggestie (S1, S2), and every own activiteit that concerns the klas (ADR-0049 D7).
         var prognose = subthemas.Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)))
-            .Concat(kandidaten.Where(k => k.IsBeslist && k.IsDoelsuggestie).Select(k => (k.LeerplandoelCode, Naam: k.ThemaNaam)));
+            .Concat(kandidaten.Where(k => k.IsBeslist && k.IsDoelsuggestie).Select(k => (k.LeerplandoelCode, Naam: k.ThemaNaam)))
+            .Concat(eigen.Select(k => (k.LeerplandoelCode, Naam: EigenActiviteitnaam(k))));
 
         return new Bronnen(
             NamenPerCode(dekkend, r => r.LeerplandoelCode, r => r.Naam),
             NamenPerCode(fiches, k => k.LeerplandoelCode, k => k.FicheNaam),
-            NamenPerCode(prognose, r => r.LeerplandoelCode, r => r.Naam));
+            NamenPerCode(prognose, r => r.LeerplandoelCode, r => r.Naam),
+            NamenPerCode(eigen.Where(k => k.IsIngepland), k => k.LeerplandoelCode, k => k.ActiviteitNaam));
     }
 
     private sealed record Bronnen(
         Dictionary<string, IReadOnlyList<string>> DekkendPerCode,
         Dictionary<string, IReadOnlyList<string>> FichesPerCode,
-        Dictionary<string, IReadOnlyList<string>> PrognosePerCode);
+        Dictionary<string, IReadOnlyList<string>> PrognosePerCode,
+        Dictionary<string, IReadOnlyList<string>> EigenActiviteitenPerCode);
+
+    /// <summary>
+    /// How an own activiteit is named as a prognose source: its name, marked as an own activiteit, so it is never read as
+    /// a thema or a subthema (ADR-0049 D7).
+    /// </summary>
+    private static string EigenActiviteitnaam(EigenActiviteitkoppeling koppeling) => $"{koppeling.ActiviteitNaam} (eigen activiteit)";
 
     /// <summary>How a subthema is named as evidence: its own name, with its thema, since two thema's may share one.</summary>
     private static string Subthemanaam(Subthemakoppeling koppeling) => $"{koppeling.SubthemaNaam} ({koppeling.ThemaNaam})";

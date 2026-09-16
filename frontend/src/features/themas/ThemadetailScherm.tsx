@@ -27,6 +27,8 @@ import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Ac
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
+import { Plaatsingsbalk, Subthemavoorstelkaart } from "./Subdoelplaatsing";
+import { beslisFout, useBeslisSubdoelvoorstel, useSubdoelplaatsing } from "./plaatsingen";
 import { Blok, Feit, Groep, Kop } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
@@ -38,6 +40,7 @@ import {
   useKoppelActiviteitdoel,
   useKoppelMinimumdoel,
   useKoppelSubdoel,
+  useGebruikActiviteit,
   useMaakActiviteit,
   useMaakSubthema,
   useOntkoppelActiviteitdoel,
@@ -154,6 +157,7 @@ export function ThemadetailScherm() {
   const verwijderSubthema = useVerwijderSubthema(id);
   const maakActiviteit = useMaakActiviteit(id);
   const wijzigActiviteit = useWijzigActiviteit(id);
+  const gebruikActiviteit = useGebruikActiviteit(id);
   const verwijderActiviteit = useVerwijderActiviteit(id);
   const koppelMinimumdoel = useKoppelMinimumdoel(id);
   const ontkoppelMinimumdoel = useOntkoppelMinimumdoel(id);
@@ -161,6 +165,9 @@ export function ThemadetailScherm() {
   const ontkoppelSubdoel = useOntkoppelSubdoel(id);
   const koppelActiviteitdoel = useKoppelActiviteitdoel(id);
   const ontkoppelActiviteitdoel = useOntkoppelActiviteitdoel(id);
+  // FB-057: per leeftijd the open count and the AI's open proposals of where those doelen go.
+  const { data: plaatsing } = useSubdoelplaatsing(themaId);
+  const beslisSubdoel = useBeslisSubdoelvoorstel(id);
 
   if (isError) {
     return (
@@ -243,6 +250,7 @@ export function ThemadetailScherm() {
     koppelActiviteitdoel,
     ontkoppelActiviteitdoel,
     beoordeel,
+    beslisSubdoel,
     verwijder,
     verwijderSubthema,
     // The form shows its own refusal while it is open; once the rights closed it, this line does.
@@ -547,8 +555,28 @@ export function ThemadetailScherm() {
         {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
             card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
             the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
-        {perLeeftijd(subthemas).map((groep) => (
+        {perLeeftijd(subthemas).map((groep) => {
+          const plaatsen = plaatsing?.leeftijden.find((l) => l.leeftijd === groep.leeftijd);
+          // A refusal other than a 403 (decided elsewhere, subthema gone) is shown at the leeftijd it happened in.
+          const beslisFoutHier =
+            beslisSubdoel.isError &&
+            geenToegangZin(beslisSubdoel.error) === null &&
+            plaatsen?.subdoelvoorstellen.some((v) => v.id === beslisSubdoel.variables?.voorstelId);
+          return (
           <Blok key={groep.leeftijd} stapel boven={t("subthemabeheer.leeftijd")} figuur={groep.leeftijd}>
+            {plaatsen ? (
+              <Plaatsingsbalk
+                themaId={id}
+                leeftijd={plaatsen.leeftijd}
+                aantalOpen={plaatsen.aantalOpen}
+                magVragen={mag.subdoelplaatsingVragen(plaatsen.leeftijd)}
+              />
+            ) : null}
+            {beslisFoutHier ? (
+              <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {beslisFout(beslisSubdoel.error)}
+              </p>
+            ) : null}
             {groep.subthemas.map((subthema) => (
               <Subthemahoofdstuk
                 key={subthema.id}
@@ -592,10 +620,27 @@ export function ThemadetailScherm() {
                 onKoppelActiviteitdoel={(activiteitId, code) =>
                   koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
                 }
+                voorstellen={plaatsen?.subdoelvoorstellen.filter((v) => v.subthemaId === subthema.id)}
+                beslisBezig={beslisSubdoel.isPending}
+                onBeslisVoorstel={
+                  plaatsen?.magBeslissen
+                    ? (voorstelId, status) => beslisSubdoel.mutate({ voorstelId, status })
+                    : undefined
+                }
+              />
+            ))}
+            {plaatsen?.subthemavoorstellen.map((voorstel) => (
+              <Subthemavoorstelkaart
+                key={voorstel.id}
+                themaId={id}
+                voorstel={voorstel}
+                magBeslissen={plaatsen.magBeslissen}
+                onToon={toonDoel}
               />
             ))}
           </Blok>
-        ))}
+          );
+        })}
         </Groep>
       </Schermvlak>
 
@@ -724,17 +769,38 @@ export function ThemadetailScherm() {
         <Activiteitformulier
           open
           activiteit={bladActiviteit}
-          // The facts rather than the form for a gebruiker who may not change this leeftijd's activiteiten; the goal
-          // section for whoever may link goals there (R19), on an existing activiteit and on a new one's create.
-          alleenLezen={bladActiviteit !== undefined && !mag.activiteitBewerken(bladSubthema.leeftijd)}
-          magDoelen={mag.doelenKoppelen(bladSubthema.leeftijd)}
+          // The facts rather than the form for a gebruiker who may not change this activiteit (a colleague's own one
+          // included, ADR-0049 D4); the goal section for whoever may link its goals (R19, E3). A new one takes its
+          // "voor wie" and its goal picker from the subthema's leeftijd.
+          alleenLezen={
+            bladActiviteit !== undefined &&
+            !mag.activiteitInhoudBewerken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          magDoelen={
+            bladActiviteit !== undefined &&
+            mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          leeftijd={bladActiviteit ? undefined : bladSubthema.leeftijd}
+          onGebruik={
+            bladActiviteit && mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+              ? () =>
+                  gebruikActiviteit.mutate(bladActiviteit.id, {
+                    // Closed rather than switched to the copy: the list has not refetched yet, and a sheet looking
+                    // for an id it does not hold would open as a NEW activiteit. The copy shows in the list as "Eigen".
+                    onSuccess: () => setActiviteitBlad(null),
+                  })
+              : undefined
+          }
+          gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
             bladActiviteit
               ? wijzigActiviteit.isError
                 ? wijzigActiviteit.error
-                : undefined
+                : gebruikActiviteit.isError
+                  ? gebruikActiviteit.error
+                  : undefined
               : maakActiviteit.isError
                 ? maakActiviteit.error
                 : undefined

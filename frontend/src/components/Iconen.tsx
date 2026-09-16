@@ -319,3 +319,15 @@ export function IcoonInfo(props: IconProps) {
     </Icoon>
   );
 }
+
+/**
+ * Persoon: a head and shoulders. Marks an own activiteit, beside the word that says whose it is (ADR-0049).
+ */
+export function IcoonPersoon(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 19.5c.9-3.4 3.7-5.5 7-5.5s6.1 2.1 7 5.5" />
+    </Icoon>
+  );
+}

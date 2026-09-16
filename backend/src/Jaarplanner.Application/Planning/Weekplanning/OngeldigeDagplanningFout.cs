@@ -109,6 +109,13 @@ public sealed class OngeldigeDagplanningFout : Exception
     /// </summary>
     public static OngeldigeDagplanningFout ActiviteitHoortBijAndereLeeftijd(string leeftijd) =>
         new($"Deze activiteit is voor {leeftijd}. Deze klas geeft die leeftijd niet, dus ze kan hier niet ingepland worden.");
+
+    /// <summary>
+    /// The activiteit is someone else's own activiteit (ADR-0049 D6). Every screen offers "gebruiken" for it instead of
+    /// dragging it, so a hand-built request or a stale screen reaches this.
+    /// </summary>
+    public static OngeldigeDagplanningFout EigenActiviteitVanEenAnder() =>
+        new("Dit is de eigen activiteit van een collega. Kies eerst 'Gebruiken': dan krijg je een eigen kopie die je kan inplannen.");
 }
 
 /// <summary>

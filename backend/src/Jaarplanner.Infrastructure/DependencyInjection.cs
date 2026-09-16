@@ -212,6 +212,7 @@ public static class DependencyInjection
         // A gebruiker's own woordweb per subthema (FB-036, ADR-0043). Its AI words go through the same IAiClient seam,
         // so the flow runs against the stub in tests (Art. IV.6).
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
+        services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
         // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
         // IAiClient interface (Application) so it is fakeable with no network in tests; the real

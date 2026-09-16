@@ -96,7 +96,8 @@ public sealed record ActiviteitCreatie(
     Guid? OnderzoeksvraagId = null,
     Activiteitkleur? Kleur = null,
     int LengteInLesuren = 1,
-    IReadOnlyList<string>? LeerplandoelCodes = null);
+    IReadOnlyList<string>? LeerplandoelCodes = null,
+    bool Gedeeld = false);
 
 /// <summary>Update payload for an <see cref="Activiteit"/>.</summary>
 public sealed record ActiviteitWijzigingInvoer(
@@ -135,6 +136,8 @@ public sealed record SubdoelWeergave(Guid Id, string Leeftijd, DoelKoppelingWeer
 /// <summary>
 /// Read view of an activiteit with its (zero or more) goal links. <paramref name="MakerId"/> is who created it, or
 /// null (ADR-0030 R26): the frontend compares it with <c>GET /api/ik</c>'s id to offer the maker's delete (R33).
+/// <paramref name="EigenaarId"/> and <paramref name="EigenaarNaam"/> name the owner of an own activiteit (ADR-0049), and
+/// are null for a shared one; the name is null too when the owner cannot be found.
 /// </summary>
 public sealed record ActiviteitWeergave(
     Guid Id,
@@ -146,7 +149,9 @@ public sealed record ActiviteitWeergave(
     Activiteitkleur? Kleur,
     int LengteInLesuren,
     IReadOnlyList<DoelKoppelingWeergave> Doelkoppelingen,
-    Guid? MakerId = null);
+    Guid? MakerId = null,
+    Guid? EigenaarId = null,
+    string? EigenaarNaam = null);
 
 /// <summary>Read view of a subthema with its subdoelen + activiteiten.</summary>
 public sealed record SubthemaWeergave(

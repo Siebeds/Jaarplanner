@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Schoolcontent;
@@ -63,10 +64,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         _context.Themas.Add(thema);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return MapThema(thema);
+        return MapThema(thema, Lezer.AlleenGedeeld);
     }
 
-    public async Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(Rechten? lezer = null, CancellationToken cancellationToken = default)
     {
         // ThenBy(Id) makes the order explicit where two thema's share a name; EF would add the key for a split query anyway.
         var themas = await ThemasMetSubtreeQuery()
@@ -74,13 +75,14 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .ThenBy(t => t.Id)
             .ToListAsync(cancellationToken);
 
-        return themas.Select(MapThema).ToList();
+        var metLezer = await LezerAsync(lezer, themas, cancellationToken);
+        return themas.Select(t => MapThema(t, metLezer)).ToList();
     }
 
-    public async Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, CancellationToken cancellationToken = default)
+    public async Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, Rechten? lezer = null, CancellationToken cancellationToken = default)
     {
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        return MapThema(thema);
+        return MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
     }
 
     // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
@@ -110,12 +112,16 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 // exposing any subthema's activiteiten or goal choices (Art. IX.2).
                 // School-wide totals on purpose, because this IS the school-wide library view.
                 AantalSubthemas = t.Subthemas.Count,
-                AantalActiviteiten = t.Subthemas.SelectMany(s => s.Activiteiten).Count(),
+                // Shared activiteiten only (ADR-0049 D9): a count is still content of someone's own.
+                AantalActiviteiten = t.Subthemas.SelectMany(s => s.Activiteiten).Count(a => a.EigenaarId == null),
                 // The thema's own share is its minimumdoelen, the themadoelen a teacher sees (FB-043).
                 AantalDoelkoppelingen =
                     t.Minimumdoelen.Count
                     + t.Subthemas.SelectMany(s => s.Subdoelen).Count()
-                    + t.Subthemas.SelectMany(s => s.Activiteiten).SelectMany(a => a.Doelkoppelingen).Count(),
+                    + t.Subthemas.SelectMany(s => s.Activiteiten)
+                        .Where(a => a.EigenaarId == null)
+                        .SelectMany(a => a.Doelkoppelingen)
+                        .Count(),
             })
             .ToListAsync(cancellationToken);
 
@@ -129,7 +135,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .ToList();
     }
 
-    public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default)
+    public async Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, Rechten? lezer = null, CancellationToken cancellationToken = default)
     {
         var leeftijden = await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken);
         if (!leeftijden.Bestaat)
@@ -162,7 +168,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
         }
 
-        return MapThema(thema);
+        return MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
     }
 
     public async Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default)
@@ -192,7 +198,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        return MapThema(thema);
+        return MapThema(thema, Lezer.AlleenGedeeld);
     }
 
     public async Task VerwijderThemaAsync(Guid themaId, CancellationToken cancellationToken = default)
@@ -347,7 +353,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
         _context.Subthemas.Add(subthema);
         await _context.SaveChangesAsync(cancellationToken);
-        return MapSubthema(subthema);
+        return MapSubthema(subthema, Lezer.AlleenGedeeld);
     }
 
     public async Task<SubthemaWeergave> WijzigSubthemaAsync(Guid subthemaId, SubthemaWijzigingInvoer wijziging, CancellationToken cancellationToken = default)
@@ -401,7 +407,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        return MapSubthema(subthema);
+        return MapSubthema(subthema, Lezer.AlleenGedeeld);
     }
 
     public async Task VerwijderSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken = default)
@@ -515,11 +521,14 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             ? makerId
             : null;
 
+        // ADR-0049 E1: unless the caller asked for a shared one (and the route checked that right), it is the maker's own.
+        var eigenaar = creatie.Gedeeld ? null : maker;
+
         Activiteit activiteit;
         try
         {
             activiteit = subthema.VoegActiviteitToe(
-                creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten, maker);
+                creatie.Naam, creatie.ActiviteitType, creatie.Hoek, creatie.VerwachteUitkomsten, maker, eigenaar);
             activiteit.KiesKleur(creatie.Kleur);
             activiteit.StelLengteIn(creatie.LengteInLesuren);
         }
@@ -548,7 +557,28 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
         _context.Activiteiten.Add(activiteit);
         await _context.SaveChangesAsync(cancellationToken);
-        return MapActiviteit(activiteit);
+        return await MapActiviteitAsync(activiteit, cancellationToken);
+    }
+
+    public async Task<ActiviteitWeergave> KopieerActiviteitAsync(Guid activiteitId, Guid eigenaarId, CancellationToken cancellationToken = default)
+    {
+        var bron = await LaadActiviteitAsync(activiteitId, cancellationToken);
+        if (!bron.IsEigen)
+        {
+            throw new SchoolcontentValidatieFout(
+                "Deze activiteit is al gedeeld met het subthema. Je kan ze meteen in je agenda zetten.");
+        }
+
+        if (!await _context.Gebruikers.AnyAsync(g => g.Id == eigenaarId, cancellationToken))
+        {
+            throw new SchoolcontentValidatieFout("Je bent geen gebruiker meer van de tool. Meld opnieuw aan.");
+        }
+
+        var subthema = await LaadSubthemaAsync(bron.SubthemaId, cancellationToken);
+        var kopie = subthema.KopieerActiviteitVoor(bron, eigenaarId);
+        _context.Activiteiten.Add(kopie);
+        await _context.SaveChangesAsync(cancellationToken);
+        return await MapActiviteitAsync(kopie, cancellationToken);
     }
 
     /// <summary>
@@ -622,7 +652,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        return MapActiviteit(activiteit);
+        return await MapActiviteitAsync(activiteit, cancellationToken);
     }
 
     public async Task VerwijderActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default)
@@ -695,7 +725,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         }
 
         await _context.SaveChangesAsync(cancellationToken);
-        return MapActiviteit(activiteit);
+        return await MapActiviteitAsync(activiteit, cancellationToken);
     }
 
     public async Task<IReadOnlyList<SubthemaBestemming>> HaalSubthemaBestemmingenAsync(Guid klasId, CancellationToken cancellationToken = default)
@@ -858,7 +888,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
         activiteit.KoppelAanOnderzoeksvraag(onderzoeksvraagId);
         await _context.SaveChangesAsync(cancellationToken);
-        return MapActiviteit(activiteit);
+        return await MapActiviteitAsync(activiteit, cancellationToken);
     }
 
     private static void ValideerOnderzoeksvraagHoortBijSubthema(Guid onderzoeksvraagId, Subthema subthema)
@@ -987,7 +1017,55 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     // --- Mapping to read views. ---
 
-    private static ThemaWeergave MapThema(Thema thema) => new(
+    /// <summary>
+    /// Who reads a thema, as far as the own activiteiten in it go (ADR-0049 D3): their rights, and the names of the owners
+    /// they may see. <see cref="AlleenGedeeld"/> shows shared activiteiten only; a write's response uses it, since it has
+    /// no reader and the screen reads the thema again.
+    /// </summary>
+    private sealed record Lezer(Rechten? Rechten, IReadOnlyDictionary<Guid, string> Namen)
+    {
+        public static readonly Lezer AlleenGedeeld = new(null, new Dictionary<Guid, string>());
+
+        public bool Ziet(Activiteit activiteit, string leeftijd) =>
+            activiteit.EigenaarId is not { } eigenaarId
+            || (Rechten is not null
+                && Rechtenmatrix.StaatToe(
+                    Rechten,
+                    Rechtenmatrix.EigenActiviteitLezen,
+                    new Activiteitbron(activiteit.Id, leeftijd, activiteit.MakerId, activiteit.Doelkoppelingen.Count > 0, eigenaarId)));
+    }
+
+    private async Task<Lezer> LezerAsync(Rechten? rechten, IEnumerable<Thema> themas, CancellationToken cancellationToken)
+    {
+        if (rechten is null)
+        {
+            return Lezer.AlleenGedeeld;
+        }
+
+        var eigenaars = themas
+            .SelectMany(t => t.Subthemas)
+            .SelectMany(s => s.Activiteiten)
+            .Select(a => a.EigenaarId)
+            .OfType<Guid>()
+            .ToHashSet();
+        return new Lezer(rechten, await NamenAsync(eigenaars, cancellationToken));
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, string>> NamenAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
+        ids.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.Gebruikers
+                .AsNoTracking()
+                .Where(g => ids.Contains(g.Id))
+                .ToDictionaryAsync(g => g.Id, g => g.Naam, cancellationToken);
+
+    /// <summary>One activiteit, as a write returns it, with its owner's name.</summary>
+    private async Task<ActiviteitWeergave> MapActiviteitAsync(Activiteit activiteit, CancellationToken cancellationToken) =>
+        MapActiviteit(
+            activiteit,
+            activiteit.EigenaarId is { } eigenaarId ? await NamenAsync([eigenaarId], cancellationToken) : new Dictionary<Guid, string>());
+
+    private static ThemaWeergave MapThema(Thema thema, Lezer lezer) => new(
         thema.Id,
         thema.Naam,
         thema.DuurWeken,
@@ -997,7 +1075,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
-        thema.Subthemas.Select(MapSubthema).ToList(),
+        thema.Subthemas.Select(s => MapSubthema(s, lezer)).ToList(),
         thema.Icoon);
 
     private static ThemaBibliotheekItem MapBibliotheekItem(
@@ -1027,7 +1105,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     private static ThemaMinimumdoelWeergave MapMinimumdoel(ThemaMinimumdoel koppeling) =>
         new(koppeling.Id, koppeling.MinimumdoelRef);
 
-    private static SubthemaWeergave MapSubthema(Subthema subthema) => new(
+    private static SubthemaWeergave MapSubthema(Subthema subthema, Lezer lezer) => new(
         subthema.Id,
         subthema.ThemaId,
         subthema.Naam,
@@ -1035,7 +1113,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         subthema.Leeftijd,
         subthema.Onderzoeksvragen.Select(MapOnderzoeksvraag).ToList(),
         subthema.Subdoelen.Select(MapSubdoel).ToList(),
-        subthema.Activiteiten.Select(MapActiviteit).ToList());
+        subthema.Activiteiten
+            .Where(a => lezer.Ziet(a, subthema.Leeftijd))
+            .Select(a => MapActiviteit(a, lezer.Namen))
+            .ToList());
 
     private static OnderzoeksvraagWeergave MapOnderzoeksvraag(Onderzoeksvraag ov) =>
         new(ov.Id, ov.Vraag, ov.Probleemstelling);
@@ -1062,7 +1143,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         }
     }
 
-    private static ActiviteitWeergave MapActiviteit(Activiteit activiteit) => new(
+    private static ActiviteitWeergave MapActiviteit(Activiteit activiteit, IReadOnlyDictionary<Guid, string> namen) => new(
         activiteit.Id,
         activiteit.Naam,
         activiteit.ActiviteitType,
@@ -1072,7 +1153,9 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         activiteit.Kleur,
         activiteit.LengteInLesuren,
         activiteit.Doelkoppelingen.Select(MapKoppeling).ToList(),
-        activiteit.MakerId);
+        activiteit.MakerId,
+        activiteit.EigenaarId,
+        activiteit.EigenaarId is { } eigenaarId ? namen.GetValueOrDefault(eigenaarId) : null);
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>
         new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status, koppeling.AiMotivatie);

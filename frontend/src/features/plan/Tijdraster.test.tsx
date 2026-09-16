@@ -295,15 +295,16 @@ describe("Tijdraster", () => {
     expect(scroller.scrollTop).toBe(8 * 56);
   });
 
-  it("arceert de uren buiten de schooldag en de middagpauze, en zegt met woorden wat ze zijn", () => {
+  it("tint de uren buiten de schooldag en de middagpauze effen, zonder arcering of labels in de kolom", () => {
     const { container } = toon([dag()], { schooluren: [dinsdag] });
 
-    // Never the pattern alone (Art. XII): each stretch says what it is.
-    expect(screen.getByText("begin 8:30")).toBeInTheDocument();
-    expect(screen.getByText(t("schooluren.pauzeRaster"))).toBeInTheDocument();
-    expect(screen.getByText("einde 15:30")).toBeInTheDocument();
-
     const strook = (soort: string) => container.querySelector(`[data-schooltijd="${soort}"]`) as HTMLElement;
+    // FB-058: a flat tint, no pattern, and no words inside the column.
+    for (const soort of ["voor", "pauze", "na"]) {
+      expect(strook(soort)).toHaveClass("bg-vlak/70");
+      expect(strook(soort).style.backgroundImage).toBe("");
+      expect(strook(soort)).toBeEmptyDOMElement();
+    }
     expect(strook("voor").style.top).toBe("0px");
     expect(strook("voor").style.height).toBe(`${510 * (56 / 60)}px`);
     expect(strook("pauze").style.top).toBe(`${720 * (56 / 60)}px`);
@@ -311,11 +312,35 @@ describe("Tijdraster", () => {
     expect(strook("na").style.top).toBe(`${930 * (56 / 60)}px`);
   });
 
-  it("laat elk uur planbaar, ook op de arcering", () => {
+  it("schrijft de grenzen van de schooldag in de uurkolom, in plaats van het uur waarop ze vallen", () => {
+    const { container } = toon([dag()], { schooluren: [dinsdag] });
+
+    // Never the tint alone (Art. XII): the gutter says where each stretch starts and stops.
+    const grenzen = [...container.querySelectorAll("[data-schoolgrens]")].map((el) => el.textContent);
+    expect(grenzen).toEqual(["8:30", "12:00", "13:15", "15:30"]);
+    const grens = container.querySelector('[data-schoolgrens="8:30"]') as HTMLElement;
+    expect(grens.style.top).toBe(`${510 * (56 / 60)}px`);
+
+    // 12:00 is written once, as a boundary, and the hours around the others stay.
+    expect(screen.getAllByText("12:00")).toHaveLength(1);
+    expect(screen.getByText("8:00")).toBeInTheDocument();
+    expect(screen.getByText("9:00")).toBeInTheDocument();
+  });
+
+  it("geeft een activiteit een dekkende achtergrond, zodat de tint er niet door schemert", () => {
+    toon([dag([activiteit("bladeren stempelen", "15:00", "16:00")])], { schooluren: [dinsdag] });
+
+    const knop = screen.getAllByRole("button").find((el) => el.getAttribute("aria-label")?.startsWith("bladeren stempelen"));
+    const vlak = knop?.closest(".group\\/blok") as HTMLElement;
+    expect(vlak.className).not.toMatch(/bg-[\w-]+\/\d+/);
+    expect(vlak.className).toContain("bg-[color-mix(");
+  });
+
+  it("laat elk uur planbaar, ook op de tint", () => {
     const gevraagd = vi.fn();
     toon([dag()], { schooluren: [dinsdag], onVoegToe: gevraagd });
 
-    // The hatch is under the empty column's button and catches nothing, so the invitation is still there.
+    // The tint is under the empty column's button and catches nothing, so the invitation is still there.
     fireEvent.click(screen.getByRole("button", { name: new RegExp(t("periode.voegToeOp", { dag: "dinsdag 8 september" })) }));
     expect(gevraagd).toHaveBeenCalled();
   });
@@ -331,7 +356,7 @@ describe("Tijdraster", () => {
     expect(gesloten.container.querySelector("[data-schooltijd]")).toBeNull();
   });
 
-  it("zegt de schooluren in de dagkop voor wie de arcering niet ziet", () => {
+  it("zegt de schooluren in de dagkop voor wie de tint niet ziet", () => {
     toon([dag()], { schooluren: [dinsdag] });
 
     // The day view has no heading button, so the clause is spoken after the date as sr-only text.

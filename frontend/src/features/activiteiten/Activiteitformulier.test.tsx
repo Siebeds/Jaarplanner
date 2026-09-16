@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import { doelenSleutels } from "../../lib/queries";
 import type { LeerplandoelDetail } from "../../lib/types";
+import type { Ik } from "../../lib/aanmelding";
+import { ikMet, metIk } from "../../test/rechten";
 import { Activiteitformulier, type ActiviteitMetKleur } from "./Activiteitformulier";
 
 /**
@@ -48,9 +50,10 @@ const DOEL: LeerplandoelDetail = {
   gerelateerdeDoelen: [],
 };
 
-function toon(ui: ReactElement) {
+function toon(ui: ReactElement, ik?: Ik) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   qc.setQueryData(doelenSleutels.detail("WO-2"), DOEL);
+  if (ik) metIk(qc, ik);
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 
@@ -230,5 +233,62 @@ describe("Activiteitformulier", () => {
     fireEvent.click(een);
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
     expect(bewaar.mock.calls[0][0]).toMatchObject({ lengteInLesuren: 1 });
+  });
+
+  describe("eigen of gedeeld (ADR-0049)", () => {
+    const leerkracht = ikMet({ leerkrachtLeeftijden: ["K3"] });
+    const beide = ikMet({ leerkrachtLeeftijden: ["K3"], hoofdleerkrachtLeeftijden: ["K3"] });
+
+    function bewaarNieuw(bewaar: ReturnType<typeof vi.fn>) {
+      fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Nieuw" } });
+      fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+      return bewaar.mock.calls[0][0];
+    }
+
+    it("maakt voor een leerkracht zonder keuze een eigen activiteit, met de doelenkiezer", () => {
+      const bewaar = vi.fn();
+      toon(
+        <Activiteitformulier open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+        leerkracht,
+      );
+
+      expect(screen.queryByRole("radiogroup", { name: t("activiteit.voorWie") })).toBeNull();
+      expect(screen.getByText(t("activiteit.doelenBijBewaren"))).toBeInTheDocument();
+      expect(bewaarNieuw(bewaar)).toMatchObject({ gedeeld: false, leerplandoelCodes: [] });
+    });
+
+    it("laat wie ook gedeelde mag maken kiezen, standaard alleen voor zichzelf", () => {
+      const bewaar = vi.fn();
+      toon(
+        <Activiteitformulier open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+        beide,
+      );
+
+      const keuze = screen.getByRole("radiogroup", { name: t("activiteit.voorWie") });
+      expect(within(keuze).getByRole("radio", { name: t("activiteit.alleenVoorMij") })).toHaveAttribute("aria-checked", "true");
+      fireEvent.click(within(keuze).getByRole("radio", { name: t("activiteit.gedeeldMetSubthema") }));
+      expect(bewaarNieuw(bewaar)).toMatchObject({ gedeeld: true });
+    });
+
+    it("toont bij een activiteit van een collega van wie ze is, en biedt Gebruiken", () => {
+      const gebruik = vi.fn();
+      toon(
+        <Activiteitformulier
+          open
+          alleenLezen
+          activiteit={{ ...ACTIVITEIT, eigenaarId: "ander", eigenaarNaam: "An" }}
+          onderzoeksvragen={[]}
+          onBewaar={vi.fn()}
+          onSluit={vi.fn()}
+          bezig={false}
+          onGebruik={gebruik}
+        />,
+        leerkracht,
+      );
+
+      expect(screen.getByText(t("activiteit.vanCollega", { naam: "An" }))).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: t("activiteit.gebruik") }));
+      expect(gebruik).toHaveBeenCalledTimes(1);
+    });
   });
 });
