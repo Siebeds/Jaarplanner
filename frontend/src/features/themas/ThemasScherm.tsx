@@ -15,6 +15,7 @@ import type { Vertaalsleutel } from "../../i18n";
 import { useState } from "react";
 import { useRechten } from "../../lib/rechten";
 import { magInladen } from "../import/secties";
+import { Themaicoon } from "./Emojikiezer";
 
 /**
  * The school's own thema library (Art. IX.2).
@@ -92,7 +93,10 @@ export function ThemasScherm() {
                     className="group flex h-full flex-col gap-3 rounded-kaart border border-lijn bg-kaart p-4 shadow-licht transition-colors duration-150 hover:border-lijn-veld"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <h2 className="font-display text-sectie text-inkt">{thema.naam}</h2>
+                      <h2 className="font-display text-sectie text-inkt">
+                        <Themaicoon icoon={thema.icoon} />
+                        {thema.naam}
+                      </h2>
                       <IcoonPijlRechts
                         aria-hidden="true"
                         className="mt-0.5 h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-150 group-hover:translate-x-0.5"

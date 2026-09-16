@@ -4,6 +4,7 @@ import { t } from "../../i18n";
 import { weekdagIndex } from "../../lib/datum";
 import { cn } from "../../lib/cn";
 import { themapaginaPad } from "../themas/themapagina";
+import { Themaicoon } from "../themas/Emojikiezer";
 
 /**
  * Which thema this day's themaperiode holds, as a band along the top edge of the day.
@@ -72,6 +73,7 @@ export function Themastroken({
   // The thema the label names first is the one the band opens. With two in a period it reads "Herfst +1", and the
   // other is reached through the menu Thema's. An empty period names nothing, so it opens nothing.
   const genoemd = vak.themas.at(0);
+  const icoon = <Themaicoon icoon={genoemd?.icoon} className="mr-1" />;
 
   // THE TARGET IS THE SLOT, 24 PIXELS, AND THE BAND IS DRAWN INSIDE IT. Stacked slots abut, so no two targets overlap.
   const slot = "flex h-6 min-w-0 flex-1 items-start";
@@ -86,12 +88,16 @@ export function Themastroken({
   );
 
   const tekst = toonNaam ? (
-    <span className="truncate">{naam}</span>
+    <span className="truncate">
+      {icoon}
+      {naam}
+    </span>
   ) : (
     // Mid band. The month cell drops the word entirely, as its strip does; the week view keeps
     // it below `xl`, where the seven columns have folded into a stack and there is no row left
     // for a blank band to continue along. A single column never drops it: see `altijdNaam`.
     <span className={cn("truncate", !altijdNaam && (dicht ? "hidden" : "xl:hidden"))}>
+      {icoon}
       {t("periode.themaVervolg", { naam })}
     </span>
   );

@@ -67,6 +67,8 @@ export interface ThemaInvoer {
   invalshoeken: string | null;
   kernwoordenschat: string[];
   rijkeWoordenschat: string[];
+  /** One emoji or null (FB-060). Always sent: a missing field clears it on the server. */
+  icoon: string | null;
 }
 
 export function useMaakThema() {

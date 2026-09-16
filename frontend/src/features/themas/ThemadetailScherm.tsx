@@ -258,7 +258,7 @@ export function ThemadetailScherm() {
           bare 36 pixel icons at the far right of a 1440 wide bar, eleven hundred pixels from the
           title they act on and with nothing around them to be read against. They now sit on the
           thema's own card, which is exactly the card whose contents the pencil opens for editing. */}
-      <Schermkop smal titel={thema.naam} />
+      <Schermkop smal titel={thema.naam} icoon={thema.icoon} />
 
       <Schermvlak smal>
         <Terug />

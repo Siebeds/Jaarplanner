@@ -484,6 +484,8 @@ export interface ThemaWeergave {
   /** The themadoelen a teacher sees: the minimumdoelen the thema aims at (FB-043). */
   minimumdoelen: ThemaMinimumdoelWeergave[];
   subthemas: SubthemaWeergave[];
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
@@ -543,6 +545,8 @@ export interface ThemaBibliotheekItem {
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
   aantalAfgeleideKlassen: number;
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 // --- AI matching (FR-4). Advisory only: everything lands as Voorgesteld (Art. IV). ---
@@ -583,6 +587,8 @@ export interface Themaplaatsing {
   vergrendeld: boolean;
   doelcodes: string[];
   duurWeken: number;
+  /** The thema's emoji (FB-060). Null or absent when it has none. */
+  themaIcoon?: string | null;
 }
 
 /**

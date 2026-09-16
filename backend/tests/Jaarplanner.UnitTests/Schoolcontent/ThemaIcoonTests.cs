@@ -25,6 +25,7 @@ public sealed class ThemaIcoonTests
     [InlineData("#️⃣")]
     [InlineData("🏴󠁧󠁢󠁳󠁣󠁴󠁿")]
     [InlineData("❤️‍🔥")]
+    [InlineData("⤴️")]
     public void Een_emoji_wordt_aanvaard(string emoji) =>
         Assert.Equal(emoji, ThemaIcoon.Normaliseer(emoji));
 

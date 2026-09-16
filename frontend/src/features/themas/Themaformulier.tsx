@@ -8,6 +8,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { ThemaWeergave } from "../../lib/types";
 import type { ThemaInvoer } from "./mutaties";
+import { Emojikiezer } from "./Emojikiezer";
 
 /**
  * Making or changing a school-wide thema (FR-3.1).
@@ -46,6 +47,7 @@ export function Themaformulier({
 }) {
   const id = useId();
   const [naam, setNaam] = useState(thema?.naam ?? "");
+  const [icoon, setIcoon] = useState<string | null>(thema?.icoon ?? null);
   const [duur, setDuur] = useState(thema?.duurWeken ?? 4);
   // A string, because an <input type=number> is empty for a moment while it is being cleared and a
   // numeric state would turn that into 0 or NaN under the teacher's cursor.
@@ -77,6 +79,7 @@ export function Themaformulier({
       invalshoeken: invalshoeken.trim() === "" ? null : invalshoeken.trim(),
       kernwoordenschat: kern,
       rijkeWoordenschat: rijk,
+      icoon,
     });
   }
 
@@ -110,17 +113,19 @@ export function Themaformulier({
             <label htmlFor={`${id}-naam`} className="text-meta font-medium text-inkt">
               {t("themabeheer.naam")}
             </label>
-            <Invoer
-              id={`${id}-naam`}
-              value={naam}
-              disabled={bezig}
-              aria-invalid={naamFout || undefined}
-              onChange={(e) => {
-                setNaam(e.target.value);
-                if (naamFout) setNaamFout(false);
-              }}
-              className="mt-1.5"
-            />
+            <div className="mt-1.5 flex gap-2">
+              <Emojikiezer waarde={icoon} onKies={setIcoon} uitgeschakeld={bezig} />
+              <Invoer
+                id={`${id}-naam`}
+                value={naam}
+                disabled={bezig}
+                aria-invalid={naamFout || undefined}
+                onChange={(e) => {
+                  setNaam(e.target.value);
+                  if (naamFout) setNaamFout(false);
+                }}
+              />
+            </div>
             {naamFout ? (
               <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
                 {t("themabeheer.naamVerplicht")}

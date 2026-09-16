@@ -174,6 +174,18 @@ export function IcoonFilter(props: IconProps) {
   );
 }
 
+/** Emoji kiezen: a face with a small plus, the empty state of the thema's emoji box (FB-060). */
+export function IcoonEmoji(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <path d="M20.5 11.5a8.5 8.5 0 1 1-7-8.4" />
+      <path d="M8.5 14.5a4.5 4.5 0 0 0 7 0" />
+      <path d="M9 9.5h.01M15 9.5h.01" />
+      <path d="M19 2.5v5M16.5 5h5" />
+    </Icoon>
+  );
+}
+
 export function IcoonPlus(props: IconProps) {
   return (
     <Icoon {...props}>
