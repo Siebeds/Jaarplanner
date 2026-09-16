@@ -38,6 +38,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   bij een activiteit naar de naam, de soort en de hoek.
 - De activiteitregels in een subthema krijgen geen "+" (doel koppelen) meer: een doel koppel je aan een activiteit
   door de activiteit te openen (eigenaar, 2026-09-16).
+- Op het overzicht van alle thema's verdwijnt het getal "klassen" (het telde leeftijden), en toont de kaart het aantal
+  minimumdoelen van het thema in plaats van alle doelkoppelingen samen (eigenaar, 2026-09-16).
 - Teksten in `nl.json`; bestaande tests aangepast en nieuwe tests voor de lijstcomponent.
 
 ## Acceptatiecriteria
@@ -53,6 +55,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   zoekveld.
 - [ ] Gegeven een opengeklapt subthema, wanneer ik de activiteiten bekijk, dan staat naast een activiteit geen "+" om
   een doel te koppelen; dat kan in het activiteitblad.
+- [ ] Gegeven het overzicht van alle thema's, wanneer ik een kaart bekijk, dan staat er geen aantal klassen meer en wel
+  het aantal minimumdoelen van het thema.
 - [ ] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
 - [ ] Nagekeken in een echte browser op desktop en ~390px.
 

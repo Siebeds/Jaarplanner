@@ -124,14 +124,14 @@
     "nieuw": "Nieuw thema",
     "weekEen": "week",
     "weekMeer": "weken",
-    "klasEen": "klas",
-    "klasMeer": "klassen",
     "subthemaEen": "subthema",
     "subthemaMeer": "subthema's",
     "activiteitEen": "activiteit",
     "activiteitMeer": "activiteiten",
     "doelEen": "doel",
-    "doelMeer": "doelen"
+    "doelMeer": "doelen",
+    "minimumdoelEen": "minimumdoel",
+    "minimumdoelMeer": "minimumdoelen"
   },
   "thema": {
     "terug": "Alle thema's",

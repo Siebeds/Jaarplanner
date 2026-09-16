@@ -104,7 +104,7 @@ export function ThemasScherm() {
                     ) : null}
 
                     {/* What has been built on this thema, at a glance. One wrapping line rather than
-                        four columns: at this card width "activiteiten" does not fit a quarter of it,
+                        several columns: at this card width "activiteiten" does not fit a quarter of it,
                         and a truncated label is a label that has to be guessed. School-wide totals,
                         because this IS the school-wide library, and counts say how much exists
                         without showing any class's content (Art. IX.2).
@@ -113,18 +113,19 @@ export function ThemasScherm() {
                         line scannable down a column of cards without becoming a table. */}
                     <p className="mt-auto flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-lijn pt-3 text-meta text-inkt-zwak">
                       <Cijfer waarde={thema.duurWeken} enkel="themas.weekEen" meer="themas.weekMeer" />
-                      <Cijfer
-                        waarde={thema.aantalAfgeleideKlassen}
-                        enkel="themas.klasEen"
-                        meer="themas.klasMeer"
-                      />
                       <Cijfer waarde={tellingen.subthemas} enkel="themas.subthemaEen" meer="themas.subthemaMeer" />
                       <Cijfer
                         waarde={tellingen.activiteiten}
                         enkel="themas.activiteitEen"
                         meer="themas.activiteitMeer"
                       />
-                      <Cijfer waarde={tellingen.doelen} enkel="themas.doelEen" meer="themas.doelMeer" />
+                      {/* The thema's own minimumdoelen, its themadoelen (FB-043), rather than every goal link under it:
+                          that sum mixed three levels into one "doelen" nobody could read (owner, 2026-09-16, TB-044). */}
+                      <Cijfer
+                        waarde={thema.minimumdoelen.length}
+                        enkel="themas.minimumdoelEen"
+                        meer="themas.minimumdoelMeer"
+                      />
                     </p>
 
                     {/* Art. IX.2 wants at least two school-wide themadoelen (minimumdoelen) per thema. The server
@@ -158,7 +159,7 @@ export function ThemasScherm() {
 }
 
 /**
- * The three counts the bibliotheek endpoint gained, read defensively.
+ * The two counts the bibliotheek endpoint gained that this card shows, read defensively.
  *
  * `ThemaBibliotheekItem` in `lib/types.ts` does not carry them yet, and that file is held by another
  * session. Read through a local shape rather than reaching into their file; fold it in when the claim
@@ -168,7 +169,6 @@ export function ThemasScherm() {
 type MetTellingen = {
   aantalSubthemas?: number;
   aantalActiviteiten?: number;
-  aantalDoelkoppelingen?: number;
 };
 
 function tel(thema: unknown) {
@@ -176,7 +176,6 @@ function tel(thema: unknown) {
   return {
     subthemas: t.aantalSubthemas ?? 0,
     activiteiten: t.aantalActiviteiten ?? 0,
-    doelen: t.aantalDoelkoppelingen ?? 0,
   };
 }
 
@@ -184,7 +183,7 @@ function tel(thema: unknown) {
  * One figure and its word, side by side.
  *
  * The number is set in the mono face at body size and the word stays small: that pairing is what
- * lets five of them sit on one line and still be read as five separate facts. A zero is muted, so a
+ * lets four of them sit on one line and still be read as four separate facts. A zero is muted, so a
  * thema nobody has built on yet reads as empty rather than as four numbers to check.
  */
 function Cijfer({

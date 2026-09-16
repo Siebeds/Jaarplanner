@@ -542,7 +542,6 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
-  aantalAfgeleideKlassen: number;
 }
 
 // --- AI matching (FR-4). Advisory only: everything lands as Voorgesteld (Art. IV). ---
