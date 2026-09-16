@@ -231,7 +231,9 @@ describe("DoelenScherm: alles ingeklapt", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /^Wiskunde/ }));
     expect(await screen.findByRole("button", { name: /^Getallen/ })).toBeInTheDocument();
-    expect(takken().map((knop) => knop.textContent)).toEqual(["Wiskunde1"]);
+    expect(takken()).toEqual([
+      screen.getByRole("button", { name: /^Wiskunde/ }),
+    ]);
 
     act(() => useDoelenfilter.setState({ zoek: "tel" }));
     expect(await screen.findByRole("button", { name: /^Wiskunde/, expanded: false })).toBeInTheDocument();
