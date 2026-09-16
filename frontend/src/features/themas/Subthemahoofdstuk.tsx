@@ -154,7 +154,8 @@ export function Subthemahoofdstuk({
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
             {/* The subdoelen figure comes first, the activiteiten second: a subthema is built from its subdoelen and
-                its activiteiten work them out (FB-048). The subdoelen figure says how many of them an activiteit already works out (FB-010), so a fold can be
+                its activiteiten work them out (FB-048). The subdoelen figure says how many of them an activiteit
+                already works out (FB-010), so a fold can be
                 scanned for the chapter that still needs one. It counts the same subdoelen the chapter lists; with none it
                 is the plain count. On a phone the facts stack: wrapped on one line they left a separator dangling at the
                 end of each row. */}
