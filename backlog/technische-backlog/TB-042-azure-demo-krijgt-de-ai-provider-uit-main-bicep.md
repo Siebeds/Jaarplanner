@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:09
+bijgewerkt: 2026-09-16 22:12
 opgepakt-door: claude-code-anthropic
 branch: ticket/TB-bicep-ai-provider
 pr:
@@ -52,3 +52,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 22:09 · claude-code-anthropic · aangemaakt (status in-uitvoering)
+- 2026-09-16 22:12 · claude-code-anthropic · main.bicep kreeg parameter aiProvider (standaard Anthropic) en app-instelling Ai__Provider; az bicep build slaagt. README en ADR-0034-statusnoot bijgewerkt (budgetplafond = spend limit in de Claude Console).

@@ -1,6 +1,8 @@
 # ADR-0034 — A demo environment on Azure: the cheapest services, the API serves the frontend, and the owner's waiver of the E7-11 deployment clause
 
-- **Status:** Accepted (project owner ruling, 2026-09-13)
+- **Status:** Accepted (project owner ruling, 2026-09-13). **Decision 1's AI condition now takes its second branch
+  (owner, 2026-09-16, TB-042):** the demo calls the Claude API (ADR-0048), under a monthly spend limit on the Claude
+  Console organisation or workspace that owns its key. The text below is left as written.
 - **Date:** 2026-09-13
 - **Deciders:** Siebe De Saedeleir (projecteigenaar)
 - **Realises:** [ADR-0016](0016-azure-hosting-eu-residency.md), which fixed Azure in an EU region and left *"the specific
