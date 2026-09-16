@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:53
+bijgewerkt: 2026-09-16 15:54
 opgepakt-door: claude-fb-044
 branch: ticket/FB-044-doelen-per-leeftijd
-pr:
+pr: 113
 geblokkeerd:
 fr: [FR-2.3]
 ---
@@ -65,3 +65,4 @@ minimumdoelen waarnaar ze leiden, en de teller telt minimumdoelen. Zodra de mini
 - 2026-09-16 15:48 · claude-fb-044 · gebouwd: 'Doelen per leeftijd' toont en telt alleen leerplandoelen; de server berekent de minimumdoelen niet meer; detail van een leerplandoel toont zijn minimumdoel al (Doeldetail); Vitest 981, lint, dotnet format en backendtests groen
 - 2026-09-16 15:49 · claude-fb-044 · antagonist: COMPLIANT, niets anders gebruikte de weggehaalde minimumdoelen; vier MINOR
 - 2026-09-16 15:53 · claude-fb-044 · in-uitvoering → te-testen: gebouwd: 'Doelen per leeftijd' toont alleen leerplandoelen met teller in leerplandoelen; browsercheck PASS op desktop en 390px (backlog/worklogs/FB-044), Vitest 981, backend unit en integratie, format en lint groen, antagonist COMPLIANT; MINOR open: ongebruikte prop minimumdoelRef in Doeldetailblad
+- 2026-09-16 15:54 · claude-fb-044 · PR #113
