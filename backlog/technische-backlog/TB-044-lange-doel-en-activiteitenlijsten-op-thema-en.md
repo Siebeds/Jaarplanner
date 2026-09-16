@@ -55,25 +55,25 @@ activiteit erbij zit, moet de hele lijst doorlopen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met themadoelen, wanneer ik het thema open, dan is de lijst themadoelen ingeklapt en toont de
+- [x] Gegeven een thema met themadoelen, wanneer ik het thema open, dan is de lijst themadoelen ingeklapt en toont de
   vouwknop hoeveel het er zijn.
-- [ ] Gegeven een opengeklapte lijst met meer dan vijf items, wanneer ik ze bekijk, dan zie ik er vijf in een vaste
+- [x] Gegeven een opengeklapte lijst met meer dan vijf items, wanneer ik ze bekijk, dan zie ik er vijf in een vaste
   volgorde en een knop "Laad x meer" die er telkens tot vijf bijzet, tot alle items er staan.
-- [ ] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan zijn de activiteiten, de subdoelen en de andere
+- [x] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan zijn de activiteiten, de subdoelen en de andere
   doelen elk ingeklapt, met hun aantal.
-- [ ] Gegeven een ingeklapte lijst, wanneer ik op het zoekicoon klik en een deel van een code, doeltekst of
+- [x] Gegeven een ingeklapte lijst, wanneer ik op het zoekicoon klik en een deel van een code, doeltekst of
   activiteitnaam typ, dan zie ik meteen de overeenkomende items, of een melding dat er geen zijn; Escape sluit het
   zoekveld.
-- [ ] Gegeven een opengeklapt subthema, wanneer ik de activiteiten bekijk, dan staat naast een activiteit geen "+" om
+- [x] Gegeven een opengeklapt subthema, wanneer ik de activiteiten bekijk, dan staat naast een activiteit geen "+" om
   een doel te koppelen; dat kan in het activiteitblad.
-- [ ] Gegeven het overzicht van alle thema's, wanneer ik een kaart bekijk, dan staat er geen aantal klassen meer en wel
+- [x] Gegeven het overzicht van alle thema's, wanneer ik een kaart bekijk, dan staat er geen aantal klassen meer en wel
   het aantal minimumdoelen van het thema.
-- [ ] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan staat het woordweb boven de onderzoeksvragen, en
+- [x] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan staat het woordweb boven de onderzoeksvragen, en
   klap ik de activiteiten en subdoelen open met hun kop, waarnaast een klein "+" en het zoekicoon staan.
-- [ ] Gegeven een gekoppeld minimumdoel of subdoel, wanneer ik op ontkoppelen klik, dan zie ik eerst een bevestiging met
+- [x] Gegeven een gekoppeld minimumdoel of subdoel, wanneer ik op ontkoppelen klik, dan zie ik eerst een bevestiging met
   de gevolgen voor de dekking, en pas na "Ontkoppelen" is het weg; annuleren laat het staan.
-- [ ] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Buiten scope
 

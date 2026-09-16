@@ -215,7 +215,7 @@
     "zoekDoel": "Code of tekst",
     "ontkoppelBevestig": "Ontkoppelen",
     "minimumdoelOntkoppelTitel": "Minimumdoel {ref} ontkoppelen?",
-    "minimumdoelOntkoppelGevolg": "{ref} is dan geen themadoel meer van {thema}. Via dit thema telt het niet meer mee voor de dekkingsprognose en de dekking van de klassen die dit thema plannen. De leerplandoelen die ernaar leiden, verdwijnen hier mee.",
+    "minimumdoelOntkoppelGevolg": "{ref} is dan geen themadoel meer van {thema}. Via dit thema telt het dan niet meer mee voor de dekkingsprognose en de dekking. De leerplandoelen die ernaar leiden, verdwijnen hier mee.",
     "minimumdoelOntkoppelNogEen": "Het thema houdt dan 1 themadoel over, minder dan de twee die het hoort te hebben.",
     "minimumdoelOntkoppelGeen": "Het thema houdt dan geen themadoelen over, terwijl het er minstens twee hoort te hebben.",
     "subdoelOntkoppelTitel": "Subdoel {code} ontkoppelen?",

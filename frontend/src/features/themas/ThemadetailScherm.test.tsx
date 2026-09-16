@@ -387,7 +387,6 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(screen.getAllByRole("button", { name: t("activiteit.toevoegen") })).toHaveLength(1);
     expect(knop(t("activiteit.bewerkAria", { naam: "Eigen spel" }))).not.toBeNull();
     expect(knop(t("activiteit.bekijkAria", { naam: "Tellen" }))).not.toBeNull();
-    // No goal links by hand (R19).
 
     // The maker's delete, while no goal is linked (R25, R33): hers, not a colleague's, and not a linked one.
     expect(knop(t("activiteit.verwijderAria", { naam: "Eigen spel" }))).not.toBeNull();
@@ -780,6 +779,52 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     // The chapter is open: its subdoelen are on screen, and only the other group is absent.
     expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: hoofdstuklijst(t("thema.andereDoelenTitel")) })).toBeNull();
+  });
+
+  /** Opens the unlink confirmation of one subdoel and returns it (TB-044). */
+  async function ontkoppelVraag(thema: ThemaWeergave, code: string) {
+    toon(DIRECTIE, { thema });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
+    fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code }) }));
+    return screen.findByRole("dialog", { name: t("thema.subdoelOntkoppelTitel", { code }) });
+  }
+
+  it("zegt bij het ontkoppelen dat een subdoel via zijn activiteiten blijft meetellen (TB-044)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-1");
+    expect(vraag).toHaveTextContent(
+      t("thema.subdoelOntkoppelGevolg", { code: "WIS-1", subthema: "Bladeren", leeftijd: "K3" }),
+    );
+    expect(vraag).toHaveTextContent(
+      t("thema.subdoelOntkoppelBlijftMeer", { aantal: 2, namen: "Tellen met bladeren, Bladeren wegen" }),
+    );
+    expect(vraag).not.toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
+  });
+
+  it("noemt de ene activiteit die het subdoel nog draagt (TB-044)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-2");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelBlijftEen", { namen: "Tellen met bladeren" }));
+  });
+
+  it("zegt bij een subdoel zonder dragende activiteit dat het via dit subthema niet meer meetelt (TB-044)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-3");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
+  });
+
+  it("zegt bij een onbeslist subdoel niets over de dekking (TB-044)", async () => {
+    const voorgesteld: ThemaWeergave = {
+      ...MET_DRAGERS,
+      subthemas: [
+        {
+          ...MET_DRAGERS.subthemas[0],
+          subdoelen: [{ id: "sd-v", leeftijd: "K3", koppeling: { ...koppeling("WIS-7"), status: "Voorgesteld" } }],
+        },
+      ],
+    };
+    const vraag = await ontkoppelVraag(voorgesteld, "WIS-7");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelOnbeslist", { code: "WIS-7", subthema: "Bladeren" }));
+    expect(vraag).not.toHaveTextContent(/dekking/);
   });
 
   it("markeert een subdoel dat nog niet beslist is niet als gat", async () => {

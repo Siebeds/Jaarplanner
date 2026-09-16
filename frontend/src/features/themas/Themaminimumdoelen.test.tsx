@@ -262,6 +262,39 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
     );
   });
 
+  it("zegt bij het ontkoppelen dat het thema dan nog maar 1 themadoel overhoudt (TB-044)", async () => {
+    thema = {
+      ...THEMA,
+      minimumdoelen: [
+        { id: "tm-1", minimumdoelRef: "K-MV-1" },
+        { id: "tm-2", minimumdoelRef: "K-MV-2" },
+      ],
+    };
+    toon();
+    await minimumdoelrij();
+
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-2" }) }));
+
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-2" }) });
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelNogEen"));
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
+  });
+
+  it("zegt niets over het aantal themadoelen wanneer er genoeg overblijven (TB-044)", async () => {
+    thema = {
+      ...THEMA,
+      minimumdoelen: ["K-MV-1", "K-MV-2", "K-MV-3"].map((ref, i) => ({ id: `tm-${i}`, minimumdoelRef: ref })),
+    };
+    toon();
+    await minimumdoelrij();
+
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-1" }) }));
+
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-1" }) });
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelNogEen"));
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
+  });
+
   it("laat een leerkracht de minimumdoelen lezen en uitklappen, zonder koppelen of ontkoppelen", async () => {
     toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-k3"] }));
 
