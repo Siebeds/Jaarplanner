@@ -182,6 +182,11 @@ export function Tijdraster({
     if (scrollvak.current) scrollvak.current.scrollTop = (opening - bereik.van) * PX_PER_MINUUT;
   }, [opening, bereik.van]);
 
+  const geenMaandag = !dagen.some((rij) => weekdagIndex(rij.datum) === 0);
+  const naamdrager = dagen.some((rij) => weekdagIndex(rij.datum) === 0 && rij.isLesdag)
+    ? undefined
+    : dagen.find((rij) => rij.isLesdag)?.datum;
+
   return (
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
       {/* THE DAY HEADINGS AND THE ALL-DAY BAND, outside the scroller so they stay put while the hours move.
@@ -210,7 +215,9 @@ export function Tijdraster({
               // rendered, not how many days are: the day view is one non-Monday, and the phone week view is three
               // days starting at the anchored day, which on a Thursday is Thu-Fri-Sat and has no Monday either. Both
               // showed two nameless grey bars, which is what the owner was looking at on 2026-09-11.
-              altijdNaam={!dagen.some((rij) => weekdagIndex(rij.datum) === 0)}
+              // Only a teaching day draws bands, so a closed Monday carries nothing either: then the week's first
+              // teaching day names them, and is the tab stop that takes a keyboard to their pages (FB-039).
+              altijdNaam={geenMaandag || dag.datum === naamdrager}
               onKiesDag={onKiesDag}
             />
           ))}
@@ -467,7 +474,8 @@ function Dagkop({
     </span>
   );
 
-  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. Both are `aria-hidden` on the promise that the day
+  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. A band's link is named after where it goes, and the blank
+  // ones are `aria-hidden`, both on the promise that the day
   // announces the same facts once, which `Maandrooster` keeps and this grid did not: its day button named only the
   // date, and the day view has no button at all. That was survivable while the bands were blank; now that they carry
   // the only copy of "which subthema runs today", it is not. Only on a teaching day, which is the only day they are
@@ -503,7 +511,7 @@ function Dagkop({
           {dag.sluitingsnaam ?? t(dag.buitenSchooljaar ? "periode.buitenSchooljaar" : "periode.gesloten")}
         </p>
       ) : (
-        <div className="flex flex-col gap-px pt-1">
+        <div className="flex flex-col pt-1">
           <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam} />
           <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
         </div>

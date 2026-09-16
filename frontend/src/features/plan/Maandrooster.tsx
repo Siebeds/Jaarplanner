@@ -204,7 +204,7 @@ function Maandcel({
           Not on a phone: a column there is about 44 pixels, where a subthema name truncates to three
           letters, and a strip with no room for its name would carry its identity in hue alone. The
           week and day views print it in full, and the day's own button says it out loud. */}
-      <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col gap-px sm:flex">
+      <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col sm:flex">
         <Themastroken vak={periode} datum={dag.datum} dicht />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
       </div>

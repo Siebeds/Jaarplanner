@@ -20,13 +20,12 @@ import { themapaginaPad } from "../themas/themapagina";
  * colours are all spoken for. So the rule is not "label every strip" but "label the start of every
  * group a reader scans as one", and what counts as a group depends on the layout, see `Strook`.
  *
- * `aria-hidden`, because the day's own button already names what is running on it. Two readings of
- * the same fact per cell, across forty cells, is what makes a calendar unusable with a screen
- * reader.
- *
- * **A pointer's shortcut to the subthema** (FB-037, ADR-0042). A strip that names a run is a link to its chapter on the
- * thema's page, on every day it covers; the count that stands in for the runs that did not fit names none, so it opens
- * none. Out of the tab order, for the reason above: the keyboard's route is the menu Thema's (FB-039).
+ * **A link to the subthema's chapter for a pointer and for a keyboard** (FB-037, FB-039, ADR-0045). A strip that names a
+ * run opens its chapter on the thema's page, on every day it covers, through a 24 pixel target. The strip that prints
+ * the name is the tab stop, named after where it goes; the blank strips beside it stay out of the tab order and are
+ * `aria-hidden`, because the day's own button already names what is running on it, and two readings of the same fact
+ * per cell, across forty cells, is what makes a calendar unusable with a screen reader. The count that stands in for
+ * the runs that did not fit names none, so it opens none.
  */
 export function Subthemastroken({
   reeksen,
@@ -37,14 +36,15 @@ export function Subthemastroken({
 }: {
   reeksen: readonly Subthemareeks[];
   datum: string;
-  /** The month cell, where a strip pays for itself in a cell that is 112 pixels tall. */
+  /** The month cell and the day headings, where the type is set one step smaller. */
   dicht?: boolean;
   /**
    * There is no row of neighbouring days to carry the name instead, so the word is never dropped.
    *
    * The day view of the agenda: one column, and a strip with nothing written on it there is not "and it goes on" but
    * a grey stripe with no explanation, which is exactly how the owner read it on 2026-09-11. It is the same reason
-   * `Strook` keeps the word below `xl`, at the width where the week has folded out of a row.
+   * `Strook` keeps the word below `xl`, at the width where the week has folded out of a row. Also the first day a
+   * week draws its strips on when its Monday is closed.
    */
   altijdNaam?: boolean;
   className?: string;
@@ -61,7 +61,7 @@ export function Subthemastroken({
   const rest = reeksen.length - zichtbaar.length;
 
   return (
-    <div aria-hidden="true" className={cn("pointer-events-none flex flex-col gap-px", className)}>
+    <div className={cn("pointer-events-none flex flex-col", className)}>
       {zichtbaar.map((reeks) => (
         <Strook
           key={reeks.subthemaId + reeks.van}
@@ -70,6 +70,7 @@ export function Subthemastroken({
           vervolg={!toonNaam}
           tekst={reeks.van === datum ? reeks.subthemaNaam : t("periode.subthemaVervolg", { naam: reeks.subthemaNaam })}
           naar={themapaginaPad(reeks.themaId, reeks.subthemaId)}
+          naarNaam={toonNaam ? t("periode.naarSubthema", { naam: reeks.subthemaNaam }) : undefined}
         />
       ))}
       {rest > 0 ? <Strook isStart={false} dicht={dicht} tekst={t("periode.subthemaMeer", { aantal: rest })} /> : null}
@@ -93,6 +94,8 @@ export function Subthemastroken({
  * 390 pixels, where six blank grey bars under one labelled card looked like six rendering faults. So
  * the label is always rendered there and `xl:hidden` takes it away exactly where a row exists to
  * carry the meaning instead.
+ *
+ * **The target is the 24 pixel slot; the strip is drawn 20 pixels along its top**, as on the thema band.
  */
 function Strook({
   isStart,
@@ -100,6 +103,7 @@ function Strook({
   vervolg,
   tekst,
   naar,
+  naarNaam,
 }: {
   isStart: boolean;
   dicht?: boolean;
@@ -108,28 +112,42 @@ function Strook({
   tekst: string;
   /** Where a press takes a pointer, or nothing for a strip that names no single run. */
   naar?: string;
+  /** The link's name when this strip is the tab stop for its run; without it the strip is for a pointer only. */
+  naarNaam?: string;
 }) {
+  const slot = "flex h-6 items-start";
   const klassen = cn(
     // `lijn` rather than `vlak-diep` for the fill. At a six percent step from the page the four
     // pixel gutter between two cells stopped reading as a gutter, so a week of strips looked like
     // one bar spanning the row: it joined a Friday to the Monday after it and claimed the weekend
     // between them. Measured at 2x in the browser, invisible in a downscaled screenshot.
-    "flex items-center overflow-hidden border-l-2 bg-lijn font-medium leading-none text-inkt-zacht",
+    "flex h-5 min-w-0 flex-1 items-center overflow-hidden border-l-2 bg-lijn font-medium leading-none text-inkt-zacht",
     isStart ? "border-l-accent" : "border-l-lijn",
-    dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
+    dicht ? "px-1.5 text-[0.625rem]" : "px-3 text-[0.6875rem]",
     // The same step the thema band takes on hover, one level lighter. The ink firms up with it: the soft ink on the
     // darker fill measures under 4.5:1.
     naar &&
-      "pointer-events-auto underline-offset-2 transition-colors duration-150 hover:bg-lijn-sterk hover:text-inkt hover:underline",
+      "underline-offset-2 transition-colors duration-150 group-hover/strook:bg-lijn-sterk group-hover/strook:text-inkt group-hover/strook:underline",
   );
   const inhoud = vervolg && dicht ? null : <span className={cn("truncate", vervolg && "xl:hidden")}>{tekst}</span>;
 
   return naar ? (
-    // No focus from a press, as on the thema band: a ctrl- or middle-click would leave it on a link nobody can hear.
-    <Link to={naar} tabIndex={-1} draggable={false} onMouseDown={(e) => e.preventDefault()} className={klassen}>
-      {inhoud}
+    <Link
+      to={naar}
+      tabIndex={naarNaam ? undefined : -1}
+      aria-hidden={naarNaam ? undefined : true}
+      aria-label={naarNaam}
+      draggable={false}
+      // No focus from a press, as on the thema band: a ctrl- or middle-click would leave a ring behind in the agenda.
+      onMouseDown={(e) => e.preventDefault()}
+      // The ring is drawn inside the slot, because the month cell clips anything outside it.
+      className={cn(slot, "group/strook pointer-events-auto focus-visible:outline-offset-[-2px]")}
+    >
+      <span className={klassen}>{inhoud}</span>
     </Link>
   ) : (
-    <span className={klassen}>{inhoud}</span>
+    <span aria-hidden="true" className={slot}>
+      <span className={klassen}>{inhoud}</span>
+    </span>
   );
 }

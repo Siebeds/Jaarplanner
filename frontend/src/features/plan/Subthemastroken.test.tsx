@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Subthemastroken } from "./Subthemastroken";
 import type { Subthemareeks } from "./subthemareeksen";
@@ -78,19 +78,56 @@ describe("Subthemastroken", () => {
   });
 });
 
-describe("Subthemastroken: naar het subthema op de themapagina (FB-037)", () => {
-  it("opent het hoofdstuk van het subthema, ook op een dag zonder naam, zonder tabstop en buiten de toegankelijkheidsboom", () => {
-    // A Wednesday mid-run: in the month grid this strip is blank, and it still opens the subthema.
-    const { container } = toon(
-      <Subthemastroken reeksen={[reeks("de speelhoek", "2026-09-01", "2026-09-11")]} datum="2026-09-02" dicht />,
-    );
+describe("Subthemastroken: naar het subthema op de themapagina (FB-037, FB-039)", () => {
+  const speelhoek = [reeks("de speelhoek", "2026-09-01", "2026-09-11")];
+  const naam = () => t("periode.naarSubthema", { naam: "de speelhoek" });
+
+  it("opent het subthema ook op een dag zonder naam, daar zonder tabstop en buiten de toegankelijkheidsboom", () => {
+    // A Wednesday mid-run: in the month grid this strip is blank, and it still opens the subthema for a pointer.
+    const { container } = toon(<Subthemastroken reeksen={speelhoek} datum="2026-09-02" dicht />);
 
     const links = container.querySelectorAll("a");
     expect(links).toHaveLength(1);
     expect(links[0]).toHaveAttribute("href", themapaginaPad("t-klas", "de speelhoek"));
     expect(links[0]).toHaveAttribute("tabindex", "-1");
-    // The day's own button speaks the subthema; the keyboard reaches its page through the menu Thema's.
+    expect(links[0]).toHaveAttribute("aria-hidden", "true");
+    // The strip that prints the name is the keyboard's stop for this run; the day's own button speaks the subthema.
     expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("maakt de strook die de naam draagt een tabstop, genoemd naar waar ze naartoe gaat", () => {
+    // 7 september 2026 is a Monday inside the run: the head of the row prints the name.
+    toon(<Subthemastroken reeksen={speelhoek} datum="2026-09-07" dicht />);
+
+    const link = screen.getByRole("link", { name: naam() });
+    expect(link).toHaveAttribute("href", themapaginaPad("t-klas", "de speelhoek"));
+    expect(link).not.toHaveAttribute("tabindex");
+    link.focus();
+    expect(link).toHaveFocus();
+  });
+
+  it("is een tabstop op elke dag waar geen buur de naam draagt", () => {
+    toon(<Subthemastroken reeksen={speelhoek} datum="2026-09-02" dicht altijdNaam />);
+    expect(screen.getByRole("link", { name: naam() })).toBeInTheDocument();
+  });
+
+  it("geeft elke strook een doel van 24 pixels (SC 2.5.8)", () => {
+    const { container } = toon(<Subthemastroken reeksen={speelhoek} datum="2026-09-02" dicht />);
+    // jsdom has no layout, so this pins the class that sets the height; the browser pass measures it.
+    expect(container.querySelector("a")).toHaveClass("h-6");
+  });
+
+  it("opent de themapagina", () => {
+    render(
+      <MemoryRouter initialEntries={["/agenda"]}>
+        <Routes>
+          <Route path="/agenda" element={<Subthemastroken reeksen={speelhoek} datum="2026-09-01" />} />
+          <Route path="/themas/:id" element={<p>themapagina</p>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole("link", { name: naam() }));
+    expect(screen.getByText("themapagina")).toBeInTheDocument();
   });
 
   it("laat het aantal dat voor de andere reeksen staat nergens naartoe gaan", () => {

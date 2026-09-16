@@ -26,11 +26,12 @@ import { themapaginaPad } from "../themas/themapagina";
  * inside an empty period would then be thirty warm bars, and the one hue this app has for a knelpunt
  * would be spent on the calmest possible reading of one. The words carry it.
  *
- * **A pointer's shortcut to the thema's page** (FB-037, ADR-0042). A band that names a thema is a link a mouse or a
- * finger can press, on every day it covers. It stays out of the tab order and, like the strip below it, `aria-hidden`:
- * the day's own button already speaks both facts, once (see `themaZin`), and a keyboard reaches the same page through the
- * menu Thema's. There is no row of links above the grid any more (FB-039): the owner chose the bands alone, knowing
- * they are smaller than the 24 pixel target of WCAG 2.2 AA.
+ * **A link to the thema's page for a pointer and for a keyboard** (FB-037, FB-039, ADR-0045). A band that names a thema
+ * is a link on every day it covers, and every one of them is a 24 pixel target (WCAG 2.2 SC 2.5.8): the link is the
+ * whole slot, and the band drawn along its top stays 20 pixels so the heading keeps its weight. Only the band that
+ * PRINTS the name is a tab stop and in the accessibility tree, named after where it goes, so a keyboard meets one stop
+ * per thema per row rather than one per day. The blank bands beside it lead to the same page, stay out of the tab order and are
+ * `aria-hidden`: the day's own button already speaks the thema (see `themaZin`).
  */
 export function Themastroken({
   vak,
@@ -42,13 +43,14 @@ export function Themastroken({
   /** The themaperiode this day sits in, or undefined between two periods, where there is none. */
   vak: Themavak | undefined;
   datum: string;
-  /** The month cell, where 16 pixels of band is already a seventh of the cell. */
+  /** The month cell and the day headings, where the type is set one step smaller. */
   dicht?: boolean;
   /**
    * There is no row of neighbouring days to carry the name instead, so the word is never dropped.
    *
    * The day view of the agenda: one column, and a band with nothing written on it there is not "and it goes on" but
-   * a grey stripe with no explanation, which is exactly how the owner read it on 2026-09-11.
+   * a grey stripe with no explanation, which is exactly how the owner read it on 2026-09-11. Also the first day a week
+   * draws its bands on when its Monday is closed.
    */
   altijdNaam?: boolean;
   className?: string;
@@ -63,20 +65,24 @@ export function Themastroken({
   // this app cuts first, and a band that only ever labelled its first day would go anonymous for the
   // three weeks after it in a six week period.
   const toonNaam = isStart || weekdagIndex(datum) === 0;
+  // The band a keyboard stops on: the one whose name is on screen at every width.
+  const bereikbaar = toonNaam || altijdNaam === true;
 
   const naam = themaLabel(vak);
   // The thema the label names first is the one the band opens. With two in a period it reads "Herfst +1", and the
   // other is reached through the menu Thema's. An empty period names nothing, so it opens nothing.
   const genoemd = vak.themas.at(0);
 
+  // THE TARGET IS THE SLOT, 24 PIXELS, AND THE BAND IS DRAWN INSIDE IT. Stacked slots abut, so no two targets overlap.
+  const slot = "flex h-6 min-w-0 flex-1 items-start";
   const band = cn(
-    "flex min-w-0 flex-1 items-center overflow-hidden border-l-2 font-medium leading-none",
+    "flex h-5 min-w-0 flex-1 items-center overflow-hidden border-l-2 font-medium leading-none",
     leeg ? "bg-lijn text-inkt-zacht" : "bg-lijn-sterk text-inkt",
     // The tick marks where the period BEGINS. An empty period gets the neutral edge instead of
     // the accent: the accent means "something starts here", and what starts here is a stretch
     // of days with nothing in them.
     isStart ? (leeg ? "border-l-lijn-veld" : "border-l-accent") : leeg ? "border-l-lijn" : "border-l-lijn-sterk",
-    dicht ? "h-4 px-1.5 text-[0.625rem]" : "h-5 px-3 text-[0.6875rem]",
+    dicht ? "px-1.5 text-[0.625rem]" : "px-3 text-[0.6875rem]",
   );
 
   const tekst = toonNaam ? (
@@ -91,24 +97,33 @@ export function Themastroken({
   );
 
   return (
-    <div aria-hidden="true" className={cn("pointer-events-none flex", className)}>
+    <div className={cn("pointer-events-none flex", className)}>
       {genoemd ? (
         <Link
           to={themapaginaPad(genoemd.id)}
-          tabIndex={-1}
+          tabIndex={bereikbaar ? undefined : -1}
+          aria-hidden={bereikbaar ? undefined : true}
+          aria-label={bereikbaar ? t("periode.naarThema", { naam }) : undefined}
           draggable={false}
-          // No focus from a press: a ctrl- or middle-click opens a tab and would leave focus on a link nobody can hear.
+          // No focus from a press: a ctrl- or middle-click opens a tab and would leave a ring behind in the agenda.
           onMouseDown={(e) => e.preventDefault()}
-          // One step further into the ink on hover, and the name underlined: no accent, which here means "starts".
-          className={cn(
-            band,
-            "pointer-events-auto underline-offset-2 transition-colors duration-150 hover:bg-lijn-veld/70 hover:underline",
-          )}
+          // The ring is drawn inside the slot, because the month cell clips anything outside it.
+          className={cn(slot, "group/band pointer-events-auto focus-visible:outline-offset-[-2px]")}
         >
-          {tekst}
+          {/* One step further into the ink on hover, and the name underlined: no accent, which here means "starts". */}
+          <span
+            className={cn(
+              band,
+              "underline-offset-2 transition-colors duration-150 group-hover/band:bg-lijn-veld/70 group-hover/band:underline",
+            )}
+          >
+            {tekst}
+          </span>
         </Link>
       ) : (
-        <span className={band}>{tekst}</span>
+        <span aria-hidden="true" className={slot}>
+          <span className={band}>{tekst}</span>
+        </span>
       )}
     </div>
   );

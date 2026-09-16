@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 14:28
+bijgewerkt: 2026-09-16 14:36
 opgepakt-door: claude-fb-039
 branch: ticket/FB-039-stroken-toegankelijk
 pr:
@@ -87,3 +87,4 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 - 2026-09-15 22:51 · claude-fb039 · PR #105
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
 - 2026-09-16 14:28 · claude-fb-039 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:36 · claude-fb-039 · stroken gebouwd: doel van 24 px, de strook met de naam is een tabstop; ADR-0045 vervangt ADR-0042 beslissing 3; vitest 973/973 en lint groen
