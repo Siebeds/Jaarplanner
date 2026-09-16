@@ -279,12 +279,13 @@ public sealed class AzureAiFoundryClientTests
     }
 
     /// <summary>
-    /// <b>The full offline seam of the story's "real AI client" criterion.</b> A canned Azure envelope goes through
-    /// the real client, then the real parser, then the real generation service, and a reviewable <c>voorgesteld</c>
-    /// plan comes out. Everything but the network hop between Azure and this process is genuine production code.
+    /// <b>The full offline seam of the story's "real AI client" criterion.</b> A grounded prompt from the real prompt
+    /// builder goes through the real client, and a canned Azure envelope comes back through the real parser as a valid
+    /// placement. The generation service that stored it is switched off (ADR-0049 decision 9); the pieces it will be
+    /// rebuilt from stay covered here.
     /// </summary>
     [Fact]
-    public async Task Een_azure_antwoord_levert_via_de_echte_client_een_beoordeelbaar_voorstel()
+    public async Task Een_azure_antwoord_levert_via_de_echte_client_een_geldige_plaatsing()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
         var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
@@ -292,7 +293,7 @@ public sealed class AzureAiFoundryClientTests
 
         IPlanningsblokIndeling indeling =
             new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
-        var blok = indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0];
+        var blok = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode)[0];
 
         var handler = new StubHandler(AzureEnvelop(
             $"{{\"plaatsingen\":[{{\"blokStart\":\"{blok.Start:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
@@ -300,20 +301,17 @@ public sealed class AzureAiFoundryClientTests
 
         // The REAL client, not a fake.
         IAiClient echteClient = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties()));
-        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [thema]);
-        var service = new JaarplanGeneratieService(echteClient, indeling, opslag);
+        var request = JaarplanGeneratiePromptBuilder.Bouw(
+            klas, schooljaar, indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode), [thema]);
 
-        var resultaat = await service.GenereerAsync(klas.Id);
+        var completion = await echteClient.CompleteAsync(request);
+        var parse = Application.Planning.Generatie.Response.JaarplanGeneratieResponseParser.Parse(completion);
 
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal(1, resultaat.AantalNieuw);
-
-        var plaatsing = Assert.Single(resultaat.Jaarplan!.Plaatsingen);
+        Assert.True(parse.IsGeldig);
+        var plaatsing = Assert.Single(parse.Plaatsingen);
         Assert.Equal("Herfst", plaatsing.ThemaNaam);
-        Assert.Equal("Voorgesteld", plaatsing.Status);
-        Assert.Equal("seizoen past bij het begin van het schooljaar", plaatsing.AiMotivatie);
+        Assert.Equal("seizoen past bij het begin van het schooljaar", plaatsing.Motivatie);
         Assert.Equal(blok.Start, plaatsing.BlokStart);
-        Assert.False(plaatsing.Vergrendeld);
 
         // The grounded prompt actually travelled over the wire the client built.
         Assert.Contains("Thema: Herfst", handler.LaatsteBody);
