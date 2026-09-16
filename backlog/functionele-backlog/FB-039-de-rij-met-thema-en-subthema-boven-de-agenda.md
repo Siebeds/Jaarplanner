@@ -47,14 +47,14 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de week-, dag- of maandweergave met een lopend thema en subthema, dan staat er boven de agenda geen rij
+- [x] Gegeven de week-, dag- of maandweergave met een lopend thema en subthema, dan staat er boven de agenda geen rij
   met het thema en het subthema.
-- [ ] Gegeven een themastrook of subthemastrook in een dagkop, wanneer de leerkracht erop klikt, dan opent de
+- [x] Gegeven een themastrook of subthemastrook in een dagkop, wanneer de leerkracht erop klikt, dan opent de
   themapagina zoals voorheen (FB-037).
-- [ ] Gegeven een strook in de week-, dag- of maandweergave, dan is haar aanraakdoel minstens 24 px hoog, ook op ~390px.
-- [ ] Gegeven de agenda, wanneer de leerkracht met Tab door de dagkoppen gaat, dan krijgt elke strook een zichtbare
+- [x] Gegeven een strook in de week-, dag- of maandweergave, dan is haar aanraakdoel minstens 24 px hoog, ook op ~390px.
+- [x] Gegeven de agenda, wanneer de leerkracht met Tab door de dagkoppen gaat, dan krijgt elke strook een zichtbare
   focus, en Enter opent dezelfde pagina als een klik.
-- [ ] Nagekeken in een echte browser op desktop en op ~390px, ook met het toetsenbord.
+- [x] Nagekeken in een echte browser op desktop en op ~390px, ook met het toetsenbord.
 
 ## Testscenario's
 

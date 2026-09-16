@@ -70,3 +70,47 @@ Signed in as `directie@jaarplanner.local`.
   (FB-037), not a 2.1.1 gap, but it qualifies ADR-0045's "a keyboard reaches each … subthema chapter from the agenda".
 - Planning an activity of a subthema on a day extends that subthema's strip to that day. That behaviour predates
   FB-039 and is only why the test data shows long runs.
+
+## Re-check (round 2)
+
+**Verdict:** PASS
+**Mode:** Playwright (playwright-core driving local Chrome, headless) + Vitest
+
+Build under test: `ticket/FB-039-stroken-toegankelijk` @ `a3c510d` (a frontend-only fix, so the round 1 `bin-run` API still
+applies). API on :5191 against `jaarplanner_fb039`, Vite on :5271, signed in as `directie@jaarplanner.local`. Extra
+test data for a row whose largest day has exactly 2 slots: two activities of "Op reis" ("Koffer inpakken" and
+"Reisroute tekenen") planned on 12 May 2027, inside that subthema's own period.
+
+### Defect re-checked
+- [MAJOR] "The month view hides the activity chips on days with a subthema" → **FIXED.** Measured at 1440px, same method
+  as round 1 (a chip counts only when it is fully inside its list):
+
+| cell | slots (most in row) | cell height | list height | fully visible | main (round 1) |
+|---|---|---|---|---|---|
+| 12 May 2027 | 2 (2) | 127px | 42px (41.95) | "Koffer inpakken", "Reisroute tekenen" | 42px, 2 chips |
+| 8, 9, 10, 14, 15, 16, 21, 28, 29 Sep 2026 | 3 (3) | 134px | 25px | "nog 1" | 25px, "nog 1" |
+| 7 Sep 2026 | 2 (3, from its row) | 134px | 49px | both "Kringgesprek" chips | 42px, 2 chips |
+
+  The 3-slot cells look as they do on main, including the top edge of the first chip above "nog 1"
+  (`recheck-maand-chips.png` against `main-maand-chips.png`). The 2-slot cell is `recheck-mei-2slots.png`.
+
+### Side checks
+- Row heights follow the row's largest day: 0 slots → 112px (week of 9 Nov 2026 and week of 4 Jan 2027), 1 → 120px,
+  2 → 127px (weeks of 10 and 17 May 2027), 3 → 134px (September 2026). Every cell in a row has the same height
+  (`recheck-nov-zonder-stroken.png`).
+- Strips still 24px: every visible strip link measures 24px (September 57/57, May 42/42, November 35/35).
+- Focus ring in a month cell is not clipped: Tab from "Vandaag" reaches "Open thema Ik en mijn klas" (1 Sep, then 7 Sep).
+  Both have `outline: solid 2px`, offset -2px, `:focus-visible` true, and the ring lies wholly inside the cell with no
+  clipping ancestor (`recheck-maand-focus-0.png`, `recheck-maand-focus-1.png`).
+- 390px month view unchanged: cells 64px, no strips, and the screenshot of `/agenda/dag/2026-09-09?weergave=maand` is
+  byte-identical to round 1's `mobiel-maand.png` (sha1 `4ea9a2e63c28…` for both; `recheck-mobiel-maand.png`).
+- Browser console: no errors or warnings.
+
+### Commands run
+- API :5191 `/health` → 200; Vite :5271 → 200; proxy `/api/klassen` → 401 (healthy)
+- `pnpm exec vitest run Maandrooster Themastroken Subthemastroken Tijdraster` → 4 files, 66 tests passed
+- Playwright scripts (scratchpad): the month measurement, a scan of Oct 2026 to Jun 2027 row heights, the Tab walk, the 390px comparison
+
+### Evidence
+- `recheck-maand-chips.png`, `recheck-maand-volledig.png`, `recheck-mei-2slots.png`, `recheck-nov-zonder-stroken.png`,
+  `recheck-maand-focus-0.png`, `recheck-maand-focus-1.png`, `recheck-mobiel-maand.png`
