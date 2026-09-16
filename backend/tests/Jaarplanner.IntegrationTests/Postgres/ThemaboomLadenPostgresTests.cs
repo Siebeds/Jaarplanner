@@ -92,7 +92,7 @@ public sealed class ThemaboomLadenPostgresTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Het_doelenoverzicht_van_een_thema_laadt_met_gesplitste_queries()
+    public async Task Het_doelenoverzicht_van_een_volle_thema_boom_laadt()
     {
         var seed = await SeedAsync();
 

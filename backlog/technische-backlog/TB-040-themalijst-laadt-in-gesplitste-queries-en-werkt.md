@@ -2,10 +2,10 @@
 id: TB-040
 titel: Themalijst laadt in gesplitste queries en werkt ook bij een volledig schooljaar
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:20
+bijgewerkt: 2026-09-16 20:24
 opgepakt-door: tb040-splitquery
 branch: ticket/TB-040-themalijst-splitquery
 pr:
@@ -73,3 +73,5 @@ Geen.
 - 2026-09-16 20:19 · tb040-splitquery · AsSplitQuery op de vier plekken die de themaboom laden; nieuwe Postgres-test en de hele backendsuite groen
 - 2026-09-16 20:20 · tb040-splitquery · gemeten op jaarplanner_tb035 als directie: GET /api/themas 200 in 0,72 s koud en 0,2 s warm (volledige boom, geen dubbels, volgorde gelijk aan de database); thema voor K3-klas hoogstens 0,15 s; doelenoverzicht 0,13 s
 - 2026-09-16 20:20 · tb040-splitquery · criteria afgevinkt: 1-2 met de meting, 3 met ThemaboomLadenPostgresTests, 4-5 met de hele backendsuite (1905 unit, 556 integratie op Postgres, waaronder de FR-1-importtests)
+- 2026-09-16 20:24 · tb040-splitquery · antagonist: COMPLIANT; drie MINOR-punten opgelost (testnaam, commentaar bij ThenBy, volgorde AsSplitQuery in de import). Blijft open: geen test bewijst dat de query echt gesplitst is, de snelheid steunt op de meting
+- 2026-09-16 20:24 · tb040-splitquery · in-uitvoering → klaar: themaboom laadt met gesplitste queries; themalijst op jaarplanner_tb035 in 0,72 s; backendtests, dotnet format en antagonist groen

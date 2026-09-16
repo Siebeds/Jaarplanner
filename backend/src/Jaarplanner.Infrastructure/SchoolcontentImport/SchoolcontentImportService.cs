@@ -86,8 +86,8 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
-            .AsSplitQuery()
             .Where(t => inkomendeThemaNamen.Contains(t.Naam))
+            .AsSplitQuery()
             .ToListAsync(cancellationToken);
         var bestaandeThemaPerNaam = bestaandeThemas
             .GroupBy(t => t.Naam, KeyComparer)

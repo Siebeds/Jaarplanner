@@ -67,7 +67,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     public async Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(CancellationToken cancellationToken = default)
     {
-        // ThenBy(Id): a split query stitches its parts together by the root's order, so that order must be total.
+        // ThenBy(Id) makes the order explicit where two thema's share a name; EF would add the key for a split query anyway.
         var themas = await ThemasMetSubtreeQuery()
             .OrderBy(t => t.Naam)
             .ThenBy(t => t.Id)
