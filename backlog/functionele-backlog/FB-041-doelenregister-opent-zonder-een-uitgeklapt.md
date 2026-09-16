@@ -2,13 +2,13 @@
 id: FB-041
 titel: Doelenregister opent zonder een uitgeklapt leergebied of discipline
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 15:07
+opgepakt-door: claude-fb-041
+branch: ticket/FB-041-register-ingeklapt
+pr: 109
 geblokkeerd:
 fr: [FR-2.2]
 ---
@@ -32,11 +32,11 @@ zoekt, en is het overzicht van alle groepen weg.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht met een klas, wanneer ze naar Doelen gaat, dan is in het register van de leerplandoelen
+- [x] Gegeven een leerkracht met een klas, wanneer ze naar Doelen gaat, dan is in het register van de leerplandoelen
   geen enkele discipline uitgeklapt.
-- [ ] Gegeven dezelfde leerkracht, wanneer ze naar de minimumdoelen gaat, dan is geen enkel leergebied uitgeklapt.
-- [ ] Gegeven het register, wanneer de leerkracht een zoekterm intikt, dan blijven alle groepen ingeklapt.
-- [ ] Gegeven een groep die de leerkracht openklapte, dan blijft die open tot zij ze sluit of een filter wijzigt.
+- [x] Gegeven dezelfde leerkracht, wanneer ze naar de minimumdoelen gaat, dan is geen enkel leergebied uitgeklapt.
+- [x] Gegeven het register, wanneer de leerkracht een zoekterm intikt, dan blijven alle groepen ingeklapt.
+- [x] Gegeven een groep die de leerkracht openklapte, dan blijft die open tot zij ze sluit of een filter wijzigt.
 
 ## Testscenario's
 
@@ -58,3 +58,8 @@ Welke filter standaard actief is bij het binnenkomen: dat blijft zoals nu.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-041 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:32 · claude-fb-041 · registers openen volledig ingeklapt, ook na een filter of zoekterm; Vitest (968) en lint groen
+- 2026-09-16 14:33 · claude-fb-041 · antagonist: COMPLIANT, geen blokkerende bevindingen; één MINOR (test op textContent)
+- 2026-09-16 14:40 · claude-fb-041 · in-uitvoering → te-testen: gebouwd: registers openen altijd ingeklapt, ook na zoeken of filteren; browsercheck PASS op desktop en 390px (backlog/worklogs/FB-041), Vitest 968 en lint groen, antagonist COMPLIANT
+- 2026-09-16 15:07 · claude-fb-041 · PR #109
