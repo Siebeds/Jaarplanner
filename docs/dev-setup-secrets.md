@@ -49,6 +49,20 @@ Run these from the `backend/` directory.
    dotnet user-secrets set "AzureAI:ApiKey" "<your-foundry-key>" --project src/Jaarplanner.Api
    ```
 
+4. Or use the Claude API instead of Azure AI Foundry (TB-041, ADR-0048): set the key
+   **`Anthropic:ApiKey`** and pick the provider. The model and an optional endpoint live in
+   `appsettings.json` under `Anthropic`, and can be overridden here too:
+
+   ```bash
+   dotnet user-secrets set "Anthropic:ApiKey" "<your-claude-api-key>" --project src/Jaarplanner.Api
+   dotnet user-secrets set "Ai:Provider" "Anthropic" --project src/Jaarplanner.Api
+   dotnet user-secrets set "Anthropic:Endpoint" "<https://your-endpoint>" --project src/Jaarplanner.Api   # optional
+   ```
+
+   The key comes from the Claude Console (platform.claude.com) and is billed per use; a Claude.ai
+   subscription does not give API access. In Azure, the Key Vault secret is named `Anthropic--ApiKey`
+   and the app setting `Ai__Provider`.
+
 Useful commands:
 
 ```bash
@@ -134,6 +148,8 @@ Per Art. VI.4 / Art. IV and ADR-0012:
 
 - The Azure AI Foundry key is a **server-side secret**: user-secrets locally (`AzureAI:ApiKey`),
   Azure Key Vault in the cloud.
+- The same holds for the Claude API key (`Anthropic:ApiKey`), used when `Ai:Provider` is
+  `Anthropic` (ADR-0048).
 - It is **never** committed to the repo and **never** sent to the frontend. All AI calls
   originate from the backend (`Infrastructure`), where the key is read.
 - A documented, **currently-unused** options seam exists at

@@ -168,7 +168,7 @@ The two exceptions above are the only ones. Access for parents or pupils and int
    - **(c):** in a jaarfase with no hoofdleerkracht, only directie does, by hand, what the hoofdleerkracht would: its subthema's, subdoelen, goal links, and the deletions only a hoofdleerkracht may make.
    - **(e):** a zorgcoördinator, or any gebruiker holding none of the five rights, may do nothing beyond themabeheer and Leerlingzorg, if given, apart from the maker's delete right (R33) and keeping a woordweb of their own (ADR-0043 D2); without a right they read no klas's planning (above).
 2. **No pupil personal data in the MVP** (GDPR/AVG), **except the ontwikkelingsrapport under VI.7**. Staff accounts only: no pupil ever logs in.
-3. **Host in an EU region.** AI processing happens in an EU, GDPR-compliant environment (e.g. Azure AI Foundry, EU data zone).
+3. **Host in an EU region.** AI processing happens in an EU, GDPR-compliant environment (Azure AI Foundry, EU data zone), except on a deployment that picks the Anthropic Claude API (Art. VIII, [ADR-0048](docs/adr/0048-claude-api-als-tweede-ai-provider.md)), whose processing location is not held to the EU.
 4. **No secrets in the repo.** .NET user-secrets locally, Azure Key Vault in the cloud. **AI keys are server-side only — never exposed to the frontend.**
    *Narrow exception:* credentials for a **throw-away local or CI test database** may live in the repo — `docker-compose.yml`, `.github/workflows/ci.yml`, dev-setup docs, story worklogs — because they authenticate a `127.0.0.1` or ephemeral-runner role that guards nothing reachable and holds no real data. The exception covers **nothing else**: no AI key, no production or staging credential, and no connection string to any database holding school data.
 5. Access via personal login; data encrypted in transit and at rest (NFR-5).
@@ -248,9 +248,9 @@ The Op.stap goals are imported from **KOV's Op.stap API**, read by the backend o
 - **Frontend:** React 18 + TypeScript + Vite. Tailwind CSS, with **Radix UI + shadcn/ui** (copied into the repo) as the accessible component layer and design tokens — see [ADR-0017](docs/adr/0017-ui-ux-design-system.md). Drag-and-drop `@dnd-kit/core`. Server state TanStack Query. Local UI state Zustand. **UI/UX target: WCAG 2.2 AA**; approach in [`docs/ux/ui-ux-approach.md`](docs/ux/ui-ux-approach.md).
 - **Backend:** ASP.NET Core Web API (C#) on the current **.NET LTS**, SDK pinned in `global.json`. EF Core + Npgsql. Excel parsing **ClosedXML** (MIT — **avoid EPPlus**, commercial licence).
 - **Database:** PostgreSQL (local via Docker).
-- **AI:** Azure AI Foundry (Azure OpenAI), **called only from the backend**.
+- **AI:** Azure AI Foundry (Azure OpenAI) or the Anthropic Claude API, one per deployment, picked by `Ai:Provider` ([ADR-0048](docs/adr/0048-claude-api-als-tweede-ai-provider.md)), **called only from the backend**.
 - **Hosting:** Microsoft Azure.
-- **Architecture:** SPA over REST/JSON. Backend is pragmatically layered — `Domain` (entities, invariants, Dutch ubiquitous language) ← `Application` (use cases, AI orchestration, mapping) ← `Infrastructure` (EF Core, Excel import, Azure AI). `Api` is thin. **This is a small app — favour clarity over ceremony; do not over-engineer.**
+- **Architecture:** SPA over REST/JSON. Backend is pragmatically layered — `Domain` (entities, invariants, Dutch ubiquitous language) ← `Application` (use cases, AI orchestration, mapping) ← `Infrastructure` (EF Core, Excel import, AI clients). `Api` is thin. **This is a small app — favour clarity over ceremony; do not over-engineer.**
 - **Anchor screens:** the **kalender + drag-and-drop** and the **dekkingsoverzicht**.
 
 ---
