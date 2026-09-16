@@ -42,8 +42,10 @@ CLAUDE.md.
 
 - It must be `klaar-voor-bouw` (check with `list`, which sees every branch and shows blocks), or `in-uitvoering` by
   you because you just created it. `in-uitvoering` by someone else: stop and pick another. Blocked (`geblokkeerd` in
-  `list`): stop too; it waits for an answer from the owner. `nieuw`: it is not refined yet; ask the owner whether to
-  move it to `klaar-voor-bouw` first.
+  `list`): stop too; it waits for an answer from the owner. `nieuw`: if the owner said in this session that he wants
+  to start it, that is his go-ahead: pick it up straight from `nieuw` (step 3), with the go-ahead in `--log`
+  (`--log "opgepakt: eigenaar wil starten"`); the CLI refuses that pickup without `--log`. Otherwise ask the owner
+  first.
 - The ticket's status `in-uitvoering`, with your session id in `opgepakt-door`, is the claim (step 3); there is no
   separate lock.
 - Read the whole ticket, the FR numbers it cites and the constitution articles it touches. If it conflicts with

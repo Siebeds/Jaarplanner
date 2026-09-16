@@ -569,6 +569,14 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     ],
   };
 
+  /** Asserts that `eerst` precedes `daarna` in the chapter button, whose accessible name follows this DOM order. */
+  const verwachtVoor = (knop: HTMLElement, eerst: string, daarna: string) => {
+    const tekst = knop.textContent ?? "";
+    expect(tekst).toContain(eerst);
+    expect(tekst).toContain(daarna);
+    expect(tekst.indexOf(eerst)).toBeLessThan(tekst.indexOf(daarna));
+  };
+
   /** The rows of one Subkop in the open chapter, found by its heading. */
   const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
   // The doel row's own button: the remove control beside it names the code too, but in an `aria-label`.
@@ -610,6 +618,12 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     expect(
       within(hoofdstuk("Bladeren", false)).getByText(t("thema.subdoelenInActiviteit", { aantal: 2, totaal: 3 })),
     ).toBeInTheDocument();
+    // FB-048: the subdoelen figure comes before the activiteiten figure.
+    verwachtVoor(
+      hoofdstuk("Bladeren", false),
+      t("thema.subdoelenInActiviteit", { aantal: 2, totaal: 3 }),
+      telWoord(2, "thema.eenActiviteit", "thema.activiteiten"),
+    );
   });
 
   it("geeft een subthema zonder subdoelen de gewone telling", async () => {
@@ -619,6 +633,11 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     expect(
       within(hoofdstuk("Bladeren", false)).getByText(telWoord(0, "thema.eenSubdoel", "thema.subdoelen")),
     ).toBeInTheDocument();
+    verwachtVoor(
+      hoofdstuk("Bladeren", false),
+      telWoord(0, "thema.eenSubdoel", "thema.subdoelen"),
+      telWoord(THEMA.subthemas[0].activiteiten.length, "thema.eenActiviteit", "thema.activiteiten"),
+    );
   });
 
   it("toont geen groep andere doelen wanneer elk doel van een activiteit een subdoel is", async () => {

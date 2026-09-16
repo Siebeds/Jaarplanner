@@ -68,6 +68,9 @@ stelt dus een thema voor met **subthema's per leeftijd die de leerplandoelen dra
 - **Grondwet:** Art. IV.8 zegt dat de AI in de doel-eerst werkwijze nooit vooruitloopt op de mens. Een volledig thema
   voorstellen doet dat wel, ook als alles pas na aanvaarden bewaard wordt. Dat vraagt een beslissing en een wijziging van
   Art. IV.8 (Art. XI) vóór de bouw.
+  **Beslissing van de eigenaar, 2026-09-16 (bij FB-054):** toestaan, alleen na aanvaarden. De AI mag nieuwe thema's en
+  subthema's bedenken, met namen en onderzoeksvragen uit eigen kennis; doelen komen alleen uit de geladen doelen en
+  niets wordt bewaard zonder aanvaarden. De wijziging van Art. IV.4 en IV.8 moet nog geschreven worden.
 - **AI-omgeving:** er is nog geen werkende AI-omgeving (TB-004 wacht op Azure), en de demo draait zonder AI.
 - De kandidatenset moet begrensd blijven (TB-007): alleen de doelen van de gekozen leeftijden.
 

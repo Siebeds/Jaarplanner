@@ -126,7 +126,8 @@ op jouw merge. Na de merge en een `git pull` staat de status ook op `main` en sc
 
 Toegestane overgangen (de CLI dwingt ze af):
 
-- `nieuw` → `klaar-voor-bouw`, en voor een TB ook meteen → `in-uitvoering`
+- `nieuw` → `klaar-voor-bouw`, of meteen → `in-uitvoering` (een TB bij het aanmaken; elk ticket wanneer de eigenaar
+  in de sessie zegt dat hij het wil starten, met die vrijgave in `--log`, die de CLI dan verplicht)
 - `klaar-voor-bouw` → `in-uitvoering`, of terug naar `nieuw`
 - `in-uitvoering` → `te-testen` (FB) of `klaar` (TB), of terug naar `klaar-voor-bouw` als de agent het teruggeeft
 - `te-testen` → `klaar`, of terug naar `klaar-voor-bouw` met de bevinding in het werklog
@@ -146,11 +147,13 @@ statussen op hun branch (oppakken, te testen, teruggeven).
 
 - **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
   repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en mag de tekst van
-  een ticket aanscherpen zolang het `nieuw` is, na een `git pull`. Heeft de eigenaar het intussen op
+  een ticket aanscherpen zolang het `nieuw` is, na een `git pull`; een sessie kan het dan al vasthouden als de eigenaar
+  het meteen liet starten, dus bij twijfel eerst de eigenaar vragen. Heeft de eigenaar het intussen op
   `klaar-voor-bouw` gezet maar nog niet gepusht, dan botst dat bij de volgende pull als merge-conflict op dat ene
   ticket: houd dan de status van de eigenaar en de tekst van de architect. De architect **test** functionele tickets
   in `te-testen` en meldt het resultaat aan de eigenaar.
-- **Eigenaar:** zet tickets op `klaar-voor-bouw`, verwerkt de test van de architect met de skill `ticket-testen` (naar
+- **Eigenaar:** zet tickets op `klaar-voor-bouw`, of zegt in een sessie dat hij een ticket op `nieuw` wil starten
+  (dan pakt de sessie het meteen op), verwerkt de test van de architect met de skill `ticket-testen` (naar
   `klaar`, of terug naar `klaar-voor-bouw` met de bevinding), merget, en kijkt op het bord. Elke statuswijziging
   commit hij meteen op `main`, zodat de sessies ze zien, met twee uitzonderingen die op de branch zelf gebeuren: een
   `release` van een gestopte sessie en het terugzetten van een PR die hij niet merget (zie *De opdrachten*). Omdat dat en het werk van
