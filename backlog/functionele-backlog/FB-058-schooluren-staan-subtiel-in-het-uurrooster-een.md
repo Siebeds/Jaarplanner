@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:00
+bijgewerkt: 2026-09-17 00:06
 opgepakt-door: schooluren-tint
 branch: ticket/FB-058-schooluren-tint
-pr:
+pr: 125
 geblokkeerd:
 fr: [FR-12.1]
 ---
@@ -88,3 +88,4 @@ Geen.
 - 2026-09-16 23:48 · schooluren-tint · Browserpas (wegwerp-DB jp_fb058, 1440 px en 390 px, licht en donker): tint 249,249,251 op wit, gesloten dag 242,244,246 met naam; grenstijden 17,8:1 licht en 13,1:1 donker; activiteitblokken zonder alfa.
 - 2026-09-17 00:00 · schooluren-tint · Antagonist: COMPLIANT, geen blokkerende bevindingen. MINOR opgelost: bij botsende grenstijden wint begin/einde van de schooldag van de middagpauze. MINOR aanvaard: een botsende tijd van een tweede dag staat niet in de uurkolom, alleen de tint en de schermlezerstekst tonen hem. Criteria afgevinkt op basis van Tijdraster.test.tsx, schooluren.test.ts en de browserpas.
 - 2026-09-17 00:00 · schooluren-tint · in-uitvoering → te-testen: Gebouwd: effen lichte tint in plaats van arcering, grenstijden in de uurkolom, dekkende activiteitblokken, amendement op ADR-0038. Vitest 1013 groen (een losse onstabiele test in DoelenScherm/Tijdraster onder belasting, los van deze wijziging), pnpm lint groen, browserpas licht/donker/390 px.
+- 2026-09-17 00:06 · schooluren-tint · PR #125
