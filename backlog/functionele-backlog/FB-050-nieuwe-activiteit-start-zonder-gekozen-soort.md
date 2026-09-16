@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 21:29
+bijgewerkt: 2026-09-16 21:42
 opgepakt-door: claude-fb-050
 branch: ticket/FB-050-activiteit-zonder-soort
 pr:
@@ -23,7 +23,7 @@ met een soort die ze nooit koos.
 
 ## Gewenst gedrag
 
-- In het formulier van een nieuwe activiteit is de soort leeg, met een neutrale tekst als "Kies een soort".
+- In het formulier van een nieuwe activiteit is de soort leeg, met de neutrale tekst "Geen soort".
 - Ook de snelle regel "Nieuwe activiteit" in het koppelpaneel van het doelenregister start zonder soort.
 - De soort is optioneel: wie zonder soort bewaart, bewaart een activiteit zonder soort. Nergens wordt een lege soort
   stil "Experiment", ook niet in de backend.
@@ -75,3 +75,4 @@ Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu (daar bli
 - 2026-09-16 20:35 · claude-fb-050 · in-uitvoering → te-testen: Soortveld start leeg en is verplicht met melding bij het veld; Vitest 1003 groen, lint groen, browser desktop en 390px PASS, antagonist COMPLIANT
 - 2026-09-16 21:29 · eigenaar · te-testen → klaar-voor-bouw: teruggestuurd: ook het koppelpaneel niet standaard op Experiment; de backend maakt nooit stil Experiment, een lege soort blijft leeg (soort optioneel)
 - 2026-09-16 21:29 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opnieuw opgepakt met de uitbreiding van de eigenaar
+- 2026-09-16 21:42 · claude-fb-050 · Soort optioneel gebouwd: formulier, koppelpaneel, backend (nullable kolom, migratie ActiviteitTypeOptioneel) en Art. IX.2 gewijzigd; backend 2462 en lint groen
