@@ -40,5 +40,12 @@ dotnet user-secrets set "ConnectionStrings:Postgres" \
   --project src/Jaarplanner.Api
 ```
 
+To run the AI features on the Claude API instead of Azure AI Foundry (ADR-0048):
+
+```bash
+dotnet user-secrets set "Anthropic:ApiKey" "<your-claude-api-key>" --project src/Jaarplanner.Api
+dotnet user-secrets set "Ai:Provider" "Anthropic" --project src/Jaarplanner.Api
+```
+
 The app starts fine with no secret set; `/health` returns 200 and `/health/ready` reports the
 database as unreachable until the connection string and a running Postgres are present.
