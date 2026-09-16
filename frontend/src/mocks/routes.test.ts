@@ -133,6 +133,26 @@ describe("mock mode (TB-046, TB-047)", () => {
     expect(antwoord.status).toBe(400);
   });
 
+  it("counts each thema's subthema's, activiteiten and goal links in the library (TB-049)", () => {
+    const rijen = vraag<{ id: string; aantalSubthemas: number; aantalActiviteiten: number; aantalDoelkoppelingen: number }[]>(
+      beginToestand(),
+      "GET",
+      "/api/themas/bibliotheek",
+    ).body;
+
+    for (const bron of THEMAS) {
+      const rij = rijen.find((r) => r.id === bron.id)!;
+      const activiteiten = bron.subthemas.flatMap((s) => s.activiteiten);
+      expect(rij.aantalSubthemas).toBe(bron.subthemas.length);
+      expect(rij.aantalActiviteiten).toBe(activiteiten.length);
+      expect(rij.aantalDoelkoppelingen).toBe(
+        bron.minimumdoelen.length +
+          bron.subthemas.reduce((som, s) => som + s.subdoelen.length, 0) +
+          activiteiten.reduce((som, a) => som + a.doelen.length, 0),
+      );
+    }
+  });
+
   it("answers a route it does not know with a 501 that names the route", () => {
     const antwoord = vraag<{ detail: string }>(beginToestand(), "POST", "/api/themas/x/doelsuggesties/genereer", {});
 
