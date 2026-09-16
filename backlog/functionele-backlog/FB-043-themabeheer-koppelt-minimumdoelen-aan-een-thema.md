@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
+bijgewerkt: 2026-09-16 14:03
 opgepakt-door:
 branch:
 pr:
@@ -28,6 +28,11 @@ meerdere leeftijden, en het minimumdoel is het niveau dat over die leeftijden he
 **Dit draait een eerdere beslissing terug:** bij FB-009 verwierp de eigenaar op 2026-09-15 nog "een eigen lijst
 beoogde minimumdoelen op het thema". Met dit ticket komt die lijst er wel, als themadoelen.
 
+**Beslissing van de eigenaar, 2026-09-16:** het maximum van 2 à 3 themadoelen vervalt: *"max van aantal
+themadoelen moet weg, er kunnen heel veel doelen worden gelinkt."* Vandaag weigert een thema een vierde themadoel, en de
+import (FR-1) houdt er hoogstens drie over. De grondwet noemt de themadoelen nog "de 2 à 3 overkoepelende doelen"
+(Art. IX.2 en XII); die tekst wordt mee aangepast, met de reden in `docs/constitutie-log.md`.
+
 Het deel "Doelen per leeftijd toont geen minimumdoelen meer" is FB-044. Hoe dit meetelt als verwachte dekking is
 FB-045.
 
@@ -41,6 +46,8 @@ FB-045.
 - Een minimumdoel uitklappen toont **per leeftijd** een regel met het aantal leerplandoelen ("K2 · 3 leerplandoelen").
   Een leeftijd uitklappen toont die leerplandoelen. Daar staan geen minimumdoelen meer bij.
 - Een leerplandoel aanklikken opent zijn detail, zoals nu (TB-016); daar ziet men ook zijn minimumdoel.
+- Een thema heeft **geen maximum** aan themadoelen meer, niet bij het koppelen op de themapagina en niet bij de
+  import (FR-1). Dat geldt voor minimumdoelen en voor de themadoelen die leerplandoelen zijn.
 - Bij de **subthema's** verandert niets: subdoelen blijven leerplandoelen van de leeftijd van het subthema.
 
 ## Acceptatiecriteria
@@ -53,6 +60,8 @@ FB-045.
   meebracht.
 - [ ] Gegeven een gewone leerkracht of hoofdleerkracht, dan ziet ze de minimumdoelen van het thema maar kan ze er geen
   koppelen of ontkoppelen; de server weigert het ook.
+- [ ] Gegeven een thema met al drie themadoelen, wanneer er een vierde en een vijfde gekoppeld worden, dan staan ze er
+  alle vijf; een import met meer dan drie themadoelen voor een thema neemt ze allemaal over.
 - [ ] Gegeven een subthema, dan koppelt men daar zoals nu leerplandoelen als subdoel, geen minimumdoelen.
 - [ ] Getest aan de serverkant (koppelen, meebrengen, ontkoppelen, rechten) en nagekeken in een echte browser op desktop
   en ~390px, met het toetsenbord bedienbaar.
@@ -66,8 +75,9 @@ FB-045.
 4. Klik een leerplandoel aan. Het detail opent en noemt het minimumdoel.
 5. Ontkoppel het minimumdoel. Het verdwijnt, met de leerplandoelen eronder.
 6. Meld aan als leerkracht. Je ziet de minimumdoelen van het thema, zonder knop om te koppelen of te ontkoppelen.
-7. Open een subthema: daar koppel je nog altijd leerplandoelen.
-8. Herhaal stap 1 tot 3 op ~390px.
+7. Koppel als themabeheer nog vier minimumdoelen aan hetzelfde thema. Ze worden alle vier aanvaard; er is geen maximum.
+8. Open een subthema: daar koppel je nog altijd leerplandoelen.
+9. Herhaal stap 1 tot 3 op ~390px.
 
 ## Buiten scope
 
@@ -79,15 +89,16 @@ FB-045.
 
 - **Wat met de bestaande themadoelen, die leerplandoelen zijn?** Blijven ze naast de minimumdoelen staan, worden ze
   omgezet naar hun minimumdoel, of verdwijnt dat soort themadoel? **Standaard** blijven ze staan tot de eigenaar beslist.
-- **Blijft het maximum van 2 à 3 themadoelen?** De grondwet (Art. IX) noemt themadoelen "de 2 à 3 overkoepelende doelen".
-  Telt dat maximum de minimumdoelen?
 - **Welke leeftijden komen mee?** Een minimumdoel `K-` leidt naar leerplandoelen van JK, K2 en K3. **Standaard** alle
   leeftijden van de concordantie, ook als het thema voor een leeftijd nog geen subthema heeft.
 - **Import (FR-1):** het Excelbestand draagt vandaag leerplandoelen als themadoel. Moet het ook minimumdoelen kunnen
   dragen? **Standaard** nee, dit ticket gaat over de themapagina.
+- Het schrappen van het maximum wijzigt de grondwet (Art. IX.2 en XII): de bouwer past die tekst aan en noteert het in
+  `docs/constitutie-log.md`, met de beslissing van de eigenaar van 2026-09-16.
 - Een koppeling tussen een thema en een minimumdoel is een nieuw soort koppeling in het gegevensmodel (Art. IX):
   de bouwer legt dat vast in een ADR.
 
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 14:03 · demo-opmerkingen · beslissing eigenaar: het maximum van 2 à 3 themadoelen vervalt, ook bij de import; in de tekst verwerkt
