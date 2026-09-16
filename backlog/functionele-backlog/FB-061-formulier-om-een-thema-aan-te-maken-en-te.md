@@ -2,10 +2,10 @@
 id: FB-061
 titel: Formulier om een thema aan te maken en te bewerken is rustiger en duidelijker
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:10
+bijgewerkt: 2026-09-17 00:13
 opgepakt-door: claude-fb061
 branch: ticket/FB-061-rustiger-themaformulier
 pr:
@@ -95,3 +95,4 @@ Geen.
 - 2026-09-17 00:01 · claude-fb061 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-17 00:08 · claude-fb061 · Formulier herbouwd, Woordchips kreeg uitleg, gewijzigd-markering en hoekige chips (ook in het woordweb, dezelfde control); vitest 1031/1031 en pnpm lint groen.
 - 2026-09-17 00:10 · claude-fb061 · Correctie op de vorige regel: het woordweb gebruikt Woordchips niet, alleen dit formulier kreeg de hoekige chips. Antagonist: COMPLIANT; kleine punten opgelost (paneel blijft open tijdens bewaren, één gedeelde gewijzigd-markering).
+- 2026-09-17 00:13 · claude-fb061 · in-uitvoering → te-testen: Gebouwd: rustiger themaformulier (één kolom, tekstvak voor invalshoeken, woordenlijsten naast elkaar met teller en uitleg, hoekige chips, Thema aanmaken opent de themapagina, gewijzigd-markering, Bewaren pas na een wijziging, vraag voor weggooien). Vitest en lint groen; browsercontrole op 1440 en 390 geslaagd, contrast 6,51:1 en 9,39:1 (test-report.md); antagonist COMPLIANT.
