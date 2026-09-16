@@ -530,9 +530,6 @@
     "nietIngesteld": "Niet ingesteld",
     "geenPauze": "Geen middagpauze",
     "pauzeLijst": "Middagpauze {bereik}",
-    "beginRaster": "begin {tijd}",
-    "eindeRaster": "einde {tijd}",
-    "pauzeRaster": "middagpauze",
     "dagZin": ", schooldag van {begin} tot {einde}",
     "pauzeZin": ", middagpauze van {begin} tot {einde}"
   },
