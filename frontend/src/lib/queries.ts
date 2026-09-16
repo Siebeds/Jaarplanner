@@ -165,6 +165,42 @@ export function useMinimumdoel(ref: string | null) {
   });
 }
 
+/**
+ * The texts of several leerplandoelen, for searching a list on the thema page (TB-051) without opening it.
+ *
+ * The same key and endpoint as `useLeerplandoel`, so a text a row already fetched is served from the cache and a text
+ * fetched here serves the row once it is shown. `enabled` stays false until the list's search opens, so a folded list
+ * asks for nothing.
+ */
+export function useLeerplandoelTeksten(codes: string[], enabled: boolean) {
+  const resultaten = useQueries({
+    queries: codes.map((code) => ({
+      queryKey: doelenSleutels.detail(code),
+      queryFn: () => get<LeerplandoelDetail>(`/api/leerplandoelen/${encodeURIComponent(code)}`),
+      enabled,
+    })),
+  });
+  return {
+    teksten: new Map(codes.map((code, i) => [code, resultaten[i]?.data?.tekst ?? ""])),
+    laadt: enabled && resultaten.some((r) => r.isPending),
+  };
+}
+
+/** The descriptions of several minimumdoelen, for the same search; see `useLeerplandoelTeksten`. */
+export function useMinimumdoelTeksten(refs: string[], enabled: boolean) {
+  const resultaten = useQueries({
+    queries: refs.map((ref) => ({
+      queryKey: minimumdoelSleutels.detail(ref),
+      queryFn: () => get<MinimumdoelDetail>(`/api/minimumdoelen/${encodeURIComponent(ref)}`),
+      enabled,
+    })),
+  });
+  return {
+    teksten: new Map(refs.map((ref, i) => [ref, resultaten[i]?.data?.omschrijving ?? ""])),
+    laadt: enabled && resultaten.some((r) => r.isPending),
+  };
+}
+
 // --- Selection context ---
 
 export function useSchooljaren() {

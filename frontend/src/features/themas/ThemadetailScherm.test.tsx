@@ -13,6 +13,7 @@ import type {
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { hoofdstuklijst, openLijsten } from "../../test/lijsten";
 import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -171,6 +172,8 @@ async function openHoofdstukken() {
   // The guard: `getByRole` throws unless both are open now, so no absence check below can pass on a shut chapter.
   hoofdstuk("Bladeren", true);
   hoofdstuk("Rekenen", true);
+  // Their lists start shut too (TB-051), with the same risk.
+  openLijsten();
 }
 
 afterEach(() => {
@@ -399,8 +402,6 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(screen.getAllByRole("button", { name: t("activiteit.toevoegen") })).toHaveLength(1);
     expect(knop(t("activiteit.bewerkAria", { naam: "Eigen spel" }))).not.toBeNull();
     expect(knop(t("activiteit.bekijkAria", { naam: "Tellen" }))).not.toBeNull();
-    // No goal links by hand (R19).
-    expect(knop(t("activiteit.koppelAan", { naam: "Eigen spel" }))).toBeNull();
 
     // The maker's delete, while no goal is linked (R25, R33): hers, not a colleague's, and not a linked one.
     expect(knop(t("activiteit.verwijderAria", { naam: "Eigen spel" }))).not.toBeNull();
@@ -421,8 +422,6 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // The subdoel unlink, on a `Gekoppelddoel` row since TB-016: on the K3 subdoel, not on the L1 one (R24).
     expect(knop(t("activiteit.ontkoppel", { code: "WIS-1" }))).not.toBeNull();
     expect(knop(t("activiteit.ontkoppel", { code: "REK-1" }))).toBeNull();
-    expect(knop(t("activiteit.koppelAan", { naam: "Andermans spel" }))).not.toBeNull();
-    expect(knop(t("activiteit.koppelAan", { naam: "Tellen" }))).toBeNull();
     // Any K3 activiteit, linked or not, whoever made it.
     expect(knop(t("activiteit.verwijderAria", { naam: "Andermans spel" }))).not.toBeNull();
     expect(knop(t("activiteit.verwijderAria", { naam: "Gekoppeld spel" }))).not.toBeNull();
@@ -589,11 +588,55 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     await screen.findByText("Bladeren");
 
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
     expect(screen.getByText("Eigen spel")).toBeInTheDocument();
     expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
     expect(screen.queryByText("Tellen")).toBeNull();
 
     fireEvent.click(hoofdstuk("Bladeren", true));
+    expect(screen.queryByText("Eigen spel")).toBeNull();
+  });
+
+  it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-051)", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    // The heading is the fold, with the count beside the title.
+    const activiteiten = screen.getByRole("button", { name: `${t("thema.activiteitenTitel")} 3` });
+    expect(activiteiten).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: `${t("thema.subdoelenTitel")} 1` })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    // The chapter opens on its woordweb, above the rest.
+    const koppen = screen.getAllByRole("heading", { level: 3 }).map((kop) => kop.textContent ?? "");
+    const woordweb = koppen.indexOf(t("woordweb.titel"));
+    expect(woordweb).toBeGreaterThan(-1);
+    expect(woordweb).toBeLessThan(koppen.findIndex((kop) => kop.startsWith(t("thema.activiteitenTitel"))));
+    expect(screen.queryByText("Eigen spel")).toBeNull();
+
+    // Activiteiten by name, whatever order the server sent them in.
+    fireEvent.click(activiteiten);
+    const namen = screen
+      .getAllByRole("button", { name: /^Activiteit .* (bekijken|bewerken)$/ })
+      .map((knop) => knop.getAttribute("aria-label"));
+    expect(namen).toEqual(
+      ["Andermans spel", "Eigen spel", "Gekoppeld spel"].map((naam) => t("activiteit.bewerkAria", { naam })),
+    );
+  });
+
+  it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-051)", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    fireEvent.click(screen.getByRole("button", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }));
+    fireEvent.change(screen.getByRole("textbox", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }), {
+      target: { value: "gekoppeld" },
+    });
+
+    expect(screen.getByText("Gekoppeld spel")).toBeInTheDocument();
     expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 });
@@ -667,6 +710,7 @@ describe("ThemadetailScherm: een link vanuit de agenda opent één subthema (FB-
     await screen.findByText("Rekenen");
 
     const rekenen = await waitFor(() => hoofdstuk("Rekenen", true));
+    openLijsten();
     expect(rekenen).toHaveFocus();
     expect(screen.getByText("Tellen")).toBeInTheDocument();
     expect(hoofdstuk("Bladeren", false)).toBeInTheDocument();
@@ -710,7 +754,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   };
 
   /** The rows of one Subkop in the open chapter, found by its heading. */
-  const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
+  const groep = (titel: string) => screen.getByRole("heading", { name: hoofdstuklijst(titel) }).closest("section")!;
   // The doel row's own button: the remove control beside it names the code too, but in an `aria-label`.
   const rij = (sectie: HTMLElement, code: string) => {
     const knoppen = within(sectie).getAllByRole("button", { name: new RegExp(code) });
@@ -723,6 +767,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const subdoelen = groep(t("thema.subdoelenTitel"));
     expect(rij(subdoelen, "WIS-1")).toHaveTextContent(
@@ -737,6 +782,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const andere = groep(t("thema.andereDoelenTitel"));
     expect(rij(andere, "NED-9")).toHaveTextContent(t("thema.inEenActiviteit", { namen: "Bladeren wegen" }));
@@ -785,10 +831,57 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: alleenSubdoelen });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     // The chapter is open: its subdoelen are on screen, and only the other group is absent.
     expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: t("thema.andereDoelenTitel") })).toBeNull();
+    expect(screen.queryByRole("heading", { name: hoofdstuklijst(t("thema.andereDoelenTitel")) })).toBeNull();
+  });
+
+  /** Opens the unlink confirmation of one subdoel and returns it (TB-051). */
+  async function ontkoppelVraag(thema: ThemaWeergave, code: string) {
+    toon(DIRECTIE, { thema });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
+    fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code }) }));
+    return screen.findByRole("dialog", { name: t("thema.subdoelOntkoppelTitel", { code }) });
+  }
+
+  it("zegt bij het ontkoppelen dat een subdoel via zijn activiteiten blijft meetellen (TB-051)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-1");
+    expect(vraag).toHaveTextContent(
+      t("thema.subdoelOntkoppelGevolg", { code: "WIS-1", subthema: "Bladeren", leeftijd: "K3" }),
+    );
+    expect(vraag).toHaveTextContent(
+      t("thema.subdoelOntkoppelBlijftMeer", { aantal: 2, namen: "Tellen met bladeren, Bladeren wegen" }),
+    );
+    expect(vraag).not.toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
+  });
+
+  it("noemt de ene activiteit die het subdoel nog draagt (TB-051)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-2");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelBlijftEen", { namen: "Tellen met bladeren" }));
+  });
+
+  it("zegt bij een subdoel zonder dragende activiteit dat het via dit subthema niet meer meetelt (TB-051)", async () => {
+    const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-3");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
+  });
+
+  it("zegt bij een onbeslist subdoel niets over de dekking (TB-051)", async () => {
+    const voorgesteld: ThemaWeergave = {
+      ...MET_DRAGERS,
+      subthemas: [
+        {
+          ...MET_DRAGERS.subthemas[0],
+          subdoelen: [{ id: "sd-v", leeftijd: "K3", koppeling: { ...koppeling("WIS-7"), status: "Voorgesteld" } }],
+        },
+      ],
+    };
+    const vraag = await ontkoppelVraag(voorgesteld, "WIS-7");
+    expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelOnbeslist", { code: "WIS-7", subthema: "Bladeren" }));
+    expect(vraag).not.toHaveTextContent(/dekking/);
   });
 
   it("markeert een subdoel dat nog niet beslist is niet als gat", async () => {
@@ -805,6 +898,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: voorgesteld });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const regel = rij(groep(t("thema.subdoelenTitel")), "WIS-7");
     expect(regel).not.toHaveTextContent(t("thema.nogGeenActiviteit"));
@@ -922,6 +1016,7 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
     toon(ik, { thema: MET_DOELEN });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
   }
 
   it("telt de doelen in het meervoud en in het enkelvoud, zonder een doelcode", async () => {
@@ -942,10 +1037,17 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
     expect(regel("Drie doelen")).not.toHaveTextContent(t("activiteit.geenDoel"));
   });
 
-  it("laat de hoofdleerkracht in de regel nog een doel koppelen", async () => {
+  it("toont in de regel geen doelkoppelaar, ook niet voor wie mag koppelen (TB-051)", async () => {
     await open(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
 
-    expect(knop(t("activiteit.koppelAan", { naam: "Drie doelen" }))).not.toBeNull();
+    // A doel is linked to an activiteit in its own sheet, which the row opens: the row holds only that and the bin.
+    const knoppen = within(screen.getByRole("button", { name: t("activiteit.bewerkAria", { naam: "Drie doelen" }) }).parentElement!)
+      .getAllByRole("button")
+      .map((k) => k.getAttribute("aria-label"));
+    expect(knoppen).toEqual([
+      t("activiteit.bewerkAria", { naam: "Drie doelen" }),
+      t("activiteit.verwijderAria", { naam: "Drie doelen" }),
+    ]);
     expect(screen.getAllByText(telWoord(3, "activiteit.eenDoel", "activiteit.aantalDoelen"))).not.toHaveLength(0);
   });
 });

@@ -6,6 +6,7 @@ import { t } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
 import type { LeerplandoelDetail, MinimumdoelDetail, MinimumdoelenPagina, ThemaWeergave } from "../../lib/types";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { LIJSTKNOP } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -143,7 +144,11 @@ function toon(ik: Ik = DIRECTIE) {
   );
 }
 
-const minimumdoelrij = () => screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
+/** The list of themadoelen starts shut (TB-051); this opens it, then finds the row. */
+async function minimumdoelrij() {
+  fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
+  return screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
+}
 
 /** The minimumdoel's own list item: the page has leeftijd buttons of its own (the doelsuggesties' choice). */
 const binnen = (rij: HTMLElement) => within(rij.closest("li")!);
@@ -194,6 +199,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
   it("zegt het wanneer nog geen leerplandoel naar het minimumdoel leidt", async () => {
     thema = { ...THEMA, minimumdoelen: [{ id: "tm-2", minimumdoelRef: "K-MV-2" }] };
     toon();
+    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
     fireEvent.click(await screen.findByRole("button", { name: /K-MV-2/, expanded: false }));
 
     expect(await screen.findByText(t("thema.minimumdoelZonderLeerplandoel"))).toBeInTheDocument();
@@ -241,12 +247,52 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-1" }) }));
 
+    // First a confirmation that names what it does to dekking, and that the thema is then left without themadoelen.
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-1" }) });
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelGevolg", { ref: "K-MV-1", thema: "Carnaval" }));
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: "DELETE" }));
+    fireEvent.click(within(vraag).getByRole("button", { name: t("thema.ontkoppelBevestig") }));
+
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/themas/t-1/minimumdoelen/tm-1",
         expect.objectContaining({ method: "DELETE" }),
       ),
     );
+  });
+
+  it("zegt bij het ontkoppelen dat het thema dan nog maar 1 themadoel overhoudt (TB-051)", async () => {
+    thema = {
+      ...THEMA,
+      minimumdoelen: [
+        { id: "tm-1", minimumdoelRef: "K-MV-1" },
+        { id: "tm-2", minimumdoelRef: "K-MV-2" },
+      ],
+    };
+    toon();
+    await minimumdoelrij();
+
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-2" }) }));
+
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-2" }) });
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelNogEen"));
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
+  });
+
+  it("zegt niets over het aantal themadoelen wanneer er genoeg overblijven (TB-051)", async () => {
+    thema = {
+      ...THEMA,
+      minimumdoelen: ["K-MV-1", "K-MV-2", "K-MV-3"].map((ref, i) => ({ id: `tm-${i}`, minimumdoelRef: ref })),
+    };
+    toon();
+    await minimumdoelrij();
+
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-1" }) }));
+
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-1" }) });
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelNogEen"));
+    expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
   });
 
   it("laat een leerkracht de minimumdoelen lezen en uitklappen, zonder koppelen of ontkoppelen", async () => {
@@ -267,6 +313,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
       minimumdoelen: ["A", "B", "C", "D", "E"].map((letter) => ({ id: `tm-${letter}`, minimumdoelRef: `K-MV-1${letter}` })),
     };
     toon();
+    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
 
     expect(await screen.findByText("K-MV-1E")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^K-MV-1[A-E]/, expanded: false })).toHaveLength(5);
