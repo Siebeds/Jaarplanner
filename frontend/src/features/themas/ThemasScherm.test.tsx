@@ -47,7 +47,7 @@ describe("ThemasScherm", () => {
   });
 });
 
-describe("ThemasScherm: de kaart van een thema (TB-044)", () => {
+describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
   it("telt de minimumdoelen van het thema, en geen klassen of doelen van alle niveaus", async () => {
     vi.stubGlobal(
       "fetch",

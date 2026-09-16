@@ -166,7 +166,7 @@ export function useMinimumdoel(ref: string | null) {
 }
 
 /**
- * The texts of several leerplandoelen, for searching a list on the thema page (TB-044) without opening it.
+ * The texts of several leerplandoelen, for searching a list on the thema page (TB-051) without opening it.
  *
  * The same key and endpoint as `useLeerplandoel`, so a text a row already fetched is served from the cache and a text
  * fetched here serves the row once it is shown. `enabled` stays false until the list's search opens, so a folded list

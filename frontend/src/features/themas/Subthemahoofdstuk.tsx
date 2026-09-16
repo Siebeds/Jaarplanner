@@ -105,7 +105,7 @@ export function Subthemahoofdstuk({
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
   const balans = subthemabalans(subthema);
-  // The three lists below are shut and paged (TB-044), each in the order it is read in: activiteiten by name, doelen by
+  // The three lists below are shut and paged (TB-051), each in the order it is read in: activiteiten by name, doelen by
   // code (`subthemabalans` already orders the other doelen). A doel search matches the doel's text too, fetched for
   // every doel only once one of the two doel searches opens.
   const activiteitenOpNaam = [...activiteiten].sort((a, b) => a.naam.localeCompare(b.naam, "nl", { numeric: true }));
@@ -144,7 +144,7 @@ export function Subthemahoofdstuk({
     // The leeftijd is not on the card: the screen sets it once in the margin beside all of that leeftijd's cards
     // (FB-047), so the card carries its own duration instead.
     <Kaart>
-      {/* THE CARD'S TWO CONTROLS SIT BESIDE THE TITLE ONLY, not in a column down the whole card (TB-044): that column
+      {/* THE CARD'S TWO CONTROLS SIT BESIDE THE TITLE ONLY, not in a column down the whole card (TB-051): that column
           took 100 pixels from every row below it, and on a phone it left the lists a column of 190. */}
       <div className="flex items-start gap-3">
         <h3 className="min-w-0 flex-1">
@@ -228,7 +228,7 @@ export function Subthemahoofdstuk({
 
       {open ? (
         <>
-          {/* THE BRAINSTORM COMES FIRST (owner, 2026-09-16, TB-044): the woordweb opens the chapter, above the question it
+          {/* THE BRAINSTORM COMES FIRST (owner, 2026-09-16, TB-051): the woordweb opens the chapter, above the question it
               leads to. Mounted only while the chapter is open, so a folded page asks for no woordwebs at all. */}
           <Woordweb subthemaId={subthema.id} naam={subthema.naam} />
 
@@ -253,7 +253,7 @@ export function Subthemahoofdstuk({
           ) : null}
 
           {/* THE THREE LISTS: each heading is its fold, with its count, its small add control and its search right after
-              it (TB-044). */}
+              it (TB-051). */}
           <Inklaplijst
             kop={{
               titel: t("thema.activiteitenTitel"),
@@ -388,7 +388,7 @@ export function Subthemahoofdstuk({
  * gebruiker who may change the content and the facts to anyone else, so its label says which. The bin is left
  * out, not disabled, when its row of the matrix does not hold.
  *
- * **No goal picker on the row** (owner, 2026-09-16, TB-044): a doel is linked to an activiteit in its own sheet, which
+ * **No goal picker on the row** (owner, 2026-09-16, TB-051): a doel is linked to an activiteit in its own sheet, which
  * the row opens. The row only counts them.
  */
 function Activiteitregel({

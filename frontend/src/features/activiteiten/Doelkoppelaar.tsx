@@ -39,7 +39,7 @@ export function Doelkoppelaar({
    * in the spoken one, which is what WCAG 2.5.3 asks for.
    */
   toelichting?: string;
-  /** A bare plus, for the heading of a folding list section (TB-044); `toelichting` is then its whole label. */
+  /** A bare plus, for the heading of a folding list section (TB-051); `toelichting` is then its whole label. */
   klein?: boolean;
 }) {
   const [open, setOpen] = useState(false);

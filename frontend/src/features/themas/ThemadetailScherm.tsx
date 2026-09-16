@@ -148,7 +148,7 @@ export function ThemadetailScherm() {
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
   // The leerplandoel whose detail is open (TB-016), from any list on the page, and the row button that opened it, which
   // gets focus back when the sheet closes.
-  // An unlink waits for a confirmation that names what it does to dekking (owner, 2026-09-16, TB-044). Ids only, for
+  // An unlink waits for a confirmation that names what it does to dekking (owner, 2026-09-16, TB-051). Ids only, for
   // the reason the sheets above give: the objects are looked up in the current thema on every render.
   const [teOntkoppelenMinimumdoel, setTeOntkoppelenMinimumdoel] = useState<string | null>(null);
   const [teOntkoppelenSubdoel, setTeOntkoppelenSubdoel] = useState<{ subthemaId: string; subdoelId: string } | null>(
@@ -693,7 +693,7 @@ export function ThemadetailScherm() {
         }
       />
 
-      {/* WHAT AN UNLINK DOES TO DEKKING, said before it happens (TB-044). Each sentence claims only what this page knows:
+      {/* WHAT AN UNLINK DOES TO DEKKING, said before it happens (TB-051). Each sentence claims only what this page knows:
           the link on this thema or this subthema, not whether another thema or subthema carries the same doel. */}
       <Bevestiging
         open={ontkoppelMd !== null}
@@ -968,7 +968,7 @@ function resultaatZin(resultaat: DoelMatchResultaat): string {
 }
 
 /**
- * What unlinking a subdoel does to dekking (TB-044). A subdoel and a decided link on an activiteit of the same subthema
+ * What unlinking a subdoel does to dekking (TB-051). A subdoel and a decided link on an activiteit of the same subthema
  * reach a klas's dekking by the same route (ADR-0047), so the leerplandoel keeps counting while such an activiteit
  * carries it; the sentence says which, from the same count the chapter shows under the subdoel.
  */

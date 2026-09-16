@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import { Inklaplijst, PAGINA } from "./Inklaplijst";
 
-/** A long list on the thema page (TB-044): shut, paged, and searchable while shut. */
+/** A long list on the thema page (TB-051): shut, paged, and searchable while shut. */
 
 const ITEMS = Array.from({ length: 12 }, (_, i) => ({ id: `d-${i + 1}`, naam: `Doel ${i + 1}` }));
 ITEMS[3] = { id: "d-4", naam: "Één reeks" };
@@ -31,7 +31,7 @@ const vouwknop = () => screen.getByRole("button", { name: "12 doelen" });
 const zoekknop = () => screen.getByRole("button", { name: t("lijst.zoekIn", { lijst: "doelen" }) });
 const rijen = () => screen.queryAllByRole("listitem").map((li) => li.textContent);
 
-describe("Inklaplijst (TB-044)", () => {
+describe("Inklaplijst (TB-051)", () => {
   it("staat ingeklapt, met het aantal op de vouwknop", () => {
     toon();
 

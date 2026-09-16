@@ -170,7 +170,7 @@ async function openHoofdstukken() {
   // The guard: `getByRole` throws unless both are open now, so no absence check below can pass on a shut chapter.
   hoofdstuk("Bladeren", true);
   hoofdstuk("Rekenen", true);
-  // Their lists start shut too (TB-044), with the same risk.
+  // Their lists start shut too (TB-051), with the same risk.
   openLijsten();
 }
 
@@ -552,7 +552,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 
-  it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-044)", async () => {
+  it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-051)", async () => {
     toon(DIRECTIE);
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
@@ -581,7 +581,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     );
   });
 
-  it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-044)", async () => {
+  it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-051)", async () => {
     toon(DIRECTIE);
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
@@ -793,7 +793,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     expect(screen.queryByRole("heading", { name: hoofdstuklijst(t("thema.andereDoelenTitel")) })).toBeNull();
   });
 
-  /** Opens the unlink confirmation of one subdoel and returns it (TB-044). */
+  /** Opens the unlink confirmation of one subdoel and returns it (TB-051). */
   async function ontkoppelVraag(thema: ThemaWeergave, code: string) {
     toon(DIRECTIE, { thema });
     await screen.findByText("Bladeren");
@@ -803,7 +803,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     return screen.findByRole("dialog", { name: t("thema.subdoelOntkoppelTitel", { code }) });
   }
 
-  it("zegt bij het ontkoppelen dat een subdoel via zijn activiteiten blijft meetellen (TB-044)", async () => {
+  it("zegt bij het ontkoppelen dat een subdoel via zijn activiteiten blijft meetellen (TB-051)", async () => {
     const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-1");
     expect(vraag).toHaveTextContent(
       t("thema.subdoelOntkoppelGevolg", { code: "WIS-1", subthema: "Bladeren", leeftijd: "K3" }),
@@ -814,17 +814,17 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     expect(vraag).not.toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
   });
 
-  it("noemt de ene activiteit die het subdoel nog draagt (TB-044)", async () => {
+  it("noemt de ene activiteit die het subdoel nog draagt (TB-051)", async () => {
     const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-2");
     expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelBlijftEen", { namen: "Tellen met bladeren" }));
   });
 
-  it("zegt bij een subdoel zonder dragende activiteit dat het via dit subthema niet meer meetelt (TB-044)", async () => {
+  it("zegt bij een subdoel zonder dragende activiteit dat het via dit subthema niet meer meetelt (TB-051)", async () => {
     const vraag = await ontkoppelVraag(MET_DRAGERS, "WIS-3");
     expect(vraag).toHaveTextContent(t("thema.subdoelOntkoppelGeenDrager"));
   });
 
-  it("zegt bij een onbeslist subdoel niets over de dekking (TB-044)", async () => {
+  it("zegt bij een onbeslist subdoel niets over de dekking (TB-051)", async () => {
     const voorgesteld: ThemaWeergave = {
       ...MET_DRAGERS,
       subthemas: [
@@ -1022,7 +1022,7 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
     expect(regel("Drie doelen")).not.toHaveTextContent(t("activiteit.geenDoel"));
   });
 
-  it("toont in de regel geen doelkoppelaar, ook niet voor wie mag koppelen (TB-044)", async () => {
+  it("toont in de regel geen doelkoppelaar, ook niet voor wie mag koppelen (TB-051)", async () => {
     await open(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
 
     // A doel is linked to an activiteit in its own sheet, which the row opens: the row holds only that and the bin.

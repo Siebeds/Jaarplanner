@@ -1,11 +1,11 @@
 ---
-id: TB-044
+id: TB-051
 titel: Lange lijsten op de themapagina starten ingeklapt, met laad meer en zoeken
 soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:25
+bijgewerkt: 2026-09-17 00:35
 opgepakt-door: lange-lijsten
 branch: ticket/lange-lijsten-inklappen
 pr: 130
@@ -93,3 +93,4 @@ Geen.
 - 2026-09-17 00:24 · lange-lijsten · Antagonist: COMPLIANT, geen blokkerende bevindingen. MINOR opgelost: minimumdoelzin zonder klassenbijzin, verweesd commentaar weg, tests voor elke ontkoppelzin. MINOR niet opgelost: bij zoeken haalt de pagina de doeltekst per rij op; een bulk-endpoint kan later.
 - 2026-09-17 00:24 · lange-lijsten · in-uitvoering → klaar: Lange lijsten op thema en subthema ingeklapt met laad meer en zoeken, subthemahoofdstuk herschikt, geen plus in activiteitregels, themakaarten tellen minimumdoelen, bevestiging met dekkingsgevolg bij ontkoppelen. Criteria nagekeken met Vitest (1030 groen) en in de browser (desktop en 390px); pnpm lint groen; geen backendwijziging.
 - 2026-09-17 00:25 · lange-lijsten · PR #130
+- 2026-09-17 00:35 · lange-lijsten · Hernummerd van TB-044 naar TB-051: main kreeg intussen een ander TB-044 (AI-knop), dat al gemerged is.

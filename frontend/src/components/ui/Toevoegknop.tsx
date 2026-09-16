@@ -67,7 +67,7 @@ export function Toevoegknop({
 }
 
 /**
- * The same intention in its small form: a bare plus, for the heading of a list section that folds (TB-044).
+ * The same intention in its small form: a bare plus, for the heading of a list section that folds (TB-051).
  *
  * The owner found the worded button under such a heading "storend op die plaats en dat formaat" (2026-09-16). The
  * heading already names what the list holds, so the plus beside it says enough; the words stay in `aria-label` and in

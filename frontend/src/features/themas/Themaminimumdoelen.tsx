@@ -15,7 +15,7 @@ import { opMinimumdoelRef } from "./opCode";
 /**
  * The themadoelen of a thema, which are minimumdoelen (FB-043).
  *
- * **Four levels, each shut until asked for**: the list itself (TB-044), then the three below. The owner, 2026-09-16:
+ * **Four levels, each shut until asked for**: the list itself (TB-051), then the three below. The owner, 2026-09-16:
  * first which minimumdoelen the thema aims at, then, per minimumdoel, the leerplandoelen that lead there. A thema runs
  * across several leeftijden and a leerplandoel belongs to one, so between the two sits one row per leeftijd with its
  * count ("K2 · 3 leerplandoelen"). Opened, a leeftijd lists its leerplandoelen and nothing else: the minimumdoel they
@@ -39,7 +39,7 @@ export function Themaminimumdoelen({
   onOntkoppel?: (koppelingId: string) => void;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
-  // The list is shut and paged (TB-044), kleuter first, then by leerjaar and ref. The search matches the ref and the
+  // The list is shut and paged (TB-051), kleuter first, then by leerjaar and ref. The search matches the ref and the
   // decreed text, which is fetched for every row only once the search opens.
   const [zoekOpen, setZoekOpen] = useState(false);
   const gesorteerd = [...koppelingen].sort((a, b) => opMinimumdoelRef(a.minimumdoelRef, b.minimumdoelRef));

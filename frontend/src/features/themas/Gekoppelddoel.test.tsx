@@ -141,7 +141,7 @@ function toon() {
 /** The chapter starts shut (FB-011); its subdoelen show once it is opened. */
 async function openHoofdstuk() {
   fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
-  // Its lists, and the thema's own, start shut as well (TB-044).
+  // Its lists, and the thema's own, start shut as well (TB-051).
   openLijsten();
 }
 
@@ -210,7 +210,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
   // What this does NOT guard: that the remove control sits ABOVE the row's stretched click area. jsdom does no hit
   // testing, so removing the control's `relative z-10` still passes here while a real browser would open the sheet on
   // an unlink. The TB-016 browser pass checks it with `elementFromPoint` (see the ticket's Werklog).
-  it("vraagt eerst bevestiging met de gevolgen voor de dekking, en opent de detail niet (TB-044)", async () => {
+  it("vraagt eerst bevestiging met de gevolgen voor de dekking, en opent de detail niet (TB-051)", async () => {
     toon();
     await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);
@@ -236,7 +236,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("ontkoppelt niets wanneer de bevestiging geannuleerd wordt (TB-044)", async () => {
+  it("ontkoppelt niets wanneer de bevestiging geannuleerd wordt (TB-051)", async () => {
     toon();
     await openHoofdstuk();
     await screen.findByText(THEMADOELTEKST);

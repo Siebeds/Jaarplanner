@@ -8,7 +8,7 @@ import { cn } from "../../lib/cn";
 export const PAGINA = 5;
 
 /**
- * A long list on the thema page, shut until asked for (TB-044).
+ * A long list on the thema page, shut until asked for (TB-051).
  *
  * The owner, 2026-09-16, about a thema with many minimumdoelen: "ik moet scrollen en scrollen". So a list starts as one
  * line with its count. Opened, it shows the first `PAGINA` rows and a "Laad x meer" under them, until the whole list is

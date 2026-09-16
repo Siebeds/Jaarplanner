@@ -144,7 +144,7 @@ function toon(ik: Ik = DIRECTIE) {
   );
 }
 
-/** The list of themadoelen starts shut (TB-044); this opens it, then finds the row. */
+/** The list of themadoelen starts shut (TB-051); this opens it, then finds the row. */
 async function minimumdoelrij() {
   fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
   return screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
@@ -262,7 +262,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
     );
   });
 
-  it("zegt bij het ontkoppelen dat het thema dan nog maar 1 themadoel overhoudt (TB-044)", async () => {
+  it("zegt bij het ontkoppelen dat het thema dan nog maar 1 themadoel overhoudt (TB-051)", async () => {
     thema = {
       ...THEMA,
       minimumdoelen: [
@@ -280,7 +280,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
     expect(vraag).not.toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
   });
 
-  it("zegt niets over het aantal themadoelen wanneer er genoeg overblijven (TB-044)", async () => {
+  it("zegt niets over het aantal themadoelen wanneer er genoeg overblijven (TB-051)", async () => {
     thema = {
       ...THEMA,
       minimumdoelen: ["K-MV-1", "K-MV-2", "K-MV-3"].map((ref, i) => ({ id: `tm-${i}`, minimumdoelRef: ref })),

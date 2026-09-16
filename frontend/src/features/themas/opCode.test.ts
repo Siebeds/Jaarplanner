@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { opCode, opMinimumdoelRef } from "./opCode";
 
-describe("volgorde van codes (TB-044)", () => {
+describe("volgorde van codes (TB-051)", () => {
   it("leest getallen in een code als getallen", () => {
     expect(["1.10", "1.2", "1.1"].sort(opCode)).toEqual(["1.1", "1.2", "1.10"]);
   });

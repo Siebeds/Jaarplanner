@@ -15,7 +15,7 @@ const vouwknoppen = () => [
 ];
 
 /**
- * Opens every shut list on the thema page (TB-044) and pages each one out, for a test that reads the rows.
+ * Opens every shut list on the thema page (TB-051) and pages each one out, for a test that reads the rows.
  *
  * The lists start shut and show five rows at a time; a test about what a row says or does is not about that, so it
  * opens them all first. Call it once the rows' data is on screen, and again after opening a chapter.

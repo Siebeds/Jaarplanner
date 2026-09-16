@@ -120,7 +120,7 @@ export function ThemasScherm() {
                         meer="themas.activiteitMeer"
                       />
                       {/* The thema's own minimumdoelen, its themadoelen (FB-043), rather than every goal link under it:
-                          that sum mixed three levels into one "doelen" nobody could read (owner, 2026-09-16, TB-044). */}
+                          that sum mixed three levels into one "doelen" nobody could read (owner, 2026-09-16, TB-051). */}
                       <Cijfer
                         waarde={thema.minimumdoelen.length}
                         enkel="themas.minimumdoelEen"
