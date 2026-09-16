@@ -2,10 +2,10 @@
 id: FB-035
 titel: Thema start in een gekozen week en loopt door in de volgende themaperiode
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 22:51
+bijgewerkt: 2026-09-16 23:25
 opgepakt-door: fb035-datums
 branch: ticket/FB-035-themas-met-datums
 pr:
@@ -89,34 +89,34 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema van 5 weken, wanneer de leerkracht het plaatst met begindatum maandag 21 september, dan stelt de
+- [x] Gegeven een thema van 5 weken, wanneer de leerkracht het plaatst met begindatum maandag 21 september, dan stelt de
   tool vrijdag 23 oktober als einde voor en toont de tijdlijn één balk over die 5 lesweken.
-- [ ] Gegeven een thema van 4 weken en een herfstvakantie van 2 tot 6 november, wanneer de leerkracht het plaatst met
+- [x] Gegeven een thema van 4 weken en een herfstvakantie van 2 tot 6 november, wanneer de leerkracht het plaatst met
   begindatum maandag 19 oktober, dan bewaart de tool twee plaatsingen, 19–30 oktober en 9–20 november, en toont de
   tijdlijn ze als deel 1/2 en deel 2/2.
-- [ ] Gegeven een thema dat loopt van 21 september tot 23 oktober, wanneer de leerkracht een ander thema plaatst dat op
+- [x] Gegeven een thema dat loopt van 21 september tot 23 oktober, wanneer de leerkracht een ander thema plaatst dat op
   22 oktober begint, dan weigert de tool met een zin die het eerste thema noemt; met begindatum 26 oktober lukt het.
-- [ ] Gegeven een geplaatst thema, wanneer de leerkracht het einde wijzigt, dan bewaart de tool dat einde en toont de
+- [x] Gegeven een geplaatst thema, wanneer de leerkracht het einde wijzigt, dan bewaart de tool dat einde en toont de
   kaart "einde aangepast" als de delen samen niet de duur van het thema hebben.
-- [ ] Gegeven een thema dat na de laatste schooldag zou eindigen, dan eindigt het op de laatste schooldag en toont de
+- [x] Gegeven een thema dat na de laatste schooldag zou eindigen, dan eindigt het op de laatste schooldag en toont de
   kaart een waarschuwing.
-- [ ] Gegeven een plan, dan markeert de tijdlijn elke lesweek zonder thema met tekst, en toont de jaarbalans het aantal
+- [x] Gegeven een plan, dan markeert de tijdlijn elke lesweek zonder thema met tekst, en toont de jaarbalans het aantal
   lesweken, met en zonder thema.
-- [ ] Gegeven een balk op de tijdlijn, wanneer de leerkracht ze (met muis of toetsenbord) naar een vrije week sleept,
+- [x] Gegeven een balk op de tijdlijn, wanneer de leerkracht ze (met muis of toetsenbord) naar een vrije week sleept,
   dan schuift de plaatsing mee met hetzelfde aantal lesdagen; op een ander thema weigert de tool.
 - [ ] Gegeven een plaatsing, wanneer de leerkracht in de agenda een dag ervan opent, dan kan ze er subthema's en
   activiteiten van dat thema plannen.
-- [ ] Gegeven een plan van vóór deze wijziging met één thema per periode, dan heeft elk thema de begin- en einddatum van
+- [x] Gegeven een plan van vóór deze wijziging met één thema per periode, dan heeft elk thema de begin- en einddatum van
   zijn periode en ziet de leerkracht dezelfde thema's op dezelfde plaats.
-- [ ] Gegeven een periode van vóór deze wijziging met meerdere thema's, dan staan ze na de omzetting na elkaar, elk met
+- [x] Gegeven een periode van vóór deze wijziging met meerdere thema's, dan staan ze na de omzetting na elkaar, elk met
   zijn eigen duur en nooit over het volgende thema heen; een thema zonder vrije dag is verwijderd uit het plan.
-- [ ] Gegeven een plan van vóór deze wijziging met een geweigerd voorstel, dan is dat voorstel na de omzetting weg; en
+- [x] Gegeven een plan van vóór deze wijziging met een geweigerd voorstel, dan is dat voorstel na de omzetting weg; en
   wanneer de leerkracht een openstaand voorstel weigert, dan verdwijnt het uit het plan.
 - [ ] Gegeven een bewaard vast moment dat plaatsing blokkeerde, dan kan de leerkracht toch een thema plaatsen op die
   dag.
-- [ ] Gegeven een plaatsing, wanneer directie een vakantie toevoegt die erin valt, dan toont de kaart een blijvende
+- [x] Gegeven een plaatsing, wanneer directie een vakantie toevoegt die erin valt, dan toont de kaart een blijvende
   melding, staat de dekking op "te herzien" en is de plaatsing niet verschoven.
-- [ ] De knop "Genereer jaarplan" staat uit met een zin die zegt waarom, en de server weigert een generatie.
+- [x] De knop "Genereer jaarplan" staat uit met een zin die zegt waarom, en de server weigert een generatie.
 
 ## Testscenario's
 
@@ -153,3 +153,6 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 - 2026-09-16 22:00 · eigenaar · nieuw → klaar-voor-bouw: eigenaar: verfijnd in sessie 2026-09-16, thema's krijgen begin- en einddatum
 - 2026-09-16 22:00 · fb035-datums · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 22:51 · fb035-datums · Backend, migratie en tijdlijn gebouwd; unittests (1952) en frontendtests (1015) groen; integratietests lopen nog.
+- 2026-09-16 23:23 · fb035-datums · Antagonist ronde 1: 2 MAJOR (overlap in de migratie, Art. IV.2) opgelost; ronde 2: COMPLIANT. MINOR-punten opgelost of in TB-045.
+- 2026-09-16 23:25 · fb035-datums · Afgevinkt met bewijs: 12 criteria (unit-, integratie- en migratietests, browserpas ronde 1-3 in worklogs/FB-035/browserpas.md). Niet afgevinkt: plannen in de agenda op een dag van een doorlopend thema en plaatsen op een dag met een vast moment; die zijn gebouwd maar niet apart in de browser nagekeken.
+- 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-045). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.

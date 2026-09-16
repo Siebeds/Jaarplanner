@@ -274,3 +274,45 @@ Screenshot: `r2-d7-maanden.png`.
 
 ## Data after round 2
 Unchanged from the end of round 1: every placement moved during this round was restored.
+
+---
+
+# Round 3 (re-check of D1 on commit 072b5125, plus a look at D5)
+
+**Verdict:** PASS (every D1 case lands on the week under the pointer; D5 fits)
+**Mode:** Playwright (the same setup). A case "passes" when the PUT `van` equals the expected date, or when no request is sent where none is expected. A 400 is acceptable only when the Dutch refusal names a thema that genuinely occupies those days.
+
+| Case | Scroll | Highlighted at drop | PUT `van` (status) | Expected | Result |
+|---|---|---|---|---|---|
+| 1440, 8px nudge "Ik en mijn klas" | 0 | 2026-08-31 | none | none | PASS |
+| 1440, one column "Ik en mijn klas" | 0 | 2026-09-07 | 2026-09-08 (400: overlaps Herfst en oogst, genuine) | 2026-09-08 | PASS |
+| 1440, 8px nudge "Herfst en oogst" (grabbed on 5 okt) | 400 | 2026-10-05 | none | none | PASS |
+| 1440, one column "Herfst en oogst" | 400 | 2026-10-12 | 2026-10-09 (400: overlaps Lente en groei, genuine) | 2026-10-09 | PASS |
+| 1440, 8px nudge "Zomer en vakantie" | April (1861) | 2027-04-26 | none | none | PASS |
+| 1440, one column "Zomer en vakantie" | April (1861) | 2027-05-03 | 2027-05-03 (200) | 2027-05-03 | PASS |
+| 1440, one column "Zomer en vakantie", grabbed on 17 mei | April (1861) | 2027-05-24 | 2027-05-03 (200) | 2027-05-03 | PASS |
+| 1440, "Lente en groei" 9 nov to the 4 jan column, across the Kerstvakantie | 499 | 2027-01-04 | 2027-01-04 (400: "Licht en donker" starts 4 jan, genuine) | 2027-01-04 | PASS |
+| 1920, the same drag | 477 | 2027-01-04 | 2027-01-04 (400, the same refusal) | 2027-01-04 | PASS |
+| 1440, keyboard Space, ArrowRight, Space on "Ik en mijn klas" | 0 | 2026-09-07 | 2026-09-08 (400: overlaps Herfst en oogst, genuine) | 2026-09-08 | PASS |
+| 1440, keyboard on "Zomer en vakantie" | 2037 | 2027-05-03 | 2027-05-03 (200) | 2027-05-03 | PASS |
+| 390x844, 8px nudge "Zomer en vakantie" | 2245 | 2027-04-26 | none | none | PASS |
+| 390x844, one column "Zomer en vakantie" | 2245 | 2027-05-03 | 2027-05-03 (200) | 2027-05-03 | PASS |
+| 390x844, 8px nudge "Ik en mijn klas" | 0 | 2026-08-31 | none | none | PASS |
+| 390x844, one column "Ik en mijn klas" | 0 | 2026-09-07 | 2026-09-08 (400: overlaps Herfst en oogst, genuine) | 2026-09-08 | PASS |
+
+**Notes:**
+- **First attempts were test artefacts, not product defects:**
+  - Some cases at first ran on data a previous case had moved. My direct API restore got 403 (the call lacked the app's antiforgery header), so nothing was restored between cases.
+  - Those cases were rerun after restoring through the card; the table above holds the clean runs.
+- **Autoscroll:** a drop inside dnd-kit's autoscroll edge zone (the outer 20% of the timeline) keeps scrolling the timeline while the mouse is held.
+  - The drop then lands on the week under the pointer at release, which was consistently one week past the highlight sampled 300ms earlier. That is correct behaviour.
+  - The Kerst case was therefore measured with both points in the middle of the view.
+  - A teacher dragging to the edge will see the timeline scroll, which is expected.
+- **Data:** every successful move was restored through the card fields. The final plan equals the plan before round 3 (checked through the API).
+- **Screenshots:** `r3-kerst-1440.png`, `r3-kerst-1920.png`.
+
+## D5: PASS
+- The one-week Water parts now read "2/6 wk", which fits (58/58px).
+- "Zomer en vakantie" reads "ruim 5 wk" (410/410).
+- No bar label is clipped: every `span.mono` on a bar has scrollWidth equal to clientWidth.
+- Screenshot: `r3-d5-korte-balken.png`.
