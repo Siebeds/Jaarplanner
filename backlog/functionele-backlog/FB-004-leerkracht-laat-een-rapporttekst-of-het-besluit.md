@@ -2,10 +2,10 @@
 id: FB-004
 titel: Leerkracht laat een rapporttekst of het besluit herwerken door AI
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-16 11:03
+bijgewerkt: 2026-09-16 11:06
 opgepakt-door: rapport-herwerken
 branch: ticket/FB-004-rapporttekst-herwerken
 pr:
@@ -93,3 +93,4 @@ Geen.
 - 2026-09-16 10:32 · rapport-herwerken · alle 6 acceptatiecriteria aangevinkt; browserpass op 1440 en 390px geslaagd tegen een lokale nep-Foundry: de prompt die de server verstuurde bevatte geen enkele naam van de klas (#NAAM1#/#NAAM2#), 'een roos' bleef staan, en geen kindnaam of rapporttekst in de serverlog
 - 2026-09-16 10:50 · rapport-herwerken · antagonist ronde 1: COMPLIANT, 0 critical, 0 major, 8 minor; 6 minor opgelost (zie backlog/worklogs/FB-004/antagonist.md), 3 bewust gelaten met reden
 - 2026-09-16 11:03 · rapport-herwerken · browserpass ronde 2 na de antagonist-fixes: overnemen, weigeren, aanpassen en de weigering op een intussen gewijzigde tekst allemaal groen; paneel toont links nu de tekst waarvoor het voorstel gemaakt werd
+- 2026-09-16 11:06 · rapport-herwerken · in-uitvoering → te-testen: AI herwerkt de tekst van een rapportdoel en het algemeen besluit: namen van de klas vervangen (D14), voorstel met zegel (D13), overnemen/aanpassen/weigeren; geen voorstel bewaard. Poorten groen: 1877 unit + 550 integratietests, 965 fronttests, dotnet format en pnpm lint schoon, antagonist COMPLIANT, browserpass op 1440 en 390px. Let op: de AI-antwoorden zijn getest tegen een lokale nep-Foundry; een echt model is nog niet geprobeerd
