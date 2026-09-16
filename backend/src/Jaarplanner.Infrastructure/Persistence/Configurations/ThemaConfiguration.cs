@@ -57,14 +57,12 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
             .HasField("_subthemas")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // Thema-level AI match suggestions (E2-04, FR-4) — an owned collection of DoelKoppeling in its
-        // own table, distinct from the capped themadoelen. Each is persisted as `voorgesteld` +
-        // aiMotivatie (Art. IV.2) and shares the single DoelKoppeling column/FK mapping.
-        builder.OwnsMany(t => t.Doelsuggesties, ownedBuilder =>
-        {
-            ownedBuilder.ToTable("thema_doelsuggesties");
-            DoelKoppelingMapping.Configure(ownedBuilder);
-        });
+        // The AI's proposals of a minimumdoel as themadoel (FB-053, ADR-0052), open and decided, in their own table.
+        // Not auto-included: only the suggestion flow reads them.
+        builder.HasMany(t => t.Doelsuggesties)
+            .WithOne()
+            .HasForeignKey(s => s.ThemaId)
+            .OnDelete(DeleteBehavior.Cascade);
         builder.Navigation(t => t.Doelsuggesties)
             .HasField("_doelsuggesties")
             .UsePropertyAccessMode(PropertyAccessMode.Field);

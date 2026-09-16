@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
@@ -34,6 +33,7 @@ import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
+import { MIJLPAAL } from "../doelen/mijlpaal";
 import { themabalans } from "./themabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
@@ -366,7 +366,8 @@ export function ThemadetailScherm() {
             second empty state and a permanent "Geen open suggesties" line.
 
             A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
-            that lead there. The doelsuggesties still propose leerplandoelen; what becomes of them is another ticket.
+            that lead there. The doelsuggesties propose minimumdoelen too (FB-053): accepting one puts it in the list
+            above, so a proposal wears the same MD chip as the themadoel it would become.
 
             The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
             with its motivation and still has to be accepted or rejected by hand, and "Vraag
@@ -498,14 +499,21 @@ export function ThemadetailScherm() {
                     label={t("voorstelstapel.doelenLabel")}
                     voorstellen={openSuggesties.map((suggestie) => ({
                       id: suggestie.id,
-                      naam: suggestie.leerplandoelCode,
+                      naam: suggestie.minimumdoelRef,
+                      // The MD chip the themadoel rows wear, and the mijlpaal (FB-053): the goal it would become.
                       kop: (
                         <>
-                          {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
-                          <span className="mono text-micro font-medium text-inkt-zacht">{suggestie.leerplandoelCode}</span>
+                          <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                            {suggestie.minimumdoelRef}
+                          </span>
+                          {suggestie.mijlpaal ? (
+                            <span className="text-meta text-inkt-zacht">
+                              {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                            </span>
+                          ) : null}
                         </>
                       ),
-                      inhoud: suggestie.tekst ?? suggestie.leerplandoelCode,
+                      inhoud: suggestie.omschrijving ?? suggestie.minimumdoelRef,
                       motivatie: suggestie.aiMotivatie,
                     }))}
                     onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
@@ -898,20 +906,23 @@ function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
 }
 
 /**
- * What a doelsuggestie run did, in one line (TB-007): how many proposals it added, out of how many goals, of which
- * leeftijden. Every figure is read off the server's answer, so the line states what the run searched, not what the
- * buttons say now. With no candidates the server answers before calling the model, which is what that sentence claims.
+ * What a doelsuggestie run did, in one line (TB-007, FB-053): how many proposals it added, out of how many minimumdoelen,
+ * of which mijlpalen ("mijlpaal K"). Every figure is read off the server's answer, so the line states what the run
+ * searched, not what the buttons say now. With no candidates the server answers before calling the model, which is what
+ * that sentence claims.
  */
 function resultaatZin(resultaat: DoelMatchResultaat): string {
-  const leeftijden = opsomming(resultaat.jaarFasen);
-  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { leeftijden });
+  const korte = resultaat.mijlpalen.map((code) => code.replace(/-$/, ""));
+  const mijlpalen =
+    korte.length === 1 ? t("thema.mijlpaalEen", { naam: korte[0] }) : t("thema.mijlpalenMeer", { lijst: opsomming(korte) });
+  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { mijlpalen });
 
   const doelen = telWoord(resultaat.aantalKandidaten, "thema.kandidaatEen", "thema.kandidatenMeer");
   const nieuw = resultaat.bewaard.length;
-  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, leeftijden });
+  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, mijlpalen });
   return nieuw === 1
-    ? t("thema.suggestiesEenNieuw", { doelen, leeftijden })
-    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, leeftijden });
+    ? t("thema.suggestiesEenNieuw", { doelen, mijlpalen })
+    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, mijlpalen });
 }
 
 /** "K3", "K3 en L1", "JK, K2 en K3". */

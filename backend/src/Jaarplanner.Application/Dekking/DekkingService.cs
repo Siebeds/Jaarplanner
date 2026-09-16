@@ -15,10 +15,10 @@ namespace Jaarplanner.Application.Dekking;
 /// <item>A <b>minimumdoel</b> is in the prognose when it is a themadoel of a thema, and gedekt when such a thema is
 /// placed. Nothing else makes it either (D2).</item>
 /// <item>A <b>leerplandoel</b> is in the prognose when a subdoel or activiteit link of a subthema at the klas's
-/// leeftijd carries it, or an accepted doelsuggestie does (D3, S1, S2); it is gedekt when that subthema is placed in
-/// the klas's agenda, when the doelsuggestie's thema is placed, or when a planned algemene fiche carries it (D4). An own
-/// activiteit's link never counts through its subthema: it is in the prognose of its owner's klassen and of a klas that
-/// plans it, and gedekt where it is planned (ADR-0049 D7).</item>
+/// leeftijd carries it (D3, S1); it is gedekt when that subthema is placed in the klas's agenda, or when a planned
+/// algemene fiche carries it (D4). An own activiteit's link never counts through its subthema: it is in the prognose of
+/// its owner's klassen and of a klas that plans it, and gedekt where it is planned (ADR-0049 D7). A thema's
+/// doelsuggestie proposes a minimumdoel and never reaches a leerplandoel (ADR-0052).</item>
 /// </list>
 /// <para>
 /// A thema counts as placed when its placement is <c>aanvaard</c> or <c>manueel</c> and not stale (S3). It reads the
@@ -64,7 +64,7 @@ public sealed class DekkingService
         var geplaatsteThemaIds = Themaplaatsingen(plan, TeltVoorDekking);
         var scope = await BepaalBereikAsync(klasId, bereik, jaarFase, cancellationToken);
         var kandidaten = await _opslag.HaalKandidaatKoppelingenAsync(klasId, cancellationToken);
-        var bronnen = await HaalBronnenAsync(klasId, geplaatsteThemaIds, kandidaten, cancellationToken);
+        var bronnen = await HaalBronnenAsync(klasId, cancellationToken);
 
         var kandidatenPerCode = kandidaten
             .GroupBy(k => k.LeerplandoelCode, StringComparer.Ordinal)
@@ -87,11 +87,7 @@ public sealed class DekkingService
                     : prognose.Count > 0 ? Dekkingsstap.Prognose : Dekkingsstap.Geen;
                 var lacune = stap == Dekkingsstap.Gedekt
                     ? (Oorzaak: (Lacuneoorzaak?)null, Themas: (IReadOnlyList<string>)[])
-                    : BepaalOorzaak(
-                        kandidatenPerCode.GetValueOrDefault(l.Code, []),
-                        prognose,
-                        voorstelbareThemaIds,
-                        geweigerdeThemaIds);
+                    : BepaalOorzaak(kandidatenPerCode.GetValueOrDefault(l.Code, []), prognose);
 
                 return new LeerplandoelDekking(
                     l.Code,
@@ -152,8 +148,9 @@ public sealed class DekkingService
     /// The plan's coverage <b>now</b> beside what it would be if every proposed thema placement were accepted
     /// (E4-06). Only the leerplandoel figures: this is the generation's report, and it asks what the plan could do.
     /// <para>
-    /// Under Art. V.1 a thema placement reaches a leerplandoel only through an accepted doelsuggestie (ADR-0047), so the
-    /// two figures differ only through those; the subthema and fiche routes are the same in both.
+    /// Under Art. V.1 no thema placement reaches a leerplandoel any more (ADR-0052): the subthema, own activiteit and fiche
+    /// routes do not depend on it, so the two figures are equal. The shape stays, so the report keeps working; whether it should
+    /// count minimumdoelen instead is an open question for the owner.
     /// </para>
     /// </summary>
     public async Task<Dekkingsvooruitzicht> BerekenVooruitzichtAsync(
@@ -165,24 +162,18 @@ public sealed class DekkingService
         var plan = await _lezer.HaalJaarplanAsync(klasId, cancellationToken);
         var scope = await BepaalBereikAsync(klasId, bereik, jaarFase, cancellationToken);
 
-        var beslist = Themaplaatsingen(plan, TeltVoorDekking);
-        var voorstelbaar = Themaplaatsingen(plan, IsVoorstelbaar);
-
-        var vasteCodes = new HashSet<string>(StringComparer.Ordinal);
-        vasteCodes.UnionWith((await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken)).Select(k => k.LeerplandoelCode));
-        vasteCodes.UnionWith((await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken))
+        var gedekteCodes = new HashSet<string>(StringComparer.Ordinal);
+        gedekteCodes.UnionWith((await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken)).Select(k => k.LeerplandoelCode));
+        gedekteCodes.UnionWith((await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken))
             .Where(k => k.IsIngepland)
             .Select(k => k.LeerplandoelCode));
-        vasteCodes.UnionWith((await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken))
+        gedekteCodes.UnionWith((await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken))
             .Where(k => k.IsIngepland)
             .Select(k => k.LeerplandoelCode));
 
-        var nuGedekt = await TelGedekteDoelenAsync(beslist, vasteCodes, scope.Leerplandoelen, cancellationToken);
-
-        // No open proposal: the ceiling is the figure, and the store is not asked twice.
-        var mogelijkGedekt = beslist.Count == voorstelbaar.Count
-            ? nuGedekt
-            : await TelGedekteDoelenAsync(voorstelbaar, vasteCodes, scope.Leerplandoelen, cancellationToken);
+        // Counted over the goals in scope, never over the links: a link to a goal outside the scope raises nothing.
+        var nuGedekt = scope.Leerplandoelen.Count(l => gedekteCodes.Contains(l.Code));
+        var mogelijkGedekt = nuGedekt;
 
         var onopgeloste = TelOnopgelosteVervallen(plan);
         var isBetrouwbaar = onopgeloste == 0;
@@ -199,26 +190,17 @@ public sealed class DekkingService
             scope.Leerplandoelen.Count);
     }
 
-    private async Task<Bronnen> HaalBronnenAsync(
-        Guid klasId,
-        IReadOnlyList<Guid> geplaatsteThemaIds,
-        IReadOnlyList<KandidaatKoppeling> kandidaten,
-        CancellationToken cancellationToken)
+    private async Task<Bronnen> HaalBronnenAsync(Guid klasId, CancellationToken cancellationToken)
     {
-        var suggesties = geplaatsteThemaIds.Count == 0
-            ? []
-            : await _opslag.HaalDekkendeKoppelingenAsync(geplaatsteThemaIds, cancellationToken);
         var subthemas = await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken);
         var fiches = await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken);
         var eigen = await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken);
 
-        var dekkend = suggesties.Select(k => (k.LeerplandoelCode, Naam: k.ThemaNaam))
-            .Concat(subthemas.Where(k => k.IsIngepland).Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k))));
+        var dekkend = subthemas.Where(k => k.IsIngepland).Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)));
 
         // The prognose is what the school's content aims at, placed or not: every decided subthema link at the klas's
-        // leeftijd, every accepted doelsuggestie (S1, S2), and every own activiteit that concerns the klas (ADR-0049 D7).
+        // leeftijd (S1), and every own activiteit that concerns the klas (ADR-0049 D7).
         var prognose = subthemas.Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)))
-            .Concat(kandidaten.Where(k => k.IsBeslist && k.IsDoelsuggestie).Select(k => (k.LeerplandoelCode, Naam: k.ThemaNaam)))
             .Concat(eigen.Select(k => (k.LeerplandoelCode, Naam: EigenActiviteitnaam(k))));
 
         return new Bronnen(
@@ -319,37 +301,20 @@ public sealed class DekkingService
 
     /// <summary>
     /// Classifies why a leerplandoel is not gedekt, taking the first cause that applies in the order of
-    /// <see cref="Lacuneoorzaak"/>: the cheapest route to closing it (E5-05).
+    /// <see cref="Lacuneoorzaak"/>: the cheapest route to closing it (E5-05). No thema placement reaches a leerplandoel
+    /// (ADR-0052), so the two causes about one, <see cref="Lacuneoorzaak.WachtOpBeslissing"/> and
+    /// <see cref="Lacuneoorzaak.PlaatsingGeweigerd"/>, apply to minimumdoelen only.
     /// <list type="number">
-    /// <item><see cref="Lacuneoorzaak.WachtOpBeslissing"/>: an accepted doelsuggestie on a thema that stands in the plan
-    /// as a proposal (a proposed placement is voorstelbaar but does not count).</item>
-    /// <item><see cref="Lacuneoorzaak.PlaatsingGeweigerd"/>: one on a thema whose placement was rejected.</item>
-    /// <item><see cref="Lacuneoorzaak.NietIngepland"/>: in the prognose, so a subthema or thema aims at it, and the
-    /// agenda does not hold it; names every prognose source.</item>
+    /// <item><see cref="Lacuneoorzaak.NietIngepland"/>: in the prognose, so a subthema aims at it, and the agenda does
+    /// not hold it; names every prognose source.</item>
     /// <item><see cref="Lacuneoorzaak.KoppelingNietBeslist"/>: only undecided links carry it.</item>
     /// <item><see cref="Lacuneoorzaak.GeenThema"/>: nothing carries it.</item>
     /// </list>
     /// </summary>
     private static (Lacuneoorzaak Oorzaak, IReadOnlyList<string> Themas) BepaalOorzaak(
         IReadOnlyList<KandidaatKoppeling> kandidaten,
-        IReadOnlyList<string> prognose,
-        IReadOnlySet<Guid> voorstelbareThemaIds,
-        IReadOnlySet<Guid> geweigerdeThemaIds)
+        IReadOnlyList<string> prognose)
     {
-        var beslisteSuggesties = kandidaten.Where(k => k.IsBeslist && k.IsDoelsuggestie).ToList();
-
-        var wachtend = Namen(beslisteSuggesties.Where(k => voorstelbareThemaIds.Contains(k.ThemaId)).Select(k => k.ThemaNaam));
-        if (wachtend.Count > 0)
-        {
-            return (Lacuneoorzaak.WachtOpBeslissing, wachtend);
-        }
-
-        var geweigerd = Namen(beslisteSuggesties.Where(k => geweigerdeThemaIds.Contains(k.ThemaId)).Select(k => k.ThemaNaam));
-        if (geweigerd.Count > 0)
-        {
-            return (Lacuneoorzaak.PlaatsingGeweigerd, geweigerd);
-        }
-
         if (prognose.Count > 0)
         {
             return (Lacuneoorzaak.NietIngepland, prognose);
@@ -377,23 +342,6 @@ public sealed class DekkingService
             .Select(p => p.ThemaId)
             .Distinct()
             .ToList();
-
-    private async Task<int> TelGedekteDoelenAsync(
-        IReadOnlyList<Guid> themaIds,
-        IReadOnlySet<string> vasteCodes,
-        IReadOnlyList<Leerplandoel> leerplandoelen,
-        CancellationToken cancellationToken)
-    {
-        var gedekteCodes = new HashSet<string>(vasteCodes, StringComparer.Ordinal);
-        if (themaIds.Count > 0)
-        {
-            var koppelingen = await _opslag.HaalDekkendeKoppelingenAsync(themaIds, cancellationToken);
-            gedekteCodes.UnionWith(koppelingen.Select(k => k.LeerplandoelCode));
-        }
-
-        // Counted over the goals in scope, never over the links: a link to a goal outside the scope raises nothing.
-        return leerplandoelen.Count(l => gedekteCodes.Contains(l.Code));
-    }
 
     private static Dictionary<string, IReadOnlyList<string>> NamenPerCode<T>(
         IEnumerable<T> rijen,

@@ -1,31 +1,24 @@
-using Jaarplanner.Domain.Curriculum;
-
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// A read view of one persisted AI goal-match suggestion (E2-04, FR-4.1/4.2): a thema-level
-/// <c>DoelKoppeling</c> the AI proposed with <see cref="Status"/> <c>voorgesteld</c> and its short
-/// <see cref="AiMotivatie"/> ("waarom past dit doel hier?", Art. IV.3). It is the shape the query
-/// path returns "per thema"; the teacher reviews and decides in E2-05 (Art. IV.1/IV.2).
+/// A read view of one stored doelsuggestie of a thema (FB-053, FR-4.2): the AI's proposal of a minimumdoel as a
+/// themadoel, with its <see cref="Status"/> and one-sentence <see cref="AiMotivatie"/> (Art. IV.3).
 /// <para>
-/// <b><see cref="Tekst"/> and <see cref="Doelsoort"/> were added by E2-08</b> because FR-4.2's purpose
-/// clause is <i>"zodat de leerkracht ze kan beoordelen"</i>, and a bare code plus one AI sentence is not
-/// something a non-technical teacher can judge. They are copies of read-only Op.stap content, resolved
-/// per read and never persisted on the link — the curriculum stays the single source (Art. III.1). Both
-/// are nullable: a link whose code cannot be resolved in the currently loaded set must still be shown
-/// honestly rather than hidden.
+/// <see cref="Omschrijving"/> and <see cref="Mijlpaal"/> are copies of the read-only minimumdoel, resolved per read and
+/// never stored on the proposal (Art. III.1), so the person judges the goal itself and not a bare ref. Both are null
+/// when the ref no longer resolves; the row is then still shown.
 /// </para>
 /// </summary>
-/// <param name="Id">The link's surrogate id.</param>
-/// <param name="LeerplandoelCode">The suggested (read-only) leerplandoel's stable code (Art. III.5).</param>
-/// <param name="Status">The human-in-the-loop status — always <c>voorgesteld</c> for a fresh suggestion (Art. IV.2).</param>
-/// <param name="AiMotivatie">The AI's one-line motivation for the match (Art. IV.3).</param>
-/// <param name="Tekst">The leerplandoel's official text, so the teacher judges the goal itself (FR-4.2); null when unresolvable.</param>
-/// <param name="Doelsoort">The leerplandoel's goal type (serialised by name), for the badge; null when unresolvable.</param>
+/// <param name="Id">The proposal's surrogate id.</param>
+/// <param name="MinimumdoelRef">The proposed minimumdoel's stable ref (Art. III.5).</param>
+/// <param name="Status"><c>Voorgesteld</c>, <c>Aanvaard</c> or <c>Geweigerd</c> (Art. IV.2).</param>
+/// <param name="AiMotivatie">The AI's one-sentence motivation (Art. IV.3).</param>
+/// <param name="Omschrijving">The minimumdoel's decreed text; null when unresolvable.</param>
+/// <param name="Mijlpaal">The minimumdoel's mijlpaal (<c>K-</c>, <c>4-</c>, <c>6-</c>); null when unresolvable.</param>
 public sealed record DoelMatchSuggestieWeergave(
     Guid Id,
-    string LeerplandoelCode,
+    string MinimumdoelRef,
     string Status,
-    string? AiMotivatie,
-    string? Tekst = null,
-    Doelsoort? Doelsoort = null);
+    string AiMotivatie,
+    string? Omschrijving = null,
+    string? Mijlpaal = null);

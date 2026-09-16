@@ -24,6 +24,13 @@ public sealed class ThemaOpbouwAssistServiceTests
             tekst: "De kleuter benoemt nat en droog."),
     ];
 
+    private static IReadOnlyList<Minimumdoel> EenMinimumdoelenSet() =>
+    [
+        new Minimumdoel("K-9.2.1", "K-", "9.2.1", "De kleuters onderzoeken water.", "Wereldoriëntatie", "Natuur"),
+        new Minimumdoel("K-9.1.1", "K-", "9.1.1", "De kleuters benoemen nat en droog.", "Wereldoriëntatie", "Natuur"),
+        new Minimumdoel("4-9.1.1", "4-", "9.1.1", "De leerlingen beschrijven de waterkringloop.", "Wereldoriëntatie", "Natuur"),
+    ];
+
     private static ThemaOpbouwContext EenThema(IReadOnlyCollection<string>? gekozen = null) => new()
     {
         Naam = "Water",
@@ -47,15 +54,16 @@ public sealed class ThemaOpbouwAssistServiceTests
         out FakeLeerdoelCatalogus catalogus,
         Promptbegrenzing? begrenzing = null)
     {
-        catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet());
+        catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet()) { Minimumdoelen = EenMinimumdoelenSet() };
         return new ThemaOpbouwAssistService(client, catalogus, begrenzing ?? new Promptbegrenzing());
     }
 
     [Fact]
-    public async Task Stap2_geeft_advieskandidaten_verrijkt_en_adviserend_terug()
+    public async Task Stap2_stelt_minimumdoelen_voor_verrijkt_en_adviserend()
     {
+        // FB-053: the wizard's themadoel step proposes minimumdoelen of the mijlpaal of the chosen leeftijd.
         var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[{\"code\":\"WAT-K3-01\",\"motivatie\":\"kern van het thema water\"}]}");
+            "{\"suggesties\":[{\"code\":\"K-9.2.1\",\"motivatie\":\"kern van het thema water\"}]}");
         var service = Service(fake, out var catalogus);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
@@ -63,16 +71,18 @@ public sealed class ThemaOpbouwAssistServiceTests
 
         Assert.True(resultaat.IsGeslaagd);
         var advies = Assert.Single(resultaat.Suggesties);
-        Assert.Equal("WAT-K3-01", advies.Code);
+        Assert.Equal("K-9.2.1", advies.Code);
         Assert.Equal("kern van het thema water", advies.Motivatie);
-        // Enriched from the read-only leerplandoel (Art. III.1) so the wizard can render it.
-        Assert.Equal("De kleuter onderzoekt water.", advies.Tekst);
+        // Enriched from the read-only minimumdoel (Art. III.1) so the wizard can render it.
+        Assert.Equal("De kleuters onderzoeken water.", advies.Tekst);
         Assert.Equal("MD", advies.Doelsoort);
-        Assert.Equal("K3", advies.JaarFase);
+        Assert.Equal("K-", advies.JaarFase);
 
-        // Ran against the fakes: model called once (no network), candidates loaded once (no database).
+        // Ran against the fakes: model called once (no network), only minimumdoelen of K- read (no database).
         Assert.Equal(1, fake.AantalAanroepen);
-        Assert.NotNull(catalogus.LaatsteSelectie);
+        Assert.Equal(["K-"], catalogus.LaatsteMijlpalen);
+        Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.DoesNotContain("4-9.1.1", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
         // Used the step-2 themadoel prompt (not the subdoel one).
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, fake.LaatsteRequest!.SystemPrompt);
     }
@@ -99,24 +109,47 @@ public sealed class ThemaOpbouwAssistServiceTests
     }
 
     [Fact]
-    public async Task Stap6_sluit_reeds_gekozen_themadoelen_uit()
+    public async Task Stap6_krijgt_de_gekozen_minimumdoelen_mee_met_hun_tekst()
     {
-        // The model re-proposes an already-chosen themadoel; step 6 must not re-suggest an anchor.
+        // FB-053, criterion 4: the subdoel prompt carries the thema's minimumdoel themadoelen, so the subdoelen build
+        // toward them. The chosen refs are minimumdoelen, so no leerplandoel is excluded because of them.
         var fake = new FakeAiClient(cannedContent:
             "{\"suggesties\":[" +
-            "{\"code\":\"WAT-K3-01\",\"motivatie\":\"is al een themadoel\"}," +
+            "{\"code\":\"WAT-K3-01\",\"motivatie\":\"leidt naar het themadoel\"}," +
             "{\"code\":\"WAT-K3-02\",\"motivatie\":\"geldige subdoelkandidaat\"}]}");
         var service = Service(fake, out _);
 
         var resultaat = await service.StelSubdoelenVoorAsync(new SubdoelSuggestieVerzoek
         {
-            Thema = EenThema(gekozen: ["WAT-K3-01"]),
+            Thema = EenThema(gekozen: ["K-9.2.1"]),
             Subthema = EenSubthema(),
         });
 
         Assert.True(resultaat.IsGeslaagd);
-        var advies = Assert.Single(resultaat.Suggesties);
-        Assert.Equal("WAT-K3-02", advies.Code);
+        Assert.Equal(["WAT-K3-01", "WAT-K3-02"], resultaat.Suggesties.Select(a => a.Code));
+        Assert.Contains(
+            "Themadoelen (minimumdoelen):\n- K-9.2.1: De kleuters onderzoeken water.\n",
+            fake.LaatsteRequest!.UserPrompt,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Stap2_stelt_een_gekozen_minimumdoel_niet_opnieuw_voor_en_hoogstens_acht()
+    {
+        var kandidaten = Enumerable.Range(1, 10)
+            .Select(i => new Minimumdoel($"K-1.1.{i}", "K-", $"1.1.{i}", $"Doel {i}."))
+            .ToList();
+        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[" +
+            string.Join(",", kandidaten.Select(k => $"{{\"code\":\"{k.Ref}\",\"motivatie\":\"past\"}}")) + "]}");
+        var catalogus = new FakeLeerdoelCatalogus([]) { Minimumdoelen = kandidaten };
+        var service = new ThemaOpbouwAssistService(fake, catalogus, new Promptbegrenzing());
+
+        var resultaat = await service.StelThemadoelenVoorAsync(
+            new ThemadoelSuggestieVerzoek { Thema = EenThema(gekozen: ["K-1.1.1"]), Selectie = K3 });
+
+        Assert.Equal(8, resultaat.Suggesties.Count);
+        Assert.DoesNotContain(resultaat.Suggesties, a => a.Code == "K-1.1.1");
+        Assert.Contains("# Niet voorstellen\n\nAl gekozen: K-1.1.1", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -124,16 +157,17 @@ public sealed class ThemaOpbouwAssistServiceTests
     {
         var fake = new FakeAiClient(cannedContent:
             "{\"suggesties\":[" +
-            "{\"code\":\"WAT-K3-01\",\"motivatie\":\"geldig\"}," +
-            "{\"code\":\"VERZONNEN-99\",\"motivatie\":\"bestaat niet\"}]}");
+            "{\"code\":\"K-9.2.1\",\"motivatie\":\"geldig\"}," +
+            "{\"code\":\"VERZONNEN-99\",\"motivatie\":\"bestaat niet\"}," +
+            "{\"code\":\"WAT-K3-01\",\"motivatie\":\"een leerplandoel is geen kandidaat\"}]}");
         var service = Service(fake, out _);
 
         var resultaat = await service.StelThemadoelenVoorAsync(
             new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = K3 });
 
         Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal("WAT-K3-01", Assert.Single(resultaat.Suggesties).Code);
-        Assert.Equal("VERZONNEN-99", Assert.Single(resultaat.OvergeslagenOnbekend));
+        Assert.Equal("K-9.2.1", Assert.Single(resultaat.Suggesties).Code);
+        Assert.Equal(["VERZONNEN-99", "WAT-K3-01"], resultaat.OvergeslagenOnbekend);
     }
 
     [Fact]
@@ -178,17 +212,17 @@ public sealed class ThemaOpbouwAssistServiceTests
     }
 
     [Fact]
-    public async Task Selectie_wordt_doorgegeven_aan_de_catalogus()
+    public async Task Stap2_zoekt_de_minimumdoelen_van_de_mijlpalen_van_de_gekozen_jaarfasen()
     {
         var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
         var service = Service(fake, out var catalogus);
-        var selectie = new LeerdoelSelectie { Disciplines = ["9"], JaarFasen = ["K3"] };
+        var selectie = new LeerdoelSelectie { Disciplines = ["9"], JaarFasen = ["l6", "2L", "JK"] };
 
         await service.StelThemadoelenVoorAsync(
             new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = selectie });
 
-        Assert.Equal(new[] { "9" }, catalogus.LaatsteSelectie!.Disciplines!);
-        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie.JaarFasen!);
+        Assert.Equal(["K-", "4-", "6-"], catalogus.LaatsteMijlpalen);
+        Assert.Contains("- 4-9.1.1: De leerlingen beschrijven de waterkringloop.", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------------------------------------
@@ -207,6 +241,7 @@ public sealed class ThemaOpbouwAssistServiceTests
 
         Assert.Equal("Kies eerst voor welke leeftijden je themadoelen wil laten voorstellen.", fout.Message);
         Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.Null(catalogus.LaatsteMijlpalen);
         Assert.Equal(0, fake.AantalAanroepen);
     }
 

@@ -1,5 +1,4 @@
 using Jaarplanner.Application.Ai;
-using Jaarplanner.Application.AiAuthoring;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
@@ -8,13 +7,10 @@ using Jaarplanner.UnitTests.AiAuthoring;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// Pins the E2-04 end-to-end matching flow (Art. IV.1/IV.2/IV.5/IV.6, FR-4.1/4.2): given a thema and
-/// the loaded leerplandoelen, the service builds the prompt (E2-02), calls the injected
-/// <see cref="FakeAiClient"/> with <b>no network</b> (E2-01), validates the completion (E2-03) and
-/// persists each validated suggestion as a <c>voorgesteld</c> <c>DoelKoppeling</c> with its AI
-/// motivation (E2-04) — via the in-memory <see cref="FakeDoelMatchOpslag"/> with <b>no database</b>.
-/// These tests are the "Done when" evidence: suggestions are stored (advisory only) and queryable
-/// per thema, and a malformed response persists nothing.
+/// A thema's doelsuggesties run end to end (FB-053, ADR-0052, Art. IV.1/IV.2/IV.5/IV.6, FR-4.1/4.2): the leeftijden give
+/// the mijlpalen, their minimumdoelen are the candidates, the injected <see cref="FakeAiClient"/> answers with <b>no
+/// network</b>, and each valid, new proposal is stored as <c>voorgesteld</c> with its motivation through the in-memory
+/// <see cref="FakeDoelMatchOpslag"/> with <b>no database</b>. A malformed answer stores nothing.
 /// </summary>
 public sealed class DoelMatchingServiceTests
 {
@@ -27,291 +23,263 @@ public sealed class DoelMatchingServiceTests
         return thema;
     }
 
-    private static IReadOnlyList<Leerplandoel> EenLeerdoelenSet() =>
+    private static IReadOnlyList<Minimumdoel> Minimumdoelen() =>
     [
-        new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
-        new Leerplandoel("NAT-K3-02", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "observeert de natuur."),
-        new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
+        new Minimumdoel("K-1.1.1", "K-", "1.1.1", "De kleuters kunnen rijm herkennen.", "Nederlands", "Lezen"),
+        new Minimumdoel("K-9.1.1", "K-", "9.1.1", "De kleuters kunnen seizoenen onderscheiden.", "Wereldoriëntatie", "Natuur"),
+        new Minimumdoel("4-2.1.1", "4-", "2.1.1", "De leerlingen tellen tot honderd.", "Wiskunde", "Getallen"),
+        new Minimumdoel("6-2.1.1", "6-", "2.1.1", "De leerlingen rekenen met breuken.", "Wiskunde", "Getallen"),
     ];
 
     // The configured default; every prompt in these tests is far under it unless a test sets its own ceiling.
     private static readonly Promptbegrenzing Ruim = new();
-
-    private static DoelMatchingService Service(FakeAiClient client, out FakeDoelMatchOpslag opslag, Thema? thema = null)
-    {
-        opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
-        return new DoelMatchingService(client, opslag, new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
-    }
 
     private static DoelMatchingService Service(
         FakeAiClient client,
         out FakeDoelMatchOpslag opslag,
         out FakeLeerdoelCatalogus catalogus,
         Thema? thema = null,
-        IReadOnlyList<Leerplandoel>? leerdoelen = null,
+        IReadOnlyList<Minimumdoel>? minimumdoelen = null,
         Promptbegrenzing? begrenzing = null)
     {
         opslag = new FakeDoelMatchOpslag(thema ?? EenThema());
-        catalogus = new FakeLeerdoelCatalogus(leerdoelen ?? EenLeerdoelenSet());
+        catalogus = new FakeLeerdoelCatalogus([]) { Minimumdoelen = minimumdoelen ?? Minimumdoelen() };
         return new DoelMatchingService(client, opslag, catalogus, begrenzing ?? Ruim);
     }
 
+    private static FakeAiClient Antwoord(params (string Code, string Motivatie)[] suggesties) =>
+        new(cannedContent: "{\"suggesties\":[" +
+            string.Join(",", suggesties.Select(s => $"{{\"code\":\"{s.Code}\",\"motivatie\":\"{s.Motivatie}\"}}")) +
+            "]}");
+
     [Fact]
-    public async Task Geldige_suggesties_worden_als_voorgesteld_met_motivatie_gepersisteerd()
+    public async Task Geldige_voorstellen_worden_als_voorgesteld_met_motivatie_bewaard_en_niet_gekoppeld()
     {
         var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[" +
-            "{\"code\":\"NAT-K3-01\",\"motivatie\":\"past bij het observeren van bomen\"}," +
-            "{\"code\":\"NAT-K3-02\",\"motivatie\":\"sluit aan bij natuurwaarneming\"}]}");
-        var service = Service(fake, out var opslag, thema);
+        var fake = Antwoord(("K-9.1.1", "Het thema volgt de herfst."), ("K-1.1.1", "Er zijn herfstversjes."));
+        var service = Service(fake, out var opslag, out _, thema);
 
-        var resultaat = await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
         Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal(2, resultaat.Bewaard.Count);
+        Assert.Equal(["K-9.1.1", "K-1.1.1"], resultaat.Bewaard.Select(b => b.MinimumdoelRef));
+        Assert.All(resultaat.Bewaard, b => Assert.Equal("Voorgesteld", b.Status));
+        Assert.Equal("De kleuters kunnen seizoenen onderscheiden.", resultaat.Bewaard[0].Omschrijving);
+        Assert.Equal("K-", resultaat.Bewaard[0].Mijlpaal);
 
-        // Both persisted as `voorgesteld` (Art. IV.2), never auto-accepted (Art. IV.1).
-        Assert.All(thema.Doelsuggesties, k => Assert.Equal(KoppelingStatus.Voorgesteld, k.Status));
-        Assert.All(thema.Themadoelen, td => Assert.Fail("matching must not create curated themadoelen"));
+        // Stored as proposals (Art. IV.2), never applied (Art. IV.1): the thema has no themadoel yet.
+        Assert.All(thema.Doelsuggesties, s => Assert.Equal(KoppelingStatus.Voorgesteld, s.Status));
+        Assert.Equal("Het thema volgt de herfst.", thema.Doelsuggesties[0].AiMotivatie);
+        Assert.Empty(thema.Minimumdoelen);
+        Assert.Empty(thema.Themadoelen);
 
-        var eerste = thema.Doelsuggesties.Single(k => k.LeerplandoelCode == "NAT-K3-01");
-        Assert.Equal("past bij het observeren van bomen", eerste.AiMotivatie);
-
-        // The flow reached the injected client (no network) exactly once, and committed once.
         Assert.Equal(1, fake.AantalAanroepen);
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
     [Fact]
-    public async Task Malformed_json_persisteert_niets_en_geeft_een_fout()
+    public async Task De_leeftijden_van_de_subthemas_bepalen_de_mijlpalen_en_dus_de_kandidaten()
+    {
+        var thema = new Thema("Herfst", duurWeken: 4);
+        thema.VoegSubthemaToe("Tellen", duurWeken: 2, leeftijd: "L2");
+        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
+        thema.VoegSubthemaToe("Kastanjes", duurWeken: 2, leeftijd: "3K");
+        var fake = Antwoord();
+        var service = Service(fake, out _, out var catalogus, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(["K3", "L2"], resultaat.JaarFasen);
+        Assert.Equal(["K-", "4-"], resultaat.Mijlpalen);
+        Assert.Equal(["K-", "4-"], catalogus.LaatsteMijlpalen);
+        Assert.Equal(3, resultaat.AantalKandidaten);
+        Assert.Contains("- 4-2.1.1: De leerlingen tellen tot honderd.", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("6-2.1.1", fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("L5", "6-")]
+    [InlineData("l4", "4-")]
+    [InlineData(" JK ", "K-")]
+    public async Task Een_keuze_van_de_gebruiker_gaat_voor_de_leeftijden_van_de_subthemas(string keuze, string mijlpaal)
+    {
+        var fake = Antwoord();
+        var service = Service(fake, out _, out _);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, [keuze]);
+
+        Assert.Equal([mijlpaal], resultaat.Mijlpalen);
+        Assert.Equal(1, fake.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_leeftijden()
+    {
+        var fake = Antwoord();
+        var service = Service(fake, out _, out _, new Thema("Herfst", duurWeken: 4));
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, ["K2"]);
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(["K2"], resultaat.JaarFasen);
+        Assert.Equal(2, resultaat.AantalKandidaten);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("F1")]
+    public async Task Een_thema_zonder_subthemas_en_zonder_bruikbare_keuze_roept_de_ai_niet_aan(string? keuze)
+    {
+        var thema = new Thema("Herfst", duurWeken: 4);
+        var fake = Antwoord(("K-1.1.1", "x"));
+        var service = Service(fake, out var opslag, out var catalogus, thema);
+
+        var fout = await Assert.ThrowsAsync<JaarfaseKeuzeNodigFout>(
+            () => service.GenereerSuggestiesAsync(ThemaId, keuze is null ? null : [keuze]));
+
+        Assert.Equal("Kies eerst voor welke leeftijden je doelsuggesties wil.", fout.Message);
+        Assert.Null(catalogus.LaatsteMijlpalen);
+        Assert.Equal(0, fake.AantalAanroepen);
+        Assert.Empty(thema.Doelsuggesties);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Malformed_json_bewaart_niets_en_zegt_wat_er_doorzocht_is()
     {
         var thema = EenThema();
         var fake = new FakeAiClient(cannedContent: "dit is geen JSON {kapot");
-        var service = Service(fake, out var opslag, thema);
+        var service = Service(fake, out var opslag, out _, thema);
 
-        var resultaat = await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
         Assert.False(resultaat.IsGeslaagd);
         Assert.NotNull(resultaat.Fout);
         Assert.Empty(resultaat.Bewaard);
-
-        // Nothing added, nothing committed (Art. IV.5).
         Assert.Empty(thema.Doelsuggesties);
         Assert.Equal(0, opslag.AantalKeerBewaard);
+        Assert.Equal(2, resultaat.AantalKandidaten);
     }
 
     [Fact]
-    public async Task Een_code_buiten_de_geladen_set_wordt_overgeslagen_niet_verzonnen()
+    public async Task Een_code_buiten_de_kandidaten_wordt_overgeslagen_niet_verzonnen()
+    {
+        // 4-2.1.1 exists, but not among this run's candidates; k-1.1.1 alters a decreed identifier (Art. III.5).
+        var thema = EenThema();
+        var fake = Antwoord(("K-1.1.1", "geldig"), ("VERZONNEN-99", "bestaat niet"), ("4-2.1.1", "andere mijlpaal"), ("k-1.1.1", "kleine letters"));
+        var service = Service(fake, out _, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal("K-1.1.1", Assert.Single(thema.Doelsuggesties).MinimumdoelRef);
+        Assert.Equal(["VERZONNEN-99", "4-2.1.1", "k-1.1.1"], resultaat.OvergeslagenOnbekend);
+    }
+
+    [Fact]
+    public async Task Een_themadoel_of_een_eerder_voorstel_komt_niet_terug()
     {
         var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[" +
-            "{\"code\":\"NAT-K3-01\",\"motivatie\":\"geldig\"}," +
-            "{\"code\":\"VERZONNEN-99\",\"motivatie\":\"deze code bestaat niet\"}]}");
-        var service = Service(fake, out _, thema);
-
-        var resultaat = await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
-
-        Assert.True(resultaat.IsGeslaagd);
-        var bewaard = Assert.Single(thema.Doelsuggesties);
-        Assert.Equal("NAT-K3-01", bewaard.LeerplandoelCode);
-        Assert.Equal("VERZONNEN-99", Assert.Single(resultaat.OvergeslagenOnbekend));
-    }
-
-    [Fact]
-    public async Task Een_reeds_gekoppelde_code_wordt_niet_gedupliceerd()
-    {
-        var thema = EenThema();
-        // The thema already anchors NAT-K3-01 as a curated themadoel (Art. IX.2).
-        thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Manueel));
-
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"reeds gekoppeld\"}]}");
-        var service = Service(fake, out var opslag, thema);
-
-        var resultaat = await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
-
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Empty(thema.Doelsuggesties);
-        Assert.Equal("NAT-K3-01", Assert.Single(resultaat.OvergeslagenDuplicaat));
-        // Nothing new to persist ⇒ no unit of work.
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Gepersisteerde_suggesties_zijn_queryeerbaar_per_thema()
-    {
-        var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[{\"code\":\"NAT-K3-02\",\"motivatie\":\"waarneming\"}]}");
-        var service = Service(fake, out _, thema);
-
-        await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
-
-        var suggesties = await service.HaalSuggestiesVoorThemaAsync(ThemaId);
-        var view = Assert.Single(suggesties);
-        Assert.Equal("NAT-K3-02", view.LeerplandoelCode);
-        Assert.Equal("Voorgesteld", view.Status);
-        Assert.Equal("waarneming", view.AiMotivatie);
-    }
-
-    [Fact]
-    public async Task Een_lege_geldige_lijst_persisteert_niets_maar_slaagt()
-    {
-        var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out var opslag, thema);
-
-        var resultaat = await service.MatchThemaAsync(ThemaId, EenLeerdoelenSet());
-
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Empty(thema.Doelsuggesties);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Onbekend_thema_gooit_ThemaNietGevondenFout()
-    {
-        var fake = new FakeAiClient();
-        var service = new DoelMatchingService(
-            fake, new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
-
-        await Assert.ThrowsAsync<ThemaNietGevondenFout>(
-            () => service.MatchThemaAsync(ThemaId, EenLeerdoelenSet()));
-        // The AI is never called when the thema is missing.
-        Assert.Equal(0, fake.AantalAanroepen);
-    }
-
-    [Fact]
-    public void Service_verwerpt_null_afhankelijkheden()
-    {
-        var catalogus = new FakeLeerdoelCatalogus(EenLeerdoelenSet());
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, new FakeDoelMatchOpslag(EenThema()), catalogus, Ruim));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), null!, catalogus, Ruim));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), null!, Ruim));
-        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(new FakeAiClient(), new FakeDoelMatchOpslag(EenThema()), catalogus, null!));
-    }
-
-    // ---------------------------------------------------------------------------------------------
-    // E2-08 — the invocation surface (FR-4.1). Everything above drives MatchThemaAsync with a
-    // candidate set handed in by the test; these drive GenereerSuggestiesAsync, the entry point a
-    // controller can actually call, which resolves that set itself through ILeerdoelCatalogus.
-    // ---------------------------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Genereren_haalt_de_kandidaten_zelf_op_en_persisteert_als_voorgesteld()
-    {
-        var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"past bij het observeren van bomen\"}]}");
-        var service = Service(fake, out var opslag, out var catalogus, thema);
+        thema.KoppelMinimumdoel("K-1.1.1");
+        var geweigerd = thema.VoegDoelsuggestieToe("K-9.1.1", "eerder voorgesteld");
+        thema.WeigerDoelsuggestie(geweigerd);
+        var fake = Antwoord(("K-1.1.1", "al themadoel"), ("K-9.1.1", "al geweigerd"));
+        var service = Service(fake, out var opslag, out _, thema);
 
         var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
         Assert.True(resultaat.IsGeslaagd);
-        var bewaard = Assert.Single(resultaat.Bewaard);
-        Assert.Equal("NAT-K3-01", bewaard.LeerplandoelCode);
-        Assert.Equal("Voorgesteld", bewaard.Status);
-        Assert.Equal("past bij het observeren van bomen", bewaard.AiMotivatie);
-        // FR-4.2: the goal's own text + doelsoort travel with the suggestion so it is judgeable.
-        Assert.Equal("herkent bomen.", bewaard.Tekst);
-        Assert.Equal(Doelsoort.Minimumdoel, bewaard.Doelsoort);
+        Assert.Empty(resultaat.Bewaard);
+        Assert.Equal(["K-1.1.1", "K-9.1.1"], resultaat.OvergeslagenDuplicaat);
+        Assert.Same(geweigerd, Assert.Single(thema.Doelsuggesties));
+        Assert.Equal(KoppelingStatus.Geweigerd, geweigerd.Status);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
 
-        // The candidate set came from the read-only curriculum seam — no caller had to supply it — and holds the goals of
-        // the thema's one leeftijd, K3, not the L1 goal (TB-007).
-        Assert.Equal(1, catalogus.AantalAanroepen);
-        Assert.Equal(2, resultaat.AantalKandidaten);
-        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
+        // And the model was told so, on the prompt's last line.
+        Assert.EndsWith(
+            "# Niet voorstellen\n\nAl themadoel, al voorgesteld of geweigerd: K-1.1.1, K-9.1.1\n",
+            fake.LaatsteRequest!.UserPrompt,
+            StringComparison.Ordinal);
+    }
 
-        // Advisory only: persisted as `voorgesteld`, nothing accepted (Art. IV.1/IV.2).
-        Assert.All(thema.Doelsuggesties, k => Assert.Equal(KoppelingStatus.Voorgesteld, k.Status));
+    [Fact]
+    public async Task Een_aanvaard_en_later_ontkoppeld_minimumdoel_komt_terug_op_zijn_eigen_rij()
+    {
+        // Owner ruling 2026-09-16 (ADR-0052 D1): only themadoelen and open or rejected proposals stay excluded.
+        var thema = EenThema();
+        var eerder = thema.VoegDoelsuggestieToe("K-1.1.1", "eerste run");
+        thema.OntkoppelMinimumdoel(thema.AanvaardDoelsuggestie(eerder)!);
+        var fake = Antwoord(("K-9.1.1", "best passend"), ("K-1.1.1", "weer passend"));
+        var service = Service(fake, out var opslag, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(["K-9.1.1", "K-1.1.1"], resultaat.Bewaard.Select(b => b.MinimumdoelRef));
+        Assert.Empty(resultaat.OvergeslagenDuplicaat);
+        Assert.Equal(eerder.Id, resultaat.Bewaard[1].Id);
+        Assert.Equal("Voorgesteld", resultaat.Bewaard[1].Status);
+        Assert.Equal("weer passend", eerder.AiMotivatie);
+        Assert.Equal(2, thema.Doelsuggesties.Count);
+        // The model's order is the rank order, after the earlier run's proposal.
+        Assert.True(thema.Doelsuggesties.Single(s => s.MinimumdoelRef == "K-9.1.1").Rang < eerder.Rang);
+        Assert.DoesNotContain("Niet voorstellen", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
-    // ---------------------------------------------------------------------------------------------
-    // TB-007 — the candidate set is bounded by jaar/fase and the prompt by a ceiling. The whole catalogue
-    // (some 5,800 goals since the Op.stap import) is never sent.
-    // ---------------------------------------------------------------------------------------------
-
     [Fact]
-    public async Task Zonder_keuze_neemt_de_generatie_de_leeftijden_van_de_subthemas()
+    public async Task Dezelfde_code_twee_keer_in_een_antwoord_wordt_een_keer_bewaard()
     {
-        // The thema has one subthema, at K3: only the K3 goals are candidates, and the L1 goal never reaches the prompt.
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out _, out var catalogus);
-
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
-
-        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
-        Assert.Equal(2, resultaat.AantalKandidaten);
-        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
-        Assert.Contains("NAT-K3-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
-        Assert.Contains("NAT-K3-02", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
-        Assert.DoesNotContain("REK-L1-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public async Task De_leeftijden_van_meerdere_subthemas_komen_elk_een_keer_in_de_volgorde_van_de_jaarfasen()
-    {
-        var thema = new Thema("Herfst", duurWeken: 4);
-        thema.VoegSubthemaToe("Tellen", duurWeken: 2, leeftijd: "L1");
-        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
-        thema.VoegSubthemaToe("Kastanjes", duurWeken: 2, leeftijd: "K3");
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        var thema = EenThema();
+        var fake = Antwoord(("K-1.1.1", "eerste"), ("K-1.1.1", "tweede"));
         var service = Service(fake, out _, out _, thema);
 
         var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
-        Assert.Equal(new[] { "K3", "L1" }, resultaat.JaarFasen);
-        Assert.Equal(3, resultaat.AantalKandidaten);
+        Assert.Equal("eerste", Assert.Single(thema.Doelsuggesties).AiMotivatie);
+        Assert.Equal(["K-1.1.1"], resultaat.OvergeslagenDuplicaat);
     }
 
     [Fact]
-    public async Task Een_keuze_van_de_gebruiker_gaat_voor_de_leeftijden_van_de_subthemas()
+    public async Task Hoogstens_acht_voorstellen_worden_bewaard()
     {
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out _, out _);
+        var kandidaten = Enumerable.Range(1, 10)
+            .Select(i => new Minimumdoel($"K-1.1.{i}", "K-", $"1.1.{i}", $"Doel {i}."))
+            .ToList();
+        var thema = EenThema();
+        var fake = Antwoord(kandidaten.Select(k => (k.Ref, "past")).ToArray());
+        var service = Service(fake, out _, out _, thema, kandidaten);
 
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, new LeerdoelSelectie { JaarFasen = ["L1"] });
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
-        Assert.Equal(new[] { "L1" }, resultaat.JaarFasen);
-        Assert.Equal(1, resultaat.AantalKandidaten);
-        Assert.Contains("REK-L1-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
-        Assert.DoesNotContain("NAT-K3-01", fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
+        Assert.Equal(MatchingPromptBuilder.MaxSuggesties, resultaat.Bewaard.Count);
+        Assert.Equal(8, thema.Doelsuggesties.Count);
+        Assert.Equal("K-1.1.8", thema.Doelsuggesties[^1].MinimumdoelRef);
     }
 
     [Fact]
-    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_jaarfasen()
+    public async Task Een_lege_geldige_lijst_bewaart_niets_maar_slaagt()
     {
-        var thema = new Thema("Herfst", duurWeken: 4);
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out _, out _, thema);
+        var thema = EenThema();
+        var service = Service(Antwoord(), out var opslag, out _, thema);
 
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId, new LeerdoelSelectie { JaarFasen = ["K3"] });
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
         Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal(2, resultaat.AantalKandidaten);
-        Assert.Equal(1, fake.AantalAanroepen);
+        Assert.Empty(resultaat.Bewaard);
+        Assert.Equal(0, opslag.AantalKeerBewaard);
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Een_thema_zonder_subthemas_en_zonder_keuze_roept_de_ai_niet_aan(bool legeKeuze)
+    [Fact]
+    public async Task Zonder_kandidaten_wordt_de_ai_niet_aangeroepen()
     {
-        // An empty jaar/fase dimension means "every jaar/fase" to the catalogue, so a blank choice must not count as one.
-        var thema = new Thema("Herfst", duurWeken: 4);
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
-        var service = Service(fake, out var opslag, out var catalogus, thema);
-        var selectie = legeKeuze ? new LeerdoelSelectie { JaarFasen = ["", " "] } : null;
+        var fake = Antwoord(("K-1.1.1", "x"));
+        var service = Service(fake, out var opslag, out _, minimumdoelen: []);
 
-        var fout = await Assert.ThrowsAsync<JaarfaseKeuzeNodigFout>(() => service.GenereerSuggestiesAsync(ThemaId, selectie));
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
 
-        Assert.Equal("Kies eerst voor welke leeftijden je doelsuggesties wil.", fout.Message);
-        Assert.Equal(0, catalogus.AantalAanroepen);
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(0, resultaat.AantalKandidaten);
         Assert.Equal(0, fake.AantalAanroepen);
-        Assert.Empty(thema.Doelsuggesties);
         Assert.Equal(0, opslag.AantalKeerBewaard);
     }
 
@@ -319,16 +287,30 @@ public sealed class DoelMatchingServiceTests
     public async Task Boven_de_grens_wordt_de_ai_niet_aangeroepen_en_niets_bewaard()
     {
         var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
+        var fake = Antwoord(("K-1.1.1", "x"));
         var service = Service(fake, out var opslag, out _, thema, begrenzing: new Promptbegrenzing(maxTokens: 10));
 
         var fout = await Assert.ThrowsAsync<PromptTeGrootFout>(() => service.GenereerSuggestiesAsync(ThemaId));
 
         Assert.Equal(10, fout.MaxTokens);
-        Assert.True(fout.GeschatteTokens > 10);
+        Assert.Contains("2 doelen", fout.Message, StringComparison.Ordinal);
         Assert.Equal(0, fake.AantalAanroepen);
         Assert.Empty(thema.Doelsuggesties);
         Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task De_prompt_is_de_minimumdoelprompt_en_vermeldt_geen_leerplandoelen()
+    {
+        var fake = Antwoord();
+        var service = Service(fake, out _, out _);
+
+        await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(MatchingPromptBuilder.SystemPrompt, fake.LaatsteRequest!.SystemPrompt);
+        Assert.StartsWith(MinimumdoelPromptlijst.Kop, fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
+        Assert.StartsWith("# Thema: Herfst", fake.LaatsteRequest.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("leerplandoel", fake.LaatsteRequest.VasteContext + fake.LaatsteRequest.UserPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -337,7 +319,7 @@ public sealed class DoelMatchingServiceTests
         // TB-043: the client refuses an answer cut off at the output ceiling; the run persists nothing.
         var thema = EenThema();
         var service = new DoelMatchingService(
-            new AfgekaptAiClient(), new FakeDoelMatchOpslag(thema), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
+            new AfgekaptAiClient(), new FakeDoelMatchOpslag(thema), new FakeLeerdoelCatalogus([]) { Minimumdoelen = Minimumdoelen() }, Ruim);
 
         var fout = await Assert.ThrowsAsync<AiAntwoordAfgekaptFout>(() => service.GenereerSuggestiesAsync(ThemaId));
 
@@ -346,28 +328,27 @@ public sealed class DoelMatchingServiceTests
     }
 
     [Fact]
-    public async Task Twee_themas_van_dezelfde_leeftijd_krijgen_hetzelfde_vaste_deel()
+    public async Task Twee_themas_van_dezelfde_mijlpaal_krijgen_hetzelfde_vaste_deel()
     {
-        // TB-043, through the real candidate selection: the leeftijd decides the list, the thema does not.
+        // TB-043, through the real candidate selection: the mijlpaal decides the list, the thema does not.
         var herfst = EenThema();
         var water = new Thema("Water", duurWeken: 5, invalshoeken: "drijven");
-        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "3K");
-        water.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past"))
-            .WijzigStatus(KoppelingStatus.Geweigerd);
+        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "JK");
+        water.WeigerDoelsuggestie(water.VoegDoelsuggestieToe("K-1.1.1", "past"));
 
-        var eerste = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        await Service(eerste, out _, herfst).GenereerSuggestiesAsync(ThemaId);
-        var tweede = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        await Service(tweede, out _, water).GenereerSuggestiesAsync(ThemaId);
+        var eerste = Antwoord();
+        await Service(eerste, out _, out _, herfst).GenereerSuggestiesAsync(ThemaId);
+        var tweede = Antwoord();
+        await Service(tweede, out _, out _, water).GenereerSuggestiesAsync(ThemaId);
 
         var a = eerste.LaatsteRequest!;
         var b = tweede.LaatsteRequest!;
         Assert.Equal(a.SystemPrompt, b.SystemPrompt);
         Assert.Equal(a.VasteContext, b.VasteContext);
-        Assert.Contains("NAT-K3-01", a.VasteContext, StringComparison.Ordinal);
-        Assert.DoesNotContain("REK-L1-01", a.VasteContext, StringComparison.Ordinal);
+        Assert.Contains("K-1.1.1", a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("4-2.1.1", a.VasteContext, StringComparison.Ordinal);
         Assert.DoesNotContain("Niet voorstellen", a.UserPrompt, StringComparison.Ordinal);
-        Assert.Contains("Al gekoppeld of geweigerd: NAT-K3-01", b.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Al themadoel, al voorgesteld of geweigerd: K-1.1.1", b.UserPrompt, StringComparison.Ordinal);
     }
 
     // Answers as a real client does when the model stopped at its output ceiling.
@@ -378,292 +359,36 @@ public sealed class DoelMatchingServiceTests
     }
 
     [Fact]
-    public async Task Een_aanvraag_van_precies_de_grens_gaat_door()
+    public async Task Onbekend_thema_gooit_ThemaNietGevondenFout()
     {
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        await Service(fake, out _, out _).GenereerSuggestiesAsync(ThemaId);
-        var tokens = Promptbegrenzing.SchatTokens(fake.LaatsteRequest!);
+        var opslag = new FakeDoelMatchOpslag(thema: null);
+        var service = new DoelMatchingService(Antwoord(), opslag, new FakeLeerdoelCatalogus([]), Ruim);
 
-        await Service(fake, out _, out _, begrenzing: new Promptbegrenzing(tokens)).GenereerSuggestiesAsync(ThemaId);
-
-        Assert.Equal(2, fake.AantalAanroepen);
+        await Assert.ThrowsAsync<ThemaNietGevondenFout>(() => service.GenereerSuggestiesAsync(ThemaId));
     }
 
     [Fact]
-    public async Task Een_selectie_van_de_leerkracht_begrenst_de_kandidaten()
-    {
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out _, out var catalogus);
-
-        var resultaat = await service.GenereerSuggestiesAsync(
-            ThemaId, new LeerdoelSelectie { JaarFasen = ["K3"] });
-
-        Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
-        // Only the two K3 goals were candidates — the L1 one was out of scope.
-        Assert.Equal(2, resultaat.AantalKandidaten);
-    }
-
-    [Theory]
-    [InlineData("k3")]
-    [InlineData("K3")]
-    [InlineData(" k3 ")]
-    public async Task Een_selectie_in_kleine_letters_vindt_dezelfde_kandidaten(string jaarFase)
-    {
-        // The teacher types the jaar/fase by hand. A case-sensitive filter answers with zero candidates,
-        // which the UI can only report as "er zijn geen leerplandoelen die aan je keuze voldoen" — a silent
-        // wrong answer that reads like an empty curriculum.
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
-        var service = Service(fake, out _, out _);
-
-        var resultaat = await service.GenereerSuggestiesAsync(
-            ThemaId, new LeerdoelSelectie { JaarFasen = [jaarFase] });
-
-        Assert.Equal(2, resultaat.AantalKandidaten);
-    }
-
-    [Fact]
-    public async Task Zonder_kandidaten_wordt_de_ai_niet_aangeroepen()
-    {
-        // The realistic cause today: no Op.stap import has run (E1-15), so the curriculum is empty. Calling the
-        // model would burn a request on a prompt with an empty goal list whose every answer must be discarded.
-        var fake = new FakeAiClient(cannedContent: "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"x\"}]}");
-        var service = Service(fake, out var opslag, out _, thema: null, leerdoelen: []);
-
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
-
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal(0, resultaat.AantalKandidaten);
-        Assert.Empty(resultaat.Bewaard);
-        Assert.Equal(0, fake.AantalAanroepen);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Genereren_op_kapotte_json_persisteert_niets()
+    public async Task Bewaarde_voorstellen_zijn_opvraagbaar_per_thema()
     {
         var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent: "dit is geen JSON {kapot");
-        var service = Service(fake, out var opslag, out _, thema);
+        var service = Service(Antwoord(("K-1.1.1", "past")), out _, out _, thema);
+        await service.GenereerSuggestiesAsync(ThemaId);
 
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+        var lijst = await service.HaalSuggestiesVoorThemaAsync(ThemaId);
 
-        Assert.False(resultaat.IsGeslaagd);
-        Assert.NotNull(resultaat.Fout);
-        Assert.Empty(thema.Doelsuggesties);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-        // The run still reports what it searched in, so a 0-suggestion failure is not mistaken for an empty
-        // curriculum.
-        Assert.Equal(2, resultaat.AantalKandidaten);
+        Assert.Equal("K-1.1.1", Assert.Single(lijst).MinimumdoelRef);
     }
 
     [Fact]
-    public async Task Genereren_slaat_een_verzonnen_code_over()
+    public void Service_verwerpt_null_afhankelijkheden()
     {
-        var thema = EenThema();
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[" +
-            "{\"code\":\"NAT-K3-02\",\"motivatie\":\"geldig\"}," +
-            "{\"code\":\"VERZONNEN-99\",\"motivatie\":\"deze code bestaat niet\"}]}");
-        var service = Service(fake, out _, out _, thema);
+        var client = Antwoord();
+        var opslag = new FakeDoelMatchOpslag(EenThema());
+        var catalogus = new FakeLeerdoelCatalogus([]);
 
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
-
-        Assert.Equal("NAT-K3-02", Assert.Single(thema.Doelsuggesties).LeerplandoelCode);
-        Assert.Equal("VERZONNEN-99", Assert.Single(resultaat.OvergeslagenOnbekend));
-    }
-
-    [Fact]
-    public async Task Genereren_slaat_een_al_gekoppelde_code_over()
-    {
-        var thema = EenThema();
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "eerdere ronde"));
-
-        var fake = new FakeAiClient(cannedContent:
-            "{\"suggesties\":[{\"code\":\"NAT-K3-01\",\"motivatie\":\"opnieuw voorgesteld\"}]}");
-        var service = Service(fake, out var opslag, out _, thema);
-
-        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
-
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Single(thema.Doelsuggesties);
-        Assert.Equal("NAT-K3-01", Assert.Single(resultaat.OvergeslagenDuplicaat));
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    // ---------------------------------------------------------------------------------------------
-    // E2-08 — FR-4.3 "aanpassen": substituting a DIFFERENT leerplandoel, landing as `manueel`.
-    // ---------------------------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Aanpassen_vervangt_het_doel_en_zet_de_koppeling_op_manueel()
-    {
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij het observeren van bomen"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
-
-        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-02");
-
-        // The link now points at the teacher's goal and is the teacher's own choice.
-        Assert.Equal("NAT-K3-02", suggestie.LeerplandoelCode);
-        Assert.Equal(KoppelingStatus.Manueel, suggestie.Status);
-        // The AI motivation described the goal it proposed, not this one — it goes with the old code (Art. IV.3).
-        Assert.Null(suggestie.AiMotivatie);
-        // The view carries the NEW goal's text so the teacher sees what they now coupled (FR-4.2).
-        Assert.Equal("observeert de natuur.", weergave.Tekst);
-        Assert.Equal(Doelsoort.Gemeenschappelijk, weergave.Doelsoort);
-        Assert.Equal("Manueel", weergave.Status);
-        Assert.Equal(1, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Aanpassen_aanvaardt_een_code_in_kleine_letters_en_bewaart_de_officiele_code()
-    {
-        // The teacher types the code by hand, so casing is theirs; the code that gets *stored* is always the
-        // curriculum's own (Art. III.5 — a link points at a real Op.stap code, spelled the way Op.stap does).
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out _, out _, thema);
-
-        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "nat-k3-02");
-
-        Assert.Equal("NAT-K3-02", suggestie.LeerplandoelCode);
-        Assert.Equal("NAT-K3-02", weergave.LeerplandoelCode);
-        Assert.Equal(KoppelingStatus.Manueel, suggestie.Status);
-    }
-
-    [Fact]
-    public async Task Aanpassen_weigert_een_code_die_op_meerdere_doelen_past()
-    {
-        // `Leerplandoel.Code` is a case-SENSITIVE primary key, so two goals differing only in case could
-        // legally coexist. There is no evidence Op.stap produces such codes, but if it did, resolving the
-        // teacher's input to whichever row happened to sort first would be the tool guessing at goal identity
-        // — exactly what Art. III.5 forbids. Refusing and naming both candidates beats silently picking one.
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("REK-L1-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema, leerdoelen:
-        [
-            new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
-            new Leerplandoel("nat-k3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "een ander doel."),
-            new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
-        ]);
-
-        var fout = await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "Nat-K3-01"));
-
-        // The message names both candidates rather than asserting the code does not exist.
-        Assert.Contains("NAT-K3-01", fout.Message, StringComparison.Ordinal);
-        Assert.Contains("nat-k3-01", fout.Message, StringComparison.Ordinal);
-
-        Assert.Equal("REK-L1-01", suggestie.LeerplandoelCode);
-        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Aanpassen_kiest_de_exacte_code_als_die_bestaat_naast_een_andere_schrijfwijze()
-    {
-        // The other half of the rule above: an exact hit is never ambiguous, so it wins outright instead of
-        // being refused. (The status path's safety no longer rides on this: it uses a lookup that cannot refuse
-        // at all — see `DoelsuggestieStatusTests.Een_onoplosbare_code_doet_de_beslissing_niet_mislukken`.)
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("REK-L1-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out _, out _, thema, leerdoelen:
-        [
-            new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
-            new Leerplandoel("nat-k3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "een ander doel."),
-            new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."),
-        ]);
-
-        var weergave = await service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "nat-k3-01");
-
-        Assert.Equal("nat-k3-01", suggestie.LeerplandoelCode);
-        Assert.Equal("een ander doel.", weergave.Tekst);
-    }
-
-    [Fact]
-    public async Task Aanpassen_naar_een_onbestaande_code_wordt_geweigerd()
-    {
-        // Art. III.5: a link may only ever point at a code the read-only Op.stap set carries.
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
-
-        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "VERZONNEN-99"));
-
-        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
-        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
-        Assert.Equal("motivatie", suggestie.AiMotivatie);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("   ")]
-    public async Task Aanpassen_zonder_code_wordt_geweigerd(string code)
-    {
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
-
-        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, code));
-
-        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Aanpassen_naar_een_al_gekoppeld_doel_wordt_geweigerd()
-    {
-        // Two links to one doel would double-count it in dekking (Art. V), and the second is not an adjustment.
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "andere suggestie"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
-
-        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-02"));
-
-        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Aanpassen_naar_hetzelfde_doel_wordt_geweigerd()
-    {
-        var thema = EenThema();
-        var suggestie = thema.VoegDoelsuggestieToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "motivatie"));
-        var service = Service(new FakeAiClient(), out var opslag, out _, thema);
-
-        await Assert.ThrowsAsync<OngeldigeDoelsubstitutieFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, suggestie.Id, "NAT-K3-01"));
-
-        // Still `voorgesteld`: setting `manueel` without changing anything is the OTHER action (the status PUT),
-        // and this path must not become a back door to it.
-        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-    }
-
-    [Fact]
-    public async Task Aanpassen_van_een_onbekende_suggestie_of_thema_geeft_niet_gevonden()
-    {
-        var thema = EenThema();
-        var service = Service(new FakeAiClient(), out _, out _, thema);
-        await Assert.ThrowsAsync<DoelsuggestieNietGevondenFout>(
-            () => service.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
-
-        var zonderThema = new DoelMatchingService(
-            new FakeAiClient(), new FakeDoelMatchOpslag(thema: null), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
-        await Assert.ThrowsAsync<ThemaNietGevondenFout>(
-            () => zonderThema.VervangSuggestieDoelAsync(ThemaId, Guid.NewGuid(), "NAT-K3-02"));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(null!, opslag, catalogus, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(client, null!, catalogus, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(client, opslag, null!, Ruim));
+        Assert.Throws<ArgumentNullException>(() => new DoelMatchingService(client, opslag, catalogus, null!));
     }
 }

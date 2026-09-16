@@ -84,11 +84,11 @@ const THEMA: ThemaWeergave = {
 
 const SUGGESTIE: DoelMatchSuggestie = {
   id: "sug-1",
-  leerplandoelCode: "WO-3",
+  minimumdoelRef: "K-9.1.1",
   status: "Voorgesteld",
   aiMotivatie: "Past bij bladeren verzamelen.",
-  tekst: "Een doel over seizoenen",
-  doelsoort: "Gemeenschappelijk",
+  omschrijving: "De kleuters kunnen seizoenen onderscheiden.",
+  mijlpaal: "K-",
 };
 
 function json(inhoud: unknown, status = 200) {
@@ -105,6 +105,8 @@ function toon(
     genereer?: (body: unknown) => Response;
     /** Where the page opens, for a link that asks for one subthema (FB-037). */
     pad?: string;
+    /** The thema's doelsuggesties, in the order the server sends them. */
+    suggesties?: DoelMatchSuggestie[];
     /** The subdoelplaatsing the server answers (FB-057); without it that read fails, as on a server without it. */
     plaatsing?: SubdoelplaatsingOverzicht;
     /** Records every write the page sends, with its body. */
@@ -124,7 +126,7 @@ function toon(
           ? json({ title: "Geen toegang", detail: "Je hebt geen toegang tot deze actie." }, 403)
           : json({});
       }
-      if (pad.endsWith("/doelsuggesties")) return json([SUGGESTIE]);
+      if (pad.endsWith("/doelsuggesties")) return json(opties.suggesties ?? [SUGGESTIE]);
       if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1"]);
       if (pad.endsWith("/api/themas/thema-1/doelenoverzicht")) {
         return json(opties.overzicht ?? { themaId: "thema-1", leeftijden: [] });
@@ -184,6 +186,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     overgeslagenDuplicaat: [],
     aantalKandidaten: 535,
     jaarFasen: ["K3", "L1"],
+    mijlpalen: ["K-", "4-"],
     ...extra,
   });
 
@@ -258,7 +261,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
     vraag();
 
-    await waitFor(() => expect(verzonden).toEqual([{ selectie: { jaarFasen: ["L1"] } }]));
+    await waitFor(() => expect(verzonden).toEqual([{ jaarFasen: ["L1"] }]));
     await waitFor(() => expect(screen.queryByRole("group", { name: t("thema.leeftijdenLabel") })).toBeNull());
     expect(screen.getByRole("button", { name: t("thema.suggestiesVragen") })).toHaveFocus();
   });
@@ -281,13 +284,15 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
     vraag();
 
+    // The mijlpalen the result names, not the leeftijden the buttons show (FB-053).
     const zin = t("thema.suggestiesNieuw", {
       aantal: 3,
       doelen: t("thema.kandidatenMeer", { aantal: 535 }),
-      leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }),
+      mijlpalen: t("thema.mijlpalenMeer", { lijst: t("thema.opsommingEn", { eerste: "K", laatste: "4" }) }),
     });
+    expect(zin).toBe("3 nieuwe voorstellen uit 535 minimumdoelen van mijlpalen K en 4.");
     expect(await screen.findByText(zin)).toBeInTheDocument();
-    expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K3", "L1"] } }]);
+    expect(verzonden).toEqual([{ jaarFasen: ["K3", "L1"] }]);
   });
 
   it("stuurt een gewijzigde keuze in de volgorde van de jaarfasen, hoe er ook geklikt werd", async () => {
@@ -305,7 +310,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     expect(within(groep).getByRole("button", { name: "L1" })).toHaveAttribute("aria-pressed", "false");
     vraag();
 
-    await waitFor(() => expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K2", "K3"] } }]));
+    await waitFor(() => expect(verzonden).toEqual([{ jaarFasen: ["K2", "K3"] }]));
   });
 
   it("laat bij een thema zonder subthema's eerst een leeftijd kiezen, en zegt waarom de knop uit staat", async () => {
@@ -314,7 +319,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
       thema: { ...THEMA, subthemas: [] },
       genereer: (body) => {
         verzonden.push(body);
-        return json(resultaat({ bewaard: [], aantalKandidaten: 1, jaarFasen: ["K2"] }));
+        return json(resultaat({ bewaard: [], aantalKandidaten: 1, jaarFasen: ["K2"], mijlpalen: ["K-"] }));
       },
     });
 
@@ -329,9 +334,9 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     vraag();
 
     expect(
-      await screen.findByText(t("thema.suggestiesGeenNieuwe", { doelen: t("thema.kandidaatEen"), leeftijden: "K2" })),
+      await screen.findByText(t("thema.suggestiesGeenNieuwe", { doelen: t("thema.kandidaatEen"), mijlpalen: "mijlpaal K" })),
     ).toBeInTheDocument();
-    expect(verzonden).toEqual([{ selectie: { jaarFasen: ["K2"] } }]);
+    expect(verzonden).toEqual([{ jaarFasen: ["K2"] }]);
   });
 
   it("zegt het wanneer er voor de gekozen leeftijden geen doelen geladen zijn", async () => {
@@ -342,7 +347,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
     expect(
       await screen.findByText(
-        t("thema.suggestiesGeenDoelen", { leeftijden: t("thema.opsommingEn", { eerste: "K3", laatste: "L1" }) }),
+        t("thema.suggestiesGeenDoelen", { mijlpalen: t("thema.mijlpalenMeer", { lijst: t("thema.opsommingEn", { eerste: "K", laatste: "4" }) }) }),
       ),
     ).toBeInTheDocument();
   });
@@ -381,7 +386,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("doelkiezer.koppel"))).toBeNull();
     expect(knop(t("thema.minimumdoelKoppelen"))).toBeNull();
     expect(knop(t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }))).toBeNull();
-    expect(screen.queryByText(SUGGESTIE.aiMotivatie!)).toBeNull();
+    expect(screen.queryByText(SUGGESTIE.aiMotivatie)).toBeNull();
     // She reads which minimumdoelen the thema aims at (FB-043), and no leerplandoel as a themadoel.
     expect(screen.getByRole("button", { name: /K-MD-1/, expanded: false })).toBeInTheDocument();
     expect(screen.queryByText("NED-1")).toBeNull();
@@ -439,9 +444,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("thema.suggestiesVragen"))).not.toBeNull();
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
-    expect(await screen.findByText(SUGGESTIE.aiMotivatie!)).toBeInTheDocument();
-    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
-    expect(knop(t("voorstelstapel.weigerAria", { naam: "WO-3" }))).not.toBeNull();
+    expect(await screen.findByText(SUGGESTIE.aiMotivatie)).toBeInTheDocument();
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
+    expect(knop(t("voorstelstapel.weigerAria", { naam: "K-9.1.1" }))).not.toBeNull();
 
     // I26 needs a wizard run's state the frontend does not read, so the delete is directie's here.
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
@@ -513,13 +518,53 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(screen.queryByText(t("klasbeheer.leeftijdenOnbekend"))).toBeNull();
   });
 
+  it("toont een voorgesteld minimumdoel met zijn mijlpaal en tekst, en aanvaarden stuurt die beslissing", async () => {
+    toon(ikMet({ heeftThemabeheer: true }));
+
+    await screen.findByText(SUGGESTIE.aiMotivatie);
+    expect(screen.getByText("K-9.1.1")).toBeInTheDocument();
+    expect(screen.getByText(t("minimumdoel.mijlpaalK"))).toBeInTheDocument();
+    expect(screen.getByText("De kleuters kunnen seizoenen onderscheiden.")).toBeInTheDocument();
+    expect(screen.getByText(t("thema.suggesties"))).toBeInTheDocument();
+
+    const fetchSpy = globalThis.fetch as unknown as { mock: { calls: [string, RequestInit | undefined][] } };
+    const beslissingen = () =>
+      fetchSpy.mock.calls
+        .filter(([pad, init]) => init?.method === "PUT" && pad.endsWith("/doelsuggesties/sug-1/status"))
+        .map(([, init]) => JSON.parse(String(init!.body)));
+
+    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
+    await waitFor(() => expect(beslissingen()).toEqual([{ status: "Aanvaard" }]));
+  });
+
+  it("toont de voorstellen in de volgorde van de server, het best passende eerst", async () => {
+    // Owner ruling 2026-09-16: the model's order, which the server keeps as a rank. Not sorted by code here, and the
+    // stack shows the first one on top.
+    toon(ikMet({ heeftThemabeheer: true }), {
+      suggesties: [
+        { ...SUGGESTIE, id: "sug-b", minimumdoelRef: "K-9.9.9", aiMotivatie: "Past het best." },
+        { ...SUGGESTIE, id: "sug-a", minimumdoelRef: "K-1.1.1", aiMotivatie: "Past ook." },
+        { ...SUGGESTIE, id: "sug-c", minimumdoelRef: "K-5.5.5", aiMotivatie: "Beslist.", status: "Geweigerd" },
+      ],
+    });
+
+    expect(await screen.findByText("Past het best.")).toBeInTheDocument();
+    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 1, totaal: 2 }))).toBeInTheDocument();
+    expect(screen.queryByText("Past ook.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.weigerAria", { naam: "K-9.9.9" }) }));
+    expect(await screen.findByText("Past ook.")).toBeInTheDocument();
+    // A decided proposal is never on the stack.
+    expect(screen.queryByText("Beslist.")).toBeNull();
+  });
+
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { weiger: true });
-    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "WO-3" }) }));
+    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
     // The refused suggestion is back on the stack, still waiting for a decision.
-    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
   });
 });
 
@@ -836,36 +881,6 @@ describe("ThemadetailScherm: doelen per leeftijd, alleen leerplandoelen (FB-009,
     fireEvent.click(lijst().getByRole("button", { name: /WIS-1/ }));
 
     expect(await screen.findByRole("dialog", { name: t("doel.titel") })).toBeInTheDocument();
-  });
-
-  it("noemt een aanvaarde doelsuggestie zo, en nooit een themadoel", async () => {
-    toon(DIRECTIE, {
-      overzicht: {
-        themaId: "thema-1",
-        leeftijden: [
-          {
-            leeftijd: "K3",
-            leerplandoelen: [
-              {
-                code: "TAAL-2",
-                doelsoort: "Gemeenschappelijk",
-                tekst: "Een prentenboek navertellen",
-                nietMeerInOpstap: false,
-                minimumdoelRef: null,
-                plaatsen: [{ soort: "Doelsuggestie", naam: null }],
-              },
-            ],
-          },
-        ],
-      },
-    });
-    const rij = await leeftijdrij();
-    expect(rij).toHaveTextContent(telWoord(1, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
-    fireEvent.click(rij);
-
-    const regel = lijst().getByRole("button", { name: /TAAL-2/ });
-    expect(regel).toHaveTextContent(t("thema.overzichtVia", { lijst: t("thema.plaatsDoelsuggestie") }));
-    expect(regel).not.toHaveTextContent(t("thema.plaatsThemadoel"));
   });
 
   it("toont geen blok zolang het thema geen beslist gekoppelde doelen heeft", async () => {

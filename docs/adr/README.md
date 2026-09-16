@@ -62,6 +62,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0049](0049-eigen-activiteit-van-de-leerkracht.md) | **A leerkracht's new activiteit is her own**: it belongs to her and follows her across schooljaren; her jaarfase colleagues read it and copy it; its goals count for a klas only once the activiteit is planned in that klas's agenda; a removed owner's activiteiten become shared (answers 0030 §4 (a) for activiteiten) | Accepted |
 | [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted |
 | [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
+| [0052](0052-doelsuggesties-zijn-minimumdoelen.md) | **A thema's doelsuggesties propose minimumdoelen as themadoelen**: the AI at thema level (thema page and wizard step 2) proposes only minimumdoelen of the mijlpalen the thema's leeftijden meet; accepting one makes it a themadoel and a rejected one is not proposed again; the leerplandoel doelsuggesties are deleted and no longer count for dekking (supersedes 0047 S2) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -116,6 +117,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0049 | Art. V.1, VI.1, IX.2 and XII (amended); part 2 of the 0030 §5 amendment, for activiteiten; relates to 0043 and 0047 | FB-015; FB-016 and FB-025 build on it | FR-3.1, FR-3.2 |
 | 0050 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; relates to 0043 and 0046 | FB-057; FB-054 builds on it | FR-4.1–FR-4.4; FA A.7 steps 4–6 |
 | 0051 | Art. XII, II.3; WCAG 2.2 AA via 0017; amends 0039 decision 5 | FB-057; later AI proposals | FR-4.2, FR-4.3; NFR-2 |
+| 0052 | Art. V.1 and IX.2 (amended); IV and VI.1 unchanged; supersedes 0047 S2 and part of D4; settles 0046 M7 | FB-053 | FR-4.1, FR-4.2, FR-4.3 |
 
 ## Open decisions referenced by ADRs
 
