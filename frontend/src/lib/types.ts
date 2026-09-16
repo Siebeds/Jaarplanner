@@ -574,6 +574,58 @@ export interface DoelMatchResultaat {
   jaarFasen: string[];
 }
 
+// --- Subdoelplaatsing (FB-057, ADR-0050). Advisory only: open proposals count for nothing until decided. ---
+
+export interface SubdoelvoorstelWeergave {
+  id: string;
+  leerplandoelCode: string;
+  tekst: string | null;
+  doelsoort: Doelsoort | null;
+  /** Set for a goal proposed for an existing subthema; null inside a proposed new one. */
+  subthemaId: string | null;
+  aiMotivatie: string;
+}
+
+export interface SubthemavoorstelWeergave {
+  id: string;
+  naam: string;
+  onderzoeksvraag: string;
+  duurWeken: number;
+  aiMotivatie: string;
+  doelen: SubdoelvoorstelWeergave[];
+}
+
+export interface LeeftijdPlaatsing {
+  leeftijd: string;
+  /** Leerplandoelen of the themadoelen in no subthema of this leeftijd yet. Needs no AI. */
+  aantalOpen: number;
+  /** Whether the caller may decide here; without it the two lists arrive empty (D6). */
+  magBeslissen: boolean;
+  subdoelvoorstellen: SubdoelvoorstelWeergave[];
+  subthemavoorstellen: SubthemavoorstelWeergave[];
+}
+
+export interface SubdoelplaatsingOverzicht {
+  themaId: string;
+  leeftijden: LeeftijdPlaatsing[];
+}
+
+export interface SubdoelplaatsingResultaat {
+  isGeslaagd: boolean;
+  aantalVoorgesteld: number;
+  aantalNieuweSubthemas: number;
+  aantalOvergeslagen: number;
+  fout: string | null;
+}
+
+export interface SubthemavoorstelBeslissing {
+  status: Extract<KoppelingStatus, "Aanvaard" | "Geweigerd">;
+  naam?: string;
+  onderzoeksvraag?: string;
+  duurWeken?: number;
+  leerplandoelCodes?: string[];
+}
+
 // --- Jaarplan (FR-5 to FR-8) ---
 
 export interface Themaplaatsing {

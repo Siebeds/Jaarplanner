@@ -60,6 +60,8 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0047](0047-dekkingsprognose-en-dekking.md) | **Dekking in two steps, the dekkingsprognose and the dekking**: a minimumdoel counts only through a thema it is a themadoel of, a leerplandoel through a subthema at the klas's leeftijd (placed in the agenda, for dekking), plus doelen on activiteiten, accepted doelsuggesties and planned algemene fiches; a klas is measured against the minimumdoelen of its mijlpaal (supersedes the Art. V.1 concordance route) | Accepted |
 | [0048](0048-claude-api-als-tweede-ai-provider.md) | **The Claude API as a second AI provider**: `Ai:Provider` picks Azure AI Foundry (the default) or the Anthropic Claude API for the whole deployment; the Claude client sends the same two prompts through the official SDK to a configurable endpoint with a server-side key; a deployment on the Claude API is not held to an EU processing location (supersedes 0016 in part) | Accepted |
 | [0049](0049-eigen-activiteit-van-de-leerkracht.md) | **A leerkracht's new activiteit is her own**: it belongs to her and follows her across schooljaren; her jaarfase colleagues read it and copy it; its goals count for a klas only once the activiteit is planned in that klas's agenda; a removed owner's activiteiten become shared (answers 0030 §4 (a) for activiteiten) | Accepted |
+| [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted |
+| [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -112,6 +114,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0047 | Art. V.1, V.2, IX.3 and XII (amended); supersedes the Art. V.1 concordance route for minimumdoelen; relates to 0029 and 0046 | FB-045 | FR-9.1, FR-9.2, FR-9.3 |
 | 0048 | Art. VI.3 and VIII (amended); IV and VI.4 unchanged; supersedes 0016 in part; relates to 0010, 0012, 0035 | TB-041 | — (all AI features: FR-4, FR-5, FR-13.4) |
 | 0049 | Art. V.1, VI.1, IX.2 and XII (amended); part 2 of the 0030 §5 amendment, for activiteiten; relates to 0043 and 0047 | FB-015; FB-016 and FB-025 build on it | FR-3.1, FR-3.2 |
+| 0050 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; relates to 0043 and 0046 | FB-057; FB-054 builds on it | FR-4.1–FR-4.4; FA A.7 steps 4–6 |
+| 0051 | Art. XII, II.3; WCAG 2.2 AA via 0017; amends 0039 decision 5 | FB-057; later AI proposals | FR-4.2, FR-4.3; NFR-2 |
 
 ## Open decisions referenced by ADRs
 
