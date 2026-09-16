@@ -682,6 +682,7 @@ export function jaarplan(t: Toestand, klas: Toestand["klassen"][number]): Jaarpl
           id: p.id,
           themaId: thema.id,
           themaNaam: thema.naam,
+          themaIcoon: thema.icoon ?? null,
           van: p.van,
           tot: p.tot,
           isVervallen: p.van < eersteSchooldag() || p.tot > laatsteSchooldag() || dagenTussen(p.van, p.tot).some(isVakantie),

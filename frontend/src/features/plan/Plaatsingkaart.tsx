@@ -7,6 +7,7 @@ import { Invoer, Veld } from "../../components/ui/Veld";
 import { periode, volleDag } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { Themaicoon } from "../themas/Emojikiezer";
 
 /**
  * One placed thema, and everything a teacher can do to it (FR-7, ADR-0053): its days, the verdict on a proposal, and
@@ -73,7 +74,10 @@ export function Plaatsingkaart({
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="text-micro uppercase text-inkt-zwak">{t("plan.thema")}</p>
-          <h2 className="font-display text-sectie text-inkt">{plaatsing.themaNaam}</h2>
+          <h2 className="font-display text-sectie text-inkt">
+            <Themaicoon icoon={plaatsing.themaIcoon} />
+            {plaatsing.themaNaam}
+          </h2>
           <p className="mono mt-0.5 text-meta text-inkt-zwak">
             {periode(plaatsing.van, plaatsing.tot)}
             {reeks && reeks.aantalDelen > 1 ? ` · ${t("plan.deel", { deel: reeks.deel, aantal: reeks.aantalDelen })}` : ""}

@@ -21,7 +21,7 @@ export interface Themavak {
    * The thema running on these days, id and name together, as a list: the bands print the name, and the activiteit
    * picker asks which thema's a given DAY may offer, which is an id question.
    */
-  themas: readonly { id: string; naam: string }[];
+  themas: readonly { id: string; naam: string; icoon?: string | null }[];
 }
 
 /** A thema placement as a stretch of days, in the shape the run finders (`subthemareeksen`) take. */
@@ -29,6 +29,7 @@ export interface Themablok {
   plaatsingId: string;
   themaId: string;
   themaNaam: string;
+  themaIcoon: string | null;
   start: string;
   eind: string;
 }
@@ -39,6 +40,7 @@ interface Plaatsing {
   tot: string;
   themaId: string;
   themaNaam: string;
+  themaIcoon?: string | null;
   status: string;
 }
 
@@ -55,6 +57,7 @@ export function themablokken(plaatsingen: readonly Plaatsing[]): Themablok[] {
       plaatsingId: plaatsing.id,
       themaId: plaatsing.themaId,
       themaNaam: plaatsing.themaNaam,
+      themaIcoon: plaatsing.themaIcoon ?? null,
       start: plaatsing.van,
       eind: plaatsing.tot,
     }))
@@ -67,7 +70,7 @@ export function themavakken(plaatsingen: readonly Plaatsing[]): Themavak[] {
     plaatsingId: blok.plaatsingId,
     van: blok.start,
     tot: blok.eind,
-    themas: [{ id: blok.themaId, naam: blok.themaNaam }],
+    themas: [{ id: blok.themaId, naam: blok.themaNaam, icoon: blok.themaIcoon }],
   }));
 }
 

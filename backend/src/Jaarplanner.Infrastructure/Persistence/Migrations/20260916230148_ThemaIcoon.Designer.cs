@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916230731_ThemaplaatsingDatums")]
-    partial class ThemaplaatsingDatums
+    [Migration("20260916230148_ThemaIcoon")]
+    partial class ThemaIcoon
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1101,6 +1101,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<int>("DuurWeken")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Icoon")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("Invalshoeken")
                         .HasColumnType("text");
 
@@ -1606,6 +1610,14 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                             b1.Property<string>("AiMotivatie")
                                 .HasColumnType("text");
 
+                            b1.Property<string>("BlokNiveau")
+                                .IsRequired()
+                                .HasMaxLength(32)
+                                .HasColumnType("character varying(32)");
+
+                            b1.Property<DateOnly>("BlokStart")
+                                .HasColumnType("date");
+
                             b1.Property<Guid>("JaarplanId")
                                 .HasColumnType("uuid");
 
@@ -1617,12 +1629,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("ThemaId")
                                 .HasColumnType("uuid");
 
-                            b1.Property<DateOnly>("Tot")
-                                .HasColumnType("date");
-
-                            b1.Property<DateOnly>("Van")
-                                .HasColumnType("date");
-
                             b1.Property<bool>("Vergrendeld")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("boolean")
@@ -1632,7 +1638,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                             b1.HasIndex("ThemaId");
 
-                            b1.HasIndex("JaarplanId", "Van")
+                            b1.HasIndex("JaarplanId", "BlokStart");
+
+                            b1.HasIndex("JaarplanId", "ThemaId", "BlokNiveau", "BlokStart")
                                 .IsUnique();
 
                             b1.ToTable("themaplaatsingen", (string)null);

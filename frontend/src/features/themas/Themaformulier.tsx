@@ -9,6 +9,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { ThemaWeergave } from "../../lib/types";
 import type { ThemaInvoer } from "./mutaties";
+import { Emojikiezer } from "./Emojikiezer";
 
 /**
  * Making or changing a school-wide thema (FR-3.1).
@@ -53,12 +54,14 @@ export function Themaformulier({
   const id = useId();
   const [begin] = useState(() => ({
     naam: thema?.naam ?? "",
+    icoon: thema?.icoon ?? null,
     duur: thema?.duurWeken ?? 4,
     invalshoeken: thema?.invalshoeken ?? "",
     kern: thema?.kernwoordenschat ?? [],
     rijk: thema?.rijkeWoordenschat ?? [],
   }));
   const [naam, setNaam] = useState(begin.naam);
+  const [icoon, setIcoon] = useState<string | null>(begin.icoon);
   const [duur, setDuur] = useState(begin.duur);
   // A string, because an <input type=number> is empty for a moment while it is being cleared and a
   // numeric state would turn that into 0 or NaN under the teacher's cursor.
@@ -76,6 +79,7 @@ export function Themaformulier({
   // Trimmed where the saved value is trimmed, so a trailing space is not a change.
   const gewijzigd = {
     naam: naam.trim() !== begin.naam.trim(),
+    icoon: icoon !== begin.icoon,
     duur: weken !== begin.duur,
     invalshoeken: invalshoeken.trim() !== begin.invalshoeken.trim(),
     kern: !zelfdeLijst(kern, begin.kern),
@@ -107,6 +111,7 @@ export function Themaformulier({
       invalshoeken: invalshoeken.trim() === "" ? null : invalshoeken.trim(),
       kernwoordenschat: kern,
       rijkeWoordenschat: rijk,
+      icoon,
     });
   }
 
@@ -155,20 +160,22 @@ export function Themaformulier({
           by id rather than by nesting. */}
       <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
         <div>
-          <Label htmlFor={`${id}-naam`} gewijzigd={!nieuw && gewijzigd.naam}>
+          <Label htmlFor={`${id}-naam`} gewijzigd={!nieuw && (gewijzigd.naam || gewijzigd.icoon)}>
             {t("themabeheer.naam")}
           </Label>
-          <Invoer
-            id={`${id}-naam`}
-            value={naam}
-            disabled={bezig}
-            aria-invalid={naamFout || undefined}
-            onChange={(e) => {
-              setNaam(e.target.value);
-              if (naamFout) setNaamFout(false);
-            }}
-            className="mt-1.5"
-          />
+          <div className="mt-1.5 flex gap-2">
+            <Emojikiezer waarde={icoon} onKies={setIcoon} uitgeschakeld={bezig} />
+            <Invoer
+              id={`${id}-naam`}
+              value={naam}
+              disabled={bezig}
+              aria-invalid={naamFout || undefined}
+              onChange={(e) => {
+                setNaam(e.target.value);
+                if (naamFout) setNaamFout(false);
+              }}
+            />
+          </div>
           {naamFout ? (
             <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
               {t("themabeheer.naamVerplicht")}

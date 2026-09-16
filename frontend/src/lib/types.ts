@@ -491,6 +491,8 @@ export interface ThemaWeergave {
   /** The themadoelen a teacher sees: the minimumdoelen the thema aims at (FB-043). */
   minimumdoelen: ThemaMinimumdoelWeergave[];
   subthemas: SubthemaWeergave[];
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
@@ -549,6 +551,8 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 // --- A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel. Advisory only (Art. IV). ---
@@ -665,6 +669,8 @@ export interface Themaplaatsing {
   doelcodes: string[];
   duurWeken: number;
   reeks: Reeks | null;
+  /** The thema's emoji (FB-060). Null or absent when it has none. */
+  themaIcoon?: string | null;
 }
 
 /** A Monday-to-Friday week holding at least one schooldag. */

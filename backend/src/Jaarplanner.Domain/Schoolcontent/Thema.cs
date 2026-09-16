@@ -51,6 +51,12 @@ public sealed class Thema
     /// <summary>The themaperiode duration in weeks (≈ 4–6).</summary>
     public int DuurWeken { get; private set; }
 
+    /// <summary>
+    /// An optional emoji shown beside the naam (FB-060), never instead of it. <c>null</c> when the thema has none; see
+    /// <see cref="ThemaIcoon"/> for what counts as one emoji.
+    /// </summary>
+    public string? Icoon { get; private set; }
+
     /// <summary>Kernwoordenschat (basiswoorden) — school-wide; two-tier with <see cref="RijkeWoordenschat"/>.</summary>
     public IReadOnlyList<string> Kernwoordenschat => _kernwoordenschat;
 
@@ -96,6 +102,10 @@ public sealed class Thema
     /// Art. III). School-wide scope is unaffected.
     /// </summary>
     public void WijzigNaam(string naam) => Naam = Require(naam, nameof(naam));
+
+    /// <summary>Sets or clears the thema's emoji (FB-060). Empty clears it.</summary>
+    /// <exception cref="ArgumentException">The value is not exactly one emoji.</exception>
+    public void WijzigIcoon(string? icoon) => Icoon = ThemaIcoon.Normaliseer(icoon);
 
     /// <summary>
     /// Removes a subthema (and, via the EF cascade, its subdoelen + activiteiten) from this thema.

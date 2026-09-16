@@ -464,7 +464,8 @@ public sealed class JaarplanService : IJaarplanLezer
                     p.Vergrendeld,
                     thema is null ? [] : JaarplanGeneratiePromptBuilder.ThemaDoelcodes(thema),
                     thema?.DuurWeken ?? 0,
-                    reeksPerPlaatsing.GetValueOrDefault(p.Id));
+                    reeksPerPlaatsing.GetValueOrDefault(p.Id),
+                    thema?.Icoon);
             })
             .ToList();
 

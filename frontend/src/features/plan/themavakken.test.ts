@@ -41,7 +41,7 @@ describe("themavakken", () => {
       plaatsingId: "p-herfst-1",
       van: "2026-10-19",
       tot: "2026-10-30",
-      themas: [{ id: "t-herfst", naam: "Herfst" }],
+      themas: [{ id: "t-herfst", naam: "Herfst", icoon: null }],
     });
   });
 });

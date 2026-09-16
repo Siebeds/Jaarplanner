@@ -71,6 +71,7 @@ public sealed record JaarbalansWeergave(int Lesweken, int MetThema, int ZonderTh
 /// Where this placement sits in its thema's run: which part it is, and whether the run's end differs from the thema's
 /// duration. Null for a rejected placement, which belongs to no run.
 /// </param>
+/// <param name="ThemaIcoon">The thema's emoji (FB-060), shown beside <paramref name="ThemaNaam"/>; <c>null</c> when it has none.</param>
 public sealed record ThemaplaatsingWeergave(
     Guid Id,
     Guid ThemaId,
@@ -83,7 +84,8 @@ public sealed record ThemaplaatsingWeergave(
     bool Vergrendeld,
     IReadOnlyList<string> Doelcodes,
     int DuurWeken,
-    ReeksWeergave? Reeks);
+    ReeksWeergave? Reeks,
+    string? ThemaIcoon = null);
 
 /// <summary>
 /// A placement's place in its thema's run: the parts stored around a vacation (ADR-0053 decision 4).
