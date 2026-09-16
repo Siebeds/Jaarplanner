@@ -2,7 +2,6 @@ using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Application.Planning.Rooster;
 using Jaarplanner.Application.Toegang;
-using Jaarplanner.Domain.Planning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -62,48 +61,20 @@ public sealed class SchooljarenController : ControllerBase
     }
 
     /// <summary>
-    /// The year's <b>derived planning grid</b> (E3-06, FR-6.1): every block of the requested tier, plus the
-    /// vakanties that separate them. This is what the calendar renders the ribbon from.
-    /// <para>
-    /// Separate from <c>GET /api/klassen/{klasId}/jaarplan</c> on purpose: that returns a class's
-    /// <i>placements</i>, and a calendar built from placements alone cannot show an <b>empty</b> period — so a
-    /// teacher could not see where there is room, and E3-09's "nergens gepland" tray would have no ribbon to
-    /// sit against. The grid belongs to the school year, not to any one class, so it is read here.
-    /// </para>
+    /// The year's frame (FR-6.1): its span and the vacations inside it, which the plan screen's timeline and the agenda
+    /// are drawn in. Separate from <c>GET /api/klassen/{klasId}/jaarplan</c>, which carries a class's placements and
+    /// lesweken: the frame belongs to the school year, not to any one class.
     /// </summary>
-    /// <param name="niveau">
-    /// Which tier to derive: <c>Themaperiode</c> (default, the "hele jaar" view) or <c>Subthemaperiode</c>
-    /// (E3-08's "per periode" zoom). Deliberately a tier, never a calendar unit (Art. IX.3, ADR-0013).
-    /// </param>
     [HttpGet("{schooljaarId:guid}/rooster")]
     public async Task<ActionResult<PlanningsroosterWeergave>> Rooster(
         Guid schooljaarId,
-        CancellationToken cancellationToken,
-        [FromQuery] Planningsblokniveau niveau = Planningsblokniveau.Themaperiode)
-    {
-        // ASP.NET Core binds ANY integer to an enum parameter without complaint, so `?niveau=99` bound to
-        // (Planningsblokniveau)99, passed model validation, and only blew up deep in the indeling seam as an
-        // unmapped ArgumentOutOfRangeException — a 500 on a public GET for what is plainly a bad request.
-        // (`?niveau=Maand` was always a clean 400; only the numeric form slipped through.) Checked here rather
-        // than in the service because it is a binding concern, and the seam's guard stays as the backstop.
-        if (!Enum.IsDefined(niveau))
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "Onbekend planningsblokniveau",
-                Detail = $"'{niveau}' is geen geldig niveau. Kies {nameof(Planningsblokniveau.Themaperiode)} " +
-                         $"of {nameof(Planningsblokniveau.Subthemaperiode)}.",
-            });
-        }
-
-        return Ok(await _rooster.HaalRoosterOpAsync(schooljaarId, niveau, cancellationToken));
-    }
+        CancellationToken cancellationToken) =>
+        Ok(await _rooster.HaalRoosterOpAsync(schooljaarId, cancellationToken));
 
     /// <summary>
     /// Creates a school year with its vakantie-/periodestructuur. Each closure is classified
-    /// <c>Vakantie</c> (breaks a planning period) or <c>VrijeDag</c> (does not) — data the school owns, never a
-    /// threshold in code (ADR-0020 §5).
+    /// <c>Vakantie</c> (splits a thema, ADR-0053) or <c>VrijeDag</c> (does not) — data the school owns, never a
+    /// threshold in code.
     /// </summary>
     /// <remarks>Directie only (E6-02: the row <c>Beheer</c>, ADR-0030 R2, R3, R16).</remarks>
     [HttpPost]

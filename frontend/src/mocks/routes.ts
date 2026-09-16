@@ -67,6 +67,16 @@ function vind<T>(waarde: T | null | undefined, wat: string): T {
   return waarde;
 }
 
+/** Runs a jaarplan rule and answers its refusal as the server does: a 400 the teacher can read. */
+function alsOngeldig<T>(regel: () => T): T {
+  try {
+    return regel();
+  } catch (fout) {
+    if (fout instanceof Fout) throw fout;
+    throw new Fout(400, fout instanceof Error ? fout.message : String(fout));
+  }
+}
+
 function klasVan(v: Verzoek) {
   return vind(
     v.s.klassen.find((k) => k.id === v.params.klasId),
@@ -648,25 +658,25 @@ const TABEL: [Methode, string, Handler][] = [
   // Jaarplan
   ["GET", "/api/klassen/:klasId/jaarplan", (v) => t.jaarplan(v.s, klasVan(v))],
   [
+    "GET",
+    "/api/klassen/:klasId/jaarplan/voorstel",
+    (v) => {
+      klasVan(v);
+      const thema = themaVan(v, v.query.get("themaId") ?? "");
+      return alsOngeldig(() => t.eindvoorstel(v.s, thema, v.query.get("van") ?? ""));
+    },
+  ],
+  [
     "POST",
     "/api/klassen/:klasId/jaarplan/plaatsingen",
     (v) => {
       const klas = klasVan(v);
       const thema = themaVan(v, String(v.body.themaId));
-      const blokStart = String(v.body.blokStart);
-      if (!t.bestaatBlok(blokStart)) throw new Fout(400, `Er begint geen themaperiode op ${blokStart}.`);
-      v.s.plaatsingen.push({
-        id: t.nieuwId(),
-        themaId: thema.id,
-        blokStart,
-        weken: thema.duurWeken,
-        status: "Manueel",
-        vergrendeld: false,
-      });
+      alsOngeldig(() => t.plaats(v.s, thema.id, String(v.body.van), String(v.body.tot), "Manueel"));
       return t.jaarplan(v.s, klas);
     },
   ],
-  ...(["status", "vergrendeling", "blok"] as const).map(
+  ...(["status", "datums", "verschuiving"] as const).map(
     (actie): [Methode, string, Handler] => [
       "PUT",
       `/api/klassen/:klasId/jaarplan/plaatsingen/:plaatsingId/${actie}`,
@@ -676,16 +686,19 @@ const TABEL: [Methode, string, Handler][] = [
           v.s.plaatsingen.find((p) => p.id === v.params.plaatsingId),
           "Deze plaatsing",
         );
-        if (actie === "status") plaatsing.status = v.body.status as KoppelingStatus;
-        if (actie === "vergrendeling") plaatsing.vergrendeld = Boolean(v.body.vergrendeld);
-        if (actie === "blok") {
-          const blokStart = String(v.body.blokStart);
-          if (!t.bestaatBlok(blokStart)) throw new Fout(400, `Er begint geen themaperiode op ${blokStart}.`);
-          if (plaatsing.blokStart !== blokStart) {
-            plaatsing.blokStart = blokStart;
-            plaatsing.status = "Manueel";
+        if (actie === "status") {
+          const status = v.body.status as KoppelingStatus;
+          if (status !== "Aanvaard" && status !== "Manueel") {
+            throw new Fout(400, "Een voorstel weigeren doe je door het te verwijderen.");
           }
+          plaatsing.status = status;
         }
+        if (actie === "datums") {
+          alsOngeldig(() =>
+            t.plaats(v.s, plaatsing.themaId, String(v.body.van), String(v.body.tot), "Manueel", [plaatsing.id]),
+          );
+        }
+        if (actie === "verschuiving") alsOngeldig(() => t.verschuif(v.s, plaatsing, String(v.body.van)));
         return t.jaarplan(v.s, klas);
       },
     ],

@@ -612,12 +612,9 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
     /// <summary>
     /// An L3 class with a thema placed in its jaarplan, and its L3 subthema, carrying <paramref name="code"/> as a subdoel,
     /// placed in the agenda (Art. V.1).
-    /// The block start comes from the real <see cref="IPlanningsblokIndeling"/>, as in <c>DekkingEndpointsTests</c>.
     /// </summary>
     private async Task<Guid> ZetGeplaatstThemaOpAsync(string code)
     {
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
         await using var context = _db.MaakContext();
 
         var schooljaar = new Schooljaar($"2026-2027-{Guid.NewGuid():N}"[..20], new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));
@@ -632,8 +629,8 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         var jaarplan = new Jaarplan(klas.Id);
         jaarplan.VoegPlaatsingToe(
             thema.Id,
-            JaarplanGeneratieService.GeneratieNiveau,
-            indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0].Start,
+            schooljaar.Start,
+            schooljaar.Start.AddDays(25),
             KoppelingStatus.Aanvaard,
             null);
         context.Jaarplannen.Add(jaarplan);

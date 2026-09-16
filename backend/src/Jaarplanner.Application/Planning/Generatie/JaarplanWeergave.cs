@@ -1,156 +1,134 @@
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// The reviewable read view of a class's jaarplan (FR-5.1, Art. IV.2) — what the API returns and what a teacher
-/// (E3-06's calendar) reviews.
+/// The read view of a class's jaarplan (FR-5.1, FR-6.1, Art. IV.2): every placement with its dates, the school year's
+/// lesweken and the balance the plan screen shows above its timeline (ADR-0053 decision 6).
 /// <para>
-/// <b>The block grid is projected, not stored.</b> Each placement's period bounds and label are resolved at read
-/// time against the blocks the <see cref="IPlanningsblokIndeling"/> seam derives right now, so this view honestly
-/// reflects the current calendar rather than a snapshot taken at generation time (ADR-0013/0020).
+/// <b>Everything calendar-shaped is computed here, not in the browser.</b> Which week is a lesweek, which parts form one
+/// thema, whether an end differs from the thema's duration and whether a placement no longer fits the year are all
+/// questions <c>Themakalender</c> answers from the schooljaar's closures. Answering them twice, once in TypeScript,
+/// is how a screen comes to contradict the server.
 /// </para>
 /// </summary>
 /// <param name="KlasId">The class this plan belongs to.</param>
 /// <param name="KlasNaam">The class name, so a caller need not fetch it separately.</param>
 /// <param name="SchooljaarId">The school year the class sits in (Art. IX.3 containment).</param>
 /// <param name="SchooljaarNaam">The school year label (e.g. "2026-2027").</param>
-/// <param name="Blokindeling">
-/// A human-readable description of the configured planning grain (the seam's <c>Omschrijving</c>), so the caller
-/// can show <i>why</i> the periods look the way they do instead of inferring a unit.
-/// </param>
-/// <param name="Plaatsingen">The thema placements, chronological by the block start date they key on.</param>
-/// <param name="Blokken">
-/// Every block of the <b>generation</b> tier with how full it is: the weeks its thema's need against the weeks it
-/// offers, and the resulting <c>IsOverbelast</c> verdict (E3-09, FR-6.4).
-/// <para>
-/// <b>Why it rides on the plan read and not on the rooster.</b> "Te vol" is a fact about a <i>class's plan</i>, not
-/// about the year: the same period is over-full for L3 and empty for L1. <c>PlanningsroosterWeergave</c> is keyed on
-/// the schooljaar alone and knows no placements, so it can supply only the available half.
-/// </para>
-/// <para>
-/// <b>Why it is computed here at all rather than in TypeScript.</b> Before E3-09 these figures existed only on the
-/// <i>generation</i> response, while the board renders from this read plus the rooster — so the kalender had a
-/// provisional threshold of its own that counted thema's and contradicted the server for months. The rule is
-/// arithmetic on data the school supplied (Art. IX.3) and it now has exactly one implementation,
-/// <see cref="BlokspreidingWeergave.IsOverbelast"/>, reached by both responses.
-/// </para>
-/// <para>
-/// <b>Rejected placements are excluded and stale ones cannot appear</b>, matching the generation path exactly:
-/// nothing is taught in a period on account of a thema the teacher threw out (<c>Themaplaatsing.IsGepland</c>), and a
-/// stale <c>BlokStart</c> matches no block's start so it lands in no entry. A stale placement is therefore absent
-/// from this list <i>and</i> flagged by <see cref="ThemaplaatsingWeergave.IsVervallen"/>, which is the honest pair:
-/// its weeks are not attributed to a period that does not hold it, and it is not silently forgotten.
-/// </para>
-/// <para>
-/// <b>Always the generation tier, whatever the board is zoomed to</b> (owner ruling, 2026-07-31). Applied naively at
-/// the subthemaperiode tier the arithmetic flags every filled sub-column, since a fortnight offers ~2 weeks against a
-/// thema's whole 4 to 6 — a board that signals nothing. The property belongs to the tier a placement keys on
-/// (ADR-0020 §3), and the fine view summarises it in one line above the board instead of inheriting a mark per column.
-/// </para>
-/// </param>
+/// <param name="EersteSchooldag">The first schooldag of the year: the earliest day a thema can start.</param>
+/// <param name="LaatsteSchooldag">The last schooldag of the year: the latest day a thema can end.</param>
+/// <param name="Plaatsingen">The thema placements, chronological.</param>
+/// <param name="Lesweken">Every lesweek of the year, chronological, with whether a thema runs in it.</param>
+/// <param name="Balans">The year balance: lesweken, with and without a thema.</param>
 public sealed record JaarplanWeergave(
     Guid KlasId,
     string KlasNaam,
     Guid SchooljaarId,
     string SchooljaarNaam,
-    string Blokindeling,
+    DateOnly EersteSchooldag,
+    DateOnly LaatsteSchooldag,
     IReadOnlyList<ThemaplaatsingWeergave> Plaatsingen,
-    IReadOnlyList<BlokspreidingWeergave> Blokken)
-{
-    /// <summary>
-    /// The periods that accept nothing new because the teacher blocked them with a vast moment (E4-05, FR-5.4/FR-8.2),
-    /// each with the name of the moment doing the blocking.
-    /// <para>
-    /// <b>On the read because a control that cannot work must say so before it is pressed, not after</b> (owner ruling
-    /// 2026-08-06, and the E3-06 rule): the per-period regeneration trigger, the hand-placement picker and the drag
-    /// target all refuse a blocked period, and all three need the reason in visible text rather than as a failed
-    /// request. Without this the UI would have to provoke a 409 to find out.
-    /// </para>
-    /// <para>
-    /// <b>It says "nothing new", not "nothing here".</b> Whatever was planned in such a period before the moment was
-    /// registered stays exactly where it is, so a period in this list may well hold thema's, and copy built on it must
-    /// not call it empty or unavailable. Nothing about the rule is retroactive.
-    /// </para>
-    /// <para>
-    /// An <c>init</c> property rather than a positional parameter: every mutation on this service returns the plan, so
-    /// the alternative was six call sites passing it positionally, where an empty list at any one of them would
-    /// silently re-enable a control the server refuses.
-    /// </para>
-    /// </summary>
-    public IReadOnlyList<GeblokkeerdePeriodeWeergave> GeblokkeerdePeriodes { get; init; } = [];
-}
+    IReadOnlyList<LesweekWeergave> Lesweken,
+    JaarbalansWeergave Balans);
 
 /// <summary>
-/// One period a teacher has blocked with a vast moment, as the API reports it.
+/// One lesweek: a Monday-to-Friday week holding at least one schooldag.
 /// </summary>
-/// <param name="BlokStart">The block's start date — the same key placements use, never an ordinal (ADR-0020 §3).</param>
-/// <param name="MomentNaam">
-/// The teacher's own name for the commitment ("oudercontact"), so the refusal can name <i>which</i> one blocks the
-/// period instead of sending them hunting through the generation settings. It is school data, not a server-authored
-/// sentence, so passing it to the client does not breach the Art. II.3 rule against rendering server prose.
+/// <param name="Maandag">The Monday of the week, which identifies it.</param>
+/// <param name="HeeftThema">
+/// Whether a planned placement covers a day of this week. A lesweek without one is what the timeline marks
+/// (ADR-0053 R7).
 /// </param>
-public sealed record GeblokkeerdePeriodeWeergave(DateOnly BlokStart, string MomentNaam);
+public sealed record LesweekWeergave(DateOnly Maandag, bool HeeftThema);
+
+/// <summary>The year balance above the timeline (ADR-0053 R7).</summary>
+/// <param name="Lesweken">The lesweken of the school year.</param>
+/// <param name="MetThema">The lesweken in which a planned thema runs.</param>
+/// <param name="ZonderThema">The lesweken in which none does.</param>
+public sealed record JaarbalansWeergave(int Lesweken, int MetThema, int ZonderThema);
 
 /// <summary>
-/// One thema placement as returned by the API: the persisted facts plus the block bounds projected from the
-/// currently derived grid.
+/// One thema placement as returned by the API.
 /// </summary>
-/// <param name="Id">The placement's identity — what the review/lock endpoints address.</param>
+/// <param name="Id">The placement's identity — what the review, date and delete endpoints address.</param>
 /// <param name="ThemaId">The placed thema.</param>
 /// <param name="ThemaNaam">The thema's name.</param>
-/// <param name="BlokNiveau">The tier of the block (themaperiode / subthemaperiode).</param>
-/// <param name="BlokStart">
-/// The <b>persisted key</b>: the start date of the block the thema is placed in. Never an ordinal (ADR-0020 §3).
-/// </param>
-/// <param name="BlokEind">
-/// The end date of the matching derived block, or <c>null</c> when no current block starts on
-/// <paramref name="BlokStart"/> — see <paramref name="IsVervallen"/>.
-/// </param>
-/// <param name="BlokOrdinaal">
-/// The matching block's display position ("periode 3"), or <c>null</c> when the placement is stale. Present for
-/// display only; it is not the key and shifts when the school edits its vakanties.
-/// </param>
+/// <param name="Van">The first day the thema runs, inclusive.</param>
+/// <param name="Tot">The last day the thema runs, inclusive.</param>
 /// <param name="IsVervallen">
-/// <c>true</c> when <paramref name="BlokStart"/> is no longer the start of any derived block — i.e. the school
-/// edited its vakanties and this placement now points at a date that is not a period boundary. The application
-/// deliberately does <b>not</b> guess a new period (directie 2026-07-28, ADR-0020 follow-ups); it reports the
-/// fact. Surfacing it as a non-dismissible signal and refusing a dekking figure while it holds are E3-07/E3-09/E5
-/// obligations — this flag is the honest input they need, not a claim that they are implemented.
+/// <c>true</c> when the school edited its vacations and a vacation now lies inside this placement, or it reaches
+/// outside the year. The application does <b>not</b> move it (directie 2026-07-28); it reports the fact, the screen
+/// shows a lasting notice, and dekking withholds its figures until the teacher saves the placement again.
 /// </param>
-/// <param name="Status">The persisted human-in-the-loop status (Art. IV.2): voorgesteld/aanvaard/geweigerd/manueel.</param>
+/// <param name="Status">The persisted human-in-the-loop status (Art. IV.2): voorgesteld/aanvaard/manueel.</param>
 /// <param name="AiMotivatie">The AI's short "waarom hier?" motivation (Art. IV.3); null for a manual placement.</param>
-/// <param name="Vergrendeld">Whether the teacher locked this placement against (re)generation (Art. IX.3, E4).</param>
+/// <param name="Vergrendeld">Whether the teacher locked this placement against (re)generation (Art. IX.3).</param>
 /// <param name="Doelcodes">
 /// The leerplandoel codes this thema actually carries (themadoelen + accepted/manual links). <b>Derived, never
-/// stored on the plan</b> — a goal is covered because its thema is placed (Art. V.1), and duplicating the codes
-/// onto the placement would be storing dekking, which Art. V.1 forbids.
+/// stored on the plan</b> — duplicating them onto the placement would be storing dekking, which Art. V.1 forbids.
 /// </param>
-/// <param name="DuurWeken">
-/// The thema's nominal duration in weeks, straight off the <c>Thema</c> (E3-09).
-/// <para>
-/// Carried so the board can answer "would this period become te vol?" <b>during</b> the drag, before the drop, which
-/// is the one question a teacher rearranging a year is actually asking. A hover cannot round-trip to the server, so
-/// the client adds this to the target block's <c>BenodigdeWeken</c> and applies the same comparison. That is the only
-/// sanctioned mirror of <see cref="BlokspreidingWeergave.IsOverbelast"/>, and a frontend test pins the mirror against
-/// the server's own answer for the state already on screen so the two cannot drift.
-/// </para>
-/// <para>
-/// 0 when the thema could not be resolved, the same degrade <paramref name="ThemaNaam"/> takes. <c>DuurWeken</c> is
-/// <c>RequirePositive</c> in the domain, so 0 means "unknown thema", never "a thema of no length".
-/// </para>
+/// <param name="DuurWeken">The thema's duration in weeks, straight off the <c>Thema</c>; 0 for an unknown thema.</param>
+/// <param name="Reeks">
+/// Where this placement sits in its thema's run: which part it is, and whether the run's end differs from the thema's
+/// duration. Null for a rejected placement, which belongs to no run.
 /// </param>
 /// <param name="ThemaIcoon">The thema's emoji (FB-060), shown beside <paramref name="ThemaNaam"/>; <c>null</c> when it has none.</param>
 public sealed record ThemaplaatsingWeergave(
     Guid Id,
     Guid ThemaId,
     string ThemaNaam,
-    string BlokNiveau,
-    DateOnly BlokStart,
-    DateOnly? BlokEind,
-    int? BlokOrdinaal,
+    DateOnly Van,
+    DateOnly Tot,
     bool IsVervallen,
     string Status,
     string? AiMotivatie,
     bool Vergrendeld,
     IReadOnlyList<string> Doelcodes,
     int DuurWeken,
+    ReeksWeergave? Reeks,
     string? ThemaIcoon = null);
+
+/// <summary>
+/// A placement's place in its thema's run: the parts stored around a vacation (ADR-0053 decision 4).
+/// </summary>
+/// <param name="Deel">This part's position in the run, 1-based.</param>
+/// <param name="AantalDelen">How many parts the run has.</param>
+/// <param name="ReeksVan">The first day of the run.</param>
+/// <param name="ReeksTot">The last day of the run.</param>
+/// <param name="Weken">The whole lesweken the run spans.</param>
+/// <param name="EindeAangepast">
+/// Whether the run ends on another day than the thema's duration proposes from its first day: the teacher changed the
+/// end, the next thema cut it, or the year did.
+/// </param>
+/// <param name="StoptBijEindeSchooljaar">
+/// Whether the run was cut because the school year ends before the thema's duration is over (ADR-0053 R5).
+/// </param>
+public sealed record ReeksWeergave(
+    int Deel,
+    int AantalDelen,
+    DateOnly ReeksVan,
+    DateOnly ReeksTot,
+    int Weken,
+    bool EindeAangepast,
+    bool StoptBijEindeSchooljaar);
+
+/// <summary>
+/// The end the tool proposes for a thema starting on a chosen day, and the parts that would be stored
+/// (<c>GET …/jaarplan/voorstel</c>, ADR-0053 R2 and R3).
+/// </summary>
+/// <param name="Van">The chosen first day.</param>
+/// <param name="Tot">The proposed last day.</param>
+/// <param name="Delen">The parts the tool would store, split at every vacation.</param>
+/// <param name="BeperktDoor">
+/// Why the proposal is shorter than the thema: <c>VolgendThema</c> when the next placement starts earlier, whose name is
+/// in <paramref name="VolgendThemaNaam"/>; <c>Schooljaar</c> when the year ends first; null otherwise.
+/// </param>
+/// <param name="VolgendThemaNaam">The name of the thema that cut the proposal short, when it was one.</param>
+public sealed record EindvoorstelWeergave(
+    DateOnly Van,
+    DateOnly Tot,
+    IReadOnlyList<DeelWeergave> Delen,
+    string? BeperktDoor,
+    string? VolgendThemaNaam);
+
+/// <summary>One part of a proposed placement.</summary>
+public sealed record DeelWeergave(DateOnly Van, DateOnly Tot);

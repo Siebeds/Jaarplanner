@@ -13,13 +13,14 @@ function planning(s: Toestand, van: string, tot: string) {
   return vraag<Weekplanning>(s, "GET", `/api/klassen/${KLAS.id}/jaarplan/weekplanning?van=${van}&tot=${tot}`).body;
 }
 
+function jaarplan(s: Toestand) {
+  return vraag<JaarplanWeergave>(s, "GET", `/api/klassen/${KLAS.id}/jaarplan`).body;
+}
+
 function periodesVan(s: Toestand, themaId: string) {
-  const plan = vraag<JaarplanWeergave>(s, "GET", `/api/klassen/${KLAS.id}/jaarplan`).body;
-  const rooster = vraag<Planningsrooster>(s, "GET", `/api/schooljaren/${SCHOOLJAAR.id}/rooster`).body;
-  return plan.plaatsingen
-    .filter((p) => p.themaId === themaId)
-    .map((p) => rooster.blokken.find((b) => b.start === p.blokStart)!)
-    .map((b) => [b.start, b.eind]);
+  return jaarplan(s)
+    .plaatsingen.filter((p) => p.themaId === themaId)
+    .map((p) => [p.van, p.tot]);
 }
 
 describe("mock mode (TB-046, TB-047)", () => {
@@ -32,9 +33,11 @@ describe("mock mode (TB-046, TB-047)", () => {
       ["2026-12-14", "2026-12-18"],
       ["2027-01-04", "2027-01-22"],
     ]);
-    const plan = vraag<JaarplanWeergave>(s, "GET", `/api/klassen/${KLAS.id}/jaarplan`).body;
+    const plan = jaarplan(s);
     expect(plan.plaatsingen.every((p) => p.duurWeken === 4)).toBe(true);
-    expect(plan.blokken.some((b) => b.isOverbelast)).toBe(false);
+    // The two parts of the second thema are one run of four lesweken around the kerstvakantie (ADR-0053).
+    expect(plan.plaatsingen.filter((p) => p.themaId === tweede.id).map((p) => p.reeks?.weken)).toEqual([4, 4]);
+    expect(plan.balans.metThema).toBe(8);
   });
 
   it("gives each thema subthema's whose weeks add up to its own, each with a period inside the thema's", () => {
@@ -151,6 +154,53 @@ describe("mock mode (TB-046, TB-047)", () => {
           activiteiten.reduce((som, a) => som + a.doelen.length, 0),
       );
     }
+  });
+
+  it("places a thema by its own dates like the server: a proposed end, parts around a vacation, no shared day", () => {
+    const s = beginToestand();
+    const [eerste, tweede] = THEMAS;
+    const rooster = vraag<Planningsrooster>(s, "GET", `/api/schooljaren/${SCHOOLJAAR.id}/rooster`).body;
+    expect(rooster.onderbrekingen.map((o) => o.naam)).toContain("Herfstvakantie");
+
+    // Four lesweken from Monday 19 October: the herfstvakantie week does not count, so it ends on Friday 20 November,
+    // cut before the first thema on 16 November.
+    const voorstel = vraag<{ tot: string; beperktDoor: string | null }>(
+      s,
+      "GET",
+      `/api/klassen/${KLAS.id}/jaarplan/voorstel?themaId=${eerste.id}&van=2026-10-19`,
+    );
+    expect(voorstel.status).toBe(200);
+    expect(voorstel.body).toMatchObject({ tot: "2026-11-13", beperktDoor: "VolgendThema" });
+
+    const geplaatst = vraag<JaarplanWeergave>(s, "POST", `/api/klassen/${KLAS.id}/jaarplan/plaatsingen`, {
+      themaId: eerste.id,
+      van: "2026-10-19",
+      tot: "2026-11-13",
+    });
+    expect(geplaatst.status).toBe(200);
+    expect(periodesVan(s, eerste.id)).toEqual([
+      ["2026-10-19", "2026-10-30"],
+      ["2026-11-09", "2026-11-13"],
+      ["2026-11-16", "2026-12-11"],
+    ]);
+
+    const bezet = vraag<{ detail: string }>(s, "POST", `/api/klassen/${KLAS.id}/jaarplan/plaatsingen`, {
+      themaId: tweede.id,
+      van: "2026-12-01",
+      tot: "2026-12-04",
+    });
+    expect(bezet.status).toBe(400);
+
+    // Its December part, dragged to a Saturday, starts on the next schooldag and keeps its five schooldagen.
+    const deel = jaarplan(s).plaatsingen.find((p) => p.van === "2026-12-14")!;
+    const verschoven = vraag(s, "PUT", `/api/klassen/${KLAS.id}/jaarplan/plaatsingen/${deel.id}/verschuiving`, {
+      van: "2027-01-23",
+    });
+    expect(verschoven.status).toBe(200);
+    expect(periodesVan(s, tweede.id)).toEqual([
+      ["2027-01-04", "2027-01-22"],
+      ["2027-01-25", "2027-01-29"],
+    ]);
   });
 
   it("answers a route it does not know with a 501 that names the route", () => {

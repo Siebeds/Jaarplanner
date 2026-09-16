@@ -196,13 +196,12 @@ describe("het emoji naast de naam", () => {
   });
 
   it("staat voor de naam op de themaband van de agenda", () => {
-    const [vak] = themavakken(
-      [{ start: "2026-09-01", eind: "2026-10-01" }],
-      [{ blokStart: "2026-09-01", themaId: "t-1", themaNaam: "Herfst", themaIcoon: "🍂", status: "Aanvaard" }],
-    );
+    const [vak] = themavakken([
+      { id: "p-1", van: "2026-09-01", tot: "2026-10-01", themaId: "t-1", themaNaam: "Herfst", themaIcoon: "🍂", status: "Aanvaard" },
+    ]);
     expect(vak.themas).toEqual([{ id: "t-1", naam: "Herfst", icoon: "🍂" }]);
 
-    // 1 september 2026 is the period's first day, where the band prints the name.
+    // 1 september 2026 is the placement's first day, where the band prints the name.
     render(
       <MemoryRouter>
         <Themastroken vak={vak} datum="2026-09-01" />

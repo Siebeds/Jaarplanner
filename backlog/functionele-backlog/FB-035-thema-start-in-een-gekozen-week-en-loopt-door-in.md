@@ -2,13 +2,13 @@
 id: FB-035
 titel: Thema start in een gekozen week en loopt door in de volgende themaperiode
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 15:29
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 00:04
+opgepakt-door: fb035-datums
+branch: ticket/FB-035-themas-met-datums
+pr: 124
 geblokkeerd:
 fr: [FR-6.4]
 ---
@@ -19,93 +19,145 @@ De eigenaar vroeg op 2026-09-15: *"in sommige gevallen zullen thema's in een the
 themaperiode is 6 weken, maar mijn thema die ik dan wil plannen is 5 weken, dan zal er tijdens de laatste week nog een
 ander thema starten), deze optie is nu niet mogelijk volgens mij in de tool, kan dat?"*
 
-Vandaag kan dat maar half:
+Vandaag beslaat een geplaatst thema altijd een **hele** themaperiode: een plaatsing onthoudt alleen de start van de
+periode. Een thema van 5 weken in een periode van 6 laat dus een week open die de tool niet kan tonen, en een thema dat
+doorloopt in de volgende periode moet twee keer geplaatst worden.
 
-- Een geplaatst thema beslaat altijd de **hele** themaperiode. Een plaatsing onthoudt alleen de start van de periode,
-  geen eigen begin of einde.
-- Twee thema's in één periode kan wel, en "te vol" telt hun duur op tegen de weken van de periode. Maar de tool weet
-  niet dat het tweede thema pas in de laatste week begint: beide staan over de hele periode.
-- Doorlopen in de volgende periode kan alleen door het thema **twee keer** te plaatsen. Dan telt het dubbel voor "te
-  vol" en ziet de agenda twee losse plaatsingen.
-- De subthemaplanner en de keuze van activiteiten in de agenda bieden alleen de dagen en de thema's van de huidige
-  periode aan.
+Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen startweek binnen de periode is, maar dat
+**thema's niet meer in vaste periodes worden gepland**: elke plaatsing krijgt een eigen begin- en einddatum.
 
-**Beslissingen van de eigenaar, 2026-09-15:**
+**Beslissingen van de eigenaar, 2026-09-15 en 2026-09-16:**
 
-1. Het thema dat in de laatste week start, **loopt door in de volgende themaperiode**.
-2. De leerkracht **kiest de startweek**; het einde volgt uit de duur van het thema.
-3. De themaperiodes **blijven het raster** (voor "te vol", hergenereren per periode en inzoomen).
-4. Eerst alleen **manueel**; de AI-generatie blijft voorlopig hele periodes gebruiken.
-5. "Te vol" telt **per periode de eigen weken** van het thema: wat in die periode valt.
-6. Een **vakantie telt niet mee**: het thema loopt na de vakantie verder tot zijn weken met school op zijn.
+1. Een plaatsing van een thema heeft een **begindatum en een einddatum**, per dag. De themaperiodes verdwijnen uit de
+   planning. De eigenaar beslist dit zelf; het vervangt de tweeledige blokindeling van directie (2026-07-14) in
+   Art. IX.3, met een nieuwe ADR.
+2. De leerkracht **kiest de begindatum**; de tool **stelt het einde voor** uit de duur van het thema, geteld in weken
+   met school. De leerkracht kan het einde aanpassen.
+3. Valt een **vakantie** in de plaatsing, dan **splitst de tool** ze zelf in delen, samen zo lang als het thema. Elk deel
+   is daarna een gewone plaatsing.
+4. Er lopen **nooit twee thema's tegelijk**: twee plaatsingen (van hetzelfde of van een ander thema) delen geen dag.
+5. Loopt een thema voorbij het einde van het schooljaar, dan **stopt het op de laatste schooldag** en toont de kaart een
+   waarschuwing.
+6. Wijzigt de school haar vakanties, dan **verschuift er niets stil**: een plaatsing die niet meer klopt, krijgt een
+   blijvende melding en de dekking staat op "te herzien" (dezelfde regel als directie op 2026-07-28 gaf).
+7. "Te vol" verdwijnt. De tool toont in de plaats een **jaarbalans**: lesweken, met en zonder thema. *(Na het bekijken,
+   2026-09-16: een lege lesweek en een aangepast einde worden niet gemarkeerd, zie 13.)*
+8. Het planscherm wordt een **tijdlijn per week** (optie A uit de mockup van 2026-09-16), en een balk kan **versleept**
+   worden.
+9. Bestaande plannen: een thema krijgt de **begin- en einddatum van zijn periode**. Staan er meerdere thema's in één
+   periode, dan zet de tool ze **na elkaar**, in hun huidige volgorde. Een thema waarvoor geen dag overblijft, wordt
+   **verwijderd** uit het plan.
+10. De **AI-generatie wordt in een ander ticket herwerkt**. Tot dan staat de knop "Genereer jaarplan" uit, met een zin
+    die zegt waarom.
+11. **Vaste momenten** (bv. "Sportweek") **blokkeren geen plaatsing** meer. Alleen een vakantie onderbreekt een thema.
+    Bewaarde vaste momenten en startthema's blijven staan voor het AI-ticket.
+12. Plaatsingen die een leerkracht als AI-voorstel **geweigerd** had, worden bij het omzetten **verwijderd**. Een
+    openstaand voorstel weigeren verwijdert het voorstel.
+13. **Minder is meer** (na het bekijken, 2026-09-16): geen blokjes "Geen thema" op de tijdlijn, geen melding en geen
+    oranje rand voor een aangepast einde, en op de kaart geen knoppen "Week vroeger", "Week later" en "Vergrendeld". De
+    begin- en einddatum volstaan; de datumvelden zijn smal.
 
 ## Gewenst gedrag
 
-- Bij het plaatsen van een thema in een periode, en later op de kaart van die plaatsing, kiest de leerkracht in welke
-  week van de periode het thema start. Week 1 is de week waarin de periode begint; zonder keuze start het thema daar,
-  zoals nu.
-- Het einde volgt uit de duur van het thema, geteld in weken met school. Een vakantie telt niet mee: het thema loopt
-  na de vakantie verder.
-- Duurt het thema langer dan wat er van de periode overblijft, dan loopt het door in de volgende periode, als **één**
-  plaatsing. De leerkracht plaatst het niet twee keer.
-- De kalender en de agenda tonen het thema van zijn startweek tot zijn laatste week, ook over de grens van de
-  periode. In de week waarin twee thema's overlappen, staan ze allebei.
-- In elke week waarin een thema loopt, kan de leerkracht er subthema's en activiteiten van plannen, ook in de weken
-  die in de volgende periode vallen.
-- "Te vol" telt per periode alleen de weken van een thema die in die periode vallen.
-- De themaperiodes zelf blijven zoals ze zijn. Wie de planning van de klas mag bewerken, mag ook de startweek kiezen;
-  wie ze alleen mag inkijken, ziet de startweek. De dekking verandert niet: een geplaatst thema telt mee zoals nu.
+- **Plaatsen.** De leerkracht voegt een thema toe en kiest een begindatum (een lesdag). De tool stelt het einde voor: de
+  laatste lesdag vóór dezelfde weekdag zoveel lesweken later als de duur van het thema. Een week die volledig vakantie
+  is, telt niet mee; een week met minstens één lesdag telt als lesweek.
+- **Einde aanpassen.** De leerkracht kan het voorgestelde einde wijzigen. Zou het voorgestelde einde botsen met het
+  volgende thema, dan stelt de tool de laatste lesdag vóór dat thema voor.
+- **Vakantie.** Valt er een vakantie tussen begin en einde, dan bewaart de tool twee (of meer) plaatsingen: vóór en na
+  de vakantie. Samen hebben ze de duur van het thema. Een losse vrije dag splitst niet.
+- **Geen overlap.** Een plaatsing die een dag zou delen met een andere plaatsing, weigert de tool met een zin die het
+  andere thema noemt. Dat geldt voor toevoegen, einde aanpassen en slepen.
+- **Einde schooljaar.** Een einde voorbij de laatste schooldag wordt die laatste schooldag, en de kaart zegt dat het
+  thema korter is dan zijn duur.
+- **Tijdlijn.** Het planscherm toont het schooljaar als tijdlijn met een kolom per lesweek; vakanties staan gearceerd.
+  Elk thema is een balk van zijn begin tot zijn einde. De delen van een thema rond een vakantie zijn met elkaar
+  verbonden en tonen "deel 1/2", "deel 2/2".
+- **Slepen.** Een balk naar een andere plek slepen verschuift de plaatsing; ze houdt haar aantal lesdagen. Ook met het
+  toetsenbord. Komt ze over een vakantie, dan splitst de tool; komt ze op een ander thema, dan weigert de tool.
+- **Kaart.** Een gekozen plaatsing toont smalle velden voor begindatum en einddatum, de andere delen en de knoppen om
+  de agenda te openen en de plaatsing (dit deel) te verwijderen.
+- **Signalen.** Bovenaan staat de jaarbalans: lesweken in het schooljaar, lesweken met een thema, lesweken zonder thema.
+  Een lege lesweek en een aangepast einde worden niet apart gemarkeerd.
+- **Agenda.** De agenda toont op elke dag het thema dat die dag loopt. Op elke dag van een plaatsing kan de leerkracht
+  subthema's en activiteiten van dat thema plannen.
+- **Vakanties gewijzigd.** Valt er na een wijziging van de vakanties een vakantie in een plaatsing, of ligt ze niet
+  meer in het schooljaar, dan krijgt ze een blijvende melding tot de leerkracht ze opnieuw bewaart of verwijdert. De
+  dekking staat zolang op "te herzien". De tool verschuift niets.
+- **AI.** De knop "Genereer jaarplan" staat uit en zegt waarom. "Deze periode opnieuw genereren" verdwijnt. De server
+  weigert een generatie ook.
+- **Rechten en dekking** veranderen niet: wie de planning van de klas mag bewerken, plaatst en verschuift; wie ze mag
+  inkijken, ziet de tijdlijn. Een geplaatst thema telt voor de dekking zoals nu.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een themaperiode van 6 weken met een thema van 5 weken in week 1, wanneer de leerkracht een tweede thema
-  van 5 weken toevoegt met startweek 6, dan loopt dat thema van week 6 van die periode tot en met week 4 van de
-  volgende periode, als één plaatsing, en tonen kalender en agenda het zo.
-- [ ] Gegeven die plaatsing, dan telt "te vol" 1 week van het tweede thema in de eerste periode (samen 6 weken, niet te
-  vol) en 4 weken in de volgende periode.
-- [ ] Gegeven een thema dat start in de week vóór een vakantie, dan loopt het na de vakantie verder tot zijn weken met
-  school op zijn.
-- [ ] Gegeven een thema dat doorloopt in de volgende periode, wanneer de leerkracht in de agenda een week van die
-  volgende periode opent, dan kan ze er subthema's en activiteiten van dat thema plannen.
-- [ ] Gegeven een geplaatst thema, wanneer de leerkracht de startweek op de kaart wijzigt, dan schuift het thema mee en
-  blijft het één plaatsing.
-- [ ] Gegeven een plan van vóór deze wijziging, dan start elk thema erin in week 1 van zijn periode en verandert er
-  niets aan wat de leerkracht ziet.
+- [x] Gegeven een thema van 5 weken, wanneer de leerkracht het plaatst met begindatum maandag 21 september, dan stelt de
+  tool vrijdag 23 oktober als einde voor en toont de tijdlijn één balk over die 5 lesweken.
+- [x] Gegeven een thema van 4 weken en een herfstvakantie van 2 tot 6 november, wanneer de leerkracht het plaatst met
+  begindatum maandag 19 oktober, dan bewaart de tool twee plaatsingen, 19–30 oktober en 9–20 november, en toont de
+  tijdlijn ze als deel 1/2 en deel 2/2.
+- [x] Gegeven een thema dat loopt van 21 september tot 23 oktober, wanneer de leerkracht een ander thema plaatst dat op
+  22 oktober begint, dan weigert de tool met een zin die het eerste thema noemt; met begindatum 26 oktober lukt het.
+- [x] Gegeven een geplaatst thema, wanneer de leerkracht het einde wijzigt, dan bewaart de tool dat einde, zonder
+  melding of oranje rand.
+- [x] Gegeven een thema dat na de laatste schooldag zou eindigen, dan eindigt het op de laatste schooldag en toont de
+  kaart een waarschuwing.
+- [x] Gegeven een plan, dan toont de jaarbalans het aantal lesweken, met en zonder thema, en staan er op de tijdlijn
+  geen blokjes "Geen thema".
+- [x] Gegeven een balk op de tijdlijn, wanneer de leerkracht ze (met muis of toetsenbord) naar een vrije week sleept,
+  dan schuift de plaatsing mee met hetzelfde aantal lesdagen; op een ander thema weigert de tool.
+- [ ] Gegeven een plaatsing, wanneer de leerkracht in de agenda een dag ervan opent, dan kan ze er subthema's en
+  activiteiten van dat thema plannen.
+- [x] Gegeven een plan van vóór deze wijziging met één thema per periode, dan heeft elk thema de begin- en einddatum van
+  zijn periode en ziet de leerkracht dezelfde thema's op dezelfde plaats.
+- [x] Gegeven een periode van vóór deze wijziging met meerdere thema's, dan staan ze na de omzetting na elkaar, elk met
+  zijn eigen duur en nooit over het volgende thema heen; een thema zonder vrije dag is verwijderd uit het plan.
+- [x] Gegeven een plan van vóór deze wijziging met een geweigerd voorstel, dan is dat voorstel na de omzetting weg; en
+  wanneer de leerkracht een openstaand voorstel weigert, dan verdwijnt het uit het plan.
+- [ ] Gegeven een bewaard vast moment dat plaatsing blokkeerde, dan kan de leerkracht toch een thema plaatsen op die
+  dag.
+- [x] Gegeven een plaatsing, wanneer directie een vakantie toevoegt die erin valt, dan toont de kaart een blijvende
+  melding, staat de dekking op "te herzien" en is de plaatsing niet verschoven.
+- [x] De knop "Genereer jaarplan" staat uit met een zin die zegt waarom, en de server weigert een generatie.
 
 ## Testscenario's
 
-1. Meld aan als leerkracht van een klas en open het plan. Kies een themaperiode van 6 weken.
-2. Voeg thema A (5 weken) toe zonder een startweek te kiezen. De kaart toont startweek 1 en het thema loopt tot en met
-   week 5.
-3. Voeg thema B (5 weken) toe en kies startweek 6. De kaart toont dat B doorloopt in de volgende periode; de kalender
-   toont B van week 6 tot en met week 4 van die volgende periode. De eerste periode is niet "te vol".
-4. Open de volgende periode. B staat erin als hetzelfde thema, niet als een tweede plaatsing, en telt daar 4 weken mee
-   voor "te vol".
-5. Open de agenda in week 6 van de eerste periode. A en B staan er allebei. Plan een activiteit van B.
-6. Open een week van de volgende periode waarin B nog loopt. Plan er een subthema en een activiteit van B.
-7. Zet de startweek van B op 5. B schuift een week naar voren en de eerste periode is nu "te vol".
-8. Plaats een thema van 5 weken met startweek in de week vóór de herfstvakantie. Het loopt 1 week vóór en 4 weken na
-   de vakantie.
+1. Meld aan als leerkracht van een klas en open het plan. De tijdlijn toont het schooljaar per lesweek, vakanties
+   gearceerd, en de jaarbalans bovenaan.
+2. Voeg thema A (5 weken) toe met begindatum 21 september. Het voorgestelde einde is 23 oktober; bewaar.
+3. Voeg thema B (4 weken) toe met begindatum 22 oktober. De tool weigert en noemt A. Kies 26 oktober: de tool stelt een
+   einde na de herfstvakantie voor en toont B in twee delen.
+4. Pas het einde van deel 2 van B een week vroeger aan. De tijdlijn en de kaart tonen het nieuwe einde, zonder melding.
+5. Sleep A een week later. De tool weigert, want A zou op B komen. Sleep A een week vroeger: A schuift mee.
+6. Een lesweek zonder thema staat leeg op de tijdlijn; de jaarbalans telt ze.
+7. Open de agenda op een dag van deel 2 van B. Plan er een subthema en een activiteit van B.
+8. Laat directie een vakantie toevoegen die in A valt. De kaart van A toont een melding en de dekking staat op "te
+   herzien". Verplaats A: de melding verdwijnt.
+9. Plaats een thema dat na de laatste schooldag zou eindigen. Het stopt op de laatste schooldag, met een waarschuwing.
+10. De knop "Genereer jaarplan" staat uit en zegt waarom.
+11. Open een plan van vóór de wijziging met twee thema's in één periode: ze staan na elkaar.
 
 ## Buiten scope
 
-- De AI-jaarplangeneratie laat thema's niet zelf midden in een periode starten (beslissing van de eigenaar,
-  2026-09-15). Dat wordt later een apart ticket.
-- De themaperiodes zelf: hun lengte en hoe ze uit de vakanties volgen, veranderen niet.
-- Een einddatum kiezen los van de duur van het thema.
+- De AI-generatie met datums, en wat er met bewaarde startthema's en vaste momenten gebeurt: een apart TB-ticket. Tot
+  dan staat de generatie uit en blijven die parameters ongewijzigd bewaard.
+- Thema's die elkaar overlappen (bewust uitgesloten door de eigenaar, 2026-09-16).
+- De subthemaplaatsingen en de hoekverrijking: die hebben al eigen datums en veranderen niet.
+- De schoolsluitingen en het beheer van het schooljaar veranderen niet.
 
 ## Open vragen
 
-- **Grondwet en ADR:** Art. IX.3 beschrijft een jaarplan als *"per planningsblok een lijst thema's"*, en in ADR-0020
-  hangt een plaatsing aan de startdatum van één blok. Een thema dat over de grens van een periode loopt, past daar niet
-  zonder meer in. Vóór de bouw is een nieuwe ADR nodig, en mogelijk een amendement van Art. IX.3 (Art. XI).
-- Wat als een gekozen startweek het thema voorbij het einde van het schooljaar laat lopen? Voorstel: de tool weigert
-  die startweek met een zin die zegt waarom.
-- Een (her)generatie van het hele jaar of van één periode moet de weken zien die een doorlopend thema al inneemt in
-  een periode, ook al stelt de AI zelf geen doorlopende thema's voor. Hoe, beslist de bouw.
-- Wijzigt de school haar vakanties, geldt dan voor de startweek dezelfde regel als voor een plaatsing nu (directie,
-  2026-07-28: nooit stil verschuiven, een blijvende melding, dekking "te herzien")?
+- Geen. De vragen van 2026-09-15 zijn op 2026-09-16 beantwoord (beslissingen 1, 5, 6 en 10 hierboven).
 
 ## Werklog
 
 - 2026-09-15 15:29 · thema-overlap · aangemaakt (status nieuw)
+- 2026-09-16 22:00 · eigenaar · nieuw → klaar-voor-bouw: eigenaar: verfijnd in sessie 2026-09-16, thema's krijgen begin- en einddatum
+- 2026-09-16 22:00 · fb035-datums · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 22:51 · fb035-datums · Backend, migratie en tijdlijn gebouwd; unittests (1952) en frontendtests (1015) groen; integratietests lopen nog.
+- 2026-09-16 23:23 · fb035-datums · Antagonist ronde 1: 2 MAJOR (overlap in de migratie, Art. IV.2) opgelost; ronde 2: COMPLIANT. MINOR-punten opgelost of in TB-053.
+- 2026-09-16 23:25 · fb035-datums · Afgevinkt met bewijs: 12 criteria (unit-, integratie- en migratietests, browserpas ronde 1-3 in worklogs/FB-035/browserpas.md). Niet afgevinkt: plannen in de agenda op een dag van een doorlopend thema en plaatsen op een dag met een vast moment; die zijn gebouwd maar niet apart in de browser nagekeken.
+- 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-053). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.
+- 2026-09-16 23:37 · fb035-datums · Eigenaar na het bekijken: blokjes 'Geen thema' weg, geen melding of oranje rand voor een aangepast einde, knoppen week vroeger/later en vergrendeld weg, smallere datumvelden. Wordt op deze branch aangepast.
+- 2026-09-16 23:43 · fb035-datums · Aanpassingen na het bekijken gebouwd: geen blokjes 'Geen thema', geen melding of oranje rand voor een aangepast einde, geen week- en slotknoppen, smalle datumvelden, neutrale jaarbalans. Browserpas ronde 4 groen; frontendtests en lint groen.
+- 2026-09-17 00:04 · fb035-datums · PR #124

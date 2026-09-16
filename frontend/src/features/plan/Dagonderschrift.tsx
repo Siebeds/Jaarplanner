@@ -9,18 +9,14 @@ import { themaClausule, themaLabel, vakOpDag, type Themavak } from "./themavakke
  * **It is a caption and not a row of chips.** The owner read the filled pills that used to sit beside
  * the heading as buttons (2026-09-11), and nothing in them can be pressed. So there is no fill and no
  * radius here, only one neutral rule before the thema. The caption is set well below the heading in a
- * softer ink, and only the period's dates and a thema's name are in full ink.
+ * softer ink, and only the thema's days and its name are in full ink.
  *
- * **The period and its thema are facts about one day, so they are only printed where the view IS one
- * day.** They used to be printed always, derived from the anchored day, above a grid showing a whole
- * month. On this school year the periods end on the 1st and paging a month keeps the day of the month,
- * so a teacher who paged from september stood on 1 november and read "Periode 2 okt - 1 nov" over a grid
- * of which that period owned not one day. In the month and week views the answer is on the days
- * instead, where it can differ per day: `Themastroken`.
+ * **The thema and its days are facts about one day, so they are only printed where the view IS one day.** In the
+ * month and week views the answer is on the days instead, where it can differ per day: `Themastroken`.
  *
- * **Every sentence here is printed only where its own condition holds** (the E5-03 rule), because a day
- * without a period is not necessarily "between two periods": it may lie outside the school year, before
- * its first period or after its last, or the rooster may simply not have arrived yet.
+ * **Every sentence here is printed only where its own condition holds** (the E5-03 rule), because a day without a
+ * thema is not necessarily "between two thema's": it may lie outside the school year, before the first thema or
+ * after the last, or the rooster may simply not have arrived yet.
  */
 export function Dagonderschrift({
   weekLabel,
@@ -37,7 +33,7 @@ export function Dagonderschrift({
   weekLabel: string | null;
   dagweergave: boolean;
   datum: string;
-  /** Undefined while the rooster is still loading. */
+  /** Undefined while the rooster is still loading. `blokken` are the thema placements as stretches of days. */
   schooljaar: { start: string; eind: string; blokken: readonly { start: string; eind: string }[] } | undefined;
   vakken: readonly Themavak[];
   /** False while the jaarplan loads or failed to: an empty thema list then means "unknown", not "none". */
@@ -55,23 +51,23 @@ export function Dagonderschrift({
       {vak ? (
         <>
           <span className="shrink-0">
-            {t("periode.periodeLabel")} <span className="text-inkt">{periodeTekst(vak.van, vak.tot)}</span>
+            {t("periode.themaLoopt")} <span className="text-inkt">{periodeTekst(vak.van, vak.tot)}</span>
           </span>
           {planGeladen ? <Themanaam vak={vak} /> : null}
         </>
       ) : null}
 
       {plaats === "buiten" ? <span className="shrink-0">{t("periode.buitenSchooljaar")}</span> : null}
-      {plaats === "tussen" ? <span className="shrink-0">{t("periode.tussenPeriodes")}</span> : null}
+      {plaats === "tussen" ? <span className="shrink-0">{t("periode.geenThemaOpDag")}</span> : null}
     </p>
   );
 }
 
 /**
- * Why a day has no period, or null when saying so would be a guess.
+ * Why a day has no thema, or null when saying so would be a guess.
  *
- * "Tussen twee periodes" needs a period on both sides. Before the first one, after the last one, and
- * before the rooster has arrived, the honest caption says nothing about periods at all.
+ * "Geen thema op deze dag" is said only between two thema's: before the first one, after the last one, and before
+ * the rooster and the plan have arrived, the honest caption says nothing at all.
  */
 function plaatsZonderPeriode(
   datum: string,
@@ -89,7 +85,7 @@ function plaatsZonderPeriode(
  * The thema, behind a rule in the colour its band is filled with in the month and week views.
  *
  * The rule is decoration: in neutral ink it measures well under 3:1 against the page, so it carries
- * no meaning of its own. It takes no accent even on a period's first day, where a band with a thema
+ * no meaning of its own. It takes no accent even on a thema's first day, where a band with a thema
  * does, because the accent is rationed to five uses (ADR-0024) and the heading already names the date.
  * What tells a screen reader this name is the thema is the spoken clause, `themaClausule`, which the
  * grid's day buttons speak too.

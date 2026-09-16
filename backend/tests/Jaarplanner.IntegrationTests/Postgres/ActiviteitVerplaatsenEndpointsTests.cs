@@ -230,7 +230,7 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
 
         var plaatsen = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen",
-            new { themaId = geplaatst.ThemaId, blokStart = opzet.EersteBlok.ToString("yyyy-MM-dd") });
+            new { themaId = geplaatst.ThemaId, van = opzet.EersteBlok.ToString("yyyy-MM-dd") });
         Assert.Equal(HttpStatusCode.OK, plaatsen.StatusCode);
         await PlaatsSubthemaAsync(opzet.KlasId, geplaatst.SubthemaId);
 
@@ -343,11 +343,7 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
-        var blokken = indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau);
-
-        return new Opzet(klas.Id, andere.Id, blokken[0].Start);
+        return new Opzet(klas.Id, andere.Id, schooljaar.Start);
     }
 
     /// <summary>

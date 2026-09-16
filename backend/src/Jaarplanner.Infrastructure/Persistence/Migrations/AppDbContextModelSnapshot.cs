@@ -1607,14 +1607,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                             b1.Property<string>("AiMotivatie")
                                 .HasColumnType("text");
 
-                            b1.Property<string>("BlokNiveau")
-                                .IsRequired()
-                                .HasMaxLength(32)
-                                .HasColumnType("character varying(32)");
-
-                            b1.Property<DateOnly>("BlokStart")
-                                .HasColumnType("date");
-
                             b1.Property<Guid>("JaarplanId")
                                 .HasColumnType("uuid");
 
@@ -1626,6 +1618,12 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                             b1.Property<Guid>("ThemaId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<DateOnly>("Tot")
+                                .HasColumnType("date");
+
+                            b1.Property<DateOnly>("Van")
+                                .HasColumnType("date");
+
                             b1.Property<bool>("Vergrendeld")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("boolean")
@@ -1635,9 +1633,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                             b1.HasIndex("ThemaId");
 
-                            b1.HasIndex("JaarplanId", "BlokStart");
-
-                            b1.HasIndex("JaarplanId", "ThemaId", "BlokNiveau", "BlokStart")
+                            b1.HasIndex("JaarplanId", "Van")
                                 .IsUnique();
 
                             b1.ToTable("themaplaatsingen", (string)null);

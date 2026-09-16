@@ -15,6 +15,7 @@ import type {
   DekkingWeergave,
   Dekkingsbereik,
   Dekkingsvoortgang,
+  Eindvoorstel,
   DoelKoppelingContext,
   DoelPlaats,
   JaarplanWeergave,
@@ -22,6 +23,7 @@ import type {
   LeerplandoelDekking,
   LeerplandoelDetail,
   LeerplandoelRegel,
+  Lesweek,
   MinimumdoelDekking,
   MinimumdoelDetail,
   MinimumdoelRegel,
@@ -96,9 +98,9 @@ export interface Periode {
 interface Plaatsing {
   id: string;
   themaId: string;
-  blokStart: string;
-  /** How many of the thema's weeks fall in this period: a thema that runs across a vacation has two placements. */
-  weken: number;
+  /** First and last day: a thema that runs across a vacation has one placement per part (ADR-0053). */
+  van: string;
+  tot: string;
   status: Themaplaatsing["status"];
   vergrendeld: boolean;
 }
@@ -202,8 +204,8 @@ export function beginToestand(): Toestand {
       thema.plaatsingen.map((p) => ({
         id: nieuwId(),
         themaId: thema.id,
-        blokStart: p.blokStart,
-        weken: p.weken,
+        van: p.van,
+        tot: p.tot,
         status: "Manueel" as const,
         vergrendeld: false,
       })),
@@ -514,16 +516,114 @@ export function minimumdoelDetail(ref: string): MinimumdoelDetail | null {
 
 // --- Jaarplan --------------------------------------------------------------------------------------------------------
 
-function openDagen(start: string, eind: string): number {
-  return dagenTussen(start, eind).filter(isLesdag).length;
+function isVakantie(datum: string): boolean {
+  return inhoud.ONDERBREKINGEN.some((o) => datum >= o.start && datum <= o.eind);
 }
 
-function periodeVan(blokStart: string) {
-  return inhoud.THEMAPERIODES.find((p) => p.start === blokStart) ?? null;
+function eersteSchooldag(): string {
+  return dagenTussen(inhoud.SCHOOLJAAR.start, inhoud.SCHOOLJAAR.eind).find(isLesdag) ?? inhoud.SCHOOLJAAR.start;
 }
 
-export function bestaatBlok(blokStart: string): boolean {
-  return periodeVan(blokStart) !== null;
+function laatsteSchooldag(): string {
+  return dagenTussen(inhoud.SCHOOLJAAR.start, inhoud.SCHOOLJAAR.eind).filter(isLesdag).at(-1) ?? inhoud.SCHOOLJAAR.eind;
+}
+
+function maandagVan(iso: string): string {
+  return verschuifDagen(iso, 1 - weekdag(iso));
+}
+
+function isLesweek(maandag: string): boolean {
+  return dagenTussen(maandag, verschuifDagen(maandag, 4)).some(isLesdag);
+}
+
+function volgendeSchooldag(iso: string): string | null {
+  return dagenTussen(iso, inhoud.SCHOOLJAAR.eind).find(isLesdag) ?? null;
+}
+
+/** Cuts a stretch at every vacation and trims each part to its schooldagen, as the server does (ADR-0053). */
+function splits(van: string, tot: string): { van: string; tot: string }[] {
+  const delen: { van: string; tot: string }[] = [];
+  let deel: { van: string; tot: string } | null = null;
+  for (const dag of dagenTussen(van, tot)) {
+    if (isVakantie(dag)) {
+      if (deel) delen.push(deel);
+      deel = null;
+    } else if (isLesdag(dag)) {
+      if (deel) deel.tot = dag;
+      else deel = { van: dag, tot: dag };
+    }
+  }
+  if (deel) delen.push(deel);
+  return delen;
+}
+
+/** The last schooldag before the same weekday `weken` lesweken later, cut to the year. */
+function voorgesteldEinde(van: string, weken: number): string {
+  let maandag = maandagVan(van);
+  let geteld = 0;
+  for (;;) {
+    if (maandag > inhoud.SCHOOLJAAR.eind || isLesweek(maandag)) geteld += 1;
+    if (geteld === weken + 1) break;
+    maandag = verschuifDagen(maandag, 7);
+  }
+  let einde = verschuifDagen(maandag, weekdag(van) - 2);
+  while (einde > van && einde <= inhoud.SCHOOLJAAR.eind && !isLesdag(einde)) einde = verschuifDagen(einde, -1);
+  return einde > laatsteSchooldag() ? laatsteSchooldag() : einde;
+}
+
+function bezet(t: Toestand, van: string, tot: string, behalve: string[] = []): Plaatsing | undefined {
+  return t.plaatsingen.find((p) => !behalve.includes(p.id) && p.van <= tot && p.tot >= van);
+}
+
+/** The end the server proposes for a thema starting on `van`, and the parts it would store. */
+export function eindvoorstel(t: Toestand, thema: ThemaWeergave, van: string): Eindvoorstel {
+  const begin = volgendeSchooldag(van);
+  if (begin === null) throw new Error("Na die dag is er geen school meer.");
+  if (bezet(t, begin, begin)) throw new Error("Op die dag loopt al een ander thema.");
+  let tot = voorgesteldEinde(begin, thema.duurWeken);
+  let beperktDoor: Eindvoorstel["beperktDoor"] = tot === laatsteSchooldag() ? "Schooljaar" : null;
+  let volgendThemaNaam: string | null = null;
+  const volgende = t.plaatsingen.filter((p) => p.van > begin).sort((a, b) => a.van.localeCompare(b.van))[0];
+  if (volgende && volgende.van <= tot) {
+    tot = dagenTussen(begin, verschuifDagen(volgende.van, -1)).filter(isLesdag).at(-1) ?? begin;
+    beperktDoor = "VolgendThema";
+    volgendThemaNaam = t.themas.find((th) => th.id === volgende.themaId)?.naam ?? null;
+  }
+  return { van: begin, tot, delen: splits(begin, tot), beperktDoor, volgendThemaNaam };
+}
+
+/**
+ * Stores a stretch as its parts around vacations, replacing the placements in `vervangt`. Refuses days outside the
+ * year or taken by another thema; the message is the one a teacher reads.
+ */
+export function plaats(
+  t: Toestand,
+  themaId: string,
+  van: string,
+  tot: string,
+  status: Plaatsing["status"],
+  vervangt: string[] = [],
+): void {
+  if (tot < van) throw new Error("De einddatum ligt voor de begindatum.");
+  if (van < eersteSchooldag() || tot > laatsteSchooldag()) throw new Error("Die dagen vallen buiten het schooljaar.");
+  const delen = splits(van, tot);
+  if (delen.length === 0) throw new Error("Op die dagen is er geen school.");
+  if (delen.some((d) => bezet(t, d.van, d.tot, vervangt))) throw new Error("Op die dagen loopt al een ander thema.");
+  const vergrendeld = t.plaatsingen.some((p) => vervangt.includes(p.id) && p.vergrendeld);
+  t.plaatsingen = t.plaatsingen.filter((p) => !vervangt.includes(p.id));
+  for (const deel of delen) {
+    t.plaatsingen.push({ id: nieuwId(), themaId, van: deel.van, tot: deel.tot, status, vergrendeld });
+  }
+}
+
+/** Moves a placement to start on the first schooldag from `van`, keeping its number of schooldagen. */
+export function verschuif(t: Toestand, plaatsing: Plaatsing, van: string): void {
+  const begin = volgendeSchooldag(van);
+  if (begin === null) throw new Error("Na die dag is er geen school meer.");
+  const aantal = dagenTussen(plaatsing.van, plaatsing.tot).filter(isLesdag).length;
+  const dagen = dagenTussen(begin, inhoud.SCHOOLJAAR.eind).filter(isLesdag);
+  if (aantal === 0 || dagen.length < aantal) throw new Error("Die dagen vallen buiten het schooljaar.");
+  plaats(t, plaatsing.themaId, begin, dagen[aantal - 1], "Manueel", [plaatsing.id]);
 }
 
 export function rooster(): Planningsrooster {
@@ -532,15 +632,6 @@ export function rooster(): Planningsrooster {
     schooljaarNaam: inhoud.SCHOOLJAAR.naam,
     start: inhoud.SCHOOLJAAR.start,
     eind: inhoud.SCHOOLJAAR.eind,
-    niveau: "Themaperiode",
-    blokindeling: inhoud.BLOKINDELING,
-    blokken: inhoud.THEMAPERIODES.map((p, i) => ({
-      ordinaal: i + 1,
-      start: p.start,
-      eind: p.eind,
-      ouderOrdinaal: null,
-      aantalOpenDagen: openDagen(p.start, p.eind),
-    })),
     onderbrekingen: inhoud.ONDERBREKINGEN,
   };
 }
@@ -553,54 +644,87 @@ function themaDoelcodes(thema: ThemaWeergave, jaarfase: string): string[] {
   return [...codes].sort();
 }
 
+/** The parts of one thema with no schooldag between them, in order. */
+function reeksVan(t: Toestand, plaatsing: Plaatsing): Plaatsing[] {
+  const eigen = t.plaatsingen.filter((p) => p.themaId === plaatsing.themaId).sort((a, b) => a.van.localeCompare(b.van));
+  const reeksen: Plaatsing[][] = [];
+  for (const p of eigen) {
+    const laatste = reeksen.at(-1);
+    const vorige = laatste?.at(-1);
+    const aansluitend =
+      vorige !== undefined && !dagenTussen(verschuifDagen(vorige.tot, 1), verschuifDagen(p.van, -1)).some(isLesdag);
+    if (laatste && aansluitend) laatste.push(p);
+    else reeksen.push([p]);
+  }
+  return reeksen.find((r) => r.includes(plaatsing)) ?? [plaatsing];
+}
+
+function aantalLesweken(van: string, tot: string): number {
+  let aantal = 0;
+  for (let maandag = maandagVan(van); maandag <= tot; maandag = verschuifDagen(maandag, 7)) {
+    if (isLesweek(maandag)) aantal += 1;
+  }
+  return aantal;
+}
+
 export function jaarplan(t: Toestand, klas: Toestand["klassen"][number]): JaarplanWeergave {
-  const plaatsingen: Themaplaatsing[] = t.plaatsingen.flatMap((p) => {
-    const thema = t.themas.find((th) => th.id === p.themaId);
-    if (!thema) return [];
-    const periode = periodeVan(p.blokStart);
-    const ordinaal = periode ? inhoud.THEMAPERIODES.indexOf(periode) + 1 : null;
-    return [
-      {
-        id: p.id,
-        themaId: thema.id,
-        themaNaam: thema.naam,
-        blokNiveau: "Themaperiode",
-        blokStart: p.blokStart,
-        blokEind: periode?.eind ?? null,
-        blokOrdinaal: ordinaal,
-        isVervallen: periode === null,
-        status: p.status,
-        aiMotivatie: null,
-        vergrendeld: p.vergrendeld,
-        doelcodes: themaDoelcodes(thema, klas.jaarfase),
-        duurWeken: thema.duurWeken,
-      },
-    ];
-  });
+  const plaatsingen: Themaplaatsing[] = t.plaatsingen
+    .slice()
+    .sort((a, b) => a.van.localeCompare(b.van))
+    .flatMap((p) => {
+      const thema = t.themas.find((th) => th.id === p.themaId);
+      if (!thema) return [];
+      const reeks = reeksVan(t, p);
+      const reeksVanDag = reeks[0].van;
+      const reeksTotDag = reeks[reeks.length - 1].tot;
+      return [
+        {
+          id: p.id,
+          themaId: thema.id,
+          themaNaam: thema.naam,
+          themaIcoon: thema.icoon ?? null,
+          van: p.van,
+          tot: p.tot,
+          isVervallen: p.van < eersteSchooldag() || p.tot > laatsteSchooldag() || dagenTussen(p.van, p.tot).some(isVakantie),
+          status: p.status,
+          aiMotivatie: null,
+          vergrendeld: p.vergrendeld,
+          doelcodes: themaDoelcodes(thema, klas.jaarfase),
+          duurWeken: thema.duurWeken,
+          reeks:
+            reeks.length > 1
+              ? {
+                  deel: reeks.indexOf(p) + 1,
+                  aantalDelen: reeks.length,
+                  reeksVan: reeksVanDag,
+                  reeksTot: reeksTotDag,
+                  weken: aantalLesweken(reeksVanDag, reeksTotDag),
+                  eindeAangepast: voorgesteldEinde(reeksVanDag, thema.duurWeken) !== reeksTotDag,
+                  stoptBijEindeSchooljaar: false,
+                }
+              : null,
+        },
+      ];
+    });
+
+  const lesweken: Lesweek[] = [];
+  for (let maandag = maandagVan(eersteSchooldag()); maandag <= laatsteSchooldag(); maandag = verschuifDagen(maandag, 7)) {
+    if (!isLesweek(maandag)) continue;
+    const vrijdag = verschuifDagen(maandag, 4);
+    lesweken.push({ maandag, heeftThema: t.plaatsingen.some((p) => p.van <= vrijdag && p.tot >= maandag) });
+  }
+  const metThema = lesweken.filter((w) => w.heeftThema).length;
+
   return {
     klasId: klas.id,
     klasNaam: klas.naam,
     schooljaarId: inhoud.SCHOOLJAAR.id,
     schooljaarNaam: inhoud.SCHOOLJAAR.naam,
-    blokindeling: inhoud.BLOKINDELING,
+    eersteSchooldag: eersteSchooldag(),
+    laatsteSchooldag: laatsteSchooldag(),
     plaatsingen,
-    blokken: inhoud.THEMAPERIODES.map((p, i) => {
-      const hier = plaatsingen.filter((pl) => pl.blokStart === p.start && pl.status !== "Geweigerd");
-      const beschikbareWeken = Math.round(openDagen(p.start, p.eind) / 5);
-      const benodigdeWeken = t.plaatsingen
-        .filter((pl) => pl.blokStart === p.start && pl.status !== "Geweigerd")
-        .reduce((som, pl) => som + pl.weken, 0);
-      return {
-        ordinaal: i + 1,
-        start: p.start,
-        aantalThemas: hier.length,
-        aantalDoelen: new Set(hier.flatMap((pl) => pl.doelcodes)).size,
-        benodigdeWeken,
-        beschikbareWeken,
-        isOverbelast: benodigdeWeken > beschikbareWeken,
-      };
-    }),
-    geblokkeerdePeriodes: [],
+    lesweken,
+    balans: { lesweken: lesweken.length, metThema, zonderThema: lesweken.length - metThema },
   };
 }
 
@@ -623,10 +747,7 @@ export function weekplanning(t: Toestand, klas: Toestand["klassen"][number], van
         const gevonden = zoekActiviteit(t, p.activiteitId);
         if (!gevonden) return [];
         const { thema, subthema, activiteit } = gevonden;
-        const inPeriode = t.plaatsingen.some((pl) => {
-          const periode = periodeVan(pl.blokStart);
-          return pl.themaId === thema.id && periode !== null && datum >= periode.start && datum <= periode.eind;
-        });
+        const inPeriode = t.plaatsingen.some((pl) => pl.themaId === thema.id && datum >= pl.van && datum <= pl.tot);
         return [
           {
             plaatsingId: p.id,

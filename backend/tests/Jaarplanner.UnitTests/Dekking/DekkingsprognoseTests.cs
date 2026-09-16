@@ -327,9 +327,12 @@ public sealed class DekkingsprognoseTests
             "Testklas",
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             "2026-2027",
-            "themaperiode (4-6 weken)",
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2027, 6, 30),
             plaatsingen ?? [],
-            []);
+            // Dekking reads neither the lesweken nor the balance, and must not start to.
+            [],
+            new JaarbalansWeergave(0, 0, 0));
 
         return (new DekkingService(new FakeJaarplanLezer(plan), opslag), opslag);
     }
@@ -347,16 +350,15 @@ public sealed class DekkingsprognoseTests
             Guid.NewGuid(),
             themaId,
             themaNaam,
-            "Themaperiode",
             new DateOnly(2026, 9, 1),
-            isVervallen ? null : new DateOnly(2026, 10, 9),
-            isVervallen ? null : 1,
+            new DateOnly(2026, 10, 9),
             isVervallen,
             status.ToString(),
             null,
             false,
             [],
-            4);
+            4,
+            null);
 
     private static LeerplandoelDekking Doel(DekkingWeergave dekking, string code) =>
         dekking.Doelen.Single(d => d.Code == code);

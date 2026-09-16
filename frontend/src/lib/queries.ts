@@ -6,7 +6,7 @@ import type {
   Dekkingsvoortgang,
   DoelMatchResultaat,
   DoelMatchSuggestie,
-  JaarplanGeneratieResultaat,
+  Eindvoorstel,
   JaarplanWeergave,
   KlasWeergave,
   KoppelingStatus,
@@ -381,7 +381,10 @@ export function useBeoordeelSuggestie(themaId: string) {
 
 export const jaarplanSleutels = {
   plan: (klasId: string) => ["jaarplan", klasId] as const,
-  rooster: (schooljaarId: string, niveau: string) => ["rooster", schooljaarId, niveau] as const,
+  rooster: (schooljaarId: string) => ["rooster", schooljaarId] as const,
+  // Not under "jaarplan": a change to the plan must not refetch a proposal for a thema that was just placed there,
+  // which the server then refuses because those days are taken.
+  voorstel: (klasId: string, themaId: string, van: string) => ["eindvoorstel", klasId, themaId, van] as const,
 };
 
 export function useJaarplan(klasId: string | null) {
@@ -392,27 +395,45 @@ export function useJaarplan(klasId: string | null) {
   });
 }
 
-export function useRooster(schooljaarId: string | null, niveau = "Themaperiode") {
+/** A school year's span and its vacations: the frame the timeline and the agenda are drawn in. */
+export function useRooster(schooljaarId: string | null) {
   return useQuery({
-    queryKey: jaarplanSleutels.rooster(schooljaarId ?? "", niveau),
-    queryFn: () => get<Planningsrooster>(`/api/schooljaren/${schooljaarId}/rooster${naarQuery({ niveau })}`),
+    queryKey: jaarplanSleutels.rooster(schooljaarId ?? ""),
+    queryFn: () => get<Planningsrooster>(`/api/schooljaren/${schooljaarId}/rooster`),
     enabled: Boolean(schooljaarId),
     staleTime: 5 * 60_000,
   });
 }
 
 /**
- * The four ways a teacher changes one placement, behind one hook.
+ * The end the server proposes for a thema starting on `van`, and the parts it would store around vacations.
  *
- * They share an invalidation because they share a consequence: every one of them can change which
- * leerplandoelen the plan covers, so the dekking figures are refetched alongside the plan. Doing it
- * here rather than at four call sites is what keeps a fifth caller from forgetting.
+ * Not retried: a 400 here is an answer ("no school that day", "another thema runs then"), which the form shows as
+ * it is.
+ */
+export function useEindvoorstel(klasId: string, themaId: string | null, van: string | null) {
+  return useQuery({
+    queryKey: jaarplanSleutels.voorstel(klasId, themaId ?? "", van ?? ""),
+    queryFn: () =>
+      get<Eindvoorstel>(`/api/klassen/${klasId}/jaarplan/voorstel${naarQuery({ themaId: themaId ?? "", van: van ?? "" })}`),
+    enabled: Boolean(klasId && themaId && van),
+    retry: false,
+  });
+}
+
+/**
+ * The ways a teacher changes one placement, behind one hook.
+ *
+ * They share an invalidation because they share a consequence: every one of them can change which goals the plan
+ * covers and on which days a thema runs, so the dekking figures and the agenda are refetched alongside the plan.
+ * Doing it here rather than at each call site is what keeps a new caller from forgetting.
  */
 export function usePlaatsingacties(klasId: string) {
   const qc = useQueryClient();
   const ververs = () => {
     void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
     void qc.invalidateQueries({ queryKey: ["dekking"] });
+    void qc.invalidateQueries({ queryKey: ["weekplanning"] });
   };
 
   const beoordeel = useMutation({
@@ -421,15 +442,16 @@ export function usePlaatsingacties(klasId: string) {
     onSuccess: ververs,
   });
 
-  const vergrendel = useMutation({
-    mutationFn: ({ plaatsingId, vergrendeld }: { plaatsingId: string; vergrendeld: boolean }) =>
-      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/vergrendeling`, { vergrendeld }),
+
+  const wijzigDatums = useMutation({
+    mutationFn: ({ plaatsingId, van, tot }: { plaatsingId: string; van: string; tot: string }) =>
+      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/datums`, { van, tot }),
     onSuccess: ververs,
   });
 
-  const verplaats = useMutation({
-    mutationFn: ({ plaatsingId, blokStart }: { plaatsingId: string; blokStart: string }) =>
-      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/blok`, { blokStart }),
+  const verschuif = useMutation({
+    mutationFn: ({ plaatsingId, van }: { plaatsingId: string; van: string }) =>
+      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/verschuiving`, { van }),
     onSuccess: ververs,
   });
 
@@ -438,41 +460,23 @@ export function usePlaatsingacties(klasId: string) {
     onSuccess: ververs,
   });
 
-  return { beoordeel, vergrendel, verplaats, verwijder };
+  return { beoordeel, wijzigDatums, verschuif, verwijder };
 }
 
 /**
- * Puts one thema into one period by hand (FR-7.1).
+ * Places one thema by hand from `van` to `tot` (FR-7.2). The server splits it at every vacation.
  *
- * It lands as `Manueel`, which is the whole point: the teacher decided it, so there is no proposal
- * for anyone to review, and a regeneration leaves it alone (Art. IX.3).
+ * It lands as `Manueel`: the teacher decided it, so there is no proposal for anyone to review.
  */
 export function usePlaatsThema(klasId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ themaId, blokStart }: { themaId: string; blokStart: string }) =>
-      post<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen`, { themaId, blokStart }),
+    mutationFn: ({ themaId, van, tot }: { themaId: string; van: string; tot: string }) =>
+      post<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen`, { themaId, van, tot }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
       void qc.invalidateQueries({ queryKey: ["dekking"] });
-    },
-  });
-}
-
-/**
- * Generates a year plan (FR-5).
- *
- * A run discards only placements that are still `Voorgesteld` and unlocked; anything the teacher has
- * decided on survives (Art. IX.3). That is the server's rule, not this hook's, and the screen states
- * it before the teacher presses the button.
- */
-export function useGenereerJaarplan(klasId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => post<JaarplanGeneratieResultaat>(`/api/klassen/${klasId}/jaarplan/generatie`, {}),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: jaarplanSleutels.plan(klasId) });
-      void qc.invalidateQueries({ queryKey: ["dekking"] });
+      void qc.invalidateQueries({ queryKey: ["weekplanning"] });
     },
   });
 }

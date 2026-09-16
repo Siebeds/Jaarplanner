@@ -9,32 +9,19 @@ namespace Jaarplanner.Api.Infrastructure;
 /// Maps the planning application exceptions to RFC 7807 ProblemDetails so the (thin) controllers never write
 /// status-code plumbing (Art. VIII). Three faults become 400:
 /// <list type="bullet">
-/// <item><see cref="OngeldigePlaatsingsstatusFout"/> (E3-01) — a teacher asking to set a jaarplan placement back to
-/// <c>voorgesteld</c>, which only the AI produces (Art. IV.1/IV.2);</item>
-/// <item><see cref="OngeldigeVerplaatsingFout"/> (E3-07) — a move whose target is not a period boundary, or a thema
-/// moved onto a period it already occupies;</item>
-/// <item><see cref="OngeldigePlaatsingFout"/> (E4-03) — a hand-placement into a period that no longer exists, or of a
-/// thema that is already in it;</item>
+/// <item><see cref="OngeldigePlaatsingsstatusFout"/> — a status the teacher cannot set on a placement (Art. IV.1/IV.2);</item>
+/// <item><see cref="OngeldigePlaatsingFout"/> — a thema placed, re-dated or dragged onto days that are no schooldagen,
+/// lie outside the year or already belong to another thema (ADR-0053);</item>
 /// <item><see cref="OngeldigeDagplanningFout"/> (E9-03) — scheduling an activiteit onto a day the school is closed on
 /// or outside the school year, onto a day it already sits on, or from another class.</item>
 /// </list>
 /// <para>
-/// <b>The fourth is a separate type rather than a reuse of the third</b>, even though both become 400. Every sentence
-/// <see cref="OngeldigePlaatsingFout"/> holds instructs the teacher to reload the grid or pick another period, which is
-/// wrong advice for a day: a closed day is not a stale grid, it is a vakantie the school entered on purpose. Reusing it
-/// would have made its own summary false.
-/// </para>
-/// <para>
-/// And one becomes <b>409</b>: <see cref="PeriodeIsBezetFout"/> (E4-05) — regenerating, hand-placing into or dragging
-/// onto a period the teacher blocked with a vast moment. It is separated from the three above on purpose: that request
-/// is well-formed and every id in it exists, so what it collides with is a stored setting of the teacher's own rather
-/// than a malformed input. The client uses the distinction to tell "reload, the grid moved" from "that period is
-/// blocked" without parsing the <c>Detail</c>.
+/// And one becomes <b>409</b>: <see cref="GeneratieUitgeschakeldFout"/> — a generation asked for while it is switched
+/// off (ADR-0053 decision 9). The request is well-formed; the feature is what is unavailable.
 /// </para>
 /// <para>
 /// Planning not-found deliberately reuses <c>SchoolcontentNietGevondenFout</c>, which
-/// <c>SchoolcontentExceptionHandler</c> already maps to 404, as <c>KlasBeheerService</c> has done since E1. Other
-/// exceptions are left to the next handler / default pipeline.
+/// <c>SchoolcontentExceptionHandler</c> already maps to 404. Other exceptions are left to the next handler.
 /// </para>
 /// </summary>
 public sealed class PlanningExceptionHandler : IExceptionHandler
@@ -50,10 +37,9 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
         // status by omission: a new type either appears here with its code or is not handled at all.
         var status = exception switch
         {
-            OngeldigePlaatsingsstatusFout or OngeldigeVerplaatsingFout or OngeldigePlaatsingFout
-                or OngeldigeDagplanningFout =>
+            OngeldigePlaatsingsstatusFout or OngeldigePlaatsingFout or OngeldigeDagplanningFout =>
                 StatusCodes.Status400BadRequest,
-            PeriodeIsBezetFout => StatusCodes.Status409Conflict,
+            GeneratieUitgeschakeldFout => StatusCodes.Status409Conflict,
             _ => (int?)null,
         };
 
@@ -72,7 +58,7 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
             {
                 Status = status.Value,
                 Title = status.Value == StatusCodes.Status409Conflict
-                    ? Probleemtitels.PeriodeIsBezet
+                    ? Probleemtitels.GeneratieUitgeschakeld
                     : Probleemtitels.OngeldigeAanvraag,
                 Detail = exception.Message,
             },

@@ -11,15 +11,9 @@ using Microsoft.Extensions.Hosting;
 namespace Jaarplanner.IntegrationTests;
 
 /// <summary>
-/// Reachability + correctness for <c>GET /api/schooljaren/{id}/rooster</c> (E3-06) — the derived planning grid the
-/// kalender renders its ribbon from.
-/// <para>
-/// The endpoint exists because a calendar built from placements alone cannot show an <b>empty</b> period. These
-/// tests therefore assert the properties the ribbon actually depends on: blocks in order, vacations reported as the
-/// gaps between them, a <c>VrijeDag</c> deliberately <i>not</i> a gap, and teaching days discounted inside a block.
-/// Getting any of those wrong makes the picture lie about the school year, which is the one thing the approved
-/// wireframe is built to avoid.
-/// </para>
+/// Reachability + correctness for <c>GET /api/schooljaren/{id}/rooster</c>: the school year's span and its vacations,
+/// the frame the timeline and the agenda are drawn in (ADR-0053 decision 6). A <c>VrijeDag</c> is a day off inside a
+/// week, never a gap, so it is not reported.
 /// </summary>
 public sealed class PlanningsroosterEndpointTests : IClassFixture<PlanningsroosterEndpointTests.Factory>
 {
@@ -27,12 +21,9 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
 
     public PlanningsroosterEndpointTests(Factory factory) => _factory = factory;
 
-    /// <summary>
-    /// The ribbon's shape: consecutive 1-based blocks, chronological, none of them straddling a vakantie, and the
-    /// four vakanties reported as the gaps. This is FR-6.1's "renders per block" reduced to what can be asserted.
-    /// </summary>
+    /// <summary>The frame: the year's span and the four vakanties, chronological, without the free day.</summary>
     [Fact]
-    public async Task Het_rooster_levert_de_blokken_en_de_vakanties_als_gaten()
+    public async Task Het_rooster_levert_het_schooljaar_en_de_vakanties_als_gaten()
     {
         var client = _factory.CreateClient();
         var schooljaarId = await _factory.SeedAsync();
@@ -40,103 +31,29 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
         var rooster = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{schooljaarId}/rooster");
 
         Assert.NotNull(rooster);
-        Assert.Equal("Themaperiode", rooster!.Niveau);
-        Assert.NotEmpty(rooster.Blokken);
-        Assert.False(string.IsNullOrWhiteSpace(rooster.Blokindeling));
+        Assert.Equal(schooljaarId, rooster!.SchooljaarId);
+        Assert.Equal(new DateOnly(2026, 9, 1), rooster.Start);
+        Assert.Equal(new DateOnly(2027, 6, 30), rooster.Eind);
 
-        // Ordinals are 1..n in order, and the blocks march forward in time without overlapping.
         Assert.Equal(
-            Enumerable.Range(1, rooster.Blokken.Count),
-            rooster.Blokken.Select(b => b.Ordinaal));
-        foreach (var (vorige, volgende) in rooster.Blokken.Zip(rooster.Blokken.Skip(1)))
-        {
-            Assert.True(vorige.Eind < volgende.Start, $"blok {vorige.Ordinaal} overlapt blok {volgende.Ordinaal}");
-        }
-
-        // A themaperiode has no parent; that is the subthemaperiode's job.
-        Assert.All(rooster.Blokken, b => Assert.Null(b.OuderOrdinaal));
-
-        // The four vakanties are the gaps — and the VrijeDag is NOT among them (ADR-0020 §5): drawing a single
-        // free day as a break in the ribbon is exactly the sliver problem the Vakantie/VrijeDag split removed.
-        Assert.Equal(4, rooster.Onderbrekingen.Count);
-        Assert.Contains(rooster.Onderbrekingen, o => o.Naam == "Herfstvakantie");
+            ["Herfstvakantie", "Kerstvakantie", "Krokusvakantie", "Paasvakantie"],
+            rooster.Onderbrekingen.Select(o => o.Naam));
         Assert.DoesNotContain(rooster.Onderbrekingen, o => o.Naam == "Pinkstermaandag");
-
-        // No block may span a vakantie — the property the whole "vacations are literal gaps" design rests on.
-        foreach (var blok in rooster.Blokken)
-        {
-            Assert.DoesNotContain(
-                rooster.Onderbrekingen,
-                o => o.Start <= blok.Eind && blok.Start <= o.Eind);
-        }
     }
 
-    /// <summary>
-    /// A <c>VrijeDag</c> does not break a block, but it must not be counted as teaching time either — otherwise a
-    /// period containing Hemelvaart renders exactly as wide as an unbroken one and the ribbon overstates how much
-    /// teaching fits in it.
-    /// </summary>
+    /// <summary>The periods are gone from the frame: the read carries no blocks and no tier.</summary>
     [Fact]
-    public async Task Een_vrije_dag_binnen_een_blok_telt_niet_als_lesdag()
+    public async Task Het_rooster_kent_geen_periodes_meer()
     {
         var client = _factory.CreateClient();
         var schooljaarId = await _factory.SeedAsync();
 
-        var rooster = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{schooljaarId}/rooster");
+        var response = await client.GetAsync($"/api/schooljaren/{schooljaarId}/rooster");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var pinkstermaandag = new DateOnly(2027, 5, 17);
-        var blok = Assert.Single(rooster!.Blokken, b => b.Start <= pinkstermaandag && pinkstermaandag <= b.Eind);
-
-        var kalenderdagen = blok.Eind.DayNumber - blok.Start.DayNumber + 1;
-        Assert.Equal(kalenderdagen - 1, blok.AantalOpenDagen);
-    }
-
-    /// <summary>
-    /// The finer tier nests inside the coarse one (E3-08's zoom): every subthemaperiode names the themaperiode it
-    /// sits in, and never straddles a boundary.
-    /// </summary>
-    [Fact]
-    public async Task Het_subthemaperiode_niveau_nest_binnen_de_themaperiodes()
-    {
-        var client = _factory.CreateClient();
-        var schooljaarId = await _factory.SeedAsync();
-
-        var grof = await client.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{schooljaarId}/rooster");
-        var fijn = await client.GetFromJsonAsync<RoosterDto>(
-            $"/api/schooljaren/{schooljaarId}/rooster?niveau=Subthemaperiode");
-
-        Assert.Equal("Subthemaperiode", fijn!.Niveau);
-        Assert.True(fijn.Blokken.Count > grof!.Blokken.Count, "de fijne indeling moet meer blokken opleveren");
-        Assert.All(fijn.Blokken, b => Assert.NotNull(b.OuderOrdinaal));
-
-        // Each subthemaperiode lies entirely within the themaperiode whose ordinal it claims as parent.
-        foreach (var sub in fijn.Blokken)
-        {
-            var ouder = Assert.Single(grof.Blokken, b => b.Ordinaal == sub.OuderOrdinaal);
-            Assert.True(
-                sub.Start >= ouder.Start && sub.Eind <= ouder.Eind,
-                $"subblok {sub.Start}–{sub.Eind} valt buiten periode {ouder.Ordinaal}");
-        }
-    }
-
-    /// <summary>
-    /// Regression (E3-02 code review): ASP.NET Core binds any integer to an enum parameter, so
-    /// <c>?niveau=99</c> passed model validation, reached the indeling seam and threw an unmapped
-    /// <c>ArgumentOutOfRangeException</c> — a 500 on a public GET for a plainly bad request. The named form
-    /// (<c>?niveau=Maand</c>) always 400'd correctly; only the numeric form slipped through, which is why it is
-    /// the one asserted here.
-    /// </summary>
-    [Fact]
-    public async Task Een_ongeldig_niveau_geeft_400_en_geen_500()
-    {
-        var client = _factory.CreateClient();
-        var schooljaarId = await _factory.SeedAsync();
-
-        var numeriek = await client.GetAsync($"/api/schooljaren/{schooljaarId}/rooster?niveau=99");
-        Assert.Equal(HttpStatusCode.BadRequest, numeriek.StatusCode);
-
-        var benoemd = await client.GetAsync($"/api/schooljaren/{schooljaarId}/rooster?niveau=Maand");
-        Assert.Equal(HttpStatusCode.BadRequest, benoemd.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("blokken", json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("niveau", json, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -154,16 +71,11 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
         string SchooljaarNaam,
         DateOnly Start,
         DateOnly Eind,
-        string Niveau,
-        string Blokindeling,
-        List<BlokDto> Blokken,
         List<OnderbrekingDto> Onderbrekingen);
-
-    private sealed record BlokDto(int Ordinaal, DateOnly Start, DateOnly Eind, int? OuderOrdinaal, int AantalOpenDagen);
 
     private sealed record OnderbrekingDto(string Naam, DateOnly Start, DateOnly Eind);
 
-    /// <summary>In-memory host: real controller, real configured indeling seam, no Postgres and no AI.</summary>
+    /// <summary>In-memory host: real controller, no Postgres and no AI.</summary>
     public sealed class Factory : JaarplannerApiFactory
     {
         private readonly string _dbNaam = $"e3_06_rooster_{Guid.NewGuid():N}";
@@ -193,7 +105,7 @@ public sealed class PlanningsroosterEndpointTests : IClassFixture<Planningsroost
 
         /// <summary>
         /// Seeds the realistic 2026-2027 year (four vakanties) plus Pinkstermaandag as a <c>VrijeDag</c>, which is
-        /// the case that distinguishes a gap from a day off inside a block. Seeded once per fixture.
+        /// the case that distinguishes a gap from a day off inside a week. Seeded once per fixture.
         /// </summary>
         public async Task<Guid> SeedAsync()
         {

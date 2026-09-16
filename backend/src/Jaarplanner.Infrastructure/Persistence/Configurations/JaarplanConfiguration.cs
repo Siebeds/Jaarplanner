@@ -9,25 +9,19 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// <summary>
 /// EF Core mapping for <see cref="Jaarplan"/> and its <see cref="Themaplaatsing"/> collection (Art. IX.3, E3-01).
 /// <para>
-/// <b>Still no planningsblok table.</b> A placement stores <see cref="Themaplaatsing.BlokStart"/> +
-/// <see cref="Themaplaatsing.BlokNiveau"/> — a date and a tier — and there is deliberately no row, no FK and no
-/// join anywhere in this schema representing a block. The grid remains derived by the
-/// <c>IPlanningsblokIndeling</c> seam (ADR-0013), so changing the planning grain stays a configuration edit rather
-/// than a data migration.
+/// <b>A placement stores its own days</b>, <see cref="Themaplaatsing.Van"/> and <see cref="Themaplaatsing.Tot"/>
+/// (ADR-0053). There is no period table and no period column: the themaperiodes left the planning.
 /// </para>
 /// <para>
-/// <b>And no <c>Ordinaal</c> column, deliberately.</b> The ordinal is a display position over a derived grid and
-/// re-points when the school edits a vakantie (ADR-0020 §3); persisting it would create a second, unstable key
-/// that could disagree with the date. It is projected at read time instead.
+/// <b>No two placements of a plan share a day</b> is a domain rule the aggregate and the service enforce. The database
+/// holds only the cheap half of it, a unique first day per plan; an exclusion constraint over date ranges would need the
+/// <c>btree_gist</c> extension, which the hosting does not allow without extra configuration.
 /// </para>
 /// </summary>
 public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
 {
     private static readonly ValueConverter<KoppelingStatus, string> StatusConverter =
         new(s => s.ToString(), s => Enum.Parse<KoppelingStatus>(s));
-
-    private static readonly ValueConverter<Planningsblokniveau, string> NiveauConverter =
-        new(n => n.ToString(), n => Enum.Parse<Planningsblokniveau>(n));
 
     public void Configure(EntityTypeBuilder<Jaarplan> builder)
     {
@@ -82,15 +76,9 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
 
             plaatsing.Property(p => p.ThemaId).IsRequired();
 
-            // The stable key (ADR-0020 §3): DateOnly → PostgreSQL `date`.
-            plaatsing.Property(p => p.BlokStart).IsRequired();
-
-            // Persisted by name rather than as an int, like Sluitingssoort and KoppelingStatus: legible in the
-            // database, and these two columns together ARE the block identity, so they are worth reading by eye.
-            plaatsing.Property(p => p.BlokNiveau)
-                .HasConversion(NiveauConverter)
-                .HasMaxLength(32)
-                .IsRequired();
+            // The placement's own days (ADR-0053): DateOnly → PostgreSQL `date`, both inclusive.
+            plaatsing.Property(p => p.Van).IsRequired();
+            plaatsing.Property(p => p.Tot).IsRequired();
 
             plaatsing.Property(p => p.Status)
                 .HasConversion(StatusConverter)
@@ -103,8 +91,8 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
             // default: an unset flag must mean "not locked", never "unknown".
             plaatsing.Property(p => p.Vergrendeld).IsRequired().HasDefaultValue(false);
 
-            // A thema is placed in a given block at most once (the domain invariant, held in the database too).
-            plaatsing.HasIndex(p => new { p.JaarplanId, p.ThemaId, p.BlokNiveau, p.BlokStart }).IsUnique();
+            // No two placements of a plan start on the same day: the part of "no overlap" an index can hold.
+            plaatsing.HasIndex(p => new { p.JaarplanId, p.Van }).IsUnique();
 
             // Restrict: a placed thema must not be deletable out from under the plan, leaving a placement
             // pointing at nothing (ADR-0006 §4 — clear diagnostics over dangling rows).
@@ -113,8 +101,6 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
                 .HasForeignKey(p => p.ThemaId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Chronological reads per plan are the calendar's access pattern (E3-06).
-            plaatsing.HasIndex(p => new { p.JaarplanId, p.BlokStart });
         });
 
         // The day-level placements (E9-03) hang off the plan as a REGULAR relationship, not an owned collection
