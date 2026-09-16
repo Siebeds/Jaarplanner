@@ -237,10 +237,12 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Alleen_een_beslist_doel_houdt_de_maker_tegen_om_te_verwijderen()
+    public async Task Alleen_een_beslist_doel_houdt_de_maker_tegen_om_te_verplaatsen_of_te_verwijderen_en_telt_in_de_bibliotheek()
     {
         var school = await Opzet.SchoolAsync();
-        var subthemaId = await Opzet.SubthemaAsync("K2");
+        var themaId = await Opzet.ThemaAsync();
+        var subthemaId = await Opzet.SubthemaAsync("K2", themaId);
+        var ander = await Opzet.SubthemaAsync("K2");
         var maker = await Opzet.GebruikerAsync(school, klassen: [school.K2Rood]);
         using var client = Opzet.Als(maker);
 
@@ -256,6 +258,19 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
             activiteiten.Single(a => a.Id == metAanvaard.Id).StelDoelVoor(K2Doelen[0], "Past.").WijzigStatus(KoppelingStatus.Aanvaard);
             await context.SaveChangesAsync();
         }
+
+        // The library counts the one accepted link, not the proposal or the rejected goal.
+        using var directie = Opzet.Directie();
+        var bibliotheek = await directie.GetFromJsonAsync<List<BibliotheekDto>>("/api/themas/bibliotheek");
+        Assert.Equal(1, bibliotheek!.Single(t => t.Id == themaId).AantalDoelkoppelingen);
+
+        // I19: a leerkracht of the leeftijd moves an activiteit while no decided goal is linked.
+        await RechtenTestOpzet.VerwachtAsync(
+            client.PutAsJsonAsync($"/api/activiteiten/{metAanvaard.Id}/subthema", new { doelSubthemaId = ander }),
+            HttpStatusCode.Forbidden,
+            RechtenTestOpzet.GeenToegang);
+        Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
+            client.PutAsJsonAsync($"/api/activiteiten/{metVoorstellen.Id}/subthema", new { doelSubthemaId = ander })));
 
         await RechtenTestOpzet.VerwachtAsync(
             client.DeleteAsync($"/api/activiteiten/{metAanvaard.Id}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
@@ -322,4 +337,6 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     private sealed record SubdoelDto(Guid Id, string LeerplandoelCode, Guid? SubthemaId, string AiMotivatie, string? ActiviteitNaam);
 
     private sealed record Resultaat(bool IsGeslaagd, int AantalVoorgesteld, int AantalOvergeslagen, string? Fout);
+
+    private sealed record BibliotheekDto(Guid Id, int AantalDoelkoppelingen);
 }

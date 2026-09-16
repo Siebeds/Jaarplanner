@@ -530,7 +530,7 @@
     "voorstellen": "{aantal} doelen voorgesteld.",
     "aiMislukt": "Doelen zoeken lukte niet.",
     "lijst": "Voorgestelde doelen",
-    "subdoelUitleg": "Een aanvaard doel wordt ook als subdoel van het subthema voorgesteld, als het dat nog niet is."
+    "subdoelUitleg": "Een aanvaard doel wordt ook als subdoel van het subthema voorgesteld, tenzij het daar al staat, al wacht of geweigerd werd."
   },
   "themabeheer": {
     "nieuwTitel": "Nieuw thema",
