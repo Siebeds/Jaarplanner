@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:43
+bijgewerkt: 2026-09-17 00:09
 opgepakt-door: frontend-mockmodus
 branch: ticket/frontend-mockmodus
-pr:
+pr: 126
 geblokkeerd:
 fr: []
 ---
@@ -76,3 +76,4 @@ en een thema van 4 weken met twee subthema's van 1 week, zodat beide in 16 tot 2
 - 2026-09-16 23:43 · frontend-mockmodus · criteria 1-3 en 6 afgevinkt: browserscreenshots van agenda (week 16 nov), thema en dekking in mockmodus op poort 5181 (5177 was bezet), routes.test.ts, build zonder mockcode; criteria 4 en 5 alleen met unit-tests gedekt (PUT-route na verslepen, 501 met route), niet met een echte sleepbeweging of een zichtbaar label in de browser
 - 2026-09-16 23:43 · frontend-mockmodus · antagonist: COMPLIANT; MINOR opgelost: label en 501-titel in het Engels (Art. II.3), dekkingscommentaar noemt wat ontbreekt, opmaak van een handler; MINOR open: echte sleeptest in de browser
 - 2026-09-16 23:43 · frontend-mockmodus · in-uitvoering → klaar: mockmodus klaar: pnpm dev:mock met vaste K3-nepdata, app-starten beschrijft beide opstartmodi; lint, tests en build groen, antagonist COMPLIANT
+- 2026-09-17 00:09 · frontend-mockmodus · PR #126
