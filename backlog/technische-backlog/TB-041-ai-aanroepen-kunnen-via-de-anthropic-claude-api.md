@@ -1,0 +1,56 @@
+---
+id: TB-041
+titel: AI-aanroepen kunnen via de Anthropic Claude API lopen, kiesbaar naast Azure AI Foundry
+soort: technisch
+status: in-uitvoering
+prioriteit: hoog
+aangemaakt: 2026-09-16
+bijgewerkt: 2026-09-16 21:28
+opgepakt-door: claude-code-anthropic
+branch: ticket/TB-anthropic-client
+pr:
+geblokkeerd:
+fr: []
+---
+
+## Aanleiding
+
+Azure AI Foundry is voor de eigenaar op dit moment niet beschikbaar, waardoor elke AI-functie (doelsuggesties,
+jaarplangeneratie, woordweb, thema-opbouw, herschrijven van een rapporttekst) faalt. De eigenaar wil dezelfde
+functies laten lopen via de Anthropic Claude API, met een eigen API-sleutel en een instelbaar endpoint.
+
+## Voorgestelde wijziging
+
+- Een nieuwe `AnthropicClient` in `Jaarplanner.Infrastructure/Ai` die `IAiClient` implementeert via de Messages API,
+  met de officiële Anthropic C#-SDK. De systeemprompt en de gebruikersprompt gaan ongewijzigd mee; de ruwe tekst en
+  het tokenverbruik komen terug in `AiCompletion`.
+- Een nieuwe configuratiesectie `Anthropic` (`Endpoint`, `ApiKey`, `Model`, `MaxTokens`, `Effort`). De sleutel is een
+  server-side geheim (user-secrets lokaal, Key Vault in Azure) en komt nooit in de repo of de frontend.
+- Een keuze van provider via configuratie (`Ai:Provider` = `AzureAI` of `Anthropic`) in `DependencyInjection.cs`.
+  Zonder instelling blijft Azure AI Foundry de provider, zodat bestaande omgevingen niet wijzigen.
+- Unit tests voor de nieuwe client en de providerkeuze; documentatie in `backend/README.md`.
+- Een ADR die de tweede provider vastlegt, met de beslissing van de eigenaar over de EU-datazone.
+
+## Acceptatiecriteria
+
+- [ ] Gegeven `Ai:Provider` = `Anthropic` en een ingevulde sleutel en model, wanneer een AI-functie wordt aangeroepen, dan gaat de aanvraag naar het ingestelde endpoint met de systeemprompt en de gebruikersprompt, en krijgt de aanroeper de tekst van het antwoord terug.
+- [ ] Gegeven een ingesteld `Anthropic:Endpoint`, wanneer de client een aanvraag stuurt, dan gaat die naar dat endpoint in plaats van naar `https://api.anthropic.com`.
+- [ ] Gegeven een ontbrekende sleutel of een ontbrekend model, wanneer een AI-functie wordt aangeroepen, dan faalt de aanroep met een duidelijke Engelse foutmelding en wordt er niets verstuurd; de app start wel.
+- [ ] Gegeven geen `Ai:Provider`, wanneer de app start, dan is Azure AI Foundry nog altijd de provider.
+- [ ] Gegeven een antwoord met tokenverbruik, wanneer de client het verwerkt, dan staan de input-, output- en cachetokens in `AiCompletion.Usage`.
+- [ ] De sleutel staat nergens in de repo en komt nooit in een antwoord naar de frontend.
+
+## Buiten scope
+
+- De eval-tool (`backend/tools/Jaarplanner.Eval`) blijft op Azure AI Foundry.
+- Het uitrollen van een sleutel naar de Azure-demo (Key Vault, app settings).
+- Het herschrijven of afstemmen van de prompts op Claude.
+
+## Open vragen
+
+Geen. De eigenaar besliste op 2026-09-16 dat de eis van Art. VI.3 (AI-verwerking in een EU-omgeving) niet geldt voor
+deze provider; dat wordt in een ADR en in `docs/constitutie-log.md` vastgelegd.
+
+## Werklog
+
+- 2026-09-16 21:28 · claude-code-anthropic · aangemaakt (status in-uitvoering)
