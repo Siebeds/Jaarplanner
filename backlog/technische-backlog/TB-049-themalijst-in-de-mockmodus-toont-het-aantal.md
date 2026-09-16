@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:24
+bijgewerkt: 2026-09-17 00:25
 opgepakt-door: mock-thematellers
 branch: ticket/mock-thematellers
-pr:
+pr: 131
 geblokkeerd:
 fr: []
 ---
@@ -42,3 +42,4 @@ Geen.
 - 2026-09-17 00:21 · mock-thematellers · aangemaakt (status in-uitvoering)
 - 2026-09-17 00:24 · mock-thematellers · mockbibliotheek stuurt de drie tellers zoals de server ze telt; test in routes.test.ts, browser toont 3/31/64 en 3/18/37; lint en 1018 tests groen; antagonist COMPLIANT, MINOR open: inline type weg zodra de tellers in ThemaBibliotheekItem staan
 - 2026-09-17 00:24 · mock-thematellers · in-uitvoering → klaar: themalijst in de mockmodus toont de echte tellers; gates groen, antagonist COMPLIANT
+- 2026-09-17 00:25 · mock-thematellers · PR #131
