@@ -40,6 +40,12 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   door de activiteit te openen (eigenaar, 2026-09-16).
 - Op het overzicht van alle thema's verdwijnt het getal "klassen" (het telde leeftijden), en toont de kaart het aantal
   minimumdoelen van het thema in plaats van alle doelkoppelingen samen (eigenaar, 2026-09-16).
+- Een opengeklapt subthema begint met het woordweb, daarna de onderzoeksvragen (onder een eigen kop). De koppen
+  Activiteiten, Subdoelen en Andere doelen zijn zelf de vouwknop, met het aantal ernaast, en daarachter een klein "+"
+  (activiteit toevoegen, doel koppelen) en het zoekicoon, in plaats van woordknoppen en een extra regel eronder. De
+  bewerk- en verwijderknop van het subthema staan alleen nog naast de titel, zodat de lijsten de volle breedte krijgen.
+  In de marge naast de themadoelen staat "minimumdoelen" in plaats van "doelen" (eigenaar, 2026-09-16).
+- Het zoekveld is klein (smal en 32px hoog), en staat op gsm samen met zijn sluitknop op een eigen regel.
 - Teksten in `nl.json`; bestaande tests aangepast en nieuwe tests voor de lijstcomponent.
 
 ## Acceptatiecriteria
@@ -57,6 +63,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   een doel te koppelen; dat kan in het activiteitblad.
 - [ ] Gegeven het overzicht van alle thema's, wanneer ik een kaart bekijk, dan staat er geen aantal klassen meer en wel
   het aantal minimumdoelen van het thema.
+- [ ] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan staat het woordweb boven de onderzoeksvragen, en
+  klap ik de activiteiten en subdoelen open met hun kop, waarnaast een klein "+" en het zoekicoon staan.
 - [ ] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
 - [ ] Nagekeken in een echte browser op desktop en ~390px.
 

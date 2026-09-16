@@ -365,7 +365,7 @@ export function ThemadetailScherm() {
             suggesties" is always reachable rather than appearing only when the list is empty. */}
         <Blok
           figuur={thema.minimumdoelen.length}
-          onder={t(thema.minimumdoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
+          onder={t(thema.minimumdoelen.length === 1 ? "themas.minimumdoelEen" : "themas.minimumdoelMeer")}
         >
           <Kop
             titel={t("thema.themadoelen")}

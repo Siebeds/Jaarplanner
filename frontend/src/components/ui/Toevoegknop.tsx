@@ -65,3 +65,33 @@ export function Toevoegknop({
     </Knop>
   );
 }
+
+/**
+ * The same intention in its small form: a bare plus, for the heading of a list section that folds (TB-044).
+ *
+ * The owner found the worded button under such a heading "storend op die plaats en dat formaat" (2026-09-16). The
+ * heading already names what the list holds, so the plus beside it says enough; the words stay in `aria-label` and in
+ * the tooltip.
+ */
+export function Toevoegicoon({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45"
+    >
+      <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+    </button>
+  );
+}

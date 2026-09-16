@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Knop } from "../../components/ui/Knop";
-import { Toevoegknop } from "../../components/ui/Toevoegknop";
+import { Toevoegicoon, Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t } from "../../i18n";
 import { Doelkiezer } from "./Doelkiezer";
 
@@ -22,6 +22,7 @@ export function Doelkoppelaar({
   alGekozen,
   toelichting,
   fasen,
+  klein,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
@@ -38,10 +39,17 @@ export function Doelkoppelaar({
    * in the spoken one, which is what WCAG 2.5.3 asks for.
    */
   toelichting?: string;
+  /** A bare plus, for the heading of a folding list section (TB-044); `toelichting` is then its whole label. */
+  klein?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   if (!open) {
+    if (klein) {
+      return (
+        <Toevoegicoon label={toelichting ?? t("doelkiezer.koppel")} disabled={bezig} onClick={() => setOpen(true)} />
+      );
+    }
     return (
       // `Toevoegknop`, the one shape every add-or-link control on this app wears. It used to be a
       // borderless `stil` button sitting two sections above an outlined "Subthema toevoegen", which

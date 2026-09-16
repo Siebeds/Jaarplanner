@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
 import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
-import { Toevoegknop } from "../../components/ui/Toevoegknop";
+import { Toevoegicoon } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { useLeerplandoelTeksten } from "../../lib/queries";
@@ -132,227 +132,200 @@ export function Subthemahoofdstuk({
   return (
     // The leeftijd is not on the card: the screen sets it once in the margin beside all of that leeftijd's cards
     // (FB-047), so the card carries its own duration instead.
-    <Kaart
-      acties={
-        magSubthema ? (
-          <>
-            <Bewerkknop
-              omrand
-              label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })}
-              onClick={onBewerk}
-            />
-            <Verwijderknop
-              omrand
-              label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })}
-              onClick={onVerwijder}
-            />
-          </>
-        ) : undefined
-      }
-    >
-      <h3>
-        {/* THE CHEVRON IS ON THE RIGHT, and that is an alignment fix rather than a preference. Beside
-            the title it pushed the name thirty pixels further in than the question and the two
-            section headings below it, so the card had a ragged left edge: exactly the defect this
-            redesign exists to remove. On the right the title starts where the whole card body starts,
-            and the chevron still sits on the row it opens. */}
-        <button
-          ref={vouwknop}
-          type="button"
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          className="-mx-2 -my-1.5 flex scroll-mt-6 w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
-        >
-          <span className="min-w-0">
-            <span className="block font-display text-hoofdstuk text-inkt">
-              {subthema.naam}
-              {/* The margin says the leeftijd once for the whole group, which a screen reader moving from heading to
-                  heading never hears; so each fold names it too (FB-047). A subthema holds for every klas of that
-                  leeftijd (Art. IX.2), so no class is named. */}
-              <span className="sr-only">{t("thema.subthemaLeeftijd", { leeftijd })}</span>
+    <Kaart>
+      {/* THE CARD'S TWO CONTROLS SIT BESIDE THE TITLE ONLY, not in a column down the whole card (TB-044): that column
+          took 100 pixels from every row below it, and on a phone it left the lists a column of 190. */}
+      <div className="flex items-start gap-3">
+        <h3 className="min-w-0 flex-1">
+          {/* THE CHEVRON IS ON THE RIGHT, and that is an alignment fix rather than a preference. Beside
+              the title it pushed the name thirty pixels further in than the question and the two
+              section headings below it, so the card had a ragged left edge: exactly the defect this
+              redesign exists to remove. On the right the title starts where the whole card body starts,
+              and the chevron still sits on the row it opens. */}
+          <button
+            ref={vouwknop}
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className="-mx-2 -my-1.5 flex scroll-mt-6 w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+          >
+            <span className="min-w-0">
+              <span className="block font-display text-hoofdstuk text-inkt">
+                {subthema.naam}
+                {/* The margin says the leeftijd once for the whole group, which a screen reader moving from heading to
+                    heading never hears; so each fold names it too (FB-047). A subthema holds for every klas of that
+                    leeftijd (Art. IX.2), so no class is named. */}
+                <span className="sr-only">{t("thema.subthemaLeeftijd", { leeftijd })}</span>
+              </span>
+              {/* The duration always shows; the rest only while shut. The subdoelen figure comes first, the activiteiten
+                  second: a subthema is built from its subdoelen and its activiteiten work them out (FB-048). It says how
+                  many of them an activiteit already works out (FB-010), so a fold can be scanned for the chapter that
+                  still needs one. It counts the same subdoelen the chapter lists; with none it is the plain count. On a
+                  phone the facts stack: wrapped on one line they left a separator dangling at the end of each row. */}
+              <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+                <span>{telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}</span>
+                {open ? null : (
+                  <>
+                    <Punt />
+                    <span>
+                      {subthema.subdoelen.length > 0
+                        ? t(
+                            subthema.subdoelen.length === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
+                            { aantal: balans.subdoelenInActiviteit, totaal: subthema.subdoelen.length },
+                          )
+                        : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
+                    </span>
+                    <Punt />
+                    <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
+                    {zonderDoel > 0 ? (
+                      <>
+                        <Punt />
+                        <span className="font-medium text-attentie-inkt">
+                          {telWoord(zonderDoel, "thema.eenZonderDoel", "thema.aantalZonderDoel")}
+                        </span>
+                      </>
+                    ) : null}
+                  </>
+                )}
+              </span>
             </span>
-            {/* The duration always shows; the rest only while shut. The subdoelen figure comes first, the activiteiten
-                second: a subthema is built from its subdoelen and its activiteiten work them out (FB-048). It says how
-                many of them an activiteit already works out (FB-010), so a fold can be scanned for the chapter that
-                still needs one. It counts the same subdoelen the chapter lists; with none it is the plain count. On a
-                phone the facts stack: wrapped on one line they left a separator dangling at the end of each row. */}
-            <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
-              <span>{telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}</span>
-              {open ? null : (
-                <>
-                  <Punt />
-                  <span>
-                    {subthema.subdoelen.length > 0
-                      ? t(
-                          subthema.subdoelen.length === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
-                          { aantal: balans.subdoelenInActiviteit, totaal: subthema.subdoelen.length },
-                        )
-                      : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
-                  </span>
-                  <Punt />
-                  <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
-                  {zonderDoel > 0 ? (
-                    <>
-                      <Punt />
-                      <span className="font-medium text-attentie-inkt">
-                        {telWoord(zonderDoel, "thema.eenZonderDoel", "thema.aantalZonderDoel")}
-                      </span>
-                    </>
-                  ) : null}
-                </>
+            <IcoonChevron
+              aria-hidden="true"
+              className={cn(
+                "mt-2 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
+                open && "rotate-180",
               )}
-            </span>
-          </span>
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn(
-              "mt-2 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-              open && "rotate-180",
-            )}
-          />
-        </button>
-      </h3>
+            />
+          </button>
+        </h3>
+        {magSubthema ? (
+          <div className="flex shrink-0 items-center gap-2">
+            <Bewerkknop omrand label={t("subthemabeheer.bewerkAria", { naam: subthema.naam })} onClick={onBewerk} />
+            <Verwijderknop omrand label={t("subthemabeheer.verwijderAria", { naam: subthema.naam })} onClick={onVerwijder} />
+          </div>
+        ) : null}
+      </div>
 
       {open ? (
         <>
-          {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema
-              is driven by a question (Art. IX). It was a 15 pixel line indistinguishable from the
-              probleemstelling under it; it is set at reading size now, so the chapter opens on what
-              it is asking.
-
-              No rule down its left any more (owner, 2026-08-31: "die verticale lijn mag weg bij de
-              vragen"). It was carrying the question's weight for it. Now that the question is the
-              largest thing in the card after the title, and the two lists below it are each closed
-              in their own frame, nothing is left for the rule to separate it FROM. */}
-          {subthema.onderzoeksvragen.length > 0 ? (
-            <ul className="mt-3 flex flex-col gap-2.5">
-              {subthema.onderzoeksvragen.map((vraag) => (
-                <li key={vraag.id}>
-                  <p className="text-sectie text-inkt">{vraag.vraag}</p>
-                  {vraag.probleemstelling ? (
-                    <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
-          {/* THE BRAINSTORM COMES BEFORE THE WORK (FB-036): step 3 of the method, so between the question the chapter asks
-              and the activiteiten that answer it. Mounted only while the chapter is open, so a folded page asks for no
-              woordwebs at all. */}
+          {/* THE BRAINSTORM COMES FIRST (owner, 2026-09-16, TB-044): the woordweb opens the chapter, above the question it
+              leads to. Mounted only while the chapter is open, so a folded page asks for no woordwebs at all. */}
           <Woordweb subthemaId={subthema.id} naam={subthema.naam} />
 
-          <Subkop
-            titel={t("thema.activiteitenTitel")}
-            acties={
-              magActiviteit ? <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} /> : undefined
-            }
-          >
-            {activiteiten.length === 0 ? (
-              <p className="text-meta text-inkt-zacht">{t("activiteit.geen")}</p>
-            ) : (
-              <Inklaplijst
-                items={activiteitenOpNaam}
-                sleutel={(activiteit) => activiteit.id}
-                aantalTekst={telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}
-                lijstnaam={t("thema.lijstActiviteiten")}
-                zoekPlaatshouder={t("thema.zoekActiviteit")}
-                zoektekst={(activiteit) =>
-                  [
-                    activiteit.naam,
-                    activiteit.activiteitType ? t(`activiteitsoort.${activiteit.activiteitType}`) : "",
-                    activiteit.hoek ?? "",
-                  ].join(" ")
-                }
-                render={(activiteit) => (
-                  <li>
-                    <Activiteitregel
-                      activiteit={activiteit}
-                      magBewerken={magActiviteit}
-                      onBewerk={() => onBewerkActiviteit(activiteit)}
-                      onVerwijder={
-                        mag.activiteitVerwijderen({ ...activiteit, leeftijd })
-                          ? () => onVerwijderActiviteit(activiteit)
-                          : undefined
-                      }
-                    />
+          {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is driven by a
+              question (Art. IX), so it is set at reading size, with its probleemstelling smaller under it. No rule down
+              its left (owner, 2026-08-31: "die verticale lijn mag weg bij de vragen"). */}
+          {subthema.onderzoeksvragen.length > 0 ? (
+            <Subkop
+              titel={t(subthema.onderzoeksvragen.length === 1 ? "thema.onderzoeksvraagTitel" : "thema.onderzoeksvragenTitel")}
+            >
+              <ul className="flex flex-col gap-2.5">
+                {subthema.onderzoeksvragen.map((vraag) => (
+                  <li key={vraag.id}>
+                    <p className="text-sectie text-inkt">{vraag.vraag}</p>
+                    {vraag.probleemstelling ? (
+                      <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
+                    ) : null}
                   </li>
-                )}
-              />
-            )}
-          </Subkop>
+                ))}
+              </ul>
+            </Subkop>
+          ) : null}
 
-          <Subkop
-            titel={t("thema.subdoelenTitel")}
-            icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
-            acties={
-              magSubdoelen ? (
+          {/* THE THREE LISTS: each heading is its fold, with its count, its small add control and its search right after
+              it (TB-044). */}
+          <Inklaplijst
+            kop={{
+              titel: t("thema.activiteitenTitel"),
+              leeg: t("activiteit.geen"),
+              acties: magActiviteit ? (
+                <Toevoegicoon label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />
+              ) : undefined,
+            }}
+            items={activiteitenOpNaam}
+            sleutel={(activiteit) => activiteit.id}
+            lijstnaam={t("thema.lijstActiviteiten")}
+            zoekPlaatshouder={t("thema.zoekActiviteit")}
+            zoektekst={(activiteit) =>
+              [
+                activiteit.naam,
+                activiteit.activiteitType ? t(`activiteitsoort.${activiteit.activiteitType}`) : "",
+                activiteit.hoek ?? "",
+              ].join(" ")
+            }
+            render={(activiteit) => (
+              <li>
+                <Activiteitregel
+                  activiteit={activiteit}
+                  magBewerken={magActiviteit}
+                  onBewerk={() => onBewerkActiviteit(activiteit)}
+                  onVerwijder={
+                    mag.activiteitVerwijderen({ ...activiteit, leeftijd })
+                      ? () => onVerwijderActiviteit(activiteit)
+                      : undefined
+                  }
+                />
+              </li>
+            )}
+          />
+
+          <Inklaplijst
+            kop={{
+              titel: t("thema.subdoelenTitel"),
+              icoon: <IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />,
+              leeg: t("thema.geenSubdoelen"),
+              acties: magSubdoelen ? (
                 <Doelkoppelaar
+                  klein
                   onKies={onKoppelSubdoel}
                   bezig={koppelenBezig}
                   alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
                   toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
                 />
-              ) : undefined
-            }
-          >
-            {subthema.subdoelen.length === 0 ? (
-              <p className="text-meta text-inkt-zacht">{t("thema.geenSubdoelen")}</p>
-            ) : (
-              <Inklaplijst
-                items={subdoelenOpCode}
-                sleutel={(subdoel) => subdoel.id}
-                aantalTekst={telWoord(subdoelenOpCode.length, "thema.eenSubdoel", "thema.subdoelen")}
-                lijstnaam={t("thema.lijstSubdoelen")}
-                zoekPlaatshouder={t("thema.zoekDoel")}
-                zoektekst={(subdoel) => doelZoektekst(subdoel.koppeling.leerplandoelCode)}
-                zoekLaadt={doeltekstenLaden}
-                onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, subdoelen: open }))}
-                render={(subdoel) => (
-                  <Gekoppelddoel
-                    koppeling={subdoel.koppeling}
-                    ontkoppelLabel={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
-                    ontkoppelBezig={koppelenBezig}
-                    onOntkoppel={magSubdoelen ? () => onOntkoppelSubdoel(subdoel.id) : undefined}
-                    onToon={onToonDoel}
-                    voet={subdoelvoet(
-                      balans.dragersPerSubdoel.get(subdoel.id) ?? [],
-                      beslist(subdoel.koppeling.status),
-                    )}
-                  />
-                )}
+              ) : undefined,
+            }}
+            items={subdoelenOpCode}
+            sleutel={(subdoel) => subdoel.id}
+            lijstnaam={t("thema.lijstSubdoelen")}
+            zoekPlaatshouder={t("thema.zoekDoel")}
+            zoektekst={(subdoel) => doelZoektekst(subdoel.koppeling.leerplandoelCode)}
+            zoekLaadt={doeltekstenLaden}
+            onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, subdoelen: open }))}
+            render={(subdoel) => (
+              <Gekoppelddoel
+                koppeling={subdoel.koppeling}
+                ontkoppelLabel={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
+                ontkoppelBezig={koppelenBezig}
+                onOntkoppel={magSubdoelen ? () => onOntkoppelSubdoel(subdoel.id) : undefined}
+                onToon={onToonDoel}
+                voet={subdoelvoet(balans.dragersPerSubdoel.get(subdoel.id) ?? [], beslist(subdoel.koppeling.status))}
               />
             )}
-          </Subkop>
+          />
 
           {/* WHAT THE ACTIVITEITEN OFFER BESIDES THE SUBDOELEN (FB-010), under its own heading so that "a doel of
               this subthema" and "a doel one of its activiteiten happens to carry" are never one list. Only when there
               is something: an empty group would be a second "nothing here" line under the subdoelen' own. Read only;
               linking stays on the activiteit and the subdoelen. */}
           {balans.andereDoelen.length > 0 ? (
-            <Subkop
-              titel={t("thema.andereDoelenTitel")}
-              icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
-            >
-              <Inklaplijst
-                items={balans.andereDoelen}
-                sleutel={(doel) => doel.koppeling.leerplandoelCode}
-                aantalTekst={telWoord(balans.andereDoelen.length, "thema.eenAnderDoel", "thema.andereDoelen")}
-                lijstnaam={t("thema.lijstAndereDoelen")}
-                zoekPlaatshouder={t("thema.zoekDoel")}
-                zoektekst={(doel) => doelZoektekst(doel.koppeling.leerplandoelCode)}
-                zoekLaadt={doeltekstenLaden}
-                onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, andere: open }))}
-                render={({ koppeling, dragers }) => (
-                  <Gekoppelddoel
-                    koppeling={koppeling}
-                    ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
-                    onToon={onToonDoel}
-                    voet={<Dragers dragers={dragers} />}
-                  />
-                )}
-              />
-            </Subkop>
+            <Inklaplijst
+              kop={{ titel: t("thema.andereDoelenTitel"), icoon: <IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />, leeg: "" }}
+              items={balans.andereDoelen}
+              sleutel={(doel) => doel.koppeling.leerplandoelCode}
+              lijstnaam={t("thema.lijstAndereDoelen")}
+              zoekPlaatshouder={t("thema.zoekDoel")}
+              zoektekst={(doel) => doelZoektekst(doel.koppeling.leerplandoelCode)}
+              zoekLaadt={doeltekstenLaden}
+              onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, andere: open }))}
+              render={({ koppeling, dragers }) => (
+                <Gekoppelddoel
+                  koppeling={koppeling}
+                  ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
+                  onToon={onToonDoel}
+                  voet={<Dragers dragers={dragers} />}
+                />
+              )}
+            />
           ) : null}
         </>
       ) : null}

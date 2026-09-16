@@ -12,7 +12,7 @@ import type {
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
-import { openLijsten } from "../../test/lijsten";
+import { hoofdstuklijst, openLijsten } from "../../test/lijsten";
 import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -546,12 +546,18 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
 
-    const activiteiten = screen.getByRole("button", { name: telWoord(3, "thema.eenActiviteit", "thema.activiteiten") });
+    // The heading is the fold, with the count beside the title.
+    const activiteiten = screen.getByRole("button", { name: `${t("thema.activiteitenTitel")} 3` });
     expect(activiteiten).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: telWoord(1, "thema.eenSubdoel", "thema.subdoelen") })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: `${t("thema.subdoelenTitel")} 1` })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
+    // The chapter opens on its woordweb, above the rest.
+    const koppen = screen.getAllByRole("heading", { level: 3 }).map((kop) => kop.textContent ?? "");
+    const woordweb = koppen.indexOf(t("woordweb.titel"));
+    expect(woordweb).toBeGreaterThan(-1);
+    expect(woordweb).toBeLessThan(koppen.findIndex((kop) => kop.startsWith(t("thema.activiteitenTitel"))));
     expect(screen.queryByText("Eigen spel")).toBeNull();
 
     // Activiteiten by name, whatever order the server sent them in.
@@ -692,7 +698,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   };
 
   /** The rows of one Subkop in the open chapter, found by its heading. */
-  const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
+  const groep = (titel: string) => screen.getByRole("heading", { name: hoofdstuklijst(titel) }).closest("section")!;
   // The doel row's own button: the remove control beside it names the code too, but in an `aria-label`.
   const rij = (sectie: HTMLElement, code: string) => {
     const knoppen = within(sectie).getAllByRole("button", { name: new RegExp(code) });
@@ -773,7 +779,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
 
     // The chapter is open: its subdoelen are on screen, and only the other group is absent.
     expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: t("thema.andereDoelenTitel") })).toBeNull();
+    expect(screen.queryByRole("heading", { name: hoofdstuklijst(t("thema.andereDoelenTitel")) })).toBeNull();
   });
 
   it("markeert een subdoel dat nog niet beslist is niet als gat", async () => {

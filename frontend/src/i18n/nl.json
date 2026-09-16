@@ -128,8 +128,6 @@
     "subthemaMeer": "subthema's",
     "activiteitEen": "activiteit",
     "activiteitMeer": "activiteiten",
-    "doelEen": "doel",
-    "doelMeer": "doelen",
     "minimumdoelEen": "minimumdoel",
     "minimumdoelMeer": "minimumdoelen"
   },
@@ -167,6 +165,8 @@
     "subthemasTitel": "Subthema's",
     "geenSubthemas": "Nog geen subthema's",
     "activiteitenTitel": "Activiteiten",
+    "onderzoeksvraagTitel": "Onderzoeksvraag",
+    "onderzoeksvragenTitel": "Onderzoeksvragen",
     "subdoelenTitel": "Subdoelen",
     "koppelAanSubthema": "Doel koppelen aan subthema {naam}",
     "doelenLabel": "Doelen",
@@ -210,8 +210,6 @@
     "lijstActiviteiten": "activiteiten",
     "lijstSubdoelen": "subdoelen",
     "lijstAndereDoelen": "andere doelen",
-    "eenAnderDoel": "1 doel",
-    "andereDoelen": "{aantal} doelen",
     "zoekMinimumdoel": "Nummer of tekst",
     "zoekActiviteit": "Naam, soort of hoek",
     "zoekDoel": "Code of tekst"
