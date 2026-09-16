@@ -7,10 +7,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// Persistence round-trip for E2-04 (FR-4.1/4.2, Art. IV.2): drives the real EF Core mapping through
-/// <see cref="EfDoelMatchOpslag"/> to prove that AI match suggestions persist as <c>voorgesteld</c>
-/// <c>DoelKoppeling</c> rows and are <b>queryable per thema</b>. Uses the EF Core in-memory provider
-/// so the test runs in CI/dev with no Postgres container (the same choice as the E1 endpoint tests).
+/// Persistence round-trip for a thema's doelsuggesties (FB-053, FR-4.1/4.2, Art. IV.2): drives the real EF Core mapping
+/// through <see cref="EfDoelMatchOpslag"/> to prove that a proposal of a minimumdoel persists as <c>voorgesteld</c>, is
+/// queryable per thema with its minimumdoel's text, and that accepting one stores the themadoel beside it. Uses the EF
+/// Core in-memory provider; <c>DoelsuggestieEndpointsTests</c> covers the same against the API.
 /// </summary>
 public sealed class DoelMatchOpslagTests
 {
@@ -18,49 +18,65 @@ public sealed class DoelMatchOpslagTests
         new DbContextOptionsBuilder<AppDbContext>().UseInMemoryDatabase(db).Options;
 
     [Fact]
-    public async Task Suggesties_persisteren_als_voorgesteld_en_zijn_queryeerbaar_per_thema()
+    public async Task Voorstellen_persisteren_als_voorgesteld_en_een_aanvaard_voorstel_wordt_een_themadoel()
     {
-        var options = Options($"e2_04_{Guid.NewGuid():N}");
+        var options = Options($"fb053_{Guid.NewGuid():N}");
         Guid themaId;
 
-        // Seed a thema (the leerplandoel FK is not enforced by the in-memory provider).
         await using (var ctx = new AppDbContext(options))
         {
+            ctx.Minimumdoelen.AddRange(
+                new Minimumdoel("K-1.1.1", "K-", "1.1.1", "De kleuters kunnen rijm herkennen."),
+                new Minimumdoel("K-2.1.1", "K-", "2.1.1", "De kleuters kunnen tellen."));
             var thema = new Thema("Herfst", duurWeken: 4);
             ctx.Themas.Add(thema);
             await ctx.SaveChangesAsync();
             themaId = thema.Id;
         }
 
-        // Load tracked through the port, add two voorgesteld suggestions, commit.
+        // Load tracked through the port, add two proposals, commit.
         await using (var ctx = new AppDbContext(options))
         {
             var opslag = new EfDoelMatchOpslag(ctx);
             var thema = await opslag.LaadThemaAsync(themaId);
             Assert.NotNull(thema);
 
-            thema!.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij observatie"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "seizoensverandering"));
+            thema!.VoegDoelsuggestieToe("K-1.1.1", "Het thema speelt met rijmpjes.");
+            thema.VoegDoelsuggestieToe("K-2.1.1", "Bladeren tellen.");
             await opslag.BewaarAsync();
         }
 
-        // Query them back per thema in a fresh context — they round-tripped as voorgesteld.
+        // Accept one in a fresh unit of work: the new themadoel is added to a loaded collection and must insert.
+        await using (var ctx = new AppDbContext(options))
+        {
+            var opslag = new EfDoelMatchOpslag(ctx);
+            var thema = (await opslag.LaadThemaAsync(themaId))!;
+            thema.AanvaardDoelsuggestie(thema.Doelsuggesties.Single(s => s.MinimumdoelRef == "K-1.1.1"));
+            await opslag.BewaarAsync();
+        }
+
         await using (var ctx = new AppDbContext(options))
         {
             var opslag = new EfDoelMatchOpslag(ctx);
             var suggesties = await opslag.HaalSuggestiesVoorThemaAsync(themaId);
 
-            Assert.Equal(2, suggesties.Count);
-            Assert.All(suggesties, s => Assert.Equal("Voorgesteld", s.Status));
-            var een = suggesties.Single(s => s.LeerplandoelCode == "NAT-K3-01");
-            Assert.Equal("past bij observatie", een.AiMotivatie);
+            Assert.Equal(["K-1.1.1", "K-2.1.1"], suggesties.Select(s => s.MinimumdoelRef));
+            var aanvaard = suggesties[0];
+            Assert.Equal("Aanvaard", aanvaard.Status);
+            Assert.Equal("Het thema speelt met rijmpjes.", aanvaard.AiMotivatie);
+            Assert.Equal("De kleuters kunnen rijm herkennen.", aanvaard.Omschrijving);
+            Assert.Equal("K-", aanvaard.Mijlpaal);
+            Assert.Equal("Voorgesteld", suggesties[1].Status);
+
+            var thema = await ctx.Themas.SingleAsync(t => t.Id == themaId);
+            Assert.Equal("K-1.1.1", Assert.Single(thema.Minimumdoelen).MinimumdoelRef);
         }
     }
 
     [Fact]
     public async Task Query_pad_geeft_lege_lijst_voor_onbekend_thema()
     {
-        await using var ctx = new AppDbContext(Options($"e2_04_{Guid.NewGuid():N}"));
+        await using var ctx = new AppDbContext(Options($"fb053_{Guid.NewGuid():N}"));
         var opslag = new EfDoelMatchOpslag(ctx);
 
         Assert.Empty(await opslag.HaalSuggestiesVoorThemaAsync(Guid.NewGuid()));

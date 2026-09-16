@@ -28,34 +28,6 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-        IReadOnlyCollection<Guid> themaIds,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(themaIds);
-
-        if (themaIds.Count == 0)
-        {
-            // No placed thema means nothing to read, and it keeps an empty IN () list out of the SQL.
-            return [];
-        }
-
-        var ids = themaIds.Distinct().ToList();
-
-        // Accepted doelsuggesties only: a themadoel that links a leerplandoel counts nowhere (ADR-0047 D5), and the
-        // subthema layers have their own route through their subthema's placement.
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .Where(t => ids.Contains(t.Id))
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
-                .Select(k => new DekkendeKoppeling(k.LeerplandoelCode, t.Naam)))
-            .ToListAsync(cancellationToken);
-
-        return suggesties.Distinct().ToList();
-    }
-
-    /// <inheritdoc />
     public async Task<IReadOnlyList<Subthemakoppeling>> HaalSubthemakoppelingenAsync(
         Guid klasId,
         CancellationToken cancellationToken = default)
@@ -126,18 +98,6 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     {
         var codes = (await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken)).Waarden;
 
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.Status != KoppelingStatus.Geweigerd)
-                .Select(k => new KandidaatKoppeling(
-                    k.LeerplandoelCode,
-                    t.Id,
-                    t.Naam,
-                    k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel,
-                    true)))
-            .ToListAsync(cancellationToken);
-
         var subdoelen = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Subthemas
@@ -149,8 +109,7 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                         t.Id,
                         t.Naam,
                         sd.Koppeling.Status == KoppelingStatus.Aanvaard
-                            || sd.Koppeling.Status == KoppelingStatus.Manueel,
-                        false))))
+                            || sd.Koppeling.Status == KoppelingStatus.Manueel))))
             .ToListAsync(cancellationToken);
 
         var activiteiten = await _context.Themas
@@ -164,12 +123,10 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                             k.LeerplandoelCode,
                             t.Id,
                             t.Naam,
-                            k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel,
-                            false)))))
+                            k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))))
             .ToListAsync(cancellationToken);
 
-        return suggesties
-            .Concat(subdoelen)
+        return subdoelen
             .Concat(activiteiten)
             .Distinct()
             .ToList();

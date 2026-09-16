@@ -15,25 +15,16 @@ using Microsoft.Extensions.Hosting;
 namespace Jaarplanner.IntegrationTests;
 
 /// <summary>
-/// Drives the doelsuggestie endpoints end-to-end (HTTP → controller → service → EF).
+/// Drives a thema's doelsuggestie endpoints end-to-end (HTTP → controller → service → EF), FB-053 (ADR-0049): the AI
+/// proposes minimumdoelen as themadoel, and a decision accepts or rejects each.
 /// <para>
-/// <b>E2-05 (FR-4.3):</b> a teacher lists a thema's AI suggestions and sets a status
-/// (aanvaard/geweigerd/manueel), and that status <b>persists across a reload</b> (a fresh GET) and is the
-/// exact value E5 coverage reads (Art. IV.1/IV.2). Nothing is auto-applied: a fresh suggestion stays
-/// <c>voorgesteld</c> until an explicit PUT.
+/// The generation tests go <b>through</b> <c>POST …/doelsuggesties/genereer</c> (the real controller, the real
+/// <c>DoelMatchingService</c>, the real EF store) and assert on rows only that path could have written. Accepting one
+/// is asserted on the thema itself: its minimumdoel is then a themadoel.
 /// </para>
 /// <para>
-/// <b>E2-08 (FR-4.1) — and this is the half that was missing.</b> Every test in this file used to seed its
-/// suggestions straight into the database, so the suite passed while <b>no suggestion could be created by a
-/// running application at all</b>: nothing but a unit test ever called the matching service. The generation
-/// tests below therefore go <b>through</b> <c>POST …/doelsuggesties/genereer</c> — the real controller, the
-/// real <c>DoelMatchingService</c>, the real EF store — and assert on rows that only that path could have
-/// written. A seeding shortcut here would recreate the exact blind spot this story exists to close.
-/// </para>
-/// <para>
-/// The DbContext is the EF Core in-memory provider and the AI client is a stub, so the suite needs no
-/// Postgres container and no network and never skips — the two things a test must not do for real are the
-/// only two things replaced.
+/// The DbContext is the EF Core in-memory provider and the AI client is a stub, so the suite needs no Postgres container
+/// and no network. <c>RechtenAfdwingingTests</c> pins who may call these routes.
 /// </para>
 /// </summary>
 public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEndpointsTests.Factory>
@@ -42,42 +33,96 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
 
     public DoelsuggestieEndpointsTests(Factory factory) => _factory = factory;
 
-    [Theory]
-    [InlineData("Aanvaard")]
-    [InlineData("Geweigerd")]
-    [InlineData("Manueel")]
-    public async Task Teacher_decision_persists_across_a_reload(string beslissing)
+    [Fact]
+    public async Task Aanvaarden_maakt_het_minimumdoel_een_themadoel_en_overleeft_een_herlaad()
     {
         var client = _factory.CreateClient();
         var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
 
-        // A fresh suggestion is queryable and still `voorgesteld` — never auto-applied (Art. IV.1).
+        // A fresh proposal is queryable and still `voorgesteld`: never auto-applied (Art. IV.1).
         var voor = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         var suggestie = Assert.Single(voor!, s => s.Id == suggestieId);
         Assert.Equal("Voorgesteld", suggestie.Status);
-        Assert.Equal("past bij het observeren van bomen", suggestie.AiMotivatie);
+        Assert.Equal("Het thema speelt met rijmpjes.", suggestie.AiMotivatie);
+        Assert.Empty(await _factory.ThemadoelRefsAsync(themaId));
 
-        // Teacher records a decision.
         var put = await client.PutAsJsonAsync(
-            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = beslissing });
+            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = "Aanvaard" });
         Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-        var bijgewerkt = await put.Content.ReadFromJsonAsync<SuggestieDto>();
-        Assert.Equal(beslissing, bijgewerkt!.Status);
+        Assert.Equal("Aanvaard", (await put.Content.ReadFromJsonAsync<SuggestieDto>())!.Status);
 
-        // Reload (a brand-new request/GET) — the status survived, proving it was persisted.
+        // Reload: the decision survived, and the minimumdoel is a themadoel of the thema, as FB-043 makes it.
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
-        Assert.Equal(beslissing, Assert.Single(na!, s => s.Id == suggestieId).Status);
+        Assert.Equal("Aanvaard", Assert.Single(na!, s => s.Id == suggestieId).Status);
+        Assert.Equal(["K-1.1.1"], await _factory.ThemadoelRefsAsync(themaId));
+        var thema = await client.GetFromJsonAsync<JsonElement>($"/api/themas/{themaId}");
+        Assert.Equal("K-1.1.1", thema.GetProperty("minimumdoelen")[0].GetProperty("minimumdoelRef").GetString());
     }
 
     [Fact]
-    public async Task Setting_voorgesteld_by_hand_is_rejected_with_400()
+    public async Task Een_geweigerd_voorstel_komt_bij_een_volgende_vraag_niet_terug()
     {
         var client = _factory.CreateClient();
         var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
 
         var put = await client.PutAsJsonAsync(
-            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = "Voorgesteld" });
+            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = "Geweigerd" });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        Assert.Empty(await _factory.ThemadoelRefsAsync(themaId));
+
+        _factory.AiAntwoord = """{"suggesties":[{"code":"K-1.1.1","motivatie":"toch weer"},{"code":"K-9.1.1","motivatie":"nieuw"}]}""";
+        var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
+
+        var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.Equal(["K-9.1.1"], resultaat!.Bewaard.Select(b => b.MinimumdoelRef));
+        Assert.Equal(["K-1.1.1"], resultaat.OvergeslagenDuplicaat);
+        Assert.Contains("Niet voorstellen (al themadoel of al voorgesteld): K-1.1.1", _factory.LaatsteUserPrompt, StringComparison.Ordinal);
+
+        var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
+        Assert.Equal("Geweigerd", Assert.Single(na!, s => s.MinimumdoelRef == "K-1.1.1").Status);
+        Assert.Equal("Voorgesteld", Assert.Single(na!, s => s.MinimumdoelRef == "K-9.1.1").Status);
+    }
+
+    [Theory]
+    [InlineData("Voorgesteld")]
+    [InlineData("Manueel")]
+    public async Task Een_andere_beslissing_dan_aanvaarden_of_weigeren_geeft_400(string status)
+    {
+        var client = _factory.CreateClient();
+        var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
+
+        var put = await client.PutAsJsonAsync(
+            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status });
         Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+    }
+
+    [Fact]
+    public async Task Een_beslist_voorstel_opnieuw_beslissen_geeft_400()
+    {
+        var client = _factory.CreateClient();
+        var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
+        await client.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = "Geweigerd" });
+
+        var put = await client.PutAsJsonAsync(
+            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/status", new { status = "Aanvaard" });
+
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        var probleem = await put.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.Equal("Over dit voorstel is al beslist.", probleem!.Detail);
+        Assert.Empty(await _factory.ThemadoelRefsAsync(themaId));
+    }
+
+    [Fact]
+    public async Task De_route_om_een_leerplandoel_in_te_ruilen_bestaat_niet_meer()
+    {
+        var client = _factory.CreateClient();
+        var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
+
+        var put = await client.PutAsJsonAsync(
+            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/leerplandoel", new { leerplandoelCode = "NAT-K3-01" });
+
+        // No endpoint takes it: the path answers 405 because the status route shares its prefix.
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, put.StatusCode);
     }
 
     [Fact]
@@ -102,18 +147,17 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     }
 
     // -------------------------------------------------------------------------------------------------
-    // E2-08 — FR-4.1: generation through the real service. No row below is seeded; the endpoint creates it.
+    // FR-4.1: generation through the real service. No row below is seeded; the endpoint creates it.
     // -------------------------------------------------------------------------------------------------
 
     [Fact]
-    public async Task Genereren_maakt_voorgestelde_suggesties_die_de_lijst_daarna_toont()
+    public async Task Genereren_maakt_voorgestelde_minimumdoelen_die_de_lijst_daarna_toont()
     {
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
         _factory.AiAntwoord =
-            """{"suggesties":[{"code":"NAT-K3-01","motivatie":"past bij het observeren van bomen"}]}""";
+            """{"suggesties":[{"code":"K-9.1.1","motivatie":"Het thema volgt de seizoenen."}]}""";
 
-        // Precondition: the thema has nothing. This is what a deployed app showed forever before E2-08.
         var voor = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         Assert.Empty(voor!);
 
@@ -121,65 +165,45 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         Assert.Equal(HttpStatusCode.OK, post.StatusCode);
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.True(resultaat!.IsGeslaagd);
-        // The thema's one subthema is K3, so only the two K3 goals were candidates (TB-007).
+        // The thema's one subthema is K3, so the candidates are the two minimumdoelen of mijlpaal K-.
         Assert.Equal(2, resultaat.AantalKandidaten);
-        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
-        var voorgesteld = Assert.Single(resultaat.Bewaard);
-        Assert.Equal("Voorgesteld", voorgesteld.Status);
+        Assert.Equal(["K3"], resultaat.JaarFasen);
+        Assert.Equal(["K-"], resultaat.Mijlpalen);
+        Assert.Equal("Voorgesteld", Assert.Single(resultaat.Bewaard).Status);
 
-        // A fresh GET — i.e. read back out of the database — shows what generation persisted, with the
-        // leerplandoel's own text and doelsoort so the teacher can judge it (FR-4.2).
+        // Read back out of the database, with the minimumdoel's own text (FR-4.2), and not yet a themadoel.
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         var suggestie = Assert.Single(na!);
-        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
+        Assert.Equal("K-9.1.1", suggestie.MinimumdoelRef);
         Assert.Equal("Voorgesteld", suggestie.Status);
-        Assert.Equal("past bij het observeren van bomen", suggestie.AiMotivatie);
-        Assert.Equal("herkent bomen.", suggestie.Tekst);
-        Assert.Equal("Minimumdoel", suggestie.Doelsoort);
+        Assert.Equal("Het thema volgt de seizoenen.", suggestie.AiMotivatie);
+        Assert.Equal("De kleuters kunnen seizoenen onderscheiden.", suggestie.Omschrijving);
+        Assert.Equal("K-", suggestie.Mijlpaal);
+        Assert.Empty(await _factory.ThemadoelRefsAsync(themaId));
     }
 
-    [Fact]
-    public async Task Een_selectie_in_de_aanvraag_begrenst_de_kandidaten()
+    [Theory]
+    [InlineData("L1")]
+    [InlineData("l1")]
+    public async Task Een_keuze_in_de_aanvraag_bepaalt_de_mijlpaal(string jaarFase)
     {
-        // The scope of a run is the caller's explicit, per-run choice — "which disciplines first" is still an
-        // open Art. XIV question, so no layer may answer it silently.
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
         _factory.AiAntwoord = """{"suggesties":[]}""";
 
         var post = await client.PostAsJsonAsync(
             $"/api/themas/{themaId}/doelsuggesties/genereer",
-            new { selectie = new { jaarFasen = new[] { "L1" } } });
+            new { jaarFasen = new[] { jaarFase } });
 
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.True(resultaat!.IsGeslaagd);
-        Assert.Equal(1, resultaat.AantalKandidaten);
-    }
-
-    [Fact]
-    public async Task Een_selectie_in_kleine_letters_begrenst_even_goed()
-    {
-        // A teacher types "l1" into the panel's free-text field. With a case-sensitive comparison — which is
-        // what Postgres' default collation gives you — the run answers 0 candidates and the UI reports an
-        // empty curriculum. Honest limit: this runs the real EfLeerdoelCatalogus query on the **in-memory**
-        // provider, so it pins the filter's semantics, not its translation to SQL `lower()`.
-        var client = _factory.CreateClient();
-        var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
-        _factory.AiAntwoord = """{"suggesties":[]}""";
-
-        var post = await client.PostAsJsonAsync(
-            $"/api/themas/{themaId}/doelsuggesties/genereer",
-            new { selectie = new { jaarFasen = new[] { "l1" } } });
-
-        var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
-        Assert.True(resultaat!.IsGeslaagd);
+        Assert.Equal(["4-"], resultaat.Mijlpalen);
         Assert.Equal(1, resultaat.AantalKandidaten);
     }
 
     [Fact]
     public async Task Een_thema_zonder_subthemas_en_zonder_keuze_geeft_400_en_roept_de_ai_niet_aan()
     {
-        // TB-007: without a jaar/fase the run would search the whole catalogue, so it is refused before the model.
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSubthemasAsync();
         var voor = _factory.AantalAiAanroepen;
@@ -193,7 +217,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     }
 
     [Fact]
-    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_jaarfasen()
+    public async Task Een_thema_zonder_subthemas_zoekt_in_de_gekozen_leeftijden()
     {
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSubthemasAsync();
@@ -201,12 +225,12 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
 
         var post = await client.PostAsJsonAsync(
             $"/api/themas/{themaId}/doelsuggesties/genereer",
-            new { selectie = new { jaarFasen = new[] { "K3" } } });
+            new { jaarFasen = new[] { "K2" } });
 
         Assert.Equal(HttpStatusCode.OK, post.StatusCode);
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.Equal(2, resultaat!.AantalKandidaten);
-        Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
+        Assert.Equal(["K2"], resultaat.JaarFasen);
     }
 
     [Fact]
@@ -224,19 +248,19 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     }
 
     [Fact]
-    public async Task Een_verzonnen_code_belandt_niet_in_de_databank()
+    public async Task Een_verzonnen_code_of_een_leerplandoel_belandt_niet_in_de_databank()
     {
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
         _factory.AiAntwoord =
-            """{"suggesties":[{"code":"NAT-K3-02","motivatie":"geldig"},{"code":"VERZONNEN-99","motivatie":"bestaat niet"}]}""";
+            """{"suggesties":[{"code":"K-1.1.1","motivatie":"geldig"},{"code":"VERZONNEN-99","motivatie":"bestaat niet"},{"code":"NAT-K3-01","motivatie":"een leerplandoel"}]}""";
 
         var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
-        Assert.Equal("VERZONNEN-99", Assert.Single(resultaat!.OvergeslagenOnbekend));
+        Assert.Equal(["VERZONNEN-99", "NAT-K3-01"], resultaat!.OvergeslagenOnbekend);
 
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
-        Assert.Equal("NAT-K3-02", Assert.Single(na!).LeerplandoelCode);
+        Assert.Equal("K-1.1.1", Assert.Single(na!).MinimumdoelRef);
     }
 
     [Fact]
@@ -244,73 +268,33 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     {
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
-        _factory.AiAntwoord = """{"suggesties":[{"code":"NAT-K3-01","motivatie":"past"}]}""";
+        _factory.AiAntwoord = """{"suggesties":[{"code":"K-1.1.1","motivatie":"past"}]}""";
 
         await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
         var tweede = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
 
         var resultaat = await tweede.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.Empty(resultaat!.Bewaard);
-        Assert.Equal("NAT-K3-01", Assert.Single(resultaat.OvergeslagenDuplicaat));
+        Assert.Equal("K-1.1.1", Assert.Single(resultaat.OvergeslagenDuplicaat));
 
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         Assert.Single(na!);
     }
 
-    // -------------------------------------------------------------------------------------------------
-    // E2-08 — FR-4.3 "aanpassen": substituting a different leerplandoel, landing as `manueel`.
-    // -------------------------------------------------------------------------------------------------
-
-    [Fact]
-    public async Task Aanpassen_vervangt_het_doel_en_overleeft_een_herlaad()
-    {
-        var client = _factory.CreateClient();
-        var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
-
-        var put = await client.PutAsJsonAsync(
-            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/leerplandoel",
-            new { leerplandoelCode = "NAT-K3-02" });
-        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
-
-        var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
-        var suggestie = Assert.Single(na!, s => s.Id == suggestieId);
-        Assert.Equal("NAT-K3-02", suggestie.LeerplandoelCode);
-        Assert.Equal("Manueel", suggestie.Status);
-        // The AI motivation went with the code it described (Art. IV.3), and the new goal's text is shown.
-        Assert.Null(suggestie.AiMotivatie);
-        Assert.Equal("observeert de natuur.", suggestie.Tekst);
-    }
-
-    [Fact]
-    public async Task Aanpassen_naar_een_onbestaande_code_geeft_400_en_wijzigt_niets()
-    {
-        var client = _factory.CreateClient();
-        var (themaId, suggestieId) = await _factory.SeedThemaMetSuggestieAsync();
-
-        var put = await client.PutAsJsonAsync(
-            $"/api/themas/{themaId}/doelsuggesties/{suggestieId}/leerplandoel",
-            new { leerplandoelCode = "VERZONNEN-99" });
-        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
-
-        var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
-        var suggestie = Assert.Single(na!, s => s.Id == suggestieId);
-        Assert.Equal("NAT-K3-01", suggestie.LeerplandoelCode);
-        Assert.Equal("Voorgesteld", suggestie.Status);
-    }
-
     private sealed record SuggestieDto(
         Guid Id,
-        string LeerplandoelCode,
+        string MinimumdoelRef,
         string Status,
         string? AiMotivatie,
-        string? Tekst,
-        string? Doelsoort);
+        string? Omschrijving,
+        string? Mijlpaal);
 
     private sealed record GeneratieDto(
         bool IsGeslaagd,
         string? Fout,
         int AantalKandidaten,
         List<string> JaarFasen,
+        List<string> Mijlpalen,
         List<SuggestieDto> Bewaard,
         List<string> OvergeslagenOnbekend,
         List<string> OvergeslagenDuplicaat);
@@ -321,14 +305,13 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     /// store and the real <c>EfLeerdoelCatalogus</c>. Only the two things a test must not do for real —
     /// call Azure and touch Postgres — are replaced (Art. IV.6, VI.4: no key is needed anywhere here).
     /// <para>
-    /// It seeds the read-only leerplandoelen a suggestion can point at (two K3 + one L1, so a jaar/fase
-    /// selection is actually observable) and offers two thema seeds: one bare, for the generation tests,
-    /// and one already carrying a <c>voorgesteld</c> suggestion, for the review tests.
+    /// It seeds the read-only minimumdoelen a proposal can point at (two of mijlpaal K-, one of 4-, so a leeftijd
+    /// choice is observable) and a leerplandoel, and offers thema seeds: bare, without subthema's, and one already
+    /// carrying a <c>voorgesteld</c> proposal, for the decision tests.
     /// </para>
     /// </summary>
     public class Factory : JaarplannerApiFactory
     {
-        private const string LeerdoelCode = "NAT-K3-01";
         private readonly string _dbNaam = $"e2_05_endpoints_{Guid.NewGuid():N}";
 
         /// <summary>The canned completion the stub AI client returns; set per test before generating.</summary>
@@ -336,6 +319,9 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
 
         /// <summary>How often the stub AI client was called, so a test can prove a refused run never reached it.</summary>
         public int AantalAiAanroepen { get; private set; }
+
+        /// <summary>The user prompt of the stub's last call.</summary>
+        public string LaatsteUserPrompt { get; private set; } = string.Empty;
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -359,9 +345,10 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
                 services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_dbNaam));
 
                 // Reads the canned answer at call time so a test can set it after the host is built.
-                services.AddSingleton<IAiClient>(new StubAiClient(() =>
+                services.AddSingleton<IAiClient>(new StubAiClient(request =>
                 {
                     AantalAiAanroepen++;
+                    LaatsteUserPrompt = request.UserPrompt;
                     return AiAntwoord;
                 }));
             });
@@ -381,6 +368,17 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
             return thema.Id;
         }
 
+        /// <summary>The refs of the thema's minimumdoel themadoelen, read from the database.</summary>
+        public async Task<List<string>> ThemadoelRefsAsync(Guid themaId)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            return await db.ThemaMinimumdoelen
+                .Where(m => m.ThemaId == themaId)
+                .Select(m => m.MinimumdoelRef)
+                .ToListAsync();
+        }
+
         /// <summary>Creates a thema with one <c>voorgesteld</c> doelsuggestie and returns (themaId, suggestieId).</summary>
         public async Task<(Guid ThemaId, Guid SuggestieId)> SeedThemaMetSuggestieAsync()
         {
@@ -389,8 +387,8 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
             await SeedLeerplandoelenAsync(db);
 
             var thema = new Thema("Herfst", duurWeken: 4, invalshoeken: "natuur");
-            var suggestie = thema.VoegDoelsuggestieToe(
-                new DoelKoppeling(LeerdoelCode, KoppelingStatus.Voorgesteld, "past bij het observeren van bomen"));
+            thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
+            var suggestie = thema.VoegDoelsuggestieToe("K-1.1.1", "Het thema speelt met rijmpjes.");
             db.Themas.Add(thema);
             await db.SaveChangesAsync();
 
@@ -416,26 +414,28 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         {
             await db.Database.EnsureCreatedAsync();
 
-            if (await db.Leerplandoelen.AnyAsync(l => l.Code == LeerdoelCode))
+            if (await db.Minimumdoelen.AnyAsync(m => m.Ref == "K-1.1.1"))
             {
                 return;
             }
 
-            db.Leerplandoelen.AddRange(
-                new Leerplandoel(LeerdoelCode, Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
-                new Leerplandoel("NAT-K3-02", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "observeert de natuur."),
-                new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Getallen", "Getalbegrip", "2", tekst: "telt tot 20."));
+            db.Minimumdoelen.AddRange(
+                new Minimumdoel("K-1.1.1", "K-", "1.1.1", "De kleuters kunnen rijm herkennen.", "Nederlands", "Lezen"),
+                new Minimumdoel("K-9.1.1", "K-", "9.1.1", "De kleuters kunnen seizoenen onderscheiden.", "Wereldoriëntatie", "Natuur"),
+                new Minimumdoel("4-2.1.1", "4-", "2.1.1", "De leerlingen tellen tot honderd.", "Wiskunde", "Getallen"));
+            db.Leerplandoelen.Add(
+                new Leerplandoel("NAT-K3-01", Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."));
             await db.SaveChangesAsync();
         }
 
         private sealed class StubAiClient : IAiClient
         {
-            private readonly Func<string> _antwoord;
+            private readonly Func<AiRequest, string> _antwoord;
 
-            public StubAiClient(Func<string> antwoord) => _antwoord = antwoord;
+            public StubAiClient(Func<AiRequest, string> antwoord) => _antwoord = antwoord;
 
             public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-                Task.FromResult(new AiCompletion { Content = _antwoord() });
+                Task.FromResult(new AiCompletion { Content = _antwoord(request) });
         }
     }
 }
@@ -456,7 +456,7 @@ public sealed class DoelsuggestiePromptgrensTests : IClassFixture<DoelsuggestieP
     {
         var client = _factory.CreateClient();
         var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
-        _factory.AiAntwoord = """{"suggesties":[{"code":"NAT-K3-01","motivatie":"past"}]}""";
+        _factory.AiAntwoord = """{"suggesties":[{"code":"K-1.1.1","motivatie":"past"}]}""";
 
         var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
 

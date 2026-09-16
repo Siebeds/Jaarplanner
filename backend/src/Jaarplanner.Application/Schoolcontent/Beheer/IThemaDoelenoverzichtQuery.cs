@@ -27,14 +27,12 @@ public interface IThemaDoelenoverzichtQuery
 }
 
 /// <summary>
-/// Where in the thema a leerplandoel is linked. An accepted doelsuggestie is a place of its own and never a themadoel: the
-/// 2–3 themadoelen are the thema's curated anchors and the suggesties are kept apart from them (Art. IX.2); accepting one
-/// changes its status and nothing else.
+/// Where in the thema a leerplandoel is linked. A thema's doelsuggestie proposes a minimumdoel and is no place of a
+/// leerplandoel (ADR-0049).
 /// </summary>
 public enum DoelPlaatsSoort
 {
     Themadoel,
-    Doelsuggestie,
     Subdoel,
     Activiteit,
 }

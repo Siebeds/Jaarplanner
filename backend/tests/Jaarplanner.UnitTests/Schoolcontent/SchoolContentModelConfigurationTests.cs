@@ -98,24 +98,24 @@ public class SchoolContentModelConfigurationTests
     }
 
     [Fact]
-    public void Thema_owns_the_ai_doelsuggesties_in_their_own_table()
+    public void Thema_keeps_its_minimumdoel_doelsuggesties_in_their_own_table()
     {
-        // E2-04: thema-level AI match suggestions are an owned DoelKoppeling collection in their own
-        // table, distinct from the capped themadoelen, each persisted as `voorgesteld` + aiMotivatie.
+        // FB-053: a thema's doelsuggesties propose minimumdoelen, in their own table beside the themadoelen, each
+        // with its status by name and a restricting FK to the minimumdoel.
         var thema = BuildModel().FindEntityType(typeof(Thema))!;
         var nav = thema.GetNavigations().SingleOrDefault(n => n.Name == nameof(Thema.Doelsuggesties));
         Assert.NotNull(nav);
 
-        var owned = nav!.TargetEntityType;
-        Assert.True(owned.IsOwned());
-        Assert.Equal("thema_doelsuggesties", owned.GetTableName());
+        var suggestie = nav!.TargetEntityType;
+        Assert.Equal(typeof(Minimumdoelsuggestie), suggestie.ClrType);
+        Assert.Equal("thema_minimumdoelsuggesties", suggestie.GetTableName());
 
-        // Shares the single DoelKoppeling mapping: status persisted by its Dutch name, FK to leerplandoel.
-        var status = owned.FindProperty(nameof(DoelKoppeling.Status))!;
+        var status = suggestie.FindProperty(nameof(Minimumdoelsuggestie.Status))!;
         Assert.Equal("Voorgesteld", status.GetValueConverter()!.ConvertToProvider(KoppelingStatus.Voorgesteld));
-        var fk = owned.GetForeignKeys()
-            .FirstOrDefault(f => f.PrincipalEntityType.ClrType == typeof(Domain.Curriculum.Leerplandoel));
-        Assert.NotNull(fk);
+        var fk = suggestie.GetForeignKeys()
+            .Single(f => f.PrincipalEntityType.ClrType == typeof(Domain.Curriculum.Minimumdoel));
+        Assert.Equal(DeleteBehavior.Restrict, fk.DeleteBehavior);
+        Assert.Contains(suggestie.GetIndexes(), i => i.IsUnique && i.Properties.Count == 2);
     }
 
     [Fact]

@@ -43,39 +43,30 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         }
     }
 
-    // ── The thema-level route: accepted doelsuggesties of placed thema's ────────────────────────────────────────
+    // ── A thema's doelsuggesties propose minimumdoelen and reach no leerplandoel read (ADR-0049) ───────────────
 
     [PostgresFact]
-    public async Task De_dekkende_lezing_levert_alleen_de_besliste_doelsuggesties_van_de_gevraagde_themas()
+    public async Task Een_minimumdoelvoorstel_komt_in_geen_enkele_leerplandoellezing()
     {
-        var zet = await ZetOpAsync((context, thema) =>
+        var zet = await ZetOpAsync(async (context, thema) =>
         {
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("SUG-AANVAARD", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Aanvaard);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("SUG-MANUEEL", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Manueel);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("SUG-VOORGESTELD", KoppelingStatus.Voorgesteld, "?"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("SUG-GEWEIGERD", KoppelingStatus.Voorgesteld, "nee"))
-                .WijzigStatus(KoppelingStatus.Geweigerd);
+            await ZorgVoorMinimumdoelenAsync(context, ("DEK-SUG-K", "K-"));
+            var voorstel = thema.VoegDoelsuggestieToe("DEK-SUG-K", "past");
+            thema.AanvaardDoelsuggestie(voorstel);
             // D5: a themadoel that links a leerplandoel counts nowhere, however decided.
             thema.VoegThemadoelToe(new DoelKoppeling("THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
-            // The subthema layers have their own route; this read never returns them.
-            var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
-            subthema.VoegSubdoelToe(Leeftijd, new DoelKoppeling("SUBDOEL", KoppelingStatus.Aanvaard));
-            return Task.CompletedTask;
         });
 
         await using var leescontext = _db.MaakContext();
         var opslag = new EfDekkingOpslag(leescontext);
 
-        var koppelingen = await opslag.HaalDekkendeKoppelingenAsync([zet.ThemaId]);
-        Assert.Equal(
-            ["SUG-AANVAARD", "SUG-MANUEEL"],
-            koppelingen.Select(k => k.LeerplandoelCode).OrderBy(c => c, StringComparer.Ordinal));
-        Assert.All(koppelingen, k => Assert.Equal(zet.ThemaNaam, k.ThemaNaam));
+        Assert.Empty(await opslag.HaalSubthemakoppelingenAsync(zet.KlasId));
+        Assert.Empty(await opslag.HaalKandidaatKoppelingenAsync(zet.KlasId));
 
-        Assert.Empty(await opslag.HaalDekkendeKoppelingenAsync([Guid.NewGuid()]));
-        Assert.Empty(await opslag.HaalDekkendeKoppelingenAsync([]));
+        // What the acceptance made counts, through the minimumdoel route only.
+        Assert.Contains(
+            new Themaminimumdoelkoppeling("DEK-SUG-K", zet.ThemaId, zet.ThemaNaam),
+            await opslag.HaalThemaMinimumdoelenAsync());
     }
 
     // ── The subthema route ──────────────────────────────────────────────────────────────────────────────────────
@@ -142,15 +133,10 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
     // ── The candidate read ──────────────────────────────────────────────────────────────────────────────────────
 
     [PostgresFact]
-    public async Task De_kandidaatlezing_levert_suggesties_subdoelen_en_activiteitdoelen_zonder_weigeringen()
+    public async Task De_kandidaatlezing_levert_subdoelen_en_activiteitdoelen_zonder_weigeringen()
     {
         var zet = await ZetOpAsync((context, thema) =>
         {
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE", KoppelingStatus.Voorgesteld, "past"));
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUG-AANVAARD", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Aanvaard);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-GEWEIGERD", KoppelingStatus.Voorgesteld, "nee"))
-                .WijzigStatus(KoppelingStatus.Geweigerd);
             thema.VoegThemadoelToe(new DoelKoppeling("KAND-THEMADOEL", KoppelingStatus.Aanvaard, "anchor"));
 
             var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
@@ -171,45 +157,14 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
 
         Assert.Equal(
             [
-                ("KAND-ACTIVITEIT", false, false),
-                ("KAND-SUBDOEL", true, false),
-                ("KAND-SUBDOEL-VOORGESTELD", false, false),
-                ("KAND-SUG-AANVAARD", true, true),
-                ("KAND-SUGGESTIE", false, true),
+                ("KAND-ACTIVITEIT", false),
+                ("KAND-SUBDOEL", true),
+                ("KAND-SUBDOEL-VOORGESTELD", false),
             ],
             kandidaten
-                .Select(k => (k.LeerplandoelCode, k.IsBeslist, k.IsDoelsuggestie))
+                .Select(k => (k.LeerplandoelCode, k.IsBeslist))
                 .OrderBy(k => k.LeerplandoelCode, StringComparer.Ordinal));
         Assert.All(kandidaten, k => Assert.Equal(zet.ThemaId, k.ThemaId));
-    }
-
-    [PostgresFact]
-    public async Task De_besliste_suggestiekandidaten_zeggen_hetzelfde_als_de_dekkende_lezing()
-    {
-        // WachtOpBeslissing leans on this: a decided doelsuggestie on a thema placed as accepted is covered by the
-        // other read. Two queries apply one rule, so they are pinned against each other here.
-        var zet = await ZetOpAsync((context, thema) =>
-        {
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-A", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Aanvaard);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-SUGGESTIE-M", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Manueel);
-            thema.VoegDoelsuggestieToe(new DoelKoppeling("KAND-ONBESLIST", KoppelingStatus.Voorgesteld, "?"));
-            return Task.CompletedTask;
-        });
-
-        await using var leescontext = _db.MaakContext();
-        var opslag = new EfDekkingOpslag(leescontext);
-        var dekkend = await opslag.HaalDekkendeKoppelingenAsync([zet.ThemaId]);
-        var kandidaten = await opslag.HaalKandidaatKoppelingenAsync(zet.KlasId);
-
-        Assert.Equal(
-            dekkend.Select(k => (k.LeerplandoelCode, k.ThemaNaam)).OrderBy(p => p.LeerplandoelCode, StringComparer.Ordinal),
-            kandidaten
-                .Where(k => k.IsBeslist && k.IsDoelsuggestie)
-                .Select(k => (k.LeerplandoelCode, k.ThemaNaam))
-                .OrderBy(p => p.LeerplandoelCode, StringComparer.Ordinal));
-        Assert.Contains(kandidaten, k => k.LeerplandoelCode == "KAND-ONBESLIST" && !k.IsBeslist);
     }
 
     // ── Minimumdoelen ───────────────────────────────────────────────────────────────────────────────────────────
@@ -342,12 +297,11 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
 
     private static readonly string[] AlleCodes =
     [
-        "SUG-AANVAARD", "SUG-MANUEEL", "SUG-VOORGESTELD", "SUG-GEWEIGERD", "THEMADOEL", "SUBDOEL",
+        "THEMADOEL", "SUBDOEL",
         "SUB-GEPLAND", "ACT-GEPLAND", "SUB-NIET-GEPLAND", "SUB-VOORGESTELD", "SUB-GEWEIGERD", "ACT-VOORGESTELD",
         "SUB-L1", "SUB-ELDERS-GEPLAND",
-        "KAND-SUGGESTIE", "KAND-SUG-AANVAARD", "KAND-GEWEIGERD", "KAND-THEMADOEL", "KAND-SUBDOEL",
+        "KAND-THEMADOEL", "KAND-SUBDOEL",
         "KAND-SUBDOEL-VOORGESTELD", "KAND-SUBDOEL-GEWEIGERD", "KAND-ACTIVITEIT", "KAND-ACT-GEWEIGERD", "KAND-L1",
-        "KAND-SUGGESTIE-A", "KAND-SUGGESTIE-M", "KAND-ONBESLIST",
     ];
 
     private static async Task ZorgVoorDoelenAsync(

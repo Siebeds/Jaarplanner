@@ -556,15 +556,13 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Equal("K-", doel.Minimumdoel!.Leeftijd);
         Assert.Equal("De kleuter verkent de natuur in de omgeving.", doel.Minimumdoel.Omschrijving);
 
-        // All four link layers, each with the status the teacher left it in.
-        Assert.Equal(4, doel.Koppelingen.Count);
+        // The three link layers on a thema, each with the status the teacher left it in. A thema's doelsuggestie
+        // proposes a minimumdoel and is no link of a leerplandoel (ADR-0049).
+        Assert.Equal(3, doel.Koppelingen.Count);
         var themadoel = Assert.Single(doel.Koppelingen, k => k.Herkomst == KoppelingHerkomst.Themadoel);
         Assert.Equal("Herfst", themadoel.ThemaNaam);
         Assert.Equal(KoppelingStatus.Manueel, themadoel.Status);
         Assert.Null(themadoel.Onderdeel);
-
-        var suggestie = Assert.Single(doel.Koppelingen, k => k.Herkomst == KoppelingHerkomst.Doelsuggestie);
-        Assert.Equal(KoppelingStatus.Voorgesteld, suggestie.Status);
 
         var subdoel = Assert.Single(doel.Koppelingen, k => k.Herkomst == KoppelingHerkomst.Subdoel);
         Assert.Equal("Bladeren", subdoel.Onderdeel);
@@ -583,7 +581,6 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Equal(Leeftijd, subdoel.Leeftijd);
         Assert.Equal(Leeftijd, activiteit.Leeftijd);
         Assert.Null(themadoel.Leeftijd);
-        Assert.Null(suggestie.Leeftijd);
     }
 
     /// <summary>
@@ -604,12 +601,12 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         var query = new LeerplandoelenQuery(context);
 
         var alles = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.Alles, _ => true);
-        Assert.Equal(4, alles!.Koppelingen.Count);
+        Assert.Equal(3, alles!.Koppelingen.Count);
 
         var schoolbreed = await query.HaalDetailAsync("NAT-K3-01", Koppelingzichtbaarheid.AlleenSchoolbreed, _ => true);
-        Assert.Equal(2, schoolbreed!.Koppelingen.Count);
+        Assert.Single(schoolbreed!.Koppelingen);
         Assert.All(schoolbreed.Koppelingen, k => Assert.True(
-            k.Herkomst is KoppelingHerkomst.Themadoel or KoppelingHerkomst.Doelsuggestie,
+            k.Herkomst is KoppelingHerkomst.Themadoel,
             $"{k.Herkomst} is class/age-scoped and must not survive AlleenSchoolbreed"));
         Assert.All(schoolbreed.Koppelingen, k => Assert.Null(k.Leeftijd));
     }
@@ -998,7 +995,6 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
 
         var thema = new Thema("Herfst", 5);
         thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Manueel));
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij bladeren"));
 
         var subthema = thema.VoegSubthemaToe("Bladeren", 2, Leeftijd);
         subthema.VoegSubdoelToe("5", new DoelKoppeling("NAT-K3-01", KoppelingStatus.Aanvaard));

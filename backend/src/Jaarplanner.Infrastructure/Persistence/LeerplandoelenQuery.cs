@@ -429,18 +429,6 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                     td.Koppeling.Status)))
             .ToListAsync(cancellationToken);
 
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.LeerplandoelCode == code)
-                .Select(k => new DoelKoppelingWeergave(
-                    KoppelingHerkomst.Doelsuggestie,
-                    t.Naam,
-                    null,
-                    null,
-                    k.Status)))
-            .ToListAsync(cancellationToken);
-
         List<DoelKoppelingWeergave> subdoelen = [];
         List<DoelKoppelingWeergave> activiteiten = [];
         List<DoelKoppelingWeergave> fiches = [];
@@ -504,7 +492,6 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         return
         [
             .. themadoelen
-                .Concat(suggesties)
                 .Concat(subdoelen)
                 .Concat(activiteiten)
                 .Concat(fiches)

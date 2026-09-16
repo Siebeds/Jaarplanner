@@ -12,8 +12,6 @@ namespace Jaarplanner.Application.Dekking;
 /// (Art. IX.2), and each reaches the dekking of a klas by its own route:
 /// </para>
 /// <list type="bullet">
-/// <item><c>Thema.Doelsuggesties</c>, school-wide: in the prognose once accepted; gedekt when the thema is placed.
-/// Read by <see cref="HaalDekkendeKoppelingenAsync"/> and <see cref="HaalKandidaatKoppelingenAsync"/>.</item>
 /// <item><c>Subdoel</c> and <c>Activiteit.Doelkoppelingen</c>, per leeftijd: in the prognose when the subthema is at
 /// the klas's leeftijd; gedekt when that subthema is placed in the klas's agenda. Read by
 /// <see cref="HaalSubthemakoppelingenAsync"/>, and by the candidate read for the lacune reasons.</item>
@@ -23,7 +21,9 @@ namespace Jaarplanner.Application.Dekking;
 /// <see cref="HaalThemaMinimumdoelenAsync"/>.</item>
 /// </list>
 /// <para>
-/// A <c>Themadoel</c> that links a leerplandoel counts nowhere (ADR-0047 D5): only the FR-1 import still writes one.
+/// A <c>Themadoel</c> that links a leerplandoel counts nowhere (ADR-0047 D5): only the FR-1 import still writes one. A
+/// thema's doelsuggestie proposes a minimumdoel and counts only as the <c>ThemaMinimumdoel</c> its acceptance makes
+/// (ADR-0049).
 /// </para>
 /// <para>
 /// <b>Only <c>aanvaard</c>/<c>manueel</c> links count</b> (Art. V.1): a <c>voorgesteld</c> suggestion is not yet a goal
@@ -34,18 +34,6 @@ namespace Jaarplanner.Application.Dekking;
 /// </summary>
 public interface IDekkingOpslag
 {
-    /// <summary>
-    /// The accepted doelsuggesties of the given thema's, as (code, thema naam) pairs: the thema-level route to a
-    /// leerplandoel's dekking (ADR-0047 S2). One row per carrying thema, so the caller can name the evidence.
-    /// </summary>
-    /// <param name="themaIds">
-    /// The thema's placed in a real period with a status that counts. Empty yields an empty result without touching
-    /// the link tables.
-    /// </param>
-    Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-        IReadOnlyCollection<Guid> themaIds,
-        CancellationToken cancellationToken = default);
-
     /// <summary>
     /// The decided links on subdoelen and on activiteiten of every subthema at the leeftijden <paramref name="klasId"/>
     /// teaches, each with its subthema and thema, and whether that subthema is placed in the klas's agenda (a
@@ -61,10 +49,10 @@ public interface IDekkingOpslag
 
     /// <summary>
     /// Every thema that carries a link to a leerplandoel <b>for this class</b>, whether or not the thema is in the plan,
-    /// as (code, thema id, thema naam, is the link decided, is it a doelsuggestie) rows: the input the lacune reasons
-    /// are classified from (E5-05).
+    /// as (code, thema id, thema naam, is the link decided) rows: the input the lacune reasons are classified from
+    /// (E5-05).
     /// <para>
-    /// Doelsuggesties, and subdoelen and activiteit links of subthema's at the klas's leeftijden. <b><c>geweigerd</c>
+    /// Subdoelen and activiteit links of subthema's at the klas's leeftijden. <b><c>geweigerd</c>
     /// links are excluded entirely</b>: a rejected link is a decision the teacher already took, so a goal linked only by
     /// rejected links classifies as <see cref="Lacuneoorzaak.GeenThema"/>, and that cause may never say none is
     /// <b>linked</b> to it.
@@ -129,11 +117,6 @@ public interface IDekkingOpslag
     Task<Klasscope?> HaalKlasscopeAsync(Guid klasId, CancellationToken cancellationToken = default);
 }
 
-/// <summary>One reason a leerplandoel is covered through a placed thema: the code, and the thema's name.</summary>
-/// <param name="LeerplandoelCode">The covered goal's code.</param>
-/// <param name="ThemaNaam">The name of the placed thema that carries it: the evidence a proof of coverage needs.</param>
-public sealed record DekkendeKoppeling(string LeerplandoelCode, string ThemaNaam);
-
 /// <summary>A decided link on a subdoel or an activiteit of a subthema at the klas's leeftijd (ADR-0047 D3, S1).</summary>
 /// <param name="LeerplandoelCode">The goal the link points at.</param>
 /// <param name="ThemaNaam">The subthema's thema.</param>
@@ -151,16 +134,11 @@ public sealed record Subthemakoppeling(string LeerplandoelCode, string ThemaNaam
 /// </param>
 /// <param name="ThemaNaam">The thema's name: what a teacher is shown and acts on.</param>
 /// <param name="IsBeslist"><c>true</c> for an <c>aanvaard</c>/<c>manueel</c> link, <c>false</c> for a <c>voorgesteld</c> one.</param>
-/// <param name="IsDoelsuggestie">
-/// <c>true</c> for a doelsuggestie on the thema, whose route to dekking is the thema's placement; <c>false</c> for a
-/// subdoel or activiteit link, whose route is its subthema's placement.
-/// </param>
 public sealed record KandidaatKoppeling(
     string LeerplandoelCode,
     Guid ThemaId,
     string ThemaNaam,
-    bool IsBeslist,
-    bool IsDoelsuggestie);
+    bool IsBeslist);
 
 /// <summary>
 /// One reason a leerplandoel is covered through a planned algemene fiche: the code, and the fiche's name (Art. V.1).

@@ -10,9 +10,9 @@ namespace Jaarplanner.Infrastructure.Persistence;
 /// <para>
 /// "Gekoppeld" follows the coverage semantics of Art. V: a leerplandoel is linked when it carries a
 /// <see cref="DoelKoppeling"/> with status <see cref="KoppelingStatus.Aanvaard"/> or
-/// <see cref="KoppelingStatus.Manueel"/>. Those links live in four owned tables — accepted/adjusted
-/// thema-doelsuggesties (<see cref="Thema.Doelsuggesties"/>), curated <c>themadoelen</c>,
-/// <c>subdoelen</c> and activiteit links — so the set of linked codes is the union across all four.
+/// <see cref="KoppelingStatus.Manueel"/>. Those links live in four tables: the <c>themadoelen</c> the import writes,
+/// <c>subdoelen</c>, activiteit links and algemene fiches, so the set of linked codes is the union across all four. A
+/// thema's doelsuggestie proposes a minimumdoel and links no leerplandoel (ADR-0049).
 /// <c>voorgesteld</c>/<c>geweigerd</c> links are excluded, so a doel that only has an open suggestion
 /// stays in the gap list (agrees with dekking, Art. V).
 /// </para>
@@ -37,12 +37,7 @@ public sealed class OngekoppeldeDoelenQuery : IOngekoppeldeDoelenQuery
     public async Task<IReadOnlyList<OngekoppeldDoelWeergave>> HaalOngekoppeldeDoelenAsync(
         CancellationToken cancellationToken = default)
     {
-        // The codes carrying a real link (status aanvaard/manueel) across the four owned link tables.
-        var themaSuggestieCodes = _context.Themas
-            .SelectMany(t => t.Doelsuggesties)
-            .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
-            .Select(k => k.LeerplandoelCode);
-
+        // The codes carrying a real link (status aanvaard/manueel) across the link tables.
         var themadoelCodes = _context.Themadoelen
             .Where(td => td.Koppeling.Status == KoppelingStatus.Aanvaard
                 || td.Koppeling.Status == KoppelingStatus.Manueel)
@@ -65,8 +60,7 @@ public sealed class OngekoppeldeDoelenQuery : IOngekoppeldeDoelenQuery
             .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
             .Select(k => k.LeerplandoelCode);
 
-        var gekoppeldeCodes = await themaSuggestieCodes
-            .Concat(themadoelCodes)
+        var gekoppeldeCodes = await themadoelCodes
             .Concat(subdoelCodes)
             .Concat(activiteitCodes)
             .Concat(ficheCodes)

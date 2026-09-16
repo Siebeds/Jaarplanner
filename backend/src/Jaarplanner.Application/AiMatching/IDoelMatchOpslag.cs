@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// The persistence seam for the goal-matching flow (E2-04, Art. VIII layering). The
+/// The persistence seam for a thema's doelsuggesties (FB-053, Art. VIII layering). The
 /// <see cref="DoelMatchingService"/> depends only on this abstraction — not on EF Core — so the
 /// end-to-end flow (build prompt → call AI → parse → persist) runs against an in-memory fake with
 /// <b>no database and no network</b> in unit tests. The EF Core implementation lives in Infrastructure.
@@ -16,8 +16,8 @@ namespace Jaarplanner.Application.AiMatching;
 public interface IDoelMatchOpslag
 {
     /// <summary>
-    /// Loads the thema (with its themadoelen and existing AI suggestions) for a match run, tracked so
-    /// that added suggestions persist on <see cref="BewaarAsync"/>. Returns <c>null</c> if no such thema.
+    /// Loads the thema (with its minimumdoelen, its proposals and its subthema's) for a run or a decision, tracked so
+    /// that what changes persists on <see cref="BewaarAsync"/>. Returns <c>null</c> if no such thema.
     /// </summary>
     Task<Thema?> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
@@ -25,8 +25,8 @@ public interface IDoelMatchOpslag
     Task BewaarAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// The query path (FR-4.1/4.2): the AI match suggestions persisted for the given thema, as
-    /// read views. Read-only; does not mutate curriculum data (Art. III.1).
+    /// The query path (FR-4.1/4.2): the proposals stored for the given thema, open and decided, each with its
+    /// minimumdoel's text. Read-only (Art. III.1); empty for an unknown thema.
     /// </summary>
     Task<IReadOnlyList<DoelMatchSuggestieWeergave>> HaalSuggestiesVoorThemaAsync(
         Guid themaId,

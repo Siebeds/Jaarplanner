@@ -6,110 +6,81 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// Builds the grounded matching prompt (E2-02) that <see cref="DoelMatchingService"/> hands to the
-/// injectable <see cref="IAiClient"/> (E2-01). It turns a school <see cref="Thema"/> (with its
-/// themadoelen/subthema's/activiteiten) plus the relevant, already-loaded Op.stap leerplandoelen
-/// (and, optionally, their concorded minimumdoelen) into an <see cref="AiRequest"/>.
+/// Builds the grounded prompt for a thema's doelsuggesties (FB-053, ADR-0049): which minimumdoelen fit the thema as
+/// themadoel. <see cref="DoelMatchingService"/> hands it to the injectable <see cref="IAiClient"/>.
 /// <para>
-/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line of the user prompt is
-/// rendered <b>exclusively</b> from the arguments — the school's own content and the loaded Op.stap
-/// goals — and the system prompt explicitly forbids external knowledge, invented codes and invented
-/// examples. Nothing else is read: no clock, no environment, no configuration, no I/O.
+/// <b>Shape.</b> A fixed <see cref="SystemPrompt"/> (the rules and the JSON contract that <c>DoelMatchResponseParser</c>
+/// reads), then a user prompt in three parts, stable first: the candidate list (<see cref="MinimumdoelPromptlijst"/>),
+/// the thema, and the refs not to propose. The list depends only on the mijlpalen, so it can move into a cached prefix
+/// without reshaping the prompt.
 /// </para>
 /// <para>
-/// The builder is a <b>pure, deterministic</b> function of its inputs: given the same thema and the
-/// same set of leerplandoelen it produces byte-for-byte the same prompt (leerplandoelen and
-/// minimumdoelen are ordered by their stable key so caller ordering cannot leak in), which is what
-/// makes it snapshot-testable. It only constructs the prompt; requesting the model, validating the
-/// structured-JSON response (E2-03) and persisting suggestions as <c>DoelKoppeling</c> (E2-04) are
-/// separate stories.
+/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every user-prompt line comes from the arguments; nothing
+/// else is read (no clock, configuration or I/O). The builder is pure and deterministic: the same thema and candidates
+/// give the same bytes, so it is snapshot-testable.
 /// </para>
 /// </summary>
 public static class MatchingPromptBuilder
 {
-    // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI,
-    // keeping the snapshot stable across platforms.
+    /// <summary>The most proposals a run asks for and keeps (ADR-0049 D3).</summary>
+    public const int MaxSuggesties = 8;
+
+    // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI.
     private const string Nl = "\n";
 
     /// <summary>
-    /// The fixed instruction scaffolding (the model's role + the grounding rules of Art. IV.4/IV.1/
-    /// IV.3/IV.5). This is the <b>only</b> non-data text in the request; it carries no school or
-    /// curriculum specifics itself.
+    /// The fixed instruction scaffolding: the model's role and the rules of Art. IV.1, IV.3, IV.4 and IV.5. It carries no
+    /// school or curriculum specifics.
     /// </summary>
     public const string SystemPrompt =
-        "Je bent een assistent die een leerkracht helpt om Op.stap-leerplandoelen te koppelen aan " +
-        "de eigen thema's en activiteiten van de school." + Nl +
+        "Je bent een assistent die themabeheer van een basisschool helpt om minimumdoelen te kiezen als themadoelen " +
+        "van een eigen thema. Een themadoel is een overkoepelend doel dat het hele thema verankert, over alle " +
+        "leeftijden heen." + Nl +
         Nl +
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens die in het bericht van de gebruiker staan: de " +
-        "schoolcontent (thema, themadoelen, subthema's, activiteiten) en de opgegeven Op.stap-" +
-        "leerplandoelen en -minimumdoelen." + Nl +
-        "- Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen " +
-        "leerplandoelen, codes, voorbeelden of woordenschat." + Nl +
-        "- Stel enkel leerplandoelen voor waarvan de code letterlijk voorkomt in de lijst " +
-        "\"Beschikbare Op.stap-leerplandoelen\" hieronder." + Nl +
-        "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit doel " +
-        "hier?\")." + Nl +
-        "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
-        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg " +
-        "eromheen:" + Nl +
-        "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
-        "- Gebruik exact de veldnamen \"suggesties\", \"code\" en \"motivatie\". \"code\" is een " +
-        "leerplandoelcode uit de lijst hierboven; \"motivatie\" is één zin." + Nl +
-        "- Vind je geen enkel passend doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
+        "- Gebruik uitsluitend de gegevens in het bericht van de gebruiker: de lijst \"Beschikbare minimumdoelen\" en " +
+        "het thema met zijn subthema's en activiteiten." + Nl +
+        "- Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen doelen of codes." + Nl +
+        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat, " +
+        "en geen code uit \"Niet voorstellen\"." + Nl +
+        // The 8 is MaxSuggesties, written out because a const string cannot format an int.
+        "- Stel ten hoogste 8 minimumdoelen voor: de doelen waar het thema het sterkst op inzet." + Nl +
+        "- Geef bij elk voorstel een motivatie van één zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
+        "- Je stelt enkel voor; een mens beslist. Pas niets automatisch toe." + Nl +
+        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
+        "  {\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        "- Past geen enkel doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
-    /// Builds the grounded <see cref="AiRequest"/> for matching the given <paramref name="thema"/>
-    /// against the given candidate <paramref name="leerdoelen"/>.
+    /// Builds the grounded request for <paramref name="thema"/> over the candidate <paramref name="minimumdoelen"/>.
     /// </summary>
-    /// <param name="thema">The school thema whose themadoelen/subthema's/activiteiten need goal matches.</param>
-    /// <param name="leerdoelen">The relevant, already-loaded Op.stap leerplandoelen to choose from.</param>
-    /// <param name="minimumdoelen">
-    /// Optional minimumdoelen (Op.stap data), written as a section of their own; defaults to none, which is what the
-    /// matching service passes. The compact goal list (TB-007) does not name each goal's <c>minimumdoelRef</c>, so the
-    /// section is context only and is not tied to the listed goals.
+    /// <param name="thema">The school thema, with its subthema's, onderzoeksvragen and activiteiten loaded.</param>
+    /// <param name="minimumdoelen">The candidates: the minimumdoelen of the mijlpalen the run is for.</param>
+    /// <param name="nietVoorstellen">
+    /// The refs already a themadoel or already proposed (any status); written as the prompt's last line.
     /// </param>
-    /// <returns>The grounded request (system + user prompt), ready for <see cref="IAiClient"/>.</returns>
     public static AiRequest Bouw(
         Thema thema,
-        IReadOnlyCollection<Leerplandoel> leerdoelen,
-        IReadOnlyCollection<Minimumdoel>? minimumdoelen = null)
+        IReadOnlyCollection<Minimumdoel> minimumdoelen,
+        IReadOnlyCollection<string> nietVoorstellen)
     {
         ArgumentNullException.ThrowIfNull(thema);
-        ArgumentNullException.ThrowIfNull(leerdoelen);
+        ArgumentNullException.ThrowIfNull(minimumdoelen);
+        ArgumentNullException.ThrowIfNull(nietVoorstellen);
 
-        return new AiRequest
-        {
-            SystemPrompt = SystemPrompt,
-            UserPrompt = BouwUserPrompt(thema, leerdoelen, minimumdoelen ?? []),
-        };
-    }
-
-    private static string BouwUserPrompt(
-        Thema thema,
-        IReadOnlyCollection<Leerplandoel> leerdoelen,
-        IReadOnlyCollection<Minimumdoel> minimumdoelen)
-    {
         var sb = new StringBuilder();
-
-        SchrijfSchoolcontent(sb, thema);
+        MinimumdoelPromptlijst.Schrijf(sb, minimumdoelen);
         sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
+        SchrijfThema(sb, thema);
+        sb.Append(Nl);
+        SchrijfNietVoorstellen(sb, nietVoorstellen);
 
-        if (minimumdoelen.Count > 0)
-        {
-            sb.Append(Nl);
-            SchrijfMinimumdoelen(sb, minimumdoelen);
-        }
-
-        return sb.ToString();
+        return new AiRequest { SystemPrompt = SystemPrompt, UserPrompt = sb.ToString() };
     }
 
-    private static void SchrijfSchoolcontent(StringBuilder sb, Thema thema)
+    private static void SchrijfThema(StringBuilder sb, Thema thema)
     {
-        Line(sb, "# Schoolcontent");
-        Line(sb, string.Empty);
-        Line(sb, $"## Thema: {thema.Naam}");
+        Line(sb, $"# Thema: {thema.Naam}");
         Line(sb, $"Duur (weken): {thema.DuurWeken}");
         if (thema.Invalshoeken is not null)
         {
@@ -127,21 +98,7 @@ public static class MatchingPromptBuilder
         }
 
         Line(sb, string.Empty);
-        Line(sb, "### Themadoelen (reeds gekoppelde leerplandoelen)");
-        if (thema.Themadoelen.Count == 0)
-        {
-            Line(sb, "- (nog geen)");
-        }
-        else
-        {
-            foreach (var themadoel in thema.Themadoelen)
-            {
-                Line(sb, $"- {BeschrijfKoppeling(themadoel.Koppeling)}");
-            }
-        }
-
-        Line(sb, string.Empty);
-        Line(sb, "### Subthema's");
+        Line(sb, "## Subthema's");
         if (thema.Subthemas.Count == 0)
         {
             Line(sb, "- (nog geen)");
@@ -160,14 +117,9 @@ public static class MatchingPromptBuilder
         var nummer = 1;
         foreach (var ov in subthema.Onderzoeksvragen)
         {
-            if (subthema.Onderzoeksvragen.Count > 1)
-            {
-                Line(sb, $"  Onderzoeksvraag {nummer++}: {ov.Vraag}");
-            }
-            else
-            {
-                Line(sb, $"  Onderzoeksvraag: {ov.Vraag}");
-            }
+            Line(sb, subthema.Onderzoeksvragen.Count > 1
+                ? $"  Onderzoeksvraag {nummer++}: {ov.Vraag}"
+                : $"  Onderzoeksvraag: {ov.Vraag}");
 
             if (ov.Probleemstelling is not null)
             {
@@ -180,50 +132,34 @@ public static class MatchingPromptBuilder
             Line(sb, "  Activiteiten:");
             foreach (var activiteit in subthema.Activiteiten)
             {
-                SchrijfActiviteit(sb, activiteit);
+                // No soort, no brackets: an empty "()" would read as a soort the model has to guess at (FB-050).
+                Line(sb, activiteit.ActiviteitType is { } type
+                    ? $"  - {activiteit.Naam} ({type.ToCode()})"
+                    : $"  - {activiteit.Naam}");
+                if (activiteit.Hoek is not null)
+                {
+                    Line(sb, $"    Hoek: {activiteit.Hoek}");
+                }
+
+                if (activiteit.VerwachteUitkomsten is not null)
+                {
+                    Line(sb, $"    Verwachte uitkomsten: {activiteit.VerwachteUitkomsten}");
+                }
             }
         }
     }
 
-    private static void SchrijfActiviteit(StringBuilder sb, Activiteit activiteit)
+    private static void SchrijfNietVoorstellen(StringBuilder sb, IReadOnlyCollection<string> refs)
     {
-        // No soort, no brackets: an empty "()" would read as a soort the model has to guess at (FB-050).
-        Line(sb, activiteit.ActiviteitType is { } type
-            ? $"  - {activiteit.Naam} ({type.ToCode()})"
-            : $"  - {activiteit.Naam}");
-        if (activiteit.Hoek is not null)
-        {
-            Line(sb, $"    Hoek: {activiteit.Hoek}");
-        }
-
-        if (activiteit.VerwachteUitkomsten is not null)
-        {
-            Line(sb, $"    Verwachte uitkomsten: {activiteit.VerwachteUitkomsten}");
-        }
-    }
-
-    // The goal list is the one the authoring prompts end with too, compact since TB-007: see LeerplandoelPromptlijst.
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
-        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
-
-    private static void SchrijfMinimumdoelen(StringBuilder sb, IReadOnlyCollection<Minimumdoel> minimumdoelen)
-    {
-        Line(sb, "# Minimumdoelen (concordantie)");
-        Line(sb, string.Empty);
-
-        // Order by the stable ref so the prompt is identical regardless of caller ordering.
-        foreach (var md in minimumdoelen.OrderBy(m => m.Ref, StringComparer.Ordinal))
-        {
-            Line(sb, $"- {md.Ref}: {md.Omschrijving}");
-        }
-    }
-
-    private static string BeschrijfKoppeling(DoelKoppeling koppeling)
-    {
-        var regel = $"{koppeling.LeerplandoelCode} (status {koppeling.Status})";
-        return koppeling.AiMotivatie is null
-            ? regel
-            : $"{regel} — {koppeling.AiMotivatie}";
+        var lijst = refs
+            .Where(r => !string.IsNullOrWhiteSpace(r))
+            .Select(r => r.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(r => r, StringComparer.Ordinal)
+            .ToList();
+        Line(sb, lijst.Count == 0
+            ? "Niet voorstellen: (geen)"
+            : $"Niet voorstellen (al themadoel of al voorgesteld): {string.Join(", ", lijst)}");
     }
 
     private static void Line(StringBuilder sb, string text) => sb.Append(text).Append(Nl);

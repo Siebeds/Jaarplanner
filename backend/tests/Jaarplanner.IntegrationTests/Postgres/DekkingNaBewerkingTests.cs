@@ -78,7 +78,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var client = _factory.CreateClient();
 
         var voor = await HaalDekkingAsync(client, opzet.KlasId);
-        Assert.Equal(0, voor.AantalGedekt);
+        Assert.Equal(0, voor.AantalMinimumdoelenGedekt);
         Assert.Equal(2, voor.AantalLeerplandoelen);
 
         var plaatsen = await client.PostAsJsonAsync(
@@ -87,15 +87,15 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, plaatsen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
-        Assert.Equal(1, na.AantalGedekt);
+        Assert.Equal(1, na.AantalMinimumdoelenGedekt);
 
         // The figure names its evidence, so this is not a count that happens to have changed for another reason.
-        var gedekt = na.Doelen.Single(d => d.Code == "DEK-01");
+        var gedekt = na.Minimumdoelen.Single(d => d.Ref == "NAB-K-1");
         Assert.True(gedekt.IsGedekt);
         Assert.Equal(["Herfstthema"], gedekt.DekkendeThemas);
 
         // And the goal this thema does not carry is untouched: the edit moved the figure by exactly one.
-        Assert.False(na.Doelen.Single(d => d.Code == "DEK-02").IsGedekt);
+        Assert.False(na.Minimumdoelen.Single(d => d.Ref == "NAB-K-2").IsGedekt);
     }
 
     [PostgresFact]
@@ -108,7 +108,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var plaatsingId = await ZetPlaatsingOpAsync(opzet, KoppelingStatus.Voorgesteld, opzet.EersteBlok);
         var client = _factory.CreateClient();
 
-        Assert.Equal(0, (await HaalDekkingAsync(client, opzet.KlasId)).AantalGedekt);
+        Assert.Equal(0, (await HaalDekkingAsync(client, opzet.KlasId)).AantalMinimumdoelenGedekt);
 
         var beslissing = await client.PutAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/status",
@@ -116,8 +116,8 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, beslissing.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
-        Assert.Equal(1, na.AantalGedekt);
-        Assert.Equal(["Herfstthema"], na.Doelen.Single(d => d.Code == "DEK-01").DekkendeThemas);
+        Assert.Equal(1, na.AantalMinimumdoelenGedekt);
+        Assert.Equal(["Herfstthema"], na.Minimumdoelen.Single(d => d.Ref == "NAB-K-1").DekkendeThemas);
     }
 
     [PostgresFact]
@@ -139,7 +139,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var plaatsingId = await ZetPlaatsingOpAsync(opzet, KoppelingStatus.Voorgesteld, opzet.EersteBlok);
         var client = _factory.CreateClient();
 
-        Assert.Equal(0, (await HaalDekkingAsync(client, opzet.KlasId)).AantalGedekt);
+        Assert.Equal(0, (await HaalDekkingAsync(client, opzet.KlasId)).AantalMinimumdoelenGedekt);
 
         var verplaatsen = await client.PutAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/blok",
@@ -147,7 +147,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, verplaatsen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
-        Assert.Equal(1, na.AantalGedekt);
+        Assert.Equal(1, na.AantalMinimumdoelenGedekt);
         Assert.True(na.IsBetrouwbaar);
     }
 
@@ -161,15 +161,15 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var plaatsingId = await ZetPlaatsingOpAsync(opzet, KoppelingStatus.Manueel, opzet.EersteBlok);
         var client = _factory.CreateClient();
 
-        Assert.Equal(1, (await HaalDekkingAsync(client, opzet.KlasId)).AantalGedekt);
+        Assert.Equal(1, (await HaalDekkingAsync(client, opzet.KlasId)).AantalMinimumdoelenGedekt);
 
         var verwijderen = await client.DeleteAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}");
         Assert.Equal(HttpStatusCode.OK, verwijderen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
-        Assert.Equal(0, na.AantalGedekt);
-        Assert.All(na.Doelen, d => Assert.False(d.IsGedekt));
+        Assert.Equal(0, na.AantalMinimumdoelenGedekt);
+        Assert.All(na.Minimumdoelen, d => Assert.False(d.IsGedekt));
     }
 
     [PostgresFact]
@@ -192,7 +192,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var voor = await HaalDekkingAsync(client, opzet.KlasId);
         Assert.False(voor.IsBetrouwbaar);
         Assert.Equal(1, voor.AantalOnopgelosteVervallenPlaatsingen);
-        Assert.Null(voor.AantalGedekt);
+        Assert.Null(voor.AantalMinimumdoelenGedekt);
 
         var herplaatsen = await client.PutAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/blok",
@@ -202,7 +202,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var na = await HaalDekkingAsync(client, opzet.KlasId);
         Assert.True(na.IsBetrouwbaar);
         Assert.Equal(0, na.AantalOnopgelosteVervallenPlaatsingen);
-        Assert.Equal(1, na.AantalGedekt);
+        Assert.Equal(1, na.AantalMinimumdoelenGedekt);
     }
 
     private static async Task<DekkingDto> HaalDekkingAsync(HttpClient client, Guid klasId)
@@ -253,9 +253,18 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         context.Schooljaren.Add(schooljaar);
 
         var herfst = new Thema("Herfstthema", duurWeken: 5);
-        herfst.VoegDoelsuggestieToe(new DoelKoppeling("DEK-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        // Since ADR-0049 a thema placement covers the thema's minimumdoelen, and no leerplandoel.
+        foreach (var minimumdoelRef in new[] { "NAB-K-1", "NAB-K-2" })
+        {
+            if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef))
+            {
+                context.Minimumdoelen.Add(new Minimumdoel(minimumdoelRef, "K-", "1", $"Tekst van {minimumdoelRef}"));
+            }
+        }
+
+        herfst.KoppelMinimumdoel("NAB-K-1");
         var winter = new Thema("Winterthema", duurWeken: 5);
-        winter.VoegDoelsuggestieToe(new DoelKoppeling("DEK-02", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        winter.KoppelMinimumdoel("NAB-K-2");
         context.Themas.AddRange(herfst, winter);
 
         await context.SaveChangesAsync();
@@ -309,7 +318,11 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         int AantalOnopgelosteVervallenPlaatsingen,
         int? AantalGedekt,
         int AantalLeerplandoelen,
-        List<DoelDto> Doelen);
+        List<DoelDto> Doelen,
+        int? AantalMinimumdoelenGedekt,
+        List<MinimumdoelDto> Minimumdoelen);
 
     private sealed record DoelDto(string Code, bool IsGedekt, List<string> DekkendeThemas);
+
+    private sealed record MinimumdoelDto(string Ref, bool IsGedekt, List<string> DekkendeThemas);
 }

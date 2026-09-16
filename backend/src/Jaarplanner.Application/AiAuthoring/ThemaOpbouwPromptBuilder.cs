@@ -6,7 +6,7 @@ namespace Jaarplanner.Application.AiAuthoring;
 
 /// <summary>
 /// Builds the grounded prompts for the goal-first authoring assist (E2-07, Art. IV.8): the
-/// <b>step 2</b> hook (candidate leerplandoelen to anchor a whole thema as its 2–3 themadoelen) and
+/// <b>step 2</b> hook (candidate minimumdoelen to anchor a whole thema as its themadoelen, FB-053) and
 /// the <b>step 6</b> hook (age-differentiated candidate leerplandoelen for a <c>(subthema × leeftijd)</c>
 /// as subdoelen). It is the authoring sibling of <c>MatchingPromptBuilder</c> (E2-02) — a separate
 /// file with its own prompts, deliberately not sharing that whole-thema matching prompt.
@@ -42,16 +42,26 @@ public static class ThemaOpbouwPromptBuilder
         "- Vind je geen enkel passend doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
-    /// The step 2 system prompt: propose candidate leerplandoelen to become the 2–3 overarching,
-    /// school-wide themadoelen that anchor the whole thema (Art. IX.2, IV.8). Fixed scaffolding — no
-    /// school or curriculum specifics of its own.
+    /// The step 2 system prompt: propose minimumdoelen to become the overarching, school-wide themadoelen that anchor
+    /// the whole thema (Art. IX.2, IV.8; FB-053). Its own rules, since the candidates are minimumdoelen; the JSON
+    /// contract is the one the E2-03 parser reads. Fixed scaffolding, no school or curriculum specifics of its own.
     /// </summary>
     public const string SystemPromptThemadoelen =
-        "Je bent een assistent die een leerkracht helpt bij de opbouw van een kennisrijk thema, stap 2: " +
-        "het kiezen van 2 à 3 overkoepelende themadoelen voor het hele thema." + Nl +
+        "Je bent een assistent die themabeheer helpt bij de opbouw van een kennisrijk thema, stap 2: " +
+        "het kiezen van minimumdoelen als overkoepelende themadoelen voor het hele thema." + Nl +
         "Themadoelen zijn schoolbreed gelijk en worden doorheen het thema verbreed, verdiept en herhaald." + Nl +
         Nl +
-        GemeenschappelijkeRegels;
+        "Regels:" + Nl +
+        "- Gebruik uitsluitend de gegevens in dit bericht: de lijst \"Beschikbare minimumdoelen\" en de schoolcontext. " +
+        "Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen doelen of codes." + Nl +
+        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat, " +
+        "en geen code uit \"Niet voorstellen\"." + Nl +
+        "- Stel ten hoogste 8 minimumdoelen voor." + Nl +
+        "- Geef bij elk voorstel een motivatie van één zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
+        "- Je stelt enkel voor; een mens beslist. Pas niets automatisch toe." + Nl +
+        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
+        "  {\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        "- Past geen enkel doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
     /// The step 6 system prompt: propose age-differentiated candidate leerplandoelen for a single
@@ -66,39 +76,48 @@ public static class ThemaOpbouwPromptBuilder
         GemeenschappelijkeRegels;
 
     /// <summary>
-    /// Builds the grounded step-2 request: candidate themadoelen for the whole thema from
-    /// <paramref name="thema"/> and the loaded <paramref name="leerdoelen"/>.
+    /// Builds the grounded step-2 request (FB-053): candidate minimumdoelen as themadoelen for the whole thema. The user
+    /// prompt starts with the candidate list (<see cref="MinimumdoelPromptlijst"/>), then the thema, then the refs
+    /// already chosen, as "Niet voorstellen".
     /// </summary>
     public static AiRequest BouwThemadoelRequest(
         ThemaOpbouwContext thema,
-        IReadOnlyCollection<Leerplandoel> leerdoelen)
+        IReadOnlyCollection<Minimumdoel> minimumdoelen)
     {
         ArgumentNullException.ThrowIfNull(thema);
-        ArgumentNullException.ThrowIfNull(leerdoelen);
+        ArgumentNullException.ThrowIfNull(minimumdoelen);
 
         var sb = new StringBuilder();
-        SchrijfThema(sb, thema);
+        MinimumdoelPromptlijst.Schrijf(sb, minimumdoelen);
         sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
+        SchrijfThema(sb, thema, themadoelen: null);
+        sb.Append(Nl);
+        var gekozen = Gekozen(thema);
+        Line(sb, gekozen.Count == 0
+            ? "Niet voorstellen: (geen)"
+            : $"Niet voorstellen (al gekozen): {string.Join(", ", gekozen)}");
 
         return new AiRequest { SystemPrompt = SystemPromptThemadoelen, UserPrompt = sb.ToString() };
     }
 
     /// <summary>
     /// Builds the grounded step-6 request: candidate subdoelen for the given <paramref name="subthema"/>
-    /// (with its <paramref name="thema"/> context and the loaded <paramref name="leerdoelen"/>).
+    /// (with its <paramref name="thema"/> context and the loaded <paramref name="leerdoelen"/>). The thema's chosen
+    /// minimumdoelen are written with their text from <paramref name="themadoelen"/>, so the subdoelen build up toward
+    /// them (FB-053).
     /// </summary>
     public static AiRequest BouwSubdoelRequest(
         ThemaOpbouwContext thema,
         SubthemaOpbouwContext subthema,
-        IReadOnlyCollection<Leerplandoel> leerdoelen)
+        IReadOnlyCollection<Leerplandoel> leerdoelen,
+        IReadOnlyCollection<Minimumdoel>? themadoelen = null)
     {
         ArgumentNullException.ThrowIfNull(thema);
         ArgumentNullException.ThrowIfNull(subthema);
         ArgumentNullException.ThrowIfNull(leerdoelen);
 
         var sb = new StringBuilder();
-        SchrijfThema(sb, thema);
+        SchrijfThema(sb, thema, themadoelen ?? []);
         sb.Append(Nl);
         SchrijfSubthema(sb, subthema);
         sb.Append(Nl);
@@ -107,7 +126,9 @@ public static class ThemaOpbouwPromptBuilder
         return new AiRequest { SystemPrompt = SystemPromptSubdoelen, UserPrompt = sb.ToString() };
     }
 
-    private static void SchrijfThema(StringBuilder sb, ThemaOpbouwContext thema)
+    // `themadoelen` null: step 2, whose chosen refs are the prompt's last line. Otherwise step 6: the chosen minimumdoelen
+    // with their text, or the bare ref for one no loaded minimumdoel carries.
+    private static void SchrijfThema(StringBuilder sb, ThemaOpbouwContext thema, IReadOnlyCollection<Minimumdoel>? themadoelen)
     {
         Line(sb, "# Thema (in opbouw)");
         Line(sb, string.Empty);
@@ -125,10 +146,24 @@ public static class ThemaOpbouwPromptBuilder
         SchrijfWoordenlijst(sb, "Kernwoordenschat", thema.Kernwoordenschat);
         SchrijfWoordenlijst(sb, "Rijke woordenschat", thema.RijkeWoordenschat);
 
-        var gekozen = Genormaliseerd(thema.GekozenThemadoelCodes);
-        if (gekozen.Count > 0)
+        if (themadoelen is null)
         {
-            Line(sb, $"Reeds gekozen themadoelen: {string.Join(", ", gekozen)}");
+            return;
+        }
+
+        var gekozen = Gekozen(thema);
+        if (gekozen.Count == 0)
+        {
+            return;
+        }
+
+        var perRef = themadoelen
+            .GroupBy(m => m.Ref, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        Line(sb, "Themadoelen (minimumdoelen):");
+        foreach (var nr in gekozen)
+        {
+            Line(sb, perRef.TryGetValue(nr, out var doel) ? $"- {doel.Ref}: {doel.Omschrijving}" : $"- {nr}");
         }
     }
 
@@ -217,6 +252,13 @@ public static class ThemaOpbouwPromptBuilder
             Line(sb, $"{label}: {string.Join(", ", lijst)}");
         }
     }
+
+    // The chosen themadoel refs, trimmed, once each, in ordinal order so the prompt does not depend on the wizard's order.
+    private static List<string> Gekozen(ThemaOpbouwContext thema) =>
+        Genormaliseerd(thema.GekozenThemadoelCodes)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(r => r, StringComparer.Ordinal)
+            .ToList();
 
     private static List<string> Genormaliseerd(IReadOnlyCollection<string>? woorden) =>
         (woorden ?? [])

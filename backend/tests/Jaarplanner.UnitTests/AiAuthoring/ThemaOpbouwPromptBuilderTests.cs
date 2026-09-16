@@ -4,8 +4,8 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.UnitTests.AiAuthoring;
 
 /// <summary>
-/// Pins the E2-07 authoring prompt builder (Art. IV.4, IV.8): the step 2 (themadoel) and step 6
-/// (subdoel) prompts are grounded <b>only</b> on the wizard's transient context + the loaded Op.stap
+/// Pins the E2-07 authoring prompt builder (Art. IV.4, IV.8): the step 2 (themadoel, minimumdoelen since FB-053)
+/// and step 6 (subdoel) prompts are grounded <b>only</b> on the wizard's transient context + the loaded Op.stap
 /// goals, are deterministic, and are snapshot-stable. The two snapshot tests are the "Done when"
 /// evidence that the wizard can build a grounded request for each hook.
 /// </summary>
@@ -65,15 +65,31 @@ public sealed class ThemaOpbouwPromptBuilderTests
             minimumdoelRef: "K-20"),
     ];
 
+    // Deliberately out of ref order, to prove the list orders them.
+    private static IReadOnlyList<Minimumdoel> EenMinimumdoelenSet() =>
+    [
+        new Minimumdoel("K-9.2.1", "K-", "9.2.1", "De kleuters onderzoeken water.", "Wereldoriëntatie", "Natuur"),
+        new Minimumdoel("K-9.1.1", "K-", "9.1.1", "De kleuters benoemen nat en droog.", "Wereldoriëntatie", "Natuur"),
+    ];
+
     [Fact]
-    public void Stap2_bouwt_de_verwachte_grounded_themadoel_prompt()
+    public void Stap2_bouwt_de_verwachte_minimumdoelprompt()
     {
-        var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenLeerdoelenSet());
+        // FB-053: step 2 proposes minimumdoelen. The list comes first, then the thema, then the refs already chosen.
+        var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(gekozen: ["K-9.1.1"]), EenMinimumdoelenSet());
 
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, request.SystemPrompt);
 
         var verwacht = string.Join(Nl,
         [
+            "# Beschikbare minimumdoelen",
+            "",
+            "## Mijlpaal K-",
+            "",
+            "### Wereldoriëntatie > Natuur",
+            "- K-9.1.1: De kleuters benoemen nat en droog.",
+            "- K-9.2.1: De kleuters onderzoeken water.",
+            "",
             "# Thema (in opbouw)",
             "",
             "## Thema: Water",
@@ -82,22 +98,28 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "Kernwoordenschat: nat, droog",
             "Rijke woordenschat: waterkringloop",
             "",
-            "# Beschikbare Op.stap-leerplandoelen",
-            "",
-            "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter onderzoekt water.",
-            "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter benoemt nat en droog.",
+            "Niet voorstellen (al gekozen): K-9.1.1",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
+        Assert.DoesNotContain("leerplandoel", request.UserPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Stap2_zonder_gekozen_themadoelen_sluit_niets_uit()
+    {
+        var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet());
+
+        Assert.EndsWith($"Niet voorstellen: (geen){Nl}", request.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Stap6_bouwt_de_verwachte_grounded_subdoel_prompt()
     {
+        // FB-053: the chosen themadoelen are minimumdoelen, written with their text; one no loaded minimumdoel
+        // carries keeps its bare ref.
         var request = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(
-            EenThema(gekozen: ["WAT-K3-01"]), EenSubthema(), EenLeerdoelenSet());
+            EenThema(gekozen: ["K-9.2.1", "K-0.0.0"]), EenSubthema(), EenLeerdoelenSet(), EenMinimumdoelenSet());
 
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptSubdoelen, request.SystemPrompt);
 
@@ -110,7 +132,9 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "Invalshoeken: natuur en techniek",
             "Kernwoordenschat: nat, droog",
             "Rijke woordenschat: waterkringloop",
-            "Reeds gekozen themadoelen: WAT-K3-01",
+            "Themadoelen (minimumdoelen):",
+            "- K-0.0.0",
+            "- K-9.2.1: De kleuters onderzoeken water.",
             "",
             "# Subthema (in opbouw)",
             "",
@@ -140,23 +164,26 @@ public sealed class ThemaOpbouwPromptBuilderTests
         var leerdoelen = EenLeerdoelenSet();
         var omgekeerd = leerdoelen.Reverse().ToList();
 
-        var a = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), leerdoelen);
-        var b = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), omgekeerd);
-
+        var a = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(gekozen: ["K-9.2.1", "K-9.1.1"]), EenSubthema(), leerdoelen, EenMinimumdoelenSet());
+        var b = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(gekozen: ["K-9.1.1", "K-9.2.1"]), EenSubthema(), omgekeerd, EenMinimumdoelenSet().Reverse().ToList());
         Assert.Equal(a.UserPrompt, b.UserPrompt);
+
+        var c = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet());
+        var d = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet().Reverse().ToList());
+        Assert.Equal(c.UserPrompt, d.UserPrompt);
     }
 
     [Fact]
     public void Systeemprompts_vragen_exact_het_parser_contract_en_verbieden_externe_bronnen()
     {
-        foreach (var systemPrompt in new[]
+        foreach (var (systemPrompt, soort) in new[]
         {
-            ThemaOpbouwPromptBuilder.SystemPromptThemadoelen,
-            ThemaOpbouwPromptBuilder.SystemPromptSubdoelen,
+            (ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, "code van het minimumdoel"),
+            (ThemaOpbouwPromptBuilder.SystemPromptSubdoelen, "leerplandoelcode"),
         })
         {
             // Reuses the E2-03 parser contract: the exact `suggesties` envelope + field names.
-            Assert.Contains("{\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}",
+            Assert.Contains($"{{\"suggesties\": [{{\"code\": \"<{soort}>\", \"motivatie\": \"<één zin>\"}}]}}",
                 systemPrompt, StringComparison.Ordinal);
             Assert.Contains("{\"suggesties\": []}", systemPrompt, StringComparison.Ordinal);
             // Grounding: external sources are explicitly ruled out (Art. IV.4).
@@ -168,7 +195,7 @@ public sealed class ThemaOpbouwPromptBuilderTests
     public void Verwerpt_null_argumenten()
     {
         Assert.Throws<ArgumentNullException>(
-            () => ThemaOpbouwPromptBuilder.BouwThemadoelRequest(null!, EenLeerdoelenSet()));
+            () => ThemaOpbouwPromptBuilder.BouwThemadoelRequest(null!, EenMinimumdoelenSet()));
         Assert.Throws<ArgumentNullException>(
             () => ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), null!));
         Assert.Throws<ArgumentNullException>(

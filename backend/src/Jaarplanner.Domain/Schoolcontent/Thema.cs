@@ -18,7 +18,7 @@ public sealed class Thema
     private readonly List<Themadoel> _themadoelen = [];
     private readonly List<ThemaMinimumdoel> _minimumdoelen = [];
     private readonly List<Subthema> _subthemas = [];
-    private readonly List<DoelKoppeling> _doelsuggesties = [];
+    private readonly List<Minimumdoelsuggestie> _doelsuggesties = [];
     private readonly List<string> _kernwoordenschat = [];
     private readonly List<string> _rijkeWoordenschat = [];
 
@@ -73,19 +73,11 @@ public sealed class Thema
     public IReadOnlyList<Subthema> Subthemas => _subthemas;
 
     /// <summary>
-    /// The AI goal-match suggestions for this thema (E2-04, FR-4). Each is a thema-level
-    /// <see cref="DoelKoppeling"/> the AI proposed with status <see cref="KoppelingStatus.Voorgesteld"/>
-    /// and an <see cref="DoelKoppeling.AiMotivatie"/> — advisory only, never auto-applied (Art. IV.1/IV.2).
-    /// <para>
-    /// This is deliberately <b>separate</b> from the curated 2–3 <see cref="Themadoelen"/>: a match run
-    /// may propose any number of candidates, so it must not be bound by (or pollute) the themadoel cap.
-    /// The teacher reviews these in E2-05; an accepted candidate is promoted to a <see cref="Themadoel"/>
-    /// (or another link) at curation time, where the 2–3 bound applies. This keeps AI candidates and the
-    /// school-authored anchors cleanly distinct while both remaining a <see cref="DoelKoppeling"/> — the
-    /// single link entity of Art. IX.2 ("any link School-content↔Leerplandoel").
-    /// </para>
+    /// The AI's proposals of a minimumdoel as a themadoel (FB-053, ADR-0049, Art. IX.2), open and decided. Separate from
+    /// <see cref="Minimumdoelen"/>: a proposal is not a themadoel until a person accepts it, and a rejected one stays
+    /// here so a next run does not propose it again.
     /// </summary>
-    public IReadOnlyList<DoelKoppeling> Doelsuggesties => _doelsuggesties;
+    public IReadOnlyList<Minimumdoelsuggestie> Doelsuggesties => _doelsuggesties;
 
     /// <summary>
     /// Updates the thema's basic attributes (mutable autonomous content, Art. III). Used by the
@@ -194,49 +186,70 @@ public sealed class Thema
     }
 
     /// <summary>
-    /// Records an AI goal-match suggestion at thema level (E2-04, FR-4). The link must be
-    /// <see cref="KoppelingStatus.Voorgesteld"/> — the AI only ever proposes and nothing is
-    /// auto-applied (Art. IV.1/IV.2). Unlike <see cref="VoegThemadoelToe"/> this carries no cap:
-    /// a match run may surface any number of candidates for the teacher to curate (Art. IV.8).
+    /// Records the AI's proposal of a minimumdoel as a themadoel (FB-053), as <see cref="KoppelingStatus.Voorgesteld"/>
+    /// with its motivation. Nothing is applied (Art. IV.1/IV.2).
     /// </summary>
-    public DoelKoppeling VoegDoelsuggestieToe(DoelKoppeling koppeling)
+    /// <exception cref="InvalidOperationException">
+    /// The minimumdoel is already a themadoel or already has a proposal (<see cref="IsMinimumdoelAlBekend"/>).
+    /// </exception>
+    public Minimumdoelsuggestie VoegDoelsuggestieToe(string minimumdoelRef, string aiMotivatie)
     {
-        ArgumentNullException.ThrowIfNull(koppeling);
-        if (koppeling.Status != KoppelingStatus.Voorgesteld)
+        var suggestie = new Minimumdoelsuggestie(Id, minimumdoelRef, aiMotivatie);
+        if (IsMinimumdoelAlBekend(suggestie.MinimumdoelRef))
         {
             throw new InvalidOperationException(
-                "Een AI-doelsuggestie start altijd als 'voorgesteld'; de leerkracht beslist (Art. IV.1/IV.2).");
+                $"Minimumdoel {suggestie.MinimumdoelRef} is al een themadoel of al voorgesteld bij dit thema.");
         }
 
-        _doelsuggesties.Add(koppeling);
-        return koppeling;
+        _doelsuggesties.Add(suggestie);
+        return suggestie;
     }
 
     /// <summary>
-    /// Whether this thema already carries a link (a curated themadoel or an existing AI suggestion) to
-    /// <paramref name="leerplandoelCode"/>. Used by the matching flow to stay idempotent across re-runs
-    /// and to avoid re-proposing an already-anchored doel (E2-04).
+    /// Whether a run must not propose <paramref name="minimumdoelRef"/> for this thema: it is a themadoel already, or it
+    /// has a proposal of any status (ADR-0049 D1). A rejected proposal is how "it does not come back" is kept.
     /// </summary>
-    public bool IsAlGekoppeldAan(string leerplandoelCode)
+    public bool IsMinimumdoelAlBekend(string minimumdoelRef)
     {
-        if (string.IsNullOrWhiteSpace(leerplandoelCode))
+        if (string.IsNullOrWhiteSpace(minimumdoelRef))
         {
             return false;
         }
 
-        var code = leerplandoelCode.Trim();
-        return _doelsuggesties.Any(k => string.Equals(k.LeerplandoelCode, code, StringComparison.Ordinal))
-            || _themadoelen.Any(td => string.Equals(td.Koppeling.LeerplandoelCode, code, StringComparison.Ordinal));
+        var nr = minimumdoelRef.Trim();
+        return _doelsuggesties.Any(s => string.Equals(s.MinimumdoelRef, nr, StringComparison.Ordinal))
+            || _minimumdoelen.Any(m => string.Equals(m.MinimumdoelRef, nr, StringComparison.Ordinal));
     }
 
     /// <summary>
-    /// Removes an AI suggestion from this thema (E2-04 re-import reconciliation / E2-05 reject cleanup).
-    /// Only a <c>voorgesteld</c> suggestion lives here; a teacher decision is recorded elsewhere.
+    /// Accepts a proposal: its minimumdoel becomes a themadoel of this thema, unless a person linked it by hand in the
+    /// meantime. Returns the new link, or <c>null</c> when there already was one.
     /// </summary>
-    public void VerwijderDoelsuggestie(DoelKoppeling suggestie)
+    /// <exception cref="InvalidOperationException">The proposal is not this thema's, or it was already decided.</exception>
+    public ThemaMinimumdoel? AanvaardDoelsuggestie(Minimumdoelsuggestie suggestie)
+    {
+        VereisEigen(suggestie);
+        suggestie.Beslis(KoppelingStatus.Aanvaard);
+        return _minimumdoelen.Any(m => string.Equals(m.MinimumdoelRef, suggestie.MinimumdoelRef, StringComparison.Ordinal))
+            ? null
+            : KoppelMinimumdoel(suggestie.MinimumdoelRef);
+    }
+
+    /// <summary>Rejects a proposal. It stays stored, so a next run does not propose it again (ADR-0049 D1).</summary>
+    /// <exception cref="InvalidOperationException">The proposal is not this thema's, or it was already decided.</exception>
+    public void WeigerDoelsuggestie(Minimumdoelsuggestie suggestie)
+    {
+        VereisEigen(suggestie);
+        suggestie.Beslis(KoppelingStatus.Geweigerd);
+    }
+
+    private void VereisEigen(Minimumdoelsuggestie suggestie)
     {
         ArgumentNullException.ThrowIfNull(suggestie);
-        _doelsuggesties.Remove(suggestie);
+        if (!_doelsuggesties.Contains(suggestie))
+        {
+            throw new InvalidOperationException("Dit voorstel hoort niet bij dit thema.");
+        }
     }
 
     /// <summary>
