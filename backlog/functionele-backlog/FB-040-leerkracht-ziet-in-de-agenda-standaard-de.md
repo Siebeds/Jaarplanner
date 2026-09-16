@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 23:54
+bijgewerkt: 2026-09-17 00:05
 opgepakt-door: claude-4de79c75
 branch: ticket/FB-040-werkweek
 pr:
@@ -74,3 +74,4 @@ Geen.
 
 - 2026-09-15 22:56 · claude · aangemaakt (status nieuw)
 - 2026-09-16 23:54 · claude-4de79c75 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (/ticket-uitvoeren FB-040)
+- 2026-09-17 00:05 · claude-4de79c75 · Werkweek gebouwd (Maand, Week, Werkweek, Dag), opent standaard; weekendaanwijzing telt activiteiten en algemene fiches apart; vitest 1036 groen, lint groen
