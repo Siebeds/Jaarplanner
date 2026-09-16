@@ -2,12 +2,12 @@
 id: FB-047
 titel: Subthema's van dezelfde leeftijd staan onder één leeftijdslabel
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 22:02
+opgepakt-door: sessie-fb047
+branch: ticket/FB-047-leeftijd-eenmalig
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -56,3 +56,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 22:02 · sessie-fb047 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
