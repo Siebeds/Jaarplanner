@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:24
+bijgewerkt: 2026-09-16 21:22
 opgepakt-door: tb040-splitquery
 branch: ticket/TB-040-themalijst-splitquery
-pr:
+pr: 115
 geblokkeerd:
 fr: []
 ---
@@ -75,3 +75,4 @@ Geen.
 - 2026-09-16 20:20 · tb040-splitquery · criteria afgevinkt: 1-2 met de meting, 3 met ThemaboomLadenPostgresTests, 4-5 met de hele backendsuite (1905 unit, 556 integratie op Postgres, waaronder de FR-1-importtests)
 - 2026-09-16 20:24 · tb040-splitquery · antagonist: COMPLIANT; drie MINOR-punten opgelost (testnaam, commentaar bij ThenBy, volgorde AsSplitQuery in de import). Blijft open: geen test bewijst dat de query echt gesplitst is, de snelheid steunt op de meting
 - 2026-09-16 20:24 · tb040-splitquery · in-uitvoering → klaar: themaboom laadt met gesplitste queries; themalijst op jaarplanner_tb035 in 0,72 s; backendtests, dotnet format en antagonist groen
+- 2026-09-16 21:22 · tb040-splitquery · PR #115
