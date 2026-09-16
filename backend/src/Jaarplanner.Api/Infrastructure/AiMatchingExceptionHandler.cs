@@ -30,6 +30,7 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             ThemaNietGevondenFout => StatusCodes.Status404NotFound,
             DoelsuggestieNietGevondenFout => StatusCodes.Status404NotFound,
             OngeldigeSuggestieStatusFout => StatusCodes.Status400BadRequest,
+            DoelsuggestieConflictFout => StatusCodes.Status409Conflict,
             JaarfaseKeuzeNodigFout => StatusCodes.Status400BadRequest,
             PromptTeGrootFout => StatusCodes.Status400BadRequest,
             _ => (int?)null,
@@ -49,9 +50,12 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             ProblemDetails = new ProblemDetails
             {
                 Status = status.Value,
-                Title = status.Value == StatusCodes.Status404NotFound
-                    ? Probleemtitels.NietGevonden
-                    : Probleemtitels.OngeldigeAanvraag,
+                Title = status.Value switch
+                {
+                    StatusCodes.Status404NotFound => Probleemtitels.NietGevonden,
+                    StatusCodes.Status409Conflict => Probleemtitels.NietDoorgevoerd,
+                    _ => Probleemtitels.OngeldigeAanvraag,
+                },
                 Detail = exception.Message,
             },
         });

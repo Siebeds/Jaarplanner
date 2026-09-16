@@ -187,29 +187,46 @@ public sealed class Thema
 
     /// <summary>
     /// Records the AI's proposal of a minimumdoel as a themadoel (FB-053), as <see cref="KoppelingStatus.Voorgesteld"/>
-    /// with its motivation. Nothing is applied (Art. IV.1/IV.2).
+    /// with its motivation. Nothing is applied (Art. IV.1/IV.2). Its rank follows every proposal already on the thema,
+    /// so proposals added in the model's order keep that order (ADR-0049 D6). A minimumdoel that was accepted and later
+    /// unlinked is proposed again on its existing row (ADR-0049 D1).
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// The minimumdoel is already a themadoel or already has a proposal (<see cref="IsMinimumdoelAlBekend"/>).
+    /// The minimumdoel may not be proposed now (<see cref="IsUitgeslotenVoorVoorstel"/>).
     /// </exception>
     public Minimumdoelsuggestie VoegDoelsuggestieToe(string minimumdoelRef, string aiMotivatie)
     {
-        var suggestie = new Minimumdoelsuggestie(Id, minimumdoelRef, aiMotivatie);
-        if (IsMinimumdoelAlBekend(suggestie.MinimumdoelRef))
+        if (string.IsNullOrWhiteSpace(minimumdoelRef))
         {
-            throw new InvalidOperationException(
-                $"Minimumdoel {suggestie.MinimumdoelRef} is al een themadoel of al voorgesteld bij dit thema.");
+            throw new ArgumentException("'minimumdoelRef' is required.", nameof(minimumdoelRef));
         }
 
+        var nr = minimumdoelRef.Trim();
+        if (IsUitgeslotenVoorVoorstel(nr))
+        {
+            throw new InvalidOperationException(
+                $"Minimumdoel {nr} is al een themadoel, al voorgesteld of geweigerd bij dit thema.");
+        }
+
+        var rang = _doelsuggesties.Count == 0 ? 1 : _doelsuggesties.Max(s => s.Rang) + 1;
+        var eerder = _doelsuggesties.FirstOrDefault(s => string.Equals(s.MinimumdoelRef, nr, StringComparison.Ordinal));
+        if (eerder is not null)
+        {
+            // Accepted before and unlinked since: the one row per minimumdoel is proposed again.
+            eerder.Heropen(aiMotivatie, rang);
+            return eerder;
+        }
+
+        var suggestie = new Minimumdoelsuggestie(Id, nr, aiMotivatie, rang);
         _doelsuggesties.Add(suggestie);
         return suggestie;
     }
 
     /// <summary>
-    /// Whether a run must not propose <paramref name="minimumdoelRef"/> for this thema: it is a themadoel already, or it
-    /// has a proposal of any status (ADR-0049 D1). A rejected proposal is how "it does not come back" is kept.
+    /// Whether a run must not propose <paramref name="minimumdoelRef"/> for this thema (ADR-0049 D1): it is a themadoel
+    /// now, or it has an open or a rejected proposal. A minimumdoel accepted before and unlinked since may come back.
     /// </summary>
-    public bool IsMinimumdoelAlBekend(string minimumdoelRef)
+    public bool IsUitgeslotenVoorVoorstel(string minimumdoelRef)
     {
         if (string.IsNullOrWhiteSpace(minimumdoelRef))
         {
@@ -217,9 +234,21 @@ public sealed class Thema
         }
 
         var nr = minimumdoelRef.Trim();
-        return _doelsuggesties.Any(s => string.Equals(s.MinimumdoelRef, nr, StringComparison.Ordinal))
-            || _minimumdoelen.Any(m => string.Equals(m.MinimumdoelRef, nr, StringComparison.Ordinal));
+        return NietVoorTeStellenMinimumdoelen().Contains(nr, StringComparer.Ordinal);
     }
+
+    /// <summary>
+    /// The refs a run must not propose (ADR-0049 D1), each once, in ordinal order: the themadoelen, and the minimumdoelen
+    /// with an open or a rejected proposal. What the prompt's "Niet voorstellen" line lists.
+    /// </summary>
+    public IReadOnlyList<string> NietVoorTeStellenMinimumdoelen() =>
+        _minimumdoelen.Select(m => m.MinimumdoelRef)
+            .Concat(_doelsuggesties
+                .Where(s => s.Status is KoppelingStatus.Voorgesteld or KoppelingStatus.Geweigerd)
+                .Select(s => s.MinimumdoelRef))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(r => r, StringComparer.Ordinal)
+            .ToList();
 
     /// <summary>
     /// Accepts a proposal: its minimumdoel becomes a themadoel of this thema, unless a person linked it by hand in the

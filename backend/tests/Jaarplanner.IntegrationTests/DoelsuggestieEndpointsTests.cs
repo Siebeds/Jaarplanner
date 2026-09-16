@@ -76,7 +76,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.Equal(["K-9.1.1"], resultaat!.Bewaard.Select(b => b.MinimumdoelRef));
         Assert.Equal(["K-1.1.1"], resultaat.OvergeslagenDuplicaat);
-        Assert.Contains("Niet voorstellen (al themadoel of al voorgesteld): K-1.1.1", _factory.LaatsteUserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1", _factory.LaatsteUserPrompt, StringComparison.Ordinal);
 
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         Assert.Equal("Geweigerd", Assert.Single(na!, s => s.MinimumdoelRef == "K-1.1.1").Status);

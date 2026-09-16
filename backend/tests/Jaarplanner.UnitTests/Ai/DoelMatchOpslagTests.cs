@@ -74,6 +74,30 @@ public sealed class DoelMatchOpslagTests
     }
 
     [Fact]
+    public async Task Het_query_pad_volgt_de_rang_en_niet_de_code()
+    {
+        // Owner ruling 2026-09-16 (ADR-0049 D6): the model's order, best fit first.
+        var options = Options($"fb053_{Guid.NewGuid():N}");
+        Guid themaId;
+        await using (var ctx = new AppDbContext(options))
+        {
+            var thema = new Thema("Herfst", duurWeken: 4);
+            thema.VoegDoelsuggestieToe("K-9.1.1", "best passend");
+            thema.VoegDoelsuggestieToe("K-1.1.1", "tweede");
+            thema.VoegDoelsuggestieToe("K-5.1.1", "derde");
+            ctx.Themas.Add(thema);
+            await ctx.SaveChangesAsync();
+            themaId = thema.Id;
+        }
+
+        await using (var ctx = new AppDbContext(options))
+        {
+            var suggesties = await new EfDoelMatchOpslag(ctx).HaalSuggestiesVoorThemaAsync(themaId);
+            Assert.Equal(["K-9.1.1", "K-1.1.1", "K-5.1.1"], suggesties.Select(s => s.MinimumdoelRef));
+        }
+    }
+
+    [Fact]
     public async Task Query_pad_geeft_lege_lijst_voor_onbekend_thema()
     {
         await using var ctx = new AppDbContext(Options($"fb053_{Guid.NewGuid():N}"));

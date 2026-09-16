@@ -19,22 +19,17 @@ public sealed class Minimumdoelsuggestie
         AiMotivatie = null!;
     }
 
-    internal Minimumdoelsuggestie(Guid themaId, string minimumdoelRef, string aiMotivatie)
+    internal Minimumdoelsuggestie(Guid themaId, string minimumdoelRef, string aiMotivatie, int rang)
     {
         if (string.IsNullOrWhiteSpace(minimumdoelRef))
         {
             throw new ArgumentException("'minimumdoelRef' is required.", nameof(minimumdoelRef));
         }
 
-        if (string.IsNullOrWhiteSpace(aiMotivatie))
-        {
-            // Art. IV.3: every suggestion carries a motivation.
-            throw new ArgumentException("'aiMotivatie' is required.", nameof(aiMotivatie));
-        }
-
         ThemaId = themaId;
         MinimumdoelRef = minimumdoelRef.Trim();
-        AiMotivatie = aiMotivatie.Trim();
+        AiMotivatie = VereisMotivatie(aiMotivatie);
+        Rang = rang;
         Status = KoppelingStatus.Voorgesteld;
     }
 
@@ -57,6 +52,12 @@ public sealed class Minimumdoelsuggestie
     /// <summary>The model's one-sentence motivation (Art. IV.3).</summary>
     public string AiMotivatie { get; private set; }
 
+    /// <summary>
+    /// Where the proposal stands in the order the screen shows (ADR-0049 D6): the model's own order, best fit first,
+    /// and a later run after the proposals already on the thema. Lower is earlier.
+    /// </summary>
+    public int Rang { get; private set; }
+
     /// <summary>Records the person's decision. A proposal is decided once, from <c>voorgesteld</c> (ADR-0049 D2).</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="besluit"/> is not aanvaard or geweigerd.</exception>
     /// <exception cref="InvalidOperationException">The proposal was already decided.</exception>
@@ -74,4 +75,27 @@ public sealed class Minimumdoelsuggestie
 
         Status = besluit;
     }
+
+    /// <summary>
+    /// Proposes an accepted minimumdoel again, after it was unlinked as themadoel (ADR-0049 D1): the same row goes back to
+    /// <c>voorgesteld</c> with the new run's motivation and rank, since a thema holds one proposal per minimumdoel.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The proposal is not an accepted one.</exception>
+    internal void Heropen(string aiMotivatie, int rang)
+    {
+        if (Status != KoppelingStatus.Aanvaard)
+        {
+            throw new InvalidOperationException("Alleen een aanvaard voorstel kan opnieuw voorgesteld worden.");
+        }
+
+        AiMotivatie = VereisMotivatie(aiMotivatie);
+        Rang = rang;
+        Status = KoppelingStatus.Voorgesteld;
+    }
+
+    // Art. IV.3: every suggestion carries a motivation.
+    private static string VereisMotivatie(string aiMotivatie) =>
+        string.IsNullOrWhiteSpace(aiMotivatie)
+            ? throw new ArgumentException("'aiMotivatie' is required.", nameof(aiMotivatie))
+            : aiMotivatie.Trim();
 }

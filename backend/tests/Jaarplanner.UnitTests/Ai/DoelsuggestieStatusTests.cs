@@ -79,7 +79,7 @@ public sealed class DoelsuggestieStatusTests
         Assert.Equal("Geweigerd", weergave.Status);
         Assert.Same(suggestie, Assert.Single(thema.Doelsuggesties));
         Assert.Empty(thema.Minimumdoelen);
-        Assert.True(thema.IsMinimumdoelAlBekend("K-1.1.1"));
+        Assert.True(thema.IsUitgeslotenVoorVoorstel("K-1.1.1"));
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 

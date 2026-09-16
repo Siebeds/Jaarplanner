@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:41
+bijgewerkt: 2026-09-17 00:01
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -88,3 +88,6 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 23:41 · claude-fb053 · Browserpas via CDP (eigen Chrome-profiel) op een kopie jp_fb053, desktop en 390px: 3 voorstellen uit 208 K-minimumdoelen, aanvaarden maakt een themadoel, geweigerd komt niet terug; geen echte AI-aanroep, de Claude-client wees naar een lokale stub. Migratie wiste de 16 oude doelsuggesties in de kopie; kopie daarna verwijderd.
 - 2026-09-16 23:41 · claude-fb053 · Open punt voor de eigenaar: het vooruitzicht bij het genereren telt leerplandoelen, die een themaplaatsing niet meer beweegt, dus beide cijfers zijn nu altijd gelijk (ADR-0049).
 - 2026-09-16 23:41 · claude-fb053 · in-uitvoering → te-testen: Gebouwd: AI stelt bij het thema en in de wizard alleen minimumdoelen voor, aanvaarden maakt een themadoel, weigeren houdt het weg; oude leerplandoel-doelsuggesties gewist en telt niet meer voor dekking (constitutie V.1/IX.2, ADR-0049). Gates groen: dotnet test, dotnet format, pnpm test, pnpm lint.
+- 2026-09-17 00:01 · claude-fb053 · Eigenaar 2026-09-16: voorstellen staan in de volgorde van het model (het best passende eerst); een rang-kolom zit in dezelfde migratie, een latere vraag komt achter de bestaande voorstellen.
+- 2026-09-17 00:01 · claude-fb053 · Eigenaar 2026-09-16: een aanvaard en later ontkoppeld minimumdoel mag opnieuw voorgesteld worden (op dezelfde rij); themadoelen, open en geweigerde voorstellen blijven uitgesloten.
+- 2026-09-17 00:01 · claude-fb053 · Een gelijktijdige koppeling met de hand bij het aanvaarden geeft nu een 409 met een Nederlandse zin in plaats van een 500 (Postgres-test).

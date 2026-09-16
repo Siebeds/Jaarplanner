@@ -72,7 +72,7 @@ public sealed class MatchingPromptBuilderTests
             "    Hoek: ontdektafel",
             "    Verwachte uitkomsten: sorteren op kleur",
             "",
-            "Niet voorstellen (al themadoel of al voorgesteld): K-1.1.1, K-9.1.2",
+            "Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1, K-9.1.2",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);

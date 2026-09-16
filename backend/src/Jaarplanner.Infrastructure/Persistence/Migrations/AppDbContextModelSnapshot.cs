@@ -894,6 +894,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("minimumdoel_ref");
 
+                    b.Property<int>("Rang")
+                        .HasColumnType("integer")
+                        .HasColumnName("rang");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)

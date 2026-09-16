@@ -109,10 +109,7 @@ public sealed class DoelMatchingService
             return DoelMatchResultaat.Geslaagd([], [], [], aantalKandidaten: 0);
         }
 
-        var nietVoorstellen = thema.Minimumdoelen.Select(m => m.MinimumdoelRef)
-            .Concat(thema.Doelsuggesties.Select(s => s.MinimumdoelRef))
-            .ToList();
-        var request = MatchingPromptBuilder.Bouw(thema, kandidaten, nietVoorstellen);
+        var request = MatchingPromptBuilder.Bouw(thema, kandidaten, thema.NietVoorTeStellenMinimumdoelen());
 
         // Over the ceiling the model is not called and nothing is stored (TB-007).
         _begrenzing.Bewaak(request, kandidaten);
@@ -137,8 +134,9 @@ public sealed class DoelMatchingService
                 continue;
             }
 
-            // Already a themadoel, already proposed in an earlier run (a rejected one included), or twice in this answer.
-            if (thema.IsMinimumdoelAlBekend(doel.Ref))
+            // A themadoel, an open or rejected proposal (an earlier one, or this answer's own), ADR-0049 D1. A minimumdoel
+            // accepted before and unlinked since passes, and its row is proposed again.
+            if (thema.IsUitgeslotenVoorVoorstel(doel.Ref))
             {
                 duplicaat.Add(suggestie.Code);
                 continue;

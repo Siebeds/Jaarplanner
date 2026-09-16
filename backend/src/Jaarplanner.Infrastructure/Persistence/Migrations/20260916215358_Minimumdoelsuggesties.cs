@@ -6,9 +6,9 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     /// <summary>
-    /// FB-053 (ADR-0049): a thema's doelsuggesties propose minimumdoelen. Creates <c>thema_minimumdoelsuggesties</c> and
-    /// drops <c>thema_doelsuggesties</c> with every leerplandoel doelsuggestie in it, open and accepted, in every
-    /// environment (owner ruling 2026-09-16). Nothing references a row of the dropped table.
+    /// FB-053 (ADR-0049): a thema's doelsuggesties propose minimumdoelen. Creates <c>thema_minimumdoelsuggesties</c>, with
+    /// the rank that orders them, and drops <c>thema_doelsuggesties</c> with every leerplandoel doelsuggestie in it, open
+    /// and accepted, in every environment (owner ruling 2026-09-16). Nothing references a row of the dropped table.
     /// <para>
     /// <b>Not reversible.</b> <see cref="Down"/> recreates the old table empty and cannot bring the deleted rows back.
     /// </para>
@@ -29,7 +29,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     ThemaId = table.Column<Guid>(type: "uuid", nullable: false),
                     minimumdoel_ref = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
-                    ai_motivatie = table.Column<string>(type: "text", nullable: false)
+                    ai_motivatie = table.Column<string>(type: "text", nullable: false),
+                    rang = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {

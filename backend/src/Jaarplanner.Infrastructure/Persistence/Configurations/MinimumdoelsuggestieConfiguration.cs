@@ -28,6 +28,7 @@ public sealed class MinimumdoelsuggestieConfiguration : IEntityTypeConfiguration
             .HasMaxLength(16)
             .IsRequired();
         builder.Property(s => s.AiMotivatie).HasColumnName("ai_motivatie").IsRequired();
+        builder.Property(s => s.Rang).HasColumnName("rang").IsRequired();
 
         // FK to the read-only minimumdoel by its stable ref (Art. III.5). Restrict: reference data is not deleted by the
         // app (Art. III.1), and a proposal must not dangle.

@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916204933_Minimumdoelsuggesties")]
+    [Migration("20260916215358_Minimumdoelsuggesties")]
     partial class Minimumdoelsuggesties
     {
         /// <inheritdoc />
@@ -896,6 +896,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("minimumdoel_ref");
+
+                    b.Property<int>("Rang")
+                        .HasColumnType("integer")
+                        .HasColumnName("rang");
 
                     b.Property<string>("Status")
                         .IsRequired()

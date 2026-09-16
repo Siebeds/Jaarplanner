@@ -57,7 +57,7 @@ public static class MatchingPromptBuilder
     /// <param name="thema">The school thema, with its subthema's, onderzoeksvragen and activiteiten loaded.</param>
     /// <param name="minimumdoelen">The candidates: the minimumdoelen of the mijlpalen the run is for.</param>
     /// <param name="nietVoorstellen">
-    /// The refs already a themadoel or already proposed (any status); written as the prompt's last line.
+    /// The refs a run must not propose (a themadoel, an open or a rejected proposal); written as the prompt's last line.
     /// </param>
     public static AiRequest Bouw(
         Thema thema,
@@ -159,7 +159,7 @@ public static class MatchingPromptBuilder
             .ToList();
         Line(sb, lijst.Count == 0
             ? "Niet voorstellen: (geen)"
-            : $"Niet voorstellen (al themadoel of al voorgesteld): {string.Join(", ", lijst)}");
+            : $"Niet voorstellen (al themadoel, al voorgesteld of geweigerd): {string.Join(", ", lijst)}");
     }
 
     private static void Line(StringBuilder sb, string text) => sb.Append(text).Append(Nl);

@@ -197,9 +197,33 @@ public sealed class DoelMatchingServiceTests
 
         // And the model was told so, on the prompt's last line.
         Assert.EndsWith(
-            "Niet voorstellen (al themadoel of al voorgesteld): K-1.1.1, K-9.1.1\n",
+            "Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1, K-9.1.1\n",
             fake.LaatsteRequest!.UserPrompt,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Een_aanvaard_en_later_ontkoppeld_minimumdoel_komt_terug_op_zijn_eigen_rij()
+    {
+        // Owner ruling 2026-09-16 (ADR-0049 D1): only themadoelen and open or rejected proposals stay excluded.
+        var thema = EenThema();
+        var eerder = thema.VoegDoelsuggestieToe("K-1.1.1", "eerste run");
+        thema.OntkoppelMinimumdoel(thema.AanvaardDoelsuggestie(eerder)!);
+        var fake = Antwoord(("K-9.1.1", "best passend"), ("K-1.1.1", "weer passend"));
+        var service = Service(fake, out var opslag, out _, thema);
+
+        var resultaat = await service.GenereerSuggestiesAsync(ThemaId);
+
+        Assert.Equal(["K-9.1.1", "K-1.1.1"], resultaat.Bewaard.Select(b => b.MinimumdoelRef));
+        Assert.Empty(resultaat.OvergeslagenDuplicaat);
+        Assert.Equal(eerder.Id, resultaat.Bewaard[1].Id);
+        Assert.Equal("Voorgesteld", resultaat.Bewaard[1].Status);
+        Assert.Equal("weer passend", eerder.AiMotivatie);
+        Assert.Equal(2, thema.Doelsuggesties.Count);
+        // The model's order is the rank order, after the earlier run's proposal.
+        Assert.True(thema.Doelsuggesties.Single(s => s.MinimumdoelRef == "K-9.1.1").Rang < eerder.Rang);
+        Assert.EndsWith("Niet voorstellen: (geen)\n", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
     [Fact]
