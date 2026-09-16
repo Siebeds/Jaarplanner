@@ -60,7 +60,7 @@ export function Themakiezer({
                     <span className="block truncate text-body text-inkt">{thema.naam}</span>
                     <span className="mono block text-[0.625rem] text-inkt-zwak">
                       {telWoord(thema.duurWeken, "themas.eenWeek", "themas.weken")} ·{" "}
-                      {telWoord(thema.themadoelen.length, "themas.eenDoel", "themas.doelen")}
+                      {telWoord(thema.minimumdoelen.length, "themas.eenDoel", "themas.doelen")}
                     </span>
                   </span>
                   {staatErAl ? (

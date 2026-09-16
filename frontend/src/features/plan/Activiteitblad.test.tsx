@@ -25,6 +25,7 @@ const THEMA: ThemaWeergave = {
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
   themadoelen: [],
+  minimumdoelen: [],
   subthemas: [
     {
       id: "sub-1",

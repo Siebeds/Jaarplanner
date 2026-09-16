@@ -108,8 +108,9 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 // School-wide totals on purpose, because this IS the school-wide library view.
                 AantalSubthemas = t.Subthemas.Count,
                 AantalActiviteiten = t.Subthemas.SelectMany(s => s.Activiteiten).Count(),
+                // The thema's own share is its minimumdoelen, the themadoelen a teacher sees (FB-043).
                 AantalDoelkoppelingen =
-                    t.Themadoelen.Count
+                    t.Minimumdoelen.Count
                     + t.Subthemas.SelectMany(s => s.Subdoelen).Count()
                     + t.Subthemas.SelectMany(s => s.Activiteiten).SelectMany(a => a.Doelkoppelingen).Count(),
             })

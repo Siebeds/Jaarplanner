@@ -39,13 +39,6 @@ function useKoppelmutatie<TVariabelen, TAntwoord>(
   });
 }
 
-/** Links the doel to a thema as a school-wide themadoel. Refused by the domain beyond three. */
-export function useKoppelDoelAanThema() {
-  return useKoppelmutatie<{ themaId: string; leerplandoelCode: string }, unknown>(
-    ({ themaId, leerplandoelCode }) => post(`/api/themas/${themaId}/themadoelen`, { leerplandoelCode }),
-  );
-}
-
 /** Links the doel to a subthema, as a subdoel at that subthema's own leeftijd. */
 export function useKoppelDoelAanSubthema() {
   return useKoppelmutatie<{ subthemaId: string; leerplandoelCode: string }, unknown>(

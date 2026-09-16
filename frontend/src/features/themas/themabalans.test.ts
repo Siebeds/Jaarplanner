@@ -20,7 +20,9 @@ describe("themabalans", () => {
   it("telt de drie niveaus apart en samen", () => {
     const balans = themabalans(
       thema({
-        themadoelen: [{}, {}],
+        // The thema's own share is its minimumdoelen (FB-043); an older leerplandoel themadoel no longer counts.
+        themadoelen: [{}],
+        minimumdoelen: [{}, {}],
         subthemas: [
           { subdoelen: [{}, {}, {}], activiteiten: [activiteit(["A", "B"]), activiteit(["C"])] },
           { subdoelen: [{}], activiteiten: [activiteit(["D"])] },
@@ -37,7 +39,7 @@ describe("themabalans", () => {
   it("wijst de activiteiten aan die nog geen enkel doel dragen", () => {
     const balans = themabalans(
       thema({
-        themadoelen: [],
+        themadoelen: [], minimumdoelen: [],
         subthemas: [
           { subdoelen: [], activiteiten: [activiteit([]), activiteit(["A"]), activiteit([])] },
           { subdoelen: [], activiteiten: [activiteit([])] },
@@ -50,7 +52,7 @@ describe("themabalans", () => {
   });
 
   it("geeft nullen voor een thema waar nog niets onder hangt", () => {
-    const balans = themabalans(thema({ themadoelen: [], subthemas: [] }));
+    const balans = themabalans(thema({ themadoelen: [], minimumdoelen: [], subthemas: [] }));
 
     expect(balans.totaal).toBe(0);
     expect(balans.activiteiten).toBe(0);
@@ -61,7 +63,7 @@ describe("themabalans", () => {
     // An empty subthema is not an activiteit missing a doel, and counting it as one would send a
     // teacher looking for a row that does not exist.
     const balans = themabalans(
-      thema({ themadoelen: [], subthemas: [{ subdoelen: [{}], activiteiten: [] }] }),
+      thema({ themadoelen: [], minimumdoelen: [], subthemas: [{ subdoelen: [{}], activiteiten: [] }] }),
     );
 
     expect(balans.subdoelen).toBe(1);

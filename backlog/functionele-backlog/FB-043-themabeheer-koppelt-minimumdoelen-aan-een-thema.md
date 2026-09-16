@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:41
+bijgewerkt: 2026-09-16 14:58
 opgepakt-door: claude-fb043
 branch: ticket/FB-043-minimumdoelen-als-themadoel
 pr:
@@ -123,3 +123,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 14:29 · claude-fb043 · niet langer geblokkeerd
 - 2026-09-16 14:29 · claude-fb043 · eigenaar bevestigt: bestaande leerplandoel-themadoelen verwijderen (datamodel blijft), import ongemoeid; de niet-gecommitte tekst op main is achterhaald
 - 2026-09-16 14:41 · claude-fb043 · backend klaar: koppeling thema-minimumdoel (zonder maximum), POST/DELETE /api/themas/{id}/minimumdoelen met themabeheerrecht, POST .../themadoelen weg, migratie wist de leerplandoel-themadoelen; unit- en integratietests groen
+- 2026-09-16 14:58 · claude-fb043 · frontend klaar: themadoelen op de themapagina zijn minimumdoelen (uitklapbaar per leeftijd), geen 'Koppel aan thema' meer in het doelenregister; ADR-0046, grondwet Art. IX.2/XII/IV.8 en constitutie-log bijgewerkt; alle tests, lint en dotnet format groen

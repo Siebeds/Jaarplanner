@@ -51,6 +51,7 @@ const THEMA: ThemaWeergave = {
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
   themadoelen: [{ id: "td-1", koppeling: koppeling("NED-1") }],
+  minimumdoelen: [{ id: "tm-1", minimumdoelRef: "K-MD-1" }],
   subthemas: [
     {
       id: "s-k3",
@@ -293,8 +294,12 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
     expect(knop(t("thema.suggestiesVragen"))).toBeNull();
     expect(knop(t("doelkiezer.koppel"))).toBeNull();
-    expect(knop(t("activiteit.ontkoppel", { code: "NED-1" }))).toBeNull();
+    expect(knop(t("thema.minimumdoelKoppelen"))).toBeNull();
+    expect(knop(t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }))).toBeNull();
     expect(screen.queryByText(SUGGESTIE.aiMotivatie!)).toBeNull();
+    // She reads which minimumdoelen the thema aims at (FB-043), and no leerplandoel as a themadoel.
+    expect(screen.getByRole("button", { name: /K-MD-1/, expanded: false })).toBeInTheDocument();
+    expect(screen.queryByText("NED-1")).toBeNull();
     expect(knop(t("subthemabeheer.toevoegen"))).toBeNull();
     expect(knop(t("subthemabeheer.bewerkAria", { naam: "Bladeren" }))).toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Bladeren" }))).toBeNull();
@@ -342,8 +347,10 @@ describe("ThemadetailScherm: wie wat mag", () => {
     await openHoofdstukken();
 
     expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).not.toBeNull();
-    expect(knop(t("doelkiezer.koppel"))).not.toBeNull();
-    expect(knop(t("activiteit.ontkoppel", { code: "NED-1" }))).not.toBeNull();
+    // A themadoel is a minimumdoel (FB-043): linked and unlinked here, and no leerplandoel picker on the thema.
+    expect(knop(t("thema.minimumdoelKoppelen"))).not.toBeNull();
+    expect(knop(t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }))).not.toBeNull();
+    expect(knop(t("doelkiezer.koppel"))).toBeNull();
     expect(knop(t("thema.suggestiesVragen"))).not.toBeNull();
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");

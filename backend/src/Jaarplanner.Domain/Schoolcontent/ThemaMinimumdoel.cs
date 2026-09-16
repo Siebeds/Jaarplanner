@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
-/// A minimumdoel a <see cref="Thema"/> aims at, as one of its themadoelen (FB-043, ADR-0045). School-scoped like the
+/// A minimumdoel a <see cref="Thema"/> aims at, as one of its themadoelen (FB-043, ADR-0046). School-scoped like the
 /// thema: a thema runs across several leeftijden, and the minimumdoel is the level that spans them.
 /// <para>
 /// The link names the minimumdoel by its stable <see cref="MinimumdoelRef"/> and nothing else. The leerplandoelen it

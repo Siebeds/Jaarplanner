@@ -7,7 +7,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core mapping for <see cref="ThemaMinimumdoel"/>, a minimumdoel a thema aims at as a themadoel (FB-043,
-/// ADR-0045). The row holds the ref and nothing the concordance already knows.
+/// ADR-0046). The row holds the ref and nothing the concordance already knows.
 /// </summary>
 public sealed class ThemaMinimumdoelConfiguration : IEntityTypeConfiguration<ThemaMinimumdoel>
 {

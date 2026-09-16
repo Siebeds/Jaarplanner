@@ -394,16 +394,6 @@ export interface ThemadoelWeergave {
   koppeling: DoelKoppelingWeergave;
 }
 
-/**
- * The most themadoelen one thema can anchor (Art. IX.2: 2–3).
- *
- * A second copy of `Thema.MaxThemadoelen`, and the only reason it is allowed to exist is that the
- * server does not send the number: a client that wants to stop offering a fourth themadoel before
- * the teacher clicks has nothing else to read. It is a bound, not a rule: the domain still refuses
- * the fourth on its own, so this being wrong would cost a confusing button and never a bad write.
- */
-export const MAX_THEMADOELEN = 3;
-
 export interface SubdoelWeergave {
   id: string;
   leeftijd: string;
@@ -470,6 +460,15 @@ export interface SubthemaWeergave {
   activiteiten: ActiviteitWeergave[];
 }
 
+/**
+ * A minimumdoel a thema aims at: one of its themadoelen (FB-043). Only the ref; the text and the leerplandoelen it brings
+ * along are the minimumdoel's own detail.
+ */
+export interface ThemaMinimumdoelWeergave {
+  id: string;
+  minimumdoelRef: string;
+}
+
 export interface ThemaWeergave {
   id: string;
   naam: string;
@@ -477,8 +476,12 @@ export interface ThemaWeergave {
   invalshoeken: string | null;
   kernwoordenschat: string[];
   rijkeWoordenschat: string[];
+  /** Whether the thema aims at at least two minimumdoelen: advisory (Art. IX.2). */
   heeftVoldoendeThemadoelen: boolean;
+  /** Themadoelen that link a leerplandoel. No screen adds one any more; the FR-1 import still may. */
   themadoelen: ThemadoelWeergave[];
+  /** The themadoelen a teacher sees: the minimumdoelen the thema aims at (FB-043). */
+  minimumdoelen: ThemaMinimumdoelWeergave[];
   subthemas: SubthemaWeergave[];
 }
 
@@ -546,6 +549,7 @@ export interface ThemaBibliotheekItem {
   rijkeWoordenschat: string[];
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
+  minimumdoelen: ThemaMinimumdoelWeergave[];
   aantalAfgeleideKlassen: number;
 }
 
