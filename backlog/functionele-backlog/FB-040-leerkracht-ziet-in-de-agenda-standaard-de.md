@@ -2,10 +2,10 @@
 id: FB-040
 titel: Leerkracht ziet in de agenda standaard de werkweek, zonder zaterdag en zondag
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 00:12
+bijgewerkt: 2026-09-17 00:15
 opgepakt-door: claude-4de79c75
 branch: ticket/FB-040-werkweek
 pr:
@@ -76,3 +76,5 @@ Geen.
 - 2026-09-16 23:54 · claude-4de79c75 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (/ticket-uitvoeren FB-040)
 - 2026-09-17 00:05 · claude-4de79c75 · Werkweek gebouwd (Maand, Week, Werkweek, Dag), opent standaard; weekendaanwijzing telt activiteiten en algemene fiches apart; vitest 1036 groen, lint groen
 - 2026-09-17 00:12 · claude-4de79c75 · Browserpas (kopie dev-db, 1440 en 390px, licht en donker): alle 6 criteria gezien; zaterdagactiviteit via de API gepland, aanwijzing en link naar Week werken; contrast aanwijzing 6,08:1 en link 16,58:1 (donker 8,44 en 14,62); geen horizontale overloop
+- 2026-09-17 00:15 · claude-4de79c75 · Antagonist: COMPLIANT, geen CRITICAL/MAJOR. MINOR opgelost: link heet nu 'Open in Week' (op een telefoon toont Week 3 dagen). MINOR bewust zo gelaten: op een telefoon telt de aanwijzing de weekends van de hele weken in beeld, zodat geen weekend ongemeld voorbijgaat tussen twee vensters. MINOR open: geen axe- of toetsenbordpas; de link is een gewone knop met de globale focusring
+- 2026-09-17 00:15 · claude-4de79c75 · in-uitvoering → te-testen: Werkweek gebouwd: opent standaard, Maand/Week/Werkweek/Dag, telefoon 3 werkdagen, weekendaanwijzing met link naar Week; vitest 1036 groen, lint groen, browserpas en antagonist gedaan
