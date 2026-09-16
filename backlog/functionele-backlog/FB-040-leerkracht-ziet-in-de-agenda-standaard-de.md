@@ -2,12 +2,12 @@
 id: FB-040
 titel: Leerkracht ziet in de agenda standaard de werkweek, zonder zaterdag en zondag
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 22:56
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 23:54
+opgepakt-door: claude-4de79c75
+branch: ticket/FB-040-werkweek
 pr:
 geblokkeerd:
 fr: [FR-6.3]
@@ -73,3 +73,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 22:56 · claude · aangemaakt (status nieuw)
+- 2026-09-16 23:54 · claude-4de79c75 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (/ticket-uitvoeren FB-040)
