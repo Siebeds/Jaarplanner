@@ -17,12 +17,10 @@ namespace Jaarplanner.Application.Planning.Weekplanning;
 public sealed class WeekplanningService : IWeekplanningService
 {
     private readonly IWeekplanningOpslag _opslag;
-    private readonly IPlanningsblokIndeling _indeling;
 
-    public WeekplanningService(IWeekplanningOpslag opslag, IPlanningsblokIndeling indeling)
+    public WeekplanningService(IWeekplanningOpslag opslag)
     {
         _opslag = opslag ?? throw new ArgumentNullException(nameof(opslag));
-        _indeling = indeling ?? throw new ArgumentNullException(nameof(indeling));
     }
 
     public async Task<Weekplanningweergave> HaalWeekplanningAsync(
@@ -225,8 +223,8 @@ public sealed class WeekplanningService : IWeekplanningService
     /// The ISO week (Monday–Sunday) containing <paramref name="dag"/>, clamped to the school year.
     /// <para>
     /// <b>Monday is the week start, and this is the one place that decides it</b> — a Flemish school week starts on
-    /// Monday, and the client's grid does too (E9-05). Hard-coded here rather than configured, because unlike the
-    /// planningsblok grain nobody has asked for it to vary; if that ever changes it changes in one method.
+    /// Monday, and the client's grid does too (E9-05). Hard-coded here rather than configured, because nobody has asked
+    /// for it to vary; if that ever changes it changes in one method.
     /// </para>
     /// </summary>
     private static (DateOnly Van, DateOnly Tot) Week(Schooljaar schooljaar, DateOnly dag)
@@ -287,10 +285,8 @@ public sealed class WeekplanningService : IWeekplanningService
                 cancellationToken))
             .ToDictionary(i => i.ActiviteitId);
 
-        // The themaperiodes, so a scheduled activiteit can be reported as sitting outside its thema's period. Derived
-        // at the tier a thema placement keys on — the same constant the generation service uses — because a thema is
-        // placed on the themaperiode tier and nothing here may assume a second one.
-        var themaperiodePerThema = ThemaperiodePerThema(schooljaar, jaarplan);
+        // The days each thema is placed on, so a scheduled activiteit can be reported as sitting outside them.
+        var themaperiodePerThema = ThemaperiodesPerThema(jaarplan);
 
         var dagen = new List<Dagweergave>();
         for (var datum = van; datum <= tot; datum = datum.AddDays(1))
@@ -359,46 +355,31 @@ public sealed class WeekplanningService : IWeekplanningService
     }
 
     /// <summary>
-    /// Where each placed thema sits, as a (start, eind) pair per thema — the basis for
-    /// <see cref="GeplandeActiviteitWeergave.ValtBuitenThemaperiode"/>.
+    /// The days each placed thema runs, as its placements' (van, tot) pairs — the basis for
+    /// <see cref="GeplandeActiviteitWeergave.ValtBuitenThemaperiode"/> (ADR-0049 decision 11).
     /// <para>
-    /// <b>Rejected and stale placements are excluded, and the two exclusions have different reasons.</b> A
-    /// <c>Geweigerd</c> placement teaches nothing in its period (<c>Themaplaatsing.IsGepland</c>), so measuring an
-    /// activiteit against it would report a mismatch with a period the thema is not in — and the groepschat record of
-    /// 2026-08-19 is explicit that folding a rejected placement in with the others is a copy defect that reached a
-    /// teacher once already (E5-05 MAJOR-1). A <b>stale</b> one points at a date that is no longer any period's start,
-    /// so there is no period to compare against at all.
-    /// </para>
-    /// <para>
-    /// A thema placed in several periods keeps the <b>widest</b> span, so an activiteit inside any of them is not
-    /// reported as outside. Reporting it against only the first would flag correct scheduling as a mismatch.
+    /// <b>A rejected placement is excluded</b>: nothing is taught on its account (<c>Themaplaatsing.IsGepland</c>). A
+    /// thema placed several times, or in parts around a vacation, keeps every placement, so an activiteit on any of those
+    /// days is inside.
     /// </para>
     /// </summary>
-    private Dictionary<Guid, (DateOnly Start, DateOnly Eind)> ThemaperiodePerThema(
-        Schooljaar schooljaar,
-        Jaarplan? jaarplan)
+    private static Dictionary<Guid, List<(DateOnly Van, DateOnly Tot)>> ThemaperiodesPerThema(Jaarplan? jaarplan)
     {
-        var perThema = new Dictionary<Guid, (DateOnly Start, DateOnly Eind)>();
+        var perThema = new Dictionary<Guid, List<(DateOnly Van, DateOnly Tot)>>();
         if (jaarplan is null)
         {
             return perThema;
         }
 
-        var blokken = _indeling.Blokken(schooljaar, GeneratieNiveau)
-            .ToDictionary(b => b.Start);
-
         foreach (var plaatsing in jaarplan.Plaatsingen.Where(p => p.IsGepland))
         {
-            // Not a block boundary any more: the placement is stale and has no period to measure against.
-            if (!blokken.TryGetValue(plaatsing.BlokStart, out var blok))
+            if (!perThema.TryGetValue(plaatsing.ThemaId, out var periodes))
             {
-                continue;
+                periodes = [];
+                perThema[plaatsing.ThemaId] = periodes;
             }
 
-            perThema[plaatsing.ThemaId] = perThema.TryGetValue(plaatsing.ThemaId, out var bestaand)
-                ? (bestaand.Start < blok.Start ? bestaand.Start : blok.Start,
-                    bestaand.Eind > blok.Eind ? bestaand.Eind : blok.Eind)
-                : (blok.Start, blok.Eind);
+            periodes.Add((plaatsing.Van, plaatsing.Tot));
         }
 
         return perThema;
@@ -407,17 +388,17 @@ public sealed class WeekplanningService : IWeekplanningService
     private static GeplandeActiviteitWeergave? Projecteer(
         Activiteitplaatsing plaatsing,
         IReadOnlyDictionary<Guid, Activiteitinhoud> inhoudPerActiviteit,
-        IReadOnlyDictionary<Guid, (DateOnly Start, DateOnly Eind)> themaperiodePerThema)
+        IReadOnlyDictionary<Guid, List<(DateOnly Van, DateOnly Tot)>> themaperiodePerThema)
     {
         if (!inhoudPerActiviteit.TryGetValue(plaatsing.ActiviteitId, out var inhoud))
         {
             return null;
         }
 
-        // False rather than "unknown" when the thema is not placed: there is then no period for the day to fall
+        // False rather than "unknown" when the thema is not placed: there are then no days for the activiteit to fall
         // outside of, and a screen must not report a mismatch against nothing.
-        var buiten = themaperiodePerThema.TryGetValue(inhoud.ThemaId, out var periode)
-            && (plaatsing.Datum < periode.Start || plaatsing.Datum > periode.Eind);
+        var buiten = themaperiodePerThema.TryGetValue(inhoud.ThemaId, out var periodes)
+            && !periodes.Any(periode => plaatsing.Datum >= periode.Van && plaatsing.Datum <= periode.Tot);
 
         return new GeplandeActiviteitWeergave(
             PlaatsingId: plaatsing.Id,
@@ -472,16 +453,4 @@ public sealed class WeekplanningService : IWeekplanningService
 
         return (jaarplan, plaatsing);
     }
-
-    /// <summary>
-    /// The tier a thema placement keys on, and therefore the tier
-    /// <see cref="GeplandeActiviteitWeergave.ValtBuitenThemaperiode"/> is measured against.
-    /// <para>
-    /// Deliberately the same constant the generation service uses (<c>GENERATIEBLOKNIVEAU</c> on the client,
-    /// <c>JaarplanGeneratieService.GeneratieNiveau</c> on the server) rather than a second opinion about which tier a
-    /// thema lives on. If the two ever disagreed, an activiteit would be reported as outside a period the board draws
-    /// it inside.
-    /// </para>
-    /// </summary>
-    private const Planningsblokniveau GeneratieNiveau = Planningsblokniveau.Themaperiode;
 }

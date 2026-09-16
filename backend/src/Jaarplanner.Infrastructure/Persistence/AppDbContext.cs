@@ -52,9 +52,8 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Klas> Klassen => Set<Klas>();
 
     /// <summary>
-    /// The school years with their vakantie-/periodestructuur (Art. IX.3, E3-05). Note there is
-    /// deliberately no <c>Planningsblokken</c> set: blocks are derived from a schooljaar by the
-    /// <c>IPlanningsblokIndeling</c> seam, so no row commits the school to a granularity (ADR-0013).
+    /// The school years with their vacations and free days (Art. IX.3). A vacation splits a thema placement
+    /// (ADR-0049); there are no periods to store.
     /// </summary>
     public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
 

@@ -550,7 +550,7 @@ public static class JaarplanGeneratiePromptBuilder
     /// A block's teaching capacity in <b>whole weeks</b>, by the same arithmetic the te-vol verdict uses:
     /// <c>ceil(TelOpenDagen / 7)</c>.
     /// <para>
-    /// <b>Shared with <see cref="BlokspreidingWeergave.IsOverbelast"/> by construction, not by coincidence</b> (owner
+    /// <b>Shared with <c>BlokspreidingWeergave.IsOverbelast</c> by construction, not by coincidence</b> (owner
     /// ruling, 2026-08-05). This used to be <c>AantalDagen / 7</c> to one decimal, which was a *tenth* place where a
     /// period's length in weeks was computed and the only one that steers the model. It is an integer, so it needs no
     /// culture-invariant formatting: the reason the old helper carried a <see cref="CultureInfo"/> was that a Dutch

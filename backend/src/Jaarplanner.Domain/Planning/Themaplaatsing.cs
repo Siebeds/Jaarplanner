@@ -3,29 +3,23 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// One thema placed in one planningsblok of a <see cref="Jaarplan"/> (Art. IX.3: "per planningsblok a list
-/// of thema's, with a <c>vergrendeld</c> flag per thema"). This is the only thing a jaarplan persists — the
-/// grid itself is derived (ADR-0013/0020), so there is no planningsblok row for this to point at.
+/// One thema placed in a <see cref="Jaarplan"/> from one day to another (Art. IX.3, ADR-0049): the thema runs from
+/// <see cref="Van"/> to <see cref="Tot"/>, both inclusive.
 /// <para>
-/// <b>It keys on <see cref="BlokStart"/>, never on <c>Planningsblok.Ordinaal</c>.</b> This is the single most
-/// consequential design decision in the type. The ordinal is a display position over a <i>derived</i> grid:
-/// move one vakantie by a day and a teaching stretch can yield a different number of blocks, re-pointing every
-/// later ordinal (pinned by <c>PlanningsblokIndelingTests.Ordinaal_is_geen_stabiele_sleutel_over_vakantiewijzigingen</c>).
-/// A placement keyed on the ordinal would therefore silently relocate a teacher's thema when the school edited
-/// its calendar. The block's start date is a real calendar anchor, so that is what is stored, together with the
-/// <see cref="BlokNiveau"/> — the two halves of <c>Planningsblok</c>'s documented identity (ADR-0020 §3).
+/// <b>It keys on its own dates, not on a derived period.</b> Until ADR-0049 a placement stored the start of the
+/// themaperiode it sat in and always filled that period. The owner ruled that thema's are not planned in fixed periods,
+/// so a placement now says exactly which days the thema runs. A vacation never lies inside a placement: the service
+/// splits a range at every vacation and stores the parts, which <c>Themareeks</c> reads back as one thema.
 /// </para>
 /// <para>
-/// <b>Keyed on a date is still not immune to a calendar edit.</b> A stored start date can stop being a block
-/// boundary after a vakantie edit. That placement is then <i>stale</i>, and the ruling of 2026-07-28 (ADR-0020
-/// follow-ups) is explicit: it is never silently moved, it raises a persistent notification, and dekking is
-/// reported as <i>te herzien</i> until a human resolves it. Detecting and surfacing that is E3-07/E3-09's job;
-/// what this type guarantees is only that the stored key is honest enough for it to be detectable.
+/// <b>Dates can still stop fitting.</b> When the school edits its vacations, a placement may come to hold one, or reach
+/// outside the year. It is then <i>vervallen</i>: never moved, reported with a lasting notice, and dekking reads
+/// <i>te herzien</i> until the teacher saves it again (directie 2026-07-28, kept by ADR-0049 decision 5). Deciding that
+/// takes the <see cref="Schooljaar"/>, so it is <see cref="Themakalender.IsVervallen"/>'s job, not this type's.
 /// </para>
 /// <para>
 /// <b>Advisory, like every AI output</b> (Art. IV.1/IV.2/IV.3): a generated placement is persisted with
-/// <see cref="KoppelingStatus.Voorgesteld"/> and an <see cref="AiMotivatie"/>, and only the teacher moves it to
-/// aanvaard/geweigerd/manueel. Nothing is auto-applied.
+/// <see cref="KoppelingStatus.Voorgesteld"/> and an <see cref="AiMotivatie"/>, and only the teacher decides it.
 /// </para>
 /// </summary>
 public sealed class Themaplaatsing
@@ -35,13 +29,11 @@ public sealed class Themaplaatsing
     {
     }
 
-    /// <summary>Creates a placement of one thema in one planningsblok.</summary>
+    /// <summary>Creates a placement of one thema from <paramref name="van"/> to <paramref name="tot"/>.</summary>
     /// <param name="jaarplanId">The owning jaarplan.</param>
     /// <param name="themaId">The placed thema (school-scoped autonomous content, Art. IX.2).</param>
-    /// <param name="blokNiveau">The tier of the block the thema is placed in.</param>
-    /// <param name="blokStart">
-    /// The block's <b>start date</b> — the stable half of the block identity. Never an ordinal.
-    /// </param>
+    /// <param name="van">First day, inclusive.</param>
+    /// <param name="tot">Last day, inclusive; not before <paramref name="van"/>.</param>
     /// <param name="status">
     /// The human-in-the-loop status (Art. IV.2). AI-generated placements start
     /// <see cref="KoppelingStatus.Voorgesteld"/>; a teacher-made placement is <see cref="KoppelingStatus.Manueel"/>.
@@ -50,15 +42,14 @@ public sealed class Themaplaatsing
     public Themaplaatsing(
         Guid jaarplanId,
         Guid themaId,
-        Planningsblokniveau blokNiveau,
-        DateOnly blokStart,
+        DateOnly van,
+        DateOnly tot,
         KoppelingStatus status,
         string? aiMotivatie = null)
     {
         JaarplanId = RequireId(jaarplanId, nameof(jaarplanId));
         ThemaId = RequireId(themaId, nameof(themaId));
-        BlokNiveau = RequireNiveau(blokNiveau);
-        BlokStart = blokStart;
+        (Van, Tot) = RequireRange(van, tot);
         Status = RequireStatus(status);
         AiMotivatie = Optional(aiMotivatie);
     }
@@ -72,14 +63,11 @@ public sealed class Themaplaatsing
     /// <summary>The placed thema (Art. IX.2 — school-scoped, shared school-wide).</summary>
     public Guid ThemaId { get; private set; }
 
-    /// <summary>Which tier of the grid this placement sits on (themaperiode or subthemaperiode).</summary>
-    public Planningsblokniveau BlokNiveau { get; private set; }
+    /// <summary>The first day the thema runs, inclusive.</summary>
+    public DateOnly Van { get; private set; }
 
-    /// <summary>
-    /// The <b>start date</b> of the planningsblok this thema is placed in — the stable key (ADR-0020 §3).
-    /// Deliberately not an ordinal: see the type documentation.
-    /// </summary>
-    public DateOnly BlokStart { get; private set; }
+    /// <summary>The last day the thema runs, inclusive.</summary>
+    public DateOnly Tot { get; private set; }
 
     /// <summary>The persisted human-in-the-loop status of this placement (Art. IV.2).</summary>
     public KoppelingStatus Status { get; private set; }
@@ -90,33 +78,29 @@ public sealed class Themaplaatsing
     public string? AiMotivatie { get; private set; }
 
     /// <summary>
-    /// <b>Excluded from (re)generation</b> (Art. IX.3, consumed by E4). A teacher who is happy with a thema in a
-    /// period locks it, and a later regeneration must leave it exactly where it is. Modelled here rather than in
-    /// E4 because it is a property of the placement, and a flag invented at regeneration time would have no
-    /// place to live.
+    /// <b>Excluded from (re)generation</b> (Art. IX.3). A teacher who is happy with a proposed thema locks it, and a
+    /// later regeneration must leave it where it is.
     /// </summary>
     public bool Vergrendeld { get; private set; }
 
     /// <summary>
     /// Whether a (re)generation run may discard this placement: only an untouched AI proposal that the teacher
-    /// has not locked. An accepted/rejected/manual placement is a human decision and a locked one is an explicit
-    /// "leave this alone" — neither is the generator's to overwrite (Art. IV.1, Art. IX.3).
+    /// has not locked (Art. IV.1, Art. IX.3).
     /// </summary>
     public bool IsVervangbaar => Status == KoppelingStatus.Voorgesteld && !Vergrendeld;
 
     /// <summary>
-    /// Whether this placement means the thema is actually <b>planned</b> in its block — anything except a
-    /// placement the teacher has rejected.
+    /// Whether this placement means the thema is actually <b>planned</b>: anything except a rejected one.
     /// <para>
-    /// A <see cref="KoppelingStatus.Geweigerd"/> placement is kept (a human decision is not the generator's to
-    /// discard, Art. IV.1) and therefore still occupies its slot for idempotency purposes, but nothing is
-    /// taught in that period on its account. Anything that answers "how full is this period" or "what does
-    /// this period cover" must use <b>this</b> predicate rather than mere existence: the E3-02 code review
-    /// found the spreading report calling a period "used" and even "overbelast" purely because of a thema the
-    /// teacher had thrown out.
+    /// Since ADR-0049 a rejection deletes the proposal and the migration deleted the old rejections, so a
+    /// <see cref="KoppelingStatus.Geweigerd"/> placement no longer arises. The predicate stays because the status does,
+    /// and every rule that asks "is this thema taught here?" keeps asking it through this one test.
     /// </para>
     /// </summary>
     public bool IsGepland => Status != KoppelingStatus.Geweigerd;
+
+    /// <summary>Whether this placement shares a calendar day with <paramref name="van"/>–<paramref name="tot"/>.</summary>
+    public bool Overlapt(DateOnly van, DateOnly tot) => Van <= tot && Tot >= van;
 
     /// <summary>
     /// Records the teacher's decision on this placement (Art. IV.1/IV.2). The teacher is the only actor that
@@ -128,53 +112,17 @@ public sealed class Themaplaatsing
     public void StelVergrendelingIn(bool vergrendeld) => Vergrendeld = vergrendeld;
 
     /// <summary>
-    /// Moves this thema to the block starting on <paramref name="blokStart"/> — the teacher dragging it to
-    /// another period (E3-07, FR-6.2/FR-7).
+    /// Gives the placement new dates: the teacher changed its begin or end, or dragged it (FR-6.2, FR-7.2).
     /// <para>
-    /// <b>The new key is a start date, like the old one</b> (ADR-0020 §3). <see cref="BlokNiveau"/> is deliberately
-    /// left alone: the tier is not something a teacher picks by dragging along the board, and re-tiering a placement
-    /// is a different operation from repositioning it in the year.
-    /// </para>
-    /// <para>
-    /// <b>Moving makes this the teacher's placement, so the status becomes <see cref="KoppelingStatus.Manueel"/>.</b>
-    /// This is the rule E4-02 states (*"anything proposed by AI can be manually overwritten; status moves to
-    /// manueel"*), reached early because a drag is exactly that override. It also has a consequence the teacher
-    /// wants: <see cref="IsVervangbaar"/> turns false, so the next generation run cannot quietly undo a move they
-    /// made by hand.
-    /// </para>
-    /// <para>
-    /// <b>And the AI motivation is cleared, deliberately losing it.</b> <see cref="AiMotivatie"/> is documented as
-    /// the model's reason for placing this thema <i>here</i>; once "here" is the teacher's choice, keeping the text
-    /// would attribute their decision to the model and render a justification for a period the thema has left. That
-    /// is the inverse of what Art. IV.3 asks the motivation to do. The existing contract already says
-    /// "null for a purely manual placement", and after a move that is what this is. The lost reasoning is the cost:
-    /// it argued for a placement the teacher overruled.
-    /// </para>
-    /// <para>
-    /// <b>A move is therefore NOT reversible, and the UI must say so.</b> An earlier revision of this type and of
-    /// <c>VerplaatsPlaatsingAsync</c> claimed a move was safe to leave unconfirmed because the teacher could "drag it
-    /// back". Dragging back restores <see cref="BlokStart"/> and <b>nothing else</b>: the motivation stays null
-    /// forever, and an <see cref="KoppelingStatus.Aanvaard"/> decision is gone. In a codebase with no soft delete and
-    /// no audit trail that makes a move a small unrecoverable edit, not a free one — which is why the picker
-    /// discloses the consequence before it happens (found by the E3-07 antagonist audit; the same worklog asserted
-    /// both "destroyed, not archived" and "reversible" two decisions apart).
-    /// </para>
-    /// <para>
-    /// <b>A <see cref="KoppelingStatus.Geweigerd"/> placement is not moved through here.</b> The caller refuses it,
-    /// because this method would convert a rejection into <see cref="KoppelingStatus.Manueel"/> — the one status
-    /// transition in the feature with a <i>dekking</i> consequence (Art. V.1: a rejected placement teaches nothing,
-    /// a manual one does). Reversing a rejection is a decision the teacher takes explicitly, through the control
-    /// that explains it, never as a side effect of a drag.
-    /// </para>
-    /// <para>
-    /// A <i>stale</i> placement is moved through this same method, which is the whole re-placement route: nothing
-    /// here requires the current <see cref="BlokStart"/> to still be a block boundary. Validating that the
-    /// <b>target</b> is one belongs to the service, which is the only layer holding the derived grid.
+    /// <b>The dates are now the teacher's, so the status becomes <see cref="KoppelingStatus.Manueel"/> and the AI
+    /// motivation is cleared.</b> The motivation argued for the days the model chose; keeping it would attribute the
+    /// teacher's decision to the model (Art. IV.3). A change is therefore not reversible: moving back restores the dates
+    /// only, which is why the service writes nothing when the dates do not change.
     /// </para>
     /// </summary>
-    public void VerplaatsNaar(DateOnly blokStart)
+    public void Herplan(DateOnly van, DateOnly tot)
     {
-        BlokStart = blokStart;
+        (Van, Tot) = RequireRange(van, tot);
         Status = KoppelingStatus.Manueel;
         AiMotivatie = null;
     }
@@ -184,11 +132,12 @@ public sealed class Themaplaatsing
             ? status
             : throw new ArgumentOutOfRangeException(nameof(status), status, "Unknown plaatsingsstatus.");
 
-    // Both guards below catch programmer error, never teacher input, so their messages are English (Art. II.2).
-    private static Planningsblokniveau RequireNiveau(Planningsblokniveau niveau) =>
-        Enum.IsDefined(niveau)
-            ? niveau
-            : throw new ArgumentOutOfRangeException(nameof(niveau), niveau, "Unknown planningsblokniveau.");
+    // The guards below catch programmer error, never teacher input: the service refuses a reversed range in Dutch
+    // before it gets here. English per Art. II.2.
+    private static (DateOnly Van, DateOnly Tot) RequireRange(DateOnly van, DateOnly tot) =>
+        tot < van
+            ? throw new ArgumentException($"A placement cannot end ({tot:yyyy-MM-dd}) before it starts ({van:yyyy-MM-dd}).")
+            : (van, tot);
 
     private static Guid RequireId(Guid value, string paramName) =>
         value == Guid.Empty

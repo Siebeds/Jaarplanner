@@ -6,13 +6,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core mapping for <see cref="Schooljaar"/> and its owned <see cref="Schoolsluiting"/> collection
-/// (Art. IX.3: the schooljaar carries the vakantie-/periodestructuur).
-/// <para>
-/// <b>No planningsblok table, deliberately.</b> Blocks are derived from this data by the
-/// <c>IPlanningsblokIndeling</c> seam, never stored — persisting them would bake the granularity into rows
-/// and defeat ADR-0013's whole purpose. What is persisted is only the raw input: the year's span and its
-/// vacations.
-/// </para>
+/// (Art. IX.3: the schooljaar carries its vacations and free days). A vacation splits a thema placement (ADR-0049).
 /// </summary>
 public sealed class SchooljaarConfiguration : IEntityTypeConfiguration<Schooljaar>
 {

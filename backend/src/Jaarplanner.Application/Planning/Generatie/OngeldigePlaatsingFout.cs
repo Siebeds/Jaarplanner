@@ -1,29 +1,15 @@
+using Jaarplanner.Application.Planning.Weekplanning;
+
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// Thrown when a teacher's <b>hand-placement</b> of a thema cannot be honoured (E4-03, FR-7.2): the chosen period is
-/// not the start of any currently derived planningsblok, or that thema already sits in that period. The (thin) Api maps
-/// this to a 400 via <c>PlanningExceptionHandler</c>, alongside <see cref="OngeldigeVerplaatsingFout"/> and
-/// <see cref="OngeldigePlaatsingsstatusFout"/>.
+/// Thrown when a teacher's placement of a thema cannot be honoured: adding one, giving one new dates or dragging one
+/// (FR-6.2, FR-7.2, ADR-0049). The (thin) Api maps it to a 400 via <c>PlanningExceptionHandler</c>.
 /// <para>
-/// <b>Why not <see cref="OngeldigeVerplaatsingFout"/>, which already refuses the same two conditions.</b> That type
-/// documents itself as a failed <i>move</i>, and its reasoning is written around one: a placement that already exists
-/// somewhere and is being relocated. Reusing it for an add would make its own summary false, and a comment that
-/// quietly stops describing its subject is the single defect class this project has retracted most often. The 400 they
-/// both map to is the same; what they mean to a reader is not.
-/// </para>
-/// <para>
-/// <b>One factory per case</b>, following the <c>OngeldigeImportFout</c> precedent from E1-15: a refusal whose message
-/// is composed at the throw site ends up existing twice the moment a second caller needs it, and the two copies then
-/// drift. Every sentence a teacher can read for this fault is in this file.
-/// </para>
-/// <para>
-/// <b>The messages deliberately name no date.</b> The move path's equivalent interpolates
-/// <c>JaarplanGeneratieResponseParser.DatumFormaat</c>, which is an ISO date no Dutch teacher reads, and it gets away
-/// with it only because the frontend never renders that <c>detail</c> (it shows its own <c>nl.json</c> copy instead).
-/// Rather than add a second instance of a string that is safe purely by not being displayed, these say what the
-/// teacher should do next and name nothing that needs formatting. Dutch because both conditions are teacher-actionable,
-/// which is the Dutch side of the ratified Art. II.3 split.
+/// <b>One factory per case</b>, following the <c>OngeldigeImportFout</c> precedent: a refusal composed at the throw
+/// site ends up existing twice once a second caller needs it, and the copies drift. Every sentence a teacher can read
+/// for this fault is in this file. Dutch, because every case is one the teacher can act on (Art. II.3), with dates
+/// written the way the weekplanning refusals write them.
 /// </para>
 /// </summary>
 public sealed class OngeldigePlaatsingFout : Exception
@@ -33,19 +19,28 @@ public sealed class OngeldigePlaatsingFout : Exception
     {
     }
 
-    /// <summary>
-    /// The requested period starts no block of the current grid. Refused rather than snapped to the nearest period,
-    /// which is the silent relocation ADR-0020 and the directie ruling of 2026-07-28 forbid, and the same answer
-    /// generation and the move path give. The realistic cause is a grid that changed after the page loaded (a school
-    /// editing its vakantiedata reshapes it), so the instruction is to reload rather than to pick differently.
-    /// </summary>
-    public static OngeldigePlaatsingFout GeenPeriodebegin() =>
-        new("Die periode bestaat niet meer in dit schooljaar. Herlaad het jaarplan en kies opnieuw een periode.");
+    /// <summary>The chosen first day is not a schooldag: a weekend, a vacation or a free day.</summary>
+    public static OngeldigePlaatsingFout GeenSchooldag(DateOnly datum) =>
+        new($"Op {Dagnotatie.Formatteer(datum)} is er geen school. Kies een schooldag als begin.");
+
+    /// <summary>The end lies before the begin.</summary>
+    public static OngeldigePlaatsingFout EindeVoorBegin() =>
+        new("De einddatum ligt vóór de begindatum. Kies een latere einddatum.");
+
+    /// <summary>A date lies outside the school year the class belongs to.</summary>
+    public static OngeldigePlaatsingFout BuitenSchooljaar(DateOnly eerste, DateOnly laatste) =>
+        new($"Die datum ligt buiten het schooljaar. Kies een dag van {Dagnotatie.Formatteer(eerste)} " +
+            $"tot {Dagnotatie.Formatteer(laatste)}.");
+
+    /// <summary>The chosen days hold no schooldag at all, so nothing would be stored.</summary>
+    public static OngeldigePlaatsingFout GeenSchooldagen() =>
+        new("Tussen die datums valt geen enkele schooldag. Kies andere datums.");
 
     /// <summary>
-    /// That thema is already placed in that period. A block may hold several thema's (Art. IX.3), so only the exact
-    /// duplicate is refused: same thema, same period, same tier.
+    /// The chosen days share a day with another placement. No two thema's run on the same day (owner ruling
+    /// 2026-09-16), so the sentence names the thema in the way and its days.
     /// </summary>
-    public static OngeldigePlaatsingFout ThemaStaatErAl() =>
-        new("Dit thema staat al in deze periode. Kies een ander thema of een andere periode.");
+    public static OngeldigePlaatsingFout Overlapt(string themaNaam, DateOnly van, DateOnly tot) =>
+        new($"Van {Dagnotatie.Formatteer(van)} tot {Dagnotatie.Formatteer(tot)} loopt al het thema " +
+            $"'{themaNaam}'. Twee thema's kunnen niet op dezelfde dag lopen: kies andere dagen of verschuif dat thema eerst.");
 }

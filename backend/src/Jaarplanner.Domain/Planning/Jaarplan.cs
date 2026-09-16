@@ -3,14 +3,12 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// The year plan of one <see cref="Klas"/> (Art. IX.3: "Klas … has one <c>Jaarplan</c>"; "Jaarplan — klasId; per
-/// planningsblok a list of thema's, with a <c>vergrendeld</c> flag per thema").
+/// The year plan of one <see cref="Klas"/> (Art. IX.3: "Klas … has one <c>Jaarplan</c>"; the jaarplan holds the
+/// thema's placed from one day to another, with a <c>vergrendeld</c> flag per placement).
 /// <para>
-/// <b>It stores placements, not the grid.</b> There is no planningsblok table and this aggregate holds no block
-/// list: the grid is derived from the <see cref="Schooljaar"/> by the <c>IPlanningsblokIndeling</c> seam, so no
-/// row commits the school to a granularity (ADR-0013). What is persisted is a set of
-/// <see cref="Themaplaatsing"/> — each a thema pinned to a block <b>start date</b> plus its tier, never to an
-/// ordinal (ADR-0020 §3; see <see cref="Themaplaatsing"/> for why that distinction is load-bearing).
+/// <b>It stores placements with their own dates.</b> Each <see cref="Themaplaatsing"/> says from which day to which
+/// day its thema runs (ADR-0049); there is no grid of periods behind it. <b>No two placements share a day</b>, the
+/// same thema twice included (owner ruling 2026-09-16): <see cref="VoegPlaatsingToe"/> refuses one that would.
 /// </para>
 /// <para>
 /// <b>Per klas, deliberately without any leerjaar in its invariants.</b> How a graadklas / menggroep spanning
@@ -55,13 +53,13 @@ public sealed class Jaarplan
     public Guid KlasId { get; private set; }
 
     /// <summary>
-    /// The thema placements, ordered chronologically by the block start date they key on. Ordering by the stored
-    /// key rather than by insertion keeps the read view stable across a regeneration.
+    /// The thema placements, ordered chronologically by their first day. Ordering by the stored dates rather than by
+    /// insertion keeps the read view stable.
     /// </summary>
     public IReadOnlyList<Themaplaatsing> Plaatsingen =>
         _plaatsingen
-            .OrderBy(p => p.BlokStart)
-            .ThenBy(p => p.BlokNiveau)
+            .OrderBy(p => p.Van)
+            .ThenBy(p => p.Tot)
             .ThenBy(p => p.ThemaId)
             .ToList();
 
@@ -70,8 +68,8 @@ public sealed class Jaarplan
     /// they start.
     /// <para>
     /// <b>A second, independent placement axis, and deliberately not a finer tier of the first.</b>
-    /// <see cref="Plaatsingen"/> answers "in which stretch of the year does this thema live?" and keys on a derived
-    /// block boundary; this answers "what am I doing on Tuesday?" and keys on a calendar date. See
+    /// <see cref="Plaatsingen"/> answers "in which stretch of the year does this thema live?"; this answers "what am I
+    /// doing on Tuesday?". Both key on calendar dates, and neither is derived from the other. See
     /// <see cref="Activiteitplaatsing"/> for why that separation is load-bearing rather than stylistic.
     /// </para>
     /// </summary>
@@ -253,58 +251,75 @@ public sealed class Jaarplan
     }
 
     /// <summary>
-    /// Places a thema in the block starting on <paramref name="blokStart"/>.
+    /// Places a thema from <paramref name="van"/> to <paramref name="tot"/>.
     /// <para>
-    /// A block may hold several thema's (Art. IX.3 says "a list of thema's" per block), so only the exact
-    /// duplicate — the same thema twice in the same block of the same tier — is refused.
+    /// <b>No two placements share a day</b> (owner ruling 2026-09-16, ADR-0049 R4), so one that would is refused. The
+    /// service checks <see cref="Overlappend"/> first and refuses in Dutch, naming the other thema; this guard is the
+    /// backstop, and reaching it is a programmer error.
+    /// </para>
+    /// <para>
+    /// <b>Splitting at a vacation is not done here.</b> Which days are vacation is the <see cref="Schooljaar"/>'s, which
+    /// this aggregate does not hold; the service hands in one part at a time.
     /// </para>
     /// </summary>
-    /// <exception cref="InvalidOperationException">The thema is already placed in that same block.</exception>
+    /// <exception cref="InvalidOperationException">The range shares a day with another placement.</exception>
     public Themaplaatsing VoegPlaatsingToe(
         Guid themaId,
-        Planningsblokniveau blokNiveau,
-        DateOnly blokStart,
+        DateOnly van,
+        DateOnly tot,
         KoppelingStatus status,
         string? aiMotivatie = null)
     {
-        // A caller that has not checked IsAlGeplaatst first is a programmer error, not teacher input — no handler
-        // maps this exception, so it must never reach a teacher. English per Art. II.2.
-        if (IsAlGeplaatst(themaId, blokNiveau, blokStart))
+        // English per Art. II.2: no handler maps this exception, so it must never reach a teacher.
+        if (Overlappend(van, tot) is { } bestaand)
         {
             throw new InvalidOperationException(
-                $"Thema {themaId} is already placed in the {blokNiveau} starting {blokStart:yyyy-MM-dd}.");
+                $"The range {van:yyyy-MM-dd}–{tot:yyyy-MM-dd} overlaps placement {bestaand.Id}.");
         }
 
-        var plaatsing = new Themaplaatsing(Id, themaId, blokNiveau, blokStart, status, aiMotivatie);
+        var plaatsing = new Themaplaatsing(Id, themaId, van, tot, status, aiMotivatie);
         _plaatsingen.Add(plaatsing);
 
         return plaatsing;
     }
 
     /// <summary>
-    /// Whether this thema is already placed in that exact block (tier + start date). Used by the generation flow
-    /// to stay idempotent instead of stacking the same proposal twice.
+    /// The first placement, chronologically, that shares a day with <paramref name="van"/>–<paramref name="tot"/>, or
+    /// null. <paramref name="behalve"/> is left out, so a placement being given new dates does not collide with itself.
     /// </summary>
-    public bool IsAlGeplaatst(Guid themaId, Planningsblokniveau blokNiveau, DateOnly blokStart) =>
-        VindPlaatsingOp(themaId, blokNiveau, blokStart) is not null;
+    public Themaplaatsing? Overlappend(DateOnly van, DateOnly tot, Guid? behalve = null) =>
+        Plaatsingen.FirstOrDefault(p => p.Id != behalve && p.Overlapt(van, tot));
 
     /// <summary>
-    /// The existing placement of this thema in that exact block, or <c>null</c>. Callers need the placement itself
-    /// and not just its existence, because <b>why</b> a slot is occupied matters: a still-standing proposal is AI
-    /// repetition, while a <see cref="KoppelingStatus.Geweigerd"/> one is the teacher's own rejection holding.
-    /// <see cref="IsAlGeplaatst"/> is defined in terms of this method so the two cannot answer differently.
+    /// Gives a placement new dates, checked against every other placement like a new one (ADR-0049 R4).
     /// </summary>
-    public Themaplaatsing? VindPlaatsingOp(Guid themaId, Planningsblokniveau blokNiveau, DateOnly blokStart) =>
-        _plaatsingen.FirstOrDefault(p =>
-            p.ThemaId == themaId && p.BlokNiveau == blokNiveau && p.BlokStart == blokStart);
+    /// <exception cref="InvalidOperationException">
+    /// The placement is not this plan's, or the new range shares a day with another placement. Both are programmer
+    /// errors: the service resolves the placement from this aggregate and checks <see cref="Overlappend"/> first.
+    /// </exception>
+    public void HerplanPlaatsing(Themaplaatsing plaatsing, DateOnly van, DateOnly tot)
+    {
+        ArgumentNullException.ThrowIfNull(plaatsing);
+
+        if (!_plaatsingen.Contains(plaatsing))
+        {
+            throw new InvalidOperationException("The placement does not belong to this jaarplan.");
+        }
+
+        if (Overlappend(van, tot, plaatsing.Id) is { } bestaand)
+        {
+            throw new InvalidOperationException(
+                $"The range {van:yyyy-MM-dd}–{tot:yyyy-MM-dd} overlaps placement {bestaand.Id}.");
+        }
+
+        plaatsing.Herplan(van, tot);
+    }
 
     /// <summary>
     /// The placements a human has committed to: locked, or moved off <see cref="KoppelingStatus.Voorgesteld"/>.
     /// <para>
     /// Deliberately expressed as the <b>complement of <see cref="Themaplaatsing.IsVervangbaar"/></b> — the one
-    /// predicate that also decides what a regeneration may discard — so the two can never drift apart. A second,
-    /// independently written "is this a human decision?" test is exactly how a plan ends up protected against
-    /// regeneration but not against deletion.
+    /// predicate that also decides what a regeneration may discard — so the two can never drift apart.
     /// </para>
     /// <para>
     /// Used by the <c>Klas</c> delete guard: a persisted human decision is the human's to discard (Art. IV.2), not
@@ -314,69 +329,22 @@ public sealed class Jaarplan
     public IReadOnlyList<Themaplaatsing> MenselijkBeslotenPlaatsingen =>
         _plaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
-    /// <summary>
-    /// Drops the placements a (re)generation run is allowed to replace — untouched, unlocked AI proposals — and
-    /// returns them. Everything the teacher decided on or locked survives (Art. IV.1, Art. IX.3); that is what
-    /// makes <c>vergrendeld</c> mean something.
-    /// <para>
-    /// This is the <b>whole-plan</b> variant (FR-8.1). The per-period one is
-    /// <see cref="VerwijderVervangbarePlaatsingenIn"/>, and both delegate to the same private filter so the two
-    /// regeneration paths cannot come to disagree about what a run may take.
-    /// </para>
-    /// </summary>
-    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingen() =>
-        VerwijderVervangbare(_ => true);
-
-    /// <summary>
-    /// Drops the replaceable placements <b>in one planningsblok only</b> and returns them — FR-8.2's half of the
-    /// discard. A block is identified by tier + start date, exactly as everywhere else in this aggregate.
-    /// <para>
-    /// <b>The predicate is identical to the whole-plan variant's, narrowed by position.</b> A per-period run is not
-    /// permitted to take anything a whole-plan run may not take: same <see cref="Themaplaatsing.IsVervangbaar"/>, so
-    /// an accepted, rejected, hand-placed, moved or locked placement in the regenerated period survives. That is what
-    /// keeps E4-06's reasoning intact — the lock control stays hidden on decided placements because it changes nothing
-    /// for either path — and it is why E4-07's preserve/overwrite ruling is still open rather than pre-empted here.
-    /// </para>
-    /// </summary>
-    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingenIn(
-        Planningsblokniveau blokNiveau,
-        DateOnly blokStart) =>
-        VerwijderVervangbare(p => p.BlokNiveau == blokNiveau && p.BlokStart == blokStart);
-
-    /// <summary>
-    /// The one place a regeneration removes placements. Callers narrow <i>which</i> blocks are in scope; none of them
-    /// may widen <i>what</i> is replaceable, because that predicate is <see cref="Themaplaatsing.IsVervangbaar"/> and
-    /// it lives on the placement.
-    /// </summary>
-    private IReadOnlyList<Themaplaatsing> VerwijderVervangbare(Func<Themaplaatsing, bool> inScope)
-    {
-        var vervangbaar = _plaatsingen.Where(p => p.IsVervangbaar && inScope(p)).ToList();
-        foreach (var plaatsing in vervangbaar)
-        {
-            _plaatsingen.Remove(plaatsing);
-        }
-
-        return vervangbaar;
-    }
-
     /// <summary>The placement with this id, or null. Used by the review path (status / vergrendeling).</summary>
     public Themaplaatsing? VindPlaatsing(Guid plaatsingId) =>
         _plaatsingen.FirstOrDefault(p => p.Id == plaatsingId);
 
     /// <summary>
-    /// Removes one placement — taking a thema out of a period — <b>regardless of its status or lock</b>.
+    /// Removes one placement — taking a thema out of the plan — <b>regardless of its status or lock</b>.
     /// <para>
     /// <b>Why status is deliberately not checked here.</b> Art. IV.2 reserves the disposal of a human decision to the
     /// human; it does not make that decision permanent. This method is only ever reached from an explicit teacher
-    /// action, which is exactly the actor allowed to discard it. Contrast
-    /// <see cref="VerwijderVervangbarePlaatsingen"/>, which is reached from <i>generation</i> and therefore must skip
-    /// anything a human touched.
+    /// action, which is exactly the actor allowed to discard it. It is also how a teacher rejects an open proposal
+    /// (ADR-0049 R12).
     /// </para>
     /// <para>
     /// It exists because the <c>Klas</c> delete guard counts <see cref="MenselijkBeslotenPlaatsingen"/>, and a guard
-    /// whose remediation does not exist is a trap rather than a safeguard: without this, one accepted or rejected
-    /// placement made the class permanently undeletable and its own message instructed an impossible action.
-    /// Removing a thema from a period is also plain manual editing a teacher must be able to do (FR-7).
+    /// whose remediation does not exist is a trap rather than a safeguard. Removing a thema is also plain manual editing
+    /// a teacher must be able to do (FR-7).
     /// </para>
     /// </summary>
     /// <param name="plaatsing">A placement belonging to <b>this</b> jaarplan.</param>

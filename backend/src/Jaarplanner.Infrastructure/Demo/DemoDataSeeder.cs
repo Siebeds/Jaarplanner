@@ -1,4 +1,3 @@
-using Jaarplanner.Application.Planning;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
@@ -137,11 +136,10 @@ public sealed class DemoDataSeeder : IHostedService
             .ToListAsync(cancellationToken);
         var botsingen = bestaandeNamen.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        // The thema is carried together with its block index and its motivation, so dropping one for a name
-        // collision cannot shift the others onto different periods — which plain positional filtering would
-        // do, quietly undoing the "three thema's in periode 3" the te-vol flag depends on.
+        // The thema is carried together with its planning and its motivation, so dropping one for a name collision
+        // cannot move the illustrations the plan is built to show onto another thema.
         var geplande = BouwThemas()
-            .Select((thema, index) => (Thema: thema, BlokIndex: BlokVoorThema[index], Motivatie: Motivaties[index]))
+            .Select((thema, index) => (Thema: thema, Planning: PlanningVoorThema[index], Motivatie: Motivaties[index]))
             .Where(p => !botsingen.Contains(p.Thema.Naam))
             .ToList();
 
@@ -157,28 +155,36 @@ public sealed class DemoDataSeeder : IHostedService
         await KoppelDoelenAsync(context, themas, cancellationToken);
         context.Themas.AddRange(themas);
 
-        // Place the thema's on the blocks the CONFIGURED seam derives, never on hard-coded dates: a demo plan
-        // keyed on invented boundaries would render as stale the moment the grain changed, and the stale
-        // notice is one of the things the review is looking at.
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
-        var blokken = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-
+        // Place the thema's one after another from the first schooldag, with the calendar rules the app itself uses
+        // (ADR-0049), never on hard-coded dates: the plan then splits at the school year's own vacations.
+        var kalender = new Themakalender(schooljaar);
         var jaarplan = new Jaarplan(klas.Id);
-        foreach (var (thema, blokIndex, motivatie) in geplande)
+        DateOnly? cursor = kalender.EersteSchooldag;
+        foreach (var (thema, planning, motivatie) in geplande)
         {
-            if (blokIndex >= blokken.Count)
+            if (planning.WeekOverslaan && cursor is not null)
             {
-                // Fewer periods than the layout assumes (a different configured grain). Skip rather than
-                // guess: an over-clamped placement would silently invent a crowded period.
+                cursor = kalender.VolgendeSchooldag(cursor.Value.AddDays(7));
+            }
+
+            if (cursor is not { } van)
+            {
+                // The year ran out: skip rather than invent days after it.
                 continue;
             }
 
-            jaarplan.VoegPlaatsingToe(
-                thema.Id,
-                Planningsblokniveau.Themaperiode,
-                blokken[blokIndex].Start,
-                KoppelingStatus.Voorgesteld,
-                Voorbeeldmarkering + motivatie);
+            var tot = kalender.VoorgesteldEinde(van, Math.Max(1, thema.DuurWeken - planning.WekenKorter), out _);
+            foreach (var (deelVan, deelTot) in kalender.Splits(van, tot))
+            {
+                jaarplan.VoegPlaatsingToe(
+                    thema.Id,
+                    deelVan,
+                    deelTot,
+                    KoppelingStatus.Voorgesteld,
+                    Voorbeeldmarkering + motivatie);
+            }
+
+            cursor = kalender.VolgendeSchooldag(tot.AddDays(1));
         }
 
         context.Jaarplannen.Add(jaarplan);
@@ -284,22 +290,14 @@ public sealed class DemoDataSeeder : IHostedService
     }
 
     /// <summary>
-    /// Which themaperiode each thema in <see cref="BouwThemas"/> is placed in, by index.
-    /// <para>
-    /// Not simply <c>0,1,2,3,…</c>: periode 3 (index 2) deliberately holds <b>three</b> thema's so the
-    /// "te vol" flag actually fires in the demo. One card per period would leave it unreachable, and the
-    /// state would go to the teacher review with its own illustration invisible. Periode 4 (index 3) is left
-    /// empty for the same reason in reverse: the empty-period state is what a teacher looking for room sees.
-    /// <para>
-    /// <b>Still fires after the te-vol ruling of 2026-07-31, and by a wider margin</b> (E3-09). The flag used
-    /// to be a count of thema's against a provisional 3, which this array was built to reach; it is now the
-    /// weeks those thema's need against the weeks the period offers. Indices 2, 3 and 4 land here and each run
-    /// <b>6</b> weeks, so periode 3 needs 18 weeks of a period that offers at most 6. The illustration survived
-    /// the rule change on its own merits, which is worth stating: a fixture tuned to a threshold usually does
-    /// not, and this one would have gone quiet without failing a single test.
-    /// </para>
+    /// How each thema in <see cref="BouwThemas"/> is planned, by index, so the plan shows the states a teacher reviews:
+    /// the fourth thema starts a week late, which leaves a lesweek without a thema, and the sixth ends a week before its
+    /// duration, which marks its end as changed. Wherever a vacation falls inside a thema, the plan shows it in parts.
     /// </summary>
-    private static readonly int[] BlokVoorThema = [0, 1, 2, 2, 2, 4, 5];
+    private static readonly (bool WeekOverslaan, int WekenKorter)[] PlanningVoorThema =
+    [
+        (false, 0), (false, 0), (false, 0), (true, 0), (false, 0), (false, 1), (false, 0),
+    ];
 
     private static List<Thema> BouwThemas() =>
     [

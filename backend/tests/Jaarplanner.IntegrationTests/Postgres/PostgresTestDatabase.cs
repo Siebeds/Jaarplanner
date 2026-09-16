@@ -1,5 +1,7 @@
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
@@ -67,7 +69,12 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
     /// Creates and migrates a fresh database for one test class. Throws when Postgres is not
     /// configured — callers gate on <see cref="IsBeschikbaar"/> (see <c>PostgresFactAttribute</c>).
     /// </summary>
-    public static async Task<PostgresTestDatabase> MaakAsync(string prefix)
+    /// <param name="prefix">Part of the database name, for recognising it.</param>
+    /// <param name="totMigratie">
+    /// Stop after this migration instead of applying all of them, so a test can seed the schema as it was and then
+    /// apply the migration under test with <see cref="MigreerAsync"/>. Null applies every migration.
+    /// </param>
+    public static async Task<PostgresTestDatabase> MaakAsync(string prefix, string? totMigratie = null)
     {
         var basis = BasisConnectionString
             ?? throw new InvalidOperationException(SkipReden);
@@ -95,10 +102,17 @@ public sealed class PostgresTestDatabase : IAsyncDisposable
             .Options;
         await using (var context = new AppDbContext(options))
         {
-            await context.Database.MigrateAsync();
+            await context.GetService<IMigrator>().MigrateAsync(totMigratie);
         }
 
         return new PostgresTestDatabase(naam, testConnectionString);
+    }
+
+    /// <summary>Applies every migration not applied yet (after a <see cref="MaakAsync"/> that stopped early).</summary>
+    public async Task MigreerAsync()
+    {
+        await using var context = MaakContext();
+        await context.Database.MigrateAsync();
     }
 
     /// <summary>Creates a context against this test database.</summary>
