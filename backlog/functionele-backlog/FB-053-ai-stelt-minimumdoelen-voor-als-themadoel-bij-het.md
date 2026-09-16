@@ -2,12 +2,12 @@
 id: FB-053
 titel: AI stelt minimumdoelen voor als themadoel, bij het thema en in de wizard
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:31
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 22:34
+opgepakt-door: claude-fb053
+branch: ticket/FB-053-minimumdoelsuggesties
 pr:
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
@@ -80,3 +80,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 ## Werklog
 
 - 2026-09-16 15:31 · claude-fb043 · aangemaakt (status nieuw)
+- 2026-09-16 22:34 · claude-fb053 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
