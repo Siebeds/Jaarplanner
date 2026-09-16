@@ -72,7 +72,8 @@ generation does meanwhile. The rulings are quoted in the ticket; the ones this A
    themaperiodes with the same arithmetic the seam used (5 weeks, the only configured value), deletes the rejected
    placements, gives a lone placement its period's first and last schooldag, puts several in a row from the period's
    first schooldag, each with its proposed end, cut before the next occupied period and split at vacations, and
-   deletes a placement with no free day (R9). A placement whose start matches no period is treated like one of
+   deletes a placement with no free day (R9). A lone placement is cut before the next occupied period too, so no two
+   rows share a day. A placement whose start matches no period is treated like one of
    several: it starts on the first schooldag from that date. The helper functions live in `pg_temp` and vanish with
    the migration's session. An integration test pins the SQL against dates worked out by hand.
 9. **Generation is switched off, and its orchestration is removed.** `POST …/generatie` answers 409 with a Dutch
@@ -120,8 +121,8 @@ generation does meanwhile. The rulings are quoted in the ticket; the ones this A
 ## Compliance trace
 
 - **Constitution:** Art. IX.3 (amended: the jaarplan holds placements with dates; no planningsblok grain), Art. XII
-  (amended: themaperiode, subthemaperiode, startthema, vast moment, jaarplan), Art. IV.1 and IV.2 unchanged (a proposal
-  is still decided by the teacher; rejecting it now deletes it), Art. V.1 unchanged (a placed thema counts as before;
-  a *vervallen* one withholds the figures).
+  (amended: themaperiode, subthemaperiode, startthema, vast moment, jaarplan), Art. IV.2 (amended: a rejected thema
+  placement is removed rather than stored as `geweigerd`), Art. IV.1 unchanged (a proposal is still decided by the
+  teacher), Art. V.1 unchanged (a placed thema counts as before; a *vervallen* one withholds the figures).
 - **Backlog:** FB-035; the AI generation ticket that follows.
 - **FR/NFR:** FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 are paused.

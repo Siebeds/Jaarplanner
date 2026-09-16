@@ -118,6 +118,43 @@ public sealed class ThemaplaatsingDatumsMigratieTests : IAsyncLifetime
             plaatsingen);
     }
 
+    /// <summary>
+    /// A start that matches no period can lie inside a period that holds one placement. The lone placement then ends
+    /// before it, so no two rows share a day; and when both starts roll forward to the same schooldag, the earlier one
+    /// has no day left and is deleted rather than breaking the unique first day (antagonist round 1).
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_losse_begindatum_in_een_periode_met_een_thema_overlapt_niet()
+    {
+        var (klasA, klasB) = await SeedAsync();
+        var planA = await MaakJaarplanAsync(klasA);
+        var planB = await MaakJaarplanAsync(klasB);
+
+        // Alone in 2 Jan – 14 Feb, and a stale start on Wednesday 20 January inside that period.
+        await VoegOudePlaatsingToeAsync(planA, Vijfde, D(2027, 1, 2), "Manueel");
+        await VoegOudePlaatsingToeAsync(planA, Tweede, D(2027, 1, 20), "Aanvaard");
+        // Alone in 7 Nov – 20 Dec (starting on a Saturday), and a stale start on the Sunday after: both roll to Monday 9 Nov.
+        await VoegOudePlaatsingToeAsync(planB, Eerste, D(2026, 11, 7), "Manueel");
+        await VoegOudePlaatsingToeAsync(planB, Lang, D(2026, 11, 8), "Manueel");
+
+        await _db.MigreerAsync();
+
+        Assert.Equal(
+            [
+                // Its period's first schooldag, cut on the last schooldag before 20 January.
+                (Vijfde, D(2027, 1, 4), D(2027, 1, 19), KoppelingStatus.Manueel, (string?)null),
+                // Wednesday 20 Jan + 3 lesweken: the last schooldag before Wednesday 10 Feb.
+                (Tweede, D(2027, 1, 20), D(2027, 2, 9), KoppelingStatus.Aanvaard, null),
+            ],
+            await LaadAsync(klasA));
+        Assert.Equal(
+            [
+                // Monday 9 Nov + 5 lesweken: the last schooldag before Monday 14 Dec. The lone placement had no day left.
+                (Lang, D(2026, 11, 9), D(2026, 12, 11), KoppelingStatus.Manueel, (string?)null),
+            ],
+            await LaadAsync(klasB));
+    }
+
     private static DateOnly D(int jaar, int maand, int dag) => new(jaar, maand, dag);
 
     private static Schooljaar BouwSchooljaar()

@@ -111,7 +111,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0046 | Art. IX.2, XII and IV.8 (amended); III.1, III.5, V.1 and VI.1 unchanged; reverses the FB-009 ruling of 2026-09-15 on a thema's own minimumdoelen | FB-043; FB-044, FB-045 and the import and AI tickets build on it | FR-2.3, FR-9.3 |
 | 0047 | Art. V.1, V.2, IX.3 and XII (amended); supersedes the Art. V.1 concordance route for minimumdoelen; relates to 0029 and 0046 | FB-045 | FR-9.1, FR-9.2, FR-9.3 |
 | 0048 | Art. VI.3 and VIII (amended); IV and VI.4 unchanged; supersedes 0016 in part; relates to 0010, 0012, 0035 | TB-041 | — (all AI features: FR-4, FR-5, FR-13.4) |
-| 0049 | Art. IX.3 and XII (amended); IV.1, IV.2 and V.1 unchanged; supersedes 0013 and 0020 for the jaarplan; relates to 0023, 0028 | FB-035; the AI generation ticket | FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 paused |
+| 0049 | Art. IX.3, XII and IV.2 (amended); IV.1 and V.1 unchanged; supersedes 0013 and 0020 for the jaarplan; relates to 0023, 0028 | FB-035; the AI generation ticket | FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 paused |
 
 ## Open decisions referenced by ADRs
 

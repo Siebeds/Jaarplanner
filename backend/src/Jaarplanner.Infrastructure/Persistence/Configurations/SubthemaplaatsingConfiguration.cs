@@ -11,8 +11,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// <para>
 /// <b>Two dates, no planningsblok.</b> The same choice as on <c>activiteitplaatsingen</c> and for the same reason: a
 /// window a teacher drew with two date fields is not a derived block boundary, so it must not inherit the staleness
-/// machinery a <c>Themaplaatsing</c> needs (<c>IsVervallen</c>, a notice, a re-placement route). Nothing here rows,
-/// FKs or joins a block, so the planning grid stays derived (ADR-0013).
+/// machinery a <c>Themaplaatsing</c> needs (<c>IsVervallen</c>, a notice, saving it again). Nothing here rows, FKs or
+/// joins a block.
 /// </para>
 /// </summary>
 public sealed class SubthemaplaatsingConfiguration : IEntityTypeConfiguration<Subthemaplaatsing>

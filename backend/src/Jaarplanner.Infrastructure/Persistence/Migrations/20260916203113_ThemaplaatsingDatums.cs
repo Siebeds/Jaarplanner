@@ -14,6 +14,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
     /// <item>a period holding several puts them one after another from its first schooldag, in their current order
     /// (by thema id, as the plan listed them), each with its thema's proposed end, cut before the next occupied period
     /// and split at vacations; one left with no free day is deleted;</item>
+    /// <item>every group, the lone placement included, ends before the next group's first schooldag, so no two rows
+    /// share a day even when a stale start lies inside a period;</item>
     /// <item>a placement whose start matches no period is treated like one of several: it starts on the first schooldag
     /// from that date.</item>
     /// </list>
@@ -357,6 +359,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         v_begin := pg_temp.fb035_volgende_schooldag(v_plan.sj, v_groep.blok_start);
 
                         v_cap := NULL;
+                        v_volgende_begin := NULL;
                         IF v_groep.volgende_start IS NOT NULL THEN
                             v_volgende_begin := pg_temp.fb035_volgende_schooldag(v_plan.sj, v_groep.volgende_start);
                             IF v_volgende_begin IS NOT NULL THEN
@@ -364,10 +367,15 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                             END IF;
                         END IF;
 
-                        -- One thema in a real period: its first and last schooldag.
+                        -- One thema in a real period: its first and last schooldag, cut before the next group, which
+                        -- can start inside the period when its own start matches no period.
                         IF v_groep.aantal = 1 AND v_groep.blok_eind IS NOT NULL THEN
                             v_tot := pg_temp.fb035_vorige_schooldag(v_plan.sj, v_groep.blok_eind);
-                            IF v_begin IS NULL OR v_tot IS NULL OR v_tot < v_begin THEN
+                            IF v_cap IS NOT NULL AND v_tot > v_cap THEN
+                                v_tot := v_cap;
+                            END IF;
+                            IF v_begin IS NULL OR v_tot IS NULL OR v_tot < v_begin
+                               OR (v_groep.volgende_start IS NOT NULL AND v_volgende_begin IS NOT NULL AND v_cap IS NULL) THEN
                                 DELETE FROM themaplaatsingen
                                 WHERE "JaarplanId" = v_plan.jaarplan_id AND "BlokStart" = v_groep.blok_start
                                   AND "BlokNiveau" <> 'FB035Deel';
@@ -381,6 +389,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                         -- Several thema's, or a date that starts no period: one after another.
                         v_cursor := v_begin;
+                        -- A next group that starts on this group's own first schooldag leaves it no day at all.
+                        IF v_volgende_begin IS NOT NULL AND v_cap IS NULL THEN
+                            v_cursor := NULL;
+                        END IF;
                         FOR v_plaatsing IN
                             SELECT p."Id" AS id, greatest(t."DuurWeken", 1) AS duur
                             FROM themaplaatsingen p

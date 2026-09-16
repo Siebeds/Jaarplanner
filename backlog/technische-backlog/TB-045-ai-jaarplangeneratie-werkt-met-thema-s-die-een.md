@@ -36,6 +36,12 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 - De generatie weer aanzetten: de knop op het planscherm en het endpoint.
 - De verwijderde runcode staat in de git-geschiedenis vóór de FB-035-merge (`JaarplanGeneratieService`,
   `Spreidingsrapport`, `ParameterRapport`, `JaarplanGeneratieResultaat`).
+- Bewaard maar nu zonder aanroeper, voor dit ticket om te gebruiken of op te ruimen:
+  `IJaarplanOpslag.ProbeerGeneratieparametersToeTeVoegenAsync`, `BestaandePlaatsing` en
+  `JaarplanGeneratiePromptBuilder.BouwVoorPeriode` (het hergenereren per periode bestaat niet meer), en de naad
+  `IPlanningsblokIndeling` met haar configuratie `Planning:Blokindeling`.
+- De tekst van Art. I.1 punt 4 en 6 ("regenerate the whole plan or a single period") aanpassen aan wat de generatie
+  dan doet.
 
 ## Acceptatiecriteria
 

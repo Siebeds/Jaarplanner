@@ -105,7 +105,10 @@ export function Jaartijdlijn({
     const plaatsing = perId.get(String(event.active.id)) ?? null;
     setGesleept(plaatsing);
 
-    const start = event.active.rect.current.initial;
+    // Measured on the bar's own element, in viewport pixels like the pointer: dnd-kit's initial rect is not measured
+    // yet when a drag starts, and a scrolled timeline makes any guess wrong by the scrolled distance.
+    const balk = document.querySelector<HTMLElement>(`[data-balk="${String(event.active.id)}"]`);
+    const balkRect = balk?.getBoundingClientRect();
     const aanzet = event.activatorEvent;
     const pointerX =
       aanzet instanceof MouseEvent
@@ -113,16 +116,20 @@ export function Jaartijdlijn({
         : "touches" in aanzet && (aanzet as TouchEvent).touches.length > 0
           ? (aanzet as TouchEvent).touches[0].clientX
           : undefined;
-    grijpX.current = start && pointerX !== undefined ? pointerX - start.left : 1;
+    // A keyboard grabs the bar on its first day.
+    const x = pointerX ?? (balkRect ? balkRect.left + 1 : undefined);
+    grijpX.current = balkRect && x !== undefined ? x - balkRect.left : 1;
 
     const kolommen = [...document.querySelectorAll<HTMLElement>("[data-lesweek]")];
     weekBreedte.current = kolommen[0]?.getBoundingClientRect().width || 80;
-    const x = (start?.left ?? 0) + grijpX.current;
-    bronWeek.current =
-      kolommen.find((kolom) => {
-        const rect = kolom.getBoundingClientRect();
-        return x >= rect.left && x < rect.right;
-      })?.dataset.lesweek ?? (plaatsing ? maandagVan(plaatsing.van) : null);
+    const onder =
+      x === undefined
+        ? undefined
+        : kolommen.find((kolom) => {
+            const rect = kolom.getBoundingClientRect();
+            return x >= rect.left && x < rect.right;
+          });
+    bronWeek.current = onder?.dataset.lesweek ?? (plaatsing ? maandagVan(plaatsing.van) : null);
   }
 
   function eindigSleep(event: DragEndEvent) {
@@ -292,10 +299,12 @@ function Balk({
   });
   const reeks = plaatsing.reeks;
   const aangepast = reeks?.eindeAangepast === true;
-  const onderregel =
+  const plaats =
     reeks && reeks.aantalDelen > 1
       ? t("plan.deel", { deel: reeks.deel, aantal: reeks.aantalDelen })
       : periode(plaatsing.van, plaatsing.tot);
+  // An open proposal says so on the bar, not only on its card: it is the one bar still waiting for a decision.
+  const onderregel = plaatsing.status === "Voorgesteld" ? `${t("status.Voorgesteld")} · ${plaats}` : plaats;
 
   const toelichting = [
     t("plan.balkAria", {
@@ -316,6 +325,7 @@ function Balk({
       <button
         ref={setNodeRef}
         type="button"
+        data-balk={plaatsing.id}
         onClick={onKies}
         // The drag attributes only on a bar that drags: dnd-kit marks a disabled draggable aria-disabled, and this bar
         // still opens its card for a reader.

@@ -171,3 +171,106 @@ L3 derde leerjaar (demo) now has:
 - "Water" in 2 parts: 29 mrt – 2 apr and 19 – 23 apr.
 
 A June "Ik en mijn klas" placement was added and then removed.
+
+---
+
+# Round 2 (re-check of commit 6ccc209a)
+
+**Verdict:** FAIL (D1 is still broken in a new way; D2, D3, D4, D6 and D7 pass)
+**Mode:** Playwright (the same playwright-core + Chrome setup, Vite hot-reloaded, the same throwaway database and klas L3). New screenshots are named `r2-*.png` in the same scratchpad folder.
+
+| Item | Result |
+|---|---|
+| D1 | **FAIL** |
+| D2 | PASS |
+| D3 | PASS |
+| D4 | PASS (minor note) |
+| D6 | PASS |
+| D7 | PASS |
+| Contrast of the marker | unchanged, 9.39:1 |
+
+## D1: FAIL (MAJOR): a mouse drag is measured from the wrong week whenever the timeline is scrolled
+
+The drop target (highlighted week) is right, but the source week is wrong.
+
+**Cause:**
+- In `beginSleep`, `event.active.rect.current.initial` is still null at `onDragStart`.
+- So `grijpX` falls back to 1, and `x = (start?.left ?? 0) + 1 = 1`.
+- `bronWeek` becomes whatever `[data-lesweek]` column lies under viewport x = 1:
+  - **Timeline not scrolled** (or scrolled a little): nothing lies there, and the fallback `maandagVan(plaatsing.van)` gives the right answer by luck.
+  - **Timeline scrolled** so that a week column slides under the left edge of the window (behind the sidebar at 1440, straight away at 390): that column becomes the source week.
+- The collision detection has the same `grijpX = 1`, so it effectively targets the bar's first day plus the drag delta, not the pointer. That part happens to give the right drop week.
+
+Measured PUT bodies:
+
+| Case | scrollLeft | Highlighted | PUT `van` | Verdict |
+|---|---|---|---|---|
+| 8px nudge "Ik en mijn klas" (grabbed 31 aug column) | 0 | 2026-08-31 | none | OK |
+| 80px (one column) "Ik en mijn klas" | 0 | 2026-09-07 | 2026-09-08 (+1 wk) | OK (refused: overlap with Herfst en oogst) |
+| 8px nudge "Herfst en oogst" | 0 / 160 | 2026-09-28 | none | OK |
+| 8px nudge "Herfst en oogst" | 400 | 2026-09-28 | **2026-10-23 (+3 wk)** | WRONG |
+| 8px nudge "Zomer en vakantie" (grabbed 26 apr column) | scrolled to April | 2027-04-26 | **2027-07-26 (+13 wk)** | WRONG (refused: outside the school year) |
+| One column (80px) "Zomer en vakantie" | scrolled to April | 2027-05-03 | **2027-08-02** | WRONG (refused) |
+| 390x844, 8px nudge "Zomer en vakantie" | 2245 | 2027-04-26 | **2027-05-24 (+4 wk), SAVED 200** | WRONG; the run also became 24 mei – 24 jun "4 van 5 weken" |
+| Across the Kerstvakantie: "Lente en groei" 9 nov column to 4 jan column | 200 | none at release | **2027-02-22** (expected 2027-01-04) | WRONG (refused: overlap with Verkeer) |
+| Drop on the Kerstvakantie gap itself | 200 | none | none | OK |
+| Keyboard Space, ArrowRight, Space on "Ik en mijn klas" | 0 | 2026-09-07 | 2026-09-08 (+1 wk) | OK |
+| Keyboard Space, ArrowRight, Space on "Zomer en vakantie" | 2037 | 2027-05-03 | 2027-05-03 (+1 wk), saved | OK |
+
+- The keyboard works: arrows step one column (80px), and the move is exactly one week even when scrolled.
+- Every moved placement was restored with the card fields. "Zomer en vakantie" is back at 26 apr – 1 jun.
+- **Repro:**
+  1. At 390x844, on /agenda/periodes (L3), scroll the timeline to April.
+  2. Press the mouse on the first week of "Zomer en vakantie", move 8px, release.
+  3. The thema is saved 4 weeks later.
+- **Suggested fix:**
+  - At drag start, take the grabbed bar's rect from the DOM (e.g. `(event.activatorEvent.target as Element).closest("button").getBoundingClientRect()`, or the draggable node), not from `active.rect.current.initial`.
+  - Never let the fallback x hit an arbitrary column: when there is no rect, use `maandagVan(plaatsing.van)` directly.
+  - Use the same grab offset in the collision detection, so the highlighted week is the week under the pointer.
+  - Add a test with a scrolled container, or with `initial` null at drag start. jsdom has no scroll, which is why the unit tests pass.
+
+## D2: PASS
+- At 1440 and at 390, all five "Geen thema" labels have span scrollWidth 61 = clientWidth 61, and the button is 74/74.
+- The text is no longer truncated, and the page at 390 is still 390/390.
+- Screenshots: `r2-d2-geen-thema-1440.png`, `r2-d2-geen-thema-390.png`.
+- **Contrast:** the marker lost its icon but kept its colours: rgb(103,54,20) on rgb(254,248,236), 11px, opacity 1, **9.39:1** (unchanged).
+
+## D3: PASS
+- Adding Verkeer from the 7 jun "Geen thema" marker (POST 200, 7 jun – 30 jun) produced no 4xx response at all, and no console error.
+- I removed that placement again afterwards (no errors).
+
+## D4: PASS (minor note)
+- The join is now a 36px, 3px dashed rule in rgb(88,94,106), at z-index 10, and it is clearly visible between the two Water parts.
+- It still crosses the vertical "Paasvakantie" label, but it reads as a join.
+- Screenshot: `r2-d4-delen-zoom.png`.
+
+## D6: PASS
+"Zomer en vakantie" (26 apr – 1 jun, 5 lesweken for a 5-week thema) now reads:
+- on the card: "Einde aangepast: iets langer dan 5 weken";
+- on the bar: "Einde: ruim 5 wk";
+- in the aria-label: "… Einde aangepast: iets langer dan 5 weken".
+
+A scan of the body text and every aria-label found no "N van N weken" or "N/N wk" with equal numbers.
+- Screenshot: `r2-d6-ruim.png`.
+- **Still open (D5, not in this round):** the one-week Water parts show "Einde: 2/6 wk", clipped (78px needed, 58px available).
+
+## D7: PASS
+Every month label sits on the week whose Wednesday falls in that month:
+
+| Label | Week of | Wednesday |
+|---|---|---|
+| september | 31 aug | 2 sep |
+| oktober | 5 okt | 7 okt |
+| november | 9 nov | 11 nov |
+| december | 30 nov | 2 dec |
+| januari | 4 jan | 6 jan |
+| februari | 1 feb | 3 feb |
+| maart | 1 mrt | 3 mrt |
+| april | 19 apr | 21 apr |
+| mei | 3 mei | 5 mei |
+| juni | 31 mei | 2 jun |
+
+Screenshot: `r2-d7-maanden.png`.
+
+## Data after round 2
+Unchanged from the end of round 1: every placement moved during this round was restored.
