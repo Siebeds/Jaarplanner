@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:13
+bijgewerkt: 2026-09-16 20:20
 opgepakt-door: tb040-splitquery
 branch: ticket/TB-040-themalijst-splitquery
 pr:
@@ -48,11 +48,11 @@ wanneer meerdere collecties tegelijk gevuld zijn.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de database `jaarplanner_tb035`, wanneer de directie `GET /api/themas` opvraagt, dan antwoordt de API met 200 binnen 3 seconden.
-- [ ] Gegeven dezelfde database, wanneer de directie één thema opent voor de K3-klas, dan antwoordt de API binnen 2 seconden.
-- [ ] Gegeven een thema met meerdere subthema's die elk meerdere subdoelen, activiteiten met doelkoppelingen en onderzoeksvragen hebben, wanneer de themalijst en dat ene thema geladen worden, dan staat elk van die items er precies één keer in, en is de themalijst nog altijd op naam gesorteerd.
-- [ ] Gegeven een wijziging aan een thema (naam, subthema, activiteit), dan slaagt die zoals voorheen en blijven alle bestaande backendtests groen.
-- [ ] Gegeven een FR-1-import die bestaande thema's bijwerkt, dan werkt die zoals voorheen.
+- [x] Gegeven de database `jaarplanner_tb035`, wanneer de directie `GET /api/themas` opvraagt, dan antwoordt de API met 200 binnen 3 seconden.
+- [x] Gegeven dezelfde database, wanneer de directie één thema opent voor de K3-klas, dan antwoordt de API binnen 2 seconden.
+- [x] Gegeven een thema met meerdere subthema's die elk meerdere subdoelen, activiteiten met doelkoppelingen en onderzoeksvragen hebben, wanneer de themalijst en dat ene thema geladen worden, dan staat elk van die items er precies één keer in, en is de themalijst nog altijd op naam gesorteerd.
+- [x] Gegeven een wijziging aan een thema (naam, subthema, activiteit), dan slaagt die zoals voorheen en blijven alle bestaande backendtests groen.
+- [x] Gegeven een FR-1-import die bestaande thema's bijwerkt, dan werkt die zoals voorheen.
 
 ## Buiten scope
 
@@ -70,3 +70,6 @@ Geen.
 - 2026-09-16 19:23 · themaboom-splitquery · aangemaakt (status in-uitvoering)
 - 2026-09-16 19:26 · themaboom-splitquery · in-uitvoering → klaar-voor-bouw: teruggegeven: de eigenaar wil het ticket nu alleen vastleggen, niet bouwen
 - 2026-09-16 20:13 · tb040-splitquery · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 20:19 · tb040-splitquery · AsSplitQuery op de vier plekken die de themaboom laden; nieuwe Postgres-test en de hele backendsuite groen
+- 2026-09-16 20:20 · tb040-splitquery · gemeten op jaarplanner_tb035 als directie: GET /api/themas 200 in 0,72 s koud en 0,2 s warm (volledige boom, geen dubbels, volgorde gelijk aan de database); thema voor K3-klas hoogstens 0,15 s; doelenoverzicht 0,13 s
+- 2026-09-16 20:20 · tb040-splitquery · criteria afgevinkt: 1-2 met de meting, 3 met ThemaboomLadenPostgresTests, 4-5 met de hele backendsuite (1905 unit, 556 integratie op Postgres, waaronder de FR-1-importtests)

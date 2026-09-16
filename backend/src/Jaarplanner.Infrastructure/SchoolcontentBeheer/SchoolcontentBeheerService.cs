@@ -67,8 +67,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     public async Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(CancellationToken cancellationToken = default)
     {
+        // ThenBy(Id): a split query stitches its parts together by the root's order, so that order must be total.
         var themas = await ThemasMetSubtreeQuery()
             .OrderBy(t => t.Naam)
+            .ThenBy(t => t.Id)
             .ToListAsync(cancellationToken);
 
         return themas.Select(MapThema).ToList();
@@ -151,6 +153,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas.Where(s => codes == null || codes.Contains(s.Leeftijd))).ThenInclude(s => s.Subdoelen)
             .Include(t => t.Subthemas.Where(s => codes == null || codes.Contains(s.Leeftijd))).ThenInclude(s => s.Activiteiten)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
 
         if (thema is null)
@@ -869,12 +872,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     // --- Loading helpers (graph-loaded so the read views are complete and the domain mutators see the subtree). ---
 
+    // Split into one query per collection: joined in a single query, the sibling collections multiply into a
+    // cartesian product that a full schooljaar turns into millions of rows.
     private IQueryable<Thema> ThemasMetSubtreeQuery() =>
         _context.Themas
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
-            .Include(t => t.Subthemas).ThenInclude(s => s.Onderzoeksvragen);
+            .Include(t => t.Subthemas).ThenInclude(s => s.Onderzoeksvragen)
+            .AsSplitQuery();
 
     private async Task<Thema> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken)
     {
