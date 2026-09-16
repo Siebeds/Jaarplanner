@@ -275,7 +275,7 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
         {
             var plan = new Jaarplan(seed.KlasId);
             plan.VoegPlaatsingToe(
-                seed.ThemaId, Planningsblokniveau.Themaperiode, seed.SchooljaarStart, KoppelingStatus.Voorgesteld);
+                seed.ThemaId, seed.SchooljaarStart, seed.SchooljaarStart.AddDays(7), KoppelingStatus.Voorgesteld);
             context.Jaarplannen.Add(plan);
             await context.SaveChangesAsync();
         }
@@ -285,8 +285,8 @@ public sealed class AggregaatGroeiTests : IClassFixture<AggregaatGroeiTests.Data
             var plan = await context.Jaarplannen.SingleAsync(j => j.KlasId == seed.KlasId);
             plan.VoegPlaatsingToe(
                 seed.ThemaId,
-                Planningsblokniveau.Subthemaperiode,
                 seed.SchooljaarStart.AddDays(14),
+                seed.SchooljaarStart.AddDays(21),
                 KoppelingStatus.Voorgesteld);
             await context.SaveChangesAsync();
         }

@@ -730,11 +730,7 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
-        var blokken = indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau);
-
-        return new Opzet(klas.Id, andere.Id, blokken[0].Start);
+        return new Opzet(klas.Id, andere.Id, schooljaar.Start);
     }
 
     private static async Task<Guid> MaakActiviteitAsync(
