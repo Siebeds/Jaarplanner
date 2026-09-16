@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
@@ -34,7 +33,9 @@ import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
+import { MIJLPAAL } from "../doelen/mijlpaal";
 import { themabalans } from "./themabalans";
+import { beslist, subthemabalans } from "./subthemabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
@@ -147,6 +148,12 @@ export function ThemadetailScherm() {
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
   // The leerplandoel whose detail is open (TB-016), from any list on the page, and the row button that opened it, which
   // gets focus back when the sheet closes.
+  // An unlink waits for a confirmation that names what it does to dekking (owner, 2026-09-16, TB-051). Ids only, for
+  // the reason the sheets above give: the objects are looked up in the current thema on every render.
+  const [teOntkoppelenMinimumdoel, setTeOntkoppelenMinimumdoel] = useState<string | null>(null);
+  const [teOntkoppelenSubdoel, setTeOntkoppelenSubdoel] = useState<{ subthemaId: string; subdoelId: string } | null>(
+    null,
+  );
   const [getoondDoel, setGetoondDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
   const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, knop });
 
@@ -238,6 +245,12 @@ export function ThemadetailScherm() {
     leeftijd to offer would be a Bewaren that can only be refused (fix round 1, F4). It then closes, like the agenda's
     pickers, and its refusal moves to the line below.
   */
+  const ontkoppelMd = thema.minimumdoelen.find((m) => m.id === teOntkoppelenMinimumdoel) ?? null;
+  const ontkoppelSubthema = teOntkoppelenSubdoel
+    ? (thema.subthemas.find((s) => s.id === teOntkoppelenSubdoel.subthemaId) ?? null)
+    : null;
+  const ontkoppelSd = ontkoppelSubthema?.subdoelen.find((s) => s.id === teOntkoppelenSubdoel?.subdoelId) ?? null;
+
   const magSubthemaBlad =
     subthemaBlad !== null &&
     (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
@@ -366,14 +379,15 @@ export function ThemadetailScherm() {
             second empty state and a permanent "Geen open suggesties" line.
 
             A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
-            that lead there. The doelsuggesties still propose leerplandoelen; what becomes of them is another ticket.
+            that lead there. The doelsuggesties propose minimumdoelen too (FB-053): accepting one puts it in the list
+            above, so a proposal wears the same MD chip as the themadoel it would become.
 
             The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
             with its motivation and still has to be accepted or rejected by hand, and "Vraag
             suggesties" is always reachable rather than appearing only when the list is empty. */}
         <Blok
           figuur={thema.minimumdoelen.length}
-          onder={t(thema.minimumdoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
+          onder={t(thema.minimumdoelen.length === 1 ? "themas.minimumdoelEen" : "themas.minimumdoelMeer")}
         >
           <Kop
             titel={t("thema.themadoelen")}
@@ -448,7 +462,14 @@ export function ThemadetailScherm() {
               <Themaminimumdoelen
                 koppelingen={thema.minimumdoelen}
                 ontkoppelBezig={ontkoppelMinimumdoel.isPending}
-                onOntkoppel={mag.themaBewerken ? (koppelingId) => ontkoppelMinimumdoel.mutate(koppelingId) : undefined}
+                onOntkoppel={
+                  mag.themaBewerken
+                    ? (koppelingId) => {
+                        ontkoppelMinimumdoel.reset();
+                        setTeOntkoppelenMinimumdoel(koppelingId);
+                      }
+                    : undefined
+                }
                 onToonDoel={toonDoel}
               />
             )}
@@ -498,14 +519,21 @@ export function ThemadetailScherm() {
                     label={t("voorstelstapel.doelenLabel")}
                     voorstellen={openSuggesties.map((suggestie) => ({
                       id: suggestie.id,
-                      naam: suggestie.leerplandoelCode,
+                      naam: suggestie.minimumdoelRef,
+                      // The MD chip the themadoel rows wear, and the mijlpaal (FB-053): the goal it would become.
                       kop: (
                         <>
-                          {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
-                          <span className="mono text-micro font-medium text-inkt-zacht">{suggestie.leerplandoelCode}</span>
+                          <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                            {suggestie.minimumdoelRef}
+                          </span>
+                          {suggestie.mijlpaal ? (
+                            <span className="text-meta text-inkt-zacht">
+                              {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                            </span>
+                          ) : null}
                         </>
                       ),
-                      inhoud: suggestie.tekst ?? suggestie.leerplandoelCode,
+                      inhoud: suggestie.omschrijving ?? suggestie.minimumdoelRef,
                       motivatie: suggestie.aiMotivatie,
                     }))}
                     onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
@@ -583,9 +611,7 @@ export function ThemadetailScherm() {
                 subthema={subthema}
                 mag={mag}
                 gevraagd={subthema.id === gevraagdSubthema}
-                koppelenBezig={
-                  koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
-                }
+                koppelenBezig={koppelSubdoel.isPending || ontkoppelSubdoel.isPending}
                 onBewerk={() => {
                   wijzigSubthema.reset();
                   setSubthemaBlad({ subthema });
@@ -609,17 +635,11 @@ export function ThemadetailScherm() {
                 onKoppelSubdoel={(code) =>
                   koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
                 }
-                onOntkoppelSubdoel={(subdoelId) =>
-                  ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
-                }
+                onOntkoppelSubdoel={(subdoelId) => {
+                  ontkoppelSubdoel.reset();
+                  setTeOntkoppelenSubdoel({ subthemaId: subthema.id, subdoelId });
+                }}
                 onToonDoel={toonDoel}
-                // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
-                // here shows up there and both invalidate the same query. Removing one stays in the
-                // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
-                // meant for scanning is how the card became a toolbar before.
-                onKoppelActiviteitdoel={(activiteitId, code) =>
-                  koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
-                }
                 voorstellen={plaatsen?.subdoelvoorstellen.filter((v) => v.subthemaId === subthema.id)}
                 beslisBezig={beslisSubdoel.isPending}
                 onBeslisVoorstel={
@@ -679,6 +699,47 @@ export function ThemadetailScherm() {
             onSuccess: () => navigeer("/themas", { replace: true }),
           })
         }
+      />
+
+      {/* WHAT AN UNLINK DOES TO DEKKING, said before it happens (TB-051). Each sentence claims only what this page knows:
+          the link on this thema or this subthema, not whether another thema or subthema carries the same doel. */}
+      <Bevestiging
+        open={ontkoppelMd !== null}
+        titel={t("thema.minimumdoelOntkoppelTitel", { ref: ontkoppelMd?.minimumdoelRef ?? "" })}
+        gevolg={[
+          t("thema.minimumdoelOntkoppelGevolg", { ref: ontkoppelMd?.minimumdoelRef ?? "", thema: thema.naam }),
+          // Art. IX.2 asks at least two themadoelen; say so when this unlink takes the thema below that.
+          thema.minimumdoelen.length === 2
+            ? t("thema.minimumdoelOntkoppelNogEen")
+            : thema.minimumdoelen.length === 1
+              ? t("thema.minimumdoelOntkoppelGeen")
+              : null,
+        ]
+          .filter((zin) => zin !== null)
+          .join(" ")}
+        bevestigLabel={t("thema.ontkoppelBevestig")}
+        bezig={ontkoppelMinimumdoel.isPending}
+        onSluit={() => setTeOntkoppelenMinimumdoel(null)}
+        onBevestig={() => {
+          if (!ontkoppelMd) return;
+          ontkoppelMinimumdoel.mutate(ontkoppelMd.id, { onSettled: () => setTeOntkoppelenMinimumdoel(null) });
+        }}
+      />
+
+      <Bevestiging
+        open={ontkoppelSd !== null && ontkoppelSubthema !== null}
+        titel={t("thema.subdoelOntkoppelTitel", { code: ontkoppelSd?.koppeling.leerplandoelCode ?? "" })}
+        gevolg={ontkoppelSd && ontkoppelSubthema ? subdoelOntkoppelGevolg(ontkoppelSubthema, ontkoppelSd.id) : undefined}
+        bevestigLabel={t("thema.ontkoppelBevestig")}
+        bezig={ontkoppelSubdoel.isPending}
+        onSluit={() => setTeOntkoppelenSubdoel(null)}
+        onBevestig={() => {
+          if (!ontkoppelSd || !ontkoppelSubthema) return;
+          ontkoppelSubdoel.mutate(
+            { subthemaId: ontkoppelSubthema.id, subdoelId: ontkoppelSd.id },
+            { onSettled: () => setTeOntkoppelenSubdoel(null) },
+          );
+        }}
       />
 
       {subthemaBlad && magSubthemaBlad ? (
@@ -898,20 +959,46 @@ function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
 }
 
 /**
- * What a doelsuggestie run did, in one line (TB-007): how many proposals it added, out of how many goals, of which
- * leeftijden. Every figure is read off the server's answer, so the line states what the run searched, not what the
- * buttons say now. With no candidates the server answers before calling the model, which is what that sentence claims.
+ * What a doelsuggestie run did, in one line (TB-007, FB-053): how many proposals it added, out of how many minimumdoelen,
+ * of which mijlpalen ("mijlpaal K"). Every figure is read off the server's answer, so the line states what the run
+ * searched, not what the buttons say now. With no candidates the server answers before calling the model, which is what
+ * that sentence claims.
  */
 function resultaatZin(resultaat: DoelMatchResultaat): string {
-  const leeftijden = opsomming(resultaat.jaarFasen);
-  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { leeftijden });
+  const korte = resultaat.mijlpalen.map((code) => code.replace(/-$/, ""));
+  const mijlpalen =
+    korte.length === 1 ? t("thema.mijlpaalEen", { naam: korte[0] }) : t("thema.mijlpalenMeer", { lijst: opsomming(korte) });
+  if (resultaat.aantalKandidaten === 0) return t("thema.suggestiesGeenDoelen", { mijlpalen });
 
   const doelen = telWoord(resultaat.aantalKandidaten, "thema.kandidaatEen", "thema.kandidatenMeer");
   const nieuw = resultaat.bewaard.length;
-  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, leeftijden });
+  if (nieuw === 0) return t("thema.suggestiesGeenNieuwe", { doelen, mijlpalen });
   return nieuw === 1
-    ? t("thema.suggestiesEenNieuw", { doelen, leeftijden })
-    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, leeftijden });
+    ? t("thema.suggestiesEenNieuw", { doelen, mijlpalen })
+    : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, mijlpalen });
+}
+
+/**
+ * What unlinking a subdoel does to dekking (TB-051). A subdoel and a decided link on an activiteit of the same subthema
+ * reach a klas's dekking by the same route (ADR-0047), so the leerplandoel keeps counting while such an activiteit
+ * carries it; the sentence says which, from the same count the chapter shows under the subdoel.
+ */
+function subdoelOntkoppelGevolg(subthema: SubthemaWeergave, subdoelId: string): string {
+  const subdoel = subthema.subdoelen.find((s) => s.id === subdoelId);
+  if (!subdoel) return "";
+  const dragers = subthemabalans(subthema).dragersPerSubdoel.get(subdoelId) ?? [];
+  const namen = dragers.map((d) => d.naam).join(", ");
+  const woorden = { code: subdoel.koppeling.leerplandoelCode, subthema: subthema.naam, leeftijd: subthema.leeftijd };
+  // An undecided subdoel never counted, so nothing is said about what it stops counting for.
+  if (!beslist(subdoel.koppeling.status)) return t("thema.subdoelOntkoppelOnbeslist", woorden);
+  const eerste = t("thema.subdoelOntkoppelGevolg", woorden);
+  const tweede =
+    dragers.length === 0
+      ? t("thema.subdoelOntkoppelGeenDrager")
+      : dragers.length === 1
+        ? t("thema.subdoelOntkoppelBlijftEen", { namen })
+        : t("thema.subdoelOntkoppelBlijftMeer", { aantal: dragers.length, namen });
+  return `${eerste} ${tweede}`;
 }
 
 /** "K3", "K3 en L1", "JK, K2 en K3". */

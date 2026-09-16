@@ -2,15 +2,14 @@ using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Jaarplanner.Infrastructure.AiMatching;
 
 /// <summary>
-/// EF Core implementation of <see cref="IDoelMatchOpslag"/> over <see cref="AppDbContext"/> (E2-04).
-/// It loads the thema tracked (with its themadoelen + existing suggestions so the flow stays
-/// idempotent), commits the added <c>voorgesteld</c> suggestions as a single unit of work, and
-/// exposes the read query for the persisted suggestions per thema (FR-4.1/4.2). It never mutates
-/// read-only curriculum data (Art. III.1).
+/// EF Core implementation of <see cref="IDoelMatchOpslag"/> over <see cref="AppDbContext"/> (FB-053). It loads the thema
+/// tracked with what a run and a decision need, commits them as one unit of work, and reads the stored proposals with
+/// their minimumdoel's text. It never writes curriculum data (Art. III.1).
 /// </summary>
 public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
 {
@@ -20,14 +19,12 @@ public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
 
     /// <inheritdoc />
     /// <remarks>
-    /// With its subthema's, their onderzoeksvragen and their activiteiten (TB-007). The run takes its default jaar/fasen
-    /// from the subthema's leeftijden, and <c>MatchingPromptBuilder</c> writes all three into the prompt; without them
-    /// every thema read from the database looked as if it had no subthema's at all. Split into one query per collection,
-    /// as <c>KlasBeheerService</c> does, because five collections in one join multiply into a cartesian result.
+    /// With its proposals, its subthema's with their onderzoeksvragen and activiteiten (the prompt writes all three and
+    /// the run takes its default leeftijden from them), and its minimumdoelen, which are auto-included. One query per
+    /// collection, since several collections in one join multiply into a cartesian result.
     /// </remarks>
     public async Task<Thema?> LaadThemaAsync(Guid themaId, CancellationToken cancellationToken = default) =>
         await _context.Themas
-            .Include(t => t.Themadoelen)
             .Include(t => t.Doelsuggesties)
             .Include(t => t.Subthemas).ThenInclude(s => s.Onderzoeksvragen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
@@ -35,50 +32,42 @@ public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
 
     /// <inheritdoc />
-    public Task BewaarAsync(CancellationToken cancellationToken = default) =>
-        _context.SaveChangesAsync(cancellationToken);
+    /// <remarks>
+    /// A unique-index violation means someone changed the same thema at the same moment (a minimumdoel linked by hand, or
+    /// a parallel run); it becomes a <see cref="DoelsuggestieConflictFout"/>, a 409 the person can act on, not a 500.
+    /// </remarks>
+    public async Task BewaarAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new DoelsuggestieConflictFout(
+                "Dit minimumdoel is intussen al gekoppeld of voorgesteld bij dit thema. Laad de pagina opnieuw.", ex);
+        }
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<DoelMatchSuggestieWeergave>> HaalSuggestiesVoorThemaAsync(
         Guid themaId,
         CancellationToken cancellationToken = default)
     {
-        var thema = await _context.Themas
-            .AsNoTracking()
-            .Include(t => t.Doelsuggesties)
-            .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken);
+        // Left join on the read-only minimumdoel, so a ref that no longer resolves still shows, without its text.
+        var rijen = await (
+                from s in _context.Minimumdoelsuggesties.AsNoTracking()
+                where s.ThemaId == themaId
+                join m in _context.Minimumdoelen.AsNoTracking() on s.MinimumdoelRef equals m.Ref into doelen
+                from m in doelen.DefaultIfEmpty()
+                select new { s.Id, s.MinimumdoelRef, s.Status, s.AiMotivatie, s.Rang, Omschrijving = (string?)m.Omschrijving, Mijlpaal = (string?)m.Leeftijd })
+            .ToListAsync(cancellationToken);
 
-        if (thema is null)
-        {
-            return [];
-        }
-
-        // Enrich each link with its leerplandoel's official text + doelsoort (FR-4.2): a teacher cannot judge a
-        // suggestion from a bare code. One extra read of the read-only curriculum, keyed on the codes actually
-        // linked; nothing here writes to it (Art. III.1). A code that no longer resolves yields nulls rather
-        // than dropping the row — a link the teacher can still see and decide on.
-        var codes = thema.Doelsuggesties
-            .Select(k => k.LeerplandoelCode)
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-
-        var perCode = await _context.Leerplandoelen
-            .AsNoTracking()
-            .Where(l => codes.Contains(l.Code))
-            .ToDictionaryAsync(l => l.Code, StringComparer.Ordinal, cancellationToken);
-
-        return thema.Doelsuggesties
-            .Select(k =>
-            {
-                perCode.TryGetValue(k.LeerplandoelCode, out var doel);
-                return new DoelMatchSuggestieWeergave(
-                    k.Id,
-                    k.LeerplandoelCode,
-                    k.Status.ToString(),
-                    k.AiMotivatie,
-                    doel?.Tekst,
-                    doel?.Doelsoort);
-            })
+        return rijen
+            // The model's order, best fit first, and a later run after an earlier one (ADR-0052 D6).
+            .OrderBy(r => r.Rang)
+            .ThenBy(r => r.MinimumdoelRef, StringComparer.Ordinal)
+            .Select(r => new DoelMatchSuggestieWeergave(r.Id, r.MinimumdoelRef, r.Status.ToString(), r.AiMotivatie, r.Omschrijving, r.Mijlpaal))
             .ToList();
     }
 }

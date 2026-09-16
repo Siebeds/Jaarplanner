@@ -87,6 +87,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The minimumdoelen each thema aims at as its themadoelen (FB-043).</summary>
     public DbSet<ThemaMinimumdoel> ThemaMinimumdoelen => Set<ThemaMinimumdoel>();
 
+    /// <summary>The AI's proposals of a minimumdoel as a themadoel (FB-053).</summary>
+    public DbSet<Minimumdoelsuggestie> Minimumdoelsuggesties => Set<Minimumdoelsuggestie>();
+
     /// <summary>The class/age-scoped subthema's (Art. IX.2).</summary>
     public DbSet<Subthema> Subthemas => Set<Subthema>();
 

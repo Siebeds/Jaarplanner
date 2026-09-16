@@ -34,7 +34,8 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var thema = new Thema("Herfst", duurWeken: 5, invalshoeken: "natuur");
         thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Aanvaard, "anchor"));
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "nog niet beslist"));
+        thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "nog niet beslist"));
+        thema.KoppelMinimumdoel("K-1.1.1");
 
         return thema;
     }
@@ -384,6 +385,9 @@ public sealed class JaarplanGeneratieServiceTests
         // Only the teacher-backed goals are shown (aanvaard/manueel, Art. V.1) — never a rejected or pending one.
         Assert.Contains("NAT-K3-01", prompt);
         Assert.DoesNotContain("NAT-K3-02", prompt);
+
+        // The thema's minimumdoelen, its themadoelen, reach the model too (FB-053).
+        Assert.Contains("Themadoelen, minimumdoelen (1): K-1.1.1", prompt);
     }
 
     /// <summary>

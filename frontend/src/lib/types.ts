@@ -72,7 +72,7 @@ export interface WoordwebVoorstelResultaat {
  * Which content layer a register link lives in. For `AlgemeneFiche` there is no thema: `themaNaam` carries the
  * fiche's name and `onderdeel` its klas (server contract, 2026-09-11).
  */
-export type KoppelingHerkomst = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit" | "AlgemeneFiche";
+export type KoppelingHerkomst = "Themadoel" | "Subdoel" | "Activiteit" | "AlgemeneFiche";
 
 // --- Curriculum ---
 
@@ -496,7 +496,7 @@ export interface ThemaWeergave {
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
-export type DoelPlaatsSoort = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
+export type DoelPlaatsSoort = "Themadoel" | "Subdoel" | "Activiteit";
 
 export interface DoelPlaats {
   soort: DoelPlaatsSoort;
@@ -551,20 +551,22 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
-  aantalAfgeleideKlassen: number;
   /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
   icoon?: string | null;
 }
 
-// --- AI matching (FR-4). Advisory only: everything lands as Voorgesteld (Art. IV). ---
+// --- A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel. Advisory only (Art. IV). ---
 
 export interface DoelMatchSuggestie {
   id: string;
-  leerplandoelCode: string;
+  minimumdoelRef: string;
+  /** Voorgesteld until decided, then Aanvaard (the minimumdoel is a themadoel) or Geweigerd. */
   status: KoppelingStatus;
-  aiMotivatie: string | null;
-  tekst: string | null;
-  doelsoort: Doelsoort | null;
+  aiMotivatie: string;
+  /** The minimumdoel's decreed text; null when its ref no longer resolves. */
+  omschrijving: string | null;
+  /** Its mijlpaal ("K-", "4-", "6-"); null when its ref no longer resolves. */
+  mijlpaal: string | null;
 }
 
 export interface DoelMatchResultaat {
@@ -574,8 +576,10 @@ export interface DoelMatchResultaat {
   overgeslagenOnbekend: string[];
   overgeslagenDuplicaat: string[];
   aantalKandidaten: number;
-  /** The jaarfasen the candidates came from (TB-007): the choice sent, or else the leeftijden of the subthema's. */
+  /** The leeftijden the run was for (TB-007): the choice sent, or else the leeftijden of the subthema's. */
   jaarFasen: string[];
+  /** The mijlpalen those leeftijden meet, whose minimumdoelen were the candidates. */
+  mijlpalen: string[];
 }
 
 // --- Subdoelplaatsing (FB-057, ADR-0050). Advisory only: open proposals count for nothing until decided. ---

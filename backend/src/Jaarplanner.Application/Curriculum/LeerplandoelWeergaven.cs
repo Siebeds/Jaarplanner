@@ -79,7 +79,7 @@ public sealed record MinimumdoelWeergave(
 /// Which layer of school content a link to a leerplandoel comes from (Art. IX.2).
 /// <para>
 /// The scope is <b>not</b> uniform across these four, and the difference is load-bearing:
-/// <see cref="Themadoel"/> and <see cref="Doelsuggestie"/> are school-wide, while <see cref="Subdoel"/> and
+/// <see cref="Themadoel"/> is school-wide, while <see cref="Subdoel"/> and
 /// <see cref="Activiteit"/> belong to <b>one leeftijd</b>. A reader who cannot tell them apart would take one
 /// year group's planning for a school-wide fact, which is why an age-scoped link always carries
 /// <see cref="DoelKoppelingWeergave.Leeftijd"/> and why <see cref="Koppelingzichtbaarheid"/> exists.
@@ -89,9 +89,6 @@ public enum KoppelingHerkomst
 {
     /// <summary>One of a thema's 2–3 school-wide overarching themadoelen. School-scoped.</summary>
     Themadoel = 0,
-
-    /// <summary>A thema-level AI match suggestion awaiting or carrying a teacher decision (E2-04). School-scoped.</summary>
-    Doelsuggestie = 1,
 
     /// <summary>A subdoel, per (subthema × leeftijd). <b>Class/age-scoped.</b></summary>
     Subdoel = 2,

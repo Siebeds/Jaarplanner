@@ -159,20 +159,23 @@ const THEMA: ThemaWeergave = {
 };
 
 describe("Themaformulier", () => {
-  it("toont het emoji van het thema in het vakje en stuurt het mee bij bewaren", () => {
+  it("toont het emoji van het thema in het vakje, en een ander emoji alleen is al een wijziging om te bewaren", () => {
     const onBewaar = vi.fn();
     render(<Themaformulier open thema={THEMA} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
 
-    expect(screen.getByRole("button", { name: t("emojikiezer.wijzig", { emoji: "🍂" }) })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    const bewaar = screen.getByRole("button", { name: t("themabeheer.bewaar") });
+    expect(bewaar).toBeDisabled();
+    fireEvent.click(within(open(t("emojikiezer.wijzig", { emoji: "🍂" }))).getByRole("button", { name: t("emojikiezer.naam.koe") }));
+    fireEvent.click(bewaar);
 
-    expect(onBewaar).toHaveBeenCalledWith(expect.objectContaining({ naam: "Herfst", icoon: "🍂" }));
+    expect(onBewaar).toHaveBeenCalledWith(expect.objectContaining({ naam: "Herfst", icoon: "🐮" }));
   });
 
   it("stuurt null mee voor een thema zonder emoji", () => {
     const onBewaar = vi.fn();
     render(<Themaformulier open thema={{ ...THEMA, icoon: null }} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
 
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Herfstbos" } });
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
 
     expect(onBewaar).toHaveBeenCalledWith(expect.objectContaining({ icoon: null }));
