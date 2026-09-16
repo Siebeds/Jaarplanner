@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:03
+bijgewerkt: 2026-09-17 00:10
 opgepakt-door: claude-fb057
 branch: ticket/FB-057-subdoelplaatsing
-pr:
+pr: 129
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3, FR-4.4]
 ---
@@ -121,3 +121,4 @@ Beantwoord tijdens de bouw (2026-09-16):
 - 2026-09-16 23:51 · claude-fb057 · Frontend klaar; browsercontrole op een kopie van de dev-database met een echte AI-vraag: 9 doelen geplaatst in 3 nieuwe subthema's, aanvaarden maakt subdoel en subthema, desktop, 390px, licht en donker nagekeken (labels 6,51:1 licht, 7,58:1 donker).
 - 2026-09-17 00:02 · claude-fb057 · Antagonist ronde 1: 1 MAJOR (rechtencontrole op een verouderde leeftijd na het verplaatsen van een subthema), opgelost met test; ook de MINOR over naam en open doelen bij het aanvaarden van een nieuw subthema. Blijven als MINOR: de frontend koppelt een subthema met een niet-standaard leeftijd (bv. 3K) niet aan zijn voorstellen; een hard verwijderd leerplandoel zou ook geweigerde voorstellen meenemen (de import verwijdert er geen); te veel open doelen worden geweigerd, niet opgedeeld. Alle criteria afgevinkt op basis van de unit-, Postgres- en Vitest-tests en de browsercontrole.
 - 2026-09-17 00:03 · claude-fb057 · in-uitvoering → te-testen: Gebouwd: AI stelt per leeftijd een plaats voor de open leerplandoelen van de themadoelen voor (bestaand of nieuw subthema), met vage ring en stille icoontjes; grondwet en ADR-0050/0051 bijgewerkt. Gates groen (unit, Postgres, Vitest, lint, format, browser); antagonist COMPLIANT na ronde 2.
+- 2026-09-17 00:10 · claude-fb057 · PR #129
