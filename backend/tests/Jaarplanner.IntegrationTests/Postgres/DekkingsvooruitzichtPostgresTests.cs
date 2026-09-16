@@ -1,34 +1,29 @@
-using Jaarplanner.Application.Ai;
+using System.Net;
+using System.Net.Http.Json;
 using Jaarplanner.Application.Dekking;
-using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Dekking;
-using Jaarplanner.Infrastructure.Persistence;
 using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
-using System.Net;
-using System.Net.Http.Json;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// The dekkingsvooruitzicht (E3-03, FR-5.3) over a <b>real generation run</b> against real PostgreSQL: the model
-/// proposes, and the figures say what the plan covers and what accepting it would cover. Since ADR-0052 a thema
-/// placement reaches no leerplandoel, so accepting the proposal moves neither figure; a subthema placed in the agenda
-/// moves both.
+/// The dekkingsvooruitzicht (E3-03, FR-5.3) over <b>open AI proposals</b> against real PostgreSQL: nothing is accepted,
+/// and the figures say both what the plan covers and what accepting it would cover. Since ADR-0052 a thema placement
+/// reaches no leerplandoel, so accepting a proposal moves neither figure; a subthema placed in the agenda moves both.
 /// <para>
-/// <b>Why it has to run against Postgres and not only in memory</b> (E7-16): the outlook reads the link tables twice
-/// with two different thema-id sets, over the same four-layer union E5-01 built — a <c>Concat</c> over projections of
-/// owned collections, which is exactly the shape the EF in-memory provider evaluates in LINQ and Npgsql has already
-/// once refused to translate ("set operation after client projection has been applied"). A green in-memory run would
-/// therefore say nothing about whether the second read works at all.
+/// The generation is switched off (ADR-0053 decision 9), so the proposals are seeded as a run left them: placements
+/// with status <c>Voorgesteld</c> and a motivation. Everything that reads them is production: the planning service, the
+/// EF storage ports and <see cref="DekkingService"/>.
 /// </para>
 /// <para>
-/// The AI is the only stand-in (Art. IV.6). Everything else is production: the real generation service, the real
-/// configured grid seam, the real EF storage ports, the real <see cref="DekkingService"/>.
+/// <b>Why it has to run against Postgres</b> (E7-16): the outlook reads the link tables twice with two different
+/// thema-id sets, over a <c>Concat</c> of owned-collection projections that the EF in-memory provider evaluates in LINQ
+/// and Npgsql has already once refused to translate.
 /// </para>
 /// </summary>
 public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
@@ -60,71 +55,51 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         }
     }
 
+    /// <summary>
+    /// The figures reach the HTTP boundary through the DI-resolved service, the real queries and the serialiser,
+    /// including the derived <c>aantalOnbereikbaar</c> getter that a serialisation policy could silently drop.
+    /// </summary>
     [PostgresFact]
     public async Task Het_vooruitzicht_haalt_de_HTTP_grens_met_zijn_afgeleide_cijfers()
     {
-        // **The gap the antagonist's last MINOR named, and it was a real one.** Every other test here builds
-        // `new DekkingService(generatie, new EfDekkingOpslag(context))` by hand, and the only test that POSTs the
-        // generation endpoint runs on the in-memory fixture whose coverage port is stubbed. So the combination a
-        // teacher actually uses — the DI-resolved service, the real Npgsql queries, the controller's composition and
-        // the JSON serialiser — was verified nowhere.
-        //
-        // `aantalOnbereikbaar` is the sharp case and is asserted deliberately: it is a DERIVED getter, so a
-        // `[JsonIgnore]`, a source-generated context or a records-only serialisation policy would drop it from the
-        // wire with every other test still green, and the panel's gap line would simply never appear.
         var seed = await SeedAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
-
-        _factory.AiAntwoord =
-            "{\"plaatsingen\":[{\"blokStart\":\"" + blokken[0].Start.ToString("yyyy-MM-dd") +
-            "\",\"thema\":\"" + seed.HerfstNaam + "\",\"motivatie\":\"seizoen\"}]}";
+        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId);
 
         var response = await _factory.CreateClient()
-            .PostAsync($"/api/klassen/{seed.KlasId}/jaarplan/generatie", content: null);
+            .GetAsync($"/api/klassen/{seed.KlasId}/dekking/voortgang");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var resultaat = await response.Content.ReadFromJsonAsync<GeneratieDto>();
-        Assert.NotNull(resultaat);
-        Assert.True(resultaat!.IsGeslaagd);
-
-        var vooruitzicht = resultaat.Vooruitzicht;
+        var vooruitzicht = await response.Content.ReadFromJsonAsync<VooruitzichtDto>();
         Assert.NotNull(vooruitzicht);
         Assert.Equal("EigenJaarFase", vooruitzicht!.Bereik);
         Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
         Assert.Equal(0, vooruitzicht.AantalGedekt);
         Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
-
-        // The derived getter, which exists only as a computed property on the record.
         Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
     }
 
+    /// <summary>
+    /// The route a leerplandoel is covered by (Art. V.1): the subthema in the klas's agenda, whatever the thema
+    /// placement's status.
+    /// </summary>
     [PostgresFact]
-    public async Task Een_ingepland_subthema_telt_na_een_generatie_in_beide_cijfers()
+    public async Task Een_ingepland_subthema_telt_bij_een_open_voorstel_in_beide_cijfers()
     {
-        // The route a leerplandoel is covered by (Art. V.1): the subthema in the klas's agenda, whatever the thema
-        // placement's status.
         var seed = await SeedAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
+        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId);
 
-        await using var context = _db.MaakContext();
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplanId = await context.Jaarplannen.Where(j => j.KlasId == seed.KlasId).Select(j => j.Id).SingleAsync();
+            var van = new DateOnly(2026, 9, 7);
+            context.Subthemaplaatsingen.Add(new Subthemaplaatsing(jaarplanId, seed.HerfstSubthemaId, van, van.AddDays(11)));
+            await context.SaveChangesAsync();
+        }
 
-        var generatie = new JaarplanGeneratieService(
-            new VastAntwoordAiClient(
-                "{\"plaatsingen\":[{\"blokStart\":\"" + blokken[0].Start.ToString("yyyy-MM-dd") +
-                "\",\"thema\":\"" + seed.HerfstNaam + "\",\"motivatie\":\"seizoen\"}]}"),
-            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-            new EfJaarplanOpslag(context));
-
-        await generatie.GenereerAsync(seed.KlasId);
-        var jaarplanId = await context.Jaarplannen.Where(j => j.KlasId == seed.KlasId).Select(j => j.Id).SingleAsync();
-        context.Subthemaplaatsingen.Add(new Subthemaplaatsing(
-            jaarplanId, seed.HerfstSubthemaId, blokken[0].Start, blokken[0].Start.AddDays(11)));
-        await context.SaveChangesAsync();
-
-        var vooruitzicht = await new DekkingService(generatie, new EfDekkingOpslag(context))
-            .BerekenVooruitzichtAsync(seed.KlasId);
+        await using var lees = _db.MaakContext();
+        var vooruitzicht = await MaakDekking(lees).BerekenVooruitzichtAsync(seed.KlasId);
 
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
         Assert.Equal(1, vooruitzicht.AantalGedekt);
@@ -132,97 +107,55 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         Assert.Equal(2, vooruitzicht.AantalOnbereikbaar);
     }
 
-    /// <summary>Only the parts of the generation response this file reads.</summary>
-    private sealed record GeneratieDto(bool IsGeslaagd, VooruitzichtDto? Vooruitzicht);
-
-    private sealed record VooruitzichtDto(
-        string Bereik,
-        List<string> GemetenJaarFasen,
-        int AantalLeerplandoelen,
-        int? AantalGedekt,
-        int? AantalMogelijkGedekt,
-        int? AantalOnbereikbaar);
-
+    /// <summary>
+    /// Two open proposals and no subthema in the agenda: nothing is covered, and accepting the proposals would cover
+    /// nothing either (ADR-0052).
+    /// </summary>
     [PostgresFact]
-    public async Task Een_echte_generatie_dekt_nog_niets_en_meldt_wat_aanvaarden_zou_opleveren()
+    public async Task Open_voorstellen_dekken_nog_niets_en_melden_wat_aanvaarden_zou_opleveren()
     {
-        // Two thema's, each carrying one of the class's three in-scope doelen; the third doel is carried by nothing, so
-        // it is the gap no acceptance can close. The model is told to place both thema's.
         var seed = await SeedAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
+        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId, seed.WinterId);
 
         await using var context = _db.MaakContext();
-
-        var generatie = new JaarplanGeneratieService(
-            new VastAntwoordAiClient(
-                $$"""
-                {"plaatsingen":[
-                  {"blokStart":"{{blokken[0].Start:yyyy-MM-dd}}","thema":"{{seed.HerfstNaam}}","motivatie":"seizoen"},
-                  {"blokStart":"{{blokken[1].Start:yyyy-MM-dd}}","thema":"{{seed.WinterNaam}}","motivatie":"seizoen"}]}
-                """),
-            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-            new EfJaarplanOpslag(context));
-
-        var resultaat = await generatie.GenereerAsync(seed.KlasId);
-
-        Assert.True(resultaat.IsGeslaagd);
-        Assert.Equal(2, resultaat.AantalNieuw);
-
-        // The composition the controller performs, on the same services it resolves from DI.
-        var dekking = new DekkingService(generatie, new EfDekkingOpslag(context));
+        var dekking = MaakDekking(context);
         var vooruitzicht = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
 
-        // FR-5.3, measured: nothing is covered, and accepting the proposal would cover nothing either, since no
-        // subthema is in the agenda (ADR-0052).
         Assert.True(vooruitzicht.IsBetrouwbaar);
         Assert.Equal(0, vooruitzicht.AantalGedekt);
         Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
         Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
 
-        // Measured against the class's own jaar/fase (owner ruling 2026-08-04), with the out-of-scope doel declared
-        // rather than silently dropped from the denominator.
         Assert.Equal(Dekkingsbereik.EigenJaarFase, vooruitzicht.Bereik);
         Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
         Assert.Equal(1, vooruitzicht.AantalBuitenBereik);
 
-        // And the decided figure is the same number the dekkingsoverzicht reports for this plan, through the same SQL.
         var echteDekking = await dekking.BerekenAsync(seed.KlasId);
         Assert.Equal(echteDekking.AantalGedekt, vooruitzicht.AantalGedekt);
         Assert.Equal(echteDekking.AantalLeerplandoelen, vooruitzicht.AantalLeerplandoelen);
     }
 
+    /// <summary>
+    /// Since ADR-0052 a thema placement reaches no leerplandoel: accepting one of two proposals moves neither the
+    /// figure nor the ceiling.
+    /// </summary>
     [PostgresFact]
     public async Task Het_aanvaarden_van_een_themavoorstel_verandert_de_leerplandoelcijfers_niet()
     {
-        // Since ADR-0052 a thema placement reaches no leerplandoel: accepting one of two proposals moves neither the
-        // figure nor the ceiling.
         var seed = await SeedAsync();
-        var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));
+        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId, seed.WinterId);
 
         await using var context = _db.MaakContext();
-
-        var generatie = new JaarplanGeneratieService(
-            new VastAntwoordAiClient(
-                $$"""
-                {"plaatsingen":[
-                  {"blokStart":"{{blokken[0].Start:yyyy-MM-dd}}","thema":"{{seed.HerfstNaam}}","motivatie":"seizoen"},
-                  {"blokStart":"{{blokken[1].Start:yyyy-MM-dd}}","thema":"{{seed.WinterNaam}}","motivatie":"seizoen"}]}
-                """),
-            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions()),
-            new EfJaarplanOpslag(context));
-
-        var plan = await generatie.GenereerAsync(seed.KlasId);
-        var dekking = new DekkingService(generatie, new EfDekkingOpslag(context));
+        var planning = new JaarplanService(new EfJaarplanOpslag(context));
+        var dekking = new DekkingService(planning, new EfDekkingOpslag(context));
 
         var voor = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
         Assert.Equal(0, voor.AantalGedekt);
         Assert.Equal(0, voor.AantalMogelijkGedekt);
 
-        // One teacher decision, through the production path (Art. IV.1: only a human moves a placement off
-        // `voorgesteld`).
-        var eerste = plan.Jaarplan!.Plaatsingen.First();
-        await generatie.WijzigPlaatsingStatusAsync(seed.KlasId, eerste.Id, KoppelingStatus.Aanvaard);
+        var eerste = (await planning.HaalJaarplanAsync(seed.KlasId)).Plaatsingen.First();
+        await planning.WijzigPlaatsingStatusAsync(seed.KlasId, eerste.Id, KoppelingStatus.Aanvaard);
 
         var na = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
 
@@ -232,12 +165,41 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         Assert.Equal(voor.AantalOnbereikbaar, na.AantalOnbereikbaar);
     }
 
+    private sealed record VooruitzichtDto(
+        string Bereik,
+        List<string> GemetenJaarFasen,
+        int AantalLeerplandoelen,
+        int? AantalGedekt,
+        int? AantalMogelijkGedekt,
+        int? AantalOnbereikbaar);
+
+    private static DekkingService MaakDekking(Jaarplanner.Infrastructure.Persistence.AppDbContext context) =>
+        new(new JaarplanService(new EfJaarplanOpslag(context)), new EfDekkingOpslag(context));
+
+    /// <summary>
+    /// The proposals a generation run left behind: one open placement per thema, one after another from September.
+    /// </summary>
+    private async Task VoegVoorstellenToeAsync(Guid klasId, params Guid[] themaIds)
+    {
+        await using var context = _db.MaakContext();
+        var jaarplan = new Jaarplan(klasId);
+        var van = new DateOnly(2026, 9, 7);
+        foreach (var themaId in themaIds)
+        {
+            // Three weeks each, clear of the herfstvakantie (2–8 November), so no proposal is vervallen.
+            jaarplan.VoegPlaatsingToe(themaId, van, van.AddDays(18), KoppelingStatus.Voorgesteld, "seizoen");
+            van = van.AddDays(35);
+        }
+
+        context.Jaarplannen.Add(jaarplan);
+        await context.SaveChangesAsync();
+    }
+
     /// <summary>
     /// A school year with one L3 class, three L3 doelen (two of them subdoelen of an L3 subthema of a thema, one carried
-    /// by nothing) plus one out-of-scope K3 doel, and two thema's. Names carry a guid because thema names are unique school-wide, and the
-    /// generation contract keys a proposal on the <b>name</b>.
+    /// by nothing) plus one out-of-scope K3 doel, and two thema's.
     /// </summary>
-    private async Task<(Guid KlasId, string HerfstNaam, string WinterNaam, Guid HerfstSubthemaId)> SeedAsync()
+    private async Task<(Guid KlasId, Guid HerfstId, Guid WinterId, Guid HerfstSubthemaId)> SeedAsync()
     {
         await using var context = _db.MaakContext();
 
@@ -275,32 +237,6 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        return (klas.Id, herfst.Naam, winter.Naam, herfstSubthema.Id);
-    }
-
-    private async Task<Schooljaar> LaadSchooljaarAsync(Guid klasId)
-    {
-        await using var context = _db.MaakContext();
-        var klas = await context.Klassen.SingleAsync(k => k.Id == klasId);
-
-        return await context.Schooljaren
-            .Include("_sluitingen")
-            .SingleAsync(s => s.Id == klas.SchooljaarId);
-    }
-
-    /// <summary>The same configured grid seam the API resolves, so no period boundary is hard-coded.</summary>
-    private static IReadOnlyList<Planningsblok> Blokken(Schooljaar schooljaar) =>
-        new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions())
-            .Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-
-    /// <summary>A model stand-in that always answers the same canned completion: no network (Art. IV.6).</summary>
-    private sealed class VastAntwoordAiClient : IAiClient
-    {
-        private readonly string _antwoord;
-
-        public VastAntwoordAiClient(string antwoord) => _antwoord = antwoord;
-
-        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AiCompletion { Content = _antwoord });
+        return (klas.Id, herfst.Id, winter.Id, herfstSubthema.Id);
     }
 }

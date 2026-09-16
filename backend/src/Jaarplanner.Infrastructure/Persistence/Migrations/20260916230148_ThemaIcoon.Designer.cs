@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916230116_ActiviteitDoelsuggesties")]
-    partial class ActiviteitDoelsuggesties
+    [Migration("20260916230148_ThemaIcoon")]
+    partial class ThemaIcoon
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -972,9 +972,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ActiviteitId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("AiMotivatie")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1005,8 +1002,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ActiviteitId");
 
                     b.HasIndex("LeerplandoelCode");
 
@@ -1105,6 +1100,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("DuurWeken")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Icoon")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("Invalshoeken")
                         .HasColumnType("text");
@@ -1926,11 +1925,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel", b =>
                 {
-                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
-                        .WithMany()
-                        .HasForeignKey("ActiviteitId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
                         .WithMany()
                         .HasForeignKey("LeerplandoelCode")

@@ -140,15 +140,15 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
         var client = _factory.CreateClient();
         await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard, subthemaIngepland: true);
 
-        // A placement pointing at a date that is not the start of any derived block: the stale state.
+        // A placement reaching outside the school year: the vervallen state.
         await using (var context = _db.MaakContext())
         {
             var plan = await context.Jaarplannen.FirstAsync(j => j.KlasId == opzet.KlasId);
             var thema = await context.Themas.FirstAsync();
             plan.VoegPlaatsingToe(
                 thema.Id,
-                Planningsblokniveau.Themaperiode,
-                opzet.EersteBlok.AddDays(3),
+                opzet.EersteBlok.AddDays(-20),
+                opzet.EersteBlok.AddDays(-10),
                 KoppelingStatus.Voorgesteld);
             await context.SaveChangesAsync();
         }
@@ -215,7 +215,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
             context.Jaarplannen.Add(plan);
         }
 
-        plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, opzet.EersteBlok, status);
+        plan.VoegPlaatsingToe(themaId, opzet.EersteBlok, opzet.EersteBlok.AddDays(25), status);
         await context.SaveChangesAsync();
 
         if (subthemaIngepland)
@@ -273,11 +273,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
-        var blokken = indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau);
-
-        return new Opzet(klas.Id, andere.Id, blokken[0].Start);
+        return new Opzet(klas.Id, andere.Id, schooljaar.Start);
     }
 
     private sealed record Opzet(Guid KlasId, Guid AndereKlasId, DateOnly EersteBlok);

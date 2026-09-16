@@ -18,7 +18,7 @@ namespace Jaarplanner.Domain.Planning;
 /// assumption Art. XIV still leaves open, in the one place the constitution asked us not to.
 /// </para>
 /// <para>
-/// <b>2. A block boundary moves; a Tuesday does not.</b> <see cref="Themaplaatsing.BlokStart"/> keys on a
+/// <b>2. A block boundary moves; a Tuesday does not.</b> A thema placement keyed until ADR-0053 on a
 /// <i>derived</i> boundary, so editing one vakantie can leave it pointing at a date that is no longer the start of any
 /// block — that is what <c>IsVervallen</c> exists for, and it costs this codebase a persistent notice, a re-placement
 /// route and a withheld dekkingscijfer. A concrete teaching day inherits none of that: edit the calendar and a date

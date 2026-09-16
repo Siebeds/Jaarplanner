@@ -73,6 +73,8 @@ export interface ThemaInvoer {
   invalshoeken: string | null;
   kernwoordenschat: string[];
   rijkeWoordenschat: string[];
+  /** One emoji or null (FB-060). Always sent: a missing field clears it on the server. */
+  icoon: string | null;
 }
 
 export function useMaakThema() {
@@ -248,7 +250,7 @@ export function useOntkoppelActiviteitdoel(themaId: string) {
 }
 
 /**
- * Asks the AI for doelen of an activiteit's leeftijd (FB-026, ADR-0053): they land on the activiteit as `Voorgesteld`,
+ * Asks the AI for doelen of an activiteit's leeftijd (FB-026, ADR-0054): they land on the activiteit as `Voorgesteld`,
  * replacing its open proposals, and count for nothing until decided (Art. IV.1).
  */
 export function useStelActiviteitdoelenVoor(themaId: string) {

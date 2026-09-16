@@ -1,7 +1,7 @@
 namespace Jaarplanner.Infrastructure.Activiteitdoelen;
 
 /// <summary>
-/// The AI's goal proposals for an activiteit (FB-026, ADR-0053), bound from the <c>ActiviteitDoelsuggesties</c> section.
+/// The AI's goal proposals for an activiteit (FB-026, ADR-0054), bound from the <c>ActiviteitDoelsuggesties</c> section.
 /// One value for the whole app (owner, 2026-09-17), so it changes without a code change.
 /// </summary>
 public sealed class ActiviteitDoelsuggestieOptions

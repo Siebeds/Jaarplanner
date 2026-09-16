@@ -47,7 +47,7 @@ public sealed class Subdoelvoorstel
         new(themaId, leeftijd, leerplandoelCode, subthemaId, null, aiMotivatie);
 
     /// <summary>
-    /// A proposal to add a goal accepted on an activiteit to that activiteit's subthema (FB-026, ADR-0053 D4). It is
+    /// A proposal to add a goal accepted on an activiteit to that activiteit's subthema (FB-026, ADR-0054 D4). It is
     /// decided like any proposal in an existing subthema, and an FB-057 run leaves it alone.
     /// </summary>
     public static Subdoelvoorstel VanuitActiviteit(
@@ -77,7 +77,7 @@ public sealed class Subdoelvoorstel
     public Guid? SubthemavoorstelId { get; private set; }
 
     /// <summary>
-    /// The activiteit whose accepted goal this proposal came from (ADR-0053), or <c>null</c> for one of FB-057's runs. The
+    /// The activiteit whose accepted goal this proposal came from (ADR-0054), or <c>null</c> for one of FB-057's runs. The
     /// database clears it when that activiteit is deleted; the proposal stays.
     /// </summary>
     public Guid? ActiviteitId { get; private set; }

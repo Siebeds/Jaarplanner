@@ -142,8 +142,8 @@ public sealed class KlasEndpointsTests : IAsyncLifetime
             var jaarplan = new Jaarplan(klas.Id);
             var plaatsing = jaarplan.VoegPlaatsingToe(
                 thema!.Id,
-                Planningsblokniveau.Themaperiode,
                 schooljaar.Start,
+                schooljaar.Start.AddDays(25),
                 KoppelingStatus.Voorgesteld,
                 "seizoen");
             plaatsing.WijzigStatus(KoppelingStatus.Aanvaard);

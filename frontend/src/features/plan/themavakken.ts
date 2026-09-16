@@ -2,82 +2,83 @@ import { t } from "../../i18n";
 import { valtBinnen } from "../../lib/datum";
 
 /**
- * Which thema a themaperiode holds, as a stretch of days.
+ * Which thema runs on which days, as stretches of days (ADR-0053).
  *
- * **This exists because the agenda used to answer that question about ONE DAY and print the answer
- * over a whole month.** The period chip and the thema chip were both derived from `blok`, the
- * themaperiode containing the anchored day, while the grid renders every day of the month. Paging a
- * month keeps the day of the month, and this school year's periods end on the 1st (1 sep - 1 okt,
- * 2 okt - 1 nov, 9 nov - 20 dec), so a teacher who opened on 1 september and pressed the next arrow
- * twice stood on 1 november: the last day of a period that owns not one visible day. October showed
- * september's thema as a fact, and November showed no thema at all because that period holds none.
+ * **A day is looked up on its own**, never inferred from the anchored day: the month grid shows a whole month, and a
+ * thema that ends mid-month must not be printed over the days after it. Same conclusion the subthema strips reached
+ * one level down, for the same reason: see `subthemareeksen`.
  *
- * A themaperiode is a property of days, so it is reported per day. Same conclusion the subthema
- * strips reached one level down, for the same reason: see `subthemareeksen`.
- *
- * **Unlike a subthema run, this is not measured, it is declared.** A subthema run is read off the
- * days its activiteiten landed on, because nothing in the model records it. A themaperiode is a row
- * in the rooster and a placement points at it by `blokStart`, so the range here is exact and a period
- * with nothing planned in it is still a period. That distinction is the whole reason this is a
- * separate module rather than a second call into the run finder.
+ * **A placement is declared, not measured.** A subthema run is read off the days its activiteiten landed on; a thema
+ * placement carries its own first and last day, so the range here is exact, and no two placements share a day, so a
+ * day has at most one thema.
  */
 export interface Themavak {
-  /** The period's own start, which is what a placement keys on. Identity, not display. */
-  blokStart: string;
+  /** The placement this stretch is. Identity, not display. */
+  plaatsingId: string;
   van: string;
   tot: string;
   /**
-   * Every thema placed in this period, id and name together.
-   *
-   * Empty is a real answer: the period is planned, nothing is in it. Both fields travel because both
-   * are needed and deriving one from the other twice is how they drift: the bands print the name, and
-   * the activiteit picker asks which thema's a given DAY may offer, which is an id question.
+   * The thema running on these days, id and name together, as a list: the bands print the name, and the activiteit
+   * picker asks which thema's a given DAY may offer, which is an id question.
    */
-  themas: readonly { id: string; naam: string }[];
+  themas: readonly { id: string; naam: string; icoon?: string | null }[];
+}
+
+/** A thema placement as a stretch of days, in the shape the run finders (`subthemareeksen`) take. */
+export interface Themablok {
+  plaatsingId: string;
+  themaId: string;
+  themaNaam: string;
+  themaIcoon: string | null;
+  start: string;
+  eind: string;
 }
 
 interface Plaatsing {
-  blokStart: string;
+  id: string;
+  van: string;
+  tot: string;
   themaId: string;
   themaNaam: string;
+  themaIcoon?: string | null;
   status: string;
 }
 
 /**
- * One vak per themaperiode, carrying the thema's placed in it.
+ * Every placement as a stretch of days, chronological.
  *
- * `Geweigerd` placements are left out. A rejected thema is a thema the teacher said no to, and
- * naming it above the days it would have covered is the calendar arguing with a decision that has
- * already been made.
+ * `Geweigerd` placements are left out. A rejected thema is a thema the teacher said no to, and naming it above the
+ * days it would have covered is the calendar arguing with a decision that has already been made.
  */
-export function themavakken(
-  blokken: readonly { start: string; eind: string }[],
-  plaatsingen: readonly Plaatsing[],
-): Themavak[] {
-  return blokken.map((blok) => {
-    const inBlok = plaatsingen.filter(
-      (plaatsing) => plaatsing.blokStart === blok.start && plaatsing.status !== "Geweigerd",
-    );
+export function themablokken(plaatsingen: readonly Plaatsing[]): Themablok[] {
+  return plaatsingen
+    .filter((plaatsing) => plaatsing.status !== "Geweigerd")
+    .map((plaatsing) => ({
+      plaatsingId: plaatsing.id,
+      themaId: plaatsing.themaId,
+      themaNaam: plaatsing.themaNaam,
+      themaIcoon: plaatsing.themaIcoon ?? null,
+      start: plaatsing.van,
+      eind: plaatsing.tot,
+    }))
+    .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+}
 
-    // Deduped on the id, not on the name: two placements of one thema in one period is one thema,
-    // and two thema's that happen to share a name are two.
-    const perId = new Map(inBlok.map((plaatsing) => [plaatsing.themaId, plaatsing.themaNaam]));
-
-    return {
-      blokStart: blok.start,
-      van: blok.start,
-      tot: blok.eind,
-      themas: [...perId].map(([id, naam]) => ({ id, naam })),
-    };
-  });
+/** One vak per placement, carrying its thema. */
+export function themavakken(plaatsingen: readonly Plaatsing[]): Themavak[] {
+  return themablokken(plaatsingen).map((blok) => ({
+    plaatsingId: blok.plaatsingId,
+    van: blok.start,
+    tot: blok.eind,
+    themas: [{ id: blok.themaId, naam: blok.themaNaam, icoon: blok.themaIcoon }],
+  }));
 }
 
 /**
- * The vak a day sits in, or undefined between two periods.
+ * The vak a day sits in, or undefined when no thema runs that day.
  *
- * Between two periods is a legitimate place for a day to be: this school year has a gap from 2 to 8
- * november and the herfstvakantie sits in it. Such a day gets no band, which is the honest answer,
- * and the cell already says why it is empty.
+ * A day without a thema is a legitimate place for a day to be: a vacation, or a week the teacher left open. Such a day
+ * gets no band, which is the honest answer, and the cell already says why it is empty.
  */
 export function vakOpDag(vakken: readonly Themavak[], datum: string): Themavak | undefined {
   return vakken.find((vak) => valtBinnen(datum, vak.van, vak.tot));
@@ -86,19 +87,16 @@ export function vakOpDag(vakken: readonly Themavak[], datum: string): Themavak |
 /**
  * The thema clause a day's own button appends to its label.
  *
- * Same arrangement as `subthemaZin`: the strip is `aria-hidden` and the fact is announced once, by
- * the control a screen reader was going to land on anyway. It speaks the empty case too, because
- * "this period has no thema yet" is the state a teacher most needs to hear and the one a silent
- * label would hide.
+ * Same arrangement as `subthemaZin`: the strip is `aria-hidden` and the fact is announced once, by the control a
+ * screen reader was going to land on anyway.
  */
 export function themaZin(vak: Themavak | undefined): string {
   return vak ? `, ${themaClausule(vak)}` : "";
 }
 
 /**
- * A period's thema's as a spoken clause, every name in full: "thema Herfst", "nog geen thema in deze
- * periode". Shared by the grid's day buttons and the agenda caption, so a screen reader hears one
- * sentence for one fact wherever it lands.
+ * A vak's thema's as a spoken clause, every name in full: "thema Herfst". Shared by the grid's day buttons and the
+ * agenda caption, so a screen reader hears one sentence for one fact wherever it lands.
  */
 export function themaClausule(vak: Themavak): string {
   if (vak.themas.length === 0) return t("periode.dagGeenThema");
@@ -109,8 +107,8 @@ export function themaClausule(vak: Themavak): string {
 }
 
 /**
- * A period's thema's as a label on screen, where room is short: the first name and a count of the rest.
- * Shared by the band and the agenda caption, so the two cannot name one period differently.
+ * A vak's thema's as a label on screen, where room is short: the first name and a count of the rest. Shared by the
+ * band and the agenda caption, so the two cannot name one stretch differently.
  */
 export function themaLabel(vak: Themavak): string {
   if (vak.themas.length === 0) return t("periode.geenThema");
@@ -121,12 +119,8 @@ export function themaLabel(vak: Themavak): string {
 }
 
 /**
- * Which thema's a given DAY may offer, as ids.
- *
- * The activiteit picker used to ask this of the anchored day's period while being opened for a
- * different day entirely, so pressing the plus on 12 november offered the thema's of the period that
- * ended on 1 november: none, and the picker said "in deze periode staat nog geen thema gepland" over
- * a day whose period held one. Same root cause as the bands, and the reason this lives here.
+ * Which thema's a given DAY may offer, as ids: the thema running that day, looked up for that day rather than for the
+ * anchored one.
  */
 export function themaIdsOpDag(vakken: readonly Themavak[], datum: string): string[] {
   return (vakOpDag(vakken, datum)?.themas ?? []).map((thema) => thema.id);

@@ -1,137 +1,42 @@
-using Jaarplanner.Domain.Planning;
-
 namespace Jaarplanner.Application.Planning.Rooster;
 
 /// <summary>
-/// Reads a school year's <b>derived planning grid</b> — the blocks plus the vacations that separate them
-/// (Art. IX.3, ADR-0013, ADR-0020).
+/// Reads a school year's span and the vacations inside it — the frame the plan screen's timeline and the agenda are
+/// drawn in (FR-6.1).
 /// <para>
-/// <b>Why this exists as its own read path (E3-06).</b> The calendar has to render the grid itself, not just
-/// the thema's placed on it: an <i>empty</i> period must still appear, or a teacher cannot see where there is
-/// room, and E3-09's "goals placed nowhere" has no ribbon to sit beside.
-/// <see cref="Generatie.JaarplanWeergave"/> returns only placements, so it cannot answer "what does the year
-/// look like". Deriving the grid in the browser instead was rejected outright: the grain lives in
-/// configuration behind <see cref="IPlanningsblokIndeling"/> (ADR-0013), and a second implementation in
-/// TypeScript would be a copy that silently disagrees with the server the first time the configuration
-/// changes.
-/// </para>
-/// <para>
-/// <b>Read-only and derived.</b> Nothing here is stored — the blocks are recomputed from the year's span and
-/// closures on every call, which is what keeps the granularity a configuration question (Art. XIV).
+/// <b>No periods any more</b> (ADR-0053). Until then this read returned the derived themaperiodes too; a thema
+/// placement now carries its own dates, and the lesweken of the year ride on the jaarplan read, where they are
+/// counted against a class's placements.
 /// </para>
 /// </summary>
 public interface IPlanningsroosterService
 {
     /// <summary>
-    /// The grid for one school year at the given tier. Throws the shared not-found fault when the year does
-    /// not exist, so the existing exception handler maps it to a 404 with no new plumbing in the (thin) Api.
+    /// The frame of one school year. Throws the shared not-found fault when the year does not exist, so the existing
+    /// exception handler maps it to a 404 with no new plumbing in the (thin) Api.
     /// </summary>
-    Task<PlanningsroosterWeergave> HaalRoosterOpAsync(
-        Guid schooljaarId,
-        Planningsblokniveau niveau = Planningsblokniveau.Themaperiode,
-        CancellationToken cancellationToken = default);
+    Task<PlanningsroosterWeergave> HaalRoosterOpAsync(Guid schooljaarId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
-/// A school year's planning grid as the calendar consumes it.
+/// A school year's frame as the timeline and the agenda consume it.
 /// </summary>
-/// <param name="SchooljaarId">The year the grid was derived from.</param>
+/// <param name="SchooljaarId">The year.</param>
 /// <param name="SchooljaarNaam">The year label (e.g. "2026-2027").</param>
-/// <param name="Start">First school day.</param>
-/// <param name="Eind">Last school day, inclusive.</param>
-/// <param name="Niveau">The tier these blocks belong to.</param>
-/// <param name="Blokindeling">
-/// The seam's human-readable description of the configured grain (e.g. "themaperiode 5 wk, subthemaperiode
-/// 2 wk"), so the UI can explain <i>why</i> the periods look the way they do rather than leaving a teacher to
-/// infer a unit that the model deliberately does not have.
-/// </param>
-/// <param name="Blokken">The derived blocks, chronological.</param>
+/// <param name="Start">First day of the year.</param>
+/// <param name="Eind">Last day of the year, inclusive.</param>
 /// <param name="Onderbrekingen">
-/// Only the closures that <b>break a period</b> (the real vacations), chronological. These are the literal
-/// gaps between blocks in the ribbon. A <see cref="Sluitingssoort.VrijeDag"/> is deliberately absent: it sits
-/// <i>inside</i> a block and drawing it as a gap would reintroduce exactly the slivers ADR-0020 §5 removed.
+/// Only the vacations, chronological: the closures that split a thema (ADR-0053 R3). A
+/// <c>Sluitingssoort.VrijeDag</c> is deliberately absent; it is a day without school inside a week, not a gap.
 /// </param>
 public sealed record PlanningsroosterWeergave(
     Guid SchooljaarId,
     string SchooljaarNaam,
     DateOnly Start,
     DateOnly Eind,
-    string Niveau,
-    string Blokindeling,
-    IReadOnlyList<PlanningsblokWeergave> Blokken,
     IReadOnlyList<PlanningsonderbrekingWeergave> Onderbrekingen);
 
-/// <summary>One derived block.</summary>
-/// <param name="Ordinaal">1-based display position within the tier ("periode 3"). Display only — never a key.</param>
-/// <param name="Start">
-/// First day covered. <b>This is the placement key</b> (ADR-0020 §3): a <c>ThemaplaatsingWeergave.BlokStart</c>
-/// matching this value is the placement that belongs in this block.
-/// </param>
-/// <param name="Eind">Last day covered, inclusive.</param>
-/// <param name="OuderOrdinaal">For a subthemaperiode, the themaperiode it nests in; null for a themaperiode.</param>
-/// <param name="AantalOpenDagen">
-/// Days in the block on which the school is <b>open</b>: inside the year and covered by <b>no</b> closure
-/// (<see cref="Schooljaar.IsLesdag"/>). So a <see cref="Sluitingssoort.VrijeDag"/> inside the block is
-/// excluded here even though it does not split the block — which is the point.
-/// <para>
-/// <b>The calendar sizes blocks on this, not on the calendar-day span.</b> The wireframe's central claim is
-/// that block width is proportional to teaching time, so a period containing Hemelvaart plus a brugdag must
-/// render visibly narrower than an unbroken period of the same calendar length — otherwise the ribbon states
-/// something untrue about how much teaching fits in it.
-/// </para>
-/// <para>
-/// <b>Called "open dagen" and not "lesdagen" on purpose: this counts weekends.</b> The domain's
-/// <c>IsLesdag</c> excludes only closures — nothing in the codebase models weekends at all (no
-/// <c>DayOfWeek</c> anywhere in <c>backend/src</c>) — so a Sunday satisfies it. Whether <c>IsLesdag</c>
-/// should exclude weekends is a <b>domain</b> question, deliberately left open for the teachers rather than
-/// answered by a second, weekend-aware definition living in this mapper: that drift is what this project
-/// keeps paying for. What is <i>not</i> deferred is the name. An earlier revision called this field
-/// <c>AantalLesdagen</c> and explained the discrepancy in this comment — but a comment does not travel with
-/// the JSON, and the TypeScript mirror had already re-glossed it as "days the school is open", giving one
-/// field two meanings in a single commit. Naming it for what it counts costs nothing and removes the lie
-/// from the wire contract; the open question survives intact.
-/// </para>
-/// <para>
-/// Dividing by 7 yields the calendar-week figure the approved wireframe used ("4,4 weken" for 1 sep – 1 okt = 31/7).
-/// <b>The screen no longer prints that:</b> owner ruling 2026-08-04 rounds the displayed figure <i>up</i> to whole weeks
-/// (<c>ceil(31/7) = 5</c>) so a period's heading and its te-vol verdict state one length. This field stays the raw
-/// count; the rounding lives at the two places that present it. Proportional width is barely affected, because weekends fall near-uniformly
-/// across blocks — but a block containing vrije dagen renders a slightly weaker narrowing than teaching-day
-/// counting would give, which is part of what the teachers are being asked about.
-/// </para>
-/// </param>
-/// <param name="AantalOpenWeekdagen">
-/// The same days, minus Saturdays and Sundays: <b>the figure a teacher recognises as "schooldagen"</b> (E9-02, the
-/// owner's request of 2026-08-19 that a period's length read in days as well as weeks).
-/// <para>
-/// <b>Display only. It must never be divided by 7 and it must never reach a weeks figure.</b>
-/// <see cref="AantalOpenDagen"/> is what <c>BlokspreidingWeergave.BeschikbareWeken</c> divides, and that is the sole
-/// definition of <c>te vol</c> (owner ruling 2026-07-31). Substituting this one turns a 5-week period into
-/// <c>ceil(25/7) = 4</c> weeks and makes every nominal 5-week thema overload the period built for it. A domain test
-/// pins the separation.
-/// </para>
-/// <para>
-/// <b>Two counts, two questions, and that is why both ship.</b> <see cref="AantalOpenDagen"/> answers "how long is
-/// this block?" and is what the ribbon sizes on; this answers "how many days will I stand in front of this class?".
-/// The E3-02 review centralised day counting precisely because two callers counted differently for the <i>same</i>
-/// question — that lesson holds, and this is not a second answer to it.
-/// </para>
-/// <para>
-/// <b>It does not answer the open question one paragraph up.</b> Whether <c>Schooljaar.IsLesdag</c> should exclude
-/// weekends is still a question for the school; this adds a fact rather than changing that one, so nothing depending
-/// on <c>IsLesdag</c> moves. And <b>half days are not modelled</b>: Flemish primary schools do not teach Wednesday
-/// afternoons, so a teacher counting contact hours will find this generous. That needs a ruling, not a guess.
-/// </para>
-/// </param>
-public sealed record PlanningsblokWeergave(
-    int Ordinaal,
-    DateOnly Start,
-    DateOnly Eind,
-    int? OuderOrdinaal,
-    int AantalOpenDagen,
-    int AantalOpenWeekdagen);
-
-/// <summary>One vacation, rendered as a gap in the ribbon.</summary>
+/// <summary>One vacation, rendered as a gap in the timeline.</summary>
 /// <param name="Naam">The school's own Dutch name for it ("Herfstvakantie") — shown in the gap.</param>
 /// <param name="Start">First day of the closure.</param>
 /// <param name="Eind">Last day of the closure, inclusive.</param>

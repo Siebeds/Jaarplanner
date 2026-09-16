@@ -6,7 +6,7 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.Application.Activiteitdoelen;
 
 /// <summary>
-/// What the AI is told about one activiteit (FB-026, ADR-0053). Only the school's own content and the loaded Op.stap goals
+/// What the AI is told about one activiteit (FB-026, ADR-0054). Only the school's own content and the loaded Op.stap goals
 /// of the activiteit's leeftijd; no gebruiker, no owner and no pupil data.
 /// </summary>
 /// <param name="Kandidaten">Every goal of the leeftijd still in Op.stap: the stable part of the prompt (TB-043).</param>

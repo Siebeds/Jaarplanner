@@ -491,6 +491,8 @@ export interface ThemaWeergave {
   /** The themadoelen a teacher sees: the minimumdoelen the thema aims at (FB-043). */
   minimumdoelen: ThemaMinimumdoelWeergave[];
   subthemas: SubthemaWeergave[];
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
@@ -549,6 +551,8 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
+  /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
+  icoon?: string | null;
 }
 
 // --- A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel. Advisory only (Art. IV). ---
@@ -640,44 +644,55 @@ export interface SubthemavoorstelBeslissing {
   leerplandoelCodes?: string[];
 }
 
-// --- Jaarplan (FR-5 to FR-8) ---
+// --- Jaarplan (FR-6, FR-7, ADR-0053) ---
 
+/**
+ * A placement's place in its thema's run: the parts the server stored around a vacation. Derived by the server,
+ * never stored.
+ */
+export interface Reeks {
+  /** This part's position, 1-based. */
+  deel: number;
+  aantalDelen: number;
+  reeksVan: string;
+  reeksTot: string;
+  /** The whole lesweken the run spans. */
+  weken: number;
+  /** The run ends on another day than the thema's duration proposes. */
+  eindeAangepast: boolean;
+  /** The run was cut because the school year ends first. */
+  stoptBijEindeSchooljaar: boolean;
+}
+
+/** One thema placed from one day to another, both inclusive. */
 export interface Themaplaatsing {
   id: string;
   themaId: string;
   themaNaam: string;
-  blokNiveau: string;
-  blokStart: string;
-  blokEind: string | null;
-  blokOrdinaal: number | null;
+  van: string;
+  tot: string;
+  /** The vacations changed and one now lies inside, or the placement left the year. Never moved by the app. */
   isVervallen: boolean;
   status: KoppelingStatus;
   aiMotivatie: string | null;
   vergrendeld: boolean;
   doelcodes: string[];
   duurWeken: number;
+  reeks: Reeks | null;
+  /** The thema's emoji (FB-060). Null or absent when it has none. */
+  themaIcoon?: string | null;
 }
 
-/**
- * How full one planning period is.
- *
- * The key is `start`, NOT `blokStart` like every other jaarplan shape. Measured against the running
- * API rather than copied from the other frontend, whose type says `blokStart` here and therefore
- * silently matches nothing: every period renders as empty while the plan underneath is full.
- */
-export interface Blokspreiding {
-  ordinaal: number;
-  start: string;
-  aantalThemas: number;
-  aantalDoelen: number;
-  benodigdeWeken: number;
-  beschikbareWeken: number;
-  isOverbelast: boolean;
+/** A Monday-to-Friday week holding at least one schooldag. */
+export interface Lesweek {
+  maandag: string;
+  heeftThema: boolean;
 }
 
-export interface GeblokkeerdePeriode {
-  blokStart: string;
-  momentNaam: string;
+export interface Jaarbalans {
+  lesweken: number;
+  metThema: number;
+  zonderThema: number;
 }
 
 export interface JaarplanWeergave {
@@ -685,10 +700,20 @@ export interface JaarplanWeergave {
   klasNaam: string;
   schooljaarId: string;
   schooljaarNaam: string;
-  blokindeling: string;
+  eersteSchooldag: string;
+  laatsteSchooldag: string;
   plaatsingen: Themaplaatsing[];
-  blokken: Blokspreiding[];
-  geblokkeerdePeriodes: GeblokkeerdePeriode[];
+  lesweken: Lesweek[];
+  balans: Jaarbalans;
+}
+
+/** The end the server proposes for a thema and a first day, and the parts it would store. */
+export interface Eindvoorstel {
+  van: string;
+  tot: string;
+  delen: { van: string; tot: string }[];
+  beperktDoor: "VolgendThema" | "Schooljaar" | null;
+  volgendThemaNaam: string | null;
 }
 
 export interface Dekkingsvooruitzicht {
@@ -697,29 +722,7 @@ export interface Dekkingsvooruitzicht {
   aantalLeerplandoelen: number;
 }
 
-export interface JaarplanGeneratieResultaat {
-  isGeslaagd: boolean;
-  fout: string | null;
-  jaarplan: JaarplanWeergave | null;
-  aantalNieuw: number;
-  aantalBehouden: number;
-  aantalVervangen: number;
-  onbekendeThemas: string[];
-  onbekendeBlokken: string[];
-  duplicaten: string[];
-  afgewezen: string[];
-  vooruitzicht: Dekkingsvooruitzicht | null;
-}
-
-// --- Planningsrooster: the periods a school year is cut into ---
-
-export interface Planningsblok {
-  ordinaal: number;
-  start: string;
-  eind: string;
-  ouderOrdinaal: number | null;
-  aantalOpenDagen: number;
-}
+// --- Planningsrooster: a school year's span and its vacations ---
 
 export interface Planningsonderbreking {
   naam: string;
@@ -732,9 +735,6 @@ export interface Planningsrooster {
   schooljaarNaam: string;
   start: string;
   eind: string;
-  niveau: string;
-  blokindeling: string;
-  blokken: Planningsblok[];
   onderbrekingen: Planningsonderbreking[];
 }
 

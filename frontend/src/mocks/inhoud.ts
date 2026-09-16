@@ -27,27 +27,6 @@ export const ONDERBREKINGEN = [
   { naam: "Paasvakantie", start: "2027-04-05", eind: "2027-04-18" },
 ];
 
-/**
- * The themaperiodes of the mock year, never across a vacation. Cut around the two thema's: on `main` a thema belongs
- * to one period, so the one that runs across the kerstvakantie is placed in the period before it and the one after it.
- * That leaves periods of one and three weeks, outside the 4 to 6 weeks of Art. IX: a workaround for this fixture only,
- * which goes once FB-035 gives a thema its own dates.
- */
-export const THEMAPERIODES: { start: string; eind: string }[] = [
-  { start: "2026-09-01", eind: "2026-10-02" },
-  { start: "2026-10-05", eind: "2026-10-30" },
-  { start: "2026-11-09", eind: "2026-11-13" },
-  { start: "2026-11-16", eind: "2026-12-11" },
-  { start: "2026-12-14", eind: "2026-12-18" },
-  { start: "2027-01-04", eind: "2027-01-22" },
-  { start: "2027-01-25", eind: "2027-02-12" },
-  { start: "2027-02-22", eind: "2027-04-02" },
-  { start: "2027-04-19", eind: "2027-05-21" },
-  { start: "2027-05-24", eind: "2027-06-30" },
-];
-
-export const BLOKINDELING = "mockrooster: themaperiodes op maat van de twee thema's, niet volgens de ingestelde indeling";
-
 export const GEBRUIKER = {
   id: vastId(2),
   naam: "Directie (mockmodus)",
@@ -181,8 +160,8 @@ export interface MockThema {
   kernwoordenschat: string[];
   rijkeWoordenschat: string[];
   minimumdoelen: string[];
-  /** Its placements: the start of each themaperiode it is in, and how many of its weeks fall there. */
-  plaatsingen: { blokStart: string; weken: number }[];
+  /** Its placements, first and last day: a thema that runs across a vacation is stored in parts (ADR-0053). */
+  plaatsingen: { van: string; tot: string }[];
   subthemas: MockSubthema[];
 }
 
@@ -234,7 +213,7 @@ export const THEMAS: MockThema[] = [
     kernwoordenschat: ["de paddenstoel", "het blad", "de eekhoorn", "de winterslaap", "de wind", "de regen"],
     rijkeWoordenschat: ["de hoed", "de steel", "verzamelen", "ritselen", "het spoor"],
     minimumdoelen: ["K-3.1.81", "K-4.2.81", "K-1.1.81", "K-2.1.81"],
-    plaatsingen: [{ blokStart: "2026-11-16", weken: 4 }],
+    plaatsingen: [{ van: "2026-11-16", tot: "2026-12-11" }],
     subthemas: [
       subthema(
         "Paddenstoelen en bladeren",
@@ -305,8 +284,8 @@ export const THEMAS: MockThema[] = [
     rijkeWoordenschat: ["schitteren", "bevriezen", "smelten", "de lantaarn"],
     minimumdoelen: ["K-3.2.81", "K-4.2.81", "K-6.1.81", "K-9.3.81"],
     plaatsingen: [
-      { blokStart: "2026-12-14", weken: 1 },
-      { blokStart: "2027-01-04", weken: 3 },
+      { van: "2026-12-14", tot: "2026-12-18" },
+      { van: "2027-01-04", tot: "2027-01-22" },
     ],
     subthemas: [
       subthema(

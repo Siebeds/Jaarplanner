@@ -48,7 +48,7 @@ public sealed record LeeftijdPlaatsing(
 
 /// <summary>
 /// One open goal proposal. <see cref="SubthemaId"/> is set for one in an existing subthema;
-/// <see cref="ActiviteitNaam"/> names the activiteit an accepted goal came from (ADR-0053 D4), while it still exists.
+/// <see cref="ActiviteitNaam"/> names the activiteit an accepted goal came from (ADR-0054 D4), while it still exists.
 /// </summary>
 public sealed record SubdoelvoorstelWeergave(
     Guid Id,

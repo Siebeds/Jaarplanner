@@ -1,12 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
-using Jaarplanner.Application.Planning;
-using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -18,7 +15,8 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// placements straight through the <c>DbContext</c> and reads the figure, which proves the read path. It cannot
 /// prove this story's criterion, because the criterion is about a <i>sequence</i>: the teacher edits, and no save
 /// step exists anywhere for them to forget. Every test here therefore drives the same endpoints the kalender
-/// drives (<c>POST …/plaatsingen</c>, <c>PUT …/status</c>, <c>PUT …/blok</c>, <c>DELETE …/plaatsingen/{id}</c>)
+/// drives (<c>POST …/plaatsingen</c>, <c>PUT …/status</c>, <c>PUT …/verschuiving</c>, <c>PUT …/datums</c>,
+/// <c>DELETE …/plaatsingen/{id}</c>)
 /// and then asks <c>GET …/dekking</c> for the consequence. The absence of an intermediate call is the assertion;
 /// it is expressed by construction, so a later refactor that introduced a "save" or an invalidation step would
 /// have nowhere to put it in these tests without changing them.
@@ -83,7 +81,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
 
         var plaatsen = await client.PostAsJsonAsync(
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen",
-            new { themaId = opzet.HerfstThemaId, blokStart = opzet.EersteBlok.ToString("yyyy-MM-dd") });
+            new { themaId = opzet.HerfstThemaId, van = opzet.EersteBlok.ToString("yyyy-MM-dd") });
         Assert.Equal(HttpStatusCode.OK, plaatsen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
@@ -123,18 +121,8 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_versleept_AI_voorstel_gaat_meteen_meetellen_want_het_wordt_manueel()
     {
-        // The interaction E4-01's story entry warns about, asserted rather than described: a drag sets the placement
-        // to `manueel` (`Themaplaatsing.VerplaatsNaar`) and `manueel` counts, so moving a standing proposal RAISES
-        // the coverage figure as a side effect of the move. Correct under Art. V.1, and a consequence a teacher has
-        // to be told about.
-        //
-        // **What the product actually discloses, stated exactly, because the first version of this comment claimed
-        // more than the product does** (antagonist round 1, MAJOR): `kalender.verplaatsGevolg` says the thema
-        // becomes the teacher's own choice and that the AI motivation is lost, it says nothing about dekking, and it
-        // renders only inside the opened *Aanpassen* panel, so a teacher who **drags** never reads it. The owner
-        // ruled on 2026-08-04 that this story writes the missing sentence, on both routes; until that copy lands in
-        // `nl.json` the dekking half of this consequence is undisclosed, and this comment says so rather than
-        // implying a disclosure exists. It is the story's own standing obligation, not a discharged one.
+        // A drag sets the placement to `manueel` (`Themaplaatsing.Herplan`) and `manueel` counts, so moving a
+        // standing proposal RAISES the coverage figure as a side effect of the move. Correct under Art. V.1.
         var opzet = await ZetOpAsync();
         var plaatsingId = await ZetPlaatsingOpAsync(opzet, KoppelingStatus.Voorgesteld, opzet.EersteBlok);
         var client = _factory.CreateClient();
@@ -142,8 +130,8 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         Assert.Equal(0, (await HaalDekkingAsync(client, opzet.KlasId)).AantalMinimumdoelenGedekt);
 
         var verplaatsen = await client.PutAsJsonAsync(
-            $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/blok",
-            new { blokStart = opzet.TweedeBlok.ToString("yyyy-MM-dd") });
+            $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/verschuiving",
+            new { van = opzet.TweedeBlok.ToString("yyyy-MM-dd") });
         Assert.Equal(HttpStatusCode.OK, verplaatsen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
@@ -176,16 +164,14 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
     public async Task Een_vervallen_plaatsing_die_opnieuw_geplaatst_wordt_geeft_het_cijfer_terug()
     {
         // The directie ruling of 2026-07-28, clause 4, in both directions and in one sequence: while a placement
-        // points at a date that starts no period, the plan may report NO figure at all (E3-07/E5-01), and the moment
+        // no longer fits the school year, the plan may report NO figure at all (E3-07/E5-01), and the moment
         // a human resolves it the figure comes back without any further step. The healing half had never been
         // verified: E5-01 proved the withholding, and nothing proved that resolving it releases the number.
         var opzet = await ZetOpAsync();
         var plaatsingId = await ZetPlaatsingOpAsync(
             opzet,
             KoppelingStatus.Aanvaard,
-            // A date outside the school year, which no derived block can ever start on. Same device as
-            // DekkingEndpointsTests: asserting the stale path against a guessed date is how a test drifts into
-            // proving the other case while claiming this one.
+            // Days outside the school year: vervallen (ADR-0053 decision 5).
             opzet.SchooljaarStart.AddMonths(-1));
         var client = _factory.CreateClient();
 
@@ -195,8 +181,8 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         Assert.Null(voor.AantalMinimumdoelenGedekt);
 
         var herplaatsen = await client.PutAsJsonAsync(
-            $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/blok",
-            new { blokStart = opzet.EersteBlok.ToString("yyyy-MM-dd") });
+            $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen/{plaatsingId}/datums",
+            new { van = opzet.EersteBlok.ToString("yyyy-MM-dd"), tot = opzet.EersteBlok.AddDays(25).ToString("yyyy-MM-dd") });
         Assert.Equal(HttpStatusCode.OK, herplaatsen.StatusCode);
 
         var na = await HaalDekkingAsync(client, opzet.KlasId);
@@ -221,8 +207,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
     /// <para>
     /// Two thema's rather than one, so every assertion below can show the figure moved by <i>exactly</i> the edit:
     /// with a single goal in scope, "1 of 1" is also what a service returning "everything is covered" would answer.
-    /// The block starts are asked of the real <see cref="IPlanningsblokIndeling"/> seam rather than assumed, for the
-    /// reason spelled out on <c>DekkingEndpointsTests</c>.
+    /// The year has no vacations; the second start is a Monday five weeks later.
     /// </para>
     /// </summary>
     private async Task<Opzet> ZetOpAsync()
@@ -269,17 +254,13 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
 
         await context.SaveChangesAsync();
 
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
-        var blokken = indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau);
-
         return new Opzet(
             klas.Id,
             herfst.Id,
             winter.Id,
             schooljaar.Start,
-            blokken[0].Start,
-            blokken[1].Start);
+            schooljaar.Start,
+            new DateOnly(2026, 10, 5));
     }
 
     /// <summary>
@@ -294,8 +275,8 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         var jaarplan = new Jaarplan(opzet.KlasId);
         var plaatsing = jaarplan.VoegPlaatsingToe(
             opzet.HerfstThemaId,
-            JaarplanGeneratieService.GeneratieNiveau,
             blokStart,
+            blokStart.AddDays(25),
             status,
             status == KoppelingStatus.Voorgesteld ? "past bij het begin van het schooljaar" : null);
         context.Jaarplannen.Add(jaarplan);

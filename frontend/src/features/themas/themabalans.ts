@@ -39,7 +39,7 @@ export function themabalans(thema: ThemaWeergave): Themabalans {
     subdoelen += subthema.subdoelen.length;
     for (const activiteit of subthema.activiteiten) {
       activiteiten += 1;
-      // Decided doelen only: a proposal or a rejected doel is not linked (ADR-0053 D5).
+      // Decided doelen only: a proposal or a rejected doel is not linked (ADR-0054 D5).
       const gekoppeld = activiteit.doelkoppelingen.filter((k) => beslist(k.status)).length;
       activiteitdoelen += gekoppeld;
       if (gekoppeld === 0) activiteitenZonderDoel += 1;

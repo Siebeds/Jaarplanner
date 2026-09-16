@@ -1,4 +1,4 @@
-# ADR-0053 — The AI proposes goals for an activiteit, and an accepted one is proposed as subdoel
+# ADR-0054 — The AI proposes goals for an activiteit, and an accepted one is proposed as subdoel
 
 - **Status:** Accepted
 - **Date:** 2026-09-17

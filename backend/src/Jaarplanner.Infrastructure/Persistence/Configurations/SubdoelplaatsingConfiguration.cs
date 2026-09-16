@@ -83,7 +83,7 @@ public sealed class SubdoelvoorstelConfiguration : IEntityTypeConfiguration<Subd
             .HasPrincipalKey(l => l.Code)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // ADR-0053 D4: the activiteit an accepted goal came from. The proposal outlives it; only the pointer goes.
+        // ADR-0054 D4: the activiteit an accepted goal came from. The proposal outlives it; only the pointer goes.
         builder.HasOne<Activiteit>()
             .WithMany()
             .HasForeignKey(v => v.ActiviteitId)

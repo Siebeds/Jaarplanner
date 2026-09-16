@@ -27,14 +27,14 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// cannot be spanned by a block — no such slot is ever offered to the model. A <c>VrijeDag</c> (Hemelvaart,
 /// Pinkstermaandag, a pedagogische studiedag) sits <i>inside</i> a block by design (ADR-0020 §5) and is currently not
 /// expressed to the model at all, and the prompt prints <c>Planningsblok.AantalDagen</c>, a raw calendar span, while
-/// <see cref="Spreidingsrapport"/> measures the same block in open days. That disagreement is pre-existing
+/// <c>Spreidingsrapport</c> measures the same block in open days. That disagreement is pre-existing
 /// E3-01/E3-02 drift rather than this story's, but it is logged on E3-04 because this type's doc used to overstate the
 /// claim: the honest statement is *"a block never spans a vakantie"*, not *"the grid already expresses every closure"*.
 /// </para>
 /// <para>
 /// <b>The two parameters that do live here are different in kind, and the difference is the design.</b> A
 /// <see cref="GewensteStartthemas"/> entry is a <i>preference</i>: it reaches the prompt and
-/// <see cref="ParameterRapport"/> reports whether the model complied. A <see cref="VastMoment"/> that blocks is a
+/// <c>ParameterRapport</c> reports whether the model complied. A <see cref="VastMoment"/> that blocks is a
 /// <i>constraint</i>: the service refuses placements landing in its period. Persistence (2026-07-30) weakens the
 /// original argument for leaving the preference advisory — it was that <c>manueel</c> survives regeneration and would
 /// strand a parameter the teacher had since changed — but acting on that is a separate decision about whether the
@@ -71,7 +71,7 @@ public sealed record JaarplanGeneratieParameters : IValidatableObject
     /// <para>
     /// <b>Keyed on <c>blokStart</c>, not on array position, and that is a deliberate change of contract
     /// (2026-07-30).</b> The first version was positional: the i-th name targeted the i-th block. ADR-0020 §3 says in
-    /// terms that an ordinal is not a stable key, which is why <see cref="ParameterRapport"/> already keyed a block by
+    /// terms that an ordinal is not a stable key, which is why <c>ParameterRapport</c> already keyed a block by
     /// its start date and why the form had to re-key its own state on <c>blokStart</c> after a shrinking school year
     /// desynced it. Persisting an ordinal would have been strictly worse than sending one, since it survives exactly
     /// the schooljaar edits that invalidate it — and keeping storage on dates while the request stayed positional
@@ -219,7 +219,7 @@ public sealed record JaarplanGeneratieParameters : IValidatableObject
 /// </summary>
 /// <param name="BlokStart">
 /// The target block's <b>start date</b> — the same stable key every other block reference in the system uses
-/// (ADR-0020 §3, <c>PUT …/plaatsingen/{id}/blok</c>, <see cref="GeweigerdePlaatsing"/>). A date that starts no
+/// (ADR-0020 §3, <c>PUT …/plaatsingen/{id}/blok</c>, <c>GeweigerdePlaatsing</c>). A date that starts no
 /// current block is <b>reported</b>, not snapped to a neighbour and not dropped.
 /// </param>
 /// <param name="ThemaNaam">The thema name, resolved against the school's own thema's (Art. IV.4).</param>

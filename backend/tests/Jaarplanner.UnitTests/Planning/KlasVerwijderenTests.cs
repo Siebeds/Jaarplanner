@@ -75,7 +75,7 @@ public sealed class KlasVerwijderenTests
         await MetJaarplanAsync(klasId, plan =>
         {
             var plaatsing = plan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), status, "motivatie");
+                themaId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), status, "motivatie");
             plaatsing.StelVergrendelingIn(vergrendeld);
         });
 
@@ -101,12 +101,12 @@ public sealed class KlasVerwijderenTests
         var (klasId, themaId) = await SeedAsync();
         await MetJaarplanAsync(klasId, plan =>
         {
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard);
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 10, 6), KoppelingStatus.Manueel);
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 11, 9), KoppelingStatus.Geweigerd);
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard);
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2026, 10, 6), new DateOnly(2026, 10, 6), KoppelingStatus.Manueel);
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2026, 11, 9), new DateOnly(2026, 11, 9), KoppelingStatus.Geweigerd);
 
             // Plus one bare proposal, which must NOT be counted.
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2027, 1, 4), KoppelingStatus.Voorgesteld);
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2027, 1, 4), new DateOnly(2027, 1, 4), KoppelingStatus.Voorgesteld);
         });
 
         await using var context = Context();
@@ -127,8 +127,8 @@ public sealed class KlasVerwijderenTests
         var (klasId, themaId) = await SeedAsync();
         await MetJaarplanAsync(klasId, plan =>
         {
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Voorgesteld, "voorstel");
-            plan.VoegPlaatsingToe(themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 10, 6), KoppelingStatus.Voorgesteld, "voorstel");
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), KoppelingStatus.Voorgesteld, "voorstel");
+            plan.VoegPlaatsingToe(themaId, new DateOnly(2026, 10, 6), new DateOnly(2026, 10, 6), KoppelingStatus.Voorgesteld, "voorstel");
         });
 
         await using (var context = Context())
@@ -175,9 +175,9 @@ public sealed class KlasVerwijderenTests
         await MetJaarplanAsync(klasId, plan =>
         {
             var aanvaard = plan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard);
+                themaId, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard);
             var geweigerd = plan.VoegPlaatsingToe(
-                themaId, Planningsblokniveau.Themaperiode, new DateOnly(2026, 10, 6), KoppelingStatus.Geweigerd);
+                themaId, new DateOnly(2026, 10, 6), new DateOnly(2026, 10, 6), KoppelingStatus.Geweigerd);
             geweigerd.StelVergrendelingIn(true);
             _ = aanvaard;
         });
@@ -301,7 +301,7 @@ public sealed class KlasVerwijderenTests
             foreach (var vergrendeld in (bool[])[false, true])
             {
                 var plaatsing = jaarplan.VoegPlaatsingToe(
-                    themaId, Planningsblokniveau.Themaperiode, datum.AddDays(dag++ * 40), status);
+                    themaId, datum.AddDays(dag * 40), datum.AddDays(dag++ * 40), status);
                 plaatsing.StelVergrendelingIn(vergrendeld);
             }
         }

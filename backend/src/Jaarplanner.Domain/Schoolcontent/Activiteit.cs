@@ -45,7 +45,7 @@ public sealed class Activiteit
     /// The gebruiker who created this activiteit by hand, or <c>null</c> (Art. IX.2, Art. VI.1, ADR-0030 R25, R26).
     /// <para>
     /// <b>It only decides who may delete it:</b> the maker may, while no decided goal is linked to it
-    /// (<see cref="HeeftBeslisteDoelkoppeling"/>, ADR-0053 D5), with or without a klas
+    /// (<see cref="HeeftBeslisteDoelkoppeling"/>, ADR-0054 D5), with or without a klas
     /// at this leeftijd and after the schooljaar (R33). The activiteit stays shared; this is not E6-10's personal
     /// content. <c>null</c> for an activiteit that predates the rule, for one the FR-1 import created, and for one
     /// whose maker was removed as a gebruiker (the database sets it to null, I17), all of which are purely shared.
@@ -164,7 +164,7 @@ public sealed class Activiteit
 
     /// <summary>
     /// Whether a decided goal is linked (<c>aanvaard</c> or <c>manueel</c>). A proposal or a rejected goal is not a link
-    /// for any rule that asks whether one exists (ADR-0053 D5).
+    /// for any rule that asks whether one exists (ADR-0054 D5).
     /// </summary>
     public bool HeeftBeslisteDoelkoppeling => _doelkoppelingen.Any(k => k.IsBeslist);
 
@@ -186,7 +186,7 @@ public sealed class Activiteit
         return koppeling;
     }
 
-    /// <summary>Removes the proposals nobody has decided yet, ahead of a new run (ADR-0053 D3). Decided links stay.</summary>
+    /// <summary>Removes the proposals nobody has decided yet, ahead of a new run (ADR-0054 D3). Decided links stay.</summary>
     public void VerwijderOpenDoelvoorstellen() =>
         _doelkoppelingen.RemoveAll(k => k.Status == KoppelingStatus.Voorgesteld);
 

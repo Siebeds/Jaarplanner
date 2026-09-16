@@ -6,7 +6,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Activiteitdoelen;
 
 /// <summary>
-/// The goal proposals for an activiteit (FB-026, ADR-0053): what the prompt holds (Art. IV.4, TB-043), which items of an
+/// The goal proposals for an activiteit (FB-026, ADR-0054): what the prompt holds (Art. IV.4, TB-043), which items of an
 /// answer survive (D3), and the domain's proposal and decision rules (D5, D6).
 /// </summary>
 public sealed class ActiviteitDoelsuggestieTests

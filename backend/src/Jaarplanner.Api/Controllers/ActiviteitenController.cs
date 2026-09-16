@@ -16,7 +16,7 @@ namespace Jaarplanner.Api.Controllers;
 /// field but its goal links, I15, the onderzoeksvraag tag included): <c>GedeeldeActiviteitBewerken</c> (directie, HL,
 /// every leerkracht of that leeftijd; R17, R23). Its goal links, and asking and deciding the AI's goal proposals (FB-026):
 /// <c>DoelenKoppelen</c> (directie, HL; R19). Deleting it:
-/// <c>ActiviteitVerwijderen</c> (HL; the maker while no decided goal is linked; R25, R26, R33, ADR-0053 D5). Moving it:
+/// <c>ActiviteitVerwijderen</c> (HL; the maker while no decided goal is linked; R25, R26, R33, ADR-0054 D5). Moving it:
 /// <c>ActiviteitVerplaatsen</c> (HL; a leerkracht of that leeftijd while no decided goal is linked; I19), and the domain keeps
 /// the move at the same leeftijd, so the destination needs no second check.
 /// </para>
@@ -78,7 +78,7 @@ public sealed class ActiviteitenController : ControllerBase
     }
 
     /// <summary>
-    /// Asks the AI for goals of the activiteit's leeftijd (FB-026, ADR-0053), replacing its open proposals. Whoever may
+    /// Asks the AI for goals of the activiteit's leeftijd (FB-026, ADR-0054), replacing its open proposals. Whoever may
     /// link its goals may ask. An unreadable model answer is a 422 with an English diagnostic and no change (Art. IV.5).
     /// </summary>
     [HttpPost("{activiteitId:guid}/doelsuggesties/genereer")]

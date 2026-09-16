@@ -44,6 +44,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         try
         {
             thema = new Thema(creatie.Naam, creatie.DuurWeken, creatie.Invalshoeken);
+            thema.WijzigIcoon(creatie.Icoon);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -120,7 +121,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                     + t.Subthemas.SelectMany(s => s.Activiteiten)
                         .Where(a => a.EigenaarId == null)
                         .SelectMany(a => a.Doelkoppelingen)
-                        // Decided links only: a proposal or a rejected goal is not built on (ADR-0053 D5).
+                        // Decided links only: a proposal or a rejected goal is not built on (ADR-0054 D5).
                         .Count(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel),
             })
             .ToListAsync(cancellationToken);
@@ -180,6 +181,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         {
             thema.WijzigNaam(wijziging.Naam);
             thema.WerkBasisGegevensBij(wijziging.DuurWeken, wijziging.Invalshoeken);
+            thema.WijzigIcoon(wijziging.Icoon);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -800,7 +802,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout($"Activiteit is al gekoppeld aan leerdoel '{code}'.");
         }
 
-        // ADR-0053 D6: a goal the AI proposed, or that was rejected, becomes a manual link when linked by hand.
+        // ADR-0054 D6: a goal the AI proposed, or that was rejected, becomes a manual link when linked by hand.
         if (bestaand is not null)
         {
             bestaand.MaakManueel();
@@ -1083,7 +1085,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
-        thema.Subthemas.Select(s => MapSubthema(s, lezer)).ToList());
+        thema.Subthemas.Select(s => MapSubthema(s, lezer)).ToList(),
+        thema.Icoon);
 
     private static ThemaBibliotheekItem MapBibliotheekItem(
         Thema thema,
@@ -1103,7 +1106,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         aantalAfgeleideKlassen,
         aantalSubthemas,
         aantalActiviteiten,
-        aantalDoelkoppelingen);
+        aantalDoelkoppelingen,
+        thema.Icoon);
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
         new(themadoel.Id, MapKoppeling(themadoel.Koppeling));

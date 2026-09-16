@@ -9,7 +9,7 @@ public sealed record GekeurdDoelvoorstel(string Code, string Motivatie);
 public sealed record ActiviteitDoelsuggestiePlan(IReadOnlyList<GekeurdDoelvoorstel> Voorstellen, int AantalOvergeslagen);
 
 /// <summary>
-/// Keeps only what ADR-0053 D3 allows of a readable answer, item by item, in the model's order: a candidate code, not on
+/// Keeps only what ADR-0054 D3 allows of a readable answer, item by item, in the model's order: a candidate code, not on
 /// the activiteit already, not mentioned before, and no more than the maximum. A pure function.
 /// </summary>
 public static class ActiviteitDoelsuggestieValidator
