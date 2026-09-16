@@ -84,7 +84,9 @@ export function Inklaplijst<T>({
 
   return (
     <div>
-      {/* The field shares the line from `sm` up; on a phone it takes a line of its own under the count. */}
+      {/* A small field at the right of the count line from `sm` up, beside its close button: it looks for one thing and
+          needs no more room than a word or a code (owner, 2026-09-16: "de zoekbalk is te groot"). On a phone it takes a
+          line of its own under the count. */}
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -106,10 +108,10 @@ export function Inklaplijst<T>({
         </button>
 
         {zoekOpen ? (
-          <div className="relative order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1">
+          <div className="relative order-last min-w-0 basis-full sm:order-none sm:ml-auto sm:w-56 sm:basis-auto">
             <IcoonZoek
               aria-hidden="true"
-              className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-inkt-zwak"
+              className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-inkt-zwak"
             />
             <Invoer
               autoFocus
@@ -126,7 +128,8 @@ export function Inklaplijst<T>({
                   sluitZoek();
                 }
               }}
-              className="h-9 min-h-9 pl-8 text-meta"
+              // Important: `Invoer` sets `h-raak`, which `cn` does not recognise as a height, so a plain `h-8` loses.
+              className="h-8! min-h-8 pl-7 pr-2 text-meta"
             />
           </div>
         ) : null}
@@ -138,7 +141,8 @@ export function Inklaplijst<T>({
           aria-expanded={zoekOpen}
           onClick={() => (zoekOpen ? sluitZoek() : zetZoekOpen(true))}
           className={cn(
-            "ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt",
+            zoekOpen ? "ml-auto sm:ml-0" : "ml-auto",
+            "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt",
           )}
         >
           {zoekOpen ? (
