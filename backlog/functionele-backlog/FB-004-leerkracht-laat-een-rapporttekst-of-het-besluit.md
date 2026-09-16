@@ -2,12 +2,12 @@
 id: FB-004
 titel: Leerkracht laat een rapporttekst of het besluit herwerken door AI
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 09:32
+opgepakt-door: rapport-herwerken
+branch: ticket/FB-004-rapporttekst-herwerken
 pr:
 geblokkeerd:
 fr: [FR-13.4]
@@ -87,3 +87,5 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-16 09:32 · eigenaar · nieuw → klaar-voor-bouw: eigenaar geeft groen licht om te bouwen tegen de fake AI-client; de echte AI-test volgt zodra er een Foundry-endpoint is
+- 2026-09-16 09:32 · rapport-herwerken · klaar-voor-bouw → in-uitvoering: opgepakt
