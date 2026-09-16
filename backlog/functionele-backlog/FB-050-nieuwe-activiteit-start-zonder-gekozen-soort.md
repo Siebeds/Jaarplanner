@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:26
+bijgewerkt: 2026-09-16 20:31
 opgepakt-door: claude-fb-050
 branch: ticket/FB-050-activiteit-zonder-soort
 pr:
@@ -59,3 +59,4 @@ Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu.
 - 2026-09-16 13:47 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 20:26 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: soort verplicht
 - 2026-09-16 20:26 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 20:31 · claude-fb-050 · Soortveld start leeg en is verplicht; Vitest (1003) en lint groen
