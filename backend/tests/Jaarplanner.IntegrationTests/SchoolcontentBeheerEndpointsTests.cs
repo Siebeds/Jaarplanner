@@ -134,9 +134,10 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         }
 
         var overzicht = await client.GetFromJsonAsync<JsonElement>($"/api/themas/{thema.Id}/doelenoverzicht");
-        var doelen = overzicht.GetProperty("leeftijden").EnumerateArray()
-            .SelectMany(l => l.GetProperty("leerplandoelen").EnumerateArray())
-            .ToList();
+        var leeftijden = overzicht.GetProperty("leeftijden").EnumerateArray().ToList();
+        // FB-044: leerplandoelen only; the thema's minimumdoelen are its themadoelen.
+        Assert.All(leeftijden, l => Assert.False(l.TryGetProperty("minimumdoelen", out _)));
+        var doelen = leeftijden.SelectMany(l => l.GetProperty("leerplandoelen").EnumerateArray()).ToList();
         var doel = Assert.Single(doelen);
         Assert.Equal("NL-001", doel.GetProperty("code").GetString());
         Assert.Equal("Themadoel", doel.GetProperty("plaatsen")[0].GetProperty("soort").GetString());

@@ -660,7 +660,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   });
 });
 
-describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
+describe("ThemadetailScherm: doelen per leeftijd, alleen leerplandoelen (FB-009, FB-044)", () => {
   const OVERZICHT: ThemaDoelenoverzicht = {
     themaId: "thema-1",
     leeftijden: [
@@ -688,53 +688,51 @@ describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
             plaatsen: [{ soort: "Themadoel", naam: null }],
           },
         ],
-        minimumdoelen: [{ ref: "K-7", leeftijd: "K-", nr: "7", omschrijving: "Getallen tot tien", leerplandoelen: ["WIS-1"] }],
       },
     ],
   };
 
   const leeftijdrij = () => screen.findByRole("button", { name: /^K3/, expanded: false });
-  const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
+  /** The list under the K3 row, once opened. */
+  const lijst = () => within(screen.getByRole("button", { name: /^K3/, expanded: true }).closest("li")!);
 
-  it("toont per leeftijd een ingeklapte rij met hoeveel leerplandoelen en minimumdoelen", async () => {
+  it("toont per leeftijd een ingeklapte rij die alleen leerplandoelen telt", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
 
     const rij = await leeftijdrij();
     expect(rij).toHaveTextContent(telWoord(2, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
-    expect(rij).toHaveTextContent(telWoord(1, "thema.overzichtEenMinimumdoel", "thema.overzichtMinimumdoelen"));
-    expect(screen.queryByRole("heading", { name: t("thema.overzichtLeerplandoelenTitel") })).toBeNull();
+    expect(rij).not.toHaveTextContent(/minimumdoel/i);
+    expect(screen.queryByRole("button", { name: /WIS-1/ })).toBeNull();
   });
 
-  it("toont opengeklapt waar elk leerplandoel hangt, en langs welke leerplandoelen een minimumdoel bereikt wordt", async () => {
+  it("toont opengeklapt alleen de leerplandoelen met waar ze hangen, zonder groep minimumdoelen", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
     fireEvent.click(await leeftijdrij());
 
-    const leerplandoelen = groep(t("thema.overzichtLeerplandoelenTitel"));
     const plaatsen = [
       t("thema.plaatsSubdoel", { naam: "Bladeren" }),
       telWoord(2, "thema.plaatsEenActiviteit", "thema.plaatsActiviteiten"),
     ].join(", ");
-    expect(within(leerplandoelen).getByRole("button", { name: /WIS-1/ })).toHaveTextContent(
-      t("thema.overzichtVia", { lijst: plaatsen }),
-    );
-    expect(within(leerplandoelen).getByRole("button", { name: /NED-1/ })).toHaveTextContent(
+    expect(lijst().getByRole("button", { name: /WIS-1/ })).toHaveTextContent(t("thema.overzichtVia", { lijst: plaatsen }));
+    expect(lijst().getByRole("button", { name: /NED-1/ })).toHaveTextContent(
       t("thema.overzichtVia", { lijst: t("thema.plaatsThemadoel") }),
     );
-    expect(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByRole("button", { name: /K-7/ })).toHaveTextContent(
-      t("thema.overzichtVia", { lijst: "WIS-1" }),
-    );
+    // Two rows, both leerplandoelen: no minimumdoel row and no heading for one.
+    expect(lijst().getAllByRole("listitem")).toHaveLength(2);
+    expect(lijst().queryByText("K-7")).toBeNull();
+    expect(lijst().queryByRole("heading")).toBeNull();
   });
 
-  it("opent een minimumdoel in het detailblad", async () => {
+  it("opent een leerplandoel in het detailblad", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
     fireEvent.click(await leeftijdrij());
 
-    fireEvent.click(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByRole("button", { name: /K-7/ }));
+    fireEvent.click(lijst().getByRole("button", { name: /WIS-1/ }));
 
-    expect(await screen.findByRole("dialog", { name: t("minimumdoel.titel") })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: t("doel.titel") })).toBeInTheDocument();
   });
 
-  it("noemt een aanvaarde doelsuggestie zo, en zegt het wanneer geen leerplandoel naar een minimumdoel leidt", async () => {
+  it("noemt een aanvaarde doelsuggestie zo, en nooit een themadoel", async () => {
     toon(DIRECTIE, {
       overzicht: {
         themaId: "thema-1",
@@ -751,18 +749,17 @@ describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
                 plaatsen: [{ soort: "Doelsuggestie", naam: null }],
               },
             ],
-            minimumdoelen: [],
           },
         ],
       },
     });
-    fireEvent.click(await leeftijdrij());
+    const rij = await leeftijdrij();
+    expect(rij).toHaveTextContent(telWoord(1, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
+    fireEvent.click(rij);
 
-    const regel = within(groep(t("thema.overzichtLeerplandoelenTitel"))).getByRole("button", { name: /TAAL-2/ });
+    const regel = lijst().getByRole("button", { name: /TAAL-2/ });
     expect(regel).toHaveTextContent(t("thema.overzichtVia", { lijst: t("thema.plaatsDoelsuggestie") }));
     expect(regel).not.toHaveTextContent(t("thema.plaatsThemadoel"));
-    expect(within(groep(t("thema.overzichtMinimumdoelenTitel"))).getByText(t("thema.overzichtGeenMinimumdoel")))
-      .toBeInTheDocument();
   });
 
   it("toont geen blok zolang het thema geen beslist gekoppelde doelen heeft", async () => {

@@ -121,7 +121,7 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Bereikt_minimumdoelen_via_de_concordantie_en_een_doel_zonder_ref_levert_er_geen()
+    public async Task Toont_alleen_leerplandoelen_elk_met_de_ref_van_zijn_minimumdoel()
     {
         var thema = new Thema("Herfst", 4);
         var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
@@ -137,10 +137,9 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
             Doel("A.3", "K3"));
 
         var k3 = Assert.Single(overzicht.Leeftijden);
-        Assert.Equal(3, k3.Leerplandoelen.Count);
-        var minimumdoel = Assert.Single(k3.Minimumdoelen);
-        Assert.Equal("K-7", minimumdoel.Ref);
-        Assert.Equal(["A.1", "A.2"], minimumdoel.Leerplandoelen);
+        // FB-044: the block lists leerplandoelen only; the minimumdoel stays reachable through each one's ref.
+        Assert.Equal(["A.1", "A.2", "A.3"], k3.Leerplandoelen.Select(l => l.Code));
+        Assert.Equal(["K-7", "K-7", null], k3.Leerplandoelen.Select(l => l.MinimumdoelRef));
     }
 
     [Fact]
