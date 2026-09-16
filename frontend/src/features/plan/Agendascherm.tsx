@@ -52,6 +52,8 @@ import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
 import { weekInBeeld } from "./weekInBeeld";
 import { leesWeergave, weergaveZoek, type Weergave } from "./weergave";
+import { overslagenWeekends, schuifWerkweek, werkweekbereik, werkweekdagen } from "./werkweek";
+import { Weekendaanwijzing } from "./Weekendaanwijzing";
 import { Activiteitblad } from "./Activiteitblad";
 import { Nieuweactiviteitblad } from "./Nieuweactiviteitblad";
 import { Subthemaplanner } from "./Subthemaplanner";
@@ -94,7 +96,7 @@ function leegteDag(datum: string) {
 }
 
 /**
- * The agenda: the school year as a calendar, opening on the week (FR-6.2, FR-7.2).
+ * The agenda: the school year as a calendar, opening on the werkweek (FR-6.2, FR-6.3, FR-7.2, FB-040).
  *
  * It used to be a screen per themaperiode, reached from a board of periods. The board is still
  * there, at /agenda/periodes, because placing a thema in a period and judging the generator's
@@ -195,10 +197,12 @@ export function Agendascherm() {
    *
    * Seven time columns need about 90 pixels each before a block can hold a name; on 390 pixels that is 50, which is
    * a column of truncated first letters. Three days is what every phone calendar settles on, and the month view,
-   * which does show a whole week at a glance, is one press away.
+   * which does show a whole week at a glance, is one press away. The werkweek shows five of the seven on a desktop and
+   * three weekdays on a phone (FB-040).
    */
   const breed = useMediaQuery(BREED);
-  const weekdagen = weergave === "week" && !breed ? 3 : 7;
+  const weekweergave = weergave === "week" || weergave === "werkweek";
+  const weekdagen = weekweergave && !breed ? 3 : 7;
   const vandaagBereikbaar = rooster ? valtBinnen(nu, rooster.start, rooster.eind) : false;
 
   /**
@@ -223,10 +227,18 @@ export function Agendascherm() {
     [rooster, anker],
   );
 
+  // The days the werkweek draws. Every other view draws the whole range it reads.
+  const werkdagenInBeeld = useMemo(
+    () => (weergave === "werkweek" && anker ? werkweekdagen(anker, weekdagen) : null),
+    [weergave, anker, weekdagen],
+  );
+
   // The range the current view needs. The server clamps it to the school year, so a month that
-  // starts before the first school day is a legal request rather than an error.
+  // starts before the first school day is a legal request rather than an error. A werkweek reads the whole weeks its
+  // days are in, so that the weekends it skips can be counted (FB-040).
   const [van, tot] = useMemo<[string, string]>(() => {
     if (!anker) return ["", ""];
+    if (werkdagenInBeeld) return werkweekbereik(werkdagenInBeeld);
     if (weergave === "maand") {
       // Whole weeks, so the grid is rectangular: back to the Monday on or before the first, and on
       // to the Sunday on or after the last.
@@ -242,7 +254,11 @@ export function Agendascherm() {
       return [maandag, verschuif(maandag, 6)];
     }
     return [anker, anker];
-  }, [anker, weergave, weekdagen]);
+  }, [anker, weergave, weekdagen, werkdagenInBeeld]);
+
+  // The first and last day on screen, which in a werkweek are not the ends of the range it reads.
+  const eersteInBeeld = werkdagenInBeeld?.[0] ?? van;
+  const laatsteInBeeld = werkdagenInBeeld?.[werkdagenInBeeld.length - 1] ?? tot;
 
   const { data: planning, isPending } = useWeekplanning(klasId, van, tot);
 
@@ -439,13 +455,30 @@ export function Agendascherm() {
   const zichtbareDagen = useMemo(
     () =>
       roosterdagen(
-        van.length > 0 ? datumsTussen(van, tot) : [],
+        werkdagenInBeeld ?? (van.length > 0 ? datumsTussen(van, tot) : []),
         planning?.dagen ?? [],
         rooster?.start ?? "",
         rooster?.eind ?? "",
       ),
-    [van, tot, planning, rooster],
+    [werkdagenInBeeld, van, tot, planning, rooster],
   );
+
+  /**
+   * The weekends the werkweek skips that hold something (FB-040), counted from the read of the whole weeks. Nothing
+   * until that read is in: a count from a read that has not answered would be a zero nobody measured.
+   */
+  const weekends = useMemo(() => {
+    if (!werkdagenInBeeld || !planning) return [];
+    const activiteitenOp = new Map(planning.dagen.map((dag) => [dag.datum, dag.activiteiten.length]));
+    const fichesOp = new Map<string, number>();
+    for (const blokje of ficheblokjes) fichesOp.set(blokje.datum, (fichesOp.get(blokje.datum) ?? 0) + 1);
+    return overslagenWeekends(
+      van,
+      tot,
+      (datum) => activiteitenOp.get(datum) ?? 0,
+      (datum) => fichesOp.get(datum) ?? 0,
+    );
+  }, [werkdagenInBeeld, planning, ficheblokjes, van, tot]);
 
   /**
    * Nothing here is a school day, so there is nothing to draw a grid of.
@@ -488,6 +521,7 @@ export function Agendascherm() {
     // A week view showing three days pages by three, so nothing is skipped and nothing repeats.
     if (weergave === "maand") ga({ datum: verschuifMaanden(anker, richting) });
     else if (weergave === "week") ga({ datum: verschuif(anker, richting * weekdagen) });
+    else if (weergave === "werkweek") ga({ datum: schuifWerkweek(anker, weekdagen, richting) });
     else ga({ datum: verschuif(anker, richting) });
   }
 
@@ -634,10 +668,14 @@ export function Agendascherm() {
   // The range the teacher is looking at, said big. It used to be meta text beside the arrows, which
   // made the one thing that changes when you press them the smallest thing on the screen.
   const ankerLabel =
-    weergave === "maand" ? maandJaar(anker) : weergave === "week" ? periodeTekst(van, tot) : volleDag(anker);
+    weergave === "maand"
+      ? maandJaar(anker)
+      : weekweergave
+        ? periodeTekst(eersteInBeeld, laatsteInBeeld)
+        : volleDag(anker);
 
   // Only where the days in view are one week: see `weekInBeeld`.
-  const weekNummer = weekInBeeld(weergave, van, tot);
+  const weekNummer = weekInBeeld(weergave, eersteInBeeld, laatsteInBeeld);
   const weekLabel = weekNummer === null ? null : t("periode.weeknummer", { nummer: weekNummer });
 
   const foutTekst = (fout: unknown) =>
@@ -674,6 +712,7 @@ export function Agendascherm() {
                 opties={[
                   { waarde: "maand", label: t("periode.maand") },
                   { waarde: "week", label: t("periode.week") },
+                  { waarde: "werkweek", label: t("periode.werkweek") },
                   { waarde: "dag", label: t("periode.dag") },
                 ]}
               />
@@ -883,6 +922,11 @@ export function Agendascherm() {
               />
             ) : (
               <>
+              {/* A skipped weekend opens in the week view, whose phone window then starts on its Saturday. */}
+              <Weekendaanwijzing
+                weekends={weekends}
+                onToonWeek={(zaterdag) => ga({ datum: zaterdag, weergave: "week", push: true })}
+              />
               {/* THE DAY AND THE WEEK ARE ONE GRID (ADR-0028), which is what makes them agree: they were a row of
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
@@ -902,7 +946,7 @@ export function Agendascherm() {
                 }}
                 onVanDag={vraagVanDag}
                 // In the week a column heading opens that day; in the day view it would go where it already is.
-                onKiesDag={weergave === "week" ? openDag : undefined}
+                onKiesDag={weekweergave ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
               />
               </>
