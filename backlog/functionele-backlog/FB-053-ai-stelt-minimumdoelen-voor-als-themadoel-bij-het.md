@@ -74,9 +74,8 @@ Beantwoord door de eigenaar op 2026-09-16:
   subthema's laat de gebruiker eerst kiezen, zoals nu. Lokaal telt mijlpaal K 208 minimumdoelen (ongeveer 11.000
   tokens), tegen ongeveer 37.000 tokens voor de K3-leerplandoelen van vandaag.
 
-Nog open:
-
-- **Welke mijlpaal hoort bij welk leerjaar** in de lagere school (de lokale databank kent de mijlpalen K, 4 en 6).
+- **Welke mijlpaal hoort bij welk leerjaar:** zoals de dekking al rekent (`Jaarfasen.MijlpalenVoor`, ADR-0047): de
+  kleuterjaren bij K, L1 tot L4 bij 4, L5 en L6 bij 6.
 
 ## Werklog
 
