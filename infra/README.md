@@ -1,8 +1,21 @@
 # infra — the Jaarplanner demo environment
 
 What this folder builds, and why, is [ADR-0034](../docs/adr/0034-demo-omgeving-op-azure.md). The environment is a
-**demo**: fictional data only, the owner's own test accounts, and no AI. Those are the conditions under which the owner
-waived E7-11's deployment clause (2026-09-13). Do not put a school's real data in it.
+**demo**: fictional data only, the owner's own test accounts, and AI only under a budget ceiling. Those are the
+conditions under which the owner waived E7-11's deployment clause (2026-09-13). Do not put a school's real data in it.
+
+## AI on the demo
+
+The demo calls the Claude API (`aiProvider` in `main.bicep`, default `Anthropic`; ADR-0048). The budget ceiling is the
+monthly spend limit on the Claude Console organisation or workspace that owns the key (owner, 2026-09-16). The key goes
+into the vault by hand and is never printed; the portal (Key Vault, *Secrets*, *Generate/Import*) keeps it out of the
+shell history:
+
+- secret name `Anthropic--ApiKey`, value the Claude API key;
+- then `az webapp restart -g rg-jaarplanner-demo -n jaarplanner-demo-<suffix>`, because the vault is read at startup.
+
+Without the secret the app still starts, and every AI button answers with an error. `aiProvider=` (empty) switches
+the demo back to Azure AI Foundry, which it does not configure: AI then fails the same way.
 
 ## What runs where
 

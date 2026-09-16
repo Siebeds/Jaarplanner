@@ -12,6 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The official Anthropic SDK, for the Claude API client chosen with Ai:Provider = Anthropic (TB-041, ADR-0048). -->
+    <PackageReference Include="Anthropic" Version="12.48.0" />
     <!-- Excel parsing for the Op.stap import (Art. VIII — ClosedXML/MIT; EPPlus is forbidden). -->
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <!-- Keeps the Data Protection keys that encrypt the session cookie in this database (E6-01, ADR-0031), so a

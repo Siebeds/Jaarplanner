@@ -215,11 +215,21 @@ public static class DependencyInjection
 
         // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
         // IAiClient interface (Application) so it is fakeable with no network in tests; the real
-        // implementation is the Azure AI Foundry client (Infrastructure, Art. VIII). Its key/endpoint
-        // are read from the server-side `AzureAI` config section only (user-secrets / Key Vault) —
-        // the key never reaches the frontend (Art. VI.4).
+        // implementation is picked by `Ai:Provider` (TB-041, ADR-0048): the Azure AI Foundry client by default, or the
+        // Claude API client. Each reads its key/endpoint from its own server-side config section only (user-secrets /
+        // Key Vault); the key never reaches the frontend (Art. VI.4).
         services.Configure<AzureAIOptions>(configuration.GetSection(AzureAIOptions.SectionName));
-        services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
+        services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
+        switch (AiProvider.Lees(configuration))
+        {
+            case AiProviderSoort.Anthropic:
+                // A plan generation can think for minutes; HttpClient's own 100-second default would cut it off.
+                services.AddHttpClient<IAiClient, AnthropicClaudeClient>(c => c.Timeout = TimeSpan.FromMinutes(10));
+                break;
+            default:
+                services.AddHttpClient<IAiClient, AzureAiFoundryClient>();
+                break;
+        }
 
         // The ceiling on a prompt's size (TB-007), shared by the matching and the thema-opbouw assist. Bound from the
         // `AiPrompt` section so it changes without a code change; a value under 1 stops the app at startup, where a
