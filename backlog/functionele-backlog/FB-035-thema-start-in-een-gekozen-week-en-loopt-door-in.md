@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 22:00
+bijgewerkt: 2026-09-16 22:51
 opgepakt-door: fb035-datums
 branch: ticket/FB-035-themas-met-datums
 pr:
@@ -152,3 +152,4 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 - 2026-09-15 15:29 · thema-overlap · aangemaakt (status nieuw)
 - 2026-09-16 22:00 · eigenaar · nieuw → klaar-voor-bouw: eigenaar: verfijnd in sessie 2026-09-16, thema's krijgen begin- en einddatum
 - 2026-09-16 22:00 · fb035-datums · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 22:51 · fb035-datums · Backend, migratie en tijdlijn gebouwd; unittests (1952) en frontendtests (1015) groen; integratietests lopen nog.
