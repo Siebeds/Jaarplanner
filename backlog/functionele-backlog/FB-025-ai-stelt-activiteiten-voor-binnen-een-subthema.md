@@ -2,12 +2,12 @@
 id: FB-025
 titel: AI stelt activiteiten voor binnen een subthema
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-17 00:19
+opgepakt-door: claude-fb025
+branch: ticket/FB-025-activiteitvoorstellen
 pr:
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
@@ -69,3 +69,4 @@ Vandaag bedenkt een leerkracht elke activiteit zelf. De AI doet niets onder een 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-17 00:19 · claude-fb025 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; grondwet mag aangepast worden zodat de AI activiteiten bedenkt
