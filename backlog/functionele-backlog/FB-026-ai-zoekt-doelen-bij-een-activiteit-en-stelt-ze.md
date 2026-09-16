@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 00:59
+bijgewerkt: 2026-09-17 01:17
 opgepakt-door: claude-fb026
 branch: ticket/FB-026-doelen-bij-activiteit
 pr:
@@ -83,3 +83,4 @@ Dit ticket neemt het activiteitendeel van story E8-07 over.
 - 2026-09-17 00:31 · claude-fb026 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-17 00:31 · claude-fb026 · Eigenaar besliste: alleen aanvaarde en manuele koppelingen houden het verwijderen door de maker tegen (R25); het maximum staat in de configuratie (standaard 5).
 - 2026-09-17 00:59 · claude-fb026 · Backend, migratie en formulier gebouwd; unit-, integratie- (579) en Vitest-tests groen.
+- 2026-09-17 01:17 · claude-fb026 · Browserpas (wegwerpdatabase, desktop en 390px): voorstellen tonen, aanvaarden en weigeren werken, het subdoelvoorstel verschijnt bij het subthema; main gemerged, ADR hernummerd naar 0053.

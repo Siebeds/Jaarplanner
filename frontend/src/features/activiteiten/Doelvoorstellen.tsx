@@ -74,7 +74,7 @@ export function Doelvoorstellen({
               />
             ))}
           </ul>
-          <p className="text-micro text-inkt-zacht">{t("doelvoorstel.subdoelUitleg")}</p>
+          <p className="text-meta text-inkt-zacht">{t("doelvoorstel.subdoelUitleg")}</p>
         </>
       ) : null}
     </div>

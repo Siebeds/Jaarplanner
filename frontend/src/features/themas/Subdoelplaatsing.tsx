@@ -211,7 +211,7 @@ export function Subdoelvoorstellen({
           </div>
           <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">{voorstel.aiMotivatie}</p>
           {voorstel.activiteitNaam ? (
-            <p className="mt-1.5 text-micro text-inkt-zacht">{t("plaatsing.viaActiviteit", { naam: voorstel.activiteitNaam })}</p>
+            <p className="mt-1.5 text-meta text-inkt-zacht">{t("plaatsing.viaActiviteit", { naam: voorstel.activiteitNaam })}</p>
           ) : null}
         </li>
       ))}
