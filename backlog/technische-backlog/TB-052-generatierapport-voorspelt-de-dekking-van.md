@@ -1,5 +1,5 @@
 ---
-id: TB-046
+id: TB-052
 titel: Generatierapport voorspelt de dekking van minimumdoelen in plaats van leerplandoelen
 soort: technisch
 status: nieuw
