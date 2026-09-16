@@ -7,7 +7,7 @@
  * a generic error.
  *
  * Loaded only from `main.tsx` when Vite runs in mode `mock`; a production build drops the import with its condition.
- * The label is developer tooling, not app copy, so its text lives here rather than in `nl.json`.
+ * The label is developer tooling that never ships, so it speaks English (Art. II.3) and stays out of `nl.json`.
  */
 import { beantwoord } from "./routes";
 import { beginToestand } from "./toestand";
@@ -30,7 +30,7 @@ function label(): { meld: (tekst: string) => void } {
   kader.className = "mockmodus-label";
   kader.setAttribute("role", "status");
   const titel = document.createElement("strong");
-  titel.textContent = "Mockmodus: vaste nepdata, herladen zet alles terug";
+  titel.textContent = "Mock mode: fixed fake data, a reload resets it";
   const lijst = document.createElement("ul");
   lijst.style.cssText = "margin:4px 0 0;padding-left:16px;max-height:30vh;overflow:auto";
   kader.append(titel, lijst);
@@ -42,7 +42,7 @@ function label(): { meld: (tekst: string) => void } {
       if (gemeld.has(tekst)) return;
       gemeld.add(tekst);
       const regel = document.createElement("li");
-      regel.textContent = `Niet nagebootst: ${tekst}`;
+      regel.textContent = `Not mocked: ${tekst}`;
       lijst.append(regel);
     },
   };

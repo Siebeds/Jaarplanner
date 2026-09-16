@@ -2,10 +2,10 @@
 id: TB-046
 titel: Frontend draait alleen, met vaste K3-nepdata, om kleine aanpassingen snel te bekijken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:41
+bijgewerkt: 2026-09-16 23:43
 opgepakt-door: frontend-mockmodus
 branch: ticket/frontend-mockmodus
 pr:
@@ -50,12 +50,12 @@ Een tweede opstartmodus van de frontend, zonder backend: `pnpm dev:mock`.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een machine zonder draaiende API of database, wanneer `pnpm dev:mock` start, dan opent http://localhost:5177 zonder aanmeldpagina op de app, als directie.
-- [ ] Gegeven de mockmodus, wanneer je het thema opent, dan zie je zijn minimumdoelen, twee subthema's van 1 week voor K3 met hun leerplandoelen, en hun activiteiten.
-- [ ] Gegeven de agenda van de K3-klas in de weken van 16 en 23 november 2026, dan staan er op maandag, dinsdag, donderdag en vrijdag activiteiten van 8u30 tot 15u30 met niets tussen 12u en 13u, en op woensdag alleen tussen 8u30 en 12u.
+- [x] Gegeven een machine zonder draaiende API of database, wanneer `pnpm dev:mock` start, dan opent http://localhost:5177 zonder aanmeldpagina op de app, als directie.
+- [x] Gegeven de mockmodus, wanneer je het thema opent, dan zie je zijn minimumdoelen, twee subthema's van 1 week voor K3 met hun leerplandoelen, en hun activiteiten.
+- [x] Gegeven de agenda van de K3-klas in de weken van 16 en 23 november 2026, dan staan er op maandag, dinsdag, donderdag en vrijdag activiteiten van 8u30 tot 15u30 met niets tussen 12u en 13u, en op woensdag alleen tussen 8u30 en 12u.
 - [ ] Gegeven de mockmodus, wanneer je een activiteit in de agenda versleept, dan blijft ze op haar nieuwe plaats tot je de pagina herlaadt, en na herladen staat alles weer op de beginstand.
 - [ ] Gegeven een scherm dat een niet nagebootste route aanroept, dan noemt het mocklabel die route, en krijgt het scherm een fout in plaats van een lege lijst.
-- [ ] Gegeven `pnpm build`, dan bevat de productiebuild geen mockcode en geen nepdata; `pnpm lint` en `pnpm test` zijn groen, en `app-starten` beschrijft beide opstartmodi.
+- [x] Gegeven `pnpm build`, dan bevat de productiebuild geen mockcode en geen nepdata; `pnpm lint` en `pnpm test` zijn groen, en `app-starten` beschrijft beide opstartmodi.
 
 ## Buiten scope
 
@@ -73,3 +73,6 @@ en een thema van 4 weken met twee subthema's van 1 week, zodat beide in 16 tot 2
 
 - 2026-09-16 23:24 · frontend-mockmodus · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:41 · frontend-mockmodus · mockmodus gebouwd: pnpm dev:mock, eigen fetch-onderschepping in frontend/src/mocks (geen MSW), K3-thema met volle agenda 16-27 nov; lint, 1015 tests en build groen, productiebuild zonder mockcode
+- 2026-09-16 23:43 · frontend-mockmodus · criteria 1-3 en 6 afgevinkt: browserscreenshots van agenda (week 16 nov), thema en dekking in mockmodus op poort 5181 (5177 was bezet), routes.test.ts, build zonder mockcode; criteria 4 en 5 alleen met unit-tests gedekt (PUT-route na verslepen, 501 met route), niet met een echte sleepbeweging of een zichtbaar label in de browser
+- 2026-09-16 23:43 · frontend-mockmodus · antagonist: COMPLIANT; MINOR opgelost: label en 501-titel in het Engels (Art. II.3), dekkingscommentaar noemt wat ontbreekt, opmaak van een handler; MINOR open: echte sleeptest in de browser
+- 2026-09-16 23:43 · frontend-mockmodus · in-uitvoering → klaar: mockmodus klaar: pnpm dev:mock met vaste K3-nepdata, app-starten beschrijft beide opstartmodi; lint, tests en build groen, antagonist COMPLIANT

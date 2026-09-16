@@ -503,11 +503,15 @@ const TABEL: [Methode, string, Handler][] = [
       return leeg;
     },
   ],
-  ["GET", "/api/subthemas/:subthemaId/hoekverrijkingen/aantal", (v) => {
-    const { subthema } = subthemaVan(v);
-    const periodes = v.s.periodes.filter((p) => p.subthemaId === subthema.id);
-    return { aantal: periodes.reduce((som, p) => som + Object.keys(v.s.verrijkingen[p.id] ?? {}).length, 0) };
-  }],
+  [
+    "GET",
+    "/api/subthemas/:subthemaId/hoekverrijkingen/aantal",
+    (v) => {
+      const { subthema } = subthemaVan(v);
+      const periodes = v.s.periodes.filter((p) => p.subthemaId === subthema.id);
+      return { aantal: periodes.reduce((som, p) => som + Object.keys(v.s.verrijkingen[p.id] ?? {}).length, 0) };
+    },
+  ],
 
   // Activiteiten
   [
@@ -856,5 +860,5 @@ export function beantwoord(s: Toestand, methode: string, url: URL, body: unknown
       return probleem(500, "Fout in de mockmodus", String(fout));
     }
   }
-  return probleem(501, "Niet nagebootst in de mockmodus", `${methode} ${url.pathname}`);
+  return probleem(501, "Not mocked", `${methode} ${url.pathname}`);
 }

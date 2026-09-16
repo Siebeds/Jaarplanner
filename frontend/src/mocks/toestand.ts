@@ -695,7 +695,8 @@ export function ficheplaatsingen(): AlgemeneFicheplaatsingWeergave[] {
 /**
  * A simplified dekking: a leerplandoel is in the prognose through a subdoel of a subthema at the klas's age, and gedekt
  * once that subthema has a period or an activiteit in the agenda. A minimumdoel is in the prognose through its thema and
- * gedekt once that thema is placed.
+ * gedekt once that thema is placed. Left out: algemene fiches (none is planned in the mock), doelsuggesties and stale
+ * placements, so `isBetrouwbaar` is always true. Not the server's calculation: never read a mock figure as a real one.
  */
 function dekkingsdoelen(t: Toestand, klas: Toestand["klassen"][number]) {
   const ingepland = new Set([
