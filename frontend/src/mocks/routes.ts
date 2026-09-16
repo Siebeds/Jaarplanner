@@ -655,7 +655,14 @@ const TABEL: [Methode, string, Handler][] = [
       const thema = themaVan(v, String(v.body.themaId));
       const blokStart = String(v.body.blokStart);
       if (!t.bestaatBlok(blokStart)) throw new Fout(400, `Er begint geen themaperiode op ${blokStart}.`);
-      v.s.plaatsingen.push({ id: t.nieuwId(), themaId: thema.id, blokStart, status: "Manueel", vergrendeld: false });
+      v.s.plaatsingen.push({
+        id: t.nieuwId(),
+        themaId: thema.id,
+        blokStart,
+        weken: thema.duurWeken,
+        status: "Manueel",
+        vergrendeld: false,
+      });
       return t.jaarplan(v.s, klas);
     },
   ],
