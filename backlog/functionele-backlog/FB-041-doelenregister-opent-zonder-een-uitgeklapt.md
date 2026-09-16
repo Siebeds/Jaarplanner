@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:40
+bijgewerkt: 2026-09-16 15:07
 opgepakt-door: claude-fb-041
 branch: ticket/FB-041-register-ingeklapt
-pr:
+pr: 109
 geblokkeerd:
 fr: [FR-2.2]
 ---
@@ -62,3 +62,4 @@ Welke filter standaard actief is bij het binnenkomen: dat blijft zoals nu.
 - 2026-09-16 14:32 · claude-fb-041 · registers openen volledig ingeklapt, ook na een filter of zoekterm; Vitest (968) en lint groen
 - 2026-09-16 14:33 · claude-fb-041 · antagonist: COMPLIANT, geen blokkerende bevindingen; één MINOR (test op textContent)
 - 2026-09-16 14:40 · claude-fb-041 · in-uitvoering → te-testen: gebouwd: registers openen altijd ingeklapt, ook na zoeken of filteren; browsercheck PASS op desktop en 390px (backlog/worklogs/FB-041), Vitest 968 en lint groen, antagonist COMPLIANT
+- 2026-09-16 15:07 · claude-fb-041 · PR #109
