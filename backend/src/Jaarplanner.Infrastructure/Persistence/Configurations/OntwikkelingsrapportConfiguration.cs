@@ -35,6 +35,10 @@ public sealed class OntwikkelingsrapportConfiguration : IEntityTypeConfiguration
         builder.Property(r => r.Besluit).HasMaxLength(Rapportentiteit.MaxBesluitLengte);
         builder.Property(r => r.BesluitStatus).HasConversion<string>().HasMaxLength(16);
 
+        // The rejected-rewrite mark (FB-004, R23): a flag, never the text that was proposed. Non-null with a false
+        // default, so every row written before FB-004 reads as "no rewrite was rejected", which is what was true.
+        builder.Property(r => r.BesluitHerschrijvingGeweigerd).IsRequired().HasDefaultValue(false);
+
         builder.HasIndex(r => new { r.LeerlingId, r.Moment }).IsUnique();
 
         builder.HasOne<Leerling>()
@@ -70,6 +74,7 @@ public sealed class RapportbeoordelingConfiguration : IEntityTypeConfiguration<R
 
         builder.Property(b => b.Tekst).HasMaxLength(Rapportentiteit.MaxTekstLengte);
         builder.Property(b => b.TekstStatus).HasConversion<string>().HasMaxLength(16);
+        builder.Property(b => b.HerschrijvingGeweigerd).IsRequired().HasDefaultValue(false);
 
         builder.HasIndex(b => b.RapportdoelId);
         builder.HasIndex(b => b.GradatieId);

@@ -17,6 +17,8 @@ import { RapportScherm } from "./RapportScherm";
 
 const KLAS = "k3-blauw";
 const KIND = "kind-1";
+/** The seal the fake server puts on a proposal, so a test can see it go back with the decision (FB-004, D13). */
+const ZEGEL = "zegel-van-de-server";
 
 const GRADATIES: Gradatie[] = [
   { id: "g-volledig", label: "Volledig bereikt", kleur: "Groen", volgorde: 1 },
@@ -88,7 +90,14 @@ function toon(
     weiger = false,
     begin,
     tekeningAntwoord,
-  }: { moment?: number; weiger?: boolean; begin?: Rapport; tekeningAntwoord?: () => Response } = {},
+    herschrijfAntwoord,
+  }: {
+    moment?: number;
+    weiger?: boolean;
+    begin?: Rapport;
+    tekeningAntwoord?: () => Response;
+    herschrijfAntwoord?: () => Response;
+  } = {},
 ) {
   const rapporten = new Map<number, Rapport>([1, 2, 3].map((m) => [m, m === 1 && begin ? begin : leegRapport(m)]));
   const verzoeken: Verzoek[] = [];
@@ -121,6 +130,14 @@ function toon(
         rapporten.set(huidig.moment, { ...huidig, tekening: null });
         return new Response(null, { status: 204 });
       }
+
+      // The AI rewrite (FB-004). The proposal is made up here; what the seal means is the server's, and the C# tests
+      // hold that. What these tests watch is what the screen sends and shows.
+      if (methode === "POST" && rest === "/herschrijvingen") {
+        if (herschrijfAntwoord) return herschrijfAntwoord();
+        return json({ voorstel: `Herwerkt: ${String(lichaam?.tekst ?? "")}`, herschrijving: ZEGEL });
+      }
+      if (methode === "POST" && rest === "/herschrijvingen/geweigerd") return new Response(null, { status: 204 });
 
       const doel = /^\/rapportdoelen\/(.+)$/.exec(rest);
       if (methode === "PUT" && doel) {
@@ -161,6 +178,7 @@ function toon(
 }
 
 const puts = (verzoeken: Verzoek[]) => verzoeken.filter((verzoek) => verzoek.methode === "PUT");
+const posts = (verzoeken: Verzoek[]) => verzoeken.filter((verzoek) => verzoek.methode === "POST");
 const sterren = (titel: string) => screen.getByRole("group", { name: t("ontwikkelingsrapport.sterVoor", { titel }) });
 const tekstvak = (titel: string) => screen.getByRole("textbox", { name: t("ontwikkelingsrapport.tekstBij", { titel }) });
 const besluitvak = () => screen.getByRole("textbox", { name: t("ontwikkelingsrapport.besluit") });
@@ -456,5 +474,170 @@ describe("RapportScherm, het ontwikkelingsrapport van een kind", () => {
     expect(await screen.findByText(t("ontwikkelingsrapport.bewaard"))).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(puts(verzoeken).length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// --- The AI rewrite of one text (FB-004, R21 to R25). ---
+
+const MET_TEKST: Rapport = {
+  ...leegRapport(1),
+  rapportdoelen: [{ ...LUISTEREN, tekst: "Fien luistert graag.", tekstStatus: "Manueel" }, TELLEN],
+};
+
+const herschrijfknop = (titel: string) =>
+  screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijvenBij", { titel }) });
+const voorstelvak = () => screen.getByRole("textbox", { name: t("ontwikkelingsrapport.herschrijfVoorstel") });
+
+describe("RapportScherm, een tekst laten herwerken door AI", () => {
+  it("biedt het herwerken pas aan als er een eigen tekst staat", async () => {
+    toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    // The AI reworks a text; it never writes one, so an empty rapportdoel has no button at all.
+    expect(herschrijfknop(LUISTEREN.titel)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: t("ontwikkelingsrapport.herschrijvenBij", { titel: TELLEN.titel }) }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(tekstvak(TELLEN.titel), { target: { value: "Zij telt tot tien." } });
+    expect(
+      screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijvenBij", { titel: TELLEN.titel }) }),
+    ).toBeInTheDocument();
+  });
+
+  it("toont bij de knop de melding over de namen, en daarna de oude en de nieuwe tekst naast elkaar", async () => {
+    const verzoeken = toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+
+    // R25: the notice is there from the click, before she sees anything to decide about.
+    expect(screen.getByText(t("ontwikkelingsrapport.herschrijfNamen"))).toBeInTheDocument();
+
+    expect(await screen.findByText("Herwerkt: Fien luistert graag.")).toBeInTheDocument();
+    // Both texts stand in the panel itself, side by side; the teacher's own field keeps its copy above it.
+    const paneel = within(screen.getByText(t("ontwikkelingsrapport.herschrijfNamen")).parentElement!);
+    expect(paneel.getByText(t("ontwikkelingsrapport.herschrijfEigen"))).toBeInTheDocument();
+    expect(paneel.getByText("Fien luistert graag.")).toBeInTheDocument();
+
+    // R21: only that one text left the browser.
+    const gevraagd = posts(verzoeken).find((verzoek) => verzoek.pad.endsWith("/herschrijvingen"))!;
+    expect(gevraagd.lichaam).toEqual({ rapportdoelId: LUISTEREN.rapportdoelId, tekst: "Fien luistert graag." });
+
+    // R24: the two texts, and no explanation beside them.
+    expect(screen.queryByText(/motivatie/i)).not.toBeInTheDocument();
+  });
+
+  it("overnemen bewaart het voorstel met het zegel van de server", async () => {
+    const verzoeken = toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+    await screen.findByText("Herwerkt: Fien luistert graag.");
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijfOvernemen") }));
+
+    await waitFor(() => expect(tekstvak(LUISTEREN.titel)).toHaveValue("Herwerkt: Fien luistert graag."));
+    const bewaard = puts(verzoeken).at(-1)!;
+    expect(bewaard.lichaam).toMatchObject({ tekst: "Herwerkt: Fien luistert graag.", herschrijving: ZEGEL });
+
+    // The panel is gone: a decided proposal has nowhere left to live.
+    expect(screen.queryByText(t("ontwikkelingsrapport.herschrijfNamen"))).not.toBeInTheDocument();
+  });
+
+  it("een eerst aangepast voorstel gaat mee zoals de leerkracht het maakte, met hetzelfde zegel", async () => {
+    // The server decides from the seal that this is no longer its own text, and stores it as manueel (D13). The screen
+    // does not decide that itself, so it sends the seal either way.
+    const verzoeken = toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+    await screen.findByText("Herwerkt: Fien luistert graag.");
+    fireEvent.change(voorstelvak(), { target: { value: "Zij luistert aandachtig naar een verhaal." } });
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijfOvernemen") }));
+
+    await waitFor(() => expect(tekstvak(LUISTEREN.titel)).toHaveValue("Zij luistert aandachtig naar een verhaal."));
+    expect(puts(verzoeken).at(-1)!.lichaam).toMatchObject({
+      tekst: "Zij luistert aandachtig naar een verhaal.",
+      herschrijving: ZEGEL,
+    });
+  });
+
+  it("weigeren laat de eigen tekst staan en stuurt de voorgestelde tekst niet mee", async () => {
+    const verzoeken = toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+    await screen.findByText("Herwerkt: Fien luistert graag.");
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijfWeigeren") }));
+
+    await waitFor(() => expect(screen.queryByText("Herwerkt: Fien luistert graag.")).not.toBeInTheDocument());
+    expect(tekstvak(LUISTEREN.titel)).toHaveValue("Fien luistert graag.");
+
+    // R23: only the decision goes to the server, never the text that was proposed.
+    const geweigerd = posts(verzoeken).find((verzoek) => verzoek.pad.endsWith("/herschrijvingen/geweigerd"))!;
+    expect(geweigerd.lichaam).toEqual({ rapportdoelId: LUISTEREN.rapportdoelId, herschrijving: ZEGEL });
+    expect(JSON.stringify(geweigerd.lichaam)).not.toContain("Herwerkt");
+    // And the rejection is not a save: the text was not written again.
+    expect(puts(verzoeken)).toHaveLength(0);
+  });
+
+  it("zegt het in het Nederlands als de AI niet antwoordt, en laat de eigen tekst staan", async () => {
+    // What every environment without AI settings does today: the server answers 503 with an English diagnostic.
+    toon(LEERKRACHT, {
+      begin: MET_TEKST,
+      herschrijfAntwoord: () => json({ detail: "The AI client failed with InvalidOperationException." }, 503),
+    });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.herschrijfGeenAntwoord"));
+    // The operator's English never reaches the teacher.
+    expect(screen.queryByText(/InvalidOperationException/)).not.toBeInTheDocument();
+    expect(tekstvak(LUISTEREN.titel)).toHaveValue("Fien luistert graag.");
+
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijfSluiten") }));
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("zegt het in het Nederlands als de AI een onbruikbaar antwoord geeft", async () => {
+    toon(LEERKRACHT, {
+      begin: MET_TEKST,
+      herschrijfAntwoord: () => json({ detail: "Malformed JSON: unexpected token." }, 422),
+    });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(t("ontwikkelingsrapport.herschrijfOnbruikbaar"));
+    expect(screen.queryByText(/Malformed JSON/)).not.toBeInTheDocument();
+  });
+
+  it("het algemeen besluit wordt op dezelfde manier herwerkt", async () => {
+    const verzoeken = toon(LEERKRACHT, { begin: { ...leegRapport(1), besluit: "Fien groeit mooi.", besluitStatus: "Manueel" } });
+    await screen.findByRole("heading", { name: t("ontwikkelingsrapport.besluit") });
+
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijvenBesluit") }));
+    await screen.findByText("Herwerkt: Fien groeit mooi.");
+    fireEvent.click(screen.getByRole("button", { name: t("ontwikkelingsrapport.herschrijfOvernemen") }));
+
+    await waitFor(() => expect(besluitvak()).toHaveValue("Herwerkt: Fien groeit mooi."));
+    expect(posts(verzoeken).at(0)!.lichaam).toEqual({ rapportdoelId: null, tekst: "Fien groeit mooi." });
+    expect(puts(verzoeken).at(-1)!.lichaam).toMatchObject({ tekst: "Herwerkt: Fien groeit mooi.", herschrijving: ZEGEL });
+  });
+
+  it("wie het rapport alleen mag lezen krijgt geen knop om te laten herwerken", async () => {
+    toon(LEERKRACHT_VOORBIJ, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    expect(screen.getByText(t("ontwikkelingsrapport.rapportAlleenLezen"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /herwerken/i })).not.toBeInTheDocument();
+  });
+
+  it("directie mag een tekst laten herwerken", async () => {
+    toon(DIRECTIE, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    expect(herschrijfknop(LUISTEREN.titel)).toBeInTheDocument();
   });
 });

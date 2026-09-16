@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Ontwikkelingsrapport;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Ontwikkelingsrapport;
@@ -33,13 +34,30 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
     /// <summary>No star of the scale has this id; as above, the sentence claims no more than the lookup proves.</summary>
     internal const string OnbekendeGradatie = "Deze ster is niet gevonden in de sterrenschaal. Vernieuw de pagina en kies opnieuw.";
 
+    /// <summary>There is nothing to rewrite: the AI reworks a text the teacher wrote, it never writes one (FB-004).</summary>
+    internal const string GeenTekstOmTeHerschrijven = "Typ eerst zelf een tekst. Daarna kan de AI ze herwerken.";
+
+    /// <summary>
+    /// The seal of a rejected proposal is not this server's, or not this field's, or too old (D13). The sentence names
+    /// the one cause a teacher can act on, and the way out is the same for all three.
+    /// </summary>
+    internal const string ZegelKloptNiet = "Dit voorstel is verlopen. Vraag een nieuw voorstel.";
+
     private readonly AppDbContext _db;
     private readonly IRapportsetService _rapportset;
+    private readonly IAiClient _ai;
+    private readonly IHerschrijfZegel _zegel;
 
-    public OntwikkelingsrapportService(AppDbContext db, IRapportsetService rapportset)
+    public OntwikkelingsrapportService(
+        AppDbContext db,
+        IRapportsetService rapportset,
+        IAiClient ai,
+        IHerschrijfZegel zegel)
     {
         _db = db;
         _rapportset = rapportset;
+        _ai = ai;
+        _zegel = zegel;
     }
 
     public async Task<RapportWeergave> HaalRapportOpAsync(
@@ -121,11 +139,12 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
         }
 
         var tekst = KeurTekst(invoer?.Tekst, Rapportentiteit.MaxTekstLengte, "Een tekst");
+        var herkomst = Herkomst(new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId), tekst, invoer?.Herschrijving);
 
         var rij = await SchrijfAsync(
             leerlingId,
             moment1tot3,
-            rapport => rapport.ZetBeoordeling(rapportdoelId, gradatieId, tekst),
+            rapport => rapport.ZetBeoordeling(rapportdoelId, gradatieId, tekst, herkomst),
             cancellationToken);
 
         return new BeoordelingWeergave(rapportdoelId, rij?.GradatieId, rij?.Tekst, rij?.TekstStatus);
@@ -140,19 +159,152 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
         var moment1tot3 = KeurMoment(moment);
         await VereisKindAsync(leerlingId, cancellationToken);
         var tekst = KeurTekst(invoer?.Tekst, Rapportentiteit.MaxBesluitLengte, "Een algemeen besluit");
+        var herkomst = Herkomst(new Herschrijfdoel(leerlingId, moment1tot3, null), tekst, invoer?.Herschrijving);
 
         var rapport = await SchrijfAsync(
             leerlingId,
             moment1tot3,
             rapport =>
             {
-                rapport.ZetBesluit(tekst);
+                rapport.ZetBesluit(tekst, herkomst);
                 return rapport;
             },
             cancellationToken);
 
         return new BesluitWeergave(rapport.Besluit, rapport.BesluitStatus);
     }
+
+    public async Task<HerschrijfResultaat> StelHerschrijvingVoorAsync(
+        Guid leerlingId,
+        int moment,
+        Guid? rapportdoelId,
+        string? tekst,
+        CancellationToken cancellationToken = default)
+    {
+        var moment1tot3 = KeurMoment(moment);
+        var klasId = await _db.Leerlingen
+            .AsNoTracking()
+            .Where(leerling => leerling.Id == leerlingId)
+            .Select(leerling => (Guid?)leerling.KlasId)
+            .SingleOrDefaultAsync(cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout(LeerlingBeheerService.KindBestaatNiet);
+
+        if (rapportdoelId is { } doelId && !await _db.Rapportdoelen.AnyAsync(r => r.Id == doelId, cancellationToken))
+        {
+            throw new SchoolcontentNietGevondenFout(RapportdoelNietGevonden);
+        }
+
+        // The besluit and a rapportdoel's text have their own limits, and the answer is held to the same one: a rewrite
+        // the field cannot take is no proposal.
+        var max = rapportdoelId is null ? Rapportentiteit.MaxBesluitLengte : Rapportentiteit.MaxTekstLengte;
+        var bron = KeurTekst(tekst, max, rapportdoelId is null ? "Een algemeen besluit" : "Een tekst")
+            ?? throw new SchoolcontentValidatieFout(GeenTekstOmTeHerschrijven);
+
+        // Every child of the klas, not only this one (R21): a text about one child often names another.
+        var namen = await _db.Leerlingen
+            .AsNoTracking()
+            .Where(leerling => leerling.KlasId == klasId)
+            .Select(leerling => new { leerling.Voornaam, leerling.Achternaam })
+            .ToListAsync(cancellationToken);
+        var masker = Naamvervanging.Maskeer(bron, namen.SelectMany(kind => new[] { kind.Voornaam, kind.Achternaam }));
+
+        AiCompletion antwoord;
+        try
+        {
+            antwoord = await _ai.CompleteAsync(HerschrijfPromptBuilder.Bouw(masker.Tekst), cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // The teacher navigated away or the request was cut off: not a failure to report to her.
+            throw;
+        }
+        catch (Exception fout)
+        {
+            // Caught as a whole, and the diagnostic names the type and nothing else. A message from an AI call can carry
+            // a piece of the request or the answer, and both are pupil data that may never reach a log or a response
+            // body (ADR-0035 §3.8). Not configured, unreachable, refusing and malformed all land here, and all mean the
+            // same to the teacher: no proposal, her own text untouched.
+            return HerschrijfResultaat.Mislukt(
+                Herschrijfmislukking.AiOnbereikbaar,
+                $"The AI client failed with {fout.GetType().Name}.");
+        }
+
+        var parse = HerschrijfResponseParser.Parse(antwoord, max);
+        if (!parse.IsGeldig)
+        {
+            return HerschrijfResultaat.Mislukt(Herschrijfmislukking.OnbruikbaarAntwoord, parse.Fout!);
+        }
+
+        if (!Naamvervanging.HeeftPreciesDeze(parse.Tekst!, masker.Plaatshouders))
+        {
+            // A dropped placeholder loses a child's name from the text; an invented one would put a name where the
+            // teacher wrote none. Either refuses the answer as a whole (Art. IV.5).
+            return HerschrijfResultaat.Mislukt(
+                Herschrijfmislukking.OnbruikbaarAntwoord,
+                "The rewritten text does not carry exactly the name placeholders it was sent.");
+        }
+
+        // Putting the names back can make the text longer than the placeholders were, so the limit is checked again on
+        // what the teacher would actually be offered to save.
+        var voorstel = Naamvervanging.Herstel(parse.Tekst!, masker.Plaatshouders);
+        if (voorstel.Length > max)
+        {
+            return HerschrijfResultaat.Mislukt(
+                Herschrijfmislukking.OnbruikbaarAntwoord,
+                $"With the names put back, the rewritten text is longer than the {max} characters the field takes.");
+        }
+
+        var doel = new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId);
+        return HerschrijfResultaat.Geslaagd(voorstel, _zegel.Onderteken(doel, voorstel));
+    }
+
+    public async Task WeigerHerschrijvingAsync(
+        Guid leerlingId,
+        int moment,
+        Guid? rapportdoelId,
+        string? zegel,
+        CancellationToken cancellationToken = default)
+    {
+        var moment1tot3 = KeurMoment(moment);
+        await VereisKindAsync(leerlingId, cancellationToken);
+
+        if (zegel is null || !_zegel.Klopt(new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId), null, zegel))
+        {
+            throw new SchoolcontentValidatieFout(ZegelKloptNiet);
+        }
+
+        // Loaded rather than made: a rejection is never a first write. A report exists here in every real case, because
+        // a proposal was made for a text that was in it; if it is gone, there is nothing left to mark and an empty
+        // report may not be created for the mark's sake.
+        var rapport = await _db.Ontwikkelingsrapporten
+            .Include(r => r.Beoordelingen)
+            .SingleOrDefaultAsync(r => r.LeerlingId == leerlingId && r.Moment == moment1tot3, cancellationToken);
+        if (rapport is null)
+        {
+            return;
+        }
+
+        if (rapportdoelId is { } doelId)
+        {
+            rapport.WeigerHerschrijving(doelId);
+        }
+        else
+        {
+            rapport.WeigerBesluitHerschrijving();
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Who wrote the text that is about to be stored (D13). <see cref="Tekststatus.Aanvaard"/> only when the server
+    /// recognises its own seal over exactly this text, so an edited proposal, a stale seal and a made-up one are all
+    /// <see cref="Tekststatus.Manueel"/>, which is what a text the teacher shaped is.
+    /// </summary>
+    private Tekststatus Herkomst(Herschrijfdoel doel, string? tekst, string? zegel) =>
+        tekst is not null && zegel is not null && _zegel.Klopt(doel, tekst, zegel)
+            ? Tekststatus.Aanvaard
+            : Tekststatus.Manueel;
 
     /// <summary>
     /// Applies <paramref name="wijziging"/> to the child's report at the moment, making the report on the first write.

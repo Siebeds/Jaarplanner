@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-16 09:32
+bijgewerkt: 2026-09-16 10:02
 opgepakt-door: rapport-herwerken
 branch: ticket/FB-004-rapporttekst-herwerken
 pr:
@@ -89,3 +89,4 @@ Geen.
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
 - 2026-09-16 09:32 · eigenaar · nieuw → klaar-voor-bouw: eigenaar geeft groen licht om te bouwen tegen de fake AI-client; de echte AI-test volgt zodra er een Foundry-endpoint is
 - 2026-09-16 09:32 · rapport-herwerken · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 10:02 · rapport-herwerken · backend klaar: naamvervanging (D14), promptbouwer, antwoordvalidatie, zegel over Data Protection (D13), routes en migratie; 1870 unit tests groen, dotnet format schoon

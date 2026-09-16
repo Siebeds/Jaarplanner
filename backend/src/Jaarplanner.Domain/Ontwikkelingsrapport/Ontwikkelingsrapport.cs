@@ -57,20 +57,54 @@ public sealed class Ontwikkelingsrapport
     /// <summary>Who wrote <see cref="Besluit"/>; <c>null</c> exactly when there is none.</summary>
     public Tekststatus? BesluitStatus { get; private set; }
 
+    /// <summary>
+    /// That an AI rewrite of <see cref="Besluit"/> was rejected (FB-004, R23), kept without the text that was proposed
+    /// for it. The besluit's own <see cref="Rapportbeoordeling.HerschrijvingGeweigerd"/>, with the same rule: a besluit
+    /// that changes clears it.
+    /// </summary>
+    public bool BesluitHerschrijvingGeweigerd { get; private set; }
+
     /// <summary>The rapportdoelen rated so far. A rapportdoel without a row has no star and no text yet.</summary>
     public IReadOnlyList<Rapportbeoordeling> Beoordelingen => _beoordelingen;
 
     /// <summary>
-    /// Sets the algemeen besluit. Blank clears it. A besluit that changes becomes <see cref="Tekststatus.Manueel"/>; an
-    /// unchanged one keeps its status.
+    /// Sets the algemeen besluit. Blank clears it. A besluit that changes takes <paramref name="herkomst"/>
+    /// (<see cref="Tekststatus.Aanvaard"/> only for an AI rewrite accepted unchanged, FB-004); an unchanged one keeps its
+    /// status.
     /// </summary>
-    public void ZetBesluit(string? tekst)
+    public void ZetBesluit(string? tekst, Tekststatus herkomst = Tekststatus.Manueel)
     {
         var nieuw = Keur(tekst, MaxBesluitLengte, nameof(tekst));
         if (!string.Equals(Besluit, nieuw, StringComparison.Ordinal))
         {
             Besluit = nieuw;
-            BesluitStatus = nieuw is null ? null : Tekststatus.Manueel;
+            BesluitStatus = nieuw is null ? null : herkomst;
+            BesluitHerschrijvingGeweigerd = false;
+        }
+    }
+
+    /// <summary>
+    /// Records that a rewrite proposed for the algemeen besluit was rejected (R23). Nothing of the proposal is kept. It
+    /// does nothing when there is no besluit to have proposed one for.
+    /// </summary>
+    public void WeigerBesluitHerschrijving()
+    {
+        if (Besluit is not null)
+        {
+            BesluitHerschrijvingGeweigerd = true;
+        }
+    }
+
+    /// <summary>
+    /// Records that a rewrite proposed for one rapportdoel's text was rejected (R23). It does nothing when that
+    /// rapportdoel has no text on this report: the text a proposal was meant for is gone, so there is nothing to mark.
+    /// </summary>
+    public void WeigerHerschrijving(Guid rapportdoelId)
+    {
+        var rij = _beoordelingen.Find(b => b.RapportdoelId == rapportdoelId);
+        if (rij?.Tekst is not null)
+        {
+            rij.WeigerHerschrijving();
         }
     }
 
@@ -79,7 +113,11 @@ public sealed class Ontwikkelingsrapport
     /// or a rapportdoel only while it shows one (D1).
     /// </summary>
     /// <returns>The row as it now stands, or <c>null</c> when it was removed or never made.</returns>
-    public Rapportbeoordeling? ZetBeoordeling(Guid rapportdoelId, Guid? gradatieId, string? tekst)
+    public Rapportbeoordeling? ZetBeoordeling(
+        Guid rapportdoelId,
+        Guid? gradatieId,
+        string? tekst,
+        Tekststatus herkomst = Tekststatus.Manueel)
     {
         if (rapportdoelId == Guid.Empty)
         {
@@ -105,7 +143,7 @@ public sealed class Ontwikkelingsrapport
             _beoordelingen.Add(rij);
         }
 
-        rij.Zet(gradatieId, nieuweTekst);
+        rij.Zet(gradatieId, nieuweTekst, herkomst);
         if (rij.IsLeeg)
         {
             _beoordelingen.Remove(rij);
