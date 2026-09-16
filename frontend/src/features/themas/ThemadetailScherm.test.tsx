@@ -703,3 +703,57 @@ describe("ThemadetailScherm: doelen per leeftijd (FB-009)", () => {
     await waitFor(() => expect(screen.queryByRole("heading", { name: t("thema.overzichtTitel") })).toBeNull());
   });
 });
+
+describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun codes (FB-046)", () => {
+  const MET_DOELEN: ThemaWeergave = {
+    ...THEMA,
+    subthemas: [
+      {
+        ...THEMA.subthemas[0],
+        subdoelen: [],
+        activiteiten: [
+          activiteit("a-3", "Drie doelen", {
+            doelkoppelingen: [koppeling("WIS-11"), koppeling("WIS-12"), koppeling("NED-13")],
+          }),
+          activiteit("a-1", "Een doel", { doelkoppelingen: [koppeling("WIS-14")] }),
+          activiteit("a-0", "Geen doel"),
+        ],
+      },
+    ],
+  };
+
+  /** One activiteit row: the box that holds its opening overlay. */
+  const regel = (naam: string) =>
+    screen.getByRole("button", { name: t("activiteit.bekijkAria", { naam }) }).parentElement!;
+
+  async function open(ik: Ik = DIRECTIE) {
+    toon(ik, { thema: MET_DOELEN });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+  }
+
+  it("telt de doelen in het meervoud en in het enkelvoud, zonder een doelcode", async () => {
+    await open(ikMet({}));
+
+    expect(regel("Drie doelen")).toHaveTextContent(telWoord(3, "activiteit.eenDoel", "activiteit.aantalDoelen"));
+    expect(regel("Een doel")).toHaveTextContent(telWoord(1, "activiteit.eenDoel", "activiteit.aantalDoelen"));
+    expect(regel("Een doel")).toHaveTextContent("1 doel");
+    for (const naam of ["Drie doelen", "Een doel", "Geen doel"]) {
+      expect(regel(naam)).not.toHaveTextContent(/WIS-|NED-/);
+    }
+  });
+
+  it("maakt een activiteit zonder doel herkenbaar met tekst", async () => {
+    await open(ikMet({}));
+
+    expect(regel("Geen doel")).toHaveTextContent(t("activiteit.geenDoel"));
+    expect(regel("Drie doelen")).not.toHaveTextContent(t("activiteit.geenDoel"));
+  });
+
+  it("laat de hoofdleerkracht in de regel nog een doel koppelen", async () => {
+    await open(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
+
+    expect(knop(t("activiteit.koppelAan", { naam: "Drie doelen" }))).not.toBeNull();
+    expect(screen.getAllByText(telWoord(3, "activiteit.eenDoel", "activiteit.aantalDoelen"))).not.toHaveLength(0);
+  });
+});

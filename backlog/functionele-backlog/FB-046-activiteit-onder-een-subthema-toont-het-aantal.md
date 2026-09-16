@@ -2,13 +2,13 @@
 id: FB-046
 titel: Activiteit onder een subthema toont het aantal doelen, niet hun codes
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 15:08
+opgepakt-door: claude-fb-046
+branch: ticket/FB-046-activiteit-aantal-doelen
+pr: 111
 geblokkeerd:
 fr: [FR-3.2]
 ---
@@ -30,12 +30,12 @@ activiteit wordt de lijst lang en onrustig.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een activiteit met drie doelen, wanneer het subthema openstaat, dan staat bij die activiteit "3 doelen"
+- [x] Gegeven een activiteit met drie doelen, wanneer het subthema openstaat, dan staat bij die activiteit "3 doelen"
   en geen enkele doelcode.
-- [ ] Gegeven een activiteit met één doel, dan staat er "1 doel".
-- [ ] Gegeven een activiteit zonder doel, dan is ze nog herkenbaar als zonder doel, met tekst of icoon.
-- [ ] Gegeven die activiteit, wanneer men ze aanklikt, dan ziet men haar doelen met code en tekst.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een activiteit met één doel, dan staat er "1 doel".
+- [x] Gegeven een activiteit zonder doel, dan is ze nog herkenbaar als zonder doel, met tekst of icoon.
+- [x] Gegeven die activiteit, wanneer men ze aanklikt, dan ziet men haar doelen met code en tekst.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -59,3 +59,8 @@ activiteit wordt de lijst lang en onrustig.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-046 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:31 · claude-fb-046 · activiteitregel toont alleen nog het doelmerk (aantal of 'Nog geen doel'), de codes zijn weg; koppelknop blijft; Vitest 968 groen, lint groen
+- 2026-09-16 14:32 · claude-fb-046 · antagonist: COMPLIANT, geen blokkerende bevindingen; drie MINOR (browsercheck noteren, test strakker, naam 'codes')
+- 2026-09-16 14:41 · claude-fb-046 · in-uitvoering → te-testen: gebouwd: activiteitregel toont het aantal doelen, geen codes; koppelknop blijft; browsercheck PASS op desktop en 390px (backlog/worklogs/FB-046), Vitest 968 en lint groen, antagonist COMPLIANT; MINOR open: test telt op het hele scherm, variabele heet nog codes
+- 2026-09-16 15:08 · claude-fb-046 · PR #111
