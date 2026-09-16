@@ -24,7 +24,8 @@ public sealed record ThemaCreatie(
     int DuurWeken,
     string? Invalshoeken = null,
     IReadOnlyList<string>? Kernwoordenschat = null,
-    IReadOnlyList<string>? RijkeWoordenschat = null);
+    IReadOnlyList<string>? RijkeWoordenschat = null,
+    string? Icoon = null);
 
 /// <summary>Update payload for a school-wide <see cref="Thema"/>.</summary>
 public sealed record ThemaWijziging(
@@ -32,7 +33,8 @@ public sealed record ThemaWijziging(
     int DuurWeken,
     string? Invalshoeken = null,
     IReadOnlyList<string>? Kernwoordenschat = null,
-    IReadOnlyList<string>? RijkeWoordenschat = null);
+    IReadOnlyList<string>? RijkeWoordenschat = null,
+    string? Icoon = null);
 
 /// <summary>
 /// Create payload for an age-scoped <see cref="Subthema"/> (Art. IX.2, amended 2026-08-30).
@@ -190,7 +192,8 @@ public sealed record ThemaWeergave(
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
     IReadOnlyList<ThemaMinimumdoelWeergave> Minimumdoelen,
-    IReadOnlyList<SubthemaWeergave> Subthemas);
+    IReadOnlyList<SubthemaWeergave> Subthemas,
+    string? Icoon = null);
 
 /// <summary>
 /// Read view of a single entry in the <b>shared thema-bibliotheek</b> (E1-11, FR-3.3 resolved per-level,
@@ -218,4 +221,5 @@ public sealed record ThemaBibliotheekItem(
     int AantalAfgeleideLeeftijden,
     int AantalSubthemas,
     int AantalActiviteiten,
-    int AantalDoelkoppelingen);
+    int AantalDoelkoppelingen,
+    string? Icoon = null);

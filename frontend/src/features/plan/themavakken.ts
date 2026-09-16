@@ -33,13 +33,14 @@ export interface Themavak {
    * are needed and deriving one from the other twice is how they drift: the bands print the name, and
    * the activiteit picker asks which thema's a given DAY may offer, which is an id question.
    */
-  themas: readonly { id: string; naam: string }[];
+  themas: readonly { id: string; naam: string; icoon?: string | null }[];
 }
 
 interface Plaatsing {
   blokStart: string;
   themaId: string;
   themaNaam: string;
+  themaIcoon?: string | null;
   status: string;
 }
 
@@ -61,13 +62,13 @@ export function themavakken(
 
     // Deduped on the id, not on the name: two placements of one thema in one period is one thema,
     // and two thema's that happen to share a name are two.
-    const perId = new Map(inBlok.map((plaatsing) => [plaatsing.themaId, plaatsing.themaNaam]));
+    const perId = new Map(inBlok.map((plaatsing) => [plaatsing.themaId, plaatsing]));
 
     return {
       blokStart: blok.start,
       van: blok.start,
       tot: blok.eind,
-      themas: [...perId].map(([id, naam]) => ({ id, naam })),
+      themas: [...perId].map(([id, plaatsing]) => ({ id, naam: plaatsing.themaNaam, icoon: plaatsing.themaIcoon ?? null })),
     };
   });
 }

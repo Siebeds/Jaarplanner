@@ -53,6 +53,7 @@ describe("Themaformulier: een nieuw thema", () => {
       invalshoeken: null,
       kernwoordenschat: [],
       rijkeWoordenschat: [],
+      icoon: null,
     });
     expect(within(blad).queryByRole("button", { name: t("themabeheer.bewaar") })).toBeNull();
   });

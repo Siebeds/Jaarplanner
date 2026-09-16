@@ -5,6 +5,7 @@ import { Keuze } from "../../components/ui/Veld";
 import { periode } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { Themaicoon } from "../themas/Emojikiezer";
 
 /**
  * One thema in one period, and everything a teacher can do to it (FR-7).
@@ -53,7 +54,10 @@ export function Plaatsingkaart({
     >
       <header className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="font-display text-sectie text-inkt">{plaatsing.themaNaam}</h3>
+          <h3 className="font-display text-sectie text-inkt">
+            <Themaicoon icoon={plaatsing.themaIcoon} />
+            {plaatsing.themaNaam}
+          </h3>
           <p className="mono mt-0.5 text-meta text-inkt-zwak">
             {periode(plaatsing.blokStart, plaatsing.blokEind)} ·{" "}
             {telWoord(plaatsing.duurWeken, "plan.eenWeek", "plan.weken")} ·{" "}

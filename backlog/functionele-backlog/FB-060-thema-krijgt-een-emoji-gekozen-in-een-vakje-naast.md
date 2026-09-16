@@ -2,13 +2,13 @@
 id: FB-060
 titel: Thema krijgt een emoji, gekozen in een vakje naast de naam
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:00
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 00:36
+opgepakt-door: claude-fb060
+branch: ticket/FB-060-thema-emoji
+pr: 134
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -37,17 +37,17 @@ een vakje vóór de naam met een raster eronder: https://claude.ai/artifact/QKJu
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een nieuw thema, wanneer themabeheer op het vakje klikt en 🍂 kiest en bewaart, dan staat 🍂 vóór de
+- [x] Gegeven een nieuw thema, wanneer themabeheer op het vakje klikt en 🍂 kiest en bewaart, dan staat 🍂 vóór de
       naam in de bibliotheek en op de themapagina.
-- [ ] Gegeven een thema met een emoji, wanneer themabeheer het bewerkt en "Geen emoji" kiest en bewaart, dan staat er
+- [x] Gegeven een thema met een emoji, wanneer themabeheer het bewerkt en "Geen emoji" kiest en bewaart, dan staat er
       nergens nog een emoji bij dat thema en ziet de kaart eruit zoals een thema zonder emoji.
-- [ ] Gegeven het geopende raster, wanneer de gebruiker met de emojikiezer van Windows een emoji in het zoekveld zet
+- [x] Gegeven het geopende raster, wanneer de gebruiker met de emojikiezer van Windows een emoji in het zoekveld zet
       dat niet in het raster staat (bijvoorbeeld 🦖), dan toont het vakje dat emoji en blijft het na bewaren staan.
-- [ ] Gegeven het geopende raster, wanneer de gebruiker "herfst" typt, dan blijven alleen de emoji over die daarbij
+- [x] Gegeven het geopende raster, wanneer de gebruiker "herfst" typt, dan blijven alleen de emoji over die daarbij
       horen, en bij een zoekterm zonder resultaat staat er dat er geen emoji gevonden is.
-- [ ] Gegeven een poging om gewone tekst of twee emoji als emoji van een thema te bewaren, wanneer de server die
+- [x] Gegeven een poging om gewone tekst of twee emoji als emoji van een thema te bewaren, wanneer de server die
       ontvangt, dan weigert die het met een zin die een leerkracht begrijpt.
-- [ ] Gegeven het vakje en het raster, wanneer ze met het toetsenbord en een schermlezer gebruikt worden, dan is elk
+- [x] Gegeven het vakje en het raster, wanneer ze met het toetsenbord en een schermlezer gebruikt worden, dan is elk
       emoji bereikbaar, heeft elk een Nederlandse naam en zegt het vakje of er al een emoji gekozen is.
 
 ## Testscenario's
@@ -78,3 +78,8 @@ Geen.
 ## Werklog
 
 - 2026-09-17 00:00 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-17 00:02 · claude-fb060 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 00:16 · claude-fb060 · Gebouwd: veld Icoon op Thema (migratie ThemaIcoon), emojikiezer voor de naam, emoji in bibliotheek, themapagina, plaatsingskaart en themaband. Gates: dotnet test 1972+561 groen, dotnet format schoon, pnpm lint en pnpm test (1035) groen.
+- 2026-09-17 00:21 · claude-fb060 · Browsercontrole (headless Chrome, wegwerpdatabase jp_fb060_browser, 1440 en 390 breed): kiezen, zoeken, getypt emoji, Escape, Geen emoji en bewaren werken; het emoji staat op de kaart, de themapagina, de themaband en de periodekaart; tekst wordt geweigerd met 400 en de zin. Criteria afgevinkt op basis van deze controle, de Vitest-tests en de integratietests.
+- 2026-09-17 00:26 · claude-fb060 · in-uitvoering → te-testen: Gebouwd: optioneel emoji op een thema (veld, migratie ThemaIcoon, controle op de server), emoji-kiezer vóór de naam met zoekveld dat ook een getypt emoji aanvaardt, emoji vóór de naam in bibliotheek, themapagina en agenda. Tests, format en lint groen; browsercontrole op 1440 en 390 geslaagd; antagonist COMPLIANT, kleine punten opgelost (losse pijlen en vormpjes geweigerd, Escape-test).
+- 2026-09-17 00:36 · claude-fb060 · PR #134
