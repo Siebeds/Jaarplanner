@@ -21,24 +21,6 @@ export type Voorstel = {
 /** How long a "rest" decision waits for Ongedaan maken before it is written. */
 export const UITSTEL_MS = 6000;
 
-/**
- * The AI's open proposals, reviewed one at a time as a stack of cards (TB-045): the woordweb's words and the thema's
- * doelsuggesties share it, so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1 to IV.3).
- *
- * **One card, and its reason always shown.** The top card carries the proposal, the AI's motivation, "2 van 5", and
- * the two decisions; the cards behind it are only edges, there while more are waiting. A progress strip above says
- * what this session decided so far. The strip is colour, so it is hidden from a screen reader and doubled by the count
- * in words; each button has its icon.
- *
- * **A single decision is written at once**, and the card leaves before the server answers. If the write fails the card
- * comes back, and the caller shows the error it already shows. The two buttons are the same elements from card to
- * card, so keyboard focus stays on the one just used, and A and W decide while focus is anywhere in the stack.
- *
- * **"Rest aanvaarden" and "Rest weigeren" wait before they write.** The server cannot turn a decision back into a
- * proposal, so the undo lives here: the cards go, a line says what is about to happen with Ongedaan maken, and only
- * after `UITSTEL_MS` are the decisions sent, one after the other. Leaving the screen sends them at once, since that is
- * what the teacher chose. Offered from two open cards on; for one, the card's own buttons are the same decision.
- */
 type Eigenschappen = {
   voorstellen: Voorstel[];
   /** Writes one decision; a rejected promise puts the card back. */
@@ -46,11 +28,34 @@ type Eigenschappen = {
   label: string;
 };
 
+/**
+ * The AI's open proposals, reviewed one at a time as a stack of cards (TB-045): the woordweb's words and the thema's
+ * doelsuggesties share it, so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1 to IV.3).
+ *
+ * **One card, and its reason always shown.** The top card carries the proposal, the AI's motivation, "2 van 5", and
+ * the two decisions; the cards behind it are only edges, there while more are waiting. A progress strip above shows
+ * how far this session got: decided, current, still open. It carries position only, never which way a card went, so
+ * the "2 van 5" beside it says all it says, and it is hidden from a screen reader; each button has its icon.
+ *
+ * **A single decision is written at once**, and the card leaves before the server answers. If the write fails the card
+ * comes back, and the caller shows the error it already shows. The two buttons are the same elements from card to
+ * card, so keyboard focus stays on the one just used, and the two shortcut letters (from the catalogue, so they follow
+ * the labels) decide while focus is anywhere in the stack.
+ *
+ * **"Alle n aanvaarden" and "Alle n weigeren" wait before they write.** The server cannot turn a decision back into a
+ * proposal, so the undo lives here: the cards go, a line says what is about to happen and takes focus on its Ongedaan
+ * maken, and only after `UITSTEL_MS` are the decisions sent, one after the other. The wait pauses while the pointer
+ * or keyboard focus is on that line (WCAG 2.2.1), and says so. Leaving the screen, or the page, sends them at once,
+ * since that is what the teacher chose. Offered from two open cards on; for one, the card's own buttons are the same
+ * decision.
+ */
 export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) {
   // Every proposal met in this session, in order, so the strip and the count keep the decided ones.
   const [gezien, setGezien] = useState<string[]>(() => voorstellen.map((v) => v.id));
   const [beslist, setBeslist] = useState<Record<string, Besluit>>({});
   const [uitgesteld, setUitgesteld] = useState<{ besluit: Besluit; ids: string[] } | null>(null);
+  // Writes still under way. A fresh batch does not reset the session while one is, or its cards would come back open.
+  const [lopend, setLopend] = useState(0);
 
   const open = voorstellen.filter((v) => !beslist[v.id]);
   const huidig = open[0] ?? null;
@@ -65,7 +70,7 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
     const nieuw = ids.filter((id) => !gezien.includes(id));
     if (nieuw.length > 0) {
       const nogOpen = gezien.some((id) => ids.includes(id) && !beslist[id]);
-      if (!nogOpen && !uitgesteld) {
+      if (!nogOpen && !uitgesteld && lopend === 0) {
         setGezien(nieuw);
         setBeslist({});
       } else {
@@ -82,14 +87,18 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
 
   // Written, or given back to the stack when the write fails. The caller shows the error itself.
   const schrijf = useCallback(
-    (id: string, besluit: Besluit) =>
-      beslisRef.current(id, besluit).catch(() =>
-        setBeslist((vorig) => {
-          const rest = { ...vorig };
-          delete rest[id];
-          return rest;
-        }),
-      ),
+    (id: string, besluit: Besluit) => {
+      setLopend((n) => n + 1);
+      return beslisRef.current(id, besluit)
+        .catch(() =>
+          setBeslist((vorig) => {
+            const rest = { ...vorig };
+            delete rest[id];
+            return rest;
+          }),
+        )
+        .finally(() => setLopend((n) => n - 1));
+    },
     [],
   );
 
@@ -112,30 +121,68 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
     })();
   }, [schrijf]);
 
+  // The wait, paused while the pointer or keyboard focus is on the line. `resterend` keeps what is left across pauses.
+  const [muisErop, setMuisErop] = useState(false);
+  const [focusErop, setFocusErop] = useState(false);
+  const gepauzeerd = muisErop || focusErop;
+  const resterend = useRef(UITSTEL_MS);
   useEffect(() => {
-    if (!uitgesteld) return;
-    const klok = window.setTimeout(verstuurUitgesteld, UITSTEL_MS);
-    return () => window.clearTimeout(klok);
-  }, [uitgesteld, verstuurUitgesteld]);
+    if (!uitgesteld || gepauzeerd) return;
+    const gestart = Date.now();
+    const klok = window.setTimeout(verstuurUitgesteld, resterend.current);
+    return () => {
+      window.clearTimeout(klok);
+      resterend.current = Math.max(0, resterend.current - (Date.now() - gestart));
+    };
+  }, [uitgesteld, gepauzeerd, verstuurUitgesteld]);
 
-  // Leaving the screen sends what is still waiting: that is what the teacher chose.
-  useEffect(() => () => verstuurUitgesteld(), [verstuurUitgesteld]);
+  // Leaving the screen, or closing or reloading the page, sends what is still waiting: that is what the teacher chose.
+  useEffect(() => {
+    window.addEventListener("pagehide", verstuurUitgesteld);
+    return () => {
+      window.removeEventListener("pagehide", verstuurUitgesteld);
+      verstuurUitgesteld();
+    };
+  }, [verstuurUitgesteld]);
 
   const beslisRest = (besluit: Besluit) => {
     const ids = open.map((v) => v.id);
     wachtRef.current = { besluit, ids };
+    resterend.current = UITSTEL_MS;
+    setMuisErop(false);
+    setFocusErop(false);
     setBeslist((vorig) => ({ ...vorig, ...Object.fromEntries(ids.map((id) => [id, besluit])) }));
     setUitgesteld({ besluit, ids });
   };
 
-  // Ongedaan maken leaves with its line, so focus goes back to the card rather than to the page.
+  // The stack and the waiting line replace each other, so focus moves with them: onto Ongedaan maken when the line
+  // appears, and back onto the card after Ongedaan maken, rather than falling to the page.
   const stapel = useRef<HTMLElement>(null);
+  const wachtregel = useRef<HTMLDivElement>(null);
   const focusTerug = useRef(false);
+  const toetsAanvaard = t("voorstelstapel.aanvaardToets");
+  const toetsWeiger = t("voorstelstapel.weigerToets");
   useEffect(() => {
-    if (uitgesteld || !focusTerug.current) return;
+    if (uitgesteld) {
+      wachtregel.current?.querySelector<HTMLButtonElement>("button")?.focus();
+      return;
+    }
+    if (!focusTerug.current) return;
     focusTerug.current = false;
-    stapel.current?.querySelector<HTMLButtonElement>("[aria-keyshortcuts=A]")?.focus();
+    stapel.current?.querySelector<HTMLButtonElement>("[data-besluit=Aanvaard]")?.focus();
   }, [uitgesteld]);
+
+  // Focus pauses the wait only when it is visible keyboard focus: the focus a mouse click leaves behind must not hold
+  // a mouse user's decision back indefinitely.
+  const opFocus = (doel: Element) => {
+    let zichtbaar = false;
+    try {
+      zichtbaar = doel.matches(":focus-visible");
+    } catch {
+      zichtbaar = false;
+    }
+    setFocusErop(zichtbaar);
+  };
 
   const maakOngedaan = () => {
     if (!uitgesteld) return;
@@ -149,8 +196,8 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
   const opToets = (e: KeyboardEvent<HTMLElement>) => {
     if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
     const toets = e.key.toLowerCase();
-    if (toets === "a") beslis("Aanvaard");
-    else if (toets === "w") beslis("Geweigerd");
+    if (toets === toetsAanvaard.toLowerCase()) beslis("Aanvaard");
+    else if (toets === toetsWeiger.toLowerCase()) beslis("Geweigerd");
     else return;
     e.preventDefault();
   };
@@ -161,13 +208,21 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
   if (uitgesteld) {
     return (
       <div
+        ref={wachtregel}
         role="status"
+        onPointerEnter={() => setMuisErop(true)}
+        onPointerLeave={() => setMuisErop(false)}
+        onFocus={(e) => opFocus(e.target)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setFocusErop(false);
+        }}
         className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-kaart border border-lijn bg-kaart px-4 py-3 shadow-licht"
       >
         <p className="text-body text-inkt">
           {t(uitgesteld.besluit === "Aanvaard" ? "voorstelstapel.restWordtAanvaard" : "voorstelstapel.restWordtGeweigerd", {
             aantal: uitgesteld.ids.length,
           })}
+          {gepauzeerd ? <span className="ml-2 text-meta text-inkt-zacht">{t("voorstelstapel.gepauzeerd")}</span> : null}
         </p>
         <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={maakOngedaan}>
           {t("voorstelstapel.ongedaan")}
@@ -175,7 +230,7 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
         <span aria-hidden="true" className="h-1 basis-full overflow-hidden rounded-full bg-vlak-diep">
           <span
             className="block h-full origin-left rounded-full bg-inkt-zacht animate-[stapel-aftellen_linear_forwards]"
-            style={{ animationDuration: `${UITSTEL_MS}ms` }}
+            style={{ animationDuration: `${UITSTEL_MS}ms`, animationPlayState: gepauzeerd ? "paused" : "running" }}
           />
         </span>
       </div>
@@ -221,13 +276,7 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
                 key={id}
                 className={cn(
                   "h-1 flex-1 rounded-full",
-                  beslist[id] === "Aanvaard"
-                    ? "bg-suggestie-aanvaard"
-                    : beslist[id] === "Geweigerd"
-                      ? "bg-suggestie-geweigerd"
-                      : id === huidig.id
-                        ? "bg-suggestie-voorgesteld"
-                        : "bg-vlak-diep",
+                  beslist[id] ? "bg-inkt-zacht" : id === huidig.id ? "bg-suggestie-voorgesteld" : "bg-vlak-diep",
                 )}
               />
             ))}
@@ -253,22 +302,24 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
             <Knop
               rang="rustig"
               aria-label={t("voorstelstapel.weigerAria", { naam: huidig.naam })}
-              aria-keyshortcuts="W"
+              aria-keyshortcuts={toetsWeiger}
+              data-besluit="Geweigerd"
               onClick={() => beslis("Geweigerd")}
             >
               <IcoonKruis aria-hidden="true" className="h-4 w-4 shrink-0" />
               {t("voorstelstapel.weiger")}
-              <Toets>W</Toets>
+              <Toets>{toetsWeiger}</Toets>
             </Knop>
             <Knop
               rang="hoofd"
               aria-label={t("voorstelstapel.aanvaardAria", { naam: huidig.naam })}
-              aria-keyshortcuts="A"
+              aria-keyshortcuts={toetsAanvaard}
+              data-besluit="Aanvaard"
               onClick={() => beslis("Aanvaard")}
             >
               <IcoonVink aria-hidden="true" className="h-4 w-4 shrink-0" />
               {t("voorstelstapel.aanvaard")}
-              <Toets>A</Toets>
+              <Toets>{toetsAanvaard}</Toets>
             </Knop>
           </div>
         </div>

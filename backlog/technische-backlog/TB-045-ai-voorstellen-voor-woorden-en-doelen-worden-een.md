@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:21
+bijgewerkt: 2026-09-16 23:32
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
 pr:
@@ -53,3 +53,4 @@ Geen.
 
 - 2026-09-16 22:59 · claude-ai-voorstellen · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:21 · claude-ai-voorstellen · Voorstelstapel gebouwd en ingezet voor woordweb en doelsuggesties; Alle aanvaarden/weigeren wacht 6 s met Ongedaan maken; Vitest, lint en browserpas (1440, 390, donker) groen
+- 2026-09-16 23:32 · claude-ai-voorstellen · Antagonist ronde 1: 2 MAJOR (toegankelijkheid) opgelost: wachttijd pauzeert bij muis of toetsenbordfocus en focus gaat naar Ongedaan maken; voortgangsbalk toont enkel voortgang. MINOR opgelost: geen reset tijdens lopende schrijfacties, versturen bij pagehide, sneltoetsen uit de catalogus

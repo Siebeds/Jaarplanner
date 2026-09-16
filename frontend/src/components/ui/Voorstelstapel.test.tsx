@@ -17,6 +17,12 @@ function toon(onBeslis = vi.fn<(id: string, besluit: Besluit) => Promise<unknown
   return { onBeslis, ...gevolg };
 }
 
+// The line takes focus on Ongedaan maken, and jsdom counts that focus as visible, which pauses the wait: a teacher
+// who moves on lets it run.
+function gaVerder() {
+  act(() => (document.activeElement as HTMLElement | null)?.blur());
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -64,6 +70,7 @@ describe("Voorstelstapel", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent(t("voorstelstapel.restWordtAanvaard", { aantal: 3 }));
     expect(onBeslis).not.toHaveBeenCalled();
+    gaVerder();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(UITSTEL_MS);
@@ -89,6 +96,46 @@ describe("Voorstelstapel", () => {
 
     expect(onBeslis).not.toHaveBeenCalled();
     expect(aanvaard("wolk")).toHaveFocus();
+  });
+
+  it("zet de focus op Ongedaan maken en wacht zolang de muis op de melding staat", async () => {
+    vi.useFakeTimers();
+    const { onBeslis } = toon();
+
+    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.restAanvaarden", { aantal: 3 }) }));
+    const ongedaan = screen.getByRole("button", { name: t("voorstelstapel.ongedaan") });
+    expect(ongedaan).toHaveFocus();
+    gaVerder();
+
+    fireEvent.pointerEnter(screen.getByRole("status"));
+    expect(screen.getByText(t("voorstelstapel.gepauzeerd"))).toBeInTheDocument();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UITSTEL_MS * 3);
+    });
+    expect(onBeslis).not.toHaveBeenCalled();
+
+    fireEvent.pointerLeave(screen.getByRole("status"));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(UITSTEL_MS);
+    });
+    expect(onBeslis).toHaveBeenCalledTimes(3);
+  });
+
+  it("zet een nieuwe reeks voorstellen niet in de plaats van beslissingen die nog bewaard worden", async () => {
+    let klaar: () => void = () => {};
+    const onBeslis = vi.fn(() => new Promise<void>((los) => (klaar = los)));
+    const { rerender } = render(
+      <Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN.slice(0, 1)} onBeslis={onBeslis} />,
+    );
+    fireEvent.click(aanvaard("wolk")!);
+
+    // The server has not answered yet, and a new AI run brings two more.
+    rerender(<Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN} onBeslis={onBeslis} />);
+
+    expect(aanvaard("wolk")).toBeNull();
+    expect(aanvaard("plas")).not.toBeNull();
+    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 2, totaal: 3 }))).toBeInTheDocument();
+    await act(async () => klaar());
   });
 
   it("schrijft een wachtende beslissing meteen wanneer de stapel verdwijnt", () => {
