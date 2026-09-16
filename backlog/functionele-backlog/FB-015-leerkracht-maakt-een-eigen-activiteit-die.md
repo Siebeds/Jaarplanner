@@ -2,13 +2,13 @@
 id: FB-015
 titel: Leerkracht maakt een eigen activiteit die parallelle collega's lezen en overnemen
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:09
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 00:09
+opgepakt-door: claude-fb015
+branch: ticket/FB-015-eigen-activiteit
+pr: 128
 geblokkeerd:
 fr: [FR-3.1, FR-3.2]
 ---
@@ -50,15 +50,15 @@ Dit ticket neemt het activiteitendeel van story E6-10 over. Het voorstel aan het
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht van een K3-klas, wanneer ze een activiteit aanmaakt, dan is die haar eigen activiteit, en
+- [x] Gegeven een leerkracht van een K3-klas, wanneer ze een activiteit aanmaakt, dan is die haar eigen activiteit, en
   een andere K3-leerkracht kan ze lezen maar niet bewerken.
-- [ ] Gegeven die andere K3-leerkracht, wanneer ze de activiteit gebruikt en in haar agenda zet, dan krijgt ze een eigen
+- [x] Gegeven die andere K3-leerkracht, wanneer ze de activiteit gebruikt en in haar agenda zet, dan krijgt ze een eigen
   kopie die ze kan bewerken, en de originele activiteit blijft ongewijzigd.
-- [ ] Gegeven een leerkracht van een K2-klas, dan ziet ze de eigen activiteiten van de K3-leerkrachten niet.
-- [ ] Gegeven een eigen activiteit met een doel, ingepland in de agenda van de klas van de eigenaar, dan staat dat doel in
+- [x] Gegeven een leerkracht van een K2-klas, dan ziet ze de eigen activiteiten van de K3-leerkrachten niet.
+- [x] Gegeven een eigen activiteit met een doel, ingepland in de agenda van de klas van de eigenaar, dan staat dat doel in
   het dekkingsoverzicht van die klas als gedekt, met de activiteit als bewijs; in een andere klas niet.
-- [ ] Gegeven een eigen activiteit, wanneer het volgende schooljaar begint, dan heeft de eigenaar ze nog.
-- [ ] De eigen activiteiten zijn herkenbaar zonder kleur alleen, en nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een eigen activiteit, wanneer het volgende schooljaar begint, dan heeft de eigenaar ze nog.
+- [x] De eigen activiteiten zijn herkenbaar zonder kleur alleen, en nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -88,7 +88,25 @@ Dit ticket neemt het activiteitendeel van story E6-10 over. Het voorstel aan het
   vandaag met de activiteiten van een verwijderde maker (I17).
 - Mag een hoofdleerkracht of de directie een eigen activiteit van een leerkracht bewerken? **Standaard** de directie
   wel (die bewerkt alles), een hoofdleerkracht niet.
+- **Vraag van de bouw (2026-09-16):** wie een subthema verwijdert (een hoofdleerkracht of de directie), verwijdert nu
+  ook de eigen activiteiten van leerkrachten eronder, zoals bij woordwebs. Een ingeplande activiteit blokkeert het
+  verwijderen nog altijd. **Standaard** blijft dat zo (ADR-0049 D9). Moet zo'n verwijdering geweigerd worden, of eerst
+  waarschuwen?
+- **Gebouwd met deze standaarden** (ADR-0049 D1 tot D9, waarvan de drie antwoorden hierboven er deel van zijn):
+  - een hoofdleerkracht en de directie kiezen per nieuwe activiteit tussen "Alleen voor mij" en "Gedeeld met het
+    subthema";
+  - de eigenaar verwijdert haar eigen activiteit ook als er doelen aan hangen;
+  - alleen de eigenaar of de directie plant ze in;
+  - een collega kiest "Gebruiken" en plant haar kopie.
+- **Bekende beperking:** wie themabeheer heeft, ziet een ingeplande eigen activiteit van een collega in de agenda van
+  een andere klas wel staan, maar kan ze daar niet openen. Het blad zegt dan dat ze hier niet te openen is.
 
 ## Werklog
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-16 22:51 · claude-fb015 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, als voorwaarde voor FB-025
+- 2026-09-16 23:02 · claude-fb015 · ADR-0049 en de grondwetswijziging (Art. V.1, VI.1, IX.2, XII) geschreven; beslissingen E1-E4 van de eigenaar, standaarden D1-D9
+- 2026-09-16 23:43 · claude-fb015 · Backend en frontend gebouwd: eigen activiteit (EigenaarId + migratie), rechten, gebruiken als kopie, planning alleen door eigenaar of directie, dekking via eigen plaatsing; unit-, vitest- en rechten-integratietests groen
+- 2026-09-16 23:59 · claude-fb015 · Antagonist ronde 1: COMPLIANT, 0 CRITICAL/MAJOR; 3 MINOR opgelost, 2 genoteerd (backlog/worklogs/FB-015); browserpas desktop en 390px op een kopie van de dev-database
+- 2026-09-17 00:00 · claude-fb015 · in-uitvoering → te-testen: Eigen activiteit gebouwd (ADR-0049, grondwet Art. V.1/VI.1/IX.2/XII): aanmaken, lezen door de jaarfase, Gebruiken als kopie, inplannen, dekking via de eigen plaatsing. Unit 1984, vitest, Postgres-rechten- en eigen-activiteittests groen; dotnet format en pnpm lint schoon; vraag over subthema verwijderen staat onder Open vragen
+- 2026-09-17 00:09 · claude-fb015 · PR #128

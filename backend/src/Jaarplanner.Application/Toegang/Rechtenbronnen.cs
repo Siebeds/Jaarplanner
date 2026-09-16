@@ -26,6 +26,12 @@ public interface IRechtenbronnen
     /// <summary>An activiteit with its leeftijd, maker and whether any goal is linked to it: for the activiteit rows.</summary>
     Task<Activiteitbron?> VoorActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default);
 
+    /// <summary>The leeftijd of a proposed subdoel (FB-057, ADR-0050): for deciding it.</summary>
+    Task<Leeftijdsinhoud?> VoorSubdoelvoorstelAsync(Guid subdoelvoorstelId, CancellationToken cancellationToken = default);
+
+    /// <summary>The leeftijd of a proposed new subthema (FB-057, ADR-0050): for deciding it.</summary>
+    Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default);
+
     /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
     Task<Themabron?> VoorThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
@@ -170,7 +176,16 @@ public sealed record Rapportklas(Guid KlasId);
 /// default; the owner's answer is owed before any path creates an activiteit link that is not <c>manueel</c> (E8-07).
 /// See the R25 carry-forward under E6-02 in <c>backlog/E6-beheer-rollen-samenwerking.md</c>.
 /// </param>
-public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen);
+/// <param name="EigenaarId">
+/// The owner of an own activiteit (ADR-0049), or <c>null</c> for a shared one. On an own activiteit only the owner's
+/// column and the columns that read or copy one match (D3 to D5); the shared columns do not.
+/// </param>
+public sealed record Activiteitbron(
+    Guid ActiviteitId,
+    string Leeftijd,
+    Guid? MakerId,
+    bool HeeftDoelkoppelingen,
+    Guid? EigenaarId = null);
 
 /// <summary>
 /// A thema, as deleting it needs it (E6-02, default I26). The delete takes every subthema, subdoel and activiteit under

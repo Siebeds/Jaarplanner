@@ -83,7 +83,7 @@ export function Nieuweactiviteitblad({
     () =>
       themas.flatMap((thema) =>
         thema.subthemas
-          .filter((sub) => mag.activiteitBewerken(sub.leeftijd))
+          .filter((sub) => mag.activiteitMaken(sub.leeftijd))
           .map((sub) => ({
             id: sub.id,
             naam: sub.naam,
@@ -152,8 +152,10 @@ export function Nieuweactiviteitblad({
   return (
     <Activiteitformulier
       open
-      // Goal codes on a create need the goal-link right at the subthema's leeftijd (R19); without it, no picker.
-      magDoelen={mag.doelenKoppelen(actief.leeftijd)}
+      // The leeftijd decides "voor wie" and the goal picker of the new activiteit (ADR-0049 D1, E3; R19). Keyed on the
+      // subthema, so switching to one of another leeftijd starts the choice again.
+      key={actief.id}
+      leeftijd={actief.leeftijd}
       onderzoeksvragen={actief.onderzoeksvragen}
       bezig={maak.isPending || planBezig}
       fout={maakFout}

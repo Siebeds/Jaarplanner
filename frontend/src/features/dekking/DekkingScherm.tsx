@@ -674,8 +674,12 @@ function Staplijn({
 function Dekkingsrij({ doel, toonFase }: { doel: LeerplandoelDekking; toonFase: boolean }) {
   const reden = oorzaakzin(doel, "dekking.oorzaakGeenThema");
   // The evidence: the thema's and subthema's first, then each covering fiche marked as one, because a bare "Turnen"
-  // beside "Herfst" reads as a second thema (owner ruling, 2026-09-11).
-  const dekkend = [...doel.dekkendeThemas, ...doel.dekkendeFiches.map((naam) => t("dekking.alsFiche", { naam }))];
+  // beside "Herfst" reads as a second thema (owner ruling, 2026-09-11). An own activiteit says what it is too (ADR-0049).
+  const dekkend = [
+    ...doel.dekkendeThemas,
+    ...doel.dekkendeFiches.map((naam) => t("dekking.alsFiche", { naam })),
+    ...(doel.dekkendeActiviteiten ?? []).map((naam) => t("dekking.alsEigenActiviteit", { naam })),
+  ];
 
   return (
     <div className="flex gap-3 px-4 py-3">

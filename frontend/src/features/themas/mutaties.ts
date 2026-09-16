@@ -147,6 +147,17 @@ export function useWijzigActiviteit(themaId: string) {
   );
 }
 
+/**
+ * Takes an own copy of a colleague's own activiteit (ADR-0049 E2, D5). The server makes the caller its owner, never an
+ * id from the client, and answers with the copy so a caller can plan it straight after.
+ */
+export function useGebruikActiviteit(themaId?: string) {
+  return useSchoolcontentMutatie<string, ActiviteitWeergave>(
+    (activiteitId) => post<ActiviteitWeergave>(`/api/activiteiten/${activiteitId}/kopie`, {}),
+    themaId,
+  );
+}
+
 export function useVerwijderActiviteit(themaId: string) {
   return useSchoolcontentMutatie<string, void>(
     (activiteitId) => del<void>(`/api/activiteiten/${activiteitId}`),
