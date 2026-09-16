@@ -51,7 +51,7 @@ public enum Rechtbron
     /// <summary>The leeftijd of a proposed new subthema (<see cref="Leeftijdsinhoud"/>, FB-057).</summary>
     Subthemavoorstel,
 
-    /// <summary>The leeftijd of the subthema an activiteitvoorstel is under (<see cref="Leeftijdsinhoud"/>, FB-025).</summary>
+    /// <summary>An activiteitvoorstel with its asker (<see cref="Application.Toegang.Activiteitvoorstelbron"/>, FB-025).</summary>
     Activiteitvoorstel,
 }
 

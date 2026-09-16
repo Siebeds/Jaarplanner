@@ -185,6 +185,12 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
         Assert.Equal((1, 2), (tweede.AantalVoorgesteld, tweede.AantalOvergeslagen));
         Assert.Equal("Bootjesrace", Assert.Single(await LeesAsync(leerkracht, subthemaId)).Naam);
 
+        // A run that keeps nothing leaves the open proposal where it was.
+        _factory.AiAntwoord = Antwoord();
+        Assert.Equal(0, (await GenereerAsync(leerkracht, subthemaId)).AantalVoorgesteld);
+        Assert.Equal("Bootjesrace", Assert.Single(await LeesAsync(leerkracht, subthemaId)).Naam);
+        _factory.AiAntwoord = Antwoord("Drijftafel", "Bootjesrace");
+
         // An accepted activiteit's name is not proposed again either.
         await BeslisAsync(leerkracht, (await LeesAsync(leerkracht, subthemaId))[0].Id, new { status = "Aanvaard" });
         Assert.Equal(0, (await GenereerAsync(leerkracht, subthemaId)).AantalVoorgesteld);
@@ -214,7 +220,7 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Voorstellen_zijn_van_wie_vroeg_en_alleen_wie_een_eigen_activiteit_mag_maken_vraagt()
+    public async Task Wie_vroeg_en_de_directie_zien_en_beslissen_een_voorstel_en_alleen_wie_een_eigen_activiteit_mag_maken_vraagt()
     {
         var (subthemaId, leerkrachtId, school) = await OpzetAsync();
         using var leerkracht = Opzet.Als(leerkrachtId);
@@ -222,22 +228,15 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
         await GenereerAsync(leerkracht, subthemaId);
         var voorstel = Assert.Single(await LeesAsync(leerkracht, subthemaId));
 
+        Assert.True(voorstel.IsEigen);
+
         // A K3 colleague may ask for her own, but neither sees nor decides this one.
         using var collega = Opzet.Als(await Opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
         Assert.Empty(await LeesAsync(collega, subthemaId));
         await RechtenTestOpzet.VerwachtAsync(
             collega.PutAsJsonAsync($"/api/activiteitvoorstellen/{voorstel.Id}/beslissing", new { status = "Geweigerd" }),
-            HttpStatusCode.NotFound,
-            "Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
-
-        // Directie passes the row, and still finds only her own proposals.
-        using var directie = Opzet.Als(await Opzet.GebruikerAsync(school, directie: true));
-        Assert.Empty(await LeesAsync(directie, subthemaId));
-        await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/activiteitvoorstellen/{voorstel.Id}/beslissing", new { status = "Aanvaard" }),
-            HttpStatusCode.NotFound,
-            "Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
-        Assert.Equal(1, (await GenereerAsync(directie, subthemaId)).AantalVoorgesteld);
+            HttpStatusCode.Forbidden,
+            RechtenTestOpzet.GeenToegang);
 
         // A K2 leerkracht, a K3 hoofdleerkracht without a K3 klas, and themabeheer may not ask or decide at K3.
         foreach (var ander in new[]
@@ -258,8 +257,19 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
                 RechtenTestOpzet.GeenToegang);
         }
 
-        // Still open for its asker.
+        // Directie sees every asker's proposals, its own first, and an acceptance makes the asker's own activiteit (A3).
+        using var directie = Opzet.Als(await Opzet.GebruikerAsync(school, directie: true));
+        Assert.Equal(1, (await GenereerAsync(directie, subthemaId)).AantalVoorgesteld);
+        var gezien = await LeesAsync(directie, subthemaId);
+        Assert.Equal([(true, "Test"), (false, "Test")], gezien.Select(v => (v.IsEigen, v.AanvragerNaam)));
+        Assert.Equal(voorstel.Id, gezien[1].Id);
         Assert.Single(await LeesAsync(leerkracht, subthemaId));
+
+        var besluit = await BeslisAsync(directie, voorstel.Id, new { status = "Aanvaard" });
+        await using var context = _db.MaakContext();
+        var activiteit = await context.Activiteiten.AsNoTracking().SingleAsync(a => a.Id == besluit.ActiviteitId);
+        Assert.Equal((leerkrachtId, leerkrachtId), (activiteit.EigenaarId!.Value, activiteit.MakerId!.Value));
+        Assert.Empty(await LeesAsync(leerkracht, subthemaId));
     }
 
     [PostgresFact]
@@ -325,6 +335,8 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
 
     private sealed record Voorstel(
         Guid Id,
+        string AanvragerNaam,
+        bool IsEigen,
         string Naam,
         string? ActiviteitType,
         string VerwachteUitkomsten,

@@ -5,15 +5,21 @@ namespace Jaarplanner.Application.Activiteitvoorstellen;
 
 /// <summary>
 /// The activiteitvoorstellen use cases (FB-025, ADR-0052): the AI proposes activiteiten under a subthema to the gebruiker
-/// who asked, and she decides them. Asking and deciding need <c>EigenActiviteitMaken</c> at the subthema's leeftijd, which
-/// the Api checks; that a proposal is the caller's own is this service's (D2): it finds a proposal by its id and the
-/// caller together, so someone else's is not found.
+/// who asked, and she or directie decides them (A3). Rights are the Api's: asking is <c>EigenActiviteitMaken</c> at the
+/// subthema's leeftijd, deciding <c>ActiviteitvoorstelBeslissen</c> on the proposal.
 /// </summary>
 public interface IActiviteitvoorstelService
 {
-    /// <summary>The caller's open proposals under the subthema, oldest first.</summary>
+    /// <summary>
+    /// The open proposals under the subthema, the caller's own first, oldest first: only hers, or with
+    /// <paramref name="vanIedereen"/> everyone's (directie, A3).
+    /// </summary>
     /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">The subthema does not exist.</exception>
-    Task<IReadOnlyList<ActiviteitvoorstelWeergave>> HaalOpAsync(Guid subthemaId, Guid gebruikerId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ActiviteitvoorstelWeergave>> HaalOpAsync(
+        Guid subthemaId,
+        Guid gebruikerId,
+        bool vanIedereen,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Asks the AI for activiteiten under the subthema, replacing the caller's open proposals there (D4). An unreadable
@@ -24,13 +30,13 @@ public interface IActiviteitvoorstelService
     Task<ActiviteitvoorstelResultaat> StelVoorAsync(Guid subthemaId, Guid gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Accepts, possibly changed, or rejects one of the caller's proposals (D8). Accepting creates her own activiteit.
+    /// Accepts, possibly changed, or rejects a proposal (D8). Accepting creates an own activiteit of its asker, whoever
+    /// decides (A3).
     /// </summary>
-    /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such proposal of the caller.</exception>
+    /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such proposal.</exception>
     /// <exception cref="Schoolcontent.Beheer.SchoolcontentValidatieFout">Already decided, or the decision is not valid.</exception>
     Task<ActiviteitvoorstelBesluit> BeslisAsync(
         Guid activiteitvoorstelId,
-        Guid gebruikerId,
         ActiviteitvoorstelBeslissing beslissing,
         CancellationToken cancellationToken = default);
 }
@@ -38,10 +44,13 @@ public interface IActiviteitvoorstelService
 /// <summary>One goal of a proposal, with what the screen shows of it.</summary>
 public sealed record ActiviteitvoorstelDoel(string LeerplandoelCode, string? Tekst, Doelsoort? Doelsoort);
 
-/// <summary>One open proposal.</summary>
+/// <summary>One open proposal, with who asked for it; <see cref="IsEigen"/> when that is the caller.</summary>
 public sealed record ActiviteitvoorstelWeergave(
     Guid Id,
     Guid SubthemaId,
+    Guid AanvragerId,
+    string AanvragerNaam,
+    bool IsEigen,
     string Naam,
     ActiviteitType? ActiviteitType,
     string VerwachteUitkomsten,

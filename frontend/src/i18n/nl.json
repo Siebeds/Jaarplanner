@@ -486,7 +486,8 @@
   "activiteitvoorstel": {
     "vraag": "Stel activiteiten voor",
     "vraagBezig": "Activiteiten bedenken…",
-    "geenVoorstellen": "De AI vond geen nieuwe activiteit bij deze subdoelen.",
+    "geenVoorstellen": "Er is geen nieuw voorstel bijgekomen.",
+    "vanCollega": "Gevraagd door {naam}",
     "eenVoorstel": "1 activiteit voorgesteld.",
     "voorstellen": "{aantal} activiteiten voorgesteld.",
     "aiOngeldig": "Het antwoord van de AI was onbruikbaar. Vraag het opnieuw.",

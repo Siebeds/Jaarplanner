@@ -98,11 +98,14 @@ const VERWACHT: Record<Exclude<Rij, Activiteitrij>, string[]> = {
   // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; not themabeheer alone.
   SubdoelplaatsingVragen: ["Directie", "HL"],
   SubdoelplaatsingBeslissen: ["Directie", "HL"],
+  // FB-025 (ADR-0052 A3): on someone else's proposal only directie; the asker's own is its own case below.
+  ActiviteitvoorstelBeslissen: ["Directie"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
 function bronVoor(rij: Rij): Rechtbron | undefined {
   if (rij === "WoordwebBewerken") return { soort: "woordweb", eigenaarId: ANDERE_PERSOON };
+  if (rij === "ActiviteitvoorstelBeslissen") return { soort: "activiteitvoorstel", leeftijd: LEEFTIJD, aanvragerId: ANDERE_PERSOON };
   if (rij === "KlasplanningBekijken") return { soort: "klasinzage", klasId: EIGEN_KLAS, leeftijden: [LEEFTIJD] };
   if (rij === "KlasplanningBewerken") return { soort: "klas", klasId: EIGEN_KLAS };
   if (rij === "OntwikkelingsrapportLezen" || rij === "LeerlingenBeheren" || rij === "RapportInvullen") {
@@ -136,8 +139,18 @@ describe("de rechtenmatrix van de frontend", () => {
     expect([...Object.keys(VERWACHT), ...ACTIVITEITRIJEN].sort()).toEqual(rijen);
     // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set
     // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row, 28 with FB-015's four own-activiteit rows,
-    // 30 with FB-057's two subdoelplaatsing rows.
-    expect(rijen).toHaveLength(30);
+    // 30 with FB-057's two subdoelplaatsing rows, 31 with FB-025's activiteitvoorstel row.
+    expect(rijen).toHaveLength(31);
+  });
+
+  it("laat wie een activiteitvoorstel vroeg het beslissen zolang ze die leeftijd heeft, en andermans alleen directie (ADR-0052)", () => {
+    const eigen = { leeftijd: LEEFTIJD, aanvragerId: IK };
+    expect(magVoor(RELATIES["LK leeftijd"]).activiteitvoorstelBeslissen(eigen)).toBe(true);
+    expect(magVoor(RELATIES.HL).activiteitvoorstelBeslissen(eigen)).toBe(false);
+    expect(magVoor(RELATIES.Ander).activiteitvoorstelBeslissen(eigen)).toBe(false);
+    expect(magVoor(RELATIES["LK leeftijd"]).activiteitvoorstelBeslissen({ ...eigen, aanvragerId: ANDERE_PERSOON })).toBe(false);
+    expect(magVoor(RELATIES.Directie).activiteitvoorstelBeslissen({ ...eigen, aanvragerId: ANDERE_PERSOON })).toBe(true);
+    expect(staatToe(RELATIES.Ander, "WoordwebBewerken", { soort: "activiteitvoorstel", leeftijd: LEEFTIJD, aanvragerId: IK })).toBe(false);
   });
 
   it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0043)", () => {

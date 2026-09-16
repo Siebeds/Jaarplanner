@@ -84,6 +84,7 @@ public static class Rechtenmatrix
         public const string WoordwebBewerken = "WoordwebBewerken";
         public const string SubdoelplaatsingVragen = "SubdoelplaatsingVragen";
         public const string SubdoelplaatsingBeslissen = "SubdoelplaatsingBeslissen";
+        public const string ActiviteitvoorstelBeslissen = "ActiviteitvoorstelBeslissen";
     }
 
     // --- Resource-free rows: directie, and themabeheer where the row has it. ---
@@ -360,6 +361,16 @@ public static class Rechtenmatrix
         "Een subdoelplaatsing aanvaarden of weigeren, en de open voorstellen zien (ADR-0050 P4, D6)",
         Kolom.Hoofdleerkracht);
 
+    /// <summary>
+    /// "Een AI-activiteitvoorstel zien en beslissen" (FB-025, ADR-0052 A3): its asker, while she may still make an own
+    /// activiteit at that leeftijd, and directie, who sees and decides every leerkracht's proposals (R3). Resource:
+    /// <see cref="Activiteitvoorstelbron"/>. Asking is <see cref="EigenActiviteitMaken"/>.
+    /// </summary>
+    public static readonly Matrixrij ActiviteitvoorstelBeslissen = new(
+        Beleid.ActiviteitvoorstelBeslissen,
+        "Een AI-activiteitvoorstel zien en beslissen: wie het vroeg, en de directie (ADR-0052 A3)",
+        Kolom.AanvragerVanVoorstel);
+
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
     public static IReadOnlyList<Matrixrij> Rijen { get; } =
     [
@@ -393,6 +404,7 @@ public static class Rechtenmatrix
         WoordwebBewerken,
         SubdoelplaatsingVragen,
         SubdoelplaatsingBeslissen,
+        ActiviteitvoorstelBeslissen,
     ];
 
     /// <summary>
@@ -538,6 +550,16 @@ public static class Rechtenmatrix
             }
         }
 
+        // ADR-0052 A3: an activiteitvoorstel's asker decides it while she may still make an own activiteit there. Only an
+        // Activiteitvoorstelbron matches this column.
+        if (kolommen.HasFlag(Kolom.AanvragerVanVoorstel)
+            && bron is Activiteitvoorstelbron voorstel
+            && voorstel.AanvragerId == rechten.GebruikerId
+            && rechten.IsLeerkrachtVanLeeftijd(voorstel.Leeftijd))
+        {
+            return true;
+        }
+
         // ADR-0043 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
         // and that resource matches no other column.
         if (kolommen.HasFlag(Kolom.Eigenaar) && bron is Woordwebbron woordweb && woordweb.EigenaarId == rechten.GebruikerId)
@@ -657,4 +679,10 @@ public enum Kolom
     /// or lacks. A column apart from <see cref="Eigenaar"/>, so a woordweb opens no activiteit row and the reverse.
     /// </summary>
     EigenActiviteitEigenaar = 131072,
+
+    /// <summary>
+    /// The asker of an <see cref="Activiteitvoorstelbron"/> who is still "LK leeftijd" there (ADR-0052 A3). Matches no
+    /// other resource.
+    /// </summary>
+    AanvragerVanVoorstel = 262144,
 }

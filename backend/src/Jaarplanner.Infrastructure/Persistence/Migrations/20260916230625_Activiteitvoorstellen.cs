@@ -27,7 +27,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     Status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     AiMotivatie = table.Column<string>(type: "text", nullable: false),
                     ActiviteitId = table.Column<Guid>(type: "uuid", nullable: true),
-                    Volgnummer = table.Column<int>(type: "integer", nullable: false)
+                    Volgnummer = table.Column<int>(type: "integer", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false)
                 },
                 constraints: table =>
                 {

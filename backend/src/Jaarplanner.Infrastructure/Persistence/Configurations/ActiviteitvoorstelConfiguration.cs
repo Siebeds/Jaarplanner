@@ -34,6 +34,9 @@ public sealed class ActiviteitvoorstelConfiguration : IEntityTypeConfiguration<A
             .UsePropertyAccessMode(PropertyAccessMode.Field)
             .IsRequired();
         builder.Property<int>(ActiviteitvoorstelService.Volgnummer).IsRequired();
+
+        // PostgreSQL's xmin as row version: two simultaneous decisions on one proposal cannot both be saved.
+        builder.Property<uint>("xmin").IsRowVersion();
         builder.Ignore(v => v.IsOpen);
 
         builder.HasOne<Subthema>()

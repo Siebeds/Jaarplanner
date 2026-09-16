@@ -43,6 +43,9 @@ const SUBTHEMA: SubthemaWeergave = {
 const VOORSTEL: ActiviteitvoorstelWeergave = {
   id: "v-1",
   subthemaId: "s-1",
+  aanvragerId: "a0000000-0000-4000-8000-000000000001",
+  aanvragerNaam: "Leerkracht An",
+  isEigen: true,
   naam: "Drijftafel",
   activiteitType: "Experiment",
   verwachteUitkomsten: "De kleuters testen voorwerpen in een bak water.",
@@ -111,6 +114,17 @@ describe("Activiteitvoorstellen", () => {
     expect(within(kaart).getByText("Bij: Waarom blijft een boot drijven?")).toBeInTheDocument();
     expect(within(kaart).getByText("WO-K3-02")).toBeInTheDocument();
     expect(within(kaart).getByText("Werkt aan drijven en zinken.")).toBeInTheDocument();
+    expect(within(kaart).queryByText(/Gevraagd door/)).not.toBeInTheDocument();
+  });
+
+  it("noemt bij de directie wie een voorstel van een collega vroeg", async () => {
+    toon(ik({ isDirectie: true, leerkrachtLeeftijden: [] }), [
+      { ...VOORSTEL, isEigen: false, aanvragerId: "b0000000-0000-4000-8000-000000000002", aanvragerNaam: "Leerkracht Bo" },
+    ]);
+
+    const kaart = await screen.findByRole("article", { name: "Drijftafel" });
+    expect(within(kaart).getByText("Gevraagd door Leerkracht Bo")).toBeInTheDocument();
+    expect(within(kaart).getByRole("button", { name: `${t("activiteitvoorstel.aanvaard")}: Drijftafel` })).toBeInTheDocument();
   });
 
   it("vraagt voorstellen met de AI-knop en meldt het resultaat", async () => {

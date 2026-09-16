@@ -637,6 +637,10 @@ export interface ActiviteitvoorstelDoel {
 export interface ActiviteitvoorstelWeergave {
   id: string;
   subthemaId: string;
+  aanvragerId: string;
+  aanvragerNaam: string;
+  /** Whether the signed-in gebruiker asked for it; only directie is sent someone else's (ADR-0052 A3). */
+  isEigen: boolean;
   naam: string;
   activiteitType: ActiviteitType | null;
   verwachteUitkomsten: string;

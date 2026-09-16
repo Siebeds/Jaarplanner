@@ -44,13 +44,24 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
         _opties = opties.Value;
     }
 
-    public async Task<IReadOnlyList<ActiviteitvoorstelWeergave>> HaalOpAsync(Guid subthemaId, Guid gebruikerId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ActiviteitvoorstelWeergave>> HaalOpAsync(
+        Guid subthemaId,
+        Guid gebruikerId,
+        bool vanIedereen,
+        CancellationToken cancellationToken = default)
     {
         var subthema = await LaadSubthemaAsync(subthemaId, tracking: false, cancellationToken);
         var voorstellen = await _context.Activiteitvoorstellen.AsNoTracking()
-            .Where(v => v.SubthemaId == subthemaId && v.GebruikerId == gebruikerId && v.Status == KoppelingStatus.Voorgesteld)
-            .OrderBy(v => EF.Property<int>(v, Volgnummer))
+            .Where(v => v.SubthemaId == subthemaId && v.Status == KoppelingStatus.Voorgesteld)
+            .Where(v => vanIedereen || v.GebruikerId == gebruikerId)
+            .OrderBy(v => v.GebruikerId != gebruikerId)
+            .ThenBy(v => v.GebruikerId)
+            .ThenBy(v => EF.Property<int>(v, Volgnummer))
             .ToListAsync(cancellationToken);
+        var aanvragers = voorstellen.Select(v => v.GebruikerId).Distinct().ToList();
+        var namen = await _context.Gebruikers.AsNoTracking()
+            .Where(g => aanvragers.Contains(g.Id))
+            .ToDictionaryAsync(g => g.Id, g => g.Naam, cancellationToken);
         var doelen = await DoelenAsync(voorstellen.SelectMany(v => v.LeerplandoelCodes), cancellationToken);
         var vragen = subthema.Onderzoeksvragen.ToDictionary(o => o.Id, o => o.Vraag);
 
@@ -58,6 +69,9 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
             .Select(v => new ActiviteitvoorstelWeergave(
                 v.Id,
                 v.SubthemaId,
+                v.GebruikerId,
+                namen.GetValueOrDefault(v.GebruikerId, string.Empty),
+                v.GebruikerId == gebruikerId,
                 v.Naam,
                 v.ActiviteitType,
                 v.VerwachteUitkomsten,
@@ -100,6 +114,11 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
         }
 
         var plan = ActiviteitvoorstelValidator.Keur(context, antwoord);
+        if (plan.Activiteiten.Count == 0)
+        {
+            // D4: a run that keeps nothing leaves the open proposals as they were, so none vanish without a replacement.
+            return ActiviteitvoorstelResultaat.Geslaagd(0, plan.AantalOvergeslagen);
+        }
 
         // D4: the run replaces the asker's open proposals here; decided ones stay, as the rejected ones must (D5).
         _context.Activiteitvoorstellen.RemoveRange(await _context.Activiteitvoorstellen
@@ -131,7 +150,6 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
 
     public async Task<ActiviteitvoorstelBesluit> BeslisAsync(
         Guid activiteitvoorstelId,
-        Guid gebruikerId,
         ActiviteitvoorstelBeslissing beslissing,
         CancellationToken cancellationToken = default)
     {
@@ -141,9 +159,8 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
             throw new SchoolcontentValidatieFout("Een voorstel aanvaard of weiger je.");
         }
 
-        // D2: found by its id and the caller together, so someone else's proposal is not found at all.
         var voorstel = await _context.Activiteitvoorstellen
-            .SingleOrDefaultAsync(v => v.Id == activiteitvoorstelId && v.GebruikerId == gebruikerId, cancellationToken)
+            .SingleOrDefaultAsync(v => v.Id == activiteitvoorstelId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout(VoorstelWeg);
         if (!voorstel.IsOpen)
         {
@@ -153,7 +170,7 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
         if (beslissing.Status == KoppelingStatus.Geweigerd)
         {
             voorstel.Weiger();
-            await _context.SaveChangesAsync(cancellationToken);
+            await BewaarAsync(cancellationToken);
             return new ActiviteitvoorstelBesluit(KoppelingStatus.Geweigerd, null);
         }
 
@@ -216,7 +233,9 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
                 $"{weg} is intussen geen subdoel meer van {subthema.Naam}. Laat het weg, of vraag nieuwe voorstellen.");
         }
 
-        var activiteit = subthema.VoegActiviteitToe(naam.Trim(), soort, hoek: null, uitkomsten.Trim(), gebruikerId, gebruikerId);
+        // A2, A3: the activiteit is the asker's own, also when directie decides.
+        var aanvrager = voorstel.GebruikerId;
+        var activiteit = subthema.VoegActiviteitToe(naam.Trim(), soort, hoek: null, uitkomsten.Trim(), aanvrager, aanvrager);
         activiteit.StelLengteIn(lesuren);
         if (voorstel.OnderzoeksvraagId is { } vraagId && subthema.Onderzoeksvragen.Any(o => o.Id == vraagId))
         {
@@ -230,8 +249,24 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
 
         _context.Activiteiten.Add(activiteit);
         voorstel.Aanvaard(activiteit.Id, naam, soort, uitkomsten, lesuren, codes);
-        await _context.SaveChangesAsync(cancellationToken);
+        await BewaarAsync(cancellationToken);
         return new ActiviteitvoorstelBesluit(voorstel.Status, activiteit.Id);
+    }
+
+    /// <summary>
+    /// Saves a decision. The proposal's row version makes a second, simultaneous decision fail here rather than create a
+    /// second activiteit.
+    /// </summary>
+    private async Task BewaarAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new SchoolcontentValidatieFout(AlBeslist);
+        }
     }
 
     private async Task<Subthema> LaadSubthemaAsync(Guid subthemaId, bool tracking, CancellationToken cancellationToken)

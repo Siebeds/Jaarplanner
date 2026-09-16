@@ -886,6 +886,12 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<int>("Volgnummer")
                         .HasColumnType("integer");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ActiviteitId");

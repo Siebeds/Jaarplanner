@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916223242_Activiteitvoorstellen")]
+    [Migration("20260916230625_Activiteitvoorstellen")]
     partial class Activiteitvoorstellen
     {
         /// <inheritdoc />
@@ -888,6 +888,12 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Volgnummer")
                         .HasColumnType("integer");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
