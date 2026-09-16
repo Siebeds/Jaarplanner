@@ -158,7 +158,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         // half — the unit tests fake the database, the layer tests never touch a jaarplan — so without this the two
         // halves were only ever checked against each other's fakes. For a coverage feature that is the difference
         // between a green suite and a screen reporting 0% for a fully planned class.
-        // Since ADR-0049 the thema route is a minimumdoel's: the placed thema covers its minimumdoel themadoel, and no
+        // Since ADR-0050 the thema route is a minimumdoel's: the placed thema covers its minimumdoel themadoel, and no
         // leerplandoel.
         var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
 

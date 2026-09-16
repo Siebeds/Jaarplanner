@@ -76,7 +76,7 @@ public sealed class DoelMatchOpslagTests
     [Fact]
     public async Task Het_query_pad_volgt_de_rang_en_niet_de_code()
     {
-        // Owner ruling 2026-09-16 (ADR-0049 D6): the model's order, best fit first.
+        // Owner ruling 2026-09-16 (ADR-0050 D6): the model's order, best fit first.
         var options = Options($"fb053_{Guid.NewGuid():N}");
         Guid themaId;
         await using (var ctx = new AppDbContext(options))

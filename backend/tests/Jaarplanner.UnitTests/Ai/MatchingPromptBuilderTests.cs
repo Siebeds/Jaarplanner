@@ -6,7 +6,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// Pins the prompt of a thema's doelsuggesties (FB-053, ADR-0049, Art. IV.4/IV.5): the candidate minimumdoelen as the
+/// Pins the prompt of a thema's doelsuggesties (FB-053, ADR-0050, Art. IV.4/IV.5): the candidate minimumdoelen as the
 /// stable context (TB-043), the thema and the refs not to propose as the user prompt; grounded only on school and
 /// Op.stap data; deterministic and snapshot-stable.
 /// </summary>

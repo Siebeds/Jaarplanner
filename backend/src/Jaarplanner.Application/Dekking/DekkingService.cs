@@ -16,8 +16,9 @@ namespace Jaarplanner.Application.Dekking;
 /// placed. Nothing else makes it either (D2).</item>
 /// <item>A <b>leerplandoel</b> is in the prognose when a subdoel or activiteit link of a subthema at the klas's
 /// leeftijd carries it (D3, S1); it is gedekt when that subthema is placed in the klas's agenda, or when a planned
-/// algemene fiche carries it (D4). A thema's doelsuggestie proposes a minimumdoel and never reaches a leerplandoel
-/// (ADR-0049).</item>
+/// algemene fiche carries it (D4). An own activiteit's link never counts through its subthema: it is in the prognose of
+/// its owner's klassen and of a klas that plans it, and gedekt where it is planned (ADR-0049 D7). A thema's
+/// doelsuggestie proposes a minimumdoel and never reaches a leerplandoel (ADR-0050).</item>
 /// </list>
 /// <para>
 /// A thema counts as placed when its placement is <c>aanvaard</c> or <c>manueel</c> and not stale (S3). It reads the
@@ -79,8 +80,9 @@ public sealed class DekkingService
             {
                 var dekkendeThemas = bronnen.DekkendPerCode.GetValueOrDefault(l.Code, []);
                 var dekkendeFiches = bronnen.FichesPerCode.GetValueOrDefault(l.Code, []);
+                var dekkendeActiviteiten = bronnen.EigenActiviteitenPerCode.GetValueOrDefault(l.Code, []);
                 var prognose = bronnen.PrognosePerCode.GetValueOrDefault(l.Code, []);
-                var stap = dekkendeThemas.Count > 0 || dekkendeFiches.Count > 0
+                var stap = dekkendeThemas.Count > 0 || dekkendeFiches.Count > 0 || dekkendeActiviteiten.Count > 0
                     ? Dekkingsstap.Gedekt
                     : prognose.Count > 0 ? Dekkingsstap.Prognose : Dekkingsstap.Geen;
                 var lacune = stap == Dekkingsstap.Gedekt
@@ -104,7 +106,8 @@ public sealed class DekkingService
                     lacune.Oorzaak,
                     lacune.Themas,
                     stap,
-                    prognose);
+                    prognose,
+                    dekkendeActiviteiten);
             })
             .OrderBy(d => d.Domein, StringComparer.Ordinal)
             .ThenBy(d => d.Subdomein, StringComparer.Ordinal)
@@ -145,8 +148,8 @@ public sealed class DekkingService
     /// The plan's coverage <b>now</b> beside what it would be if every proposed thema placement were accepted
     /// (E4-06). Only the leerplandoel figures: this is the generation's report, and it asks what the plan could do.
     /// <para>
-    /// Under Art. V.1 no thema placement reaches a leerplandoel any more (ADR-0049): the subthema and fiche routes do not
-    /// depend on it, so the two figures are equal. The shape stays, so the report keeps working; whether it should
+    /// Under Art. V.1 no thema placement reaches a leerplandoel any more (ADR-0050): the subthema, own activiteit and fiche
+    /// routes do not depend on it, so the two figures are equal. The shape stays, so the report keeps working; whether it should
     /// count minimumdoelen instead is an open question for the owner.
     /// </para>
     /// </summary>
@@ -162,6 +165,9 @@ public sealed class DekkingService
         var gedekteCodes = new HashSet<string>(StringComparer.Ordinal);
         gedekteCodes.UnionWith((await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken)).Select(k => k.LeerplandoelCode));
         gedekteCodes.UnionWith((await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken))
+            .Where(k => k.IsIngepland)
+            .Select(k => k.LeerplandoelCode));
+        gedekteCodes.UnionWith((await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken))
             .Where(k => k.IsIngepland)
             .Select(k => k.LeerplandoelCode));
 
@@ -188,23 +194,33 @@ public sealed class DekkingService
     {
         var subthemas = await _opslag.HaalSubthemakoppelingenAsync(klasId, cancellationToken);
         var fiches = await _opslag.HaalFichekoppelingenAsync(klasId, cancellationToken);
+        var eigen = await _opslag.HaalEigenActiviteitkoppelingenAsync(klasId, cancellationToken);
 
         var dekkend = subthemas.Where(k => k.IsIngepland).Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)));
 
         // The prognose is what the school's content aims at, placed or not: every decided subthema link at the klas's
-        // leeftijd (S1).
-        var prognose = subthemas.Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)));
+        // leeftijd (S1), and every own activiteit that concerns the klas (ADR-0049 D7).
+        var prognose = subthemas.Select(k => (k.LeerplandoelCode, Naam: Subthemanaam(k)))
+            .Concat(eigen.Select(k => (k.LeerplandoelCode, Naam: EigenActiviteitnaam(k))));
 
         return new Bronnen(
             NamenPerCode(dekkend, r => r.LeerplandoelCode, r => r.Naam),
             NamenPerCode(fiches, k => k.LeerplandoelCode, k => k.FicheNaam),
-            NamenPerCode(prognose, r => r.LeerplandoelCode, r => r.Naam));
+            NamenPerCode(prognose, r => r.LeerplandoelCode, r => r.Naam),
+            NamenPerCode(eigen.Where(k => k.IsIngepland), k => k.LeerplandoelCode, k => k.ActiviteitNaam));
     }
 
     private sealed record Bronnen(
         Dictionary<string, IReadOnlyList<string>> DekkendPerCode,
         Dictionary<string, IReadOnlyList<string>> FichesPerCode,
-        Dictionary<string, IReadOnlyList<string>> PrognosePerCode);
+        Dictionary<string, IReadOnlyList<string>> PrognosePerCode,
+        Dictionary<string, IReadOnlyList<string>> EigenActiviteitenPerCode);
+
+    /// <summary>
+    /// How an own activiteit is named as a prognose source: its name, marked as an own activiteit, so it is never read as
+    /// a thema or a subthema (ADR-0049 D7).
+    /// </summary>
+    private static string EigenActiviteitnaam(EigenActiviteitkoppeling koppeling) => $"{koppeling.ActiviteitNaam} (eigen activiteit)";
 
     /// <summary>How a subthema is named as evidence: its own name, with its thema, since two thema's may share one.</summary>
     private static string Subthemanaam(Subthemakoppeling koppeling) => $"{koppeling.SubthemaNaam} ({koppeling.ThemaNaam})";
@@ -286,7 +302,7 @@ public sealed class DekkingService
     /// <summary>
     /// Classifies why a leerplandoel is not gedekt, taking the first cause that applies in the order of
     /// <see cref="Lacuneoorzaak"/>: the cheapest route to closing it (E5-05). No thema placement reaches a leerplandoel
-    /// (ADR-0049), so the two causes about one, <see cref="Lacuneoorzaak.WachtOpBeslissing"/> and
+    /// (ADR-0050), so the two causes about one, <see cref="Lacuneoorzaak.WachtOpBeslissing"/> and
     /// <see cref="Lacuneoorzaak.PlaatsingGeweigerd"/>, apply to minimumdoelen only.
     /// <list type="number">
     /// <item><see cref="Lacuneoorzaak.NietIngepland"/>: in the prognose, so a subthema aims at it, and the agenda does

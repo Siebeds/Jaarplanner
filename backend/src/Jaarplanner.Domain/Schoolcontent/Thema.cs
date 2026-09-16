@@ -73,7 +73,7 @@ public sealed class Thema
     public IReadOnlyList<Subthema> Subthemas => _subthemas;
 
     /// <summary>
-    /// The AI's proposals of a minimumdoel as a themadoel (FB-053, ADR-0049, Art. IX.2), open and decided. Separate from
+    /// The AI's proposals of a minimumdoel as a themadoel (FB-053, ADR-0050, Art. IX.2), open and decided. Separate from
     /// <see cref="Minimumdoelen"/>: a proposal is not a themadoel until a person accepts it, and a rejected one stays
     /// here so a next run does not propose it again.
     /// </summary>
@@ -188,8 +188,8 @@ public sealed class Thema
     /// <summary>
     /// Records the AI's proposal of a minimumdoel as a themadoel (FB-053), as <see cref="KoppelingStatus.Voorgesteld"/>
     /// with its motivation. Nothing is applied (Art. IV.1/IV.2). Its rank follows every proposal already on the thema,
-    /// so proposals added in the model's order keep that order (ADR-0049 D6). A minimumdoel that was accepted and later
-    /// unlinked is proposed again on its existing row (ADR-0049 D1).
+    /// so proposals added in the model's order keep that order (ADR-0050 D6). A minimumdoel that was accepted and later
+    /// unlinked is proposed again on its existing row (ADR-0050 D1).
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The minimumdoel may not be proposed now (<see cref="IsUitgeslotenVoorVoorstel"/>).
@@ -223,7 +223,7 @@ public sealed class Thema
     }
 
     /// <summary>
-    /// Whether a run must not propose <paramref name="minimumdoelRef"/> for this thema (ADR-0049 D1): it is a themadoel
+    /// Whether a run must not propose <paramref name="minimumdoelRef"/> for this thema (ADR-0050 D1): it is a themadoel
     /// now, or it has an open or a rejected proposal. A minimumdoel accepted before and unlinked since may come back.
     /// </summary>
     public bool IsUitgeslotenVoorVoorstel(string minimumdoelRef)
@@ -238,7 +238,7 @@ public sealed class Thema
     }
 
     /// <summary>
-    /// The refs a run must not propose (ADR-0049 D1), each once, in ordinal order: the themadoelen, and the minimumdoelen
+    /// The refs a run must not propose (ADR-0050 D1), each once, in ordinal order: the themadoelen, and the minimumdoelen
     /// with an open or a rejected proposal. What the prompt's "Niet voorstellen" line lists.
     /// </summary>
     public IReadOnlyList<string> NietVoorTeStellenMinimumdoelen() =>
@@ -264,7 +264,7 @@ public sealed class Thema
             : KoppelMinimumdoel(suggestie.MinimumdoelRef);
     }
 
-    /// <summary>Rejects a proposal. It stays stored, so a next run does not propose it again (ADR-0049 D1).</summary>
+    /// <summary>Rejects a proposal. It stays stored, so a next run does not propose it again (ADR-0050 D1).</summary>
     /// <exception cref="InvalidOperationException">The proposal is not this thema's, or it was already decided.</exception>
     public void WeigerDoelsuggestie(Minimumdoelsuggestie suggestie)
     {

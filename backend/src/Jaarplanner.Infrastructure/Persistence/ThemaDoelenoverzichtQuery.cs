@@ -53,7 +53,9 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
                 vondsten.Add((subthema.Leeftijd, subdoel.Koppeling.LeerplandoelCode, new DoelPlaats(DoelPlaatsSoort.Subdoel, subthema.Naam)));
             }
 
-            foreach (var activiteit in subthema.Activiteiten)
+            // Shared activiteiten only: an own activiteit counts for its owner's klas where it is planned, not for the
+            // thema (ADR-0049 D7, D9).
+            foreach (var activiteit in subthema.Activiteiten.Where(a => !a.IsEigen))
             {
                 foreach (var koppeling in activiteit.Doelkoppelingen.Where(k => Beslist(k.Status)))
                 {

@@ -97,26 +97,35 @@ public sealed class SubthemasController : ControllerBase
     }
 
     /// <summary>
-    /// Creates an activiteit by hand. The signed-in gebruiker is its maker (ADR-0030 R26), never the body.
+    /// Creates an activiteit by hand. The signed-in gebruiker is its maker (ADR-0030 R26) and, unless the body asks for a
+    /// shared one, its owner (ADR-0049 E1), never an id from the body.
     /// <para>
-    /// Goal codes in the create are goal links by hand on a shared activiteit, which is R19's row and not the content
-    /// row: a leerkracht of that leeftijd may create the activiteit but not link its goals, so a create that carries codes
-    /// needs <c>DoelenKoppelen</c> as well. Any code counts, a blank one too: that is a request to link, which the
-    /// service refuses afterwards, and failing closed here costs nothing.
+    /// <b>The row depends on the body</b>, so it is checked here after binding: an own activiteit is
+    /// <c>EigenActiviteitMaken</c> ("LK leeftijd", D2), a shared one <c>GedeeldeActiviteitMaken</c> (HL, D1).
+    /// </para>
+    /// <para>
+    /// Goal codes in a shared create are goal links by hand on a shared activiteit, which is R19's row: a create that
+    /// carries codes needs <c>DoelenKoppelen</c> as well. Any code counts, a blank one too: that is a request to link,
+    /// which the service refuses afterwards, and failing closed here costs nothing. On an own activiteit the owner links
+    /// its goals herself (E3), so the create row is enough.
     /// </para>
     /// </summary>
     [HttpPost("{subthemaId:guid}/activiteiten")]
-    [RechtOp(Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken, Rechtbron.Subthema, "subthemaId")]
     public async Task<ActionResult<ActiviteitWeergave>> MaakActiviteit(Guid subthemaId, [FromBody] ActiviteitCreatie creatie, CancellationToken cancellationToken)
     {
-        if (creatie.LeerplandoelCodes is { Count: > 0 })
+        var bron = await _bronnen.VoorSubthemaAsync(subthemaId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout("Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
+        var rij = creatie.Gedeeld ? Rechtenmatrix.Beleid.GedeeldeActiviteitMaken : Rechtenmatrix.Beleid.EigenActiviteitMaken;
+        if (!await _autorisatie.MagAsync(User, bron, rij))
         {
-            var bron = await _bronnen.VoorSubthemaAsync(subthemaId, cancellationToken)
-                ?? throw new SchoolcontentNietGevondenFout("Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
-            if (!await _autorisatie.MagAsync(User, bron, Rechtenmatrix.Beleid.DoelenKoppelen))
-            {
-                return Forbid();
-            }
+            return Forbid();
+        }
+
+        if (creatie.Gedeeld
+            && creatie.LeerplandoelCodes is { Count: > 0 }
+            && !await _autorisatie.MagAsync(User, bron, Rechtenmatrix.Beleid.DoelenKoppelen))
+        {
+            return Forbid();
         }
 
         var activiteit = await _service.MaakActiviteitAsync(subthemaId, Aanmelding.GebruikerId(User), creatie, cancellationToken);

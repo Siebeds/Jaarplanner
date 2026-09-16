@@ -16,7 +16,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// The dekkingsvooruitzicht (E3-03, FR-5.3) over a <b>real generation run</b> against real PostgreSQL: the model
-/// proposes, and the figures say what the plan covers and what accepting it would cover. Since ADR-0049 a thema
+/// proposes, and the figures say what the plan covers and what accepting it would cover. Since ADR-0050 a thema
 /// placement reaches no leerplandoel, so accepting the proposal moves neither figure; a subthema placed in the agenda
 /// moves both.
 /// <para>
@@ -173,7 +173,7 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         var vooruitzicht = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
 
         // FR-5.3, measured: nothing is covered, and accepting the proposal would cover nothing either, since no
-        // subthema is in the agenda (ADR-0049).
+        // subthema is in the agenda (ADR-0050).
         Assert.True(vooruitzicht.IsBetrouwbaar);
         Assert.Equal(0, vooruitzicht.AantalGedekt);
         Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
@@ -195,7 +195,7 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
     [PostgresFact]
     public async Task Het_aanvaarden_van_een_themavoorstel_verandert_de_leerplandoelcijfers_niet()
     {
-        // Since ADR-0049 a thema placement reaches no leerplandoel: accepting one of two proposals moves neither the
+        // Since ADR-0050 a thema placement reaches no leerplandoel: accepting one of two proposals moves neither the
         // figure nor the ceiling.
         var seed = await SeedAsync();
         var blokken = Blokken(await LaadSchooljaarAsync(seed.KlasId));

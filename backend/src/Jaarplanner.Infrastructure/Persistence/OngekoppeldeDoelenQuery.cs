@@ -12,7 +12,7 @@ namespace Jaarplanner.Infrastructure.Persistence;
 /// <see cref="DoelKoppeling"/> with status <see cref="KoppelingStatus.Aanvaard"/> or
 /// <see cref="KoppelingStatus.Manueel"/>. Those links live in four tables: the <c>themadoelen</c> the import writes,
 /// <c>subdoelen</c>, activiteit links and algemene fiches, so the set of linked codes is the union across all four. A
-/// thema's doelsuggestie proposes a minimumdoel and links no leerplandoel (ADR-0049).
+/// thema's doelsuggestie proposes a minimumdoel and links no leerplandoel (ADR-0050).
 /// <c>voorgesteld</c>/<c>geweigerd</c> links are excluded, so a doel that only has an open suggestion
 /// stays in the gap list (agrees with dekking, Art. V).
 /// </para>

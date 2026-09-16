@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     /// <summary>
-    /// FB-053 (ADR-0049): a thema's doelsuggesties propose minimumdoelen. Creates <c>thema_minimumdoelsuggesties</c>, with
+    /// FB-053 (ADR-0050): a thema's doelsuggesties propose minimumdoelen. Creates <c>thema_minimumdoelsuggesties</c>, with
     /// the rank that orders them, and drops <c>thema_doelsuggesties</c> with every leerplandoel doelsuggestie in it, open
     /// and accepted, in every environment (owner ruling 2026-09-16). Nothing references a row of the dropped table.
     /// <para>

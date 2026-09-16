@@ -460,7 +460,9 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             activiteiten = await _context.Themas
                 .AsNoTracking()
                 .SelectMany(t => t.Subthemas
+                    // Shared activiteiten only: another gebruiker's own activiteit is not shown here (ADR-0049 D3, D9).
                     .SelectMany(st => st.Activiteiten
+                        .Where(a => a.EigenaarId == null)
                         .SelectMany(a => a.Doelkoppelingen
                             .Where(k => k.LeerplandoelCode == code)
                             .Select(k => new DoelKoppelingWeergave(

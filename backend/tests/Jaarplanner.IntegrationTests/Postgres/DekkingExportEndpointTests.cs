@@ -247,7 +247,7 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
 
     /// <summary>
     /// A class with a thema placed in its jaarplan, and its K3 subthema, carrying <c>EXP-01</c> as a subdoel, placed in
-    /// the agenda: the route a leerplandoel is covered by since ADR-0049. Mirrors
+    /// the agenda: the route a leerplandoel is covered by since ADR-0050. Mirrors
     /// <see cref="DekkingEndpointsTests"/>'s arrangement, including asking the real
     /// <see cref="IPlanningsblokIndeling"/> seam for the block start instead of guessing a date: a hard-coded start
     /// would make the healthy case depend on the grid beginning where the test hoped, and a test that drifts into

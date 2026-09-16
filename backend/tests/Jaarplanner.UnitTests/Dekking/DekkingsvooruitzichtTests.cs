@@ -9,7 +9,7 @@ namespace Jaarplanner.UnitTests.Dekking;
 /// The dekkingsvooruitzicht (E3-03, FR-5.3): what a plan <b>would</b> cover if the teacher accepted everything
 /// standing in it, beside what it covers today, over the leerplandoelen.
 /// <para>
-/// <b>Since ADR-0049 no thema placement reaches a leerplandoel</b>: a leerplandoel is covered through a placed subthema
+/// <b>Since ADR-0050 no thema placement reaches a leerplandoel</b>: a leerplandoel is covered through a placed subthema
 /// or a planned algemene fiche, neither of which depends on a thema placement's status. So the two figures are equal
 /// in every state, and these tests pin that, together with the rules that still shape them: the scope, and the stale
 /// placement that withholds both.
@@ -198,7 +198,7 @@ public sealed class DekkingsvooruitzichtTests
     public async Task Het_plafond_is_het_gedekte_cijfer_bij_elke_plaatsingsstatus()
     {
         // A property rather than a case, asserted over every status combination of two placements: no thema
-        // placement moves a leerplandoel figure (ADR-0049), so the ceiling equals the figure and stays within the
+        // placement moves a leerplandoel figure (ADR-0050), so the ceiling equals the figure and stays within the
         // denominator.
         KoppelingStatus[] statussen =
         [

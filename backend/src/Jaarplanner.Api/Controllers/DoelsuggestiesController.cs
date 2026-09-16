@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for a thema's doelsuggesties (FB-053, ADR-0049, FR-4.1/4.2/4.3): the AI proposes
+/// Thin REST controller (Art. VIII) for a thema's doelsuggesties (FB-053, ADR-0050, FR-4.1/4.2/4.3): the AI proposes
 /// minimumdoelen as themadoel, and a person accepts or rejects each. All logic lives in <see cref="DoelMatchingService"/>.
 /// <para>
 /// Nothing is applied by the AI: a run stores each proposal as <c>voorgesteld</c> with a motivation, and only an explicit

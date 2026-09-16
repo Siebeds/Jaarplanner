@@ -557,7 +557,7 @@ public sealed class LeerplandoelRegisterEndpointsTests : IAsyncLifetime
         Assert.Equal("De kleuter verkent de natuur in de omgeving.", doel.Minimumdoel.Omschrijving);
 
         // The three link layers on a thema, each with the status the teacher left it in. A thema's doelsuggestie
-        // proposes a minimumdoel and is no link of a leerplandoel (ADR-0049).
+        // proposes a minimumdoel and is no link of a leerplandoel (ADR-0050).
         Assert.Equal(3, doel.Koppelingen.Count);
         var themadoel = Assert.Single(doel.Koppelingen, k => k.Herkomst == KoppelingHerkomst.Themadoel);
         Assert.Equal("Herfst", themadoel.ThemaNaam);

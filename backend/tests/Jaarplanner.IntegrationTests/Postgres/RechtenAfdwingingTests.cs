@@ -285,11 +285,16 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
         var pad = $"/api/subthemas/{subthemaId}/activiteiten";
-        var metDoel = new { naam = "Proef", activiteitType = "Experiment", leerplandoelCodes = new[] { Doelcode } };
+        var gedeeldMetDoel = new { naam = "Proef", activiteitType = "Experiment", leerplandoelCodes = new[] { Doelcode }, gedeeld = true };
+        var eigenMetDoel = new { naam = "Proef", activiteitType = "Experiment", leerplandoelCodes = new[] { Doelcode } };
 
-        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(leerkracht.PostAsJsonAsync(pad, metDoel)));
-        Assert.Equal(HttpStatusCode.Created, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(pad, metDoel)));
-        Assert.Equal(HttpStatusCode.Created, await StatusAsync(leerkracht.PostAsJsonAsync(pad, new { naam = "Proef", activiteitType = "Experiment" })));
+        // A shared one is the hoofdleerkracht's to create, with its goals (ADR-0049 D1, R19); a leerkracht creates none.
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(leerkracht.PostAsJsonAsync(pad, gedeeldMetDoel)));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(leerkracht.PostAsJsonAsync(pad, new { naam = "Proef", gedeeld = true })));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(pad, gedeeldMetDoel)));
+        // Her own one she creates with its goals (E1, E3); the hoofdleerkracht without a klas at K3 creates no own one (D2).
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(leerkracht.PostAsJsonAsync(pad, eigenMetDoel)));
+        Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(pad, eigenMetDoel)));
     }
 
     // --- Een activiteit verwijderen (R25, R26, R33): the maker while no goal is linked, the hoofdleerkracht always. ---
@@ -300,11 +305,12 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         var subthemaId = await opzet.SubthemaAsync("K3");
-        using var maker = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
         using var collega = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
-        var zonder = await opzet.ActiviteitAsync(subthemaId, maker);
-        var met = await opzet.ActiviteitAsync(subthemaId, maker);
+        var makerId = await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]);
+        using var maker = opzet.Als(makerId);
+        var zonder = await opzet.GedeeldeActiviteitMetMakerAsync(subthemaId, makerId);
+        var met = await opzet.GedeeldeActiviteitMetMakerAsync(subthemaId, makerId);
         await opzet.KoppelAsync(met.Id, Doelcode);
 
         // The same leeftijd is not enough: only the maker, or the hoofdleerkracht.

@@ -13,7 +13,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </summary>
 public sealed class MinimumdoelsuggestiesMigratieTests : IAsyncLifetime
 {
-    private const string VorigeMigratie = "20260916193154_ActiviteitTypeOptioneel";
+    private const string VorigeMigratie = "20260916211238_EigenActiviteit";
 
     private PostgresTestDatabase _db = null!;
 

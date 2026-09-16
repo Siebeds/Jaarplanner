@@ -4,7 +4,7 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.Application.Ai;
 
 /// <summary>
-/// The candidate minimumdoel list a thema-level prompt starts with (FB-053, ADR-0049): the thema page's doelsuggesties
+/// The candidate minimumdoel list a thema-level prompt starts with (FB-053, ADR-0050): the thema page's doelsuggesties
 /// and the wizard's themadoel step.
 /// <para>
 /// <b>Compact and grouped.</b> Per mijlpaal a heading, under it per <c>leergebied &gt; rubriek &gt; subrubriek</c> a

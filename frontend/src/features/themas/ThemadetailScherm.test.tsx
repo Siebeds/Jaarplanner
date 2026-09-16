@@ -435,8 +435,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
     expect(await screen.findByText(SUGGESTIE.aiMotivatie)).toBeInTheDocument();
-    expect(knop(t("thema.aanvaard"))).not.toBeNull();
-    expect(knop(t("thema.weiger"))).not.toBeNull();
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
+    expect(knop(t("voorstelstapel.weigerAria", { naam: "K-9.1.1" }))).not.toBeNull();
 
     // I26 needs a wizard run's state the frontend does not read, so the delete is directie's here.
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
@@ -508,13 +508,13 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(screen.queryByText(t("klasbeheer.leeftijdenOnbekend"))).toBeNull();
   });
 
-  it("toont een voorgesteld minimumdoel met zijn mijlpaal en tekst, en aanvaarden of weigeren stuurt die beslissing", async () => {
+  it("toont een voorgesteld minimumdoel met zijn mijlpaal en tekst, en aanvaarden stuurt die beslissing", async () => {
     toon(ikMet({ heeftThemabeheer: true }));
 
-    const kaart = (await screen.findByText(SUGGESTIE.aiMotivatie)).closest("li")!;
-    expect(within(kaart).getByText("K-9.1.1")).toBeInTheDocument();
-    expect(within(kaart).getByText(t("minimumdoel.mijlpaalK"))).toBeInTheDocument();
-    expect(within(kaart).getByText("De kleuters kunnen seizoenen onderscheiden.")).toBeInTheDocument();
+    await screen.findByText(SUGGESTIE.aiMotivatie);
+    expect(screen.getByText("K-9.1.1")).toBeInTheDocument();
+    expect(screen.getByText(t("minimumdoel.mijlpaalK"))).toBeInTheDocument();
+    expect(screen.getByText("De kleuters kunnen seizoenen onderscheiden.")).toBeInTheDocument();
     expect(screen.getByText(t("thema.suggesties"))).toBeInTheDocument();
 
     const fetchSpy = globalThis.fetch as unknown as { mock: { calls: [string, RequestInit | undefined][] } };
@@ -523,15 +523,13 @@ describe("ThemadetailScherm: wie wat mag", () => {
         .filter(([pad, init]) => init?.method === "PUT" && pad.endsWith("/doelsuggesties/sug-1/status"))
         .map(([, init]) => JSON.parse(String(init!.body)));
 
-    fireEvent.click(within(kaart).getByRole("button", { name: t("thema.aanvaard") }));
+    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
     await waitFor(() => expect(beslissingen()).toEqual([{ status: "Aanvaard" }]));
-    await waitFor(() => expect(within(kaart).getByRole("button", { name: t("thema.weiger") })).toBeEnabled());
-    fireEvent.click(within(kaart).getByRole("button", { name: t("thema.weiger") }));
-    await waitFor(() => expect(beslissingen()).toEqual([{ status: "Aanvaard" }, { status: "Geweigerd" }]));
   });
 
   it("toont de voorstellen in de volgorde van de server, het best passende eerst", async () => {
-    // Owner ruling 2026-09-16: the model's order, which the server keeps as a rank. Not sorted by code here.
+    // Owner ruling 2026-09-16: the model's order, which the server keeps as a rank. Not sorted by code here, and the
+    // stack shows the first one on top.
     toon(ikMet({ heeftThemabeheer: true }), {
       suggesties: [
         { ...SUGGESTIE, id: "sug-b", minimumdoelRef: "K-9.9.9", aiMotivatie: "Past het best." },
@@ -540,20 +538,23 @@ describe("ThemadetailScherm: wie wat mag", () => {
       ],
     });
 
-    await screen.findByText("Past het best.");
-    const volgorde = screen
-      .getAllByText(/^Past /)
-      .map((p) => p.textContent);
-    expect(volgorde).toEqual(["Past het best.", "Past ook."]);
-    // A decided proposal is not shown as open.
+    expect(await screen.findByText("Past het best.")).toBeInTheDocument();
+    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 1, totaal: 2 }))).toBeInTheDocument();
+    expect(screen.queryByText("Past ook.")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.weigerAria", { naam: "K-9.9.9" }) }));
+    expect(await screen.findByText("Past ook.")).toBeInTheDocument();
+    // A decided proposal is never on the stack.
     expect(screen.queryByText("Beslist.")).toBeNull();
   });
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { weiger: true });
-    fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
+    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
+    // The refused suggestion is back on the stack, still waiting for a decision.
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
   });
 });
 

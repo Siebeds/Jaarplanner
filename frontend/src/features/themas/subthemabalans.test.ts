@@ -37,6 +37,15 @@ function subthema(subdoelen: ReturnType<typeof koppeling>[], activiteiten: Activ
 }
 
 describe("subthemabalans (FB-010)", () => {
+  it("telt de eigen activiteit van een gebruiker niet mee (ADR-0049 D9)", () => {
+    const eigen = { ...activiteit("2", koppeling("B"), koppeling("Z")), eigenaarId: "ander" };
+    const balans = subthemabalans(subthema([koppeling("A"), koppeling("B")], [activiteit("1", koppeling("A")), eigen]));
+
+    expect(balans.subdoelenInActiviteit).toBe(1);
+    expect(balans.dragersPerSubdoel.get("sd-2")).toEqual([]);
+    expect(balans.andereDoelen).toEqual([]);
+  });
+
   it("telt welke subdoelen een activiteit hebben, en welke nog niet", () => {
     const balans = subthemabalans(
       subthema([koppeling("A"), koppeling("B"), koppeling("C")], [activiteit("1", koppeling("A")), activiteit("2", koppeling("B"))]),

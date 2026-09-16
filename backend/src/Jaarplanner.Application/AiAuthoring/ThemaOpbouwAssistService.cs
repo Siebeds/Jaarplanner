@@ -170,7 +170,7 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
                 continue;
             }
 
-            // Step 2 keeps at most eight minimumdoelen, as the thema page does (ADR-0049 D3).
+            // Step 2 keeps at most eight minimumdoelen, as the thema page does (ADR-0050 D3).
             if (uitgesloten is not null && suggesties.Count == AiMatching.MatchingPromptBuilder.MaxSuggesties)
             {
                 break;

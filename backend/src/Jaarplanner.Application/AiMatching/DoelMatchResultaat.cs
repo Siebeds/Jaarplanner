@@ -42,7 +42,7 @@ public sealed record DoelMatchResultaat
     /// <summary>Refs the model returned that are not among the candidates: skipped, not fabricated (Art. III.5).</summary>
     public IReadOnlyList<string> OvergeslagenOnbekend { get; }
 
-    /// <summary>Refs the model returned that are already a themadoel or already proposed: skipped (ADR-0049 D1).</summary>
+    /// <summary>Refs the model returned that are already a themadoel or already proposed: skipped (ADR-0050 D1).</summary>
     public IReadOnlyList<string> OvergeslagenDuplicaat { get; }
 
     /// <summary>
@@ -54,7 +54,7 @@ public sealed record DoelMatchResultaat
     /// <summary>The leeftijden the run was for: the caller's choice, or else those of the thema's subthema's (TB-007).</summary>
     public IReadOnlyList<string> JaarFasen { get; init; } = LeegCodes;
 
-    /// <summary>The mijlpalen those leeftijden meet, whose minimumdoelen were the candidates (ADR-0049 O3).</summary>
+    /// <summary>The mijlpalen those leeftijden meet, whose minimumdoelen were the candidates (ADR-0050 O3).</summary>
     public IReadOnlyList<string> Mijlpalen { get; init; } = LeegCodes;
 
     /// <summary>Builds a success result.</summary>

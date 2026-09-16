@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Statusmerk } from "../../components/ui/Statusmerk";
 import { AiKnop, Knop } from "../../components/ui/Knop";
+import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -38,6 +38,7 @@ import {
   useKoppelActiviteitdoel,
   useKoppelMinimumdoel,
   useKoppelSubdoel,
+  useGebruikActiviteit,
   useMaakActiviteit,
   useMaakSubthema,
   useOntkoppelActiviteitdoel,
@@ -154,6 +155,7 @@ export function ThemadetailScherm() {
   const verwijderSubthema = useVerwijderSubthema(id);
   const maakActiviteit = useMaakActiviteit(id);
   const wijzigActiviteit = useWijzigActiviteit(id);
+  const gebruikActiviteit = useGebruikActiviteit(id);
   const verwijderActiviteit = useVerwijderActiviteit(id);
   const koppelMinimumdoel = useKoppelMinimumdoel(id);
   const ontkoppelMinimumdoel = useOntkoppelMinimumdoel(id);
@@ -473,9 +475,9 @@ export function ThemadetailScherm() {
               {genereer.isSuccess ? resultaatZin(genereer.data) : null}
             </p>
 
-            {/* Open suggestions, when there are any. They keep a white surface where the rest of
-                this screen has none, and that is the point: everything else here is a fact to
-                read, and these are the only objects on the page waiting for a decision.
+            {/* Open suggestions, when there are any, one at a time in the `Voorstelstapel` (TB-045). Its card keeps a
+                white surface where the rest of this screen has none, and that is the point: everything else here is a
+                fact to read, and these are the only objects on the page waiting for a decision.
 
                 Only for whoever may make that decision (R14: directie and themabeheer). For anyone
                 else a card waiting on somebody else's verdict is noise, and a card without its two
@@ -486,56 +488,31 @@ export function ThemadetailScherm() {
                 <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
                   {t("thema.suggesties")}
                 </h3>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {openSuggesties.map((suggestie) => (
-                    <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3 shadow-licht">
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
-                          {suggestie.minimumdoelRef}
-                        </span>
-                        {suggestie.mijlpaal ? (
-                          <span className="text-meta text-inkt-zacht">
-                            {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                <div className="mt-2">
+                  <Voorstelstapel
+                    label={t("voorstelstapel.doelenLabel")}
+                    voorstellen={openSuggesties.map((suggestie) => ({
+                      id: suggestie.id,
+                      naam: suggestie.minimumdoelRef,
+                      // The MD chip the themadoel rows wear, and the mijlpaal (FB-053): the goal it would become.
+                      kop: (
+                        <>
+                          <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                            {suggestie.minimumdoelRef}
                           </span>
-                        ) : null}
-                        <Statusmerk status={suggestie.status} className="ml-auto" />
-                      </div>
-
-                      {suggestie.omschrijving ? (
-                        <p className="mt-1.5 text-body text-inkt">{suggestie.omschrijving}</p>
-                      ) : null}
-
-                      {suggestie.aiMotivatie ? (
-                        <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">
-                          {suggestie.aiMotivatie}
-                        </p>
-                      ) : null}
-
-                      <div className="mt-3 flex gap-2">
-                        <Knop
-                          rang="hoofd"
-                          className="h-9 min-h-9 px-3 text-meta"
-                          disabled={beoordeel.isPending}
-                          onClick={() =>
-                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Aanvaard" })
-                          }
-                        >
-                          {t("thema.aanvaard")}
-                        </Knop>
-                        <Knop
-                          rang="rustig"
-                          className="h-9 min-h-9 px-3 text-meta"
-                          disabled={beoordeel.isPending}
-                          onClick={() =>
-                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Geweigerd" })
-                          }
-                        >
-                          {t("thema.weiger")}
-                        </Knop>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                          {suggestie.mijlpaal ? (
+                            <span className="text-meta text-inkt-zacht">
+                              {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                            </span>
+                          ) : null}
+                        </>
+                      ),
+                      inhoud: suggestie.omschrijving ?? suggestie.minimumdoelRef,
+                      motivatie: suggestie.aiMotivatie,
+                    }))}
+                    onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
+                  />
+                </div>
               </>
             ) : null}
           </Kop>
@@ -757,17 +734,38 @@ export function ThemadetailScherm() {
         <Activiteitformulier
           open
           activiteit={bladActiviteit}
-          // The facts rather than the form for a gebruiker who may not change this leeftijd's activiteiten; the goal
-          // section for whoever may link goals there (R19), on an existing activiteit and on a new one's create.
-          alleenLezen={bladActiviteit !== undefined && !mag.activiteitBewerken(bladSubthema.leeftijd)}
-          magDoelen={mag.doelenKoppelen(bladSubthema.leeftijd)}
+          // The facts rather than the form for a gebruiker who may not change this activiteit (a colleague's own one
+          // included, ADR-0049 D4); the goal section for whoever may link its goals (R19, E3). A new one takes its
+          // "voor wie" and its goal picker from the subthema's leeftijd.
+          alleenLezen={
+            bladActiviteit !== undefined &&
+            !mag.activiteitInhoudBewerken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          magDoelen={
+            bladActiviteit !== undefined &&
+            mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          leeftijd={bladActiviteit ? undefined : bladSubthema.leeftijd}
+          onGebruik={
+            bladActiviteit && mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+              ? () =>
+                  gebruikActiviteit.mutate(bladActiviteit.id, {
+                    // Closed rather than switched to the copy: the list has not refetched yet, and a sheet looking
+                    // for an id it does not hold would open as a NEW activiteit. The copy shows in the list as "Eigen".
+                    onSuccess: () => setActiviteitBlad(null),
+                  })
+              : undefined
+          }
+          gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
             bladActiviteit
               ? wijzigActiviteit.isError
                 ? wijzigActiviteit.error
-                : undefined
+                : gebruikActiviteit.isError
+                  ? gebruikActiviteit.error
+                  : undefined
               : maakActiviteit.isError
                 ? maakActiviteit.error
                 : undefined

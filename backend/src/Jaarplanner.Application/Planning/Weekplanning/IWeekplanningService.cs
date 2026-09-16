@@ -39,12 +39,17 @@ public interface IWeekplanningService
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
     /// The class or the activiteit does not exist.
     /// </exception>
+    /// <param name="planner">
+    /// The rights of whoever plans. Only its owner, or directie, plans an own activiteit (ADR-0049 D6); without a planner
+    /// an own activiteit is refused.
+    /// </param>
     Task<Weekplanningweergave> PlanActiviteitAsync(
         Guid klasId,
         Guid activiteitId,
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Toegang.Rechten? planner = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

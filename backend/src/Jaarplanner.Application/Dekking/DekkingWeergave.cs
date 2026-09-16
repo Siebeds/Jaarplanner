@@ -238,6 +238,11 @@ public sealed record DekkingWeergave(
 /// turnles are different kinds of evidence and a directie reading "gedekt door Turnen" has to be able to tell which
 /// one it is looking at.
 /// </param>
+/// <param name="DekkendeActiviteiten">
+/// The own activiteiten planned in this class's agenda that cover this goal, ordered by name (Art. V.1, ADR-0049 D7).
+/// A list of its own for the reason <paramref name="DekkendeFiches"/> is: an own activiteit is neither a thema nor a
+/// subthema. <paramref name="IsGedekt"/> is true exactly when at least one of the three lists is non-empty.
+/// </param>
 /// <param name="Oorzaak">
 /// Why this goal is not covered, and therefore where closing it happens (E5-05); <c>null</c> exactly when
 /// <paramref name="IsGedekt"/> is <c>true</c>.
@@ -276,7 +281,8 @@ public sealed record LeerplandoelDekking(
     Lacuneoorzaak? Oorzaak,
     IReadOnlyList<string> KandidaatThemas,
     Dekkingsstap Stap,
-    IReadOnlyList<string> PrognoseBronnen);
+    IReadOnlyList<string> PrognoseBronnen,
+    IReadOnlyList<string> DekkendeActiviteiten);
 
 /// <summary>
 /// Where a goal stands for a klas (Art. V.1, ADR-0047): nowhere yet, in the dekkingsprognose, or gedekt.

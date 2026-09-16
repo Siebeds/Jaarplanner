@@ -51,7 +51,7 @@ public sealed class DekkingsprognoseTests
     [Fact]
     public async Task Het_thema_inplannen_volstaat_niet_voor_een_subdoel()
     {
-        // D3: the thema above is placed, the subthema is not. Since ADR-0049 nothing on the thema reaches a leerplandoel.
+        // D3: the thema above is placed, the subthema is not. Since ADR-0050 nothing on the thema reaches a leerplandoel.
         var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
             subthemas: [new Subthemakoppeling("K3-01", "Herfst", "Bladeren", IsIngepland: false)],
@@ -67,7 +67,7 @@ public sealed class DekkingsprognoseTests
     [Fact]
     public async Task Een_voorgestelde_themaplaatsing_laat_een_leerplandoel_niet_wachten_op_een_beslissing()
     {
-        // ADR-0049: accepting the thema's placement would not cover the leerplandoel, so the cause is its subthema.
+        // ADR-0050: accepting the thema's placement would not cover the leerplandoel, so the cause is its subthema.
         var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
             kandidaten: [new KandidaatKoppeling("K3-01", HerfstId, "Herfst", IsBeslist: true)],

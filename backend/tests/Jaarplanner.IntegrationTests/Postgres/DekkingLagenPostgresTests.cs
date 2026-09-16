@@ -43,7 +43,7 @@ public sealed class DekkingLagenPostgresTests : IAsyncLifetime
         }
     }
 
-    // ── A thema's doelsuggesties propose minimumdoelen and reach no leerplandoel read (ADR-0049) ───────────────
+    // ── A thema's doelsuggesties propose minimumdoelen and reach no leerplandoel read (ADR-0050) ───────────────
 
     [PostgresFact]
     public async Task Een_minimumdoelvoorstel_komt_in_geen_enkele_leerplandoellezing()

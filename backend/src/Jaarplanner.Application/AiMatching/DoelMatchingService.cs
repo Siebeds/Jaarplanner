@@ -7,7 +7,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// A thema's doelsuggesties (FB-053, ADR-0049, FR-4): the AI proposes minimumdoelen as themadoel, and a person with the
+/// A thema's doelsuggesties (FB-053, ADR-0050, FR-4): the AI proposes minimumdoelen as themadoel, and a person with the
 /// right accepts or rejects each. It works behind three injectable seams, the <see cref="IAiClient"/>, the
 /// <see cref="IDoelMatchOpslag"/> and the read-only <see cref="ILeerdoelCatalogus"/>, so the whole flow runs against
 /// fakes with no network and no database (Art. IV.6).
@@ -134,7 +134,7 @@ public sealed class DoelMatchingService
                 continue;
             }
 
-            // A themadoel, an open or rejected proposal (an earlier one, or this answer's own), ADR-0049 D1. A minimumdoel
+            // A themadoel, an open or rejected proposal (an earlier one, or this answer's own), ADR-0050 D1. A minimumdoel
             // accepted before and unlinked since passes, and its row is proposed again.
             if (thema.IsUitgeslotenVoorVoorstel(doel.Ref))
             {
@@ -142,7 +142,7 @@ public sealed class DoelMatchingService
                 continue;
             }
 
-            // At most eight are kept, whatever the model sends (ADR-0049 D3).
+            // At most eight are kept, whatever the model sends (ADR-0050 D3).
             if (bewaard.Count == MatchingPromptBuilder.MaxSuggesties)
             {
                 break;
@@ -169,7 +169,7 @@ public sealed class DoelMatchingService
     /// <summary>
     /// Records a person's decision on one proposal (FR-4.3): <see cref="KoppelingStatus.Aanvaard"/> makes the minimumdoel
     /// a themadoel of the thema, <see cref="KoppelingStatus.Geweigerd"/> keeps it from being proposed again. A proposal
-    /// is decided once (ADR-0049 D2).
+    /// is decided once (ADR-0050 D2).
     /// </summary>
     /// <exception cref="OngeldigeSuggestieStatusFout">The status is not aanvaard or geweigerd, or the proposal was already decided.</exception>
     /// <exception cref="ThemaNietGevondenFout">The thema does not exist.</exception>

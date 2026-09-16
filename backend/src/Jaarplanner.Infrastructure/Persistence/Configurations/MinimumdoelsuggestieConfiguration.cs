@@ -8,7 +8,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core mapping for <see cref="Minimumdoelsuggestie"/>, the AI's proposal of a minimumdoel as a themadoel (FB-053,
-/// ADR-0049). The status is stored by name, as on every <c>DoelKoppeling</c> (Art. IV.2).
+/// ADR-0050). The status is stored by name, as on every <c>DoelKoppeling</c> (Art. IV.2).
 /// </summary>
 public sealed class MinimumdoelsuggestieConfiguration : IEntityTypeConfiguration<Minimumdoelsuggestie>
 {
