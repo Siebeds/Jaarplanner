@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 01:22
+bijgewerkt: 2026-09-17 01:37
 opgepakt-door: claude-fb026
 branch: ticket/FB-026-doelen-bij-activiteit
-pr:
+pr: 136
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
 ---
@@ -86,3 +86,4 @@ Dit ticket neemt het activiteitendeel van story E8-07 over.
 - 2026-09-17 01:17 · claude-fb026 · Browserpas (wegwerpdatabase, desktop en 390px): voorstellen tonen, aanvaarden en weigeren werken, het subdoelvoorstel verschijnt bij het subthema; main gemerged, ADR hernummerd naar 0053.
 - 2026-09-17 01:22 · claude-fb026 · Acceptatiecriteria afgevinkt op bewijs: ActiviteitDoelsuggestieEndpointsTests (9), ActiviteitDoelsuggestieTests en de Vitest-test van het formulier. Antagonist: COMPLIANT; MINOR-punten verwerkt, zie backlog/worklogs/FB-026/antagonist.md.
 - 2026-09-17 01:22 · claude-fb026 · in-uitvoering → te-testen: Gebouwd: AI zoekt doelen bij een bestaande activiteit (knop Zoek doelen), aanvaarden/weigeren, aanvaard doel wordt subdoelvoorstel; alleen beslist gekoppelde doelen tellen (R25). Gates groen: unit, integratie, Vitest, lint, format, browser.
+- 2026-09-17 01:37 · claude-fb026 · PR #136
