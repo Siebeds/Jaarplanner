@@ -98,6 +98,7 @@ export function Themaplaatsingblad({
               <Invoer
                 id={id}
                 type="date"
+                className="w-40"
                 value={van}
                 min={eersteSchooldag}
                 max={laatsteSchooldag}
@@ -129,6 +130,7 @@ export function Themaplaatsingblad({
               <Invoer
                 id={id}
                 type="date"
+                className="w-40"
                 value={tot}
                 min={van || eersteSchooldag}
                 max={laatsteSchooldag}

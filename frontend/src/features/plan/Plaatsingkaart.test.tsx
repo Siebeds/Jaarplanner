@@ -46,9 +46,7 @@ function toon(overschrijf: Partial<Parameters<typeof Plaatsingkaart>[0]> = {}) {
   const handlers = {
     onAanvaard: vi.fn(),
     onWeiger: vi.fn(),
-    onVergrendel: vi.fn(),
     onBewaarDatums: vi.fn(),
-    onVerschuif: vi.fn(),
     onVerwijder: vi.fn(),
   };
   render(
@@ -116,28 +114,18 @@ describe("Plaatsingkaart", () => {
     expect(onBewaarDatums).toHaveBeenCalledWith("2026-10-19", "2026-10-30");
   });
 
-  it("verschuift een week vroeger of later, met het toetsenbord bereikbaar", () => {
-    const { onVerschuif } = toon();
-
-    fireEvent.click(screen.getByRole("button", { name: t("plan.weekVroeger") }));
-    fireEvent.click(screen.getByRole("button", { name: t("plan.weekLater") }));
-
-    expect(onVerschuif).toHaveBeenNthCalledWith(1, "2026-10-12");
-    expect(onVerschuif).toHaveBeenNthCalledWith(2, "2026-10-26");
-  });
-
-  it("zegt dat weigeren het voorstel uit het plan haalt, en geeft aanvaarden, slot en verwijderen", () => {
-    const { onAanvaard, onWeiger, onVergrendel, onVerwijder } = toon();
+  it("zegt dat weigeren het voorstel uit het plan haalt, en geeft aanvaarden en verwijderen, zonder week- of slotknoppen", () => {
+    const { onAanvaard, onWeiger, onVerwijder } = toon();
 
     expect(screen.getByText(t("plan.weigerUitleg"))).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: t("plan.aanvaard") }));
     fireEvent.click(screen.getByRole("button", { name: t("plan.weiger") }));
-    fireEvent.click(screen.getByRole("button", { name: t("plan.vergrendeld") }));
     fireEvent.click(screen.getByRole("button", { name: t("plan.verwijder") }));
 
     expect(onAanvaard).toHaveBeenCalled();
     expect(onWeiger).toHaveBeenCalled();
-    expect(onVergrendel).toHaveBeenCalledWith(false);
+    expect(screen.queryByRole("button", { name: t("plan.vergrendeld") })).toBeNull();
+    expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
     expect(onVerwijder).toHaveBeenCalled();
   });
 
@@ -148,7 +136,7 @@ describe("Plaatsingkaart", () => {
     expect(screen.queryByText(t("plan.weigerUitleg"))).toBeNull();
   });
 
-  it("zegt dat het einde is aangepast, en waarom als het schooljaar eerder eindigt", () => {
+  it("meldt een aangepast einde niet, maar zegt het wel als het schooljaar eerder eindigt", () => {
     toon({
       plaatsing: {
         ...PLAATSING,
@@ -156,8 +144,13 @@ describe("Plaatsingkaart", () => {
       },
     });
 
-    expect(
-      screen.getByText(new RegExp(t("plan.eindeAangepast", { weken: 2, duur: 4 }))),
-    ).toHaveTextContent(t("plan.stoptBijEinde"));
+    expect(screen.queryByText(/Einde aangepast/)).toBeNull();
+    expect(screen.getByText(t("plan.stoptBijEinde"))).toBeInTheDocument();
+  });
+
+  it("maakt de datumvelden niet breder dan nodig", () => {
+    toon();
+    expect(screen.getByLabelText(t("plan.begindatum"))).toHaveClass("w-40");
+    expect(screen.getByLabelText(t("plan.einddatum"))).toHaveClass("w-40");
   });
 });

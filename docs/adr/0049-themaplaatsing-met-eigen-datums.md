@@ -36,6 +36,8 @@ generation does meanwhile. The rulings are quoted in the ticket; the ones this A
 - **R10** The AI generation is reworked in a separate ticket and is switched off until then.
 - **R11** A vast moment blocks no placement any more; only a vacation interrupts a thema.
 - **R12** Rejected placements are deleted by the conversion; rejecting an open proposal deletes it.
+- **R13** Less is more (after looking at the build): no "Geen thema" markers on the timeline, no notice or attention
+  border for a changed end, and no week or lock buttons on the card. R7's year balance stays.
 
 ## Decision
 
@@ -55,8 +57,9 @@ generation does meanwhile. The rulings are quoted in the ticket; the ones this A
    (R4). The service checks first and refuses in Dutch, naming the other thema; the aggregate's guard is the
    backstop for a programmer error.
 4. **A reeks is derived, never stored.** Consecutive placements of the same thema with no schooldag between them form
-   one reeks: the parts around a vacation. The read model numbers the parts, and compares the reeks's end with the
-   proposed end from its first day to decide *einde aangepast* (R7). The weeks shown are the whole lesweken that fit.
+   one reeks: the parts around a vacation. The read model numbers the parts, and says whether the year cut the reeks
+   short (R5). It also still reports whether the end differs from the thema's duration; the screen does not show that
+   since R13, and the generation's rework may use it.
 5. **A placement is *vervallen* when a vacation lies inside it or it leaves the school year** (R6). Nothing moves it.
    Saving it again, with new dates or a shift, splits it anew and clears the state. Dekking keeps withholding its
    figures while one is unresolved, exactly as before.

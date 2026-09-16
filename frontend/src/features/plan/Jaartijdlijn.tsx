@@ -17,7 +17,7 @@ import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { IcoonInfo } from "../../components/Iconen";
 import { kalenderMeldingen, sleepUitleg } from "./sleep";
-import { bouwRaster, dagenVerschil, eindeKort, eindeZin, volgendDeel, type Weekkolomdata } from "./jaarraster";
+import { bouwRaster, dagenVerschil, volgendDeel, type Weekkolomdata } from "./jaarraster";
 
 /**
  * The school year as a timeline, one column per lesweek (FB-035, ADR-0049, owner's choice of 2026-09-16).
@@ -28,9 +28,9 @@ import { bouwRaster, dagenVerschil, eindeKort, eindeZin, volgendDeel, type Weekk
  * **One lane**, because no two thema's share a day. The parts of one thema around a vacation are joined by a dashed
  * rule across the gap and say which part they are.
  *
- * **Every state carries words** (WCAG 2.2 AA, Art. XII): a lesweek without a thema says "Geen thema", a changed end
- * says so on the bar, and a placement that no longer fits the vacations has an icon and its own sentence on the card.
- * The attention hue is spent on those three, which is what it is for.
+ * **Less is more** (owner, 2026-09-16): an empty lesweek is simply empty, and a changed end is not marked. The one
+ * state that needs attention, a placement that no longer fits the vacations, carries an icon beside its attention
+ * border and its own sentence on the card (WCAG 2.2 AA, Art. XII).
  *
  * **A bar is a button that opens the card and a handle that drags** (Enter opens, Space picks up, as everywhere in
  * the agenda). Dropping on another week moves the thema by whole weeks; the server keeps its number of schooldagen.
@@ -49,7 +49,6 @@ export function Jaartijdlijn({
   bezig,
   onKies,
   onVerschuif,
-  onVoegToeInWeek,
 }: {
   lesweken: Lesweek[];
   onderbrekingen: Planningsonderbreking[];
@@ -59,7 +58,6 @@ export function Jaartijdlijn({
   bezig: boolean;
   onKies: (plaatsingId: string) => void;
   onVerschuif: (plaatsing: Themaplaatsing, van: string) => void;
-  onVoegToeInWeek: (maandag: string) => void;
 }) {
   const [gesleept, setGesleept] = useState<Themaplaatsing | null>(null);
   // Where on the bar it was grabbed, in pixels from its left edge, and the week that was under that point.
@@ -160,7 +158,7 @@ export function Jaartijdlijn({
           className="grid"
           style={{
             gridTemplateColumns: raster.sporen,
-            gridTemplateRows: "1.25rem 1.5rem 3.5rem 2rem",
+            gridTemplateRows: "1.25rem 1.5rem 3.5rem",
           }}
         >
           {raster.maanden.map((maand) => (
@@ -180,7 +178,7 @@ export function Jaartijdlijn({
               <div
                 key={kolom.van}
                 className="vakantiegat flex items-center justify-center border-l border-lijn"
-                style={{ gridRow: "1 / 5", gridColumn: kolom.spoor }}
+                style={{ gridRow: "1 / 4", gridColumn: kolom.spoor }}
               >
                 <span className="text-micro normal-case tracking-normal text-inkt-zacht [writing-mode:vertical-rl] rotate-180">
                   {kolom.naam}
@@ -215,37 +213,6 @@ export function Jaartijdlijn({
             );
           })}
 
-          {raster.kolommen.map((kolom) =>
-            kolom.soort === "week" && !kolom.heeftThema ? (
-              <div
-                key={`leeg-${kolom.maandag}`}
-                className="flex items-stretch p-0.5"
-                style={{ gridRow: 4, gridColumn: `${kolom.spoor} / span 5` }}
-              >
-                {magBewerken ? (
-                  <button
-                    type="button"
-                    disabled={bezig}
-                    onClick={() => onVoegToeInWeek(kolom.maandag)}
-                    aria-label={t("plan.geenThemaWeekAria", { datum: volleDag(kolom.maandag) })}
-                    className="flex min-h-6 w-full items-center justify-center rounded border border-attentie bg-attentie-zacht px-0.5 text-[0.6875rem] font-medium text-attentie-inkt transition-colors duration-150 hover:bg-kaart disabled:opacity-60"
-                  >
-                    <span className="whitespace-nowrap">{t("plan.geenThemaWeek")}</span>
-                  </button>
-                ) : (
-                  <span
-                    className="flex w-full items-center justify-center rounded border border-attentie bg-attentie-zacht px-0.5 text-[0.6875rem] font-medium text-attentie-inkt"
-                    aria-label={t("plan.weekZonderThemaAria", { datum: volleDag(kolom.maandag) })}
-                    role="img"
-                  >
-                    <span aria-hidden="true" className="whitespace-nowrap">
-                      {t("plan.geenThemaWeek")}
-                    </span>
-                  </span>
-                )}
-              </div>
-            ) : null,
-          )}
         </div>
       </section>
 
@@ -272,7 +239,7 @@ function Weekkolom({ kolom }: { kolom: Weekkolomdata }) {
         "border-l border-lijn pl-1 pt-0.5 transition-colors duration-100",
         isOver && "bg-accent-zacht",
       )}
-      style={{ gridRow: "2 / 5", gridColumn: `${kolom.spoor} / span 5` }}
+      style={{ gridRow: "2 / 4", gridColumn: `${kolom.spoor} / span 5` }}
     >
       <span className="mono block whitespace-nowrap text-[0.6875rem] text-inkt-zwak">{dagMaand(kolom.maandag)}</span>
     </div>
@@ -298,7 +265,6 @@ function Balk({
     disabled: !sleepbaar,
   });
   const reeks = plaatsing.reeks;
-  const aangepast = reeks?.eindeAangepast === true;
   const plaats =
     reeks && reeks.aantalDelen > 1
       ? t("plan.deel", { deel: reeks.deel, aantal: reeks.aantalDelen })
@@ -314,7 +280,6 @@ function Balk({
     }),
     reeks && reeks.aantalDelen > 1 ? t("plan.deel", { deel: reeks.deel, aantal: reeks.aantalDelen }) : null,
     t(`status.${plaatsing.status}`),
-    aangepast && reeks ? eindeZin(reeks.weken, plaatsing.duurWeken) : null,
     plaatsing.isVervallen ? t("plan.vervallen") : null,
   ]
     .filter(Boolean)
@@ -336,7 +301,6 @@ function Balk({
         className={cn(
           "flex h-full w-full min-w-0 flex-col justify-center gap-0.5 overflow-hidden rounded-veld border bg-vlak-diep px-2 text-left transition-colors duration-150",
           gekozen ? "border-2 border-accent bg-accent-zacht" : "border-lijn-sterk hover:border-inkt-zacht",
-          aangepast && !gekozen && "border-dashed border-attentie",
           plaatsing.isVervallen && !gekozen && "border-attentie",
           isDragging && "opacity-40",
         )}
@@ -347,11 +311,7 @@ function Balk({
           ) : null}
           <span className="truncate text-meta font-semibold text-inkt">{plaatsing.themaNaam}</span>
         </span>
-        <span className={cn("mono truncate text-[0.625rem]", aangepast ? "text-attentie-inkt" : "text-inkt-zacht")}>
-          {aangepast && reeks
-            ? eindeKort(reeks.weken, plaatsing.duurWeken)
-            : onderregel}
-        </span>
+        <span className="mono truncate text-[0.625rem] text-inkt-zacht">{onderregel}</span>
       </button>
     </div>
   );

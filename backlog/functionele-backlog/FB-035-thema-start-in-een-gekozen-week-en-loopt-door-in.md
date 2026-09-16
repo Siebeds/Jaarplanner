@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 23:25
+bijgewerkt: 2026-09-16 23:37
 opgepakt-door: fb035-datums
 branch: ticket/FB-035-themas-met-datums
 pr:
@@ -40,8 +40,8 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
    waarschuwing.
 6. Wijzigt de school haar vakanties, dan **verschuift er niets stil**: een plaatsing die niet meer klopt, krijgt een
    blijvende melding en de dekking staat op "te herzien" (dezelfde regel als directie op 2026-07-28 gaf).
-7. "Te vol" verdwijnt. De tool signaleert in de plaats: **lesweken zonder thema**, een **jaarbalans**, en een **einde dat
-   afwijkt van de duur** van het thema.
+7. "Te vol" verdwijnt. De tool toont in de plaats een **jaarbalans**: lesweken, met en zonder thema. *(Na het bekijken,
+   2026-09-16: een lege lesweek en een aangepast einde worden niet gemarkeerd, zie 13.)*
 8. Het planscherm wordt een **tijdlijn per week** (optie A uit de mockup van 2026-09-16), en een balk kan **versleept**
    worden.
 9. Bestaande plannen: een thema krijgt de **begin- en einddatum van zijn periode**. Staan er meerdere thema's in één
@@ -53,6 +53,9 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
     Bewaarde vaste momenten en startthema's blijven staan voor het AI-ticket.
 12. Plaatsingen die een leerkracht als AI-voorstel **geweigerd** had, worden bij het omzetten **verwijderd**. Een
     openstaand voorstel weigeren verwijdert het voorstel.
+13. **Minder is meer** (na het bekijken, 2026-09-16): geen blokjes "Geen thema" op de tijdlijn, geen melding en geen
+    oranje rand voor een aangepast einde, en op de kaart geen knoppen "Week vroeger", "Week later" en "Vergrendeld". De
+    begin- en einddatum volstaan; de datumvelden zijn smal.
 
 ## Gewenst gedrag
 
@@ -72,11 +75,10 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
   verbonden en tonen "deel 1/2", "deel 2/2".
 - **Slepen.** Een balk naar een andere plek slepen verschuift de plaatsing; ze houdt haar aantal lesdagen. Ook met het
   toetsenbord. Komt ze over een vakantie, dan splitst de tool; komt ze op een ander thema, dan weigert de tool.
-- **Kaart.** Een gekozen plaatsing toont begindatum, einddatum, het voorgestelde einde, de andere delen en de knoppen
-  om de agenda te openen en de plaatsing (dit deel) te verwijderen.
-- **Signalen.** Een lesweek waarin geen thema loopt, is gemarkeerd, met tekst. Bovenaan staat de jaarbalans: lesweken
-  in het schooljaar, lesweken met een thema, lesweken zonder thema. Een thema waarvan de delen samen korter of langer
-  zijn dan zijn duur, toont "einde aangepast" met het aantal weken.
+- **Kaart.** Een gekozen plaatsing toont smalle velden voor begindatum en einddatum, de andere delen en de knoppen om
+  de agenda te openen en de plaatsing (dit deel) te verwijderen.
+- **Signalen.** Bovenaan staat de jaarbalans: lesweken in het schooljaar, lesweken met een thema, lesweken zonder thema.
+  Een lege lesweek en een aangepast einde worden niet apart gemarkeerd.
 - **Agenda.** De agenda toont op elke dag het thema dat die dag loopt. Op elke dag van een plaatsing kan de leerkracht
   subthema's en activiteiten van dat thema plannen.
 - **Vakanties gewijzigd.** Valt er na een wijziging van de vakanties een vakantie in een plaatsing, of ligt ze niet
@@ -96,12 +98,12 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
   tijdlijn ze als deel 1/2 en deel 2/2.
 - [x] Gegeven een thema dat loopt van 21 september tot 23 oktober, wanneer de leerkracht een ander thema plaatst dat op
   22 oktober begint, dan weigert de tool met een zin die het eerste thema noemt; met begindatum 26 oktober lukt het.
-- [x] Gegeven een geplaatst thema, wanneer de leerkracht het einde wijzigt, dan bewaart de tool dat einde en toont de
-  kaart "einde aangepast" als de delen samen niet de duur van het thema hebben.
+- [x] Gegeven een geplaatst thema, wanneer de leerkracht het einde wijzigt, dan bewaart de tool dat einde, zonder
+  melding of oranje rand.
 - [x] Gegeven een thema dat na de laatste schooldag zou eindigen, dan eindigt het op de laatste schooldag en toont de
   kaart een waarschuwing.
-- [x] Gegeven een plan, dan markeert de tijdlijn elke lesweek zonder thema met tekst, en toont de jaarbalans het aantal
-  lesweken, met en zonder thema.
+- [x] Gegeven een plan, dan toont de jaarbalans het aantal lesweken, met en zonder thema, en staan er op de tijdlijn
+  geen blokjes "Geen thema".
 - [x] Gegeven een balk op de tijdlijn, wanneer de leerkracht ze (met muis of toetsenbord) naar een vrije week sleept,
   dan schuift de plaatsing mee met hetzelfde aantal lesdagen; op een ander thema weigert de tool.
 - [ ] Gegeven een plaatsing, wanneer de leerkracht in de agenda een dag ervan opent, dan kan ze er subthema's en
@@ -125,9 +127,9 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 2. Voeg thema A (5 weken) toe met begindatum 21 september. Het voorgestelde einde is 23 oktober; bewaar.
 3. Voeg thema B (4 weken) toe met begindatum 22 oktober. De tool weigert en noemt A. Kies 26 oktober: de tool stelt een
    einde na de herfstvakantie voor en toont B in twee delen.
-4. Pas het einde van deel 2 van B een week vroeger aan. De kaart toont "einde aangepast: 3 van 4 weken".
+4. Pas het einde van deel 2 van B een week vroeger aan. De tijdlijn en de kaart tonen het nieuwe einde, zonder melding.
 5. Sleep A een week later. De tool weigert, want A zou op B komen. Sleep A een week vroeger: A schuift mee.
-6. Een lesweek zonder thema is gemarkeerd; de jaarbalans telt ze.
+6. Een lesweek zonder thema staat leeg op de tijdlijn; de jaarbalans telt ze.
 7. Open de agenda op een dag van deel 2 van B. Plan er een subthema en een activiteit van B.
 8. Laat directie een vakantie toevoegen die in A valt. De kaart van A toont een melding en de dekking staat op "te
    herzien". Verplaats A: de melding verdwijnt.
@@ -156,3 +158,4 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 - 2026-09-16 23:23 · fb035-datums · Antagonist ronde 1: 2 MAJOR (overlap in de migratie, Art. IV.2) opgelost; ronde 2: COMPLIANT. MINOR-punten opgelost of in TB-045.
 - 2026-09-16 23:25 · fb035-datums · Afgevinkt met bewijs: 12 criteria (unit-, integratie- en migratietests, browserpas ronde 1-3 in worklogs/FB-035/browserpas.md). Niet afgevinkt: plannen in de agenda op een dag van een doorlopend thema en plaatsen op een dag met een vast moment; die zijn gebouwd maar niet apart in de browser nagekeken.
 - 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-045). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.
+- 2026-09-16 23:37 · fb035-datums · Eigenaar na het bekijken: blokjes 'Geen thema' weg, geen melding of oranje rand voor een aangepast einde, knoppen week vroeger/later en vergrendeld weg, smallere datumvelden. Wordt op deze branch aangepast.

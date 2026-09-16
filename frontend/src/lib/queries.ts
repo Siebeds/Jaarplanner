@@ -407,11 +407,6 @@ export function usePlaatsingacties(klasId: string) {
     onSuccess: ververs,
   });
 
-  const vergrendel = useMutation({
-    mutationFn: ({ plaatsingId, vergrendeld }: { plaatsingId: string; vergrendeld: boolean }) =>
-      put<JaarplanWeergave>(`/api/klassen/${klasId}/jaarplan/plaatsingen/${plaatsingId}/vergrendeling`, { vergrendeld }),
-    onSuccess: ververs,
-  });
 
   const wijzigDatums = useMutation({
     mutationFn: ({ plaatsingId, van, tot }: { plaatsingId: string; van: string; tot: string }) =>
@@ -430,7 +425,7 @@ export function usePlaatsingacties(klasId: string) {
     onSuccess: ververs,
   });
 
-  return { beoordeel, vergrendel, wijzigDatums, verschuif, verwijder };
+  return { beoordeel, wijzigDatums, verschuif, verwijder };
 }
 
 /**

@@ -4,17 +4,17 @@ import type { Themaplaatsing } from "../../lib/types";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer, Veld } from "../../components/ui/Veld";
-import { periode, verschuif, volleDag } from "../../lib/datum";
+import { periode, volleDag } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { eindeZin } from "./jaarraster";
 
 /**
- * One placed thema, and everything a teacher can do to it (FR-7, ADR-0049): its days, a week earlier or later, the
- * verdict on a proposal, the lock, and removing it.
+ * One placed thema, and everything a teacher can do to it (FR-7, ADR-0049): its days, the verdict on a proposal, and
+ * removing it. Less is more (owner, 2026-09-16): the begin and end date do what week buttons did, and a changed end is
+ * not marked.
  *
  * **The days are two fields and a button**, not fields that save on change: a date field fires on every digit typed,
- * and a half-typed date would move the thema. A week earlier or later is the keyboard's way to do what a drag does.
+ * and a half-typed date would move the thema. The fields are also the keyboard's way to do what a drag does.
  *
  * **Rejecting a proposal removes it** (ADR-0049 R12), and the card says so before the button is pressed.
  *
@@ -30,9 +30,7 @@ export function Plaatsingkaart({
   bezig,
   onAanvaard,
   onWeiger,
-  onVergrendel,
   onBewaarDatums,
-  onVerschuif,
   onVerwijder,
 }: {
   plaatsing: Themaplaatsing;
@@ -45,9 +43,7 @@ export function Plaatsingkaart({
   bezig: boolean;
   onAanvaard: () => void;
   onWeiger: () => void;
-  onVergrendel: (vergrendeld: boolean) => void;
   onBewaarDatums: (van: string, tot: string) => void;
-  onVerschuif: (van: string) => void;
   onVerwijder: () => void;
 }) {
   const [van, setVan] = useState(plaatsing.van);
@@ -98,11 +94,8 @@ export function Plaatsingkaart({
         </p>
       ) : null}
 
-      {reeks?.eindeAangepast ? (
-        <p className="mt-3 rounded-veld border border-dashed border-attentie px-3 py-2 text-meta text-attentie-inkt">
-          {eindeZin(reeks.weken, plaatsing.duurWeken)}
-          {reeks.stoptBijEindeSchooljaar ? ` ${t("plan.stoptBijEinde")}` : ""}
-        </p>
+      {reeks?.stoptBijEindeSchooljaar ? (
+        <p className="mt-2 text-meta text-inkt-zacht">{t("plan.stoptBijEinde")}</p>
       ) : null}
 
       {andereDelen.length > 0 ? (
@@ -127,7 +120,7 @@ export function Plaatsingkaart({
       ) : (
         <>
           <form
-            className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+            className="mt-4 flex flex-wrap items-end gap-3"
             onSubmit={(event) => {
               event.preventDefault();
               if (!ongewijzigd || plaatsing.isVervallen) onBewaarDatums(van, tot);
@@ -138,6 +131,7 @@ export function Plaatsingkaart({
                 <Invoer
                   id={id}
                   type="date"
+                  className="w-40"
                   value={van}
                   min={eersteSchooldag}
                   max={laatsteSchooldag}
@@ -150,6 +144,7 @@ export function Plaatsingkaart({
                 <Invoer
                   id={id}
                   type="date"
+                  className="w-40"
                   value={tot}
                   min={van || eersteSchooldag}
                   max={laatsteSchooldag}
@@ -171,39 +166,6 @@ export function Plaatsingkaart({
               {t("tijdraster.eindeVoorBegin")}
             </p>
           ) : null}
-
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Knop disabled={bezig} onClick={() => onVerschuif(verschuif(plaatsing.van, -7))}>
-              {t("plan.weekVroeger")}
-            </Knop>
-            <Knop disabled={bezig} onClick={() => onVerschuif(verschuif(plaatsing.van, 7))}>
-              {t("plan.weekLater")}
-            </Knop>
-
-            {/* A toggle button rather than a checkbox: a 16px checkbox is under WCAG 2.2 AA 2.5.8's 24px floor. The
-                pressed state travels three ways: aria-pressed, the dot going from hollow to filled, and the border. */}
-            <button
-              type="button"
-              aria-pressed={plaatsing.vergrendeld}
-              disabled={bezig}
-              onClick={() => onVergrendel(!plaatsing.vergrendeld)}
-              className={cn(
-                "flex h-raak items-center gap-2 rounded-veld border px-3 text-meta transition-colors duration-150",
-                plaatsing.vergrendeld
-                  ? "border-accent bg-accent-zacht text-accent"
-                  : "border-lijn text-inkt-zacht hover:border-lijn-veld",
-              )}
-            >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "h-2.5 w-2.5 rounded-full border",
-                  plaatsing.vergrendeld ? "border-accent bg-accent" : "border-lijn-veld bg-transparent",
-                )}
-              />
-              {t("plan.vergrendeld")}
-            </button>
-          </div>
 
           {teBeoordelen ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -4,11 +4,11 @@ import type { Lesweek, Themaplaatsing } from "../../lib/types";
 import { t } from "../../i18n";
 import { volleDag } from "../../lib/datum";
 import { Jaartijdlijn } from "./Jaartijdlijn";
-import { bouwRaster, eindeKort, eindeZin } from "./jaarraster";
+import { bouwRaster } from "./jaarraster";
 
 /**
  * The year timeline (ADR-0049): a column of five day tracks per lesweek, one gap per vacation, bars that start and end
- * on their own weekday, and a lesweek without a thema that says so.
+ * on their own weekday; an empty lesweek and a changed end are not marked (owner, 2026-09-16).
  *
  * The calendar: school from Monday 19 October, the herfstvakantie the week of 2 November, school again from
  * 9 November.
@@ -86,7 +86,6 @@ describe("bouwRaster", () => {
 describe("Jaartijdlijn", () => {
   function toon(magBewerken: boolean) {
     const onKies = vi.fn();
-    const onVoegToeInWeek = vi.fn();
     render(
       <Jaartijdlijn
         lesweken={LESWEKEN}
@@ -97,10 +96,9 @@ describe("Jaartijdlijn", () => {
         bezig={false}
         onKies={onKies}
         onVerschuif={vi.fn()}
-        onVoegToeInWeek={onVoegToeInWeek}
       />,
     );
-    return { onKies, onVoegToeInWeek };
+    return { onKies };
   }
 
   it("toont elk deel als balk met zijn plaats in het thema, en opent een deel", () => {
@@ -122,26 +120,12 @@ describe("Jaartijdlijn", () => {
     expect(screen.getByText("Herfstvakantie")).toBeInTheDocument();
   });
 
-  it("zegt bij een lesweek zonder thema dat er geen is, en laat er een toevoegen", () => {
-    const { onVoegToeInWeek } = toon(true);
-
-    const leeg = screen.getByRole("button", {
-      name: t("plan.geenThemaWeekAria", { datum: volleDag("2026-11-16") }),
-    });
-    expect(leeg).toHaveTextContent(t("plan.geenThemaWeek"));
-    fireEvent.click(leeg);
-    expect(onVoegToeInWeek).toHaveBeenCalledWith("2026-11-16");
+  it("markeert een lege lesweek niet", () => {
+    toon(true);
+    expect(screen.queryByText("Geen thema")).toBeNull();
   });
 
-  it("zegt het ook aan wie alleen mag lezen, zonder knop", () => {
-    toon(false);
-
-    expect(screen.getByRole("img", { name: t("plan.weekZonderThemaAria", { datum: volleDag("2026-11-16") }) }))
-      .toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Thema toevoegen/ })).toBeNull();
-  });
-
-  it("zegt op de balk dat het einde is aangepast", () => {
+  it("markeert een aangepast einde niet op de balk", () => {
     render(
       <Jaartijdlijn
         lesweken={LESWEKEN}
@@ -152,20 +136,11 @@ describe("Jaartijdlijn", () => {
         bezig={false}
         onKies={vi.fn()}
         onVerschuif={vi.fn()}
-        onVoegToeInWeek={vi.fn()}
       />,
     );
 
     const balk = screen.getByRole("button", { name: /^Herfst/ });
-    expect(balk).toHaveTextContent(eindeKort(2, 3));
-    expect(balk).toHaveAccessibleName(expect.stringContaining(eindeZin(2, 3)));
-  });
-});
-
-describe("eindeZin", () => {
-  it("zegt niet '5 van 5 weken' voor een reeks die enkele dagen langer loopt", () => {
-    expect(eindeZin(5, 5)).toBe(t("plan.eindeLanger", { duur: 5 }));
-    expect(eindeKort(5, 5)).toBe(t("plan.eindeLangerKort", { duur: 5 }));
-    expect(eindeZin(4, 5)).toBe(t("plan.eindeAangepast", { weken: 4, duur: 5 }));
+    expect(balk).not.toHaveTextContent(/einde/i);
+    expect(balk).not.toHaveClass("border-dashed");
   });
 });

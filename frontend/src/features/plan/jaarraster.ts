@@ -1,6 +1,5 @@
 import type { Lesweek, Planningsonderbreking, Themaplaatsing } from "../../lib/types";
 import { maandagVan, maandJaar, verschuif, weekdagIndex } from "../../lib/datum";
-import { t } from "../../i18n";
 
 /*
  * The grid the year timeline (`Jaartijdlijn`) is drawn on, apart from the component so it can be tested on its own:
@@ -91,17 +90,4 @@ export function bouwRaster(lesweken: Lesweek[], onderbrekingen: Planningsonderbr
   }
 
   return { kolommen, sporen: sporen.join(" "), maanden, spoorVan };
-}
-
-/**
- * What a run whose end differs from its thema's duration says (ADR-0049 R7). As many whole lesweken as the duration
- * means the run is a few days longer, and "5 van 5 weken" would contradict the word "aangepast".
- */
-export function eindeZin(weken: number, duur: number): string {
-  return weken === duur ? t("plan.eindeLanger", { duur }) : t("plan.eindeAangepast", { weken, duur });
-}
-
-/** The same, short enough for a bar. */
-export function eindeKort(weken: number, duur: number): string {
-  return weken === duur ? t("plan.eindeLangerKort", { duur }) : t("plan.eindeAangepastKort", { weken, duur });
 }
