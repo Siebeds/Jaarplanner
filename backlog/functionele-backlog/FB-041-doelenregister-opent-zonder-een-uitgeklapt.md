@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:28
+bijgewerkt: 2026-09-16 14:32
 opgepakt-door: claude-fb-041
 branch: ticket/FB-041-register-ingeklapt
 pr:
@@ -59,3 +59,4 @@ Welke filter standaard actief is bij het binnenkomen: dat blijft zoals nu.
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
 - 2026-09-16 14:28 · claude-fb-041 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:32 · claude-fb-041 · registers openen volledig ingeklapt, ook na een filter of zoekterm; Vitest (968) en lint groen
