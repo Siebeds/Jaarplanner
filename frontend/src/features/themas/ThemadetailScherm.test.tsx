@@ -163,7 +163,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-007)", () => {
+describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-007, FB-042)", () => {
   const resultaat = (extra: Partial<DoelMatchResultaat> = {}): DoelMatchResultaat => ({
     isGeslaagd: true,
     fout: null,
@@ -175,8 +175,81 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
     ...extra,
   });
 
-  const leeftijden = () => screen.findByRole("group", { name: t("thema.leeftijdenLabel") });
-  const vraag = () => fireEvent.click(screen.getByRole("button", { name: t("thema.suggestiesVragen") }));
+  /** Opens the choice behind "Vraag suggesties" (FB-042) and returns its leeftijd buttons. */
+  const leeftijden = async () => {
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.suggestiesVragen") }));
+    return screen.findByRole("group", { name: t("thema.leeftijdenLabel") });
+  };
+  const versturen = () => screen.getByRole("button", { name: t("thema.suggestiesVersturen") });
+  const vraag = () => fireEvent.click(versturen());
+
+  it("toont eerst alleen 'Vraag suggesties', en die knop vraagt nog niets aan de AI", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat());
+      },
+    });
+
+    const open = await screen.findByRole("button", { name: t("thema.suggestiesVragen") });
+    expect(open).toHaveClass("knop-ai");
+    expect(screen.queryByRole("group", { name: t("thema.leeftijdenLabel") })).toBeNull();
+    expect(screen.queryByText(t("thema.suggestiesVragenVoor"))).toBeNull();
+    expect(knop(t("thema.suggestiesVersturen"))).toBeNull();
+
+    fireEvent.click(open);
+
+    const groep = await screen.findByRole("group", { name: t("thema.leeftijdenLabel") });
+    expect(screen.getByText(t("thema.suggestiesVragenVoor"))).toBeInTheDocument();
+    expect(versturen()).toHaveClass("knop-ai");
+    expect(knop(t("thema.suggestiesAnnuleren"))).not.toHaveClass("knop-ai");
+    // Only the send button wears the ring now: the one that opened the choice made way for it.
+    expect(knop(t("thema.suggestiesVragen"))).toBeNull();
+    // Focus moves into the choice, onto its first leeftijd.
+    expect(within(groep).getByRole("button", { name: "JK" })).toHaveFocus();
+    expect(verzonden).toEqual([]);
+  });
+
+  it("sluit de keuze bij annuleren zonder iets te vragen, en zet de leeftijden terug bij de volgende keer", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat());
+      },
+    });
+
+    let groep = await leeftijden();
+    fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
+    fireEvent.click(screen.getByRole("button", { name: t("thema.suggestiesAnnuleren") }));
+
+    expect(screen.queryByRole("group", { name: t("thema.leeftijdenLabel") })).toBeNull();
+    expect(knop(t("thema.suggestiesVersturen"))).toBeNull();
+    expect(screen.getByRole("button", { name: t("thema.suggestiesVragen") })).toHaveFocus();
+
+    groep = await leeftijden();
+    expect(within(groep).getByRole("button", { name: "K3" })).toHaveAttribute("aria-pressed", "true");
+    expect(verzonden).toEqual([]);
+  });
+
+  it("vraagt na het uitvinken van een leeftijd alleen voor de overige, en sluit de keuze daarna", async () => {
+    const verzonden: unknown[] = [];
+    toon(DIRECTIE, {
+      genereer: (body) => {
+        verzonden.push(body);
+        return json(resultaat({ jaarFasen: ["L1"] }));
+      },
+    });
+
+    const groep = await leeftijden();
+    fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
+    vraag();
+
+    await waitFor(() => expect(verzonden).toEqual([{ selectie: { jaarFasen: ["L1"] } }]));
+    await waitFor(() => expect(screen.queryByRole("group", { name: t("thema.leeftijdenLabel") })).toBeNull());
+    expect(screen.getByRole("button", { name: t("thema.suggestiesVragen") })).toHaveFocus();
+  });
 
   it("duidt de leeftijden van de subthema's aan en vraagt voor precies die leeftijden", async () => {
     const verzonden: unknown[] = [];
@@ -235,8 +308,9 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
     const groep = await leeftijden();
     expect(within(groep).queryByRole("button", { pressed: true })).toBeNull();
-    expect(screen.getByRole("button", { name: t("thema.suggestiesVragen") })).toBeDisabled();
+    expect(versturen()).toBeDisabled();
     expect(screen.getByText(t("thema.kiesLeeftijd"))).toBeInTheDocument();
+    expect(versturen()).toHaveAccessibleDescription(t("thema.kiesLeeftijd"));
 
     fireEvent.click(within(groep).getByRole("button", { name: "K2" }));
     expect(screen.queryByText(t("thema.kiesLeeftijd"))).toBeNull();
