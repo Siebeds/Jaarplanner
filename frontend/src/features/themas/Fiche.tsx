@@ -92,7 +92,8 @@ export function Blok({
   strak?: boolean;
   /**
    * The content is a stack of its own cards, all sharing this block's margin: one leeftijd's subthema's (FB-047).
-   * No card here, and the figure lines up with the first card's text as it does beside a single card.
+   * No card here, and the figure lines up with the first card's text as it does beside a single card. `acties` is
+   * ignored: each card in the stack carries its own.
    */
   stapel?: boolean;
   children: ReactNode;
