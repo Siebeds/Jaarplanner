@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:34
+bijgewerkt: 2026-09-16 23:37
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
-pr:
+pr: 123
 geblokkeerd:
 fr: []
 ---
@@ -56,3 +56,4 @@ Geen.
 - 2026-09-16 23:32 · claude-ai-voorstellen · Antagonist ronde 1: 2 MAJOR (toegankelijkheid) opgelost: wachttijd pauzeert bij muis of toetsenbordfocus en focus gaat naar Ongedaan maken; voortgangsbalk toont enkel voortgang. MINOR opgelost: geen reset tijdens lopende schrijfacties, versturen bij pagehide, sneltoetsen uit de catalogus
 - 2026-09-16 23:33 · claude-ai-voorstellen · Antagonist ronde 2: COMPLIANT. Open MINOR: een foutmelding van één mislukte schrijfactie in Alle n kan wegvallen door een latere geslaagde; de regel Alles beoordeeld is zelden zichtbaar omdat de ouder de stapel weghaalt; een pas met NVDA (bladermodus) op de pauze is nog niet gedaan
 - 2026-09-16 23:34 · claude-ai-voorstellen · in-uitvoering → klaar: Klaar: Voorstelstapel voor woordweb en doelsuggesties; criteria afgevinkt op Voorstelstapel.test.tsx en browserpas (1440, 390, donker, pauze met toetsenbord en muis); Vitest (1020), lint groen
+- 2026-09-16 23:37 · claude-ai-voorstellen · PR #123

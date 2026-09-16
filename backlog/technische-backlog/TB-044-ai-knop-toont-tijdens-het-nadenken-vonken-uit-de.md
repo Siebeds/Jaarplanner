@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:33
+bijgewerkt: 2026-09-16 23:37
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
-pr:
+pr: 123
 geblokkeerd:
 fr: []
 ---
@@ -49,3 +49,4 @@ Geen.
 - 2026-09-16 22:59 · claude-ai-voorstellen · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:21 · claude-ai-voorstellen · AiKnop toont tijdens een run vonken uit de toverstok en drie springende puntjes; Vitest, lint en browserpas (1440, vonken boven de knop zichtbaar) groen
 - 2026-09-16 23:33 · claude-ai-voorstellen · in-uitvoering → klaar: Klaar: vonken en springende puntjes op elke AI-knop; criteria afgevinkt op Knop.test.tsx en browserpas; Vitest (1020), lint groen; antagonist COMPLIANT; geen backendwijziging, dus dotnet format niet nodig
+- 2026-09-16 23:37 · claude-ai-voorstellen · PR #123
