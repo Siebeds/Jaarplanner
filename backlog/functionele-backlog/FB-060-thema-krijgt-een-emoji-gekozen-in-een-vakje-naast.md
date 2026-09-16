@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:02
+bijgewerkt: 2026-09-17 00:16
 opgepakt-door: claude-fb060
 branch: ticket/FB-060-thema-emoji
 pr:
@@ -79,3 +79,4 @@ Geen.
 
 - 2026-09-17 00:00 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-17 00:02 · claude-fb060 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 00:16 · claude-fb060 · Gebouwd: veld Icoon op Thema (migratie ThemaIcoon), emojikiezer voor de naam, emoji in bibliotheek, themapagina, plaatsingskaart en themaband. Gates: dotnet test 1972+561 groen, dotnet format schoon, pnpm lint en pnpm test (1035) groen.
