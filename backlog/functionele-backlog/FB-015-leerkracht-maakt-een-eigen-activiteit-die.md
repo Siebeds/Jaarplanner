@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 00:00
+bijgewerkt: 2026-09-17 00:09
 opgepakt-door: claude-fb015
 branch: ticket/FB-015-eigen-activiteit
-pr:
+pr: 128
 geblokkeerd:
 fr: [FR-3.1, FR-3.2]
 ---
@@ -109,3 +109,4 @@ Dit ticket neemt het activiteitendeel van story E6-10 over. Het voorstel aan het
 - 2026-09-16 23:43 · claude-fb015 · Backend en frontend gebouwd: eigen activiteit (EigenaarId + migratie), rechten, gebruiken als kopie, planning alleen door eigenaar of directie, dekking via eigen plaatsing; unit-, vitest- en rechten-integratietests groen
 - 2026-09-16 23:59 · claude-fb015 · Antagonist ronde 1: COMPLIANT, 0 CRITICAL/MAJOR; 3 MINOR opgelost, 2 genoteerd (backlog/worklogs/FB-015); browserpas desktop en 390px op een kopie van de dev-database
 - 2026-09-17 00:00 · claude-fb015 · in-uitvoering → te-testen: Eigen activiteit gebouwd (ADR-0049, grondwet Art. V.1/VI.1/IX.2/XII): aanmaken, lezen door de jaarfase, Gebruiken als kopie, inplannen, dekking via de eigen plaatsing. Unit 1984, vitest, Postgres-rechten- en eigen-activiteittests groen; dotnet format en pnpm lint schoon; vraag over subthema verwijderen staat onder Open vragen
+- 2026-09-17 00:09 · claude-fb015 · PR #128
