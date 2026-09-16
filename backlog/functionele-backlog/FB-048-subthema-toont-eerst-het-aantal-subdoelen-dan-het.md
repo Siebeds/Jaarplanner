@@ -2,12 +2,12 @@
 id: FB-048
 titel: Subthema toont eerst het aantal subdoelen, dan het aantal activiteiten
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-16
 bijgewerkt: 2026-09-16 20:25
-opgepakt-door:
-branch:
+opgepakt-door: sessie-fb048
+branch: ticket/FB-048-subthema-tellingen-volgorde
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -54,3 +54,4 @@ De volgorde van de secties in een opengeklapt subthema (activiteiten, dan subdoe
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 20:25 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: open vraag standaard nee
+- 2026-09-16 20:25 · sessie-fb048 · klaar-voor-bouw → in-uitvoering: opgepakt
