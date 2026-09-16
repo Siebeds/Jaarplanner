@@ -4,8 +4,9 @@ description: >-
   Start the Jaarplanner app locally (ASP.NET Core API + Vite frontend) against the owner's dev database, so
   the owner can look at it in a browser, and verify it actually renders before saying it is up. Use when the
   user says "zet de app aan", "start de frontend en backend", "ik wil zien waar we zitten", "draai de app",
-  "/app-starten", or asks for a local URL to click through. Also covers stopping and restarting after a
-  backend change. Not for a story's own browser pass: that one uses a throwaway database (see step 3).
+  "/app-starten", or asks for a local URL to click through. Also covers the frontend alone on fixed mock data
+  ("alleen de frontend", "met nepdata", "mockmodus"), and stopping and restarting after a backend change. Not
+  for a story's own browser pass: that one uses a throwaway database (see step 3).
 ---
 
 # App starten — API + frontend, locally
@@ -13,6 +14,32 @@ description: >-
 Recipe for bringing up the Jaarplanner **for the owner to look at**: the API on the owner's dev database
 `jaarplanner` and the Vite dev server proxying `/api` to it. Every step below was run end to end on
 2026-09-10; each trap listed has cost a session real time.
+
+**Two ways to start it.** By default, the whole app: steps 1 to 6. **Only when the owner asks for the frontend
+alone** ("alleen de frontend", "met nepdata", "mockmodus"), the mock mode below instead, and skip the rest.
+
+### Frontend alone, on mock data
+
+`pnpm dev:mock` runs Vite in mode `mock` (TB-046): every `/api` request is answered in the page by
+`frontend/src/mocks/`, so no API, no Docker and no database run, and the machine keeps its memory. What it holds:
+one K3 klas "K3 De Uilen" in 2026-2027, one thema of 4 weeks with three minimumdoelen, two subthema's of one week
+with their leerplandoelen and activiteiten, and a full agenda for 16 to 27 november 2026 (8u30 to 15u30, lunch
+12u to 13u free, wednesday only until 12u). The goals are invented and do not exist in Op.stap. The user is
+directie, without a sign-in page, and the app opens on the week of 16 november.
+
+```bash
+cd $REPO/frontend && corepack pnpm dev:mock > $LOGS/vite-mock.log 2>&1   # in the background
+```
+
+- **Port 5177 as usual**, so check it is free first (step 1). If a normal Vite runs there, stop it only if you
+  started it, or pass `--port <free port>` and give the owner that URL.
+- **Writes work until a reload**: dragging, adding a link or an activiteit. A reload starts again from the fixed
+  content. A route the mock mode does not answer returns a 501, and the dark label bottom right lists it.
+- **Not for** backend changes, rights per role, the real dekking calculation (the mock counts a simplified one),
+  AI buttons or the ontwikkelingsrapport: those need the whole app.
+- **A new screen or route** needs its answer in `frontend/src/mocks/routes.ts`, or it shows the 501.
+- **Verify** with the Chrome line of step 6 on the mock URL: the screenshot shows the agenda at once, not the
+  sign-in page.
 
 **The owner works on three machines, and they differ.** Find out which one you are on before step 2:
 
@@ -79,6 +106,9 @@ for p in 5184 5185 5177; do printf '%s http=%s\n' "$p" \
   Tell the owner the URL and stop here.
 - **A port that answers is not yours unless you started it**: another session may be using it. Pick the next
   free port for the API (5185, 5186, …) and point Vite at it in step 5. That is all it costs.
+- **Check the port right before you start, every time, and read your own log after.** An API or Vite started on
+  a taken port exits at once ("address already in use", "Port … is already in use"), and every curl, screenshot
+  and stop-by-port after that reaches the other session's server instead of yours.
 
 **Run it from the tree that holds the code the owner wants to see.** Usually the main tree on `main` (or the
 branch he is working on). Check with `git -C $REPO status -sb` before starting; switching branches later
