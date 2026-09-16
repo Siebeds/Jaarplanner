@@ -2,12 +2,12 @@
 id: FB-043
 titel: Themabeheer koppelt minimumdoelen aan een thema, uitklapbaar met hun leerplandoelen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:03
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 14:19
+opgepakt-door: claude-fb043
+branch: ticket/FB-043-minimumdoelen-als-themadoel
 pr:
 geblokkeerd:
 fr: [FR-2.3, FR-9.3]
@@ -46,8 +46,11 @@ FB-045.
 - Een minimumdoel uitklappen toont **per leeftijd** een regel met het aantal leerplandoelen ("K2 · 3 leerplandoelen").
   Een leeftijd uitklappen toont die leerplandoelen. Daar staan geen minimumdoelen meer bij.
 - Een leerplandoel aanklikken opent zijn detail, zoals nu (TB-016); daar ziet men ook zijn minimumdoel.
-- Een thema heeft **geen maximum** aan themadoelen meer, niet bij het koppelen op de themapagina en niet bij de
-  import (FR-1). Dat geldt voor minimumdoelen en voor de themadoelen die leerplandoelen zijn.
+- Een thema heeft **geen maximum** aan themadoelen meer bij het koppelen op de themapagina. De import (FR-1) blijft
+  ongemoeid (zie *Buiten scope*).
+- Een themadoel is voortaan altijd een **minimumdoel**. Op de themapagina voegt men geen leerplandoel meer toe als
+  themadoel. De bestaande themadoelen die een leerplandoel zijn, verwijdert een migratie uit de data, in elke
+  omgeving; het datamodel zelf blijft.
 - Bij de **subthema's** verandert niets: subdoelen blijven leerplandoelen van de leeftijd van het subthema.
 
 ## Acceptatiecriteria
@@ -61,7 +64,9 @@ FB-045.
 - [ ] Gegeven een gewone leerkracht of hoofdleerkracht, dan ziet ze de minimumdoelen van het thema maar kan ze er geen
   koppelen of ontkoppelen; de server weigert het ook.
 - [ ] Gegeven een thema met al drie themadoelen, wanneer er een vierde en een vijfde gekoppeld worden, dan staan ze er
-  alle vijf; een import met meer dan drie themadoelen voor een thema neemt ze allemaal over.
+  alle vijf.
+- [ ] Gegeven een bestaand thema met themadoelen die leerplandoelen zijn, na de migratie zijn die verdwenen, en op de
+  themapagina kan men geen leerplandoel meer als themadoel toevoegen.
 - [ ] Gegeven een subthema, dan koppelt men daar zoals nu leerplandoelen als subdoel, geen minimumdoelen.
 - [ ] Getest aan de serverkant (koppelen, meebrengen, ontkoppelen, rechten) en nagekeken in een echte browser op desktop
   en ~390px, met het toetsenbord bedienbaar.
@@ -76,6 +81,7 @@ FB-045.
 5. Ontkoppel het minimumdoel. Het verdwijnt, met de leerplandoelen eronder.
 6. Meld aan als leerkracht. Je ziet de minimumdoelen van het thema, zonder knop om te koppelen of te ontkoppelen.
 7. Koppel als themabeheer nog vier minimumdoelen aan hetzelfde thema. Ze worden alle vier aanvaard; er is geen maximum.
+   Er is geen knop om een leerplandoel als themadoel toe te voegen.
 8. Open een subthema: daar koppel je nog altijd leerplandoelen.
 9. Herhaal stap 1 tot 3 op ~390px.
 
@@ -83,16 +89,25 @@ FB-045.
 
 - "Doelen per leeftijd" zonder minimumdoelen: FB-044.
 - Verwachte en ingeplande dekking: FB-045.
-- AI-doelsuggesties op minimumdoelniveau: de doelsuggesties blijven leerplandoelen voorstellen.
+- De AI-doelsuggesties bij het thema en de wizardstap 'themadoelen': ze blijven werken zoals nu; een apart ticket
+  beslist wat ermee gebeurt.
+- De Excel-import (FR-1), ook haar maximum van drie themadoelen. Dat ze minimumdoelen moet kunnen dragen, komt in een
+  eigen ticket.
+- Het datamodel van de themadoelen die leerplandoelen zijn opruimen: een ander ticket.
 
 ## Open vragen
 
-- **Wat met de bestaande themadoelen, die leerplandoelen zijn?** Blijven ze naast de minimumdoelen staan, worden ze
-  omgezet naar hun minimumdoel, of verdwijnt dat soort themadoel? **Standaard** blijven ze staan tot de eigenaar beslist.
-- **Welke leeftijden komen mee?** Een minimumdoel `K-` leidt naar leerplandoelen van JK, K2 en K3. **Standaard** alle
-  leeftijden van de concordantie, ook als het thema voor een leeftijd nog geen subthema heeft.
-- **Import (FR-1):** het Excelbestand draagt vandaag leerplandoelen als themadoel. Moet het ook minimumdoelen kunnen
-  dragen? **Standaard** nee, dit ticket gaat over de themapagina.
+Beantwoord door de eigenaar op 2026-09-16:
+
+- **Wat met de bestaande themadoelen, die leerplandoelen zijn?** Een themadoel wordt enkel nog een minimumdoel; de
+  leerplandoelen blijven zichtbaar als uitklapping eronder. De bestaande leerplandoel-themadoelen verwijdert een
+  migratie in elke omgeving, ook op de Azure-demo. Het datamodel blijft.
+- **Dekking in de tussentijd:** die daalt door het verwijderen; de gekoppelde minimumdoelen tellen nog niet mee.
+  FB-045 lost dat op.
+- **Welke leeftijden komen mee?** Alle leeftijden van de concordantie, ook als het thema voor een leeftijd nog geen
+  subthema heeft.
+- **Import (FR-1):** ja, later ook minimumdoelen, maar in een eigen ticket. Dit ticket laat de import ongemoeid.
+- **AI-doelsuggesties bij het thema en de wizardstap 'themadoelen':** ongemoeid, een apart ticket.
 - Het schrappen van het maximum wijzigt de grondwet (Art. IX.2 en XII): de bouwer past die tekst aan en noteert het in
   `docs/constitutie-log.md`, met de beslissing van de eigenaar van 2026-09-16.
 - Een koppeling tussen een thema en een minimumdoel is een nieuw soort koppeling in het gegevensmodel (Art. IX):
@@ -102,3 +117,5 @@ FB-045.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:03 · demo-opmerkingen · beslissing eigenaar: het maximum van 2 à 3 themadoelen vervalt, ook bij de import; in de tekst verwerkt
+- 2026-09-16 14:19 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord in de sessie; klaar voor bouw
+- 2026-09-16 14:19 · claude-fb043 · klaar-voor-bouw → in-uitvoering: opgepakt
