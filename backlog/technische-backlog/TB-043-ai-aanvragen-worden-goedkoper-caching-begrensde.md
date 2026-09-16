@@ -2,12 +2,12 @@
 id: TB-043
 titel: AI-aanvragen worden goedkoper: caching, begrensde output, geen gekoppelde doelen
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:23
-opgepakt-door:
-branch: main
+bijgewerkt: 2026-09-16 22:34
+opgepakt-door: claude-tb043
+branch: ticket/TB-043-ai-goedkoper
 pr:
 geblokkeerd:
 fr: []
@@ -89,3 +89,4 @@ prompts.
 ## Werklog
 
 - 2026-09-16 22:23 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-16 22:34 · claude-tb043 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
