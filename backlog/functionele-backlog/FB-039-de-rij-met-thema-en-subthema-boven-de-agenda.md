@@ -2,12 +2,12 @@
 id: FB-039
 titel: De rij met thema en subthema boven de agenda verdwijnt
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 14:28
+opgepakt-door: claude-fb-039
+branch: ticket/FB-039-stroken-toegankelijk
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -86,3 +86,4 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 - 2026-09-15 22:20 · wensen-hoeken · aangemaakt (status nieuw)
 - 2026-09-15 22:51 · claude-fb039 · PR #105
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-039 · klaar-voor-bouw → in-uitvoering: opgepakt
