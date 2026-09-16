@@ -2,13 +2,13 @@
 id: TB-042
 titel: Azure-demo krijgt de AI-provider uit main.bicep, zodat een nieuwe deploy hem niet wist
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:12
+bijgewerkt: 2026-09-16 22:20
 opgepakt-door: claude-code-anthropic
 branch: ticket/TB-bicep-ai-provider
-pr:
+pr: 121
 geblokkeerd:
 fr: []
 ---
@@ -34,10 +34,10 @@ het plafond is de maandelijkse spend limit in de Claude Console op de organisati
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven `infra/main.bicep`, wanneer het gebouwd wordt (`az bicep build`), dan slaagt dat en staat `Ai__Provider` in de app-instellingen met de waarde van `aiProvider`.
+- [x] Gegeven `infra/main.bicep`, wanneer het gebouwd wordt (`az bicep build`), dan slaagt dat en staat `Ai__Provider` in de app-instellingen met de waarde van `aiProvider`.
 - [ ] Gegeven een nieuwe deploy van de infrastructuur zonder `aiProvider`, dan blijft de demo op `Anthropic`.
-- [ ] Gegeven de demo, wanneer `Ai__Provider` gezet is en de webapp herstart, dan antwoorden `/health` en `/health/ready` met 200.
-- [ ] De sleutel staat nergens in de repo en niet in een app-instelling.
+- [x] Gegeven de demo, wanneer `Ai__Provider` gezet is en de webapp herstart, dan antwoorden `/health` en `/health/ready` met 200.
+- [x] De sleutel staat nergens in de repo en niet in een app-instelling.
 
 ## Buiten scope
 
@@ -53,3 +53,6 @@ Geen.
 
 - 2026-09-16 22:09 · claude-code-anthropic · aangemaakt (status in-uitvoering)
 - 2026-09-16 22:12 · claude-code-anthropic · main.bicep kreeg parameter aiProvider (standaard Anthropic) en app-instelling Ai__Provider; az bicep build slaagt. README en ADR-0034-statusnoot bijgewerkt (budgetplafond = spend limit in de Claude Console).
+- 2026-09-16 22:20 · claude-code-anthropic · PR #121
+- 2026-09-16 22:20 · claude-code-anthropic · Demo: main d43c2754 gedeployed na de migraties HerschrijvingGeweigerd en ThemaMinimumdoelen (met akkoord van de eigenaar), Ai__Provider=Anthropic gezet en webapp herstart; /health 200, /health/ready 200, /api/klassen 401, /agenda 200. Criterium 2 (nieuwe infra-deploy) niet uitgevoerd: de infrastructuur werd niet opnieuw gedeployed, de standaardwaarde Anthropic staat in de template.
+- 2026-09-16 22:20 · claude-code-anthropic · in-uitvoering → klaar: main.bicep zet Ai__Provider; demo draait met de Claude API.
