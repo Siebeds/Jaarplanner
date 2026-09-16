@@ -393,7 +393,7 @@ export function ThemadetailScherm() {
                   {mag.doelsuggestiesMaken ? (
                     <div ref={vraagRef} className="contents">
                       {vraagOpen ? (
-                        <div id="doelsuggesties-vraag" className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVragenVoor")}</span>
                           {jaarfasen ? (
                             <Leeftijdkeuze
