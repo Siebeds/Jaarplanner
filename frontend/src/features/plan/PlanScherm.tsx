@@ -13,7 +13,6 @@ import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { ApiError } from "../../lib/api";
 import { valtBinnen, vandaag } from "../../lib/datum";
 import { t } from "../../i18n";
-import { cn } from "../../lib/cn";
 import { Jaartijdlijn } from "./Jaartijdlijn";
 import { Plaatsingkaart } from "./Plaatsingkaart";
 import { Themaplaatsingblad } from "./Themaplaatsingblad";
@@ -109,11 +108,7 @@ export function PlanScherm() {
               <dl className="flex flex-wrap gap-2">
                 <Balanstegel waarde={plan.balans.lesweken} label={t("plan.balansLesweken")} />
                 <Balanstegel waarde={plan.balans.metThema} label={t("plan.balansMetThema")} />
-                <Balanstegel
-                  waarde={plan.balans.zonderThema}
-                  label={t("plan.balansZonderThema")}
-                  aandacht={plan.balans.zonderThema > 0}
-                />
+                <Balanstegel waarde={plan.balans.zonderThema} label={t("plan.balansZonderThema")} />
               </dl>
 
               <div className="flex flex-wrap items-center gap-2">
@@ -238,17 +233,12 @@ export function PlanScherm() {
   );
 }
 
-/** One figure of the year balance: a number and what it counts. */
-function Balanstegel({ waarde, label, aandacht }: { waarde: number; label: string; aandacht?: boolean }) {
+/** One figure of the year balance: a number and what it counts. Neutral: an empty week is not marked (owner, 2026-09-16). */
+function Balanstegel({ waarde, label }: { waarde: number; label: string }) {
   return (
-    <div
-      className={cn(
-        "flex min-w-36 flex-col-reverse rounded-kaart border px-4 py-2.5",
-        aandacht ? "border-attentie bg-attentie-zacht" : "border-lijn bg-kaart",
-      )}
-    >
-      <dt className={cn("text-meta", aandacht ? "text-attentie-inkt" : "text-inkt-zacht")}>{label}</dt>
-      <dd className={cn("mono text-hoofdstuk", aandacht ? "text-attentie-inkt" : "text-inkt")}>{waarde}</dd>
+    <div className="flex min-w-36 flex-col-reverse rounded-kaart border border-lijn bg-kaart px-4 py-2.5">
+      <dt className="text-meta text-inkt-zacht">{label}</dt>
+      <dd className="mono text-hoofdstuk text-inkt">{waarde}</dd>
     </div>
   );
 }

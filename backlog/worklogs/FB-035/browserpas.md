@@ -316,3 +316,47 @@ Unchanged from the end of round 1: every placement moved during this round was r
 - "Zomer en vakantie" reads "ruim 5 wk" (410/410).
 - No bar label is clipped: every `span.mono` on a bar has scrollWidth equal to clientWidth.
 - Screenshot: `r3-d5-korte-balken.png`.
+
+---
+
+# Round 4 (visual check of the reduced timeline and card)
+
+**Verdict:** PASS
+**Mode:** Playwright (the same setup), klas L3, at 1440x900 and 390x844.
+
+## Removed items: none appear (PASS)
+- **Text scan:** I searched the body text and every aria-label, on the plan screen and with the card of "Zomer en vakantie" open. None of these appear: "Geen thema", "Einde aangepast", "iets langer", "ruim", "wk", "Week vroeger", "Week later", "Vergrendeld".
+  - The only hit for "aangepast" is the generation sentence ("Het jaarplan genereren wordt aangepast aan de planning met datums…"), which is unrelated.
+- **Borders:** no element on the bars or in the card has a dashed border, and no bar or card uses an attentie class.
+- **Bar sub-lines** now read only dates or parts:
+  - "Voorgesteld · 1 sep – 1 okt"
+  - "9 nov – 11 dec"
+  - "deel 1/2"
+  - "26 apr – 1 jun"
+- **Card** ("Zomer en vakantie", 5 lesweken of a 5-week thema, end differs from the proposal):
+  - It shows "Zomer en vakantie", "26 apr – 1 jun · 0 doelen", Manueel, "Duur van het thema: 5 weken", Begindatum, Einddatum, Datums bewaren, Open in de agenda and Verwijder.
+  - Its only buttons are Datums bewaren and Verwijder.
+
+## Layout: PASS
+- **Date fields:** both are 160px wide (w-40) at both viewports.
+- **At 1440:**
+  - Begindatum at x 285, Einddatum at x 457, and "Datums bewaren" at x 629, all on one row (y 565, height 44), inside the 1152px card.
+  - The card has a lot of empty space to the right, but it reads fine.
+- **At 390:**
+  - Begindatum is on row 1 (y 788).
+  - Einddatum and "Datums bewaren" share row 2 (y 868), and the button ends at x 354 inside the 358px card (which starts at x 16).
+  - The wrap is clean.
+- **No clipping:** no leaf element in `main` has scrollWidth greater than clientWidth.
+- **Page width at 390:** 390/390, so no page-wide horizontal scroll.
+- **Screenshot artefact:** in `r4-kaart-390.png` the header drawn mid-page comes from the full-page capture of the sticky header.
+- **Minor:** with the markers gone, the timeline keeps an empty band (its fourth grid row) below the bars. This is harmless, but the timeline card could be about 2rem shorter.
+
+## Saving: PASS
+- Einddatum 2027-06-01 → 2027-05-28, then "Datums bewaren" (200, no alert). The bar read "26 april tot vrijdag 28 mei" and the card "26 apr – 28 mei".
+- I restored 2027-06-01 the same way (200). The plan is back to its state before round 4.
+
+## Console: PASS
+No console errors or page errors at either viewport.
+
+## Screenshots
+`r4-plan-1440.png`, `r4-kaart-1440.png`, `r4-plan-390.png`, `r4-kaart-390.png` (in the scratchpad `browser/` folder).
