@@ -60,8 +60,9 @@ Defaults, not ruled, which the build follows until the owner changes one (FB-015
 - **D8.** When directie removes the owner as a gebruiker, her own activiteiten become **shared** (as I17 does for a
   maker): the owner is set to none, and from then on the shared rules and the subthema route of dekking apply.
 - **D9.** Deleting a subthema deletes the own activiteiten under it, as it deletes the shared ones today; a placed one
-  still blocks the delete. The FR-1 import never matches, overwrites or deletes an own activiteit. The AI prompts for
-  a thema (doelsuggesties, the wizard) and the thema's overviews of goals and counts read shared activiteiten only.
+  still blocks the delete. The FR-1 import never matches, overwrites or deletes an own activiteit. The doelsuggesties
+  prompt of a thema, the thema's overviews of goals and counts, and a subthema's balance of subdoelen read shared activiteiten only. The
+  wizard's AI assist takes the activiteiten its screen sends, for a thema it builds from scratch.
 
 ## How it is built
 
@@ -70,7 +71,7 @@ Defaults, not ruled, which the build follows until the owner changes one (FB-015
   The maker (R26) stays as it is: for an own activiteit it is the same person.
 - **Rights.** `Activiteitbron` carries the owner. On an own activiteit, the existing activiteit rows
   (`GedeeldeActiviteitBewerken`, `ActiviteitVerwijderen`, `DoelenKoppelen`, `ActiviteitVerplaatsen`) match only the
-  column `Eigenaar`, which also serves the woordweb; the HL, "LK leeftijd" and maker columns do not match it (D4). New
+  column `EigenActiviteitEigenaar`, apart from the woordweb's `Eigenaar`; the HL, "LK leeftijd" and maker columns do not match it (D4). New
   rows: `EigenActiviteitMaken` ("LK leeftijd", on the subthema), `GedeeldeActiviteitMaken` (HL, on the subthema),
   `EigenActiviteitLezen` and `EigenActiviteitGebruiken` (on the activiteit, D3, D5).
 - **Planning.** The weekplanning service refuses to plan someone else's own activiteit (D6).

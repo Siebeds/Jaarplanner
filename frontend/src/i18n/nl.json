@@ -261,7 +261,7 @@
     "vanDag": "Van deze dag halen",
     "vanDagAria": "{naam} van deze dag halen",
     "mislukt": "Niet gelukt",
-    "activiteitWeg": "Deze activiteit staat niet meer in dit thema. Ze is verwijderd of naar een ander thema verplaatst.",
+    "activiteitWeg": "Deze activiteit kan je hier niet openen. Ze staat niet meer in dit thema, of ze is de eigen activiteit van een collega.",
     "agendaVernieuwen": "Agenda vernieuwen",
     "voegToeOp": "Activiteit toevoegen op {dag}",
     "planSubthema": "Subthema inplannen",
