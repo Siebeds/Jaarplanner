@@ -129,7 +129,8 @@ export function Woordchips({
             key={woord}
             className={cn(
               "inline-flex items-center gap-1 rounded py-1 pl-2.5 pr-1 text-meta",
-              gevuld ? "bg-vlak-diep font-medium text-inkt" : "border border-lijn text-inkt-zacht",
+              // Both carry a border so a filled and an outlined chip are equally tall.
+              gevuld ? "border border-transparent bg-vlak-diep font-medium text-inkt" : "border border-lijn text-inkt-zacht",
             )}
           >
             {woord}

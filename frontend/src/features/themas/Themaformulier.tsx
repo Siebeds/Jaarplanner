@@ -332,7 +332,7 @@ function Sluitvraag({ onWeggooien, onVerder }: { onWeggooien: () => void; onVerd
     <div
       ref={vak}
       role="alert"
-      className="flex flex-col gap-2 rounded border border-attentie/40 bg-attentie-zacht p-3 @sm:flex-row @sm:items-center"
+      className="flex flex-col gap-2 rounded border border-attentie/40 bg-attentie-zacht p-3 @md:flex-row @md:items-center"
     >
       <p className="flex-1 text-meta font-medium text-attentie-inkt">{t("themabeheer.nietBewaard")}</p>
       <div className="flex gap-2">

@@ -47,19 +47,19 @@ niets toevoegt, valt ze weg. De woordenschat met een teller en een korte uitleg 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven het formulier voor een nieuw thema op een breed scherm, wanneer het opent, dan staan naam, duur en
+- [x] Gegeven het formulier voor een nieuw thema op een breed scherm, wanneer het opent, dan staan naam, duur en
       invalshoeken onder elkaar, staan de twee woordenschatlijsten naast elkaar, elk met een teller en de korte
       uitleg, en is er geen voorbeeldkaart.
-- [ ] Gegeven een nieuw thema met een naam, wanneer de gebruiker "Thema aanmaken" kiest, dan opent de themapagina
+- [x] Gegeven een nieuw thema met een naam, wanneer de gebruiker "Thema aanmaken" kiest, dan opent de themapagina
       van dat nieuwe thema.
-- [ ] Gegeven een bestaand thema "Op de boerderij", wanneer themabeheer het formulier opent, dan heet het paneel
+- [x] Gegeven een bestaand thema "Op de boerderij", wanneer themabeheer het formulier opent, dan heet het paneel
       "Op de boerderij bewerken" en werkt "Bewaren" nog niet.
-- [ ] Gegeven dat formulier, wanneer de gebruiker de duur wijzigt, dan staat "gewijzigd" bij Duur en werkt
+- [x] Gegeven dat formulier, wanneer de gebruiker de duur wijzigt, dan staat "gewijzigd" bij Duur en werkt
       "Bewaren". Zet de gebruiker de oorspronkelijke duur terug, dan verdwijnen beide weer.
-- [ ] Gegeven onbewaarde wijzigingen, wanneer de gebruiker het paneel sluit of Annuleren kiest, dan vraagt het
+- [x] Gegeven onbewaarde wijzigingen, wanneer de gebruiker het paneel sluit of Annuleren kiest, dan vraagt het
       formulier eerst om weg te gooien of verder te bewerken. "Verder bewerken" laat alles staan, "Weggooien" sluit
       het paneel zonder te bewaren.
-- [ ] Gegeven het formulier op een telefoon van 390 pixels breed, wanneer het opent, dan staan de woordenschatlijsten
+- [x] Gegeven het formulier op een telefoon van 390 pixels breed, wanneer het opent, dan staan de woordenschatlijsten
       onder elkaar, schuift de pagina niet horizontaal en zijn de woordchips geen pillen.
 
 ## Testscenario's
