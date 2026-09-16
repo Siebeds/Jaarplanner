@@ -1,11 +1,11 @@
 ---
-id: TB-032
+id: TB-033
 titel: Skill app-starten beschrijft een derde ontwikkelmachine (Docker per gebruiker)
 soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 23:08
+bijgewerkt: 2026-09-16 14:02
 opgepakt-door: machine-c
 branch: ticket/app-starten-machine-c
 pr: 106
@@ -60,3 +60,4 @@ machine B.
 - 2026-09-15 22:48 · machine-c · in-uitvoering → klaar: Skill app-starten beschrijft machine C en wat een nieuwe pc nodig heeft. Alleen documentatie: geen tests, dotnet format of pnpm lint van toepassing, geen antagonist (geen significante wijziging).
 - 2026-09-15 23:07 · machine-c · PR #106
 - 2026-09-15 23:08 · machine-c · Git-identiteit in de skill rechtgezet: vraag ze aan de eigenaar; machine C gebruikt het GitHub-account dyllisd met het no-reply-adres, niet Siebeds uit de geschiedenis.
+- 2026-09-16 14:02 · machine-c · Hernummerd van TB-032 naar TB-033: main had intussen een ander TB-032 (afgemeld-pagina).
