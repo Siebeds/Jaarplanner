@@ -95,7 +95,7 @@ describe("Maandrooster, de hoogte van een cel met stroken (FB-039)", () => {
     tot: "2026-09-11",
     aantalDagen: 5,
   });
-  const vak: Themavak = { blokStart: "2026-09-01", van: "2026-09-01", tot: "2026-09-11", themas: [{ id: "t1", naam: "Ik en mijn klas" }] };
+  const vak: Themavak = { plaatsingId: "p1", van: "2026-09-01", tot: "2026-09-11", themas: [{ id: "t1", naam: "Ik en mijn klas" }] };
 
   it("geeft elke cel van een rij de hoogte die de dag met de meeste stroken nodig heeft, zodat de activiteiten hun plaats houden", () => {
     // Week of 7 september: Monday carries the thema band and two subthema slots (three runs fold to one and a count),

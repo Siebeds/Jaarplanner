@@ -50,9 +50,6 @@ const ROOSTER = {
   schooljaarNaam: "2026-2027",
   start: "2026-09-01",
   eind: "2027-06-30",
-  niveau: "Themaperiode",
-  blokindeling: "Themaperiode",
-  blokken: [{ ordinaal: 1, start: "2026-09-01", eind: "2026-10-09", ouderOrdinaal: null, aantalOpenDagen: 27 }],
   onderbrekingen: [],
 };
 
@@ -88,7 +85,12 @@ function antwoord(pad: string): unknown {
       return ROOSTER;
     case "/api/klassen/klas-1/jaarplan":
       return { klasId: "klas-1", klasNaam: KLAS.naam, schooljaarId: "jaar-1", schooljaarNaam: "2026-2027",
-        blokindeling: "Themaperiode", plaatsingen: [], blokken: [], geblokkeerdePeriodes: [] };
+        eersteSchooldag: "2026-09-01", laatsteSchooldag: "2027-06-30", lesweken: [],
+        balans: { lesweken: 0, metThema: 0, zonderThema: 0 },
+        // One thema over the weeks the agenda opens on, so the day has a thema to plan in.
+        plaatsingen: [{ id: "p-1", themaId: "t-1", themaNaam: "Ik en mijn klas", van: "2026-09-01", tot: "2026-10-09",
+          isVervallen: false, status: "Manueel", aiMotivatie: null, vergrendeld: false, doelcodes: [], duurWeken: 6,
+          reeks: null }] };
     case "/api/klassen/klas-1/jaarplan/weekplanning": {
       const van = url.searchParams.get("van") ?? "";
       const tot = url.searchParams.get("tot") ?? "";

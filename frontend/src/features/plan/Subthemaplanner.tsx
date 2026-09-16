@@ -378,7 +378,7 @@ function Nietsomteplannen({
         <p className="text-body text-inkt">{t("periode.geenThemaInPeriode")}</p>
         <p className="text-meta text-inkt-zacht">{t("periode.geenThemaUitleg")}</p>
         <Link to="/agenda/periodes" className={cn(knopklassen(), "mt-1")}>
-          {t("periode.themasPerPeriode")}
+          {t("periode.naarJaarplan")}
         </Link>
       </div>
     );

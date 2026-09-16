@@ -372,7 +372,7 @@ describe("Tijdraster", () => {
       ["2026-09-14", lopendeReeks],
     ]),
     vakken: [
-      { blokStart: "2026-09-01", van: "2026-09-01", tot: "2026-10-01", themas: [{ id: "t1", naam: "Ik en mijn klas" }] },
+      { plaatsingId: "p1", van: "2026-09-01", tot: "2026-10-01", themas: [{ id: "t1", naam: "Ik en mijn klas" }] },
     ],
     onVoegToe: () => {},
     onOpen: () => {},
@@ -789,7 +789,7 @@ describe("Tijdraster, de stroken in een week met een gesloten maandag (FB-039)",
             dagen={dagen}
             fichemomenten={[]}
             reeksenPerDag={new Map([["2026-09-08", [reeks]], ["2026-09-09", [reeks]]])}
-            vakken={[{ blokStart: "2026-09-01", van: "2026-09-01", tot: "2026-10-09", themas: [{ id: "t1", naam: "Ik en mijn klas" }] }]}
+            vakken={[{ plaatsingId: "p1", van: "2026-09-01", tot: "2026-10-09", themas: [{ id: "t1", naam: "Ik en mijn klas" }] }]}
             schooluren={undefined}
             magPlannen={false}
             onVoegToe={() => {}}

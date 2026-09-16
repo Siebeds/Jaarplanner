@@ -84,7 +84,7 @@ import {
   subthemasInWeek,
   voorstelReeks,
 } from "./subthemareeksen";
-import { themaIdsOpDag, themavakken } from "./themavakken";
+import { themablokken, themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
 import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
 
@@ -96,15 +96,13 @@ function leegteDag(datum: string) {
 /**
  * The agenda: the school year as a calendar, opening on the week (FR-6.2, FR-7.2).
  *
- * It used to be a screen per themaperiode, reached from a board of periods. The board is still
- * there, at /agenda/periodes, because placing a thema in a period and judging the generator's
- * proposals is a different job from planning a week. But it is no longer the front door: an agenda
- * that opens on a planning board is a planning board.
+ * The year plan is a screen of its own, at /agenda/periodes, because placing a thema and judging its days is a
+ * different job from planning a week. It is not the front door: an agenda that opens on a planning board is a
+ * planning board.
  *
- * The period is therefore DERIVED from where the teacher is standing rather than carried in the URL.
- * Everything period-scoped (which thema's the picker offers, which days the subthema planner may
- * use) follows the block the anchored date falls in, and between two periods it follows nothing and
- * says so.
+ * The thema is therefore DERIVED from where the teacher is standing rather than carried in the URL (ADR-0049).
+ * Everything thema-scoped (which thema's the picker offers, which days the subthema planner may use) follows the
+ * thema placement the anchored date falls in, and on a day without a thema it follows nothing and says so.
  *
  * Everything here is persisted server side. That is worth stating because the obvious shortcut is
  * not: the other candidate frontend keeps its day agenda in localStorage, where it belongs to one
@@ -216,12 +214,10 @@ export function Agendascherm() {
     ga({ datum, weergave: "dag", push: true });
   }
 
-  // The themaperiode the anchored day falls in. Between two periods there is none, which is a
+  // Every thema placement as a stretch of days, and the one the anchored day falls in. A day without a thema is a
   // legitimate place to stand and not an error.
-  const blok = useMemo(
-    () => rooster?.blokken.find((b) => valtBinnen(anker, b.start, b.eind)),
-    [rooster, anker],
-  );
+  const blokken = useMemo(() => themablokken(plan?.plaatsingen ?? []), [plan]);
+  const blok = useMemo(() => blokken.find((b) => valtBinnen(anker, b.start, b.eind)), [blokken, anker]);
 
   // The range the current view needs. The server clamps it to the school year, so a month that
   // starts before the first school day is a legal request rather than an error.
@@ -302,35 +298,35 @@ export function Agendascherm() {
     setVanDagOpen(true);
   }
 
-  // The planner spreads over the whole period, so it needs every day of it rather than the days the
+  // The planner spreads over the whole thema placement, so it needs every day of it rather than the days the
   // current view happens to be showing. A separate query with its own key: asking the view's query
   // for a wider range would refetch the grid every time the teacher changed week.
   const { data: heelDePeriode } = useWeekplanning(klasId, blok?.start ?? "", blok?.eind ?? "");
 
   /**
-   * THE RUNS ARE DERIVED OVER WHOLE PERIODES, NOT OVER WHAT IS ON SCREEN.
+   * THE RUNS ARE DERIVED OVER WHOLE THEMA PLACEMENTS, NOT OVER WHAT IS ON SCREEN.
    *
    * A subthema run is measured from the first and last day carrying one of its activiteiten, so the
    * window it is measured in decides where it appears to start. Measured over the visible month, a
    * run that began in the last week of september would be reported as starting on 1 october, and the
    * strip on that cell would say a period begins on a day it does not.
    *
-   * So the window is the union of every themaperiode the view touches. That is a superset of the
+   * So the window is the union of every thema placement the view touches. That is a superset of the
    * grid, which is what makes the answer for every visible day the same answer it would get from a
    * whole year. When the union adds nothing the range is identical to the grid's own and TanStack
    * hands back the same cached response rather than a second request.
    */
   // The whole week of the anchored day is in it too, which the activiteiten list speaks about (`reeksbereik`).
   const [reeksVan, reeksTot] = useMemo(
-    () => reeksbereik(van, tot, anker, rooster?.blokken ?? []),
-    [van, tot, anker, rooster],
+    () => reeksbereik(van, tot, anker, blokken),
+    [van, tot, anker, blokken],
   );
 
   const { data: reeksbron, isError: reeksbronMislukt } = useWeekplanning(klasId, reeksVan, reeksTot);
 
   const reeksen = useMemo(
-    () => subthemareeksen(reeksbron?.dagen ?? [], rooster?.blokken ?? [], reeksbron?.subthemaperiodes ?? []),
-    [reeksbron, rooster],
+    () => subthemareeksen(reeksbron?.dagen ?? [], blokken, reeksbron?.subthemaperiodes ?? []),
+    [reeksbron, blokken],
   );
   const stroken = useMemo(() => reeksenPerDag(reeksen), [reeksen]);
 
@@ -406,26 +402,15 @@ export function Agendascherm() {
   }, [anker, reeksbron, reeksbronMislukt, reeksen]);
 
   /**
-   * EVERY THEMAPERIODE OF THE YEAR, WITH THE THEMA'S PLACED IN IT.
+   * EVERY THEMA PLACEMENT OF THE YEAR, AS A STRETCH OF DAYS.
    *
-   * Not "the period the teacher is in": that is what went wrong. `blok` is the period containing the
-   * ANCHORED DAY, and the month grid shows a whole month, so as soon as the anchor drifted into the
-   * neighbouring period the header described days that were not on screen. Paging a month keeps the
-   * day of the month and this year's periods end on the 1st, so the drift was systematic rather than
-   * a corner case. The cells now each look their own day up. See `themavakken`.
+   * Not "the thema the teacher is in": the month grid shows a whole month, so each cell looks its own day up. See
+   * `themavakken`.
    */
-  const vakken = useMemo(
-    () => themavakken(rooster?.blokken ?? [], plan?.plaatsingen ?? []),
-    [rooster, plan],
-  );
+  const vakken = useMemo(() => themavakken(plan?.plaatsingen ?? []), [plan]);
 
-  // The thema's running in this period are what the activity picker may offer.
-  const themaIdsInPeriode = useMemo(() => {
-    const ids = (plan?.plaatsingen ?? [])
-      .filter((plaatsing) => plaatsing.blokStart === blok?.start && plaatsing.status !== "Geweigerd")
-      .map((plaatsing) => plaatsing.themaId);
-    return [...new Set(ids)];
-  }, [plan, blok]);
+  // The thema running on the anchored day is what the subthema planner may offer.
+  const themaIdsInPeriode = useMemo(() => (blok ? [blok.themaId] : []), [blok]);
 
   const bezig = acties.plaats.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
 
@@ -682,7 +667,7 @@ export function Agendascherm() {
                 to="/agenda/periodes"
                 className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
               >
-                {t("periode.themasPerPeriode")}
+                {t("periode.naarJaarplan")}
               </Link>
 
               {/*
@@ -733,9 +718,8 @@ export function Agendascherm() {
                 );
               })}
 
-              {/* No period, no planner: the sheet spreads a subthema over the days of a themaperiode,
-                  and between two periods there are none to spread it over. Nor for anyone who may not plan
-                  this klas. */}
+              {/* No thema, no planner: the sheet spreads a subthema over the days of a thema placement, and on a
+                  day without a thema there are none to spread it over. Nor for anyone who may not plan this klas. */}
               {blok && magPlannen ? (
                 <button
                   type="button"
@@ -784,7 +768,7 @@ export function Agendascherm() {
                     weekLabel={weekLabel}
                     dagweergave={weergave === "dag"}
                     datum={anker}
-                    schooljaar={rooster}
+                    schooljaar={rooster ? { start: rooster.start, eind: rooster.eind, blokken } : undefined}
                     vakken={vakken}
                     planGeladen={planGeladen}
                   />
@@ -1090,7 +1074,7 @@ export function Agendascherm() {
         themaIds={nieuw ? themaIdsOpDag(vakken, nieuw.datum) : []}
         // What the day already knows. A teacher pressing the plus in the middle of a subthema means
         // that subthema far more often than not, and the dropdown is there for when they do not.
-        voorstelSubthemaId={nieuw ? voorstelReeks(reeksen, nieuw.datum, rooster?.blokken ?? [])?.subthemaId : undefined}
+        voorstelSubthemaId={nieuw ? voorstelReeks(reeksen, nieuw.datum, blokken)?.subthemaId : undefined}
         planBezig={acties.plaats.isPending}
         planFout={acties.plaats.isError ? foutTekst(acties.plaats.error) : null}
         planGeweigerd={isGeenToegang(acties.plaats.error)}

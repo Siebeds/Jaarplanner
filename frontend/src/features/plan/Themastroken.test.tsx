@@ -11,7 +11,7 @@ import { themapaginaPad } from "../themas/themapagina";
  * nothing where it names none.
  */
 const vak = (themas: Themavak["themas"]): Themavak => ({
-  blokStart: "2026-09-01",
+  plaatsingId: "p1",
   van: "2026-09-01",
   tot: "2026-10-01",
   themas,

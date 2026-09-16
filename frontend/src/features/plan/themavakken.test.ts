@@ -1,96 +1,79 @@
 import { describe, expect, it } from "vitest";
-import { themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
+import { themablokken, themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
 
 /**
- * The bug these pin, in one sentence: the agenda described the themaperiode of ONE anchored day over
- * a grid showing a whole month, and on this school year's periods that anchor is systematically one
- * period behind.
- *
- * So the cases below are the real calendar, not invented dates. The periods end on the 1st, which is
- * exactly what made a month-paging anchor land outside the month it was describing.
+ * A thema placement is a stretch of days with its own first and last day (ADR-0049), so the agenda looks each day up
+ * against the placements themselves. The cases are a real calendar: a thema split around the herfstvakantie is two
+ * placements, and a week the teacher left open has no thema.
  */
-const BLOKKEN = [
-  { start: "2026-09-01", eind: "2026-10-01" },
-  { start: "2026-10-02", eind: "2026-11-01" },
-  { start: "2026-11-09", eind: "2026-12-20" },
-];
-
 const PLAATSINGEN = [
-  { blokStart: "2026-09-01", themaId: "t-klas", themaNaam: "Ik en mijn klas", status: "Manueel" },
-  { blokStart: "2026-11-09", themaId: "t-schoon", themaNaam: "TR Schoon", status: "Manueel" },
+  { id: "p-klas", van: "2026-09-01", tot: "2026-09-25", themaId: "t-klas", themaNaam: "Ik en mijn klas", status: "Manueel" },
+  { id: "p-herfst-2", van: "2026-11-09", tot: "2026-11-20", themaId: "t-herfst", themaNaam: "Herfst", status: "Manueel" },
+  { id: "p-herfst-1", van: "2026-10-19", tot: "2026-10-30", themaId: "t-herfst", themaNaam: "Herfst", status: "Manueel" },
 ];
 
 const namen = (vak: { themas: readonly { naam: string }[] } | undefined) =>
   (vak?.themas ?? []).map((thema) => thema.naam);
 
+describe("themablokken", () => {
+  it("geeft elke plaatsing als stuk dagen, op volgorde van de eerste dag", () => {
+    expect(themablokken(PLAATSINGEN).map((blok) => [blok.plaatsingId, blok.start, blok.eind])).toEqual([
+      ["p-klas", "2026-09-01", "2026-09-25"],
+      ["p-herfst-1", "2026-10-19", "2026-10-30"],
+      ["p-herfst-2", "2026-11-09", "2026-11-20"],
+    ]);
+  });
+
+  it("laat een geweigerd voorstel weg", () => {
+    const blokken = themablokken([
+      ...PLAATSINGEN,
+      { id: "p-water", van: "2026-10-05", tot: "2026-10-16", themaId: "t-water", themaNaam: "Water", status: "Geweigerd" },
+    ]);
+    expect(blokken.map((blok) => blok.plaatsingId)).not.toContain("p-water");
+  });
+});
+
 describe("themavakken", () => {
-  it("geeft elke periode een vak, ook een periode zonder thema", () => {
-    const vakken = themavakken(BLOKKEN, PLAATSINGEN);
+  it("geeft elke plaatsing een vak met haar thema", () => {
+    const vakken = themavakken(PLAATSINGEN);
     expect(vakken).toHaveLength(3);
-    expect(vakken[1]).toMatchObject({ van: "2026-10-02", tot: "2026-11-01", themas: [] });
-  });
-
-  it("laat een geweigerd thema weg", () => {
-    const vakken = themavakken(BLOKKEN, [
-      ...PLAATSINGEN,
-      { blokStart: "2026-10-02", themaId: "t-water", themaNaam: "Water", status: "Geweigerd" },
-    ]);
-    expect(vakken[1].themas).toEqual([]);
-  });
-
-  it("noemt hetzelfde thema niet twee keer", () => {
-    const vakken = themavakken(BLOKKEN, [
-      ...PLAATSINGEN,
-      { blokStart: "2026-11-09", themaId: "t-schoon", themaNaam: "TR Schoon", status: "Voorgesteld" },
-    ]);
-    expect(namen(vakken[2])).toEqual(["TR Schoon"]);
+    expect(vakken[1]).toEqual({
+      plaatsingId: "p-herfst-1",
+      van: "2026-10-19",
+      tot: "2026-10-30",
+      themas: [{ id: "t-herfst", naam: "Herfst" }],
+    });
   });
 });
 
 describe("vakOpDag", () => {
-  const vakken = themavakken(BLOKKEN, PLAATSINGEN);
+  const vakken = themavakken(PLAATSINGEN);
 
-  it("geeft voor een dag in november het thema van NOVEMBER, niet dat van de vorige periode", () => {
-    // The whole point. Under the old derivation a november grid anchored on 1 november reported the
-    // period 2 okt - 1 nov, which holds no thema, and the thema chip vanished.
-    expect(namen(vakOpDag(vakken, "2026-11-15"))).toEqual(["TR Schoon"]);
-    expect(namen(vakOpDag(vakken, "2026-11-09"))).toEqual(["TR Schoon"]);
+  it("geeft het thema van die dag, ook na een vakantie", () => {
+    expect(namen(vakOpDag(vakken, "2026-10-19"))).toEqual(["Herfst"]);
+    expect(namen(vakOpDag(vakken, "2026-11-12"))).toEqual(["Herfst"]);
   });
 
-  it("kent 1 november nog aan de vorige periode toe, want daar hoort die dag echt", () => {
-    // Not a workaround: 1 november IS the last day of that period. The fault was never this
-    // assignment, it was describing a whole month with it.
-    expect(vakOpDag(vakken, "2026-11-01")).toMatchObject({ van: "2026-10-02", themas: [] });
-  });
-
-  it("geeft niets voor een dag tussen twee periodes", () => {
-    expect(vakOpDag(vakken, "2026-11-05")).toBeUndefined();
-  });
-
-  it("geeft niets buiten het schooljaar", () => {
-    expect(vakOpDag(vakken, "2026-08-20")).toBeUndefined();
-    expect(vakOpDag(vakken, "2027-08-20")).toBeUndefined();
+  it("geeft niets in een week zonder thema of in de vakantie", () => {
+    expect(vakOpDag(vakken, "2026-10-05")).toBeUndefined();
+    expect(vakOpDag(vakken, "2026-11-04")).toBeUndefined();
   });
 
   it("neemt de grenzen zelf mee", () => {
-    expect(vakOpDag(vakken, "2026-09-01")?.van).toBe("2026-09-01");
-    expect(vakOpDag(vakken, "2026-10-01")?.van).toBe("2026-09-01");
-    expect(vakOpDag(vakken, "2026-10-02")?.van).toBe("2026-10-02");
+    expect(vakOpDag(vakken, "2026-09-01")?.plaatsingId).toBe("p-klas");
+    expect(vakOpDag(vakken, "2026-09-25")?.plaatsingId).toBe("p-klas");
+    expect(vakOpDag(vakken, "2026-09-26")).toBeUndefined();
   });
 });
 
 describe("themaIdsOpDag", () => {
-  const vakken = themavakken(BLOKKEN, PLAATSINGEN);
+  const vakken = themavakken(PLAATSINGEN);
 
-  it("geeft de thema's van de dag waarvoor de kiezer opengaat, niet van de ankerdag", () => {
-    // The picker opened for 12 november used to ask the anchored day's period. With the anchor on
-    // 1 november that period holds nothing, so the plus offered an empty list on a day whose own
-    // period holds TR Schoon: an activiteit a teacher could see planned but not add.
-    expect(themaIdsOpDag(vakken, "2026-11-12")).toEqual(["t-schoon"]);
-    expect(themaIdsOpDag(vakken, "2026-11-01")).toEqual([]);
+  it("geeft het thema van de dag waarvoor de kiezer opengaat", () => {
+    expect(themaIdsOpDag(vakken, "2026-11-12")).toEqual(["t-herfst"]);
   });
 
-  it("geeft een lege lijst tussen twee periodes", () => {
-    expect(themaIdsOpDag(vakken, "2026-11-05")).toEqual([]);
+  it("geeft een lege lijst op een dag zonder thema", () => {
+    expect(themaIdsOpDag(vakken, "2026-10-07")).toEqual([]);
   });
 });

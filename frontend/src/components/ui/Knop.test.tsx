@@ -5,8 +5,8 @@ import { AiKnop, Knop } from "./Knop";
 
 describe("AiKnop", () => {
   it("draagt de AI-ring en het toverstokje, zodat de kleur nooit het enige teken is", () => {
-    render(<AiKnop>{t("plan.genereerNu")}</AiKnop>);
-    const knop = screen.getByRole("button", { name: t("plan.genereerNu") });
+    render(<AiKnop>{t("plan.genereer")}</AiKnop>);
+    const knop = screen.getByRole("button", { name: t("plan.genereer") });
 
     expect(knop).toHaveClass("knop-ai");
     expect(knop.querySelector("svg")).not.toBeNull();
@@ -16,16 +16,16 @@ describe("AiKnop", () => {
   it("meldt zich als bezig zolang de AI werkt", () => {
     render(
       <AiKnop bezig disabled>
-        {t("plan.bezig")}
+        {t("periode.bezig")}
       </AiKnop>,
     );
 
-    expect(screen.getByRole("button", { name: t("plan.bezig") })).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: t("periode.bezig") })).toHaveAttribute("aria-busy", "true");
   });
 
   it("laat een gewone knop zonder ring", () => {
-    render(<Knop rang="hoofd">{t("plan.annuleer")}</Knop>);
+    render(<Knop rang="hoofd">{t("plan.toevoegen")}</Knop>);
 
-    expect(screen.getByRole("button", { name: t("plan.annuleer") })).not.toHaveClass("knop-ai");
+    expect(screen.getByRole("button", { name: t("plan.toevoegen") })).not.toHaveClass("knop-ai");
   });
 });

@@ -3,91 +3,72 @@ import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Klaskiezer } from "../../app/Klaskiezer";
 import { AiKnop, Knop } from "../../components/ui/Knop";
-import { Blad } from "../../components/ui/Blad";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
-import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
+import { IcoonPlus } from "../../components/Iconen";
+import { useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { ApiError } from "../../lib/api";
-import type { KoppelingStatus, Planningsblok } from "../../lib/types";
-import { periode, valtBinnen, vandaag } from "../../lib/datum";
-import { t, telWoord } from "../../i18n";
+import { valtBinnen, vandaag } from "../../lib/datum";
+import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { Schooljaarlint } from "./Schooljaarlint";
+import { Jaartijdlijn } from "./Jaartijdlijn";
 import { Plaatsingkaart } from "./Plaatsingkaart";
-import { Themakiezer } from "./Themakiezer";
+import { Themaplaatsingblad } from "./Themaplaatsingblad";
 
 /**
- * The year plan of one class: which thema runs in which period, and every change a teacher makes to
- * that (FR-6, FR-7, FR-8).
+ * The year plan of one class: which thema runs from which day to which day, and every change a teacher makes to that
+ * (FR-6, FR-7, ADR-0049).
  *
- * The strip at the top is both the overview and the navigation. Below it the same year is a vertical
- * list of periods, because that is where a placement can actually be read and acted on. The two are
- * one selection: pressing a period in the strip scrolls to its section.
+ * **The timeline is the overview and the way in.** Above it the year balance says how many lesweken have a thema;
+ * on it a lesweek without one says so and, for a planner, adds one there. Pressing a bar opens its card below the
+ * timeline, where its days are changed; dragging a bar moves it by whole weeks.
  *
- * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15): generating, adding
- * a thema to a period, and the verdict, lock, move and delete of a placement. Anyone else who may read the klas (the
- * klassen of their jaarfase, FB-013) reads its plan, with one quiet line that says so, as on the agenda this screen
- * belongs to.
+ * **The generation is switched off** (ADR-0049 decision 9): its button stays, disabled, with the reason beside it, so
+ * a teacher who looks for it learns why rather than wondering where it went.
+ *
+ * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15). Anyone else who may
+ * read the klas (FB-013) reads its plan, with one quiet line that says so.
  */
 export function PlanScherm() {
   const { klasId, schooljaarId, klas } = useActieveSelectie();
   const { mag, bekend: rechtenBekend } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
-  const [gekozenBlok, setGekozenBlok] = useState<string | null>(null);
-  const [generatieOpen, setGeneratieOpen] = useState(false);
-  const [themakiezerBlok, setThemakiezerBlok] = useState<string | null>(null);
+  const [gekozenId, setGekozenId] = useState<string | null>(null);
+  // The add sheet: the day it was opened for, and a number that gives every opening a fresh form.
+  const [toevoegen, setToevoegen] = useState<{ begin: string | null } | null>(null);
+  const [keer, setKeer] = useState(0);
+
+  function openToevoegen(begin: string | null) {
+    plaatsThema.reset();
+    setKeer((vorige) => vorige + 1);
+    setToevoegen({ begin });
+  }
 
   const { data: plan, isPending: planLaadt, isError: planFout } = useJaarplan(klasId);
   const { data: rooster, isPending: roosterLaadt } = useRooster(schooljaarId);
   const acties = usePlaatsingacties(klasId ?? "");
-  const generatie = useGenereerJaarplan(klasId ?? "");
   const plaatsThema = usePlaatsThema(klasId ?? "");
 
-  const blokken: Planningsblok[] = useMemo(() => rooster?.blokken ?? [], [rooster]);
+  const plaatsingen = useMemo(() => plan?.plaatsingen ?? [], [plan]);
+  const gekozen = plaatsingen.find((p) => p.id === gekozenId) ?? null;
+  const aantalVervallen = plaatsingen.filter((p) => p.isVervallen).length;
 
-  const perBlok = useMemo(() => {
-    const kaart = new Map<string, typeof plan extends undefined ? never : NonNullable<typeof plan>["plaatsingen"]>();
-    for (const blok of blokken) kaart.set(blok.start, []);
-    for (const plaatsing of plan?.plaatsingen ?? []) {
-      const bestaand = kaart.get(plaatsing.blokStart);
-      if (bestaand) bestaand.push(plaatsing);
-      else kaart.set(plaatsing.blokStart, [plaatsing]);
-    }
-    return kaart;
-  }, [plan, blokken]);
+  const nu = vandaag();
+  const vandaagInSchooljaar = plan ? valtBinnen(nu, plan.eersteSchooldag, plan.laatsteSchooldag) : false;
 
-  // The period a teacher is actually in, if the schooljaar is running. Nothing is offered when today
-  // falls outside it: in augustus every period is "later", and a control that has to guess which one
-  // the teacher meant is a control that guesses wrong.
-  const periodeVanVandaag = useMemo(() => {
-    const nu = vandaag();
-    return blokken.find((blok) => valtBinnen(nu, blok.start, blok.eind)) ?? null;
-  }, [blokken]);
-  // The agenda anchors on a DAY, so this link hands it today rather than the period's first day.
-  const nuOfStart = vandaag();
+  const mutaties = [acties.beoordeel, acties.vergrendel, acties.wijzigDatums, acties.verschuif, acties.verwijder];
+  const bezig = mutaties.some((mutatie) => mutatie.isPending);
 
-  const geblokkeerd = useMemo(
-    () => new Map((plan?.geblokkeerdePeriodes ?? []).map((p) => [p.blokStart, p.momentNaam])),
-    [plan],
-  );
+  // A refused change: a 403 on a stale page says the right is gone; a 400 carries the server's own sentence, which is
+  // written for the teacher (a day without school, another thema on those days).
+  const geweigerd = [...mutaties, plaatsThema].map((mutatie) => geenToegangZin(mutatie.error)).find((zin) => zin !== null);
+  const actiefout = mutaties.map((mutatie) => foutzin(mutatie.error)).find((zin) => zin !== null) ?? null;
 
-  const bezig =
-    acties.beoordeel.isPending || acties.vergrendel.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
-
-  // A refused change from a control with no error line of its own: every placement action, and a thema added to a
-  // period. Only a stale page gets here, since none of them is drawn without the right; the query client then
-  // refetches, so the controls go, and this says why nothing happened. Generating has its own line below.
-  const geweigerd = [acties.beoordeel, acties.vergrendel, acties.verplaats, acties.verwijder, plaatsThema]
-    .map((mutatie) => geenToegangZin(mutatie.error))
-    .find((zin) => zin !== null);
-
-  function springNaar(blokStart: string) {
-    setGekozenBlok(blokStart);
-    document.getElementById(`periode-${blokStart}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  function reset() {
+    for (const mutatie of mutaties) mutatie.reset();
   }
 
   return (
@@ -96,8 +77,7 @@ export function PlanScherm() {
         titel={t("plan.titel")}
         rechts={<Klaskiezer />}
         onder={
-          /* The way back. This screen is no longer the agenda's front door, so it needs one: the
-             sidebar item leads here too and pressing it again is not an obvious exit. */
+          /* The way back. This screen is not the agenda's front door, so it needs one. */
           <Link
             to="/agenda"
             className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
@@ -118,218 +98,175 @@ export function PlanScherm() {
             <Laadlijst rijen={4} />
           </div>
         ) : (
-          <>
+          <div className="flex flex-col gap-5">
             {/* Once, and only when true: the rights have answered WITH a gebruiker, and that gebruiker may not plan the
-                klas shown. A failed `/api/ik` proves nothing about rights, so it says nothing (fix round 1, F3). */}
+                klas shown. A failed `/api/ik` proves nothing about rights, so it says nothing. */}
             {rechtenBekend && !magPlannen && klas ? (
-              <p className="mb-3 text-meta text-inkt-zacht">
-                {t("rechten.planningAlleenBekijken", { klas: klas.naam })}
-              </p>
+              <p className="text-meta text-inkt-zacht">{t("rechten.planningAlleenBekijken", { klas: klas.naam })}</p>
             ) : null}
 
-            <Schooljaarlint
-              blokken={blokken}
-              spreiding={plan.blokken}
-              gekozenBlokStart={gekozenBlok}
-              onKies={springNaar}
-            />
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <dl className="flex flex-wrap gap-2">
+                <Balanstegel waarde={plan.balans.lesweken} label={t("plan.balansLesweken")} />
+                <Balanstegel waarde={plan.balans.metThema} label={t("plan.balansMetThema")} />
+                <Balanstegel
+                  waarde={plan.balans.zonderThema}
+                  label={t("plan.balansZonderThema")}
+                  aandacht={plan.balans.zonderThema > 0}
+                />
+              </dl>
 
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              <p className="mono text-meta text-inkt-zwak">
-                {telWoord(plan.plaatsingen.length, "plan.eenPlaatsing", "plan.aantalPlaatsingen")}
-              </p>
-              <div className="flex items-center gap-2">
-                {periodeVanVandaag ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {vandaagInSchooljaar ? (
                   <Link
-                    to={`/agenda/dag/${nuOfStart}`}
-                    className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
+                    to={`/agenda/dag/${nu}`}
+                    className="inline-flex h-raak items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
                   >
                     {t("plan.vandaagInDeAgenda")}
                   </Link>
                 ) : null}
                 {magPlannen ? (
-                  <AiKnop className="h-9 min-h-9 px-4 text-meta" onClick={() => setGeneratieOpen(true)}>
-                    {t("plan.genereer")}
-                  </AiKnop>
+                  <Knop onClick={() => openToevoegen(null)}>
+                    <IcoonPlus aria-hidden="true" className="h-4 w-4" />
+                    {t("plan.voegThemaToe")}
+                  </Knop>
                 ) : null}
               </div>
             </div>
 
-            {generatie.isError ? (
-              <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-                {foutregel(generatie.error)}
+            {magPlannen ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <AiKnop disabled aria-describedby="generatie-uit">
+                  {t("plan.genereer")}
+                </AiKnop>
+                <p id="generatie-uit" className="text-meta text-inkt-zacht">
+                  {t("plan.generatieUit")}
+                </p>
+              </div>
+            ) : null}
+
+            {aantalVervallen > 0 ? (
+              <p className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {aantalVervallen === 1
+                  ? t("plan.vervallenEen")
+                  : t("plan.vervallenAantal", { aantal: aantalVervallen })}
               </p>
             ) : null}
 
-            {geweigerd ? (
-              <p
-                role="alert"
-                className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt"
-              >
-                {geweigerd}
+            {geweigerd || actiefout ? (
+              <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {geweigerd ?? actiefout}
               </p>
             ) : null}
 
-            <ul className="mt-6 flex flex-col gap-6">
-              {blokken.map((blok) => {
-                const plaatsingen = perBlok.get(blok.start) ?? [];
-                const moment = geblokkeerd.get(blok.start);
-                return (
-                  <li key={blok.start} id={`periode-${blok.start}`} className="scroll-mt-44">
-                    {/* Both actions on a period are BUTTONS with words on them.
+            <Jaartijdlijn
+              lesweken={plan.lesweken}
+              onderbrekingen={rooster?.onderbrekingen ?? []}
+              plaatsingen={plaatsingen}
+              gekozenId={gekozenId}
+              magBewerken={magPlannen}
+              bezig={bezig}
+              onKies={(id) => {
+                reset();
+                setGekozenId(id === gekozenId ? null : id);
+              }}
+              onVerschuif={(plaatsing, van) => {
+                reset();
+                setGekozenId(plaatsing.id);
+                acties.verschuif.mutate({ plaatsingId: plaatsing.id, van });
+              }}
+              onVoegToeInWeek={(maandag) => openToevoegen(maandag)}
+            />
 
-                        They were not. The heading itself was the link into the period, with a small
-                        chevron after it, and the owner could not find it. A heading looks like a
-                        heading, so nobody presses it: being clever about not adding a second control
-                        cost the feature its entrance. */}
-                    <header className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h2
-                          className={cn(
-                            "font-display text-sectie",
-                            gekozenBlok === blok.start ? "text-inkt" : "text-inkt-zacht",
-                          )}
-                        >
-                          {periode(blok.start, blok.eind)}
-                        </h2>
-                        {moment ? (
-                          <span className="rounded bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-medium text-attentie-inkt">
-                            {moment}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {magPlannen ? (
-                          <button
-                            type="button"
-                            onClick={() => setThemakiezerBlok(blok.start)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-                          >
-                            <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-                            {t("plan.voegThemaToe")}
-                          </button>
-                        ) : null}
-
-                        <Link
-                          to={`/agenda/dag/${blok.start}`}
-                          className="group inline-flex h-9 items-center gap-1.5 rounded-veld bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
-                        >
-                          {t("plan.openPeriode")}
-                          <IcoonPijlRechts
-                            aria-hidden="true"
-                            className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5"
-                          />
-                        </Link>
-                      </div>
-                    </header>
-
-                    {/* An empty period is the most natural place to put a thema, so the empty state
-                        IS the control rather than a sentence sitting next to one. For a reader it is
-                        only the sentence. */}
-                    {plaatsingen.length === 0 && !magPlannen ? (
-                      <p className="text-meta text-inkt-zacht">{t("periode.geenThema")}</p>
-                    ) : plaatsingen.length === 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => setThemakiezerBlok(blok.start)}
-                        className="flex w-full items-center justify-center gap-2 rounded-kaart border border-dashed border-lijn-sterk px-4 py-5 text-meta text-inkt-zwak transition-colors duration-150 hover:border-accent hover:text-accent"
-                      >
-                        <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-                        {t("plan.voegThemaToe")}
-                      </button>
-                    ) : (
-                      <ul className="flex flex-col gap-3">
-                        {plaatsingen.map((plaatsing) => (
-                          <li key={plaatsing.id}>
-                            <Plaatsingkaart
-                              plaatsing={plaatsing}
-                              blokken={blokken}
-                              magBewerken={magPlannen}
-                              bezig={bezig}
-                              onBeoordeel={(status: KoppelingStatus) =>
-                                acties.beoordeel.mutate({ plaatsingId: plaatsing.id, status })
-                              }
-                              onVergrendel={(vergrendeld) =>
-                                acties.vergrendel.mutate({ plaatsingId: plaatsing.id, vergrendeld })
-                              }
-                              onVerplaats={(blokStart) => acties.verplaats.mutate({ plaatsingId: plaatsing.id, blokStart })}
-                              onVerwijder={() => acties.verwijder.mutate(plaatsing.id)}
-                            />
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </>
+            {gekozen ? (
+              <Plaatsingkaart
+                // A fresh card, and fresh date fields, whenever the placement's days change.
+                key={`${gekozen.id}-${gekozen.van}-${gekozen.tot}`}
+                plaatsing={gekozen}
+                plaatsingen={plaatsingen}
+                eersteSchooldag={plan.eersteSchooldag}
+                laatsteSchooldag={plan.laatsteSchooldag}
+                magBewerken={magPlannen}
+                bezig={bezig}
+                onAanvaard={() => {
+                  reset();
+                  acties.beoordeel.mutate({ plaatsingId: gekozen.id, status: "Aanvaard" });
+                }}
+                onWeiger={() => {
+                  reset();
+                  acties.verwijder.mutate(gekozen.id, { onSuccess: () => setGekozenId(null) });
+                }}
+                onVergrendel={(vergrendeld) => {
+                  reset();
+                  acties.vergrendel.mutate({ plaatsingId: gekozen.id, vergrendeld });
+                }}
+                onBewaarDatums={(van, tot) => {
+                  reset();
+                  acties.wijzigDatums.mutate({ plaatsingId: gekozen.id, van, tot });
+                }}
+                onVerschuif={(van) => {
+                  reset();
+                  acties.verschuif.mutate({ plaatsingId: gekozen.id, van });
+                }}
+                onVerwijder={() => {
+                  reset();
+                  acties.verwijder.mutate(gekozen.id, { onSuccess: () => setGekozenId(null) });
+                }}
+              />
+            ) : plaatsingen.length > 0 ? (
+              <p className="text-meta text-inkt-zacht">{t("plan.kiesOpTijdlijn")}</p>
+            ) : null}
+          </div>
         )}
       </Schermvlak>
 
-      <Blad
-        open={generatieOpen}
-        onOpenChange={setGeneratieOpen}
-        titel={t("plan.genereer")}
-        voet={
-          <div className="flex gap-2">
-            <Knop rang="rustig" onClick={() => setGeneratieOpen(false)}>
-              {t("plan.annuleer")}
-            </Knop>
-            <AiKnop
-              vol
-              bezig={generatie.isPending}
-              disabled={generatie.isPending}
-              onClick={() => {
-                generatie.mutate(undefined, { onSettled: () => setGeneratieOpen(false) });
-              }}
-            >
-              {generatie.isPending ? t("plan.bezig") : t("plan.genereerNu")}
-            </AiKnop>
-          </div>
-        }
-      >
-        {/* The consequence, stated before the button rather than discovered after it. It says only
-            what the server's rule guarantees: a run discards placements that are still Voorgesteld
-            and not locked, and leaves everything the teacher has decided on (Art. IX.3). */}
-        <p className="text-body text-inkt">{t("plan.generatieGevolg", { klas: klas?.naam ?? "" })}</p>
-      </Blad>
-
-      <Themakiezer
-        // Closed once this gebruiker may not plan the klas (after a 403 the rights are refetched): the picker has no
-        // error line of its own, so the refusal is the line above the periods, which it would otherwise cover.
-        blokStart={magPlannen ? themakiezerBlok : null}
-        blokEind={blokken.find((blok) => blok.start === themakiezerBlok)?.eind ?? null}
-        reedsGepland={
-          new Set(
-            (plan?.plaatsingen ?? [])
-              .filter((plaatsing) => plaatsing.blokStart === themakiezerBlok)
-              .map((plaatsing) => plaatsing.themaId),
-          )
-        }
-        bezig={plaatsThema.isPending}
-        onSluit={() => setThemakiezerBlok(null)}
-        onKies={(themaId) => {
-          if (!themakiezerBlok) return;
-          plaatsThema.mutate(
-            { themaId, blokStart: themakiezerBlok },
-            { onSuccess: () => setThemakiezerBlok(null) },
-          );
-        }}
-      />
+      {klasId && plan ? (
+        <Themaplaatsingblad
+          key={keer}
+          // Closed once this gebruiker may not plan the klas (after a 403 the rights are refetched).
+          open={magPlannen && toevoegen !== null}
+          klasId={klasId}
+          beginVoorstel={toevoegen?.begin ?? null}
+          eersteSchooldag={plan.eersteSchooldag}
+          laatsteSchooldag={plan.laatsteSchooldag}
+          bezig={plaatsThema.isPending}
+          fout={foutzin(plaatsThema.error)}
+          onSluit={() => setToevoegen(null)}
+          onPlaats={(keuze) =>
+            plaatsThema.mutate(keuze, {
+              onSuccess: (bijgewerkt) => {
+                setToevoegen(null);
+                const nieuw = bijgewerkt.plaatsingen.find((p) => p.themaId === keuze.themaId && p.van === keuze.van);
+                if (nieuw) setGekozenId(nieuw.id);
+              },
+            })
+          }
+        />
+      ) : null}
     </>
   );
 }
 
+/** One figure of the year balance: a number and what it counts. */
+function Balanstegel({ waarde, label, aandacht }: { waarde: number; label: string; aandacht?: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-36 flex-col-reverse rounded-kaart border px-4 py-2.5",
+        aandacht ? "border-attentie bg-attentie-zacht" : "border-lijn bg-kaart",
+      )}
+    >
+      <dt className={cn("text-meta", aandacht ? "text-attentie-inkt" : "text-inkt-zacht")}>{label}</dt>
+      <dd className={cn("mono text-hoofdstuk", aandacht ? "text-attentie-inkt" : "text-inkt")}>{waarde}</dd>
+    </div>
+  );
+}
+
 /**
- * What to show a teacher when a generation fails.
- *
- * `detail` on a ProblemDetails from this backend is composed for the person who can act on it, so it
- * is rendered as is. With nothing there, a generic line: saying "something went wrong" is better
- * than inventing a cause.
+ * The server's sentence for a refused change, or null. A 403 is left to `geenToegangZin`; anything without a detail
+ * says nothing rather than inventing a cause.
  */
-function foutregel(fout: unknown): string {
-  if (fout instanceof ApiError && fout.detail) return fout.detail;
-  return t("plan.generatieMislukt");
+function foutzin(fout: unknown): string | null {
+  if (!(fout instanceof ApiError) || fout.status === 403) return null;
+  return fout.detail ?? t("periode.mislukt");
 }

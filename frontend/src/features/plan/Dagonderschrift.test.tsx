@@ -26,7 +26,7 @@ const schooljaar = {
 };
 
 const vak = (themas: Themavak["themas"]): Themavak => ({
-  blokStart: "2026-09-01",
+  plaatsingId: "p1",
   van: "2026-09-01",
   tot: "2026-10-01",
   themas,
@@ -49,7 +49,7 @@ describe("Dagonderschrift", () => {
   it("noemt week, periode en thema op een dag in een periode", () => {
     toon();
     expect(screen.getByText("Week 37")).toBeInTheDocument();
-    expect(screen.getByText(t("periode.periodeLabel"))).toBeInTheDocument();
+    expect(screen.getByText(t("periode.themaLoopt"))).toBeInTheDocument();
     expect(screen.getByText(periodeTekst("2026-09-01", "2026-10-01"))).toBeInTheDocument();
     expect(screen.getByText("Ik en mijn klas")).toBeInTheDocument();
   });
@@ -77,39 +77,39 @@ describe("Dagonderschrift", () => {
 
   it("zegt tussen twee periodes alleen als er een periode voor en na ligt", () => {
     toon({ datum: "2026-11-05" });
-    expect(screen.getByText(t("periode.tussenPeriodes"))).toBeInTheDocument();
+    expect(screen.getByText(t("periode.geenThemaOpDag"))).toBeInTheDocument();
     expect(screen.queryByText(t("periode.geenThema"))).not.toBeInTheDocument();
   });
 
   it("zegt buiten het schooljaar op een dag voor de eerste schooldag", () => {
     toon({ datum: "2026-08-30" });
     expect(screen.getByText(t("periode.buitenSchooljaar"))).toBeInTheDocument();
-    expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
   });
 
   it("zwijgt over periodes voor de eerste periode", () => {
     toon({ datum: "2026-08-31" });
-    expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
   });
 
   it("zwijgt over periodes na de laatste periode", () => {
     toon({ datum: "2027-06-25" });
-    expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
   });
 
   it("zwijgt over periodes zolang het rooster laadt", () => {
     toon({ schooljaar: undefined, vakken: [] });
     expect(screen.getByText("Week 37")).toBeInTheDocument();
-    expect(screen.queryByText(t("periode.tussenPeriodes"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
   });
 
   it("toont in de weekweergave alleen het weeknummer", () => {
     toon({ dagweergave: false });
     expect(screen.getByText("Week 37")).toBeInTheDocument();
-    expect(screen.queryByText(t("periode.periodeLabel"))).not.toBeInTheDocument();
+    expect(screen.queryByText(t("periode.themaLoopt"))).not.toBeInTheDocument();
     expect(screen.queryByText("Ik en mijn klas")).not.toBeInTheDocument();
   });
 
