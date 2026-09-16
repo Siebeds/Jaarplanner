@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:26
+bijgewerkt: 2026-09-17 00:36
 opgepakt-door: claude-fb060
 branch: ticket/FB-060-thema-emoji
-pr:
+pr: 134
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -82,3 +82,4 @@ Geen.
 - 2026-09-17 00:16 · claude-fb060 · Gebouwd: veld Icoon op Thema (migratie ThemaIcoon), emojikiezer voor de naam, emoji in bibliotheek, themapagina, plaatsingskaart en themaband. Gates: dotnet test 1972+561 groen, dotnet format schoon, pnpm lint en pnpm test (1035) groen.
 - 2026-09-17 00:21 · claude-fb060 · Browsercontrole (headless Chrome, wegwerpdatabase jp_fb060_browser, 1440 en 390 breed): kiezen, zoeken, getypt emoji, Escape, Geen emoji en bewaren werken; het emoji staat op de kaart, de themapagina, de themaband en de periodekaart; tekst wordt geweigerd met 400 en de zin. Criteria afgevinkt op basis van deze controle, de Vitest-tests en de integratietests.
 - 2026-09-17 00:26 · claude-fb060 · in-uitvoering → te-testen: Gebouwd: optioneel emoji op een thema (veld, migratie ThemaIcoon, controle op de server), emoji-kiezer vóór de naam met zoekveld dat ook een getypt emoji aanvaardt, emoji vóór de naam in bibliotheek, themapagina en agenda. Tests, format en lint groen; browsercontrole op 1440 en 390 geslaagd; antagonist COMPLIANT, kleine punten opgelost (losse pijlen en vormpjes geweigerd, Escape-test).
+- 2026-09-17 00:36 · claude-fb060 · PR #134
