@@ -29,8 +29,12 @@ public sealed class AnthropicOptions
     /// <summary>The model id to call (non-secret), e.g. <c>claude-opus-5</c>. Required.</summary>
     public string? Model { get; init; }
 
-    /// <summary>The <c>max_tokens</c> ceiling on one answer. The Messages API requires one.</summary>
-    public int MaxTokens { get; init; } = 16000;
+    /// <summary>
+    /// The <c>max_tokens</c> ceiling on one answer. The Messages API requires one. The prompts ask for short answers
+    /// (the goal prompts at most eight suggestions of one sentence each, TB-043), so 2,000 leaves room while capping what
+    /// a runaway answer costs. An answer that reaches it is cut off and rejected as an <c>AiAntwoordAfgekaptFout</c>.
+    /// </summary>
+    public int MaxTokens { get; init; } = 2000;
 
     /// <summary>
     /// Optional <c>output_config.effort</c> (<c>low</c>, <c>medium</c>, <c>high</c>, <c>xhigh</c> or <c>max</c>). Left

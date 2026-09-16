@@ -13,8 +13,9 @@ namespace Jaarplanner.Api.Infrastructure;
 /// decided, Art. IV.1/IV.2) becomes 400. So do the two refusals of
 /// TB-007, from the matching and the thema-opbouw assist alike: a <see cref="JaarfaseKeuzeNodigFout"/> (no jaar/fase to
 /// search in) and a <see cref="PromptTeGrootFout"/> (over the prompt ceiling). Each carries a Dutch sentence the person
-/// who asked can act on, and in both the model was not called. Other exceptions are left to the next handler / default
-/// pipeline.
+/// who asked can act on, and in both the model was not called. An <see cref="AiAntwoordAfgekaptFout"/> (TB-043), from
+/// any AI flow, becomes 502: the request was fine, the model's answer was cut off at the output ceiling, and nothing was
+/// persisted; its Dutch sentence is the detail. Other exceptions are left to the next handler / default pipeline.
 /// </summary>
 public sealed class AiMatchingExceptionHandler : IExceptionHandler
 {
@@ -33,6 +34,7 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
             DoelsuggestieConflictFout => StatusCodes.Status409Conflict,
             JaarfaseKeuzeNodigFout => StatusCodes.Status400BadRequest,
             PromptTeGrootFout => StatusCodes.Status400BadRequest,
+            AiAntwoordAfgekaptFout => StatusCodes.Status502BadGateway,
             _ => (int?)null,
         };
 
@@ -54,6 +56,7 @@ public sealed class AiMatchingExceptionHandler : IExceptionHandler
                 {
                     StatusCodes.Status404NotFound => Probleemtitels.NietGevonden,
                     StatusCodes.Status409Conflict => Probleemtitels.NietDoorgevoerd,
+                    StatusCodes.Status502BadGateway => Probleemtitels.AiAntwoordAfgebroken,
                     _ => Probleemtitels.OngeldigeAanvraag,
                 },
                 Detail = exception.Message,

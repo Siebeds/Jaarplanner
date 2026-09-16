@@ -93,8 +93,8 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(["K-", "4-"], resultaat.Mijlpalen);
         Assert.Equal(["K-", "4-"], catalogus.LaatsteMijlpalen);
         Assert.Equal(3, resultaat.AantalKandidaten);
-        Assert.Contains("- 4-2.1.1: De leerlingen tellen tot honderd.", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("6-2.1.1", fake.LaatsteRequest.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("- 4-2.1.1: De leerlingen tellen tot honderd.", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("6-2.1.1", fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -197,7 +197,7 @@ public sealed class DoelMatchingServiceTests
 
         // And the model was told so, on the prompt's last line.
         Assert.EndsWith(
-            "Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1, K-9.1.1\n",
+            "# Niet voorstellen\n\nAl themadoel, al voorgesteld of geweigerd: K-1.1.1, K-9.1.1\n",
             fake.LaatsteRequest!.UserPrompt,
             StringComparison.Ordinal);
     }
@@ -222,7 +222,7 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(2, thema.Doelsuggesties.Count);
         // The model's order is the rank order, after the earlier run's proposal.
         Assert.True(thema.Doelsuggesties.Single(s => s.MinimumdoelRef == "K-9.1.1").Rang < eerder.Rang);
-        Assert.EndsWith("Niet voorstellen: (geen)\n", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Niet voorstellen", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
         Assert.Equal(1, opslag.AantalKeerBewaard);
     }
 
@@ -308,8 +308,54 @@ public sealed class DoelMatchingServiceTests
         await service.GenereerSuggestiesAsync(ThemaId);
 
         Assert.Equal(MatchingPromptBuilder.SystemPrompt, fake.LaatsteRequest!.SystemPrompt);
-        Assert.StartsWith(MinimumdoelPromptlijst.Kop, fake.LaatsteRequest.UserPrompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("leerplandoel", fake.LaatsteRequest.UserPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.StartsWith(MinimumdoelPromptlijst.Kop, fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
+        Assert.StartsWith("# Thema: Herfst", fake.LaatsteRequest.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("leerplandoel", fake.LaatsteRequest.VasteContext + fake.LaatsteRequest.UserPrompt, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Een_afgekapt_antwoord_bewaart_niets_en_geeft_de_nederlandse_melding_door()
+    {
+        // TB-043: the client refuses an answer cut off at the output ceiling; the run persists nothing.
+        var thema = EenThema();
+        var service = new DoelMatchingService(
+            new AfgekaptAiClient(), new FakeDoelMatchOpslag(thema), new FakeLeerdoelCatalogus([]) { Minimumdoelen = Minimumdoelen() }, Ruim);
+
+        var fout = await Assert.ThrowsAsync<AiAntwoordAfgekaptFout>(() => service.GenereerSuggestiesAsync(ThemaId));
+
+        Assert.Equal(AiAntwoordAfgekaptFout.Melding, fout.Message);
+        Assert.Empty(thema.Doelsuggesties);
+    }
+
+    [Fact]
+    public async Task Twee_themas_van_dezelfde_mijlpaal_krijgen_hetzelfde_vaste_deel()
+    {
+        // TB-043, through the real candidate selection: the mijlpaal decides the list, the thema does not.
+        var herfst = EenThema();
+        var water = new Thema("Water", duurWeken: 5, invalshoeken: "drijven");
+        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "JK");
+        water.WeigerDoelsuggestie(water.VoegDoelsuggestieToe("K-1.1.1", "past"));
+
+        var eerste = Antwoord();
+        await Service(eerste, out _, out _, herfst).GenereerSuggestiesAsync(ThemaId);
+        var tweede = Antwoord();
+        await Service(tweede, out _, out _, water).GenereerSuggestiesAsync(ThemaId);
+
+        var a = eerste.LaatsteRequest!;
+        var b = tweede.LaatsteRequest!;
+        Assert.Equal(a.SystemPrompt, b.SystemPrompt);
+        Assert.Equal(a.VasteContext, b.VasteContext);
+        Assert.Contains("K-1.1.1", a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("4-2.1.1", a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("Niet voorstellen", a.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Al themadoel, al voorgesteld of geweigerd: K-1.1.1", b.UserPrompt, StringComparison.Ordinal);
+    }
+
+    // Answers as a real client does when the model stopped at its output ceiling.
+    private sealed class AfgekaptAiClient : IAiClient
+    {
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            throw new AiAntwoordAfgekaptFout();
     }
 
     [Fact]

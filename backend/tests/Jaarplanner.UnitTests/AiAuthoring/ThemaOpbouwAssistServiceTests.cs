@@ -82,7 +82,7 @@ public sealed class ThemaOpbouwAssistServiceTests
         Assert.Equal(1, fake.AantalAanroepen);
         Assert.Equal(["K-"], catalogus.LaatsteMijlpalen);
         Assert.Equal(0, catalogus.AantalAanroepen);
-        Assert.DoesNotContain("4-9.1.1", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("4-9.1.1", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
         // Used the step-2 themadoel prompt (not the subdoel one).
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, fake.LaatsteRequest!.SystemPrompt);
     }
@@ -149,7 +149,7 @@ public sealed class ThemaOpbouwAssistServiceTests
 
         Assert.Equal(8, resultaat.Suggesties.Count);
         Assert.DoesNotContain(resultaat.Suggesties, a => a.Code == "K-1.1.1");
-        Assert.Contains("Niet voorstellen (al gekozen): K-1.1.1", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("# Niet voorstellen\n\nAl gekozen: K-1.1.1", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public sealed class ThemaOpbouwAssistServiceTests
             new ThemadoelSuggestieVerzoek { Thema = EenThema(), Selectie = selectie });
 
         Assert.Equal(["K-", "4-", "6-"], catalogus.LaatsteMijlpalen);
-        Assert.Contains("- 4-9.1.1: De leerlingen beschrijven de waterkringloop.", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("- 4-9.1.1: De leerlingen beschrijven de waterkringloop.", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
     }
 
     // ---------------------------------------------------------------------------------------------

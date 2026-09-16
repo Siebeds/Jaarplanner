@@ -34,11 +34,15 @@ public sealed class Promptbegrenzing
     /// <summary>The ceiling, in estimated tokens.</summary>
     public int MaxTokens { get; }
 
-    /// <summary>The estimated tokens of the whole request, system prompt included, rounded up.</summary>
+    /// <summary>
+    /// The estimated tokens of the whole request, rounded up: the system prompt, the stable context and the user prompt.
+    /// A stable context the provider serves from its cache still counts in full: the ceiling guards the model's context
+    /// as well as cost.
+    /// </summary>
     public static int SchatTokens(AiRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var tekens = (long)request.SystemPrompt.Length + request.UserPrompt.Length;
+        var tekens = (long)request.SystemPrompt.Length + request.VasteContext.Length + request.UserPrompt.Length;
         return (int)((tekens + TekensPerToken - 1) / TekensPerToken);
     }
 

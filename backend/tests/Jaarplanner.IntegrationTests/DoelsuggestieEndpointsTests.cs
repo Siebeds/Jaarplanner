@@ -76,7 +76,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         var resultaat = await post.Content.ReadFromJsonAsync<GeneratieDto>();
         Assert.Equal(["K-9.1.1"], resultaat!.Bewaard.Select(b => b.MinimumdoelRef));
         Assert.Equal(["K-1.1.1"], resultaat.OvergeslagenDuplicaat);
-        Assert.Contains("Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1", _factory.LaatsteUserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Al themadoel, al voorgesteld of geweigerd: K-1.1.1", _factory.LaatsteUserPrompt, StringComparison.Ordinal);
 
         var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
         Assert.Equal("Geweigerd", Assert.Single(na!, s => s.MinimumdoelRef == "K-1.1.1").Status);
@@ -248,6 +248,33 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
     }
 
     [Fact]
+    public async Task Een_afgekapt_ai_antwoord_geeft_502_met_een_nederlandse_melding_en_bewaart_niets()
+    {
+        // TB-043: the model stopped at its output ceiling. The client refuses the cut-off answer, so the parser never
+        // sees it, nothing is persisted and the person who asked reads why.
+        var client = _factory.CreateClient();
+        var themaId = await _factory.SeedThemaZonderSuggestiesAsync();
+        _factory.AiAntwoord = """{"suggesties":[{"code":"K-1.1.1","motivatie":"past"}""";
+        _factory.AiAfgekapt = true;
+        try
+        {
+            var post = await client.PostAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/genereer", new { });
+
+            Assert.Equal(HttpStatusCode.BadGateway, post.StatusCode);
+            var probleem = await post.Content.ReadFromJsonAsync<ProblemDetails>();
+            Assert.Equal(AiAntwoordAfgekaptFout.Melding, probleem!.Detail);
+            Assert.Equal("AI-antwoord afgebroken", probleem.Title);
+        }
+        finally
+        {
+            _factory.AiAfgekapt = false;
+        }
+
+        var na = await client.GetFromJsonAsync<List<SuggestieDto>>($"/api/themas/{themaId}/doelsuggesties");
+        Assert.Empty(na!);
+    }
+
+    [Fact]
     public async Task Een_verzonnen_code_of_een_leerplandoel_belandt_niet_in_de_databank()
     {
         var client = _factory.CreateClient();
@@ -317,6 +344,9 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
         /// <summary>The canned completion the stub AI client returns; set per test before generating.</summary>
         public string AiAntwoord { get; set; } = """{"suggesties":[]}""";
 
+        /// <summary>When set, the stub AI client answers as a real one does for a reply cut off at its output ceiling.</summary>
+        public bool AiAfgekapt { get; set; }
+
         /// <summary>How often the stub AI client was called, so a test can prove a refused run never reached it.</summary>
         public int AantalAiAanroepen { get; private set; }
 
@@ -349,7 +379,7 @@ public sealed class DoelsuggestieEndpointsTests : IClassFixture<DoelsuggestieEnd
                 {
                     AantalAiAanroepen++;
                     LaatsteUserPrompt = request.UserPrompt;
-                    return AiAntwoord;
+                    return AiAfgekapt ? throw new AiAntwoordAfgekaptFout() : AiAntwoord;
                 }));
             });
         }

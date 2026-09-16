@@ -11,40 +11,53 @@ namespace Jaarplanner.Application.AiAuthoring;
 /// as subdoelen). It is the authoring sibling of <c>MatchingPromptBuilder</c> (E2-02) — a separate
 /// file with its own prompts, deliberately not sharing that whole-thema matching prompt.
 /// <para>
-/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every user-prompt line is rendered
-/// exclusively from the arguments — the wizard's transient thema/subthema context and the loaded
-/// Op.stap leerplandoelen. The system prompt forbids external knowledge and invented codes, and asks
-/// for the <b>same structured-JSON contract the E2-03 parser accepts</b>
+/// <b>Stable part first</b> (TB-043): the fixed system prompt, then the candidate list as
+/// <see cref="AiRequest.VasteContext"/> (the minimumdoelen at step 2, the leerplandoelen at step 6), then the wizard's
+/// thema and subthema as <see cref="AiRequest.UserPrompt"/>, so two requests over the same candidates share a
+/// byte-identical, cacheable prefix. What differs per thema, such as the refs already chosen, stays in the user prompt.
+/// </para>
+/// <para>
+/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line is rendered exclusively from the arguments: the
+/// wizard's transient thema/subthema context and the loaded Op.stap goals. The system prompts forbid external knowledge
+/// and invented codes, and ask for the <b>same structured-JSON contract the E2-03 parser accepts</b>
 /// (<c>{"suggesties":[{"code","motivatie"}]}</c>) so the authoring flow can reuse that parser.
 /// </para>
 /// <para>
-/// The builder is a <b>pure, deterministic</b> function of its inputs: leerplandoelen are ordered by
-/// their stable code so caller ordering cannot leak in, and nothing else is read (no clock, config or
-/// I/O). That makes it snapshot-testable.
+/// The builder is a <b>pure, deterministic</b> function of its inputs: goals and chosen refs are ordered by their stable
+/// key so caller ordering cannot leak in, and nothing else is read (no clock, config or I/O). That makes it
+/// snapshot-testable.
 /// </para>
 /// </summary>
 public static class ThemaOpbouwPromptBuilder
 {
+    /// <summary>
+    /// The most suggestions one assist asks for (TB-043). The number comes from the TB-004 evaluation's variant and may
+    /// be adjusted by its measurement; the eval runner swaps <see cref="MaxSuggestiesRegel"/> for its own ceiling.
+    /// </summary>
+    public const int MaxSuggesties = 8;
+
+    /// <summary>The step-6 rule that sets <see cref="MaxSuggesties"/>, word for word as its system prompt carries it.</summary>
+    public const string MaxSuggestiesRegel =
+        "- Stel hoogstens 8 leerplandoelen voor, het best passende eerst. Minder mag.";
+
+    /// <summary>The step-2 rule that sets <see cref="MaxSuggesties"/>, for minimumdoelen (FB-053).</summary>
+    public const string MaxMinimumdoelenRegel =
+        "- Stel hoogstens 8 minimumdoelen voor, het best passende eerst. Minder mag.";
+
     // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI.
     private const string Nl = "\n";
 
-    private const string GemeenschappelijkeRegels =
-        "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens in dit bericht: de schoolcontext en de opgegeven " +
-        "Op.stap-leerplandoelen. Gebruik geen externe kennis, geen internet en geen andere bronnen." + Nl +
-        "- Verzin geen leerplandoelen, codes of voorbeelden. Stel enkel leerplandoelen voor waarvan de " +
-        "code letterlijk voorkomt in de lijst \"Beschikbare Op.stap-leerplandoelen\" hieronder." + Nl +
-        "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit doel hier?\")." + Nl +
-        "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
-        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
-        "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+    private const string AntwoordRegels =
+        "- Je stelt enkel voor; een mens beslist. Pas niets automatisch toe." + Nl +
+        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl;
+
+    private const string SlotRegels =
         "- Gebruik exact de veldnamen \"suggesties\", \"code\" en \"motivatie\"." + Nl +
         "- Vind je geen enkel passend doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
     /// The step 2 system prompt: propose minimumdoelen to become the overarching, school-wide themadoelen that anchor
-    /// the whole thema (Art. IX.2, IV.8; FB-053). Its own rules, since the candidates are minimumdoelen; the JSON
-    /// contract is the one the E2-03 parser reads. Fixed scaffolding, no school or curriculum specifics of its own.
+    /// the whole thema (Art. IX.2, IV.8; FB-053). Fixed scaffolding, no school or curriculum specifics of its own.
     /// </summary>
     public const string SystemPromptThemadoelen =
         "Je bent een assistent die themabeheer helpt bij de opbouw van een kennisrijk thema, stap 2: " +
@@ -52,16 +65,15 @@ public static class ThemaOpbouwPromptBuilder
         "Themadoelen zijn schoolbreed gelijk en worden doorheen het thema verbreed, verdiept en herhaald." + Nl +
         Nl +
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens in dit bericht: de lijst \"Beschikbare minimumdoelen\" en de schoolcontext. " +
-        "Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen doelen of codes." + Nl +
-        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat, " +
-        "en geen code uit \"Niet voorstellen\"." + Nl +
-        "- Stel ten hoogste 8 minimumdoelen voor." + Nl +
-        "- Geef bij elk voorstel een motivatie van één zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
-        "- Je stelt enkel voor; een mens beslist. Pas niets automatisch toe." + Nl +
-        "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
+        "- Gebruik uitsluitend de gegevens in deze aanvraag: de lijst \"Beschikbare minimumdoelen\" en de schoolcontext " +
+        "van de gebruiker. Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen doelen of codes." + Nl +
+        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat." + Nl +
+        "- Stel geen minimumdoel voor waarvan de code onder \"Niet voorstellen\" staat." + Nl +
+        MaxMinimumdoelenRegel + Nl +
+        "- Geef bij elk voorstel een motivatie van één korte zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
+        AntwoordRegels +
         "  {\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
-        "- Past geen enkel doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
+        SlotRegels;
 
     /// <summary>
     /// The step 6 system prompt: propose age-differentiated candidate leerplandoelen for a single
@@ -73,12 +85,21 @@ public static class ThemaOpbouwPromptBuilder
         "het kiezen van concrete, leeftijdsgedifferentieerde subdoelen voor één subthema en leeftijd." + Nl +
         "Subdoelen zijn interdisciplinair en bouwen op richting de themadoelen van het thema." + Nl +
         Nl +
-        GemeenschappelijkeRegels;
+        "Regels:" + Nl +
+        "- Gebruik uitsluitend de gegevens in deze aanvraag: de lijst \"Beschikbare Op.stap-leerplandoelen\" en de " +
+        "schoolcontext van de gebruiker. Gebruik geen externe kennis, geen internet en geen andere bronnen." + Nl +
+        "- Verzin geen leerplandoelen, codes of voorbeelden. Stel enkel leerplandoelen voor waarvan de " +
+        "code letterlijk voorkomt in de lijst \"Beschikbare Op.stap-leerplandoelen\"." + Nl +
+        MaxSuggestiesRegel + Nl +
+        "- Geef bij elk voorstel een motivatie van één korte zin in het Nederlands (\"waarom past dit doel hier?\")." + Nl +
+        AntwoordRegels +
+        "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        SlotRegels;
 
     /// <summary>
-    /// Builds the grounded step-2 request (FB-053): candidate minimumdoelen as themadoelen for the whole thema. The user
-    /// prompt starts with the candidate list (<see cref="MinimumdoelPromptlijst"/>), then the thema, then the refs
-    /// already chosen, as "Niet voorstellen".
+    /// Builds the grounded step-2 request (FB-053): candidate minimumdoelen as themadoelen for the whole thema. The
+    /// candidate list (<see cref="MinimumdoelPromptlijst"/>) is the stable context; the thema and the refs already
+    /// chosen, under "Niet voorstellen", are the user prompt.
     /// </summary>
     public static AiRequest BouwThemadoelRequest(
         ThemaOpbouwContext thema,
@@ -88,23 +109,29 @@ public static class ThemaOpbouwPromptBuilder
         ArgumentNullException.ThrowIfNull(minimumdoelen);
 
         var sb = new StringBuilder();
-        MinimumdoelPromptlijst.Schrijf(sb, minimumdoelen);
-        sb.Append(Nl);
         SchrijfThema(sb, thema, themadoelen: null);
-        sb.Append(Nl);
         var gekozen = Gekozen(thema);
-        Line(sb, gekozen.Count == 0
-            ? "Niet voorstellen: (geen)"
-            : $"Niet voorstellen (al gekozen): {string.Join(", ", gekozen)}");
+        if (gekozen.Count > 0)
+        {
+            Line(sb, string.Empty);
+            Line(sb, "# Niet voorstellen");
+            Line(sb, string.Empty);
+            Line(sb, $"Al gekozen: {string.Join(", ", gekozen)}");
+        }
 
-        return new AiRequest { SystemPrompt = SystemPromptThemadoelen, UserPrompt = sb.ToString() };
+        return new AiRequest
+        {
+            SystemPrompt = SystemPromptThemadoelen,
+            VasteContext = MinimumdoelPromptlijst.Bouw(minimumdoelen),
+            UserPrompt = sb.ToString(),
+        };
     }
 
     /// <summary>
     /// Builds the grounded step-6 request: candidate subdoelen for the given <paramref name="subthema"/>
-    /// (with its <paramref name="thema"/> context and the loaded <paramref name="leerdoelen"/>). The thema's chosen
-    /// minimumdoelen are written with their text from <paramref name="themadoelen"/>, so the subdoelen build up toward
-    /// them (FB-053).
+    /// (with its <paramref name="thema"/> context and the loaded <paramref name="leerdoelen"/>, the stable context). The
+    /// thema's chosen minimumdoelen are written with their text from <paramref name="themadoelen"/>, so the subdoelen
+    /// build up toward them (FB-053).
     /// </summary>
     public static AiRequest BouwSubdoelRequest(
         ThemaOpbouwContext thema,
@@ -120,13 +147,16 @@ public static class ThemaOpbouwPromptBuilder
         SchrijfThema(sb, thema, themadoelen ?? []);
         sb.Append(Nl);
         SchrijfSubthema(sb, subthema);
-        sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
 
-        return new AiRequest { SystemPrompt = SystemPromptSubdoelen, UserPrompt = sb.ToString() };
+        return new AiRequest
+        {
+            SystemPrompt = SystemPromptSubdoelen,
+            VasteContext = LeerplandoelPromptlijst.Bouw(leerdoelen),
+            UserPrompt = sb.ToString(),
+        };
     }
 
-    // `themadoelen` null: step 2, whose chosen refs are the prompt's last line. Otherwise step 6: the chosen minimumdoelen
+    // `themadoelen` null: step 2, whose chosen refs are the user prompt's "Niet voorstellen" section. Otherwise step 6: the chosen minimumdoelen
     // with their text, or the bare ref for one no loaded minimumdoel carries.
     private static void SchrijfThema(StringBuilder sb, ThemaOpbouwContext thema, IReadOnlyCollection<Minimumdoel>? themadoelen)
     {
@@ -239,10 +269,6 @@ public static class ThemaOpbouwPromptBuilder
             Line(sb, $"  Verwachte uitkomsten: {activiteit.VerwachteUitkomsten}");
         }
     }
-
-    // The goal list is the one the matching prompt ends with too, compact since TB-007: see LeerplandoelPromptlijst.
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
-        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
 
     private static void SchrijfWoordenlijst(StringBuilder sb, string label, IReadOnlyCollection<string>? woorden)
     {

@@ -6,9 +6,9 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// Pins the prompt of a thema's doelsuggesties (FB-053, ADR-0049, Art. IV.4/IV.5): the candidate minimumdoelen first,
-/// then the thema, then the refs not to propose; grounded only on school and Op.stap data; deterministic and
-/// snapshot-stable.
+/// Pins the prompt of a thema's doelsuggesties (FB-053, ADR-0049, Art. IV.4/IV.5): the candidate minimumdoelen as the
+/// stable context (TB-043), the thema and the refs not to propose as the user prompt; grounded only on school and
+/// Op.stap data; deterministic and snapshot-stable.
 /// </summary>
 public sealed class MatchingPromptBuilderTests
 {
@@ -39,13 +39,13 @@ public sealed class MatchingPromptBuilderTests
     ];
 
     [Fact]
-    public void Bouwt_de_verwachte_prompt_met_de_lijst_vooraan()
+    public void Bouwt_de_verwachte_prompt_met_de_lijst_als_vast_deel()
     {
         var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), ["K-9.1.2", "K-1.1.1"]);
 
         Assert.Equal(MatchingPromptBuilder.SystemPrompt, request.SystemPrompt);
 
-        var verwacht = string.Join(Nl,
+        var vast = string.Join(Nl,
         [
             "# Beschikbare minimumdoelen",
             "",
@@ -56,7 +56,12 @@ public sealed class MatchingPromptBuilderTests
             "",
             "### Wereldoriëntatie > Natuur",
             "- K-9.1.2: De kleuters kunnen seizoenen onderscheiden.",
-            "",
+        ]) + Nl;
+        Assert.Equal(vast, request.VasteContext);
+        Assert.Equal(MinimumdoelPromptlijst.Bouw(Kandidaten()), request.VasteContext);
+
+        var verwacht = string.Join(Nl,
+        [
             "# Thema: Herfst",
             "Duur (weken): 4",
             "Invalshoeken: natuur en seizoenen",
@@ -72,36 +77,63 @@ public sealed class MatchingPromptBuilderTests
             "    Hoek: ontdektafel",
             "    Verwachte uitkomsten: sorteren op kleur",
             "",
-            "Niet voorstellen (al themadoel, al voorgesteld of geweigerd): K-1.1.1, K-9.1.2",
+            "# Niet voorstellen",
+            "",
+            "Al themadoel, al voorgesteld of geweigerd: K-1.1.1, K-9.1.2",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
     }
 
     [Fact]
-    public void Begint_met_precies_de_lijst_van_de_promptlijst()
+    public void Twee_themas_met_dezelfde_kandidaten_delen_het_vaste_deel_en_de_schoolcontent_staat_erna()
     {
-        // The list is the stable prefix a later cache can take over (TB-043): the user prompt starts with it, byte for
-        // byte, whatever the thema.
-        var lijst = MinimumdoelPromptlijst.Bouw(Kandidaten());
+        // TB-043: a provider's cache only matches an identical beginning. Two thema's with the same candidates (the same
+        // mijlpalen) send the same system prompt and list byte for byte, whatever they exclude.
+        var herfst = EenThema();
+        var water = new Thema("Water", duurWeken: 6, invalshoeken: "drijven en zinken");
+        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "K2").VoegActiviteitToe("Bootjes", ActiviteitType.Waarneming);
 
-        Assert.StartsWith(lijst, MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), []).UserPrompt, StringComparison.Ordinal);
-        Assert.StartsWith(lijst, MatchingPromptBuilder.Bouw(new Thema("Water", 5), Kandidaten(), ["K-1.1.1"]).UserPrompt, StringComparison.Ordinal);
+        var a = MatchingPromptBuilder.Bouw(herfst, Kandidaten(), []);
+        var b = MatchingPromptBuilder.Bouw(water, Kandidaten().Reverse().ToList(), ["K-1.1.1"]);
+
+        Assert.Equal(a.SystemPrompt, b.SystemPrompt);
+        Assert.Equal(a.VasteContext, b.VasteContext);
+        Assert.NotEqual(a.UserPrompt, b.UserPrompt);
+
+        var gevallen = new[]
+        {
+            (Request: a, Schooldata: new[] { "Herfst", "natuur en seizoenen", "Bladeren", "ontdektafel" }),
+            (Request: b, Schooldata: new[] { "Water", "drijven en zinken", "Plassen", "Bootjes", "Al themadoel, al voorgesteld of geweigerd: K-1.1.1" }),
+        };
+        foreach (var (request, schooldata) in gevallen)
+        {
+            foreach (var datum in schooldata)
+            {
+                Assert.DoesNotContain(datum, request.SystemPrompt + request.VasteContext, StringComparison.Ordinal);
+                Assert.Contains(datum, request.UserPrompt, StringComparison.Ordinal);
+            }
+
+            Assert.StartsWith("# Thema: ", request.UserPrompt, StringComparison.Ordinal);
+            Assert.DoesNotContain(MinimumdoelPromptlijst.Kop, request.UserPrompt, StringComparison.Ordinal);
+            Assert.StartsWith(MinimumdoelPromptlijst.Kop, request.VasteContext, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
-    public void Zonder_uitgesloten_codes_zegt_de_laatste_regel_geen()
+    public void Zonder_uit_te_sluiten_codes_is_er_geen_sectie_niet_voorstellen()
     {
         var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), []);
 
-        Assert.EndsWith($"Niet voorstellen: (geen){Nl}", request.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain(MatchingPromptBuilder.NietVoorstellenKop, request.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"Niet voorstellen\"", MatchingPromptBuilder.SystemPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Prompt_bevat_enkel_de_aangeleverde_school_en_opstap_data()
     {
         var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), []);
-        var volledig = request.SystemPrompt + Nl + request.UserPrompt;
+        var volledig = request.SystemPrompt + Nl + request.VasteContext + request.UserPrompt;
 
         foreach (var datum in new[]
         {
@@ -114,20 +146,26 @@ public sealed class MatchingPromptBuilderTests
 
         Assert.Contains("Gebruik geen externe kennis", request.SystemPrompt, StringComparison.Ordinal);
         Assert.DoesNotContain("http", volledig, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("leerplandoel", request.UserPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("leerplandoel", request.VasteContext + request.UserPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Systeemprompt_vraagt_het_parsercontract_en_ten_hoogste_acht_voorstellen()
+    public void Systeemprompt_vraagt_het_parsercontract_en_ten_hoogste_acht_voorstellen_het_best_passende_eerst()
     {
         var systemPrompt = MatchingPromptBuilder.SystemPrompt;
 
         Assert.Contains("{\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}",
             systemPrompt, StringComparison.Ordinal);
         Assert.Contains("{\"suggesties\": []}", systemPrompt, StringComparison.Ordinal);
-        Assert.Contains($"ten hoogste {MatchingPromptBuilder.MaxSuggesties} minimumdoelen", systemPrompt, StringComparison.Ordinal);
-        Assert.Contains("motivatie van één zin", systemPrompt, StringComparison.Ordinal);
-        Assert.Contains(MinimumdoelPromptlijst.Kop.TrimStart('#', ' '), systemPrompt, StringComparison.Ordinal);
+        Assert.Contains(MatchingPromptBuilder.MaxSuggestiesRegel, systemPrompt, StringComparison.Ordinal);
+        Assert.Contains($"hoogstens {MatchingPromptBuilder.MaxSuggesties} minimumdoelen", MatchingPromptBuilder.MaxSuggestiesRegel, StringComparison.Ordinal);
+        Assert.Contains("het best passende eerst", MatchingPromptBuilder.MaxSuggestiesRegel, StringComparison.Ordinal);
+        Assert.Contains("één korte zin", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"Beschikbare minimumdoelen\"", systemPrompt, StringComparison.Ordinal);
+
+        // The list is no longer below the rules in one message (TB-043), so the prompt does not point at it as such.
+        Assert.DoesNotContain("hieronder", systemPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("in dit bericht", systemPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -136,6 +174,7 @@ public sealed class MatchingPromptBuilderTests
         var a = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), ["K-9.1.2", "K-1.1.1"]);
         var b = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten().Reverse().ToList(), ["K-1.1.1", "K-9.1.2", "K-1.1.1"]);
 
+        Assert.Equal(a.VasteContext, b.VasteContext);
         Assert.Equal(a.UserPrompt, b.UserPrompt);
     }
 

@@ -50,6 +50,12 @@ public static class Probleemtitels
     public const string OpstapNietOpgehaald = "Op.stap niet opgehaald";
 
     /// <summary>
+    /// The model's answer was cut off at the configured output ceiling (502, TB-043), so it was not used and nothing was
+    /// saved. The request itself was fine.
+    /// </summary>
+    public const string AiAntwoordAfgebroken = "AI-antwoord afgebroken";
+
+    /// <summary>
     /// The request carries no session (401, E6-01). The frontend answers it by sending the browser to the sign-in, so a
     /// teacher rarely reads it; it is Dutch because a teacher is who it would be for.
     /// </summary>

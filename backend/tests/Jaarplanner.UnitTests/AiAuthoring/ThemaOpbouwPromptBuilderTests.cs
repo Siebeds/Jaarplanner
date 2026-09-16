@@ -72,15 +72,28 @@ public sealed class ThemaOpbouwPromptBuilderTests
         new Minimumdoel("K-9.1.1", "K-", "9.1.1", "De kleuters benoemen nat en droog.", "Wereldoriëntatie", "Natuur"),
     ];
 
+    // The stable part of step 6 (TB-043): the leerplandoel list alone, the same for every thema over these candidates.
+    private static readonly string VerwachteDoelenlijst = string.Join(Nl,
+    [
+        "# Beschikbare Op.stap-leerplandoelen",
+        "",
+        "Voor alle doelen hieronder: jaarfase K3.",
+        "",
+        "## Wereldoriëntatie > Natuur",
+        "- WAT-K3-01 (MD): De kleuter onderzoekt water.",
+        "- WAT-K3-02 (G): De kleuter benoemt nat en droog.",
+    ]) + Nl;
+
     [Fact]
     public void Stap2_bouwt_de_verwachte_minimumdoelprompt()
     {
-        // FB-053: step 2 proposes minimumdoelen. The list comes first, then the thema, then the refs already chosen.
+        // FB-053: step 2 proposes minimumdoelen. The list is the stable part (TB-043); the thema and the refs already
+        // chosen are the user prompt.
         var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(gekozen: ["K-9.1.1"]), EenMinimumdoelenSet());
 
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, request.SystemPrompt);
 
-        var verwacht = string.Join(Nl,
+        var vast = string.Join(Nl,
         [
             "# Beschikbare minimumdoelen",
             "",
@@ -89,7 +102,11 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "### Wereldoriëntatie > Natuur",
             "- K-9.1.1: De kleuters benoemen nat en droog.",
             "- K-9.2.1: De kleuters onderzoeken water.",
-            "",
+        ]) + Nl;
+        Assert.Equal(vast, request.VasteContext);
+
+        var verwacht = string.Join(Nl,
+        [
             "# Thema (in opbouw)",
             "",
             "## Thema: Water",
@@ -98,11 +115,13 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "Kernwoordenschat: nat, droog",
             "Rijke woordenschat: waterkringloop",
             "",
-            "Niet voorstellen (al gekozen): K-9.1.1",
+            "# Niet voorstellen",
+            "",
+            "Al gekozen: K-9.1.1",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
-        Assert.DoesNotContain("leerplandoel", request.UserPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("leerplandoel", request.VasteContext + request.UserPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -110,7 +129,7 @@ public sealed class ThemaOpbouwPromptBuilderTests
     {
         var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet());
 
-        Assert.EndsWith($"Niet voorstellen: (geen){Nl}", request.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Niet voorstellen", request.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -122,6 +141,7 @@ public sealed class ThemaOpbouwPromptBuilderTests
             EenThema(gekozen: ["K-9.2.1", "K-0.0.0"]), EenSubthema(), EenLeerdoelenSet(), EenMinimumdoelenSet());
 
         Assert.Equal(ThemaOpbouwPromptBuilder.SystemPromptSubdoelen, request.SystemPrompt);
+        Assert.Equal(VerwachteDoelenlijst, request.VasteContext);
 
         var verwacht = string.Join(Nl,
         [
@@ -146,16 +166,29 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "- Gieten en meten (waarneming)",
             "  Hoek: watertafel",
             "  Verwachte uitkomsten: vergelijkt hoeveelheden",
-            "",
-            "# Beschikbare Op.stap-leerplandoelen",
-            "",
-            "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter onderzoekt water.",
-            "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter benoemt nat en droog.",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
+    }
+
+    [Fact]
+    public void Het_vaste_deel_hangt_niet_af_van_het_thema_of_het_subthema()
+    {
+        // TB-043: step 6 over the same leerplandoelen, step 2 over the same minimumdoelen, whatever the thema.
+        var andereThema = new ThemaOpbouwContext { Naam = "Vuur", GekozenThemadoelCodes = ["K-9.1.1"] };
+        var anderSubthema = new SubthemaOpbouwContext { Naam = "Kampvuur", Leeftijd = "K3" };
+
+        var a = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(), EenSubthema(), EenLeerdoelenSet());
+        var b = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(andereThema, anderSubthema, EenLeerdoelenSet(), EenMinimumdoelenSet());
+        Assert.Equal(a.SystemPrompt + a.VasteContext, b.SystemPrompt + b.VasteContext);
+        Assert.DoesNotContain("Water", a.SystemPrompt + a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("Vuur", b.SystemPrompt + b.VasteContext, StringComparison.Ordinal);
+        Assert.StartsWith("# Thema (in opbouw)", b.UserPrompt, StringComparison.Ordinal);
+
+        var c = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet());
+        var d = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(andereThema, EenMinimumdoelenSet().Reverse().ToList());
+        Assert.Equal(c.SystemPrompt + c.VasteContext, d.SystemPrompt + d.VasteContext);
+        Assert.DoesNotContain("K-9.1.1", d.UserPrompt.Replace("Al gekozen: K-9.1.1", string.Empty), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -166,10 +199,12 @@ public sealed class ThemaOpbouwPromptBuilderTests
 
         var a = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(gekozen: ["K-9.2.1", "K-9.1.1"]), EenSubthema(), leerdoelen, EenMinimumdoelenSet());
         var b = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(gekozen: ["K-9.1.1", "K-9.2.1"]), EenSubthema(), omgekeerd, EenMinimumdoelenSet().Reverse().ToList());
+        Assert.Equal(a.VasteContext, b.VasteContext);
         Assert.Equal(a.UserPrompt, b.UserPrompt);
 
         var c = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet());
         var d = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), EenMinimumdoelenSet().Reverse().ToList());
+        Assert.Equal(c.VasteContext, d.VasteContext);
         Assert.Equal(c.UserPrompt, d.UserPrompt);
     }
 
@@ -188,6 +223,22 @@ public sealed class ThemaOpbouwPromptBuilderTests
             Assert.Contains("{\"suggesties\": []}", systemPrompt, StringComparison.Ordinal);
             // Grounding: external sources are explicitly ruled out (Art. IV.4).
             Assert.Contains("Gebruik geen externe kennis", systemPrompt, StringComparison.Ordinal);
+            // The list is its own part of the request now (TB-043), not a section below the rules.
+            Assert.DoesNotContain("hieronder", systemPrompt, StringComparison.Ordinal);
+            Assert.DoesNotContain("in dit bericht", systemPrompt, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void Systeemprompts_begrenzen_het_aantal_suggesties_het_best_passende_eerst()
+    {
+        Assert.Contains(ThemaOpbouwPromptBuilder.MaxSuggestiesRegel, ThemaOpbouwPromptBuilder.SystemPromptSubdoelen, StringComparison.Ordinal);
+        Assert.Contains(ThemaOpbouwPromptBuilder.MaxMinimumdoelenRegel, ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, StringComparison.Ordinal);
+        Assert.Contains("\"Niet voorstellen\"", ThemaOpbouwPromptBuilder.SystemPromptThemadoelen, StringComparison.Ordinal);
+        foreach (var regel in new[] { ThemaOpbouwPromptBuilder.MaxSuggestiesRegel, ThemaOpbouwPromptBuilder.MaxMinimumdoelenRegel })
+        {
+            Assert.Contains($"hoogstens {ThemaOpbouwPromptBuilder.MaxSuggesties} ", regel, StringComparison.Ordinal);
+            Assert.Contains("het best passende eerst", regel, StringComparison.Ordinal);
         }
     }
 

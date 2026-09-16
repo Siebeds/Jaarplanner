@@ -9,21 +9,33 @@ namespace Jaarplanner.Application.AiMatching;
 /// Builds the grounded prompt for a thema's doelsuggesties (FB-053, ADR-0049): which minimumdoelen fit the thema as
 /// themadoel. <see cref="DoelMatchingService"/> hands it to the injectable <see cref="IAiClient"/>.
 /// <para>
-/// <b>Shape.</b> A fixed <see cref="SystemPrompt"/> (the rules and the JSON contract that <c>DoelMatchResponseParser</c>
-/// reads), then a user prompt in three parts, stable first: the candidate list (<see cref="MinimumdoelPromptlijst"/>),
-/// the thema, and the refs not to propose. The list depends only on the mijlpalen, so it can move into a cached prefix
-/// without reshaping the prompt.
+/// <b>Stable part first</b> (TB-043). The request is the fixed <see cref="SystemPrompt"/>, then the candidate list
+/// (<see cref="MinimumdoelPromptlijst"/>) as <see cref="AiRequest.VasteContext"/>, then the thema as
+/// <see cref="AiRequest.UserPrompt"/>. The first two depend only on the candidates, so two thema's whose leeftijden meet
+/// the same mijlpalen send a byte-identical prefix the provider can serve from its cache. The refs the thema must not get
+/// proposed are named in the user prompt under "Niet voorstellen" and never taken out of the list, which would make the
+/// list differ per thema.
 /// </para>
 /// <para>
-/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every user-prompt line comes from the arguments; nothing
-/// else is read (no clock, configuration or I/O). The builder is pure and deterministic: the same thema and candidates
-/// give the same bytes, so it is snapshot-testable.
+/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line comes from the arguments; nothing else is read
+/// (no clock, configuration or I/O). The builder is pure and deterministic: the same thema and candidates give the same
+/// bytes, so it is snapshot-testable.
 /// </para>
 /// </summary>
 public static class MatchingPromptBuilder
 {
-    /// <summary>The most proposals a run asks for and keeps (ADR-0049 D3).</summary>
+    /// <summary>
+    /// The most proposals a run asks for and keeps (TB-043, ADR-0049 D3). The number comes from the TB-004 evaluation's
+    /// variant and may be adjusted by its measurement.
+    /// </summary>
     public const int MaxSuggesties = 8;
+
+    /// <summary>The rule that sets <see cref="MaxSuggesties"/>, word for word as <see cref="SystemPrompt"/> carries it.</summary>
+    public const string MaxSuggestiesRegel =
+        "- Stel hoogstens 8 minimumdoelen voor, het best passende eerst. Minder mag.";
+
+    /// <summary>The heading of the user prompt's section with the refs the model must not propose.</summary>
+    public const string NietVoorstellenKop = "# Niet voorstellen";
 
     // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI.
     private const string Nl = "\n";
@@ -38,17 +50,17 @@ public static class MatchingPromptBuilder
         "leeftijden heen." + Nl +
         Nl +
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens in het bericht van de gebruiker: de lijst \"Beschikbare minimumdoelen\" en " +
-        "het thema met zijn subthema's en activiteiten." + Nl +
+        "- Gebruik uitsluitend de gegevens in deze aanvraag: de lijst \"Beschikbare minimumdoelen\", en het thema met " +
+        "zijn subthema's en activiteiten van de gebruiker." + Nl +
         "- Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen doelen of codes." + Nl +
-        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat, " +
-        "en geen code uit \"Niet voorstellen\"." + Nl +
-        // The 8 is MaxSuggesties, written out because a const string cannot format an int.
-        "- Stel ten hoogste 8 minimumdoelen voor: de doelen waar het thema het sterkst op inzet." + Nl +
-        "- Geef bij elk voorstel een motivatie van één zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
+        "- Stel enkel minimumdoelen voor waarvan de code letterlijk in de lijst \"Beschikbare minimumdoelen\" staat." + Nl +
+        "- Stel geen minimumdoel voor waarvan de code onder \"Niet voorstellen\" staat." + Nl +
+        MaxSuggestiesRegel + Nl +
+        "- Geef bij elk voorstel een motivatie van één korte zin in het Nederlands (\"waarom past dit doel bij dit thema?\")." + Nl +
         "- Je stelt enkel voor; een mens beslist. Pas niets automatisch toe." + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
         "  {\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        "- Gebruik exact de veldnamen \"suggesties\", \"code\" en \"motivatie\"." + Nl +
         "- Past geen enkel doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
@@ -57,7 +69,7 @@ public static class MatchingPromptBuilder
     /// <param name="thema">The school thema, with its subthema's, onderzoeksvragen and activiteiten loaded.</param>
     /// <param name="minimumdoelen">The candidates: the minimumdoelen of the mijlpalen the run is for.</param>
     /// <param name="nietVoorstellen">
-    /// The refs a run must not propose (a themadoel, an open or a rejected proposal); written as the prompt's last line.
+    /// The refs a run must not propose (a themadoel, an open or a rejected proposal); written in the user prompt.
     /// </param>
     public static AiRequest Bouw(
         Thema thema,
@@ -69,13 +81,15 @@ public static class MatchingPromptBuilder
         ArgumentNullException.ThrowIfNull(nietVoorstellen);
 
         var sb = new StringBuilder();
-        MinimumdoelPromptlijst.Schrijf(sb, minimumdoelen);
-        sb.Append(Nl);
         SchrijfThema(sb, thema);
-        sb.Append(Nl);
         SchrijfNietVoorstellen(sb, nietVoorstellen);
 
-        return new AiRequest { SystemPrompt = SystemPrompt, UserPrompt = sb.ToString() };
+        return new AiRequest
+        {
+            SystemPrompt = SystemPrompt,
+            VasteContext = MinimumdoelPromptlijst.Bouw(minimumdoelen),
+            UserPrompt = sb.ToString(),
+        };
     }
 
     private static void SchrijfThema(StringBuilder sb, Thema thema)
@@ -149,6 +163,7 @@ public static class MatchingPromptBuilder
         }
     }
 
+    // Omitted when there is nothing to exclude, as TB-043 does for the leerplandoel flows.
     private static void SchrijfNietVoorstellen(StringBuilder sb, IReadOnlyCollection<string> refs)
     {
         var lijst = refs
@@ -157,9 +172,15 @@ public static class MatchingPromptBuilder
             .Distinct(StringComparer.Ordinal)
             .OrderBy(r => r, StringComparer.Ordinal)
             .ToList();
-        Line(sb, lijst.Count == 0
-            ? "Niet voorstellen: (geen)"
-            : $"Niet voorstellen (al themadoel, al voorgesteld of geweigerd): {string.Join(", ", lijst)}");
+        if (lijst.Count == 0)
+        {
+            return;
+        }
+
+        Line(sb, string.Empty);
+        Line(sb, NietVoorstellenKop);
+        Line(sb, string.Empty);
+        Line(sb, $"Al themadoel, al voorgesteld of geweigerd: {string.Join(", ", lijst)}");
     }
 
     private static void Line(StringBuilder sb, string text) => sb.Append(text).Append(Nl);
