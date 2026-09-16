@@ -2,12 +2,12 @@
 id: FB-015
 titel: Leerkracht maakt een eigen activiteit die parallelle collega's lezen en overnemen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:09
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 22:51
+opgepakt-door: claude-fb015
+branch: ticket/FB-015-eigen-activiteit
 pr:
 geblokkeerd:
 fr: [FR-3.1, FR-3.2]
@@ -92,3 +92,4 @@ Dit ticket neemt het activiteitendeel van story E6-10 over. Het voorstel aan het
 ## Werklog
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-16 22:51 · claude-fb015 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, als voorwaarde voor FB-025
