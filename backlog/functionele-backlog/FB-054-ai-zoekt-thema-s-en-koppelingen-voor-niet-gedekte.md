@@ -95,7 +95,8 @@ een doel dat nergens zit.
 
 - **Grondwet:** de wijziging van Art. IV.4 en IV.8 (beslist op 2026-09-16, zie Aanleiding) moet nog geschreven worden,
   met een ADR, vóór dit ticket gebouwd wordt.
-- **Hangt af van** FB-024 en FB-053.
+- **Hangt af van** FB-024, FB-053 en FB-057. FB-057 is de eerste stap: dezelfde voorstellen van een
+  leerplandoel als subdoel, per thema; dit ticket hergebruikt ze schoolbreed.
 - **Omvang van de AI-vraag:** alle ontbrekende doelen van een leeftijd passen mogelijk niet in één vraag (TB-007). Hoe
   de analyse ze opdeelt (per leeftijd, per leergebied), beslist de bouw; de teller en het overzicht zonder AI werken
   altijd.
