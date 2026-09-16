@@ -1,8 +1,8 @@
 import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { IcoonKruis } from "../../components/Iconen";
-import { AiKnop, Knop } from "../../components/ui/Knop";
+import { AiKnop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { Statusmerk } from "../../components/ui/Statusmerk";
+import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { WoordwebWeergave, WoordwebWoord } from "../../lib/types";
@@ -25,10 +25,10 @@ const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord
  * **Every write saves at once**, so there is no Bewaren: a word is typed and Enter, a comma or a paste of a list sends
  * it. The field keeps what was typed until the server took it.
  *
- * **The AI's proposals wait below the web, each with its reason**, in the same card and status mark as the doelsuggesties
- * on this screen, so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1 to IV.3). Only the owner's
- * web gets them, and the AI control stays disabled, with the one sentence that says why, until the web holds a word of
- * her own (W5).
+ * **The AI's proposals wait below the web, one at a time with its reason**, in the same `Voorstelstapel` as the
+ * doelsuggesties on this screen (TB-045), so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1
+ * to IV.3). Only the owner's web gets them, and the AI control stays disabled, with the one sentence that says why,
+ * until the web holds a word of her own (W5).
  *
  * **A colleague's web is read-only**: her name and her words, outlined rather than filled, so the two kinds of web never
  * look alike. Directie may take a word out of any web (D3); nobody else sees a control there. A colleague's open
@@ -126,41 +126,18 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
       </div>
 
       {eigen !== null && voorstellen.length > 0 ? (
-        <ul className="mt-3 flex flex-col gap-2">
-          {voorstellen.map((voorstel) => (
-            <li key={voorstel.id} className="rounded-kaart border border-lijn bg-kaart p-3 shadow-licht">
-              <div className="flex items-center gap-2">
-                <span className="text-body font-medium text-inkt">{voorstel.woord}</span>
-                <Statusmerk status={voorstel.status} className="ml-auto" />
-              </div>
-              {voorstel.aiMotivatie ? (
-                <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">
-                  {voorstel.aiMotivatie}
-                </p>
-              ) : null}
-              <div className="mt-3 flex gap-2">
-                <Knop
-                  rang="hoofd"
-                  className="h-9 min-h-9 px-3 text-meta"
-                  aria-label={t("woordweb.aanvaardAria", { woord: voorstel.woord })}
-                  disabled={beslis.isPending}
-                  onClick={() => beslis.mutate({ woordwebId: eigen.id, woordId: voorstel.id, status: "Aanvaard" })}
-                >
-                  {t("thema.aanvaard")}
-                </Knop>
-                <Knop
-                  rang="rustig"
-                  className="h-9 min-h-9 px-3 text-meta"
-                  aria-label={t("woordweb.weigerAria", { woord: voorstel.woord })}
-                  disabled={beslis.isPending}
-                  onClick={() => beslis.mutate({ woordwebId: eigen.id, woordId: voorstel.id, status: "Geweigerd" })}
-                >
-                  {t("thema.weiger")}
-                </Knop>
-              </div>
-            </li>
-          ))}
-        </ul>
+        <div className="mt-3">
+          <Voorstelstapel
+            label={t("voorstelstapel.woordenLabel")}
+            voorstellen={voorstellen.map((voorstel) => ({
+              id: voorstel.id,
+              naam: voorstel.woord,
+              inhoud: voorstel.woord,
+              motivatie: voorstel.aiMotivatie,
+            }))}
+            onBeslis={(woordId, status) => beslis.mutateAsync({ woordwebId: eigen.id, woordId, status })}
+          />
+        </div>
       ) : null}
 
       {collegas.length > 0 ? (

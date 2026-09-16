@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:59
+bijgewerkt: 2026-09-16 23:21
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
 pr:
@@ -47,3 +47,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 22:59 · claude-ai-voorstellen · aangemaakt (status in-uitvoering)
+- 2026-09-16 23:21 · claude-ai-voorstellen · AiKnop toont tijdens een run vonken uit de toverstok en drie springende puntjes; Vitest, lint en browserpas (1440, vonken boven de knop zichtbaar) groen

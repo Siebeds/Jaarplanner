@@ -430,8 +430,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
     expect(await screen.findByText(SUGGESTIE.aiMotivatie!)).toBeInTheDocument();
-    expect(knop(t("thema.aanvaard"))).not.toBeNull();
-    expect(knop(t("thema.weiger"))).not.toBeNull();
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
+    expect(knop(t("voorstelstapel.weigerAria", { naam: "WO-3" }))).not.toBeNull();
 
     // I26 needs a wizard run's state the frontend does not read, so the delete is directie's here.
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
@@ -505,9 +505,11 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { weiger: true });
-    fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
+    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "WO-3" }) }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
+    // The refused suggestion is back on the stack, still waiting for a decision.
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
   });
 });
 
