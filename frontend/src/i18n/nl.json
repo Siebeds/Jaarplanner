@@ -903,7 +903,6 @@
     "eenDoel": "1 doel",
     "aantalDoelen": "{aantal} doelen",
     "geenDoel": "Nog geen doel",
-    "koppelAan": "Doel koppelen aan {naam}",
     "doelenBijBewaren": "Deze doelen worden samen met de activiteit bewaard.",
     "codeWeg": "{code} uit de lijst halen"
   },

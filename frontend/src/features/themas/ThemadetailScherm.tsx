@@ -583,9 +583,7 @@ export function ThemadetailScherm() {
                 subthema={subthema}
                 mag={mag}
                 gevraagd={subthema.id === gevraagdSubthema}
-                koppelenBezig={
-                  koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
-                }
+                koppelenBezig={koppelSubdoel.isPending || ontkoppelSubdoel.isPending}
                 onBewerk={() => {
                   wijzigSubthema.reset();
                   setSubthemaBlad({ subthema });
@@ -613,13 +611,6 @@ export function ThemadetailScherm() {
                   ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
                 }
                 onToonDoel={toonDoel}
-                // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
-                // here shows up there and both invalidate the same query. Removing one stays in the
-                // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
-                // meant for scanning is how the card became a toolbar before.
-                onKoppelActiviteitdoel={(activiteitId, code) =>
-                  koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
-                }
               />
             ))}
           </Blok>

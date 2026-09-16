@@ -73,7 +73,6 @@ export function Subthemahoofdstuk({
   onVerwijderActiviteit,
   onKoppelSubdoel,
   onOntkoppelSubdoel,
-  onKoppelActiviteitdoel,
   onToonDoel,
   koppelenBezig,
 }: {
@@ -89,7 +88,6 @@ export function Subthemahoofdstuk({
   onVerwijderActiviteit: (activiteit: ActiviteitMetKleur) => void;
   onKoppelSubdoel: (leerplandoelCode: string) => void;
   onOntkoppelSubdoel: (subdoelId: string) => void;
-  onKoppelActiviteitdoel: (activiteitId: string, leerplandoelCode: string) => void;
   /** Open the detail of a subdoel's leerplandoel; the page owns the one sheet it opens in (TB-016). */
   onToonDoel: (leerplandoelCode: string, knop: HTMLElement) => void;
   koppelenBezig?: boolean;
@@ -129,7 +127,6 @@ export function Subthemahoofdstuk({
   const leeftijd = subthema.leeftijd;
   const magSubthema = mag.subthemaBeheren(leeftijd);
   const magActiviteit = mag.activiteitBewerken(leeftijd);
-  const magKoppelen = mag.doelenKoppelen(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
 
   return (
@@ -278,8 +275,6 @@ export function Subthemahoofdstuk({
                           ? () => onVerwijderActiviteit(activiteit)
                           : undefined
                       }
-                      onKoppelDoel={magKoppelen ? (code) => onKoppelActiviteitdoel(activiteit.id, code) : undefined}
-                      koppelenBezig={koppelenBezig}
                     />
                   </li>
                 )}
@@ -381,24 +376,25 @@ export function Subthemahoofdstuk({
  *
  * **The row itself opens the activiteit** (owner, 2026-08-30). An overlay button BEHIND the content
  * rather than around it, the same construction the month cell uses: this row also carries a delete
- * control and a goal picker. Everything above the overlay that is not itself pressable lets its
+ * control. Everything above the overlay that is not itself pressable lets its
  * clicks fall through.
  *
  * **The doelmerk is unconditional**, filled or empty. Absence used to be encoded as absence, so "no
  * doelen" and "this row is just shorter" looked identical, and the question this list is scanned for
  * was the one it refused to answer.
  *
- * **The row opens for everyone; its two controls only for whoever holds them** (E6-02). Opening shows the form to a
- * gebruiker who may change the content and the facts to anyone else, so its label says which. The goal picker and the
- * bin are left out, not disabled, when their row of the matrix does not hold.
+ * **The row opens for everyone; its delete control only for whoever holds it** (E6-02). Opening shows the form to a
+ * gebruiker who may change the content and the facts to anyone else, so its label says which. The bin is left
+ * out, not disabled, when its row of the matrix does not hold.
+ *
+ * **No goal picker on the row** (owner, 2026-09-16, TB-044): a doel is linked to an activiteit in its own sheet, which
+ * the row opens. The row only counts them.
  */
 function Activiteitregel({
   activiteit,
   magBewerken,
   onBewerk,
   onVerwijder,
-  onKoppelDoel,
-  koppelenBezig,
 }: {
   activiteit: ActiviteitMetKleur;
   /** Opening shows the form rather than the facts; only the label differs here. */
@@ -406,9 +402,6 @@ function Activiteitregel({
   onBewerk: () => void;
   /** Absent without the delete right. */
   onVerwijder?: () => void;
-  /** Absent without the goal-link right. */
-  onKoppelDoel?: (leerplandoelCode: string) => void;
-  koppelenBezig?: boolean;
 }) {
   const kleur = activiteit.kleur as Activiteitkleur | null;
   const codes = activiteit.doelkoppelingen.map((k) => k.leerplandoelCode);
@@ -462,20 +455,6 @@ function Activiteitregel({
             restless, and the activiteit's own sheet names each doel with its code and text. */}
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <Doelmerk aantal={codes.length} />
-          {/* `contents` so the wrapper adds no box of its own: the koppelaar's open state is a
-              full-width panel that has to stay a direct child of the wrapping row to take its own
-              line. */}
-          {onKoppelDoel ? (
-            <div className="pointer-events-auto contents">
-              <Doelkoppelaar
-                compact
-                onKies={onKoppelDoel}
-                bezig={koppelenBezig}
-                alGekozen={codes}
-                toelichting={t("activiteit.koppelAan", { naam: activiteit.naam })}
-              />
-            </div>
-          ) : null}
           {onVerwijder ? (
             <Verwijderknop
               className="pointer-events-auto"

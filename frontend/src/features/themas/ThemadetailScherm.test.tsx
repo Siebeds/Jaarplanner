@@ -388,7 +388,6 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("activiteit.bewerkAria", { naam: "Eigen spel" }))).not.toBeNull();
     expect(knop(t("activiteit.bekijkAria", { naam: "Tellen" }))).not.toBeNull();
     // No goal links by hand (R19).
-    expect(knop(t("activiteit.koppelAan", { naam: "Eigen spel" }))).toBeNull();
 
     // The maker's delete, while no goal is linked (R25, R33): hers, not a colleague's, and not a linked one.
     expect(knop(t("activiteit.verwijderAria", { naam: "Eigen spel" }))).not.toBeNull();
@@ -409,8 +408,6 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // The subdoel unlink, on a `Gekoppelddoel` row since TB-016: on the K3 subdoel, not on the L1 one (R24).
     expect(knop(t("activiteit.ontkoppel", { code: "WIS-1" }))).not.toBeNull();
     expect(knop(t("activiteit.ontkoppel", { code: "REK-1" }))).toBeNull();
-    expect(knop(t("activiteit.koppelAan", { naam: "Andermans spel" }))).not.toBeNull();
-    expect(knop(t("activiteit.koppelAan", { naam: "Tellen" }))).toBeNull();
     // Any K3 activiteit, linked or not, whoever made it.
     expect(knop(t("activiteit.verwijderAria", { naam: "Andermans spel" }))).not.toBeNull();
     expect(knop(t("activiteit.verwijderAria", { naam: "Gekoppeld spel" }))).not.toBeNull();
@@ -962,10 +959,17 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
     expect(regel("Drie doelen")).not.toHaveTextContent(t("activiteit.geenDoel"));
   });
 
-  it("laat de hoofdleerkracht in de regel nog een doel koppelen", async () => {
+  it("toont in de regel geen doelkoppelaar, ook niet voor wie mag koppelen (TB-044)", async () => {
     await open(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }));
 
-    expect(knop(t("activiteit.koppelAan", { naam: "Drie doelen" }))).not.toBeNull();
+    // A doel is linked to an activiteit in its own sheet, which the row opens: the row holds only that and the bin.
+    const knoppen = within(screen.getByRole("button", { name: t("activiteit.bewerkAria", { naam: "Drie doelen" }) }).parentElement!)
+      .getAllByRole("button")
+      .map((k) => k.getAttribute("aria-label"));
+    expect(knoppen).toEqual([
+      t("activiteit.bewerkAria", { naam: "Drie doelen" }),
+      t("activiteit.verwijderAria", { naam: "Drie doelen" }),
+    ]);
     expect(screen.getAllByText(telWoord(3, "activiteit.eenDoel", "activiteit.aantalDoelen"))).not.toHaveLength(0);
   });
 });

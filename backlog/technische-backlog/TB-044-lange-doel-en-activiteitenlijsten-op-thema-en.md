@@ -36,6 +36,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   naam.
 - Zoeken kijkt naar de code of referentie en de doeltekst (die pas wordt opgehaald wanneer het zoekveld opengaat), en
   bij een activiteit naar de naam, de soort en de hoek.
+- De activiteitregels in een subthema krijgen geen "+" (doel koppelen) meer: een doel koppel je aan een activiteit
+  door de activiteit te openen (eigenaar, 2026-09-16).
 - Teksten in `nl.json`; bestaande tests aangepast en nieuwe tests voor de lijstcomponent.
 
 ## Acceptatiecriteria
@@ -49,6 +51,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
 - [ ] Gegeven een ingeklapte lijst, wanneer ik op het zoekicoon klik en een deel van een code, doeltekst of
   activiteitnaam typ, dan zie ik meteen de overeenkomende items, of een melding dat er geen zijn; Escape sluit het
   zoekveld.
+- [ ] Gegeven een opengeklapt subthema, wanneer ik de activiteiten bekijk, dan staat naast een activiteit geen "+" om
+  een doel te koppelen; dat kan in het activiteitblad.
 - [ ] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
 - [ ] Nagekeken in een echte browser op desktop en ~390px.
 
