@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:07
+bijgewerkt: 2026-09-16 15:30
 opgepakt-door: claude-fb043
 branch: ticket/FB-043-minimumdoelen-als-themadoel
-pr:
+pr: 112
 geblokkeerd:
 fr: [FR-2.3, FR-9.3]
 ---
@@ -127,3 +127,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 15:07 · claude-fb043 · criteria afgevinkt: koppelen, meebrengen, ontkoppelen en geen maximum in xUnit en Vitest; rechten in RechtenAfdwingingTests (leerkracht en hoofdleerkracht geweigerd) en Vitest (knoppen verborgen); migratie in ThemaMinimumdoelenMigratieTests; browser op een wegwerpdatabase als directie, desktop en 390px, met toetsenbord (koppelen, uitklappen, detail, ontkoppelen, focus terug), contrast 4,97 en 6,51; leerkrachtweergave niet in de browser bekeken
 - 2026-09-16 15:07 · claude-fb043 · antagonist ronde 1: 1 MAJOR (Art. XI.1: grondwetswijziging in eigen commit en functionele analyse mee aanpassen), opgelost; ronde 2: COMPLIANT; kleine punten opgelost, rapport in backlog/worklogs/FB-043/antagonist.md
 - 2026-09-16 15:07 · claude-fb043 · in-uitvoering → te-testen: gebouwd: minimumdoelen als themadoel zonder maximum, uitklapbaar per leeftijd; oude leerplandoel-themadoelen gewist via migratie; import, AI en dekking ongemoeid; ADR-0046; alle gates groen
+- 2026-09-16 15:30 · claude-fb043 · PR #112
