@@ -2,10 +2,10 @@
 id: FB-048
 titel: Subthema toont eerst het aantal subdoelen, dan het aantal activiteiten
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:31
+bijgewerkt: 2026-09-16 20:32
 opgepakt-door: sessie-fb048
 branch: ticket/FB-048-subthema-tellingen-volgorde
 pr:
@@ -57,3 +57,4 @@ De volgorde van de secties in een opengeklapt subthema (activiteiten, dan subdoe
 - 2026-09-16 20:25 · sessie-fb048 · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 20:27 · sessie-fb048 · volgorde omgewisseld; twee vitest-tests controleren de volgorde (falen op de oude code), lint groen
 - 2026-09-16 20:31 · sessie-fb048 · criteria afgevinkt: 1-2 door vitest, 3 door de knoptekst in de browser (volgt de DOM), 4 door een browserpas op 1440px en 390px op een wegwerpdatabase, zonder horizontale overloop
+- 2026-09-16 20:32 · sessie-fb048 · in-uitvoering → te-testen: gebouwd: in het blokje staat de subdoelentelling nu vóór de activiteitentelling; vitest en lint groen, browserpas 1440/390 ok; antagonist COMPLIANT (MINOR: verwachtVoor in de test vergelijkt met indexOf op textContent, volstaat voor deze fixtures)
