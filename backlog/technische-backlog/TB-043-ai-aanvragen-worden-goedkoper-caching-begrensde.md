@@ -2,7 +2,7 @@
 id: TB-043
 titel: AI-aanvragen worden goedkoper: caching, begrensde output, geen gekoppelde doelen
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
 bijgewerkt: 2026-09-16 22:56
@@ -93,3 +93,4 @@ prompts.
 - 2026-09-16 22:43 · claude-tb043 · AiRequest heeft een VasteContext; de doelenlijst staat nu vóór de schoolcontent, compacter, en beide clients cachen of begrenzen de output
 - 2026-09-16 22:56 · claude-tb043 · Criteria 1, 2, 4 en 5 afgevinkt op unittests (MatchingPromptBuilderTests, AnthropicClaudeClientTests, DoelMatchingServiceTests) en een integratietest (502 met Nederlandse melding, niets bewaard); criterium 3 wacht op de handmatige controle van de eigenaar met een echte sleutel
 - 2026-09-16 22:56 · claude-tb043 · Gates groen: dotnet test (1944 unit, 559 integratie tegen Postgres), dotnet format zonder wijzigingen, pnpm lint
+- 2026-09-16 22:56 · claude-tb043 · in-uitvoering → klaar: Gebouwd: VasteContext in AiRequest, doelenlijst vóór de schoolcontent en compacter, 'niet voorstellen'-regel, cache_control bij Claude, afgekapte antwoorden geweigerd met Nederlandse melding, MaxTokens 2000; gates groen. Criterium 3 (echte sleutel) blijft voor de eigenaar
