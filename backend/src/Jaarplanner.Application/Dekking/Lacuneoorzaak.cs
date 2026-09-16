@@ -62,8 +62,10 @@ public enum Lacuneoorzaak
     PlaatsingGeweigerd = 1,
 
     /// <summary>
-    /// A thema that carries this goal exists and the teacher has decided its link, but the thema sits in no period
-    /// of this plan.
+    /// The goal is in the dekkingsprognose and the agenda does not hold what carries it (ADR-0047): a subthema with a
+    /// decided link to it is not placed in the klas's agenda, or a thema with an accepted doelsuggestie (or, for a
+    /// minimumdoel, a thema it is a themadoel of) sits in no period of this plan. The reasons name those subthema's
+    /// and thema's.
     /// <para>
     /// "Sits in no period" folds two states together, because the remedy really is identical for both and because
     /// the sentence is true of both: never placed at all, or placed against a period that no longer exists (a stale
@@ -85,7 +87,7 @@ public enum Lacuneoorzaak
     NietIngepland = 2,
 
     /// <summary>
-    /// No thema carries a decided link to this goal, but at least one has a <c>voorgesteld</c> doelsuggestie for it.
+    /// No thema or subthema carries a decided link to this goal, but at least one has a <c>voorgesteld</c> link to it.
     /// <para>
     /// The decision is a link decision rather than a planning one, so it happens on <c>/themas</c> (FR-4.2) and not
     /// on the kalender. Planning the thema would not help while the link stays undecided: only
@@ -96,7 +98,8 @@ public enum Lacuneoorzaak
     KoppelingNietBeslist = 3,
 
     /// <summary>
-    /// No thema covers this goal at all, decided or proposed.
+    /// No thema or subthema covers this goal at all, decided or proposed; for a minimumdoel, no thema has it as a
+    /// themadoel.
     /// <para>
     /// <b>The only one of the five that planning cannot close</b>, and the only one that is genuinely about the
     /// school's content rather than about this class's year plan. It is also the honest end of Art. V.2: if the

@@ -144,6 +144,47 @@ public static class Jaarfasen
         IsBekend(jaarfase) ? [jaarfase!] : VoorLeerjaar(leerjaar);
 
     /// <summary>
+    /// The mijlpalen (a <c>Minimumdoel.Leeftijd</c>: <c>K-</c>, <c>4-</c>, <c>6-</c>) that the given jaar/fasen are
+    /// measured against (Art. V.1, ADR-0047 S4): the kleuter jaren against <c>K-</c>, L1 to L4 against <c>4-</c>, L5
+    /// and L6 against <c>6-</c>. In mijlpaal order, each once; an unknown code adds nothing.
+    /// <para>
+    /// Here, beside <see cref="VoorKlas"/>, because both say where a klas meets the curriculum, and a graadklas ruling
+    /// (Art. XIV) changes them together.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<string> MijlpalenVoor(IEnumerable<string> jaarFasen)
+    {
+        ArgumentNullException.ThrowIfNull(jaarFasen);
+        var fasen = jaarFasen.ToHashSet(StringComparer.Ordinal);
+        var mijlpalen = new List<string>();
+        if (Kleuter.Any(fasen.Contains))
+        {
+            mijlpalen.Add(MijlpaalKleuter);
+        }
+
+        if (Lager.Take(4).Any(fasen.Contains))
+        {
+            mijlpalen.Add(MijlpaalVierdeLeerjaar);
+        }
+
+        if (Lager.Skip(4).Any(fasen.Contains))
+        {
+            mijlpalen.Add(MijlpaalZesdeLeerjaar);
+        }
+
+        return mijlpalen;
+    }
+
+    /// <summary>The mijlpaal at the end of the kleuterschool (<c>Minimumdoel.Leeftijd</c>).</summary>
+    public const string MijlpaalKleuter = "K-";
+
+    /// <summary>The mijlpaal at the end of the fourth leerjaar.</summary>
+    public const string MijlpaalVierdeLeerjaar = "4-";
+
+    /// <summary>The mijlpaal at the end of the sixth leerjaar.</summary>
+    public const string MijlpaalZesdeLeerjaar = "6-";
+
+    /// <summary>
     /// The <c>Leerjaar</c> ordinal a jaar/fase code implies: <c>0</c> for the three kleuter jaren, 1 to 6 for L1
     /// to L6.
     /// <para>

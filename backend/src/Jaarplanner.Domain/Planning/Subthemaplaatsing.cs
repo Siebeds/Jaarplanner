@@ -30,10 +30,9 @@ namespace Jaarplanner.Domain.Planning;
 /// smaller problem the day-level axis already lives with.
 /// </para>
 /// <para>
-/// <b>It grants no dekking.</b> Art. V.1 makes a leerplandoel gedekt through a link hanging off a
-/// <see cref="Themaplaatsing"/>. Marking off a fortnight for a subthema proves nothing about content
-/// being taught, so nothing here may move a dekkingscijfer — the same rule
-/// <see cref="Activiteitplaatsing"/> states for the same reason.
+/// <b>It is what makes a subthema's goals gedekt</b> (Art. V.1, ADR-0047): a decided subdoel or activiteit link of a
+/// subthema counts for the klas's dekking once the subthema is placed here, in that klas's jaarplan. Its dates play
+/// no part: being placed at all is the fact.
 /// </para>
 /// </summary>
 public sealed class Subthemaplaatsing

@@ -253,9 +253,9 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         context.Schooljaren.Add(schooljaar);
 
         var herfst = new Thema("Herfstthema", duurWeken: 5);
-        herfst.VoegThemadoelToe(new DoelKoppeling("DEK-01", KoppelingStatus.Aanvaard, "anchor"));
+        herfst.VoegDoelsuggestieToe(new DoelKoppeling("DEK-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         var winter = new Thema("Winterthema", duurWeken: 5);
-        winter.VoegThemadoelToe(new DoelKoppeling("DEK-02", KoppelingStatus.Aanvaard, "anchor"));
+        winter.VoegDoelsuggestieToe(new DoelKoppeling("DEK-02", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         context.Themas.AddRange(herfst, winter);
 
         await context.SaveChangesAsync();

@@ -127,6 +127,25 @@ namespace Jaarplanner.Application.Dekking;
 /// See <see cref="IsTerugvalNaarHeelCurriculum"/>.
 /// </para>
 /// </param>
+/// <param name="AantalInPrognose">
+/// How many leerplandoelen are in the dekkingsprognose and not yet gedekt (ADR-0047), or <c>null</c> when
+/// <paramref name="IsBetrouwbaar"/> is <c>false</c>. Disjoint from <paramref name="AantalGedekt"/>, so the two add up
+/// to what the school aims at or covers.
+/// </param>
+/// <param name="AantalMinimumdoelenGedekt">
+/// How many minimumdoelen are gedekt, or <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
+/// </param>
+/// <param name="AantalMinimumdoelenInPrognose">
+/// How many minimumdoelen are in the prognose and not yet gedekt, or <c>null</c> when the figures are withheld.
+/// </param>
+/// <param name="AantalMinimumdoelen">
+/// The minimumdoel denominator: the minimumdoelen of the class's mijlpaal, or every minimumdoel for the whole
+/// curriculum or a class without a derivable jaar/fase (ADR-0047 S4).
+/// </param>
+/// <param name="Minimumdoelen">
+/// Every in-scope minimumdoel with its step, ordered by the decree's ordering (leergebied, rubriek, subrubriek) and
+/// then by ref, ordinally.
+/// </param>
 /// <param name="Doelen">
 /// Every in-scope leerplandoel with its coverage state, ordered <b>ordinally</b> by (domein, subdomein, code).
 /// The gap-analyse (E5-05) is the subset with <see cref="LeerplandoelDekking.IsGedekt"/> <c>false</c>; the doelsoort
@@ -155,7 +174,12 @@ public sealed record DekkingWeergave(
     int AantalOnopgelosteVervallenPlaatsingen,
     int? AantalGedekt,
     int AantalLeerplandoelen,
-    IReadOnlyList<LeerplandoelDekking> Doelen);
+    IReadOnlyList<LeerplandoelDekking> Doelen,
+    int? AantalInPrognose,
+    int? AantalMinimumdoelenGedekt,
+    int? AantalMinimumdoelenInPrognose,
+    int AantalMinimumdoelen,
+    IReadOnlyList<MinimumdoelDekking> Minimumdoelen);
 
 /// <summary>
 /// One leerplandoel and whether this class's plan covers it.
@@ -176,9 +200,8 @@ public sealed record DekkingWeergave(
 /// <param name="Subdomein">The subdomein — unique only together with the domein (Art. VII.0).</param>
 /// <param name="Tekst">The goal text (Excel J).</param>
 /// <param name="MinimumdoelRef">
-/// The concordance key to the decreed eindterm, or <c>null</c>. Carried so E5-04 can roll this up to
-/// minimumdoel level without a second pass over the curriculum; <b>this story computes no minimumdoel
-/// coverage</b>, which is blocked on E1-12 (no <c>Minimumdoel</c> row can exist yet).
+/// The concordance key to the decreed eindterm, or <c>null</c>. Shown beside the goal; it plays no part in the
+/// minimumdoel's own dekking, which runs through a thema (Art. V.1).
 /// </param>
 /// <param name="NietMeerInOpstap">
 /// <c>true</c> when a re-import found this goal gone from Op.stap while school content still referenced it, so it
@@ -192,20 +215,15 @@ public sealed record DekkingWeergave(
 /// </para>
 /// </param>
 /// <param name="IsGedekt">
-/// Whether a thema carrying this goal is placed in a real period of this plan, <b>or</b> a planned algemene fiche of
-/// this class carries it (Art. V.1; the second route by owner ruling of 2026-09-11, see
-/// <paramref name="DekkendeFiches"/>). For the thema route, three exclusions are folded into that sentence, each with
-/// its own authority:
-/// <list type="bullet">
-/// <item>the <b>link</b> must be <c>aanvaard</c> or <c>manueel</c> — a <c>voorgesteld</c> one would let the AI grant
-/// dekking (Art. IV.1), a <c>geweigerd</c> one never counted;</item>
-/// <item>the <b>placement</b> must likewise be <c>aanvaard</c> or <c>manueel</c>, for the same reason;</item>
-/// <item>the placement must <b>not be stale</b> — a stored block start that is no longer any period's start puts the
-/// thema in no period at all, so nothing is demonstrably taught on its account (directie 2026-07-28).</item>
-/// </list>
+/// Whether this goal is gedekt (Art. V.1, ADR-0047): <paramref name="Stap"/> is <see cref="Dekkingsstap.Gedekt"/>. A
+/// subdoel or activiteit link of a subthema placed in the klas's agenda, an accepted doelsuggestie of a thema placed in
+/// a real period of this plan, or a planned algemene fiche of this class. For a thema, the placement must be
+/// <c>aanvaard</c> or <c>manueel</c> and not stale (directie 2026-07-28); for every link, <c>aanvaard</c> or
+/// <c>manueel</c>.
 /// </param>
 /// <param name="DekkendeThemas">
-/// The thema's that cover this goal, ordered by name. This is the evidence half of Art. V: an export that claims
+/// What covers this goal through the school's content, ordered by name: a thema for a doelsuggestie, and
+/// "subthema (thema)" for a subdoel or activiteit link. This is the evidence half of Art. V: an export that claims
 /// coverage has to be able to say <i>through what</i>.
 /// <para>
 /// <b>It is no longer empty exactly when <paramref name="IsGedekt"/> is false</b>, and a caller that relied on that
@@ -255,5 +273,60 @@ public sealed record LeerplandoelDekking(
     bool IsGedekt,
     IReadOnlyList<string> DekkendeThemas,
     IReadOnlyList<string> DekkendeFiches,
+    Lacuneoorzaak? Oorzaak,
+    IReadOnlyList<string> KandidaatThemas,
+    Dekkingsstap Stap,
+    IReadOnlyList<string> PrognoseBronnen);
+
+/// <summary>
+/// Where a goal stands for a klas (Art. V.1, ADR-0047): nowhere yet, in the dekkingsprognose, or gedekt.
+/// </summary>
+public enum Dekkingsstap
+{
+    /// <summary>No thema or subthema aims at it, and nothing in the agenda covers it.</summary>
+    Geen = 0,
+
+    /// <summary>A thema or subthema aims at it, and the klas's agenda does not hold that yet.</summary>
+    Prognose = 1,
+
+    /// <summary>The klas's agenda holds what carries it.</summary>
+    Gedekt = 2,
+}
+
+/// <summary>
+/// One minimumdoel and where it stands for this class (Art. V.1, ADR-0047 D2): it counts only through a thema it is a
+/// themadoel of.
+/// </summary>
+/// <param name="Ref">The minimumdoel's stable ref.</param>
+/// <param name="Leeftijd">Its mijlpaal (<c>K-</c>, <c>4-</c>, <c>6-</c>).</param>
+/// <param name="Nr">Its number in the decree.</param>
+/// <param name="Omschrijving">The decreed text.</param>
+/// <param name="Leergebied">The decree's first ordering level, or null when unknown.</param>
+/// <param name="Rubriek">The second level, or null.</param>
+/// <param name="Subrubriek">The third level, or null.</param>
+/// <param name="NietMeerInOpstap">Whether a re-import found it gone; it stays in the denominator.</param>
+/// <param name="Stap">Where it stands.</param>
+/// <param name="IsGedekt">Whether <paramref name="Stap"/> is <see cref="Dekkingsstap.Gedekt"/>.</param>
+/// <param name="PrognoseThemas">Every thema it is a themadoel of, ordered by name.</param>
+/// <param name="DekkendeThemas">Those of them placed in this plan, ordered by name: the evidence.</param>
+/// <param name="Oorzaak">
+/// Why it is not gedekt, or <c>null</c> when it is: <see cref="Lacuneoorzaak.WachtOpBeslissing"/>,
+/// <see cref="Lacuneoorzaak.PlaatsingGeweigerd"/> or <see cref="Lacuneoorzaak.NietIngepland"/> for one in the prognose,
+/// <see cref="Lacuneoorzaak.GeenThema"/> for one on no thema.
+/// </param>
+/// <param name="KandidaatThemas">The thema's that justify <paramref name="Oorzaak"/>, ordered by name.</param>
+public sealed record MinimumdoelDekking(
+    string Ref,
+    string Leeftijd,
+    string Nr,
+    string Omschrijving,
+    string? Leergebied,
+    string? Rubriek,
+    string? Subrubriek,
+    bool NietMeerInOpstap,
+    Dekkingsstap Stap,
+    bool IsGedekt,
+    IReadOnlyList<string> PrognoseThemas,
+    IReadOnlyList<string> DekkendeThemas,
     Lacuneoorzaak? Oorzaak,
     IReadOnlyList<string> KandidaatThemas);

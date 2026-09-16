@@ -519,14 +519,11 @@ public static class JaarplanGeneratiePromptBuilder
     /// thema-level goal links (status <c>aanvaard</c> or <c>manueel</c>, Art. V.1), ordered and de-duplicated.
     /// Shared with the read view so the prompt and the API report the same set.
     /// <para>
-    /// <b>This is a subset of what dekking counts, and the difference is deliberate rather than a bug (E5-01,
-    /// 2026-08-03).</b> An earlier revision of this comment called it "the same rule dekking uses". That was true
-    /// when no coverage computation existed and is now false: <c>DekkingService</c> counts <b>four</b> link layers,
-    /// adding the <c>Subdoel</c> and <c>Activiteit</c> links that hang off a <c>Subthema</c>. It can, because it
-    /// computes for <i>one klas</i> and a subthema is scoped per klas and leeftijd (Art. IX.2). This method cannot:
-    /// it has only a <see cref="Thema"/>, which is school-wide, so including those layers here would attribute one
-    /// class's activiteiten to every class that places the thema, and it would feed the generation prompt goals
-    /// belonging to a different class.
+    /// <b>This is not the rule dekking uses.</b> Since ADR-0047 <c>DekkingService</c> counts no themadoel that links a
+    /// leerplandoel, counts a thema's minimumdoelen and accepted doelsuggesties through the thema's placement, and counts
+    /// subdoel and activiteit links only through their own subthema's placement, which it can because it computes for
+    /// <i>one klas</i>. This method has only a school-wide <see cref="Thema"/>. Aligning the generation's coverage goal
+    /// with ADR-0047 is a follow-up of FB-045.
     /// </para>
     /// <para>
     /// The visible consequence is that a calendar card may list fewer codes than dekking credits to that thema.

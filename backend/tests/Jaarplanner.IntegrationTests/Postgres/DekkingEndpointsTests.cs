@@ -356,6 +356,43 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.Oorzaak is null));
     }
 
+    [PostgresFact]
+    public async Task Een_minimumdoel_op_een_geplaatst_thema_is_over_HTTP_gedekt_en_een_ander_staat_nergens()
+    {
+        // ADR-0047 D2 end to end: the payload carries the minimumdoelen of the klas's mijlpaal, each with its step.
+        var (klasId, themaId) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
+        await using (var context = _db.MaakContext())
+        {
+            foreach (var (minimumdoelRef, mijlpaal) in new[] { ("DEK-MD-K1", "K-"), ("DEK-MD-K2", "K-"), ("DEK-MD-4", "4-") })
+            {
+                if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef))
+                {
+                    context.Minimumdoelen.Add(new Minimumdoel(minimumdoelRef, mijlpaal, "1", $"Tekst van {minimumdoelRef}"));
+                }
+            }
+
+            await context.SaveChangesAsync();
+            var thema = await context.Themas.SingleAsync(t => t.Id == themaId);
+            context.ThemaMinimumdoelen.AddRange(thema.KoppelMinimumdoel("DEK-MD-K1"), thema.KoppelMinimumdoel("DEK-MD-4"));
+            await context.SaveChangesAsync();
+        }
+
+        var json = await _factory.CreateClient().GetFromJsonAsync<System.Text.Json.JsonElement>($"/api/klassen/{klasId}/dekking");
+
+        var minimumdoelen = json.GetProperty("minimumdoelen").EnumerateArray().ToList();
+        Assert.DoesNotContain(minimumdoelen, m => m.GetProperty("ref").GetString() == "DEK-MD-4");
+        var gedekt = minimumdoelen.Single(m => m.GetProperty("ref").GetString() == "DEK-MD-K1");
+        Assert.Equal("Gedekt", gedekt.GetProperty("stap").GetString());
+        Assert.Equal("Herfstthema", Assert.Single(gedekt.GetProperty("dekkendeThemas").EnumerateArray()).GetString());
+        var nergens = minimumdoelen.Single(m => m.GetProperty("ref").GetString() == "DEK-MD-K2");
+        Assert.Equal("Geen", nergens.GetProperty("stap").GetString());
+        Assert.Equal("GeenThema", nergens.GetProperty("oorzaak").GetString());
+        Assert.Equal(minimumdoelen.Count, json.GetProperty("aantalMinimumdoelen").GetInt32());
+        Assert.Equal(
+            minimumdoelen.Count(m => m.GetProperty("stap").GetString() == "Gedekt"),
+            json.GetProperty("aantalMinimumdoelenGedekt").GetInt32());
+    }
+
     private Task<DekkingDto> HaalDekkingAsync(Guid klasId) => HaalDekkingAsync($"{klasId}/dekking");
 
     /// <summary>The same read, with the path tail spelled out so a test can add a query string.</summary>
@@ -371,7 +408,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A class with a thema placed in its jaarplan, the thema carrying <c>DEK-01</c> as a themadoel.
+    /// A class with a thema placed in its jaarplan, the thema carrying <c>DEK-01</c> as an accepted doelsuggestie.
     /// <para>
     /// <b>The block start is asked of the real <see cref="IPlanningsblokIndeling"/> seam rather than assumed.</b> A
     /// hard-coded date would make the non-stale case depend on the grid happening to start where the test guessed,
@@ -398,7 +435,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
             : indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0].Start;
 
         var thema = new Thema("Herfstthema", duurWeken: 5);
-        thema.VoegThemadoelToe(new DoelKoppeling("DEK-01", KoppelingStatus.Aanvaard, "anchor"));
+        thema.VoegDoelsuggestieToe(new DoelKoppeling("DEK-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klasId);
