@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 00:40
+bijgewerkt: 2026-09-17 00:53
 opgepakt-door: claude-fb025
 branch: ticket/FB-025-activiteitvoorstellen
 pr:
@@ -37,15 +37,15 @@ Vandaag bedenkt een leerkracht elke activiteit zelf. De AI doet niets onder een 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een K3-subthema met vier subdoelen, wanneer een K3-leerkracht voorstellen vraagt, dan krijgt ze activiteiten
+- [x] Gegeven een K3-subthema met vier subdoelen, wanneer een K3-leerkracht voorstellen vraagt, dan krijgt ze activiteiten
   die elk aan een of meer van die subdoelen werken, met een motivatie.
-- [ ] Gegeven een voorstel, wanneer ze het aanvaardt, dan is het haar eigen activiteit onder dat subthema, met de
+- [x] Gegeven een voorstel, wanneer ze het aanvaardt, dan is het haar eigen activiteit onder dat subthema, met de
   aanvaarde doelen.
-- [ ] Gegeven een voorstel, wanneer ze het weigert, dan komt het bij een nieuwe vraag niet terug.
-- [ ] Gegeven een modelantwoord met een doel dat geen subdoel van het subthema is of een onbekende code, dan wordt dat doel
+- [x] Gegeven een voorstel, wanneer ze het weigert, dan komt het bij een nieuwe vraag niet terug.
+- [x] Gegeven een modelantwoord met een doel dat geen subdoel van het subthema is of een onbekende code, dan wordt dat doel
   niet getoond en niet bewaard.
-- [ ] Gegeven een leerkracht van een andere leeftijd, dan kan ze voor dit subthema geen voorstellen vragen.
-- [ ] De logica is getest met een nep-AI-client.
+- [x] Gegeven een leerkracht van een andere leeftijd, dan kan ze voor dit subthema geen voorstellen vragen.
+- [x] De logica is getest met een nep-AI-client.
 
 ## Testscenario's
 
@@ -71,3 +71,4 @@ Vandaag bedenkt een leerkracht elke activiteit zelf. De AI doet niets onder een 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-17 00:19 · claude-fb025 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; grondwet mag aangepast worden zodat de AI activiteiten bedenkt
 - 2026-09-17 00:40 · claude-fb025 · grondwet (Art. IV.1, IV.4, IV.5, IX.2, XII) en ADR-0052 geschreven; backend gebouwd, unit- en Postgres-tests groen
+- 2026-09-17 00:53 · claude-fb025 · alle criteria afgevinkt: ActiviteitvoorstellenEndpointsTests, ActiviteitvoorstelTests en Activiteitvoorstellen.test.tsx; browserpas met de echte Claude API op een wegwerpdatabase (desktop en 390px): voorstellen, aanvaarden, aanpassen, weigeren en opnieuw vragen werken
