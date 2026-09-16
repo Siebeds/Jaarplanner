@@ -2,12 +2,12 @@
 id: FB-050
 titel: Nieuwe activiteit start zonder gekozen soort
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 20:26
+opgepakt-door: claude-fb-050
+branch: ticket/FB-050-activiteit-zonder-soort
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -51,8 +51,11 @@ Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu.
 
 ## Open vragen
 
-- Is de soort verplicht, of mag een activiteit zonder soort bewaard worden? **Standaard** verplicht: vandaag heeft elke activiteit een soort.
+- Is de soort verplicht, of mag een activiteit zonder soort bewaard worden? **Beantwoord (eigenaar, 2026-09-16):**
+  verplicht, zoals vandaag elke activiteit een soort heeft.
 
 ## Werklog
 
 - 2026-09-16 13:47 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 20:26 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: soort verplicht
+- 2026-09-16 20:26 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opgepakt
