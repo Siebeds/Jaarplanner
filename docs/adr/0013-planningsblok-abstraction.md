@@ -1,6 +1,6 @@
 # ADR-0013 — Planningsblok abstraction for an open decision
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0049](0049-themaplaatsing-met-eigen-datums.md) for the jaarplan
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 
