@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:56
+bijgewerkt: 2026-09-16 15:58
 opgepakt-door: claude-fb045
 branch: ticket/FB-045-dekkingsprognose
 pr:
@@ -99,9 +99,13 @@ Beantwoord door de eigenaar op 2026-09-16:
   leerplandoel van de leeftijd van de klas is.
 - Een doel op een activiteit telt als dekking zodra het subthema van die activiteit in de agenda staat, ook als de
   activiteit zelf nog geen dag kreeg.
+- Een klas wordt gemeten tegen de minimumdoelen van haar mijlpaal: een kleuterklas (JK, K2, K3) tegen `K-`, L1 tot L4
+  tegen `4-`, L5 en L6 tegen `6-`. *Heel het curriculum* toont alle minimumdoelen.
+- Een thema telt als ingepland zoals vandaag: een beslist geplaatst thema (aanvaard of manueel), niet een voorgesteld.
 
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 15:56 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord in de sessie; klaar voor bouw
 - 2026-09-16 15:56 · claude-fb045 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 15:58 · claude-fb045 · standaarden vastgelegd: mijlpaal per klas (K-, 4-, 6-) en een thema telt als ingepland wanneer het beslist geplaatst is
