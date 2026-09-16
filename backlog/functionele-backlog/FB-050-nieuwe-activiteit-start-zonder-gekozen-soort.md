@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 21:57
+bijgewerkt: 2026-09-16 22:08
 opgepakt-door: claude-fb-050
 branch: ticket/FB-050-activiteit-zonder-soort
-pr:
+pr: 119
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -79,3 +79,4 @@ Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu (daar bli
 - 2026-09-16 21:57 · claude-fb-050 · Criteria afgevinkt: Vitest, xUnit (ActiviteitSoortEndpointsTests op Postgres) en browserpas op desktop en 390px (worklogs/FB-050/test-report-2.md)
 - 2026-09-16 21:57 · claude-fb-050 · Antagonist ronde 2: COMPLIANT; open MINOR: geen test voor een geplande activiteit zonder soort in de weekweergave (worklogs/FB-050/antagonist.md)
 - 2026-09-16 21:57 · claude-fb-050 · in-uitvoering → te-testen: Soort optioneel: formulier en koppelpaneel starten op 'Geen soort', backend bewaart een lege soort als leeg (migratie), Art. IX.2 gewijzigd; Vitest 1006, xUnit 2462, lint en format groen, browser desktop en 390px PASS, antagonist COMPLIANT
+- 2026-09-16 22:08 · claude-fb-050 · PR #119
