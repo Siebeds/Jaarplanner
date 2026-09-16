@@ -421,7 +421,8 @@ export type Activiteitkleur = (typeof ACTIVITEITKLEUREN)[number];
 export interface ActiviteitWeergave {
   id: string;
   naam: string;
-  activiteitType: ActiviteitType;
+  /** Null when the activiteit has no soort (FB-050). */
+  activiteitType: ActiviteitType | null;
   hoek: string | null;
   verwachteUitkomsten: string | null;
   onderzoeksvraagId: string | null;
@@ -776,7 +777,7 @@ export interface GeplandeActiviteit {
   plaatsingId: string;
   activiteitId: string;
   activiteitNaam: string;
-  activiteitType: string;
+  activiteitType: string | null;
   subthemaId: string;
   subthemaNaam: string;
   themaId: string;

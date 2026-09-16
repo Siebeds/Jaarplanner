@@ -28,7 +28,8 @@ export type ActiviteitMetKleur = ActiviteitWeergave & {
 
 export interface ActiviteitInvoer {
   naam: string;
-  activiteitType: ActiviteitType;
+  /** Null for no soort: the soort is optional (FB-050). */
+  activiteitType: ActiviteitType | null;
   hoek: string | null;
   verwachteUitkomsten: string | null;
   onderzoeksvraagId: string | null;
@@ -118,7 +119,8 @@ export function Activiteitformulier({
 }) {
   const id = useId();
   const [naam, setNaam] = useState(activiteit?.naam ?? "");
-  // Empty on a new activiteit (FB-050): a preselected soort is one the teacher never chose but still saves.
+  // "" is no soort. Never preselected on a new activiteit (FB-050): a soort nobody chose would still be saved as if
+  // it had been chosen.
   const [soort, setSoort] = useState<ActiviteitType | "">(activiteit?.activiteitType ?? "");
   const [hoek, setHoek] = useState(activiteit?.hoek ?? "");
   const [uitkomsten, setUitkomsten] = useState(activiteit?.verwachteUitkomsten ?? "");
@@ -126,7 +128,6 @@ export function Activiteitformulier({
   const [kleur, setKleur] = useState<Activiteitkleur | null>(activiteit?.kleur ?? null);
   const [lengte, setLengte] = useState(activiteit?.lengteInLesuren ?? 1);
   const [naamFout, setNaamFout] = useState(false);
-  const [soortFout, setSoortFout] = useState(false);
   // The goal whose detail is open over this sheet, with the row that opened it.
   const [doel, setDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
   const toonDoel = (code: string, knop: HTMLElement) => setDoel({ code, knop });
@@ -139,14 +140,13 @@ export function Activiteitformulier({
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
-    // Both checked before returning, so a teacher who left both empty reads both messages at once.
-    const zonderNaam = naam.trim().length === 0;
-    setNaamFout(zonderNaam);
-    setSoortFout(soort === "");
-    if (zonderNaam || soort === "") return;
+    if (naam.trim().length === 0) {
+      setNaamFout(true);
+      return;
+    }
     onBewaar({
       naam: naam.trim(),
-      activiteitType: soort,
+      activiteitType: soort === "" ? null : soort,
       // Never sent for a soort that is not Hoek: the server would drop it, and a value that is stored
       // nowhere but still in the form is a value a teacher believes they saved.
       hoek: isHoek && hoek.trim() !== "" ? hoek.trim() : null,
@@ -228,34 +228,22 @@ export function Activiteitformulier({
                   id={`${id}-soort`}
                   value={soort}
                   disabled={bezig}
-                  aria-invalid={soortFout || undefined}
-                  aria-describedby={soortFout ? `${id}-soort-fout` : undefined}
                   onChange={(e) => {
-                    const nieuw = e.target.value as ActiviteitType;
+                    const nieuw = e.target.value as ActiviteitType | "";
                     setSoort(nieuw);
-                    setSoortFout(false);
                     // Cleared rather than kept: see the note in the component docstring.
                     if (nieuw !== "Hoek") setHoek("");
                   }}
                   className="mt-1.5"
                 >
-                  {/* Disabled: once a soort is chosen there is no way back to none, since none cannot be saved. */}
-                  {soort === "" ? (
-                    <option value="" disabled>
-                      {t("activiteit.kiesSoort")}
-                    </option>
-                  ) : null}
+                  {/* Always offered, also once a soort is chosen: the soort is optional, so it can be cleared again. */}
+                  <option value="">{t("activiteit.geenSoort")}</option>
                   {ACTIVITEIT_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {t(`activiteitsoort.${type}`)}
                     </option>
                   ))}
                 </Keuze>
-                {soortFout ? (
-                  <p id={`${id}-soort-fout`} role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
-                    {t("activiteit.soortVerplicht")}
-                  </p>
-                ) : null}
               </div>
 
               {isHoek ? (
@@ -520,7 +508,9 @@ function Feiten({
 
   return (
     <dl className="flex flex-col gap-2">
-      <Feit label={t("activiteit.soort")}>{t(`activiteitsoort.${activiteit.activiteitType}`)}</Feit>
+      {activiteit.activiteitType ? (
+        <Feit label={t("activiteit.soort")}>{t(`activiteitsoort.${activiteit.activiteitType}`)}</Feit>
+      ) : null}
       {activiteit.activiteitType === "Hoek" && activiteit.hoek ? (
         <Feit label={t("activiteit.hoek")}>{activiteit.hoek}</Feit>
       ) : null}

@@ -118,9 +118,11 @@ export function Activiteitkiezer({
                             >
                               <span className="min-w-0">
                                 <span className="block truncate text-body text-inkt">{activiteit.naam}</span>
-                                <span className="mono block text-[0.625rem] text-inkt-zwak">
-                                  {activiteit.activiteitType}
-                                </span>
+                                {activiteit.activiteitType ? (
+                                  <span className="mono block text-[0.625rem] text-inkt-zwak">
+                                    {activiteit.activiteitType}
+                                  </span>
+                                ) : null}
                               </span>
                               {/* Unconditional, and labelled. This used to be a bare mono figure
                                   rendered only when it was above zero, so an activiteit with no

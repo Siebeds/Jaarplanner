@@ -189,6 +189,18 @@ public sealed class MatchingPromptBuilderTests
     }
 
     [Fact]
+    public void Een_activiteit_zonder_soort_krijgt_geen_haakjes()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        thema.VoegSubthemaToe("Drijven", duurWeken: 2, leeftijd: "K3").VoegActiviteitToe("Bootjes", activiteitType: null);
+
+        var request = MatchingPromptBuilder.Bouw(thema, EenLeerdoelenSet());
+
+        Assert.Contains($"  - Bootjes{Nl}", request.UserPrompt + Nl, StringComparison.Ordinal);
+        Assert.DoesNotContain("Bootjes (", request.UserPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Verwerpt_null_argumenten()
     {
         Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(null!, EenLeerdoelenSet()));

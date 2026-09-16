@@ -67,6 +67,10 @@ public sealed record SubthemaWijzigingInvoer(
     IReadOnlyList<OnderzoeksvraagCreatie>? Onderzoeksvragen = null);
 
 /// <summary>Create payload for an <see cref="Activiteit"/> (inherits its subthema's age scope, Art. IX.2).</summary>
+/// <param name="ActiviteitType">
+/// The soort, or null for none. Nullable so that a payload without it stores none: as a plain enum an absent field
+/// silently became <c>Experiment</c>, the enum's zero value (FB-050). The same holds for the update payload.
+/// </param>
 /// <param name="LeerplandoelCodes">
 /// Goals to link in the same request, each landing as a <see cref="KoppelingStatus.Manueel"/>
 /// <see cref="DoelKoppeling"/> because a code in a create payload is a teacher deciding, never the model
@@ -84,7 +88,7 @@ public sealed record SubthemaWijzigingInvoer(
 /// </param>
 public sealed record ActiviteitCreatie(
     string Naam,
-    ActiviteitType ActiviteitType,
+    ActiviteitType? ActiviteitType,
     string? Hoek = null,
     string? VerwachteUitkomsten = null,
     Guid? OnderzoeksvraagId = null,
@@ -95,7 +99,7 @@ public sealed record ActiviteitCreatie(
 /// <summary>Update payload for an <see cref="Activiteit"/>.</summary>
 public sealed record ActiviteitWijzigingInvoer(
     string Naam,
-    ActiviteitType ActiviteitType,
+    ActiviteitType? ActiviteitType,
     string? Hoek = null,
     string? VerwachteUitkomsten = null,
     Activiteitkleur? Kleur = null,
@@ -133,7 +137,7 @@ public sealed record SubdoelWeergave(Guid Id, string Leeftijd, DoelKoppelingWeer
 public sealed record ActiviteitWeergave(
     Guid Id,
     string Naam,
-    ActiviteitType ActiviteitType,
+    ActiviteitType? ActiviteitType,
     string? Hoek,
     string? VerwachteUitkomsten,
     Guid? OnderzoeksvraagId,

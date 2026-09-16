@@ -208,7 +208,7 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
         select new Activiteitinhoud(
             activiteit.Id,
             activiteit.Naam,
-            activiteit.ActiviteitType.ToString(),
+            activiteit.ActiviteitType,
             subthema.Id,
             subthema.Naam,
             subthema.Leeftijd,

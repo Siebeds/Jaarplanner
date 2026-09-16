@@ -12,6 +12,7 @@ import type {
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
@@ -447,6 +448,17 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).not.toBeNull();
     expect(knop(t("subthemabeheer.bewerkAria", { naam: "Rekenen" }))).not.toBeNull();
     expect(knop(t("activiteit.verwijderAria", { naam: "Tellen" }))).not.toBeNull();
+  });
+
+  it("noemt bij een activiteit zonder soort geen soort, en begint niet met een scheiding (FB-050)", async () => {
+    const zonderSoort = activiteit("a-leeg", "Zonder soort", { activiteitType: null, kleur: "Olijf" });
+    const k3 = { ...THEMA.subthemas[0], activiteiten: [zonderSoort, activiteit("a-spel", "Met soort")] };
+    toon(DIRECTIE, { thema: { ...THEMA, subthemas: [k3, THEMA.subthemas[1]] } });
+    await openHoofdstukken();
+
+    // Exact text: the colour alone, with no soort and no leading " · ".
+    expect(screen.getByText(t(kleurSleutel("Olijf")))).toBeInTheDocument();
+    expect(screen.getAllByText(t("activiteitsoort.Spel")).length).toBeGreaterThan(0);
   });
 
   it("opent een activiteit voor wie haar niet mag aanpassen als feiten, zonder Bewaren", async () => {

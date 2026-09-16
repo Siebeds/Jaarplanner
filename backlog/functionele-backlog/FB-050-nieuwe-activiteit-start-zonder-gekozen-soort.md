@@ -24,35 +24,45 @@ met een soort die ze nooit koos.
 ## Gewenst gedrag
 
 - In het formulier van een nieuwe activiteit is de soort leeg, met een neutrale tekst als "Kies een soort".
-- De soort is verplicht: wie zonder soort bewaart, krijgt bij het veld te lezen dat ze nog een soort moet kiezen, en er
-  wordt niets bewaard.
-- Een bestaande activiteit openen toont haar soort zoals nu.
+- Ook de snelle regel "Nieuwe activiteit" in het koppelpaneel van het doelenregister start zonder soort.
+- De soort is optioneel: wie zonder soort bewaart, bewaart een activiteit zonder soort. Nergens wordt een lege soort
+  stil "Experiment", ook niet in de backend.
+- Een activiteit zonder soort toont nergens een soort (geen lege scheiding, geen "Experiment").
+- Een bestaande activiteit openen toont haar soort zoals nu, en haar soort kan weer leeg gemaakt worden.
 
 ## Acceptatiecriteria
 
-- [x] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
-- [x] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt er niets bewaard en staat bij het veld dat er een
-  soort gekozen moet worden.
-- [x] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
-- [x] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld.
-- [x] Nagekeken in een echte browser op desktop en ~390px, en de melding is bereikbaar voor een schermlezer.
+- [ ] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
+- [ ] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt de activiteit bewaard zonder soort.
+- [ ] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
+- [ ] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld, en kan men die
+  leeg maken.
+- [ ] Gegeven de snelle regel in het koppelpaneel, wanneer ze opent, dan is er geen soort gekozen, en maken zonder
+  soort geeft een activiteit zonder soort.
+- [ ] Gegeven een aanvraag aan de backend zonder soort, dan wordt de activiteit bewaard zonder soort, nooit als
+  Experiment.
+- [ ] Gegeven een activiteit zonder soort, dan tonen de schermen die de soort van een activiteit tonen geen soort voor
+  haar.
+- [ ] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
 1. Open een subthema en maak een nieuwe activiteit. Het veld Soort is leeg.
-2. Vul een naam in en bewaar zonder soort. Er wordt niets bewaard; bij Soort staat dat je er een moet kiezen.
-3. Kies "Hoek" en bewaar. De activiteit is een hoek.
-4. Open een bestaande activiteit: haar soort staat ingevuld.
-5. Herhaal stap 1 en 2 op ~390px.
+2. Vul een naam in en bewaar zonder soort. De activiteit staat in de lijst, zonder soort.
+3. Maak er nog een, kies "Hoek" en bewaar. De activiteit is een hoek.
+4. Open de hoek-activiteit: haar soort staat ingevuld. Maak de soort leeg en bewaar: ze heeft geen soort meer.
+5. Open het doelenregister, open het koppelpaneel van een doel en kies "Nieuwe activiteit": de soort is leeg; maak ze.
+6. Herhaal stap 1 en 2 op ~390px.
 
 ## Buiten scope
 
-Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu.
+Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu (daar blijft de soort verplicht).
 
 ## Open vragen
 
 - Is de soort verplicht, of mag een activiteit zonder soort bewaard worden? **Beantwoord (eigenaar, 2026-09-16):**
-  verplicht, zoals vandaag elke activiteit een soort heeft.
+  eerst verplicht; na de eerste bouw herzien: optioneel. Een lege soort blijft leeg en wordt nooit stil "Experiment".
+  Dat wijzigt Art. IX van de grondwet: `activiteitType` wordt optioneel.
 
 ## Werklog
 

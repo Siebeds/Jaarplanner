@@ -142,7 +142,6 @@ describe("Nieuweactiviteitblad na een weigering", () => {
     render(<Agenda qc={qc} open fout={null} onPlan={plan} />);
 
     fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Eikels tellen" } });
-    fireEvent.change(screen.getByLabelText(t("activiteit.soort")), { target: { value: "Spel" } });
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
     await screen.findByRole("alert");
 

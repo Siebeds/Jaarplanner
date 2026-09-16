@@ -253,7 +253,7 @@ public sealed class Subthema
     /// </param>
     public Activiteit VoegActiviteitToe(
         string naam,
-        ActiviteitType activiteitType,
+        ActiviteitType? activiteitType,
         string? hoek = null,
         string? verwachteUitkomsten = null,
         Guid? makerId = null)
