@@ -48,14 +48,20 @@ public interface ISchoolcontentBeheerService
 
     Task VerwijderThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
-    // --- Themadoel (school-scoped; 2–3 per thema, Art. IX.2). ---
+    // --- Themadoel (school-scoped, Art. IX.2). ---
 
     /// <summary>
-    /// Adds a manually created themadoel linking the thema to <paramref name="leerplandoelCode"/>
-    /// (status <c>manueel</c>, Art. IV.2). Rejects a 4th themadoel (Art. IX.2) and an unknown code.
+    /// Links the minimumdoel <paramref name="minimumdoelRef"/> to the thema as a themadoel (FB-043). No upper bound.
+    /// Rejects an unknown ref and a minimumdoel the thema already aims at.
     /// </summary>
-    Task<ThemadoelWeergave> VoegThemadoelToeAsync(Guid themaId, string leerplandoelCode, CancellationToken cancellationToken = default);
+    Task<ThemaMinimumdoelWeergave> KoppelMinimumdoelAsync(Guid themaId, string minimumdoelRef, CancellationToken cancellationToken = default);
 
+    /// <summary>Unlinks a minimumdoel from the thema; the leerplandoelen it brought along go with it (FB-043).</summary>
+    Task OntkoppelMinimumdoelAsync(Guid themaId, Guid koppelingId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Removes a themadoel that links a leerplandoel. No screen adds one any more (FB-043); the FR-1 import still may.
+    /// </summary>
     Task VerwijderThemadoelAsync(Guid themaId, Guid themadoelId, CancellationToken cancellationToken = default);
 
     // --- Subthema (age-scoped). ---

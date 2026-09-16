@@ -4,6 +4,7 @@ using Jaarplanner.Domain.Ontwikkelingsrapport;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 
@@ -11,7 +12,7 @@ namespace Jaarplanner.Infrastructure.SchoolcontentBeheer;
 /// EF Core implementation of <see cref="ISchoolcontentBeheerService"/> over <see cref="AppDbContext"/>
 /// (E1-10, FR-3.1/3.2). It is the CRUD sibling of the import service: it drives the same domain mutators
 /// (<c>Thema.VoegThemadoelToe</c>, <c>Subthema.VoegSubdoelToe</c>, <c>Activiteit.VoegDoelkoppelingToe</c>, …)
-/// rather than reaching into the entities, so every invariant — the 2–3 themadoel bound, the required
+/// rather than reaching into the entities, so every invariant — one link per minimumdoel on a thema, the required
 /// leeftijd scope — is enforced in one place (the domain, Art. IX.2).
 /// <para>
 /// <b>Level scoping (Art. IX.2, amended 2026-08-30).</b> Thema/Themadoel inputs carry no leeftijd (school-wide).
@@ -95,6 +96,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var themas = await _context.Themas
             .AsNoTracking()
             .Include(t => t.Themadoelen)
+            .Include(t => t.Minimumdoelen)
             .OrderBy(t => t.Naam)
             .Select(t => new
             {
@@ -255,33 +257,47 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         return plannen.Sum(plan => plan.Plaatsingen.Count(p => p.ThemaId == themaId));
     }
 
-    // --- Themadoel (school-scoped; 2–3 per thema). ---
+    // --- Themadoel (school-scoped). A themadoel a person adds is a minimumdoel (FB-043). ---
 
-    public async Task<ThemadoelWeergave> VoegThemadoelToeAsync(Guid themaId, string leerplandoelCode, CancellationToken cancellationToken = default)
+    public async Task<ThemaMinimumdoelWeergave> KoppelMinimumdoelAsync(Guid themaId, string minimumdoelRef, CancellationToken cancellationToken = default)
     {
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        var code = await VereisLeerplandoelAsync(leerplandoelCode, cancellationToken);
+        var minimumdoel = await VereisMinimumdoelAsync(minimumdoelRef, cancellationToken);
 
-        Themadoel themadoel;
+        ThemaMinimumdoel koppeling;
         try
         {
-            // Manual link → status manueel (Art. IV.2); no AI motivation.
-            themadoel = thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Manueel));
+            koppeling = thema.KoppelMinimumdoel(minimumdoel);
         }
         catch (InvalidOperationException ex)
         {
-            // Upper-bound (4th themadoel) breach — a structural rule, surfaced as a 400 (Art. IX.2).
+            // Already linked: the domain's own Dutch sentence, as a 400.
             throw new SchoolcontentValidatieFout(ex.Message);
         }
 
-        // Mark the new child Added explicitly. This was the workaround for the mapping defect fixed model-wide
-        // on 2026-08-03 (AppDbContext: every Guid key is ValueGeneratedNever), so it is belt-and-braces now
-        // rather than the thing that makes the insert work. Kept because it is free and states the intent; note
-        // that the collections which had *no* such line — Subthema and Activiteit — are precisely the ones that
-        // answered 500 on a re-import for four days.
-        _context.Themadoelen.Add(themadoel);
+        // Added explicitly, as for every child collection here (see AppDbContext on Guid keys).
+        _context.ThemaMinimumdoelen.Add(koppeling);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            // Two requests raced past the domain check; the unique index is the answer, in the same words.
+            throw new SchoolcontentValidatieFout($"Minimumdoel {minimumdoel} is al een themadoel van dit thema.");
+        }
+
+        return MapMinimumdoel(koppeling);
+    }
+
+    public async Task OntkoppelMinimumdoelAsync(Guid themaId, Guid koppelingId, CancellationToken cancellationToken = default)
+    {
+        var thema = await LaadThemaAsync(themaId, cancellationToken);
+        var koppeling = thema.Minimumdoelen.FirstOrDefault(m => m.Id == koppelingId)
+            ?? throw new SchoolcontentNietGevondenFout("Dit themadoel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
+
+        thema.OntkoppelMinimumdoel(koppeling);
         await _context.SaveChangesAsync(cancellationToken);
-        return MapThemadoel(themadoel);
     }
 
     public async Task VerwijderThemadoelAsync(Guid themaId, Guid themadoelId, CancellationToken cancellationToken = default)
@@ -920,6 +936,28 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
     }
 
     /// <summary>
+    /// The ref of a loaded minimumdoel, or a Dutch refusal (Art. III.5: a ref is its stable identity, so an unknown one
+    /// is refused rather than created).
+    /// </summary>
+    private async Task<string> VereisMinimumdoelAsync(string minimumdoelRef, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(minimumdoelRef))
+        {
+            throw new SchoolcontentValidatieFout("Kies een minimumdoel.");
+        }
+
+        var gezocht = minimumdoelRef.Trim();
+        var bestaat = await _context.Minimumdoelen.AsNoTracking().AnyAsync(m => m.Ref == gezocht, cancellationToken);
+        if (!bestaat)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Minimumdoel '{gezocht}' staat niet bij de ingeladen Op.stap-doelen, dus er is niets gekoppeld.");
+        }
+
+        return gezocht;
+    }
+
+    /// <summary>
     /// Refuses a leeftijd that is not one of the nine Op.stap jaar/fase codes. The rule is
     /// <see cref="Jaarfasen.LeesLeeftijd"/>, which the rights check on a body leeftijd (<c>Leeftijdsinhoud.UitInvoer</c>)
     /// shares, so the two cannot drift apart.
@@ -949,6 +987,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.RijkeWoordenschat.ToList(),
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
+        thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
         thema.Subthemas.Select(MapSubthema).ToList());
 
     private static ThemaBibliotheekItem MapBibliotheekItem(
@@ -965,6 +1004,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.RijkeWoordenschat.ToList(),
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
+        thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
         aantalAfgeleideKlassen,
         aantalSubthemas,
         aantalActiviteiten,
@@ -972,6 +1012,9 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
         new(themadoel.Id, MapKoppeling(themadoel.Koppeling));
+
+    private static ThemaMinimumdoelWeergave MapMinimumdoel(ThemaMinimumdoel koppeling) =>
+        new(koppeling.Id, koppeling.MinimumdoelRef);
 
     private static SubthemaWeergave MapSubthema(Subthema subthema) => new(
         subthema.Id,

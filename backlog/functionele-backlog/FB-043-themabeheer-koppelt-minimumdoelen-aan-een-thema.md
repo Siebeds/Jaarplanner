@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:29
+bijgewerkt: 2026-09-16 14:41
 opgepakt-door: claude-fb043
 branch: ticket/FB-043-minimumdoelen-als-themadoel
 pr:
@@ -122,3 +122,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 14:27 · claude-fb043 · geblokkeerd: Tegenstrijdige antwoorden: in deze sessie zei de eigenaar 'bestaande leerplandoel-themadoelen verwijderen via migratie, import ongemoeid (ook het maximum)'; een niet-gecommitte versie op main zegt 'ze blijven staan naast de minimumdoelen' en 'bij de import valt het maximum weg'. Welke geldt?
 - 2026-09-16 14:29 · claude-fb043 · niet langer geblokkeerd
 - 2026-09-16 14:29 · claude-fb043 · eigenaar bevestigt: bestaande leerplandoel-themadoelen verwijderen (datamodel blijft), import ongemoeid; de niet-gecommitte tekst op main is achterhaald
+- 2026-09-16 14:41 · claude-fb043 · backend klaar: koppeling thema-minimumdoel (zonder maximum), POST/DELETE /api/themas/{id}/minimumdoelen met themabeheerrecht, POST .../themadoelen weg, migratie wist de leerplandoel-themadoelen; unit- en integratietests groen

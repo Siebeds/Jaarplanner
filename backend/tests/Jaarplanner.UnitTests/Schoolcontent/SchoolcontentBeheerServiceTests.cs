@@ -36,6 +36,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
 
         // Seed read-only curriculum codes the goal links can reference (Art. III.5). The in-memory
         // provider does not enforce the Discipline FK, so no discipline row is needed here.
+        seed.Minimumdoelen.AddRange(Minimumdoelen("MD-1", "MD-2"));
         seed.Leerplandoelen.AddRange(
             Leerdoel("NL-001"),
             Leerdoel("NL-002"),
@@ -48,6 +49,9 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     private SchoolcontentBeheerService NieuweService() => new(new AppDbContext(_options));
 
     private AppDbContext NieuwContext() => new(_options);
+
+    private static IEnumerable<Minimumdoel> Minimumdoelen(params string[] refs) =>
+        refs.Select((minimumdoelRef, i) => new Minimumdoel(minimumdoelRef, "K-", $"{i + 1}", "minimumdoeltekst"));
 
     private static Leerplandoel Leerdoel(string code) =>
         new(code, Doelsoort.Minimumdoel, "K3", "Domein", "Subdomein", "1", tekst: "doeltekst");
@@ -97,7 +101,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
     public async Task Verwijder_thema_cascades_its_whole_subtree()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
         var subthema = await NieuweService().MaakSubthemaAsync(thema.Id, new SubthemaCreatie("Regen", 2, "K3"));
         var activiteit = await NieuweService().MaakActiviteitAsync(subthema.Id, null, new ActiviteitCreatie("Plassen meten", ActiviteitType.Waarneming));
         await NieuweService().KoppelActiviteitAanDoelAsync(activiteit.Id, "WIS-001");
@@ -105,7 +109,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         await NieuweService().VerwijderThemaAsync(thema.Id);
 
         Assert.Empty(await NieuwContext().Themas.ToListAsync());
-        Assert.Empty(await NieuwContext().Themadoelen.ToListAsync());
+        Assert.Empty(await NieuwContext().ThemaMinimumdoelen.ToListAsync());
         Assert.Empty(await NieuwContext().Subthemas.ToListAsync());
         Assert.Empty(await NieuwContext().Activiteiten.ToListAsync());
     }
@@ -187,71 +191,128 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => NieuweService().HaalThemaOpAsync(Guid.NewGuid()));
     }
 
-    // --- Themadoel 2–3 rule (Art. IX.2). ---
+    // --- Themadoelen are minimumdoelen (FB-043). ---
 
     [Fact]
-    public async Task Themadoel_link_persists_with_manueel_status()
+    public async Task Koppel_minimumdoel_persists_the_link_by_ref()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
 
-        var themadoel = await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        var koppeling = await NieuweService().KoppelMinimumdoelAsync(thema.Id, " MD-1 ");
 
-        Assert.Equal("NL-001", themadoel.Koppeling.LeerplandoelCode);
-        Assert.Equal(KoppelingStatus.Manueel, themadoel.Koppeling.Status);
-        Assert.Null(themadoel.Koppeling.AiMotivatie);
+        Assert.Equal("MD-1", koppeling.MinimumdoelRef);
+        var na = await NieuweService().HaalThemaOpAsync(thema.Id);
+        Assert.Equal(koppeling, Assert.Single(na.Minimumdoelen));
+        Assert.Empty(na.Themadoelen);
     }
 
     [Fact]
-    public async Task Thema_with_two_themadoelen_reports_voldoende_a_single_one_does_not()
+    public async Task Thema_with_two_minimumdoelen_reports_voldoende_a_single_one_does_not()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
 
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
         Assert.False((await NieuweService().HaalThemaOpAsync(thema.Id)).HeeftVoldoendeThemadoelen);
 
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-002");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-2");
         Assert.True((await NieuweService().HaalThemaOpAsync(thema.Id)).HeeftVoldoendeThemadoelen);
     }
 
     [Fact]
-    public async Task Adding_a_fourth_themadoel_is_rejected()
+    public async Task A_thema_takes_any_number_of_minimumdoelen()
     {
+        // The owner's ruling of 2026-09-16: the 2–3 maximum is gone. Five is past the old bound of three.
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-002");
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "WIS-001");
-
-        // A 4th distinct code would breach the 2–3 upper bound (Art. IX.2).
         await using (var ctx = NieuwContext())
         {
-            ctx.Leerplandoelen.Add(Leerdoel("NL-003"));
+            ctx.Minimumdoelen.AddRange(Minimumdoelen("MD-3", "MD-4", "MD-5"));
             await ctx.SaveChangesAsync();
         }
 
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-003"));
-    }
-
-    [Fact]
-    public async Task Themadoel_link_to_unknown_code_is_rejected()
-    {
-        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
-            () => NieuweService().VoegThemadoelToeAsync(thema.Id, "BESTAAT-NIET"));
-    }
-
-    [Fact]
-    public async Task Verwijder_themadoel_removes_only_that_link()
-    {
-        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
-        var td1 = await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-001");
-        await NieuweService().VoegThemadoelToeAsync(thema.Id, "NL-002");
-
-        await NieuweService().VerwijderThemadoelAsync(thema.Id, td1.Id);
+        foreach (var minimumdoelRef in new[] { "MD-1", "MD-2", "MD-3", "MD-4", "MD-5" })
+        {
+            await NieuweService().KoppelMinimumdoelAsync(thema.Id, minimumdoelRef);
+        }
 
         var na = await NieuweService().HaalThemaOpAsync(thema.Id);
-        Assert.Single(na.Themadoelen);
-        Assert.Equal("NL-002", na.Themadoelen[0].Koppeling.LeerplandoelCode);
+        Assert.Equal(["MD-1", "MD-2", "MD-3", "MD-4", "MD-5"], na.Minimumdoelen.Select(m => m.MinimumdoelRef).Order());
+    }
+
+    [Fact]
+    public async Task Koppel_the_same_minimumdoel_twice_is_rejected()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1"));
+        Assert.Contains("MD-1", fout.Message);
+        Assert.Single((await NieuweService().HaalThemaOpAsync(thema.Id)).Minimumdoelen);
+    }
+
+    [Theory]
+    [InlineData("BESTAAT-NIET")]
+    [InlineData("NL-001")]
+    [InlineData("  ")]
+    public async Task Koppel_minimumdoel_refuses_what_is_no_loaded_minimumdoel(string minimumdoelRef)
+    {
+        // A leerplandoel code is not a minimumdoel ref: a themadoel added by a person is a minimumdoel now.
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().KoppelMinimumdoelAsync(thema.Id, minimumdoelRef));
+        Assert.Empty((await NieuweService().HaalThemaOpAsync(thema.Id)).Minimumdoelen);
+    }
+
+    [Fact]
+    public async Task Koppel_minimumdoel_on_a_missing_thema_is_not_found()
+    {
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => NieuweService().KoppelMinimumdoelAsync(Guid.NewGuid(), "MD-1"));
+    }
+
+    [Fact]
+    public async Task Ontkoppel_minimumdoel_removes_only_that_link()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        var eerste = await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-1");
+        await NieuweService().KoppelMinimumdoelAsync(thema.Id, "MD-2");
+
+        await NieuweService().OntkoppelMinimumdoelAsync(thema.Id, eerste.Id);
+
+        var na = await NieuweService().HaalThemaOpAsync(thema.Id);
+        Assert.Equal("MD-2", Assert.Single(na.Minimumdoelen).MinimumdoelRef);
+        // The minimumdoel itself is read-only reference data and stays.
+        Assert.Equal(2, await NieuwContext().Minimumdoelen.CountAsync(m => m.Ref == "MD-1" || m.Ref == "MD-2"));
+    }
+
+    [Fact]
+    public async Task Ontkoppel_an_unknown_link_is_not_found()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => NieuweService().OntkoppelMinimumdoelAsync(thema.Id, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public async Task Verwijder_themadoel_still_removes_a_leerplandoel_themadoel_the_import_wrote()
+    {
+        // No screen adds one any more (FB-043), but the FR-1 import still may, so its delete stays.
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Water", DuurWeken: 4));
+        Guid themadoelId;
+        await using (var ctx = NieuwContext())
+        {
+            var geladen = await ctx.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == thema.Id);
+            var themadoel = geladen.VoegThemadoelToe(new DoelKoppeling("NL-001", KoppelingStatus.Aanvaard));
+            ctx.Themadoelen.Add(themadoel);
+            await ctx.SaveChangesAsync();
+            themadoelId = themadoel.Id;
+        }
+
+        await NieuweService().VerwijderThemadoelAsync(thema.Id, themadoelId);
+
+        Assert.Empty((await NieuweService().HaalThemaOpAsync(thema.Id)).Themadoelen);
     }
 
     // --- Subthema CRUD + level scoping (Art. IX.2). ---

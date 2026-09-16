@@ -28,7 +28,7 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
         builder.PrimitiveCollection(t => t.RijkeWoordenschat)
             .HasField("_rijkeWoordenschat");
 
-        // School-scoped themadoelen (2–3) — owned relationship, accessed via backing field.
+        // School-scoped themadoelen that link a leerplandoel — related collection, accessed via backing field.
         builder.HasMany(t => t.Themadoelen)
             .WithOne()
             .HasForeignKey(td => td.ThemaId)
@@ -36,6 +36,17 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
         builder.Navigation(t => t.Themadoelen)
             .HasField("_themadoelen")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // The minimumdoelen the thema aims at (FB-043). Auto-included: every read of a thema shows them, and they are a
+        // handful of refs.
+        builder.HasMany(t => t.Minimumdoelen)
+            .WithOne()
+            .HasForeignKey(m => m.ThemaId)
+            .OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(t => t.Minimumdoelen)
+            .HasField("_minimumdoelen")
+            .UsePropertyAccessMode(PropertyAccessMode.Field)
+            .AutoInclude();
 
         // Class/age-scoped subthema's belong to the school-wide thema.
         builder.HasMany(t => t.Subthemas)

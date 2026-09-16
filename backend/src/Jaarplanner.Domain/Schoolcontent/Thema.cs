@@ -8,7 +8,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// <see cref="RijkeWoordenschat"/> (rijke themawoorden) — both of which are deliberately the same
 /// across the school.
 /// <para>
-/// A thema anchors 2–3 school-wide <see cref="Themadoelen"/> and gathers the per-class/age
+/// A thema aims at school-wide <see cref="Minimumdoelen"/>, its themadoelen (FB-043), and gathers the per-age
 /// <see cref="Subthemas"/>. This entity is <b>mutable</b>: thema's are autonomous school content
 /// (Art. III, professionele autonomie) — unlike the read-only Op.stap curriculum data.
 /// </para>
@@ -16,6 +16,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 public sealed class Thema
 {
     private readonly List<Themadoel> _themadoelen = [];
+    private readonly List<ThemaMinimumdoel> _minimumdoelen = [];
     private readonly List<Subthema> _subthemas = [];
     private readonly List<DoelKoppeling> _doelsuggesties = [];
     private readonly List<string> _kernwoordenschat = [];
@@ -56,8 +57,17 @@ public sealed class Thema
     /// <summary>Rijke (thema)woordenschat — school-wide; two-tier with <see cref="Kernwoordenschat"/>.</summary>
     public IReadOnlyList<string> RijkeWoordenschat => _rijkeWoordenschat;
 
-    /// <summary>The 2–3 overarching, school-wide themadoelen (Art. IX.2).</summary>
+    /// <summary>
+    /// The themadoelen that link a leerplandoel (Art. IX.2). No screen adds one any more: a themadoel is a
+    /// <see cref="Minimumdoelen">minimumdoel</see> now (FB-043). The FR-1 import still writes them, until its own ticket.
+    /// </summary>
     public IReadOnlyList<Themadoel> Themadoelen => _themadoelen;
+
+    /// <summary>
+    /// The minimumdoelen this thema aims at, which are its themadoelen as a teacher sees them (FB-043, Art. IX.2). No
+    /// upper bound. Each brings along the leerplandoelen that concord to it, at every leeftijd.
+    /// </summary>
+    public IReadOnlyList<ThemaMinimumdoel> Minimumdoelen => _minimumdoelen;
 
     /// <summary>The per-class/age subthema's that belong to this thema (Art. IX.2).</summary>
     public IReadOnlyList<Subthema> Subthemas => _subthemas;
@@ -107,13 +117,44 @@ public sealed class Thema
     }
 
     /// <summary>
-    /// Whether the thema already carries the pedagogically required minimum of 2 themadoelen
-    /// (Art. IX.2: "2–3 overarching goals"). The upper bound (3) is a hard invariant enforced in
-    /// <see cref="VoegThemadoelToe"/>; the lower bound is <b>advisory</b> — a thema under construction
-    /// may temporarily have fewer — so callers surface "nog niet compleet" rather than block, and only
-    /// validate completeness at the appropriate point (E1-10).
+    /// Whether the thema already aims at the pedagogically expected minimum of <see cref="MinThemadoelen"/>
+    /// minimumdoelen (Art. IX.2). <b>Advisory</b>: a thema under construction may have fewer, so callers surface
+    /// "nog niet compleet" rather than block (E1-10). It counts the <see cref="Minimumdoelen"/>, the themadoelen a
+    /// teacher sees (FB-043).
     /// </summary>
-    public bool HeeftVoldoendeThemadoelen => _themadoelen.Count >= MinThemadoelen;
+    public bool HeeftVoldoendeThemadoelen => _minimumdoelen.Count >= MinThemadoelen;
+
+    /// <summary>
+    /// Links a minimumdoel to this thema as a themadoel (FB-043). There is no upper bound. Linking the same minimumdoel
+    /// twice is refused, since the second link would say nothing the first does not.
+    /// <para>
+    /// That the ref names a minimumdoel the school has loaded is the application layer's check (Art. III.5): the
+    /// domain cannot see the curriculum table.
+    /// </para>
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The minimumdoel is already linked to this thema.</exception>
+    public ThemaMinimumdoel KoppelMinimumdoel(string minimumdoelRef)
+    {
+        var koppeling = new ThemaMinimumdoel(Id, minimumdoelRef);
+        if (_minimumdoelen.Any(m => string.Equals(m.MinimumdoelRef, koppeling.MinimumdoelRef, StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException(
+                $"Minimumdoel {koppeling.MinimumdoelRef} is al een themadoel van dit thema.");
+        }
+
+        _minimumdoelen.Add(koppeling);
+        return koppeling;
+    }
+
+    /// <summary>
+    /// Unlinks a minimumdoel from this thema. The leerplandoelen it brought along go with it: they were only ever read
+    /// through the link.
+    /// </summary>
+    public void OntkoppelMinimumdoel(ThemaMinimumdoel koppeling)
+    {
+        ArgumentNullException.ThrowIfNull(koppeling);
+        _minimumdoelen.Remove(koppeling);
+    }
 
     /// <summary>
     /// Removes a themadoel from this thema. Used by the import overwrite reconciliation (E1-08) to drop
@@ -135,8 +176,8 @@ public sealed class Thema
         Replace(_rijkeWoordenschat, woorden);
 
     /// <summary>
-    /// Adds an overarching themadoel. A thema is anchored by 2–3 themadoelen (Art. IX.2); this
-    /// guards the upper bound so a thema cannot accumulate more than three.
+    /// Adds a themadoel that links a leerplandoel. Only the FR-1 import and the demo seed still call this (FB-043), and
+    /// the import keeps this bound of <see cref="MaxThemadoelen"/> until its own ticket.
     /// </summary>
     public Themadoel VoegThemadoelToe(DoelKoppeling koppeling)
     {
@@ -144,7 +185,7 @@ public sealed class Thema
         if (_themadoelen.Count >= MaxThemadoelen)
         {
             throw new InvalidOperationException(
-                $"Een thema heeft ten hoogste {MaxThemadoelen} themadoelen (Art. IX.2).");
+                $"Een thema heeft ten hoogste {MaxThemadoelen} themadoelen die een leerplandoel zijn.");
         }
 
         var themadoel = new Themadoel(Id, koppeling);
@@ -209,10 +250,10 @@ public sealed class Thema
         return subthema;
     }
 
-    /// <summary>The maximum number of overarching themadoelen per thema (Art. IX.2: 2–3).</summary>
+    /// <summary>The bound the FR-1 import keeps on leerplandoel themadoelen, until its own ticket (FB-043). A screen has none.</summary>
     public const int MaxThemadoelen = 3;
 
-    /// <summary>The pedagogically required minimum number of themadoelen per thema (Art. IX.2: 2–3).</summary>
+    /// <summary>The pedagogically expected minimum number of themadoelen per thema (Art. IX.2), advisory.</summary>
     public const int MinThemadoelen = 2;
 
     private static void Replace(List<string> target, IEnumerable<string> source)
