@@ -42,6 +42,7 @@ Defaults of the building session, which the owner may change on their own:
   offered for a minimumdoel: the person links another one by hand, which is the same act.
 - **D3.** A run asks the model for at most eight proposals with a one-sentence motivation each, and keeps at most
   eight.
+- **D5.** A minimumdoel that Op.stap no longer carries (`NietMeerInOpstap`) is no candidate.
 - **D4.** The wizard's step 2 stays transient, as it was: it returns proposals and stores nothing, and the wizard's
   `gekozenThemadoelCodes` now hold minimumdoel refs. Step 6 writes them with their text into the subdoel prompt.
 

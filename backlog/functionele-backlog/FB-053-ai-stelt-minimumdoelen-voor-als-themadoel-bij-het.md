@@ -2,10 +2,10 @@
 id: FB-053
 titel: AI stelt minimumdoelen voor als themadoel, bij het thema en in de wizard
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:28
+bijgewerkt: 2026-09-16 23:41
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -33,14 +33,14 @@ De eigenaar besliste op 2026-09-16 dat een apart ticket beslist wat hiermee gebe
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema zonder themadoelen, wanneer themabeheer AI-voorstellen vraagt, dan krijgt ze minimumdoelen met
+- [x] Gegeven een thema zonder themadoelen, wanneer themabeheer AI-voorstellen vraagt, dan krijgt ze minimumdoelen met
   een motivatie, als voorstel en nog niet gekoppeld.
-- [ ] Gegeven een voorstel, wanneer ze het aanvaardt, dan staat het minimumdoel als themadoel op het thema; weigert ze
+- [x] Gegeven een voorstel, wanneer ze het aanvaardt, dan staat het minimumdoel als themadoel op het thema; weigert ze
   het, dan komt het bij een volgende vraag niet terug.
-- [ ] Gegeven de wizard, wanneer men bij de stap themadoelen voorstellen vraagt, dan zijn het minimumdoelen.
-- [ ] Gegeven een thema met minimumdoelen, wanneer de AI subdoelen of een jaarplan voorstelt, dan krijgt ze die
+- [x] Gegeven de wizard, wanneer men bij de stap themadoelen voorstellen vraagt, dan zijn het minimumdoelen.
+- [x] Gegeven een thema met minimumdoelen, wanneer de AI subdoelen of een jaarplan voorstelt, dan krijgt ze die
   minimumdoelen mee.
-- [ ] Gegeven een leerkracht of hoofdleerkracht, dan kan ze geen voorstellen vragen of beoordelen; de server weigert
+- [x] Gegeven een leerkracht of hoofdleerkracht, dan kan ze geen voorstellen vragen of beoordelen; de server weigert
   het ook.
 
 ## Testscenario's
@@ -83,3 +83,8 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 22:34 · claude-fb053 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
 - 2026-09-16 22:40 · claude-fb053 · Constitutie Art. V.1 en IX.2 aangepast en ADR-0049 vastgelegd: doelsuggesties bij een thema zijn minimumdoelen en tellen niet meer mee voor leerplandoelen.
 - 2026-09-16 23:28 · claude-fb053 · Backend klaar: AI stelt minimumdoelen voor (thema en wizard), aanvaarden maakt een themadoel, migratie wist de oude doelsuggesties; dotnet test groen (1915 unit, 559 integratie tegen Postgres).
+- 2026-09-16 23:41 · claude-fb053 · Frontend: voorstelkaart toont MD-code, mijlpaal en tekst van het minimumdoel; pnpm test 1008 groen, pnpm lint schoon.
+- 2026-09-16 23:41 · claude-fb053 · Criteria afgevinkt op bewijs: 1-2 DoelsuggestieEndpointsTests en browserpas; 3 ThemaOpbouwAssistServiceTests (stap 2); 4 ThemaOpbouwAssistServiceTests (stap 6) en JaarplanGeneratieServiceTests; 5 RechtenAfdwingingTests en de browserpas (leerkracht krijgt 403, geen knop).
+- 2026-09-16 23:41 · claude-fb053 · Browserpas via CDP (eigen Chrome-profiel) op een kopie jp_fb053, desktop en 390px: 3 voorstellen uit 208 K-minimumdoelen, aanvaarden maakt een themadoel, geweigerd komt niet terug; geen echte AI-aanroep, de Claude-client wees naar een lokale stub. Migratie wiste de 16 oude doelsuggesties in de kopie; kopie daarna verwijderd.
+- 2026-09-16 23:41 · claude-fb053 · Open punt voor de eigenaar: het vooruitzicht bij het genereren telt leerplandoelen, die een themaplaatsing niet meer beweegt, dus beide cijfers zijn nu altijd gelijk (ADR-0049).
+- 2026-09-16 23:41 · claude-fb053 · in-uitvoering → te-testen: Gebouwd: AI stelt bij het thema en in de wizard alleen minimumdoelen voor, aanvaarden maakt een themadoel, weigeren houdt het weg; oude leerplandoel-doelsuggesties gewist en telt niet meer voor dekking (constitutie V.1/IX.2, ADR-0049). Gates groen: dotnet test, dotnet format, pnpm test, pnpm lint.
