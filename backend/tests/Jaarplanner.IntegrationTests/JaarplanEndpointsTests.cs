@@ -1067,10 +1067,23 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             public LegeDekkingOpslag(Func<int?> leerjaar) => _leerjaar = leerjaar;
 
             public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-                Guid klasId,
                 IReadOnlyCollection<Guid> themaIds,
                 CancellationToken cancellationToken = default) =>
                 Task.FromResult<IReadOnlyList<DekkendeKoppeling>>([]);
+
+            public Task<IReadOnlyList<Subthemakoppeling>> HaalSubthemakoppelingenAsync(
+                Guid klasId,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<Subthemakoppeling>>([]);
+
+            public Task<IReadOnlyList<Themaminimumdoelkoppeling>> HaalThemaMinimumdoelenAsync(
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<Themaminimumdoelkoppeling>>([]);
+
+            public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+                IReadOnlyCollection<string>? mijlpalen = null,
+                CancellationToken cancellationToken = default) =>
+                Task.FromResult<IReadOnlyList<Minimumdoel>>([]);
 
             public Task<IReadOnlyList<KandidaatKoppeling>> HaalKandidaatKoppelingenAsync(
                 Guid klasId,

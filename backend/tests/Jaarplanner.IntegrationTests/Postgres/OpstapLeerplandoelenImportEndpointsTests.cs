@@ -624,7 +624,7 @@ public sealed class OpstapLeerplandoelenImportEndpointsTests : IAsyncLifetime
         context.Schooljaren.Add(schooljaar);
 
         var thema = new Thema("Getallen tot 1000", duurWeken: 5);
-        thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Aanvaard, "anchor"));
+        thema.VoegDoelsuggestieToe(new DoelKoppeling(code, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klas.Id);

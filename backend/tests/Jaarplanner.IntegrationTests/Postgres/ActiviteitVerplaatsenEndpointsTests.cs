@@ -217,9 +217,9 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
     public async Task Verhuizen_naar_een_thema_dat_niet_in_het_jaarplan_staat_verlaagt_de_dekking()
     {
         // The consequence the owner's ruling brings with it, and the reason the copy has to say something: dekking
-        // counts an activiteitkoppeling only while the thema it hangs under is placed in this class's jaarplan
-        // (Art. V.1, EfDekkingOpslag layer 4). So a move that never leaves the klas can still take a doel out of
-        // the figure. Measured rather than argued.
+        // counts an activiteitkoppeling only while the subthema it hangs under is placed in this class's agenda
+        // (Art. V.1, ADR-0047). So a move that never leaves the klas can still take a doel out of the figure.
+        // Measured rather than argued.
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
 
@@ -232,10 +232,11 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
             $"/api/klassen/{opzet.KlasId}/jaarplan/plaatsingen",
             new { themaId = geplaatst.ThemaId, blokStart = opzet.EersteBlok.ToString("yyyy-MM-dd") });
         Assert.Equal(HttpStatusCode.OK, plaatsen.StatusCode);
+        await PlaatsSubthemaAsync(opzet.KlasId, geplaatst.SubthemaId);
 
         var voor = await client.GetFromJsonAsync<DekkingDto>($"/api/klassen/{opzet.KlasId}/dekking");
         Assert.Equal(1, voor!.AantalGedekt);
-        Assert.Equal(["Water"], voor.Doelen.Single(d => d.Code == "VER-01").DekkendeThemas);
+        Assert.Equal(["De plas (Water)"], voor.Doelen.Single(d => d.Code == "VER-01").DekkendeThemas);
 
         var verhuis = await client.PutAsJsonAsync(
             $"/api/activiteiten/{activiteitId}/subthema",
@@ -245,6 +246,16 @@ public sealed class ActiviteitVerplaatsenEndpointsTests : IAsyncLifetime
         var na = await client.GetFromJsonAsync<DekkingDto>($"/api/klassen/{opzet.KlasId}/dekking");
         Assert.Equal(0, na!.AantalGedekt);
         Assert.False(na.Doelen.Single(d => d.Code == "VER-01").IsGedekt);
+    }
+
+    /// <summary>Puts a subthema in the klas's agenda, as the weekplanning does.</summary>
+    private async Task PlaatsSubthemaAsync(Guid klasId, Guid subthemaId)
+    {
+        await using var context = _db.MaakContext();
+        var jaarplanId = await context.Jaarplannen.Where(j => j.KlasId == klasId).Select(j => j.Id).SingleAsync();
+        context.Subthemaplaatsingen.Add(new Jaarplanner.Domain.Planning.Subthemaplaatsing(
+            jaarplanId, subthemaId, new DateOnly(2026, 9, 14), new DateOnly(2026, 9, 25)));
+        await context.SaveChangesAsync();
     }
 
     [PostgresFact]

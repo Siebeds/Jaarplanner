@@ -98,7 +98,9 @@ public class ClosedXmlDekkingExportTests
             themas ?? Array.Empty<string>(),
             fiches ?? Array.Empty<string>(),
             gedekt ? null : oorzaak,
-            kandidaten ?? Array.Empty<string>());
+            kandidaten ?? Array.Empty<string>(),
+            gedekt ? Dekkingsstap.Gedekt : Dekkingsstap.Geen,
+            Array.Empty<string>());
 
     private static DekkingWeergave Weergave(
         IReadOnlyList<LeerplandoelDekking>? doelen = null,
@@ -130,7 +132,12 @@ public class ClosedXmlDekkingExportTests
             // test that does not care about the figure cannot accidentally assert against a contradictory one.
             aantalGedekt ?? (isBetrouwbaar ? lijst.Count(d => d.IsGedekt) : null),
             lijst.Count,
-            lijst);
+            lijst,
+            AantalInPrognose: isBetrouwbaar ? 0 : null,
+            AantalMinimumdoelenGedekt: isBetrouwbaar ? 0 : null,
+            AantalMinimumdoelenInPrognose: isBetrouwbaar ? 0 : null,
+            AantalMinimumdoelen: 0,
+            Minimumdoelen: []);
     }
 
     /// <summary>Every non-empty cell in the sheet, as strings, so a test can assert over the whole document.</summary>

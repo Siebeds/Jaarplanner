@@ -219,9 +219,9 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A thema with a themadoel linked as <c>Manueel</c> — a link the teacher stands behind, so only the
-    /// <i>placement</i>'s status is left to vary between tests. Written straight to the database, the way the FR-1
-    /// import still writes one: no route adds a leerplandoel as a themadoel any more (FB-043).
+    /// A thema with an accepted doelsuggestie as <c>Manueel</c> — a link the teacher stands behind, so only the
+    /// <i>placement</i>'s status is left to vary between tests. A doelsuggestie is the link that follows the thema's
+    /// placement (Art. V.1, ADR-0047).
     /// </summary>
     private async Task<Guid> MaakThemaMetDoelAsync(HttpClient client, Opzet opzet)
     {
@@ -233,8 +233,10 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            var geladen = await context.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == thema!.Id);
-            context.Themadoelen.Add(geladen.VoegThemadoelToe(new DoelKoppeling("VOR-01", KoppelingStatus.Manueel)));
+            // An accepted doelsuggestie: the thema-level link whose route to dekking is the thema's placement (ADR-0047).
+            var geladen = await context.Themas.SingleAsync(t => t.Id == thema!.Id);
+            geladen.VoegDoelsuggestieToe(new DoelKoppeling("VOR-01", KoppelingStatus.Voorgesteld, "past"))
+                .WijzigStatus(KoppelingStatus.Manueel);
             await context.SaveChangesAsync();
         }
 

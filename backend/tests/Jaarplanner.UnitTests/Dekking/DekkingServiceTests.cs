@@ -340,12 +340,10 @@ public sealed class DekkingServiceTests
     }
 
     [Fact]
-    public async Task De_minimumdoelref_reist_mee_maar_er_wordt_niets_op_minimumdoelniveau_beweerd()
+    public async Task De_minimumdoelref_reist_mee_zonder_het_minimumdoel_te_dekken()
     {
-        // E5-04 rolls coverage up to minimumdoel level, which is the level the onderwijsinspectie tests
-        // (Art. V.2). It is blocked on E1-12 — no Minimumdoel row can exist yet — so this story carries the
-        // concordance key and claims nothing about it. The test exists so a reader does not mistake the presence of
-        // the field for the presence of the roll-up.
+        // The concordance key is shown beside the goal; a minimumdoel's own dekking runs through a thema (Art. V.1,
+        // ADR-0047 D2), which DekkingsprognoseTests pins.
         var service = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
             koppelingen: [new DekkendeKoppeling("MD-01", "Herfst")],
@@ -992,14 +990,16 @@ public sealed class DekkingServiceTests
     /// <summary>
     /// One candidate link for the gap-analyse. <c>isBeslist</c> defaults to <c>true</c> because a decided link is the
     /// ordinary case: an undecided one is the specific state FR-4 matching leaves behind, and a test about it should
-    /// have to say so.
+    /// have to say so. <c>isDoelsuggestie</c> defaults to <c>true</c>: the thema-level link, whose route to dekking is
+    /// the thema's placement, which is what the placement-status cases below are about (ADR-0047).
     /// </summary>
     private static KandidaatKoppeling Kandidaat(
         string code,
         Guid themaId,
         string themaNaam,
-        bool isBeslist = true) =>
-        new(code, themaId, themaNaam, isBeslist);
+        bool isBeslist = true,
+        bool isDoelsuggestie = true) =>
+        new(code, themaId, themaNaam, isBeslist, isDoelsuggestie);
 
     private static LeerplandoelDekking Doelvan(DekkingWeergave dekking, string code) =>
         dekking.Doelen.Single(d => d.Code == code);

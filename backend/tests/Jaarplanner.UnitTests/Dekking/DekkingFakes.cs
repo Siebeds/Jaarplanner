@@ -68,12 +68,10 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     public IReadOnlyDictionary<Guid, IReadOnlyList<DekkendeKoppeling>>? KoppelingenPerThema { get; set; }
 
     public Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-        Guid klasId,
         IReadOnlyCollection<Guid> themaIds,
         CancellationToken cancellationToken = default)
     {
         AantalKoppelingAanroepen++;
-        GevraagdeKlasId = klasId;
         GevraagdeThemaIds = themaIds;
 
         if (KoppelingenPerThema is not null)
@@ -101,6 +99,38 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     /// The candidate links the gap-analyse classifies from (E5-05). Empty by default, which is the state every
     /// pre-E5-05 test was written in and which classifies every gap as <c>GeenThema</c>.
     /// </summary>
+    /// <summary>The decided subdoel and activiteit links at the klas's leeftijd, with their placement (ADR-0047).</summary>
+    public IReadOnlyList<Subthemakoppeling> Subthemakoppelingen { get; set; } = [];
+
+    public Task<IReadOnlyList<Subthemakoppeling>> HaalSubthemakoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        GevraagdeKlasId = klasId;
+        return Task.FromResult(Subthemakoppelingen);
+    }
+
+    /// <summary>The minimumdoelen in store; filtered by mijlpaal like the real read.</summary>
+    public IReadOnlyList<Minimumdoel> Minimumdoelen { get; set; } = [];
+
+    public IReadOnlyCollection<string>? GevraagdeMijlpalen { get; private set; }
+
+    public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+        IReadOnlyCollection<string>? mijlpalen = null,
+        CancellationToken cancellationToken = default)
+    {
+        GevraagdeMijlpalen = mijlpalen;
+        return Task.FromResult<IReadOnlyList<Minimumdoel>>(mijlpalen is null
+            ? Minimumdoelen
+            : Minimumdoelen.Where(m => mijlpalen.Contains(m.Leeftijd, StringComparer.Ordinal)).ToList());
+    }
+
+    public IReadOnlyList<Themaminimumdoelkoppeling> ThemaMinimumdoelen { get; set; } = [];
+
+    public Task<IReadOnlyList<Themaminimumdoelkoppeling>> HaalThemaMinimumdoelenAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(ThemaMinimumdoelen);
+
     public IReadOnlyList<KandidaatKoppeling> Kandidaten { get; set; } = [];
 
     /// <summary>The klas the service scoped the candidate read to, or null when it never asked.</summary>

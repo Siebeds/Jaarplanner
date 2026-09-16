@@ -284,9 +284,9 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         // Accepted links, because only aanvaard/manueel links count (Art. V.1) — a `voorgesteld` link would make this
         // test pass for the wrong reason, by making the ceiling 0 as well as the figure.
         var herfst = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
-        herfst.VoegThemadoelToe(new DoelKoppeling(herfstCode, KoppelingStatus.Aanvaard, "anchor"));
+        herfst.VoegDoelsuggestieToe(new DoelKoppeling(herfstCode, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         var winter = new Thema($"Winter-{Guid.NewGuid():N}", duurWeken: 5);
-        winter.VoegThemadoelToe(new DoelKoppeling(winterCode, KoppelingStatus.Aanvaard, "anchor"));
+        winter.VoegDoelsuggestieToe(new DoelKoppeling(winterCode, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         context.Themas.AddRange(herfst, winter);
 
         await context.SaveChangesAsync();

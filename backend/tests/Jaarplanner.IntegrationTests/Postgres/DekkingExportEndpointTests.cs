@@ -270,7 +270,7 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
             : indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0].Start;
 
         var thema = new Thema("Herfstthema", duurWeken: 5);
-        thema.VoegThemadoelToe(new DoelKoppeling("EXP-01", KoppelingStatus.Aanvaard, "anchor"));
+        thema.VoegDoelsuggestieToe(new DoelKoppeling("EXP-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klasId);
