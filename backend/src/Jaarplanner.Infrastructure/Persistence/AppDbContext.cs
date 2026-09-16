@@ -195,6 +195,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The AI's proposed places for a thema's open leerplandoelen (FB-057, ADR-0050). Never read by the dekking.</summary>
     public DbSet<Subdoelvoorstel> Subdoelvoorstellen => Set<Subdoelvoorstel>();
 
+    /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0052).</summary>
+    public DbSet<Activiteitvoorstel> Activiteitvoorstellen => Set<Activiteitvoorstel>();
+
     /// <summary>
     /// The children of the K3 klassen, for the ontwikkelingsrapport (FB-001, Art. IX.4). <b>Pupil data</b> (Art. VI.7):
     /// a voornaam, an achternaam and the klas, nothing else, and never in a log.

@@ -214,6 +214,16 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
         services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
+        // The AI's activiteit proposals under a subthema (FB-025, ADR-0052), with the per-request limit of D3. A limit
+        // outside 1 to 10 stops the app at startup, where a deploy sees it.
+        services.AddOptions<Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties>()
+            .Bind(configuration.GetSection(Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties.SectionName))
+            .Validate(
+                o => o.MaxPerVraag is >= 1 and <= Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties.Bovengrens,
+                "Activiteitvoorstellen:MaxPerVraag must be between 1 and 10.")
+            .ValidateOnStart();
+        services.AddScoped<Jaarplanner.Application.Activiteitvoorstellen.IActiviteitvoorstelService, Jaarplanner.Infrastructure.Activiteitvoorstellen.ActiviteitvoorstelService>();
+
         // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
         // IAiClient interface (Application) so it is fakeable with no network in tests; the real
         // implementation is picked by `Ai:Provider` (TB-041, ADR-0048): the Azure AI Foundry client by default, or the

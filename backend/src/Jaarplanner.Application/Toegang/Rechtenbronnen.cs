@@ -32,6 +32,12 @@ public interface IRechtenbronnen
     /// <summary>The leeftijd of a proposed new subthema (FB-057, ADR-0050): for deciding it.</summary>
     Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The leeftijd of the subthema an activiteitvoorstel is under (FB-025, ADR-0052): for deciding it. Whether it is the
+    /// caller's own is the service's question (D2).
+    /// </summary>
+    Task<Leeftijdsinhoud?> VoorActiviteitvoorstelAsync(Guid activiteitvoorstelId, CancellationToken cancellationToken = default);
+
     /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
     Task<Themabron?> VoorThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
