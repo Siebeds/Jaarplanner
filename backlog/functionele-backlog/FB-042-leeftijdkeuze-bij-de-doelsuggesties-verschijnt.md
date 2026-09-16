@@ -2,10 +2,10 @@
 id: FB-042
 titel: Leeftijdkeuze bij de doelsuggesties verschijnt pas na 'Vraag suggesties'
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door:
 branch:
 pr:
@@ -64,3 +64,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw

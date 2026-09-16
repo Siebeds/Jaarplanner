@@ -2,13 +2,13 @@
 id: FB-039
 titel: De rij met thema en subthema boven de agenda verdwijnt
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 22:51
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door:
 branch:
-pr: 105
+pr:
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -25,10 +25,14 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
 **Beslissingen van de eigenaar, 2026-09-15:**
 
 - de rij verdwijnt helemaal, boven de week, de dag en de maand;
-- de thema- en subthemastroken in de dagkoppen blijven klikbaar zoals nu, zonder vervanger; wie met het toetsenbord
-  werkt, bereikt een themapagina via het menu Thema's. De eigenaar koos dit met de wetenschap dat het afwijkt van
-  WCAG 2.2 AA (zie Open vragen);
+- de thema- en subthemastroken in de dagkoppen blijven klikbaar, zonder de rij als vervanger;
 - dit is een nieuw ticket; FB-038 blijft zoals het gebouwd is.
+
+**Beslissing van de eigenaar, 2026-09-16:** geen uitzondering op WCAG 2.2 AA in de grondwet. De stroken worden zelf
+toegankelijk: groot genoeg om aan te tikken en bereikbaar met het toetsenbord (zie Open vragen).
+
+**Stand op 2026-09-16:** de rij is al weg op main (PR #105, commit `2845b63`). Wat overblijft, zijn toegankelijke
+stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 
 ## Gewenst gedrag
 
@@ -36,6 +40,9 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
   telefoon.
 - De thema- en subthemastroken in de dagkoppen werken zoals nu: een klik opent de themapagina, een subthema met zijn
   hoofdstuk open.
+- Elke strook heeft een aanraakdoel van minstens 24 px hoog (WCAG 2.2 SC 2.5.8).
+- Elke strook is met de Tab-toets bereikbaar, toont een zichtbare focus en opent met Enter dezelfde pagina als een
+  klik (SC 2.1.1 en 2.4.7). Een schermlezer leest welk thema of subthema ze opent.
 - Verder verandert er niets aan de agenda.
 
 ## Acceptatiecriteria
@@ -44,7 +51,10 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
   met het thema en het subthema.
 - [ ] Gegeven een themastrook of subthemastrook in een dagkop, wanneer de leerkracht erop klikt, dan opent de
   themapagina zoals voorheen (FB-037).
-- [ ] Nagekeken in een echte browser op desktop en op ~390px.
+- [ ] Gegeven een strook in de week-, dag- of maandweergave, dan is haar aanraakdoel minstens 24 px hoog, ook op ~390px.
+- [ ] Gegeven de agenda, wanneer de leerkracht met Tab door de dagkoppen gaat, dan krijgt elke strook een zichtbare
+  focus, en Enter opent dezelfde pagina als een klik.
+- [ ] Nagekeken in een echte browser op desktop en op ~390px, ook met het toetsenbord.
 
 ## Testscenario's
 
@@ -52,16 +62,19 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
    thema en het subthema meer.
 2. Klik op de subthemastrook in de dagkop van maandag. De themapagina opent met dat subthema open.
 3. Ga terug en schakel naar de maand en naar de dag. Ook daar staat de rij niet meer.
-4. Herhaal stap 1 en 3 op ~390px.
+4. Ga terug naar de week en druk op Tab tot een strook de focus heeft. Ze is duidelijk omrand; Enter opent de
+   themapagina.
+5. Herhaal stap 1, 3 en 4 op ~390px, en tik daar een strook aan.
 
 ## Buiten scope
 
-- De stroken groter maken of met Tab bereikbaar maken: de eigenaar koos om ze te laten zoals ze zijn.
 - Het zijpaneel Hoekenfiches (FB-038).
 
 ## Open vragen
 
-- **Grondwet (blokkeert de bouw).** Art. VIII legt "UI/UX target: WCAG 2.2 AA" vast, uitgewerkt in ADR-0017. Zonder de
+- **Beantwoord door de eigenaar, 2026-09-16:** geen uitzondering in Art. VIII. De stroken worden minstens 24 px hoog en
+  met Tab bereikbaar; de bouwer legt dat vast in een ADR die ADR-0042 beslissing 3 vervangt. De oorspronkelijke vraag:
+- ~~**Grondwet (blokkeert de bouw).**~~ Art. VIII legt "UI/UX target: WCAG 2.2 AA" vast, uitgewerkt in ADR-0017. Zonder de
   rij voldoen de klikbare stroken daar niet meer aan: ze zijn kleiner dan 24 px en liggen te dicht op elkaar (SC 2.5.8),
   en ze zijn niet met het toetsenbord bedienbaar (SC 2.1.1). Een ticket gaat niet boven de grondwet. Vóór de bouw
   beslist de eigenaar, via Art. XI (een eigen commit met een regel in `docs/constitutie-log.md`), over een uitzondering
@@ -72,3 +85,4 @@ met Tab bereikbaar; ze voldoen aan WCAG 2.2 AA alleen omdat de rij hetzelfde doe
 
 - 2026-09-15 22:20 · wensen-hoeken · aangemaakt (status nieuw)
 - 2026-09-15 22:51 · claude-fb039 · PR #105
+- 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw

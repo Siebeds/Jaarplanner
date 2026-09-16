@@ -2,10 +2,10 @@
 id: FB-041
 titel: Doelenregister opent zonder een uitgeklapt leergebied of discipline
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door:
 branch:
 pr:
@@ -27,22 +27,22 @@ zoekt, en is het overzicht van alle groepen weg.
 - Wie naar Doelen gaat, ziet in het register van de leerplandoelen en in dat van de minimumdoelen alle groepen
   ingeklapt: disciplines, leergebieden en wat eronder hangt.
 - De leerkracht klapt zelf open wat ze wil zien.
-- Een zoekopdracht die de leerkracht zelf intikt, mag de eerste groep met resultaten wel openen, zodat een zoekactie
-  meteen op de resultaten landt.
+- Ook een zoekterm of een andere filter klapt niets vanzelf open: de groepen met resultaten blijven dicht tot de
+  leerkracht er zelf een openklapt.
 
 ## Acceptatiecriteria
 
 - [ ] Gegeven een leerkracht met een klas, wanneer ze naar Doelen gaat, dan is in het register van de leerplandoelen
   geen enkele discipline uitgeklapt.
 - [ ] Gegeven dezelfde leerkracht, wanneer ze naar de minimumdoelen gaat, dan is geen enkel leergebied uitgeklapt.
-- [ ] Gegeven het register, wanneer de leerkracht een zoekterm intikt, dan opent de eerste groep met resultaten.
+- [ ] Gegeven het register, wanneer de leerkracht een zoekterm intikt, dan blijven alle groepen ingeklapt.
 - [ ] Gegeven een groep die de leerkracht openklapte, dan blijft die open tot zij ze sluit of een filter wijzigt.
 
 ## Testscenario's
 
 1. Meld aan als leerkracht van een K3-klas en kies Doelen. Alle disciplines staan ingeklapt; Nederlands ook.
 2. Schakel naar de minimumdoelen. Alle leergebieden staan ingeklapt.
-3. Tik een zoekterm in, bv. "tellen". De eerste groep met resultaten klapt open.
+3. Tik een zoekterm in, bv. "tellen". Alle groepen blijven dicht.
 4. Wis de zoekterm en klap Wiskunde open. Wiskunde staat open, de rest blijft dicht.
 
 ## Buiten scope
@@ -51,9 +51,10 @@ Welke filter standaard actief is bij het binnenkomen: dat blijft zoals nu.
 
 ## Open vragen
 
-- Moet een zoekterm de eerste groep nog openen, of wil je ook dan alles dicht? **Standaard** opent een zoekterm de
-  eerste groep; alleen het binnenkomen met de klasfilter opent niets.
+- ~~Moet een zoekterm de eerste groep nog openen, of wil je ook dan alles dicht?~~ **Beantwoord door de eigenaar,
+  2026-09-16:** altijd alles dicht, ook na een zoekterm.
 
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw

@@ -2,10 +2,10 @@
 id: FB-046
 titel: Activiteit onder een subthema toont het aantal doelen, niet hun codes
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door:
 branch:
 pr:
@@ -52,9 +52,10 @@ activiteit wordt de lijst lang en onrustig.
 
 ## Open vragen
 
-- Vandaag kan een hoofdleerkracht rechtstreeks in de regel van een activiteit een doel koppelen. **Standaard** blijft
-  die knop staan, alleen de codes verdwijnen.
+- ~~Vandaag kan een hoofdleerkracht rechtstreeks in de regel van een activiteit een doel koppelen. Blijft die knop?~~
+  **Beantwoord door de eigenaar, 2026-09-16:** de knop blijft staan, alleen de codes verdwijnen.
 
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw

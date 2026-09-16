@@ -2,10 +2,10 @@
 id: FB-044
 titel: 'Doelen per leeftijd' op het thema toont alleen nog leerplandoelen
 soort: functioneel
-status: nieuw
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door:
 branch:
 pr:
@@ -54,9 +54,10 @@ minimumdoelen waarnaar ze leiden, en de teller telt minimumdoelen. Zodra de mini
 
 ## Open vragen
 
-- Hangt af van FB-043: zonder dat ticket staan de minimumdoelen van een thema nergens meer op de themapagina. Bouw dit
-  ticket dus samen met of na FB-043.
+- ~~Hangt af van FB-043: zonder dat ticket staan de minimumdoelen van een thema nergens meer op de themapagina.~~
+  **Beantwoord door de eigenaar, 2026-09-16:** FB-043 wordt eerst gebouwd, daarna dit ticket.
 
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
