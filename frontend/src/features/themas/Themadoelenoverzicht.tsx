@@ -55,7 +55,8 @@ export function Themadoelenoverzicht({
 
   if (data.leeftijden.length === 0) return null;
 
-  // A code belongs to one jaar/fase, so no leerplandoel sits under two leeftijden; the Set is only a guard.
+  // The margin counts distinct leerplandoelen for the whole thema. Rows group by the subthema's leeftijd, so a code
+  // linked from subthema's of two leeftijden shows under both, and this total can be lower than the sum of the rows.
   const leerplandoelen = new Set(data.leeftijden.flatMap((l) => l.leerplandoelen.map((d) => d.code))).size;
 
   return (
