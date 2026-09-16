@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:34
+bijgewerkt: 2026-09-16 22:56
 opgepakt-door: claude-tb043
 branch: ticket/TB-043-ai-goedkoper
 pr:
@@ -62,17 +62,17 @@ prompts.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven twee thema's met subthema's van dezelfde leeftijd, wanneer hun prompts gebouwd worden, dan is het vaste
+- [x] Gegeven twee thema's met subthema's van dezelfde leeftijd, wanneer hun prompts gebouwd worden, dan is het vaste
   deel (systeemprompt en doelenlijst) byte voor byte gelijk en staat alle schoolcontent erna (snapshottest).
-- [ ] Gegeven de Claude-client, wanneer hij een vraag stuurt, dan draagt het vaste deel `cache_control`, en
+- [x] Gegeven de Claude-client, wanneer hij een vraag stuurt, dan draagt het vaste deel `cache_control`, en
   `AiUsage` geeft de gecachete en de in de cache geschreven tokens apart terug (unittest met een nep-HTTP-antwoord).
 - [ ] Gegeven een echte Claude-sleutel, wanneer de eigenaar kort na elkaar suggesties vraagt voor twee thema's van
   dezelfde leeftijd, dan toont de tweede vraag gecachete inputtokens (handmatige controle, resultaat in de Werklog).
-- [ ] Gegeven een thema met gekoppelde en geweigerde doelen, wanneer de prompt gebouwd wordt, dan staan hun codes in het
+- [x] Gegeven een thema met gekoppelde en geweigerde doelen, wanneer de prompt gebouwd wordt, dan staan hun codes in het
   variabele deel als "niet voorstellen" en is de doelenlijst ongewijzigd.
-- [ ] Gegeven een antwoord dat op `max_tokens` stopt, wanneer het verwerkt wordt, dan wordt er niets bewaard en krijgt de
+- [x] Gegeven een antwoord dat op `max_tokens` stopt, wanneer het verwerkt wordt, dan wordt er niets bewaard en krijgt de
   gebruiker een duidelijke Nederlandse melding.
-- [ ] `dotnet test`, `dotnet format` en `pnpm lint` zijn groen.
+- [x] `dotnet test`, `dotnet format` en `pnpm lint` zijn groen.
 
 ## Buiten scope
 
@@ -90,3 +90,6 @@ prompts.
 
 - 2026-09-16 22:23 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-16 22:34 · claude-tb043 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
+- 2026-09-16 22:43 · claude-tb043 · AiRequest heeft een VasteContext; de doelenlijst staat nu vóór de schoolcontent, compacter, en beide clients cachen of begrenzen de output
+- 2026-09-16 22:56 · claude-tb043 · Criteria 1, 2, 4 en 5 afgevinkt op unittests (MatchingPromptBuilderTests, AnthropicClaudeClientTests, DoelMatchingServiceTests) en een integratietest (502 met Nederlandse melding, niets bewaard); criterium 3 wacht op de handmatige controle van de eigenaar met een echte sleutel
+- 2026-09-16 22:56 · claude-tb043 · Gates groen: dotnet test (1944 unit, 559 integratie tegen Postgres), dotnet format zonder wijzigingen, pnpm lint
