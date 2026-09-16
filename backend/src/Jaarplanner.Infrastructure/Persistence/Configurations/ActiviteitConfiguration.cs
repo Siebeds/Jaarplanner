@@ -24,11 +24,11 @@ public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activitei
         var typeConverter = new ValueConverter<ActiviteitType, string>(
             t => t.ToString(),
             t => Enum.Parse<ActiviteitType>(t));
+        // Optional: null when the teacher chose no soort (FB-050). The import still always supplies one.
         builder.Property(a => a.ActiviteitType)
             .HasConversion(typeConverter)
             .HasColumnName("activiteit_type")
-            .HasMaxLength(32)
-            .IsRequired();
+            .HasMaxLength(32);
 
         builder.Property(a => a.Hoek).HasMaxLength(128);
         builder.Property(a => a.VerwachteUitkomsten);

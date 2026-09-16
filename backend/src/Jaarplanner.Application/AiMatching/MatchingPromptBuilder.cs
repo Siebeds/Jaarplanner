@@ -187,7 +187,10 @@ public static class MatchingPromptBuilder
 
     private static void SchrijfActiviteit(StringBuilder sb, Activiteit activiteit)
     {
-        Line(sb, $"  - {activiteit.Naam} ({activiteit.ActiviteitType.ToCode()})");
+        // No soort, no brackets: an empty "()" would read as a soort the model has to guess at (FB-050).
+        Line(sb, activiteit.ActiviteitType is { } type
+            ? $"  - {activiteit.Naam} ({type.ToCode()})"
+            : $"  - {activiteit.Naam}");
         if (activiteit.Hoek is not null)
         {
             Line(sb, $"    Hoek: {activiteit.Hoek}");

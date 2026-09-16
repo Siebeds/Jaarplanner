@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
 /// An activiteit (Art. IX.2) — <b>age-scoped</b> (it inherits the leeftijd from its
-/// owning <see cref="Subthema"/>). It has an <see cref="ActiviteitType"/>, an optional
+/// owning <see cref="Subthema"/>). It has an optional <see cref="ActiviteitType"/>, an optional
 /// <see cref="Hoek"/> (learning corner) and optional <see cref="VerwachteUitkomsten"/>, and can
 /// link to one or more leerdoelen through its <see cref="Doelkoppelingen"/> (each carrying status
 /// + AI motivation). Mutable autonomous school content (Art. III).
@@ -20,7 +20,7 @@ public sealed class Activiteit
     internal Activiteit(
         Guid subthemaId,
         string naam,
-        ActiviteitType activiteitType,
+        ActiviteitType? activiteitType,
         string? hoek = null,
         string? verwachteUitkomsten = null,
         Guid? makerId = null)
@@ -54,8 +54,11 @@ public sealed class Activiteit
     /// <summary>The activiteit name.</summary>
     public string Naam { get; private set; }
 
-    /// <summary>The form of activity (Art. IX.2).</summary>
-    public ActiviteitType ActiviteitType { get; private set; }
+    /// <summary>
+    /// The form of activity (Art. IX.2), or <c>null</c> when the teacher chose none. Never defaulted: an absent soort
+    /// stays absent rather than becoming <c>Experiment</c>, the enum's zero value (FB-050).
+    /// </summary>
+    public ActiviteitType? ActiviteitType { get; private set; }
 
     /// <summary>The optional learning corner (ontdektafel, techniekhoek, …).</summary>
     public string? Hoek { get; private set; }
@@ -178,15 +181,15 @@ public sealed class Activiteit
     /// not changed here — links are managed separately via AI matching / CRUD, so an overwrite never
     /// touches a teacher's link decision (Art. IV.2).
     /// </summary>
-    public void WerkGegevensBij(ActiviteitType activiteitType, string? hoek, string? verwachteUitkomsten)
+    public void WerkGegevensBij(ActiviteitType? activiteitType, string? hoek, string? verwachteUitkomsten)
     {
         ActiviteitType = Validate(activiteitType);
         Hoek = Optional(hoek);
         VerwachteUitkomsten = Optional(verwachteUitkomsten);
     }
 
-    private static ActiviteitType Validate(ActiviteitType type) =>
-        Enum.IsDefined(type)
+    private static ActiviteitType? Validate(ActiviteitType? type) =>
+        type is null || Enum.IsDefined(type.Value)
             ? type
             : throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown activiteit type.");
 

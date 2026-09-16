@@ -855,6 +855,7 @@
     "wijzigTitel": "Activiteit bewerken",
     "naamVerplicht": "Geef de activiteit een naam.",
     "soort": "Soort",
+    "geenSoort": "Geen soort",
     "hoek": "Welke hoek",
     "kleur": "Kleur",
     "geenKleur": "Geen",

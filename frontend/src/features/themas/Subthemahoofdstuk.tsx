@@ -397,9 +397,14 @@ function Activiteitregel({
         <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
           <p className="mt-0.5 text-meta text-inkt-zacht">
-            {t(`activiteitsoort.${activiteit.activiteitType}`)}
-            {activiteit.hoek ? ` · ${activiteit.hoek}` : ""}
-            {kleur ? ` · ${t(kleurSleutel(kleur))}` : ""}
+            {/* Joined from what is there, so an activiteit without a soort (FB-050) does not start with a separator. */}
+            {[
+              activiteit.activiteitType ? t(`activiteitsoort.${activiteit.activiteitType}`) : null,
+              activiteit.hoek,
+              kleur ? t(kleurSleutel(kleur)) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
 

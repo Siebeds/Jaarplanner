@@ -2,13 +2,13 @@
 id: FB-050
 titel: Nieuwe activiteit start zonder gekozen soort
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:47
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 22:08
+opgepakt-door: claude-fb-050
+branch: ticket/FB-050-activiteit-zonder-soort
+pr: 119
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -23,36 +23,60 @@ met een soort die ze nooit koos.
 
 ## Gewenst gedrag
 
-- In het formulier van een nieuwe activiteit is de soort leeg, met een neutrale tekst als "Kies een soort".
-- De soort is verplicht: wie zonder soort bewaart, krijgt bij het veld te lezen dat ze nog een soort moet kiezen, en er
-  wordt niets bewaard.
-- Een bestaande activiteit openen toont haar soort zoals nu.
+- In het formulier van een nieuwe activiteit is de soort leeg, met de neutrale tekst "Geen soort".
+- Ook de snelle regel "Nieuwe activiteit" in het koppelpaneel van het doelenregister start zonder soort.
+- De soort is optioneel: wie zonder soort bewaart, bewaart een activiteit zonder soort. Nergens wordt een lege soort
+  stil "Experiment", ook niet in de backend.
+- Een activiteit zonder soort toont nergens een soort (geen lege scheiding, geen "Experiment").
+- Een bestaande activiteit openen toont haar soort zoals nu, en haar soort kan weer leeg gemaakt worden.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
-- [ ] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt er niets bewaard en staat bij het veld dat er een
-  soort gekozen moet worden.
-- [ ] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
-- [ ] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld.
-- [ ] Nagekeken in een echte browser op desktop en ~390px, en de melding is bereikbaar voor een schermlezer.
+- [x] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
+- [x] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt de activiteit bewaard zonder soort.
+- [x] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
+- [x] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld, en kan men die
+  leeg maken.
+- [x] Gegeven de snelle regel in het koppelpaneel, wanneer ze opent, dan is er geen soort gekozen, en maken zonder
+  soort geeft een activiteit zonder soort.
+- [x] Gegeven een aanvraag aan de backend zonder soort, dan wordt de activiteit bewaard zonder soort, nooit als
+  Experiment.
+- [x] Gegeven een activiteit zonder soort, dan tonen de schermen die de soort van een activiteit tonen geen soort voor
+  haar.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
 1. Open een subthema en maak een nieuwe activiteit. Het veld Soort is leeg.
-2. Vul een naam in en bewaar zonder soort. Er wordt niets bewaard; bij Soort staat dat je er een moet kiezen.
-3. Kies "Hoek" en bewaar. De activiteit is een hoek.
-4. Open een bestaande activiteit: haar soort staat ingevuld.
-5. Herhaal stap 1 en 2 op ~390px.
+2. Vul een naam in en bewaar zonder soort. De activiteit staat in de lijst, zonder soort.
+3. Maak er nog een, kies "Hoek" en bewaar. De activiteit is een hoek.
+4. Open de hoek-activiteit: haar soort staat ingevuld. Maak de soort leeg en bewaar: ze heeft geen soort meer.
+5. Open het doelenregister, open het koppelpaneel van een doel en kies "Nieuwe activiteit": de soort is leeg; maak ze.
+6. Herhaal stap 1 en 2 op ~390px.
 
 ## Buiten scope
 
-Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu.
+Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu (daar blijft de soort verplicht).
 
 ## Open vragen
 
-- Is de soort verplicht, of mag een activiteit zonder soort bewaard worden? **Standaard** verplicht: vandaag heeft elke activiteit een soort.
+- Is de soort verplicht, of mag een activiteit zonder soort bewaard worden? **Beantwoord (eigenaar, 2026-09-16):**
+  eerst verplicht; na de eerste bouw herzien: optioneel. Een lege soort blijft leeg en wordt nooit stil "Experiment".
+  Dat wijzigt Art. IX van de grondwet: `activiteitType` wordt optioneel.
 
 ## Werklog
 
 - 2026-09-16 13:47 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 20:26 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: soort verplicht
+- 2026-09-16 20:26 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 20:31 · claude-fb-050 · Soortveld start leeg en is verplicht; Vitest (1003) en lint groen
+- 2026-09-16 20:34 · claude-fb-050 · Criteria afgevinkt: Vitest (Activiteitformulier.test.tsx) en browserpas op desktop en 390px (worklogs/FB-050/test-report.md)
+- 2026-09-16 20:35 · claude-fb-050 · Antagonist: COMPLIANT; open MINOR: de snelle regel in het koppelpaneel kiest nog standaard Experiment (worklogs/FB-050/antagonist.md)
+- 2026-09-16 20:35 · claude-fb-050 · in-uitvoering → te-testen: Soortveld start leeg en is verplicht met melding bij het veld; Vitest 1003 groen, lint groen, browser desktop en 390px PASS, antagonist COMPLIANT
+- 2026-09-16 21:29 · eigenaar · te-testen → klaar-voor-bouw: teruggestuurd: ook het koppelpaneel niet standaard op Experiment; de backend maakt nooit stil Experiment, een lege soort blijft leeg (soort optioneel)
+- 2026-09-16 21:29 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opnieuw opgepakt met de uitbreiding van de eigenaar
+- 2026-09-16 21:42 · claude-fb-050 · Soort optioneel gebouwd: formulier, koppelpaneel, backend (nullable kolom, migratie ActiviteitTypeOptioneel) en Art. IX.2 gewijzigd; backend 2462 en lint groen
+- 2026-09-16 21:57 · claude-fb-050 · Criteria afgevinkt: Vitest, xUnit (ActiviteitSoortEndpointsTests op Postgres) en browserpas op desktop en 390px (worklogs/FB-050/test-report-2.md)
+- 2026-09-16 21:57 · claude-fb-050 · Antagonist ronde 2: COMPLIANT; open MINOR: geen test voor een geplande activiteit zonder soort in de weekweergave (worklogs/FB-050/antagonist.md)
+- 2026-09-16 21:57 · claude-fb-050 · in-uitvoering → te-testen: Soort optioneel: formulier en koppelpaneel starten op 'Geen soort', backend bewaart een lege soort als leeg (migratie), Art. IX.2 gewijzigd; Vitest 1006, xUnit 2462, lint en format groen, browser desktop en 390px PASS, antagonist COMPLIANT
+- 2026-09-16 22:08 · claude-fb-050 · PR #119

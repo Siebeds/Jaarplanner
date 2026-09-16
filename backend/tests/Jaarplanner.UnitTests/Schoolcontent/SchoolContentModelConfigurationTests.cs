@@ -156,4 +156,11 @@ public class SchoolContentModelConfigurationTests
         Assert.NotNull(converter);
         Assert.Equal("Experiment", converter!.ConvertToProvider(ActiviteitType.Experiment));
     }
+
+    [Fact]
+    public void Activiteit_type_is_optional_in_the_database()
+    {
+        var entity = BuildModel().FindEntityType(typeof(Activiteit))!;
+        Assert.True(entity.FindProperty(nameof(Activiteit.ActiviteitType))!.IsNullable);
+    }
 }
