@@ -5,11 +5,11 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:19
+bijgewerkt: 2026-09-16 14:27
 opgepakt-door: claude-fb043
 branch: ticket/FB-043-minimumdoelen-als-themadoel
 pr:
-geblokkeerd:
+geblokkeerd: Tegenstrijdige antwoorden: in deze sessie zei de eigenaar 'bestaande leerplandoel-themadoelen verwijderen via migratie, import ongemoeid (ook het maximum)'; een niet-gecommitte versie op main zegt 'ze blijven staan naast de minimumdoelen' en 'bij de import valt het maximum weg'. Welke geldt?
 fr: [FR-2.3, FR-9.3]
 ---
 
@@ -119,3 +119,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 14:03 · demo-opmerkingen · beslissing eigenaar: het maximum van 2 à 3 themadoelen vervalt, ook bij de import; in de tekst verwerkt
 - 2026-09-16 14:19 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord in de sessie; klaar voor bouw
 - 2026-09-16 14:19 · claude-fb043 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:27 · claude-fb043 · geblokkeerd: Tegenstrijdige antwoorden: in deze sessie zei de eigenaar 'bestaande leerplandoel-themadoelen verwijderen via migratie, import ongemoeid (ook het maximum)'; een niet-gecommitte versie op main zegt 'ze blijven staan naast de minimumdoelen' en 'bij de import valt het maximum weg'. Welke geldt?
