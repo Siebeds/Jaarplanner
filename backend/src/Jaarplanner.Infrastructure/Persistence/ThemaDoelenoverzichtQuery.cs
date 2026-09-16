@@ -8,8 +8,8 @@ namespace Jaarplanner.Infrastructure.Persistence;
 /// <summary>
 /// EF Core implementation of <see cref="IThemaDoelenoverzichtQuery"/> (FB-009).
 /// <para>
-/// Three round-trips whatever the size of the thema: the thema with its subtree, the leerplandoelen it links, and the
-/// minimumdoelen those concord to. The per-row detail endpoint is not used for this: it runs seven queries per code.
+/// Two round-trips whatever the size of the thema: the thema with its subtree, and the leerplandoelen it links. The
+/// per-row detail endpoint is not used for this: it runs seven queries per code.
 /// </para>
 /// </summary>
 public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
@@ -79,13 +79,6 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             .Select(l => new Doelregel(l.Code, l.Doelsoort, l.Tekst, l.JaarFase, l.NietMeerInOpstap, l.MinimumdoelRef))
             .ToDictionaryAsync(l => l.Code, StringComparer.Ordinal, cancellationToken);
 
-        var refs = doelen.Values.Select(d => d.MinimumdoelRef).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
-        var minimumdoelen = await _context.Minimumdoelen
-            .AsNoTracking()
-            .Where(m => refs.Contains(m.Ref))
-            .Select(m => new Minimumdoelregel(m.Ref, m.Leeftijd, m.Nr, m.Omschrijving))
-            .ToDictionaryAsync(m => m.Ref, StringComparer.Ordinal, cancellationToken);
-
         var leeftijden = vondsten
             // A link can only be made to a stored leerplandoel and none is ever deleted (Art. III.4), so this drops nothing
             // today; it keeps a missing row from turning the whole overview into a 500.
@@ -93,7 +86,7 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             .GroupBy(v => v.Leeftijd ?? doelen[v.Code].JaarFase, StringComparer.Ordinal)
             .OrderBy(g => JaarfaseRang.GetValueOrDefault(g.Key, int.MaxValue))
             .ThenBy(g => g.Key, StringComparer.Ordinal)
-            .Select(g => Leeftijd(g.Key, g.ToList(), doelen, minimumdoelen))
+            .Select(g => Leeftijd(g.Key, g.ToList(), doelen))
             .ToList();
 
         return new ThemaDoelenoverzicht(thema.Id, leeftijden);
@@ -102,8 +95,7 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
     private static LeeftijdDoelen Leeftijd(
         string leeftijd,
         List<(string? Leeftijd, string Code, DoelPlaats Plaats)> vondsten,
-        Dictionary<string, Doelregel> doelen,
-        Dictionary<string, Minimumdoelregel> minimumdoelen)
+        Dictionary<string, Doelregel> doelen)
     {
         var leerplandoelen = vondsten
             .GroupBy(v => v.Code, StringComparer.Ordinal)
@@ -119,18 +111,7 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             .OrderBy(l => l.Code, CodeVolgorde.Instance)
             .ToList();
 
-        var bereikt = leerplandoelen
-            .Where(l => l.MinimumdoelRef is not null && minimumdoelen.ContainsKey(l.MinimumdoelRef))
-            .GroupBy(l => l.MinimumdoelRef!, StringComparer.Ordinal)
-            .Select(g =>
-            {
-                var md = minimumdoelen[g.Key];
-                return new OverzichtMinimumdoel(md.Ref, md.Leeftijd, md.Nr, md.Omschrijving, g.Select(l => l.Code).ToList());
-            })
-            .OrderBy(m => m.Ref, CodeVolgorde.Instance)
-            .ToList();
-
-        return new LeeftijdDoelen(leeftijd, leerplandoelen, bereikt);
+        return new LeeftijdDoelen(leeftijd, leerplandoelen);
     }
 
     private static bool Beslist(KoppelingStatus status) =>
@@ -138,8 +119,6 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
 
     private sealed record Doelregel(
         string Code, Doelsoort Doelsoort, string Tekst, string JaarFase, bool NietMeerInOpstap, string? MinimumdoelRef);
-
-    private sealed record Minimumdoelregel(string Ref, string Leeftijd, string Nr, string Omschrijving);
 
     /// <summary>
     /// Codes in the order a reader counts them: runs of digits compare as numbers, so <c>3.1.GK2.10</c> follows

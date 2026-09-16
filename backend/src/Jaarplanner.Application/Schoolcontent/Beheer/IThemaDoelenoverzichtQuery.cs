@@ -3,12 +3,15 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.Application.Schoolcontent.Beheer;
 
 /// <summary>
-/// The leerplandoelen a thema reaches through what hangs under it, per leeftijd, and the minimumdoelen those reach through
-/// the concordance (FB-009, FR-2.3, FR-9.3).
+/// The leerplandoelen a thema reaches through what hangs under it, per leeftijd (FB-009, FB-044, FR-2.3).
 /// <para>
 /// <b>A preview of what the thema offers, never dekking.</b> Dekking belongs to a klas and needs a plan (Art. V.1); this
-/// knows no klas. It is computed from the links and never stored: a thema has no link of its own to a minimumdoel, and its
-/// 2–3 themadoelen stay its anchors (owner ruling 2026-09-15).
+/// knows no klas. It is computed from the links and never stored.
+/// </para>
+/// <para>
+/// <b>Leerplandoelen only.</b> The minimumdoelen a thema aims at are its themadoelen (ADR-0046) and stand above this block
+/// on the page, so the overview no longer repeats them (FB-044). A leerplandoel still carries its minimumdoel's ref, which
+/// its detail shows.
 /// </para>
 /// <para>
 /// <b>Only decided links count</b> (<c>Aanvaard</c>, <c>Manueel</c>), the rule Art. V uses: themadoelen, accepted
@@ -49,20 +52,8 @@ public sealed record OverzichtLeerplandoel(
     string? MinimumdoelRef,
     IReadOnlyList<DoelPlaats> Plaatsen);
 
-/// <summary>A minimumdoel the leeftijd's leerplandoelen concord to.</summary>
-/// <param name="Leerplandoelen">The codes of this leeftijd's leerplandoelen that lead to it, in code order.</param>
-public sealed record OverzichtMinimumdoel(
-    string Ref,
-    string Leeftijd,
-    string Nr,
-    string Omschrijving,
-    IReadOnlyList<string> Leerplandoelen);
-
 /// <summary>What the thema reaches at one leeftijd.</summary>
-public sealed record LeeftijdDoelen(
-    string Leeftijd,
-    IReadOnlyList<OverzichtLeerplandoel> Leerplandoelen,
-    IReadOnlyList<OverzichtMinimumdoel> Minimumdoelen);
+public sealed record LeeftijdDoelen(string Leeftijd, IReadOnlyList<OverzichtLeerplandoel> Leerplandoelen);
 
 /// <summary>The whole overview, leeftijden in jaar/fase order (JK first).</summary>
 public sealed record ThemaDoelenoverzicht(Guid ThemaId, IReadOnlyList<LeeftijdDoelen> Leeftijden);

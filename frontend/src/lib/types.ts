@@ -504,19 +504,10 @@ export interface OverzichtLeerplandoel {
   plaatsen: DoelPlaats[];
 }
 
-/** A minimumdoel the leeftijd's leerplandoelen concord to, with the codes that lead there. */
-export interface OverzichtMinimumdoel {
-  ref: string;
-  leeftijd: string;
-  nr: string;
-  omschrijving: string;
-  leerplandoelen: string[];
-}
-
+/** What a thema reaches at one leeftijd: leerplandoelen only (FB-044); its minimumdoelen are its themadoelen. */
 export interface LeeftijdDoelen {
   leeftijd: string;
   leerplandoelen: OverzichtLeerplandoel[];
-  minimumdoelen: OverzichtMinimumdoel[];
 }
 
 /**

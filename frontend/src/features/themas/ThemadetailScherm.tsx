@@ -142,15 +142,10 @@ export function ThemadetailScherm() {
     activiteitId?: string;
   } | null>(null);
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
-  // The doel whose detail is open (TB-016): a leerplandoel from any list on the page, or a minimumdoel from the doelen
-  // per leeftijd (FB-009), and the row button that opened it, which gets focus back when the sheet closes.
-  const [getoondDoel, setGetoondDoel] = useState<{
-    code: string | null;
-    ref: string | null;
-    knop: HTMLElement;
-  } | null>(null);
-  const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, ref: null, knop });
-  const toonMinimumdoel = (ref: string, knop: HTMLElement) => setGetoondDoel({ code: null, ref, knop });
+  // The leerplandoel whose detail is open (TB-016), from any list on the page, and the row button that opened it, which
+  // gets focus back when the sheet closes.
+  const [getoondDoel, setGetoondDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
+  const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, knop });
 
   const wijzig = useWijzigThema(id);
   const verwijder = useVerwijderThema();
@@ -542,7 +537,7 @@ export function ThemadetailScherm() {
         </Blok>
 
         {/* WHAT THE THEMA REACHES, PER LEEFTIJD (FB-009), between its anchors and the chapters it is computed from. */}
-        <Themadoelenoverzicht themaId={id} onToonDoel={toonDoel} onToonMinimumdoel={toonMinimumdoel} />
+        <Themadoelenoverzicht themaId={id} onToonDoel={toonDoel} />
 
         {/* THE HEADING AND ITS CHAPTERS SIT IN ONE TRAY (owner, 2026-08-31: "ik vind het wat
             verwarrend dat de subthemas niet een sectie is"). The chapters are still not nested
@@ -627,7 +622,6 @@ export function ThemadetailScherm() {
 
       <Doeldetailblad
         code={getoondDoel?.code ?? null}
-        minimumdoelRef={getoondDoel?.ref ?? null}
         terugNaar={getoondDoel?.knop}
         onSluit={() => setGetoondDoel(null)}
       />
