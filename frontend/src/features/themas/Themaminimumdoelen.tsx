@@ -10,15 +10,16 @@ import type { GeconcordeerdLeerplandoel, ThemaMinimumdoelWeergave } from "../../
 import { MIJLPAAL } from "../doelen/mijlpaal";
 import { Doellijst, Ontkoppel } from "./Fiche";
 import { Inklaplijst } from "./Inklaplijst";
-import { opCode } from "./opCode";
+import { opMinimumdoelRef } from "./opCode";
 
 /**
  * The themadoelen of a thema, which are minimumdoelen (FB-043).
  *
  * **Four levels, each shut until asked for**: the list itself (TB-044), then the three below. The owner, 2026-09-16:
- * first which minimumdoelen the thema aims at, then, per minimumdoel, the leerplandoelen that lead there. A thema runs across several leeftijden and a leerplandoel belongs
- * to one, so between the two sits one row per leeftijd with its count ("K2 · 3 leerplandoelen"). Opened, a leeftijd
- * lists its leerplandoelen and nothing else: the minimumdoel they lead to is the row above.
+ * first which minimumdoelen the thema aims at, then, per minimumdoel, the leerplandoelen that lead there. A thema runs
+ * across several leeftijden and a leerplandoel belongs to one, so between the two sits one row per leeftijd with its
+ * count ("K2 · 3 leerplandoelen"). Opened, a leeftijd lists its leerplandoelen and nothing else: the minimumdoel they
+ * lead to is the row above.
  *
  * **The leerplandoelen are read, never chosen.** They are the minimumdoel's concordance, from its own detail
  * (`GET /api/minimumdoelen/{ref}`, TB-010), and a leeftijd without any is left out. Unlinking the minimumdoel takes them
@@ -38,10 +39,10 @@ export function Themaminimumdoelen({
   onOntkoppel?: (koppelingId: string) => void;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
-  // The list is shut and paged (TB-044), in the order of the refs; the search matches the ref and the decreed text,
-  // which is fetched for every row only once the search opens.
+  // The list is shut and paged (TB-044), kleuter first, then by leerjaar and ref. The search matches the ref and the
+  // decreed text, which is fetched for every row only once the search opens.
   const [zoekOpen, setZoekOpen] = useState(false);
-  const gesorteerd = [...koppelingen].sort((a, b) => opCode(a.minimumdoelRef, b.minimumdoelRef));
+  const gesorteerd = [...koppelingen].sort((a, b) => opMinimumdoelRef(a.minimumdoelRef, b.minimumdoelRef));
   const { teksten, laadt } = useMinimumdoelTeksten(
     gesorteerd.map((k) => k.minimumdoelRef),
     zoekOpen,

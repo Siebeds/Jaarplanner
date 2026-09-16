@@ -37,6 +37,7 @@ describe("Inklaplijst (TB-044)", () => {
 
     expect(vouwknop()).toHaveAttribute("aria-expanded", "false");
     expect(rijen()).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /^Laad/ })).toBeNull();
   });
 
   it("toont opengeklapt vijf items in hun volgorde, en laadt er telkens tot vijf bij", () => {

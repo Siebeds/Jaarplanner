@@ -61,7 +61,8 @@ export function Inklaplijst<T>({
   const gefilterd = zoekt ? items.filter((item) => normaliseer(zoektekst(item)).includes(term)) : items;
   const toont = zoekt || open;
   const getoond = toont ? gefilterd.slice(0, zichtbaar) : [];
-  const rest = gefilterd.length - getoond.length;
+  // Nothing to load while nothing shows: a shut list is one line.
+  const rest = toont ? gefilterd.length - getoond.length : 0;
 
   useEffect(() => {
     if (focusOp.current === null) return;
@@ -83,7 +84,8 @@ export function Inklaplijst<T>({
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      {/* The field shares the line from `sm` up; on a phone it takes a line of its own under the count. */}
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           aria-expanded={open}
@@ -104,7 +106,7 @@ export function Inklaplijst<T>({
         </button>
 
         {zoekOpen ? (
-          <div className="relative min-w-0 flex-1">
+          <div className="relative order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1">
             <IcoonZoek
               aria-hidden="true"
               className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-inkt-zwak"
@@ -136,8 +138,7 @@ export function Inklaplijst<T>({
           aria-expanded={zoekOpen}
           onClick={() => (zoekOpen ? sluitZoek() : zetZoekOpen(true))}
           className={cn(
-            "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt",
-            !zoekOpen && "ml-auto",
+            "ml-auto inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt",
           )}
         >
           {zoekOpen ? (
