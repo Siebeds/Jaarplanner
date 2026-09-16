@@ -159,6 +159,13 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
                 .Include(s => s.Subdoelen)
                 .SingleOrDefaultAsync(s => s.Id == subthemaId, cancellationToken)
                 ?? throw new SchoolcontentNietGevondenFout(VoorstelWeg);
+            if (Jaarfasen.Normaliseer(subthema.Leeftijd) != voorstel.Leeftijd)
+            {
+                // The subthema moved to another leeftijd after the proposal: the proposal no longer says what it would do.
+                throw new SchoolcontentValidatieFout(
+                    $"{subthema.Naam} hoort intussen bij een andere leeftijd. Vraag opnieuw voorstellen voor {Jaarfasen.Normaliseer(subthema.Leeftijd)}.");
+            }
+
             if (subthema.Subdoelen.Any(sd => string.Equals(sd.Koppeling.LeerplandoelCode, voorstel.LeerplandoelCode, StringComparison.Ordinal)))
             {
                 throw new SchoolcontentValidatieFout(
@@ -243,6 +250,20 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
         }
 
         var thema = await LaadThemaAsync(voorstel.ThemaId, tracking: true, cancellationToken);
+        var vanLeeftijd = thema.Subthemas.Where(s => Jaarfasen.Normaliseer(s.Leeftijd) == voorstel.Leeftijd).ToList();
+        if (vanLeeftijd.Any(s => string.Equals(s.Naam.Trim(), naam.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new SchoolcontentValidatieFout($"Er is al een subthema {naam.Trim()} voor {voorstel.Leeftijd}. Kies een andere naam.");
+        }
+
+        // D7 at decision time too: a goal someone placed by hand in the meantime is not placed a second time.
+        var geplaatst = vanLeeftijd.SelectMany(s => s.Subdoelen).Select(sd => sd.Koppeling.LeerplandoelCode).ToHashSet(StringComparer.Ordinal);
+        if (houden.FirstOrDefault(geplaatst.Contains) is { } alGeplaatst)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"{alGeplaatst} staat intussen al in een subthema van {voorstel.Leeftijd}. Laat het weg, of weiger het voorgestelde subthema.");
+        }
+
         var subthema = thema.VoegSubthemaToe(naam.Trim(), duur, voorstel.Leeftijd);
         subthema.VoegOnderzoeksvraagToe(vraag.Trim());
         foreach (var doel in doelen.OrderBy(d => d.LeerplandoelCode, StringComparer.Ordinal))
