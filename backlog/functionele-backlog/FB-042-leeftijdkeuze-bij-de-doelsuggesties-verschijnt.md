@@ -2,13 +2,13 @@
 id: FB-042
 titel: Leeftijdkeuze bij de doelsuggesties verschijnt pas na 'Vraag suggesties'
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 15:07
+opgepakt-door: claude-fb-042
+branch: ticket/FB-042-leeftijdkeuze-na-klik
+pr: 110
 geblokkeerd:
 fr: [FR-4.1]
 ---
@@ -33,15 +33,15 @@ themadoelen druk, ook voor wie geen suggesties wil vragen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema en iemand met themabeheer, wanneer de themapagina opent, dan staat bij de themadoelen alleen
+- [x] Gegeven een thema en iemand met themabeheer, wanneer de themapagina opent, dan staat bij de themadoelen alleen
   "Vraag suggesties", zonder "voor" en zonder leeftijdblokjes.
-- [ ] Gegeven die pagina, wanneer "Vraag suggesties" aangeklikt wordt, dan verschijnt de leeftijdkeuze met de leeftijden
+- [x] Gegeven die pagina, wanneer "Vraag suggesties" aangeklikt wordt, dan verschijnt de leeftijdkeuze met de leeftijden
   van de subthema's aangevinkt, en er is nog niets aan de AI gevraagd.
-- [ ] Gegeven de leeftijdkeuze, wanneer de gebruiker K2 uitvinkt en verstuurt, dan worden alleen suggesties voor de
+- [x] Gegeven de leeftijdkeuze, wanneer de gebruiker K2 uitvinkt en verstuurt, dan worden alleen suggesties voor de
   overige gekozen leeftijden gevraagd.
-- [ ] Gegeven de leeftijdkeuze, wanneer de gebruiker annuleert, dan verdwijnt ze en is er niets gevraagd.
-- [ ] Gegeven de leeftijdkeuze zonder aangevinkte leeftijd, dan kan niet verstuurd worden en staat er waarom.
-- [ ] Nagekeken in een echte browser op desktop en op ~390px, met het toetsenbord bedienbaar.
+- [x] Gegeven de leeftijdkeuze, wanneer de gebruiker annuleert, dan verdwijnt ze en is er niets gevraagd.
+- [x] Gegeven de leeftijdkeuze zonder aangevinkte leeftijd, dan kan niet verstuurd worden en staat er waarom.
+- [x] Nagekeken in een echte browser op desktop en op ~390px, met het toetsenbord bedienbaar.
 
 ## Testscenario's
 
@@ -65,3 +65,8 @@ Geen.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-042 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:32 · claude-fb-042 · leeftijdkeuze verschijnt pas na 'Vraag suggesties', met Verstuur (AI-knop) en Annuleer; Vitest 968 groen, lint groen; browsercheck en antagonist volgen
+- 2026-09-16 14:34 · claude-fb-042 · antagonist: COMPLIANT; de ring op 'Vraag suggesties' volgt ADR-0039 zoals 'Genereren' op het jaarplan; vier MINOR
+- 2026-09-16 14:42 · claude-fb-042 · in-uitvoering → te-testen: gebouwd: leeftijdkeuze pas na 'Vraag suggesties', met Verstuur en Annuleer; browsercheck PASS op desktop, 390px en toetsenbord (backlog/worklogs/FB-042), Vitest en lint groen, antagonist COMPLIANT; MINOR open: test vinkt K3 uit i.p.v. K2, geen test voor een mislukte vraag
+- 2026-09-16 15:07 · claude-fb-042 · PR #110

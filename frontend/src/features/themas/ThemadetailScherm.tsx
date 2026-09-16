@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
@@ -114,6 +114,18 @@ export function ThemadetailScherm() {
 
   // The leeftijden a doelsuggestie run searches, once the gebruiker touched the buttons; null follows the subthema's.
   const [leeftijdkeuze, setLeeftijdkeuze] = useState<string[] | null>(null);
+  // Whether that choice is showing (FB-042): "Vraag suggesties" only opens it, the send button inside asks the model.
+  const [vraagOpen, setVraagOpen] = useState(false);
+  // Focus follows the swap: into the choice when it opens, back to "Vraag suggesties" when it closes. Null on the
+  // first render, so arriving on the page moves nothing.
+  const vraagRef = useRef<HTMLDivElement>(null);
+  const vorigeVraagOpen = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (vorigeVraagOpen.current !== null && vorigeVraagOpen.current !== vraagOpen) {
+      vraagRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    }
+    vorigeVraagOpen.current = vraagOpen;
+  }, [vraagOpen]);
   const [bewerkOpen, setBewerkOpen] = useState(false);
   const [verwijderOpen, setVerwijderOpen] = useState(false);
   // One piece of state per sheet, holding what it is editing. `{}` means "a new one"; two booleans
@@ -192,6 +204,12 @@ export function ThemadetailScherm() {
   const standaardLeeftijden = (jaarfasen ?? []).filter((fase) => thema.subthemas.some((s) => s.leeftijd === fase));
   const gekozenLeeftijden = leeftijdkeuze ?? standaardLeeftijden;
   const geenLeeftijd = jaarfasen !== undefined && gekozenLeeftijden.length === 0;
+  // Closing forgets the choice, so the next opening is pre-set to the subthema's leeftijden again.
+  const sluitVraag = () => {
+    setVraagOpen(false);
+    setLeeftijdkeuze(null);
+  };
+  const verstuurVraag = () => genereer.mutate(gekozenLeeftijden, { onSuccess: sluitVraag });
 
   // The sheet holds IDS, not objects, and the objects are looked up from the freshly invalidated
   // thema on every render. Holding the object would freeze the goal list at the moment the sheet
@@ -370,36 +388,55 @@ export function ThemadetailScherm() {
                   {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
                       legible: this does not add a themadoel, it asks the model for candidates that a
                       teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
-                  {/* The button and its scope read as one phrase, "Vraag suggesties voor K3 L1", and wrap as one. */}
+                  {/* FB-042: the heading carries only "Vraag suggesties". It asks nothing yet: it swaps itself for the
+                      choice, which reads on as the same phrase, "Vraag suggesties voor K3 L1", then the send button
+                      that does call the model and so is the one ring on show (ADR-0039), and a way back. */}
                   {mag.doelsuggestiesMaken ? (
-                    <span className="flex flex-wrap items-center gap-2">
-                      <AiKnop
-                        className="h-9 min-h-9 px-2.5 text-meta"
-                        bezig={genereer.isPending}
-                        disabled={genereer.isPending || geenLeeftijd}
-                        onClick={() => genereer.mutate(gekozenLeeftijden)}
-                      >
-                        {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-                      </AiKnop>
-                      {jaarfasen ? (
-                        <>
-                          <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVoor")}</span>
-                          <Leeftijdkeuze
-                            jaarfasen={jaarfasen}
-                            gekozen={gekozenLeeftijden}
-                            onWijzig={setLeeftijdkeuze}
-                          />
-                        </>
-                      ) : null}
-                    </span>
+                    <div ref={vraagRef} className="contents">
+                      {vraagOpen ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVragenVoor")}</span>
+                          {jaarfasen ? (
+                            <Leeftijdkeuze
+                              jaarfasen={jaarfasen}
+                              gekozen={gekozenLeeftijden}
+                              onWijzig={setLeeftijdkeuze}
+                            />
+                          ) : null}
+                          <AiKnop
+                            className="h-9 min-h-9 px-2.5 text-meta"
+                            bezig={genereer.isPending}
+                            disabled={genereer.isPending || geenLeeftijd}
+                            aria-describedby={geenLeeftijd ? "doelsuggesties-kies-leeftijd" : undefined}
+                            onClick={verstuurVraag}
+                          >
+                            {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVersturen")}
+                          </AiKnop>
+                          <Knop
+                            className="h-9 min-h-9 px-2.5 text-meta"
+                            disabled={genereer.isPending}
+                            onClick={sluitVraag}
+                          >
+                            {t("thema.suggestiesAnnuleren")}
+                          </Knop>
+                        </div>
+                      ) : (
+                        <AiKnop
+                          className="h-9 min-h-9 px-2.5 text-meta"
+                          onClick={() => setVraagOpen(true)}
+                        >
+                          {t("thema.suggestiesVragen")}
+                        </AiKnop>
+                      )}
+                    </div>
                   ) : null}
                 </>
               ) : undefined
             }
           >
             {/* Why the AI button is disabled, directly under it, and only while it is. */}
-            {mag.doelsuggestiesMaken && geenLeeftijd ? (
-              <p className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
+            {mag.doelsuggestiesMaken && vraagOpen && geenLeeftijd ? (
+              <p id="doelsuggesties-kies-leeftijd" className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
             ) : null}
 
             {thema.minimumdoelen.length === 0 ? (
