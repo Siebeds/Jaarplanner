@@ -7,6 +7,7 @@ import type { Agendadag } from "./roosterdagen";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { Schooldaguren } from "../schooluren/gegevens";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
+import type { Subthemareeks } from "./subthemareeksen";
 import { t } from "../../i18n";
 
 /**
@@ -762,5 +763,48 @@ describe("Tijdraster: doelen van een blok", () => {
     // Without the fiche list there is nothing true to say about its goals, so there is no icon to say it.
     expect(screen.queryByRole("button", info("turnen"))).not.toBeInTheDocument();
     expect(screen.getByRole("button", info("onthaal"))).toBeInTheDocument();
+  });
+});
+
+describe("Tijdraster, de stroken in een week met een gesloten maandag (FB-039)", () => {
+  it("noemt thema en subthema op de eerste lesdag en maakt daar de tabstop", () => {
+    const reeks: Subthemareeks = {
+      subthemaId: "s1",
+      subthemaNaam: "de speelhoek",
+      themaId: "t1",
+      themaNaam: "Ik en mijn klas",
+      van: "2026-09-01",
+      tot: "2026-09-18",
+      aantalDagen: 14,
+    };
+    const dagen = [
+      dag([], { datum: "2026-09-07", isLesdag: false, sluitingsnaam: "Facultatieve vrije dag" }),
+      dag([], { datum: "2026-09-08" }),
+      dag([], { datum: "2026-09-09" }),
+    ];
+    render(
+      <MemoryRouter>
+        <DndContext>
+          <Tijdraster
+            dagen={dagen}
+            fichemomenten={[]}
+            reeksenPerDag={new Map([["2026-09-08", [reeks]], ["2026-09-09", [reeks]]])}
+            vakken={[{ blokStart: "2026-09-01", van: "2026-09-01", tot: "2026-10-09", themas: [{ id: "t1", naam: "Ik en mijn klas" }] }]}
+            schooluren={undefined}
+            magPlannen={false}
+            onVoegToe={() => {}}
+            onOpen={() => {}}
+            onOpenFiche={() => {}}
+            onVanDag={() => {}}
+            onKiesDag={() => {}}
+            onWijzigTijd={() => {}}
+          />
+        </DndContext>
+      </MemoryRouter>,
+    );
+
+    // Tuesday carries the names and the one stop per band; Wednesday's bands are for a pointer only.
+    expect(screen.getAllByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: t("periode.naarSubthema", { naam: "de speelhoek" }) })).toHaveLength(1);
   });
 });

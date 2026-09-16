@@ -1,5 +1,6 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { Blokmenu } from "./Blokmenu";
+import { CELHOOGTE, aantalBanden } from "./maandcelhoogte";
 import type { GeplandeActiviteit } from "../../lib/types";
 import type { Agendadag } from "./roosterdagen";
 import { dagNummer, maandVan, maandagVan, vandaag, verschuif, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
@@ -79,6 +80,15 @@ export function Maandrooster({
   // For the same reason the first cell is placed by its weekday rather than by its index.
   const voorloop = weekdagIndex(dagen[0].datum);
 
+  // Every cell of a week row is as tall as the row's most banded day needs, so the row stays level and no day's chips
+  // lose room to the bands of its neighbours or its own. See `CELHOOGTE`.
+  const bandenPerRij = new Map<number, number>();
+  dagen.forEach((dag, i) => {
+    const rij = Math.floor((voorloop + i) / 7);
+    const banden = aantalBanden(dag, vakOpDag(vakken, dag.datum), reeksenPerDag.get(dag.datum) ?? LEEG);
+    bandenPerRij.set(rij, Math.max(bandenPerRij.get(rij) ?? 0, banden));
+  });
+
   return (
     <div>
       <ol className="mb-1 grid grid-cols-7 gap-1">
@@ -93,10 +103,11 @@ export function Maandrooster({
         {Array.from({ length: voorloop }, (_, i) => (
           <li key={`leeg-${i}`} aria-hidden="true" />
         ))}
-        {dagen.map((dag) => (
+        {dagen.map((dag, i) => (
           <li key={dag.datum}>
             <Maandcel
               dag={dag}
+              hoogte={CELHOOGTE[bandenPerRij.get(Math.floor((voorloop + i) / 7)) ?? 0]}
               buitenMaand={maandVan(dag.datum) !== maand}
               vak={vakOpDag(vakken, dag.datum)}
               isVandaag={dag.datum === nu}
@@ -120,6 +131,7 @@ const LEEG: Subthemareeks[] = [];
 function Maandcel({
   dag,
   buitenMaand,
+  hoogte,
   vak,
   isVandaag,
   reeksen,
@@ -131,6 +143,8 @@ function Maandcel({
 }: {
   dag: Agendadag;
   buitenMaand: boolean;
+  /** The cell's height from `sm` up: `CELHOOGTE` for the most bands in its row. */
+  hoogte: string;
   vak: Themavak | undefined;
   isVandaag: boolean;
   reeksen: readonly Subthemareeks[];
@@ -161,7 +175,8 @@ function Maandcel({
         // into a slant and drew its own border diagonally through the tick that marks where a run
         // starts. The rounding stays on what sits INSIDE a cell (chips, the plus, today's pill): the cell
         // is the grid and those are the things in it. `overflow-hidden` still clips a long chip.
-        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden border p-1.5 transition-colors duration-100 sm:h-28",
+        "group/cel relative flex h-16 w-full flex-col gap-1 overflow-hidden border p-1.5 transition-colors duration-100",
+        hoogte,
         // A day outside the month recedes by losing its card, NOT by opacity. `opacity-45` dimmed
         // the text with the surface and took the day number to 2.2:1, and it does it invisibly to
         // any check that reads colour without composing the alpha of every ancestor. Measured after
@@ -221,7 +236,7 @@ function Maandcel({
           comment about layout has: nothing rechecks it.
 
           WHICH CORNER: the bottom right, at every width. From `sm` the top right is where the thema
-          band is: the band is full bleed and 16 pixels tall, the plus is 28, so hovering a cell put
+          band is: the band is full bleed and 20 pixels tall, the plus is 28, so hovering a cell put
           the plus straight over the name of the running thema. Below `sm` there is no band, and the
           plus used to take the top corner there, but a phone cell is about 47 pixels wide and a two
           digit day number plus a 28 pixel plus is 53: from the 10th on the plus sat on the number

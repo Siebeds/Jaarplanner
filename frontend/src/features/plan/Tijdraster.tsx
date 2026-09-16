@@ -474,12 +474,10 @@ function Dagkop({
     </span>
   );
 
-  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. A band's link is named after where it goes, and the blank
-  // ones are `aria-hidden`, both on the promise that the day
-  // announces the same facts once, which `Maandrooster` keeps and this grid did not: its day button named only the
-  // date, and the day view has no button at all. That was survivable while the bands were blank; now that they carry
-  // the only copy of "which subthema runs today", it is not. Only on a teaching day, which is the only day they are
-  // drawn on.
+  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. A named band's link says where it goes, not what runs, and
+  // the blank bands are `aria-hidden`: both rely on the day announcing what runs on it, once. `Maandrooster` kept that
+  // promise and this grid did not: its day button named only the date, and the day view has no button at all. Only on
+  // a teaching day, which is the only day the bands are drawn on.
   const watErLooptZin = dag.isLesdag ? themaZin(vak) + subthemaZin(reeksen) + urenZin(uren) : "";
 
   return (

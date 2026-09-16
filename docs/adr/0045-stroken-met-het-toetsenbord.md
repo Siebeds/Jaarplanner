@@ -41,14 +41,19 @@ second.
    would otherwise leave the week without a name and without a tab stop.
 4. **The focus ring is the app's own**, drawn inside the slot (`outline-offset: -2px`), because the month cell clips
    what lies outside it.
+5. **A month row grows by what its bands took, so the activiteit chips keep their room.** A band used to take 16 px,
+   with 1 px between bands; `n` slots take `24n`. From `sm` up every cell of a week row is `112 + 7n + 1` px tall for
+   the most slots `n` any day of that row draws (120, 127 or 134 px for one, two or three), and 112 px without bands.
+   The chip list gets exactly the height it had before this ADR.
 
 ## Consequences
 
-- **Taller headings.** A band took 16 px plus a 1 px gap; it now takes a 24 px slot, drawn 20 px tall, so every day
-  heading of the week and day views grows by about 7 px per band, and a month cell gives up the same from its 112 px
-  (on `sm` and up; the phone's month shows no bands).
-- **A keyboard reaches each thema and each subthema chapter from the agenda** in a handful of stops per week: one per
-  thema and one per named run on the week's first day, plus one on every day a new run or period starts.
+- **Taller headings and month rows.** A band took 16 px plus a 1 px gap; it now takes a 24 px slot, drawn 20 px tall.
+  Every day heading of the week and day views grows by about 7 px per band, and a month row by the same (decision 5),
+  so a month with bands is up to 22 px a row taller on `sm` and up. The phone's month shows no bands and is unchanged.
+- **A keyboard reaches every destination a band offers** in a handful of stops per week: one per thema and one per
+  named run on the week's first day, plus one on every day a new run or period starts. With three or more runs on a
+  day only the first has a band and the count opens nothing, for a pointer as for a keyboard (ADR-0042 decision 4).
 - **A second thema in one period** is still not a band of its own (ADR-0042 decision 4); it is reached through the menu
   Thema's, as the first one is also.
 
@@ -59,6 +64,7 @@ second.
 | **An exception in Art. VIII for the bands** | The owner declined it on 2026-09-16. |
 | **Bring back the subthemabalk** | The owner had it removed (FB-039). |
 | **A tab stop on every band** | Forty stops before the grid in a month, the cost ADR-0042 rejected. |
+| **Keep the month cell at 112 px** | The bands would take the chips' room: a day with three bands and three activiteiten showed none of them. |
 | **Visible bands 24 px tall** | The same height cost with heavier headings; the 4 px under a 20 px band keeps the thema and subthema apart. |
 | **16 px bands spaced 24 px apart (the SC 2.5.8 spacing exception)** | Costs the same height, and a band's 24 px circle would still reach into the day button beside it. |
 
@@ -67,7 +73,8 @@ second.
 | Claim | Where |
 | --- | --- |
 | Every band link is at least 24 by 24 px | WCAG 2.2 AA SC 2.5.8, decision 1 |
-| Every destination reachable by keyboard from the agenda | WCAG 2.2 AA SC 2.1.1, decisions 2 and 3 |
+| Every destination a band offers is reachable by keyboard | WCAG 2.2 AA SC 2.1.1, decisions 2 and 3 |
+| The month's activiteit chips keep their room | FB-039 ("verder verandert er niets aan de agenda"), decision 5 |
 | Visible focus | WCAG 2.2 AA SC 2.4.7, decision 4 |
 | Accessible names contain the visible label | WCAG 2.2 AA SC 2.5.3, decision 2 |
 | No new hue; the accent keeps its meaning on the bands | Art. XII / ADR-0024 |
