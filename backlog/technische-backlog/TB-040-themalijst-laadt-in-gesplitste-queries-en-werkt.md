@@ -2,12 +2,12 @@
 id: TB-040
 titel: Themalijst laadt in gesplitste queries en werkt ook bij een volledig schooljaar
 soort: technisch
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 19:26
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 20:13
+opgepakt-door: tb040-splitquery
+branch: ticket/TB-040-themalijst-splitquery
 pr:
 geblokkeerd:
 fr: []
@@ -69,3 +69,4 @@ Geen.
 
 - 2026-09-16 19:23 · themaboom-splitquery · aangemaakt (status in-uitvoering)
 - 2026-09-16 19:26 · themaboom-splitquery · in-uitvoering → klaar-voor-bouw: teruggegeven: de eigenaar wil het ticket nu alleen vastleggen, niet bouwen
+- 2026-09-16 20:13 · tb040-splitquery · klaar-voor-bouw → in-uitvoering: opgepakt
