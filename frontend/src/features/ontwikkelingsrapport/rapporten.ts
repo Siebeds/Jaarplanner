@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiAdres, apiFetch, del, get, put } from "../../lib/api";
+import { ApiError, apiAdres, apiFetch, del, get, post, put } from "../../lib/api";
 import { t } from "../../i18n";
+import { foutzin } from "./rapporthulp";
 import type { Rapportsubdoel } from "./rapportset";
 
 /**
@@ -61,6 +62,23 @@ export interface Tekening {
 export interface BeoordelingInvoer {
   gradatieId: string | null;
   tekst: string;
+  /**
+   * The server's seal, on the one save that takes an AI proposal over (FB-004). The server decides from it whether the
+   * text is `Aanvaard` or `Manueel`, so an edited proposal needs no different call: the seal simply stops matching.
+   */
+  herschrijving?: string;
+}
+
+/** What a teacher sets as the algemeen besluit, with the same seal on an accepted rewrite. */
+export interface BesluitInvoer {
+  tekst: string;
+  herschrijving?: string;
+}
+
+/** One AI proposal on screen: the rewritten text, and the seal to send back with a decision. Never stored. */
+export interface Herschrijfvoorstel {
+  voorstel: string;
+  herschrijving: string;
 }
 
 interface Beoordeling {
@@ -175,10 +193,51 @@ export function useVerwijderTekening(leerlingId: string, moment: number) {
 export function useBewaarBesluit(leerlingId: string, moment: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (tekst: string) => put<Besluit>(`${pad(leerlingId, moment)}/besluit`, { tekst }),
+    mutationFn: (invoer: BesluitInvoer) => put<Besluit>(`${pad(leerlingId, moment)}/besluit`, invoer),
     onSuccess: (bewaard) =>
       qc.setQueryData<Rapport>(sleutel(leerlingId, moment), (rapport) =>
         rapport ? { ...rapport, besluit: bewaard.besluit, besluitStatus: bewaard.besluitStatus } : rapport,
       ),
   });
+}
+
+// --- The AI rewrite of one text (FB-004, R21 to R25, ADR-0035 §3.5). ---
+
+/**
+ * Asks the server to have one text rewritten: the text of `rapportdoelId`, or the algemeen besluit when it is null.
+ *
+ * **Nothing of this is cached or stored.** The proposal lives in the component that asked for it and is gone when the
+ * teacher decides or leaves, which is what "no proposal is stored" means on this side of the wire too (Art. IV.2 as
+ * amended). So there is no `onSuccess` writing into the report.
+ */
+export function useHerschrijf(leerlingId: string, moment: number) {
+  return useMutation({
+    // `gcTime: 0` so the mutation cache drops the answer the moment the component unmounts. Without it a proposal the
+    // teacher walked away from without deciding would linger in memory, which is the one thing this whole path is built
+    // not to do.
+    gcTime: 0,
+    mutationFn: ({ rapportdoelId, tekst }: { rapportdoelId: string | null; tekst: string }) =>
+      post<Herschrijfvoorstel>(`${pad(leerlingId, moment)}/herschrijvingen`, { rapportdoelId, tekst }),
+  });
+}
+
+/** Records a rejected proposal (R23). It sends the seal and no text: the proposed text may not be stored. */
+export function useWeigerHerschrijving(leerlingId: string, moment: number) {
+  return useMutation({
+    mutationFn: ({ rapportdoelId, herschrijving }: { rapportdoelId: string | null; herschrijving: string }) =>
+      post<void>(`${pad(leerlingId, moment)}/herschrijvingen/geweigerd`, { rapportdoelId, herschrijving }),
+  });
+}
+
+/**
+ * The teacher's sentence for a rewrite that did not arrive.
+ *
+ * **The server's `detail` is deliberately not shown for the two AI statuses.** For those it is an English operator
+ * diagnostic ("Malformed JSON", "The AI client failed with ..."), which a teacher cannot act on. Every other refusal on
+ * these routes is the service's own Dutch, and `foutzin` shows it.
+ */
+export function herschrijffout(fout: unknown): string {
+  if (fout instanceof ApiError && fout.status === 422) return t("ontwikkelingsrapport.herschrijfOnbruikbaar");
+  if (fout instanceof ApiError && fout.status === 503) return t("ontwikkelingsrapport.herschrijfGeenAntwoord");
+  return foutzin(fout, "ontwikkelingsrapport.herschrijfMislukt");
 }

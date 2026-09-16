@@ -183,6 +183,10 @@ public static class DependencyInjection
         services.AddScoped<IKindtekeningService, KindtekeningService>();
         services.AddSingleton<ITekeningHerwerker, SkiaTekeningHerwerker>();
 
+        // The seal on an AI rewrite of a rapporttekst (FB-004, ADR-0035 D13). A singleton over the app's existing Data
+        // Protection key ring, so it needs no secret of its own; see HerschrijfZegel.
+        services.AddSingleton<IHerschrijfZegel, HerschrijfZegel>();
+
         // Schooljaar creation/read (E3-01, Art. IX.3). A Klas now REQUIRES a Schooljaar ("Schooljaar contains
         // multiple klassen"), so the container needs a creation path in the same change that makes it required —
         // otherwise class creation, and jaarplan generation with it, would be unreachable. Deliberately no update

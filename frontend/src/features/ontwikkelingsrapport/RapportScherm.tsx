@@ -3,7 +3,7 @@ import { Link, Navigate, NavLink, useParams } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Aandachtsmelding } from "../../components/ui/Aandachtsmelding";
 import { Bevestiging } from "../../components/ui/Bevestiging";
-import { Knop } from "../../components/ui/Knop";
+import { AiKnop, Knop } from "../../components/ui/Knop";
 import { knopklassen } from "../../components/ui/knopklassen";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Tekstvlak } from "../../components/ui/Veld";
@@ -27,8 +27,12 @@ import {
   useBewaarBeoordeling,
   useBewaarBesluit,
   useBewaarTekening,
+  useHerschrijf,
   useRapport,
   useVerwijderTekening,
+  useWeigerHerschrijving,
+  herschrijffout,
+  type Herschrijfvoorstel,
   type Rapport,
   type Rapportregel,
 } from "./rapporten";
@@ -408,11 +412,215 @@ function Beoordelingveld({
       {automatisch.stand === "fout" ? (
         <Bewaarfout fout={automatisch.fout} onOpnieuw={() => void automatisch.opnieuw()} />
       ) : null}
+      <Herschrijfvak
+        leerlingId={leerlingId}
+        moment={moment}
+        rapportdoelId={regel.rapportdoelId}
+        knoplabel={t("ontwikkelingsrapport.herschrijvenBij", { titel: regel.titel })}
+        tekst={stand.tekst}
+        maxLengte={MAX_TEKST}
+        bezig={automatisch.stand === "bezig"}
+        onOvergenomen={(nieuweTekst, zegel) => void neemOver(nieuweTekst, zegel)}
+      />
       <Subdoelen subdoelen={regel.subdoelen} />
     </div>
   );
+
+  /**
+   * Taking an AI proposal over: one explicit save that carries the server's seal, not the automatic one, because only a
+   * request with the seal can be found to be `aanvaard` (D13). The hook is then told what is stored, so its next pause
+   * does not send the same text again without the seal.
+   */
+  async function neemOver(nieuweTekst: string, zegel: string) {
+    const volgende = { ...stand, tekst: nieuweTekst };
+    setStand(volgende);
+    try {
+      await bewaar.mutateAsync({
+        rapportdoelId: regel.rapportdoelId,
+        invoer: { ...volgende, herschrijving: zegel },
+      });
+      automatisch.meldBewaard(volgende);
+    } catch {
+      // Refused: the text stands on screen, so the automatic save takes it from here and shows its own sentence rather
+      // than leaving the teacher with a proposal that quietly went nowhere.
+      automatisch.zet(volgende, "nu");
+    }
+  }
 }
 
+
+/**
+ * Having one text rewritten by the AI (FB-004, R21 to R25), under the field it belongs to.
+ *
+ * **The button appears only once there is a text**, because the AI reworks a text, it never writes one: a control that
+ * could only be refused is not offered. It is an `AiKnop`, the one control kind that wears the rainbow ring (ADR-0039).
+ *
+ * **The notice about the names is here, at the button, and is said once** (R25): the panel opens on the click, so the
+ * teacher reads it while the model is working and before she decides. It is not repeated per rapportdoel, because only
+ * one panel is open at a time.
+ *
+ * **The proposal is editable in place.** That is the third decision of R23 without a third control: taking over an
+ * edited text sends the seal too, the server finds it no longer covers this text, and stores `manueel`, which is what a
+ * text the teacher shaped is.
+ *
+ * **Nothing here is stored until she decides.** The proposal lives in this component; closing the panel, or leaving the
+ * screen, takes it with it.
+ */
+function Herschrijfvak({
+  leerlingId,
+  moment,
+  rapportdoelId,
+  knoplabel,
+  tekst,
+  maxLengte,
+  bezig,
+  onOvergenomen,
+}: {
+  leerlingId: string;
+  moment: number;
+  /** The rapportdoel whose text this is, or null for the algemeen besluit. */
+  rapportdoelId: string | null;
+  /** The button's accessible name: it says which text it works on, where the visible label cannot. */
+  knoplabel: string;
+  /** The text as it stands on screen. It is the only thing that goes to the AI (R21). */
+  tekst: string;
+  maxLengte: number;
+  /** Whether an automatic save is on its way: a rewrite of a text still in flight would race it. */
+  bezig: boolean;
+  onOvergenomen: (tekst: string, zegel: string) => void;
+}) {
+  const herschrijf = useHerschrijf(leerlingId, moment);
+  const weiger = useWeigerHerschrijving(leerlingId, moment);
+  const [open, setOpen] = useState(false);
+  const [voorstel, setVoorstel] = useState<Herschrijfvoorstel | null>(null);
+  const [bewerkt, setBewerkt] = useState("");
+  // The text as it stood when the AI was asked, held apart from the field. "Je eigen tekst" then names the text this
+  // proposal was actually made for, also when the teacher keeps typing in the field while the panel is open. Showing
+  // the live field there would put a heading over a text the proposal has nothing to do with.
+  const [bron, setBron] = useState("");
+  const eigenId = useId();
+  const voorstelId = useId();
+
+  if (tekst.trim() === "") return null;
+
+  function vraag() {
+    setOpen(true);
+    setVoorstel(null);
+    setBron(tekst);
+    herschrijf.reset();
+    weiger.reset();
+    herschrijf.mutate(
+      { rapportdoelId, tekst },
+      {
+        onSuccess: (gekregen) => {
+          setVoorstel(gekregen);
+          setBewerkt(gekregen.voorstel);
+        },
+      },
+    );
+  }
+
+  function sluit() {
+    setOpen(false);
+    setVoorstel(null);
+    herschrijf.reset();
+    weiger.reset();
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <AiKnop
+        className="self-start"
+        aria-label={knoplabel}
+        bezig={herschrijf.isPending}
+        disabled={bezig || herschrijf.isPending}
+        onClick={vraag}
+      >
+        {t("ontwikkelingsrapport.herschrijven")}
+      </AiKnop>
+
+      {open ? (
+        <div
+          className="flex flex-col gap-3 rounded-veld border border-lijn bg-vlak px-3 py-3"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.preventDefault();
+              sluit();
+            }
+          }}
+        >
+          {/* R25: said before she decides, and never said twice, since one panel is open at a time. */}
+          <p className="text-meta text-inkt-zacht">{t("ontwikkelingsrapport.herschrijfNamen")}</p>
+
+          {herschrijf.isPending ? (
+            <p aria-live="polite" className="text-meta text-inkt-zacht">
+              {t("ontwikkelingsrapport.herschrijfBezig")}
+            </p>
+          ) : herschrijf.isError ? (
+            <>
+              <Aandachtsmelding>{herschrijffout(herschrijf.error)}</Aandachtsmelding>
+              <Knop rang="stil" className="self-start" onClick={sluit}>
+                {t("ontwikkelingsrapport.herschrijfSluiten")}
+              </Knop>
+            </>
+          ) : voorstel ? (
+            <>
+              {/* Side by side from `sm`, stacked on a phone: two texts to compare, never two narrow columns. */}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex min-w-0 flex-col gap-1">
+                  <h4 id={eigenId} className="text-meta font-medium text-inkt-zacht">
+                    {t("ontwikkelingsrapport.herschrijfEigen")}
+                  </h4>
+                  <p className="whitespace-pre-line break-words rounded-veld border border-lijn bg-kaart px-3 py-2 text-body text-inkt">
+                    {bron}
+                  </p>
+                </div>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <h4 id={voorstelId} className="text-meta font-medium text-inkt-zacht">
+                    {t("ontwikkelingsrapport.herschrijfVoorstel")}
+                  </h4>
+                  <Tekstvlak
+                    aria-labelledby={voorstelId}
+                    rows={5}
+                    value={bewerkt}
+                    maxLength={maxLengte}
+                    onChange={(e) => setBewerkt(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {weiger.isError ? (
+                <Aandachtsmelding>{foutzin(weiger.error, "ontwikkelingsrapport.herschrijfWeigerenMislukt")}</Aandachtsmelding>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Knop
+                  rang="hoofd"
+                  disabled={bewerkt.trim() === "" || weiger.isPending}
+                  onClick={() => {
+                    onOvergenomen(bewerkt.trim(), voorstel.herschrijving);
+                    sluit();
+                  }}
+                >
+                  {t("ontwikkelingsrapport.herschrijfOvernemen")}
+                </Knop>
+                <Knop
+                  rang="rustig"
+                  disabled={weiger.isPending}
+                  onClick={() =>
+                    weiger.mutate({ rapportdoelId, herschrijving: voorstel.herschrijving }, { onSuccess: sluit })
+                  }
+                >
+                  {weiger.isPending ? t("algemeen.bezig") : t("ontwikkelingsrapport.herschrijfWeigeren")}
+                </Knop>
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 /**
  * The scale as a row of choices, one per star and one for none: a radiogroup, so a keyboard user arrows through it.
  * A star offered is drawn hollow and the chosen one filled, with its outline as the state; every star carries its
@@ -502,8 +710,19 @@ function Besluitvak({ rapport, magInvullen }: { rapport: Rapport; magInvullen: b
 function Besluitveld({ leerlingId, moment, begin }: { leerlingId: string; moment: number; begin: string }) {
   const bewaar = useBewaarBesluit(leerlingId, moment);
   const [tekst, setTekst] = useState(begin);
-  const automatisch = useAutobewaren(begin, (waarde) => bewaar.mutateAsync(waarde), zelfdeTekst);
+  const automatisch = useAutobewaren(begin, (waarde) => bewaar.mutateAsync({ tekst: waarde }), zelfdeTekst);
   const kopId = useId();
+
+  /** As the rapportdoel's: one explicit save with the seal, then the automatic one is told what is stored. */
+  async function neemOver(nieuweTekst: string, zegel: string) {
+    setTekst(nieuweTekst);
+    try {
+      await bewaar.mutateAsync({ tekst: nieuweTekst, herschrijving: zegel });
+      automatisch.meldBewaard(nieuweTekst);
+    } catch {
+      automatisch.zet(nieuweTekst, "nu");
+    }
+  }
 
   return (
     <>
@@ -522,6 +741,16 @@ function Besluitveld({ leerlingId, moment, begin }: { leerlingId: string; moment
       {automatisch.stand === "fout" ? (
         <Bewaarfout fout={automatisch.fout} onOpnieuw={() => void automatisch.opnieuw()} />
       ) : null}
+      <Herschrijfvak
+        leerlingId={leerlingId}
+        moment={moment}
+        rapportdoelId={null}
+        knoplabel={t("ontwikkelingsrapport.herschrijvenBesluit")}
+        tekst={tekst}
+        maxLengte={MAX_BESLUIT}
+        bezig={automatisch.stand === "bezig"}
+        onOvergenomen={(nieuweTekst, zegel) => void neemOver(nieuweTekst, zegel)}
+      />
     </>
   );
 }

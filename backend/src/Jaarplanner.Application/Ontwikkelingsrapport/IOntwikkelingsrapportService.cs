@@ -44,6 +44,70 @@ public interface IOntwikkelingsrapportService
         int moment,
         BesluitInvoer invoer,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Asks the AI to rewrite one text of this report (FB-004, R21, R22, ADR-0035 §3.5): the text of
+    /// <paramref name="rapportdoelId"/>, or the algemeen besluit when it is <c>null</c>.
+    /// <para>
+    /// <b>Nothing is stored</b> (Art. IV.2 as amended): the proposal goes back to the teacher with a seal and is gone
+    /// from the server. <b>Nothing but that one text goes out</b> (Art. IV.4, R21), and the names of the klas's children
+    /// are replaced before it does (R25, D14).
+    /// </para>
+    /// <para>
+    /// 404 when the child does not exist, 400 when the text is blank or too long. An answer outside the contract, and a
+    /// model that does not answer at all, come back as a failed <see cref="HerschrijfResultaat"/> rather than as a
+    /// fault: the teacher keeps her own text and is told so.
+    /// </para>
+    /// </summary>
+    Task<HerschrijfResultaat> StelHerschrijvingVoorAsync(
+        Guid leerlingId,
+        int moment,
+        Guid? rapportdoelId,
+        string? tekst,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records that the teacher rejected a rewrite of that text (R23): a mark beside the text, without the text that was
+    /// proposed. The stored text and its own status stay as they were.
+    /// <para>
+    /// The seal proves the server itself proposed something for this very field a short while ago (D13), so the
+    /// rejection is the server's finding too; an absent, tampered or expired seal is a 400. It stores nothing when the
+    /// text a proposal was meant for is gone by now.
+    /// </para>
+    /// </summary>
+    Task WeigerHerschrijvingAsync(
+        Guid leerlingId,
+        int moment,
+        Guid? rapportdoelId,
+        string? zegel,
+        CancellationToken cancellationToken = default);
+}
+
+/// <summary>Why a rewrite did not reach the teacher. Both leave her own text exactly as it was.</summary>
+public enum Herschrijfmislukking
+{
+    /// <summary>The model did not answer: not configured, unreachable, refusing, or too slow.</summary>
+    AiOnbereikbaar,
+
+    /// <summary>The model answered outside its contract, so nothing of the answer may be shown (Art. IV.5).</summary>
+    OnbruikbaarAntwoord,
+}
+
+/// <summary>
+/// What an AI rewrite produced: the proposal with the server's seal, or why there is none. The <see cref="Fout"/> is an
+/// English operator diagnostic (Art. II.3) and quotes no text; the teacher's own sentence is the screen's.
+/// </summary>
+public sealed record HerschrijfResultaat(
+    bool IsGeslaagd,
+    string? Voorstel,
+    string? Zegel,
+    Herschrijfmislukking? Mislukking,
+    string? Fout)
+{
+    public static HerschrijfResultaat Geslaagd(string voorstel, string zegel) => new(true, voorstel, zegel, null, null);
+
+    public static HerschrijfResultaat Mislukt(Herschrijfmislukking mislukking, string fout) =>
+        new(false, null, null, mislukking, fout);
 }
 
 /// <summary>One report as the screen reads it.</summary>
@@ -89,14 +153,41 @@ public sealed record RapportdoelBeoordelingWeergave(
 /// <summary>What a teacher sets for one rapportdoel: the star and the text together, as the screen holds them.</summary>
 /// <param name="GradatieId">A star of the scale, or null for none.</param>
 /// <param name="Tekst">The text; null or blank for none. Nullable so a missing field reaches the service's Dutch, not ASP.NET's English.</param>
-public sealed record BeoordelingInvoer(Guid? GradatieId, string? Tekst);
+/// <param name="Herschrijving">
+/// The seal the screen got with an AI proposal, sent back when the teacher takes that proposal over (FB-004, D13). The
+/// text counts as <c>aanvaard</c> only when the server finds the seal to be its own, still valid, and over exactly this
+/// text; anything else, an edited proposal included, is <c>manueel</c>, which is what a text the teacher shaped is.
+/// </param>
+public sealed record BeoordelingInvoer(Guid? GradatieId, string? Tekst, string? Herschrijving = null);
 
 /// <summary>One rapportdoel's star and text as stored after a save; both null when the save cleared them.</summary>
 public sealed record BeoordelingWeergave(Guid RapportdoelId, Guid? GradatieId, string? Tekst, Tekststatus? TekstStatus);
 
 /// <summary>What a teacher sets as the algemeen besluit.</summary>
 /// <param name="Tekst">The besluit; null or blank for none.</param>
-public sealed record BesluitInvoer(string? Tekst);
+/// <param name="Herschrijving">The seal of an accepted AI proposal, as on <see cref="BeoordelingInvoer"/>.</param>
+public sealed record BesluitInvoer(string? Tekst, string? Herschrijving = null);
 
 /// <summary>The algemeen besluit as stored after a save; both null when the save cleared it.</summary>
 public sealed record BesluitWeergave(string? Besluit, Tekststatus? BesluitStatus);
+
+/// <summary>
+/// Body of a request to have one text rewritten (FB-004).
+/// </summary>
+/// <param name="RapportdoelId">The rapportdoel whose text it is, or null for the algemeen besluit.</param>
+/// <param name="Tekst">The text as it stands on the teacher's screen. It is the only thing that reaches the AI (R21).</param>
+public sealed record HerschrijfAanvraag(Guid? RapportdoelId, string? Tekst);
+
+/// <summary>
+/// Body of a rejection (R23). It sends the seal and no text: the proposed text may not be stored, and the seal alone
+/// proves the server proposed something for this field.
+/// </summary>
+/// <param name="RapportdoelId">The rapportdoel whose text it is, or null for the algemeen besluit.</param>
+/// <param name="Herschrijving">The seal that came with the proposal.</param>
+public sealed record HerschrijfWeigering(Guid? RapportdoelId, string? Herschrijving);
+
+/// <summary>
+/// One proposal on its way to the screen: the rewritten text with the names put back, and the seal to send along when
+/// the teacher takes it over. Nothing of this is stored (Art. IV.2 as amended).
+/// </summary>
+public sealed record HerschrijfVoorstel(string Voorstel, string Herschrijving);

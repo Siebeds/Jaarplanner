@@ -126,7 +126,11 @@ public static class JaarplanGeneratiePromptBuilder
     /// <summary>
     /// Builds the grounded <see cref="AiRequest"/> for generating a plan proposal for one class.
     /// </summary>
-    /// <param name="klas">The class the plan is for (its own data only — no pupil data exists, Art. VI.2).</param>
+    /// <param name="klas">
+    /// The class the plan is for: its own data only. No pupil data reaches this prompt (Art. VI.2). Pupil data does
+    /// exist since FB-003, in the K3 ontwikkelingsrapport alone (Art. VI.7), and the one prompt that carries any is the
+    /// rewrite of a rapporttekst (FB-004, <c>HerschrijfPromptBuilder</c>); nothing of it reaches the planning.
+    /// </param>
     /// <param name="schooljaar">The school year, for its label and span.</param>
     /// <param name="blokken">
     /// The planningsblokken <b>already derived</b> by the <see cref="IPlanningsblokIndeling"/> seam — the only

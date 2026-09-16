@@ -68,6 +68,19 @@ export function useAutobewaren<T>(
     [pomp, wachttijd],
   );
 
+  /**
+   * Takes `waarde` as what is now stored, without sending it. For a save this hook did not make: taking over an AI
+   * rewrite is one explicit request that carries the server's seal (FB-004), and without this the next pause would send
+   * the same text again, this time with no seal, and relabel an accepted rewrite as typed by hand.
+   */
+  const meldBewaard = useCallback((waarde: T) => {
+    opgeslagen.current = waarde;
+    laatste.current = waarde;
+    clearTimeout(timer.current);
+    setFout(null);
+    setStand("bewaard");
+  }, []);
+
   useEffect(() => {
     const vraagBijVertrek = (gebeurtenis: BeforeUnloadEvent) => {
       if (bezig.current || !gelijk(laatste.current, opgeslagen.current)) gebeurtenis.preventDefault();
@@ -80,5 +93,5 @@ export function useAutobewaren<T>(
     };
   }, [gelijk, pomp]);
 
-  return { stand, fout, zet, opnieuw: pomp };
+  return { stand, fout, zet, meldBewaard, opnieuw: pomp };
 }
