@@ -403,9 +403,12 @@ public sealed class DekkingsvooruitzichtTests
             "K3 derde kleuterklas",
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             "2026-2027",
-            "themaperiode (4-6 weken)",
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2027, 6, 30),
             plaatsingen,
-            []);
+            // Dekking reads neither the lesweken nor the balance, and must not start to.
+            [],
+            new JaarbalansWeergave(0, 0, 0));
 
     private static ThemaplaatsingWeergave Plaatsing(
         Guid themaId,
@@ -421,16 +424,15 @@ public sealed class DekkingsvooruitzichtTests
             Guid.NewGuid(),
             themaId,
             themaId == HerfstId ? "Herfst" : "Winter",
-            "Themaperiode",
             new DateOnly(2026, 9, 1),
-            isVervallen ? null : new DateOnly(2026, 10, 9),
-            isVervallen ? null : 1,
+            new DateOnly(2026, 10, 9),
             isVervallen,
             status,
             null,
             false,
             [],
-            4);
+            4,
+            null);
 
     private static Leerplandoel Doel(string code, string jaarFase = "K3") =>
         new(

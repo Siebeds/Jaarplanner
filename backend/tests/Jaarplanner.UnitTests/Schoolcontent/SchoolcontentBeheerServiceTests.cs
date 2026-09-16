@@ -134,8 +134,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
             var jaarplan = new Jaarplan(_klas.Id);
             jaarplan.VoegPlaatsingToe(
                 thema.Id,
-                Planningsblokniveau.Themaperiode,
-                new DateOnly(2026, 9, 1),
+                new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1),
                 KoppelingStatus.Voorgesteld,
                 "voorstel");
             context.Jaarplannen.Add(jaarplan);
@@ -166,7 +165,7 @@ public sealed class SchoolcontentBeheerServiceTests : IDisposable
         {
             var jaarplan = new Jaarplan(_klas.Id);
             jaarplan.VoegPlaatsingToe(
-                thema.Id, Planningsblokniveau.Themaperiode, new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard, "ja");
+                thema.Id, new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 1), KoppelingStatus.Aanvaard, "ja");
             context.Jaarplannen.Add(jaarplan);
             await context.SaveChangesAsync();
         }

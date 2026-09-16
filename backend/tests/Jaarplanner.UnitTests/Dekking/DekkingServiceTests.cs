@@ -912,12 +912,12 @@ public sealed class DekkingServiceTests
             "K3 derde kleuterklas",
             Guid.Parse("33333333-3333-3333-3333-333333333333"),
             "2026-2027",
-            "themaperiode (4-6 weken)",
+            new DateOnly(2026, 9, 1),
+            new DateOnly(2027, 6, 30),
             plaatsingen,
-            // Dekking does not read the per-block load (E3-09) and must not start to: how full a period is says
-            // nothing about whether a goal is taught in it. Empty rather than populated, so a future coupling shows
-            // up as a test that needs data instead of one that silently passes on a fixture's leftovers.
-            []);
+            // Dekking reads neither the lesweken nor the balance, and must not start to.
+            [],
+            new JaarbalansWeergave(0, 0, 0));
 
     private static ThemaplaatsingWeergave Plaatsing(
         Guid themaId,
@@ -937,10 +937,8 @@ public sealed class DekkingServiceTests
             Guid.NewGuid(),
             themaId,
             themaNaam,
-            "Themaperiode",
             blokStart ?? new DateOnly(2026, 9, 1),
-            isVervallen ? null : new DateOnly(2026, 10, 9),
-            isVervallen ? null : 1,
+            new DateOnly(2026, 10, 9),
             isVervallen,
             status,
             null,
@@ -948,7 +946,8 @@ public sealed class DekkingServiceTests
             [],
             // A nominal duration, not 0: `DuurWeken` is `RequirePositive` in the domain, and 0 is reserved for the
             // "thema could not be resolved" degrade. Dekking ignores the field either way.
-            4);
+            4,
+            null);
 
     [Fact]
     public async Task Elk_doel_draagt_zijn_discipline_en_een_nummer_zonder_naam_blijft_zonder_naam()

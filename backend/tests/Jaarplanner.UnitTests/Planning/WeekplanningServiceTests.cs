@@ -1,9 +1,7 @@
-using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
-using Jaarplanner.Infrastructure.Planning;
 
 namespace Jaarplanner.UnitTests.Planning;
 
@@ -11,15 +9,11 @@ namespace Jaarplanner.UnitTests.Planning;
 /// E9-03: <see cref="WeekplanningService"/> — the day-level planning use cases (FR-6.2/FR-7.2).
 /// <para>
 /// Runs entirely against <see cref="FakeWeekplanningOpslag"/>, so the whole flow is exercised with <b>no database</b>
-/// (Art. IV.6). The real grid seam is used rather than a fake one, because "does this activiteit fall outside its
-/// thema's period" is only meaningful against the blocks the board actually draws.
+/// (Art. IV.6). "Does this activiteit fall outside its thema" is measured against the placements' own days.
 /// </para>
 /// </summary>
 public sealed class WeekplanningServiceTests
 {
-    private static readonly IPlanningsblokIndeling Indeling =
-        new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
-
     private static readonly Guid ActiviteitId = Guid.NewGuid();
     private static readonly Guid SubthemaId = Guid.NewGuid();
     private static readonly Guid ThemaId = Guid.NewGuid();
@@ -57,7 +51,7 @@ public sealed class WeekplanningServiceTests
         var klas = jaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var opslag = new FakeWeekplanningOpslag(klas, jaar, inhoud ?? [Inhoud("K3")], jaarplan);
 
-        return (new WeekplanningService(opslag, Indeling), opslag, klas, jaar);
+        return (new WeekplanningService(opslag), opslag, klas, jaar);
     }
 
     [Fact]
@@ -149,7 +143,7 @@ public sealed class WeekplanningServiceTests
         // means (Art. IX.2). It used to be another klasId.
         var opslag = new FakeWeekplanningOpslag(
             klas, schooljaar, [Inhoud("K3"), Inhoud("L3", vreemdeActiviteit)]);
-        var service = new WeekplanningService(opslag, Indeling);
+        var service = new WeekplanningService(opslag);
 
         // A vakantie day AND an activiteit for another age: the age error is the one reported.
         var fout = await Assert.ThrowsAsync<OngeldigeDagplanningFout>(() =>
@@ -315,98 +309,82 @@ public sealed class WeekplanningServiceTests
     }
 
     /// <summary>
-    /// An activiteit scheduled outside its thema's period is <b>reported, never refused</b> (E9-03's stated invariant).
+    /// An activiteit scheduled outside its thema's days is <b>reported, never refused</b> (E9-03's stated invariant).
     /// A teacher who front-loads one activiteit is not making a mistake, and refusing it would be the tool inventing a
     /// rule the school never stated.
     /// </summary>
     [Fact]
-    public async Task Een_activiteit_buiten_de_periode_van_haar_thema_wordt_gemeld_niet_geweigerd()
+    public async Task Een_activiteit_buiten_de_dagen_van_haar_thema_wordt_gemeld_niet_geweigerd()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
-        var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
-        var jaarplan = new Jaarplan(Guid.NewGuid());
-
-        // The thema sits in the SECOND themaperiode; the activiteit is scheduled in the first.
-        jaarplan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Aanvaard);
-
-        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
-        var eigenPlan = new Jaarplan(klas.Id);
-        eigenPlan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Aanvaard);
-        var opslag = new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], eigenPlan);
-        var service = new WeekplanningService(opslag, Indeling);
-
-        var dagInEerstePeriode = blokken[0].Start.AddDays(2);
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, dagInEerstePeriode, Begin, Einde);
-
-        var gepland = Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten));
-        Assert.True(gepland.ValtBuitenThemaperiode);
-    }
-
-    /// <summary>
-    /// The mirror of the test above: inside its own period, nothing is flagged.
-    /// </summary>
-    [Fact]
-    public async Task Een_activiteit_binnen_de_periode_van_haar_thema_wordt_niet_gemeld()
-    {
-        var schooljaar = TestSchooljaar.MetVakanties();
-        var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
         var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
-        plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard);
-        var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), Begin, Einde);
+        // The thema runs 5–23 October; the activiteit is scheduled on 9 September.
+        plan.VoegPlaatsingToe(ThemaId, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 23), KoppelingStatus.Aanvaard);
+        var opslag = new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan);
+        var service = new WeekplanningService(opslag);
+
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
+
+        Assert.True(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
+    }
+
+    /// <summary>The mirror of the test above: on a day of the thema's placement, its first and last included, nothing is flagged.</summary>
+    [Theory]
+    [InlineData(2026, 9, 7)]
+    [InlineData(2026, 9, 18)]
+    public async Task Een_activiteit_binnen_de_dagen_van_haar_thema_wordt_niet_gemeld(int jaar, int maand, int dag)
+    {
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
+        var plan = new Jaarplan(klas.Id);
+        plan.VoegPlaatsingToe(ThemaId, new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 18), KoppelingStatus.Aanvaard);
+        var service = new WeekplanningService(new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan));
+
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(jaar, maand, dag), Begin, Einde);
 
         Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
     }
 
     /// <summary>
-    /// <b>A rejected thema placement is not a period.</b> Measuring an activiteit against it would report a mismatch
-    /// with a period the thema is not in — and the groepschat record of 2026-08-19 is explicit that folding a rejected
-    /// placement in with the others is a copy defect that reached a teacher once already (E5-05 MAJOR-1, which touched
-    /// E3-07 and E4-03).
-    /// <para>
-    /// With the thema's only placement rejected there is no period at all, so the flag is <c>false</c> — "no mismatch
-    /// to report" — rather than <c>true</c>. Reporting a mismatch against nothing is the thing this guards.
-    /// </para>
+    /// <b>A rejected thema placement is not a stretch of the thema.</b> With the thema's only placement rejected there
+    /// are no days to measure against, so the flag is <c>false</c>: a mismatch against nothing is not reported.
     /// </summary>
     [Fact]
-    public async Task Een_geweigerde_themaplaatsing_levert_geen_periode_om_tegen_te_meten()
+    public async Task Een_geweigerde_themaplaatsing_levert_geen_dagen_om_tegen_te_meten()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
-        var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
         var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
-        plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[1].Start, KoppelingStatus.Geweigerd);
-        var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
+        plan.VoegPlaatsingToe(ThemaId, new DateOnly(2026, 10, 5), new DateOnly(2026, 10, 23), KoppelingStatus.Geweigerd);
+        var service = new WeekplanningService(new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan));
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[0].Start.AddDays(2), Begin, Einde);
+        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
 
         Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
     }
 
     /// <summary>
-    /// A thema placed in several periods keeps the <b>widest</b> span, so an activiteit inside any of them is not
-    /// reported as outside. Measuring against only the first would flag correct scheduling as a mismatch.
+    /// A thema placed twice, or in parts around a vacation, is measured against <b>every</b> placement (ADR-0049
+    /// decision 11): a day in either is inside, and a day between them is outside. The old rule took the widest span,
+    /// which only made sense while a placement filled a whole period.
     /// </summary>
     [Fact]
-    public async Task Een_thema_in_twee_periodes_dekt_beide()
+    public async Task Een_thema_in_twee_delen_dekt_elk_deel_maar_niet_wat_ertussen_ligt()
     {
         var schooljaar = TestSchooljaar.MetVakanties();
-        var blokken = Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
         var klas = schooljaar.VoegKlasToe("K3 derde kleuterklas", "K3");
         var plan = new Jaarplan(klas.Id);
-        plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[0].Start, KoppelingStatus.Aanvaard);
-        plan.VoegPlaatsingToe(ThemaId, Planningsblokniveau.Themaperiode, blokken[2].Start, KoppelingStatus.Aanvaard);
-        var service = new WeekplanningService(
-            new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan), Indeling);
+        plan.VoegPlaatsingToe(ThemaId, new DateOnly(2026, 9, 7), new DateOnly(2026, 9, 11), KoppelingStatus.Aanvaard);
+        plan.VoegPlaatsingToe(ThemaId, new DateOnly(2026, 9, 21), new DateOnly(2026, 9, 25), KoppelingStatus.Manueel);
+        var service = new WeekplanningService(new FakeWeekplanningOpslag(klas, schooljaar, [Inhoud("K3")], plan));
 
-        var week = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, blokken[1].Start.AddDays(1), Begin, Einde);
+        var inTweede = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2026, 9, 23), Begin, Einde);
+        Assert.False(Assert.Single(inTweede.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
 
-        // Between the two, so inside the widened span.
-        Assert.False(Assert.Single(week.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
+        var ertussen = await service.PlanActiviteitAsync(klas.Id, ActiviteitId, new DateOnly(2026, 9, 16), Begin, Einde);
+        Assert.True(Assert.Single(ertussen.Dagen.SelectMany(d => d.Activiteiten)).ValtBuitenThemaperiode);
     }
 
     /// <summary>
