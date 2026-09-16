@@ -161,9 +161,8 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
         rij = SchrijfNoot(
             sheet,
             rij,
-            "Dit overzicht gaat over leerplandoelen. Dekking op het niveau van de minimumdoelen, wat de " +
-            "onderwijsinspectie toetst, zit er nog niet in: die doelen moeten eerst ingeladen worden en dat " +
-            "overzicht moet nog gebouwd worden.");
+            "Dit overzicht gaat over leerplandoelen. De dekking op het niveau van de minimumdoelen, wat de " +
+            "onderwijsinspectie toetst, staat op het dekkingsscherm en zit nog niet in dit bestand.");
         rij = SchrijfNoot(
             sheet,
             rij,

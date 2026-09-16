@@ -42,11 +42,10 @@ namespace Jaarplanner.Domain.Planning;
 /// by construction.
 /// </para>
 /// <para>
-/// <b>This does not affect dekking, and that is not an oversight.</b> Art. V.1 makes a leerplandoel gedekt when a link
-/// the teacher stands behind hangs off a thema <i>placed in the plan</i> — the <see cref="Themaplaatsing"/>. Scheduling
-/// an activiteit onto a Tuesday moves nothing in that computation, because the thema's placement is what proves the
-/// content is taught. Anything here that started to raise a dekkingscijfer would be letting the calendar grant coverage
-/// twice for the same content.
+/// <b>This does not affect dekking, and that is not an oversight.</b> Art. V.1 makes an activiteit's goal gedekt once its
+/// subthema is placed in the klas's agenda (the <see cref="Subthemaplaatsing"/>, ADR-0047). Scheduling the activiteit
+/// onto a Tuesday moves nothing in that computation; anything here that started to raise a dekkingscijfer would be
+/// letting the calendar grant coverage twice for the same content.
 /// </para>
 /// </summary>
 public sealed class Activiteitplaatsing

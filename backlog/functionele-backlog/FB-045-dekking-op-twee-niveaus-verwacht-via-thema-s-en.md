@@ -2,10 +2,10 @@
 id: FB-045
 titel: Dekking op twee niveaus: verwacht via thema's en subthema's, ingepland via de agenda
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 16:31
+bijgewerkt: 2026-09-16 16:38
 opgepakt-door: claude-fb045
 branch: ticket/FB-045-dekkingsprognose
 pr:
@@ -51,15 +51,15 @@ wordt niet voor het hele schooljaar in één keer ingepland (beslissing eigenaar
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een minimumdoel op een thema dat de K3-klas nog niet ingepland heeft, wanneer men de dekking van die klas
+- [x] Gegeven een minimumdoel op een thema dat de K3-klas nog niet ingepland heeft, wanneer men de dekking van die klas
   opent, dan staat het minimumdoel in de dekkingsprognose, met de naam van het thema.
-- [ ] Gegeven dat thema, wanneer het in de agenda van de klas gezet wordt, dan staat het minimumdoel als gedekt.
-- [ ] Gegeven een leerplandoel dat subdoel is van een K3-subthema, dan staat het in de dekkingsprognose van een K3-klas,
+- [x] Gegeven dat thema, wanneer het in de agenda van de klas gezet wordt, dan staat het minimumdoel als gedekt.
+- [x] Gegeven een leerplandoel dat subdoel is van een K3-subthema, dan staat het in de dekkingsprognose van een K3-klas,
   en als gedekt zodra dat subthema in haar agenda staat; in een K2-klas telt het niet.
-- [ ] Gegeven een minimumdoel op geen enkel thema, dan staat het in de lijst van ontbrekende doelen, ook als een
+- [x] Gegeven een minimumdoel op geen enkel thema, dan staat het in de lijst van ontbrekende doelen, ook als een
   leerplandoel dat ernaar leidt ingepland is.
-- [ ] De stappen zijn te onderscheiden zonder kleur, en de berekening is getest aan de serverkant.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] De stappen zijn te onderscheiden zonder kleur, en de berekening is getest aan de serverkant.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -111,3 +111,6 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 15:58 · claude-fb045 · standaarden vastgelegd: mijlpaal per klas (K-, 4-, 6-) en een thema telt als ingepland wanneer het beslist geplaatst is
 - 2026-09-16 16:19 · claude-fb045 · backend klaar: dekkingsprognose en dekking per leerplandoel en per minimumdoel (mijlpaal van de klas), subthema telt pas als het in de agenda staat, themadoelen uit de import tellen niet; unit- en integratietests groen
 - 2026-09-16 16:31 · claude-fb045 · frontend klaar: dekkingsscherm met minimumdoelen (per leergebied) en leerplandoelen, meter met dekking en prognose per niveau, stap per doel in woorden en vorm; browser op een kopie van de dev-database, desktop en 390px, zonder horizontaal scrollen
+- 2026-09-16 16:38 · claude-fb045 · antagonist: COMPLIANT, geen blokkerende punten; kleine punten opgelost of genoteerd in backlog/worklogs/FB-045/antagonist.md
+- 2026-09-16 16:38 · claude-fb045 · criteria afgevinkt: berekening in DekkingsprognoseTests en de Postgres-tests (subthema pas gedekt in de agenda, andere klas en leeftijd, minimumdoel alleen via thema), HTTP-test voor de minimumdoelen, schermtests voor stap en woorden, browser op desktop en 390px
+- 2026-09-16 16:38 · claude-fb045 · in-uitvoering → te-testen: gebouwd: dekkingsprognose en dekking voor minimumdoelen en leerplandoelen, Art. V.1 en ADR-0047; alle gates groen
