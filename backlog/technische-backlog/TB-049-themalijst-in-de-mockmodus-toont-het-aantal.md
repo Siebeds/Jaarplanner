@@ -15,23 +15,27 @@ fr: []
 
 ## Aanleiding
 
-<!-- Waarom is dit nodig? Welk probleem heeft een leerkracht of de directie vandaag? -->
+In de mockmodus (TB-046, TB-047) toont de themalijst bij elk thema "0 subthema's, 0 activiteiten, 0 doelen", terwijl
+de thema's er wel hebben. De bibliotheek op `main` stuurt drie tellers mee (`aantalSubthemas`, `aantalActiviteiten`,
+`aantalDoelkoppelingen`) die de mock niet vult. De eigenaar zag het op 2026-09-17.
 
 ## Voorgestelde wijziging
 
-<!-- Wat verandert er technisch, en in welke delen van de code? -->
+`frontend/src/mocks/toestand.ts`: de bibliotheek van de mock telt per thema zijn subthema's, zijn activiteiten en zijn
+doelkoppelingen, en stuurt ze mee. Een test in `frontend/src/mocks/routes.test.ts`.
 
 ## Acceptatiecriteria
 
-<!-- Een lijst met "- [ ]" regels, elk controleerbaar: Gegeven ..., wanneer ..., dan ... -->
+- [ ] Gegeven de mockmodus, wanneer je Thema's opent, dan toont elk thema zijn werkelijke aantal subthema's, activiteiten en doelen, niet nul.
+- [ ] `pnpm lint` en `pnpm test` zijn groen.
 
 ## Buiten scope
 
-<!-- Wat hoort er uitdrukkelijk niet bij? Schrijf "Niets." als er niets uitgesloten wordt. -->
+De tellers opnemen in `ThemaBibliotheekItem` in `lib/types.ts`: dat hoort bij wie dat bestand bijwerkt.
 
 ## Open vragen
 
-<!-- Wat is nog niet beslist? Schrijf "Geen." als alles duidelijk is. -->
+Geen.
 
 ## Werklog
 

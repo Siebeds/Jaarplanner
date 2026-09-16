@@ -299,12 +299,27 @@ export function themaVoorKlas(thema: ThemaWeergave, jaarfase: string): ThemaWeer
   return { ...themaWeergave(thema), subthemas: thema.subthemas.filter((s) => s.leeftijd === jaarfase) };
 }
 
-export function bibliotheek(t: Toestand): ThemaBibliotheekItem[] {
+/**
+ * The library row, with the three counts the server sends beside the typed fields (TB-049). They are not in
+ * `ThemaBibliotheekItem` yet; the thema list reads them defensively, and counts them as the server does.
+ */
+export function bibliotheek(t: Toestand): (ThemaBibliotheekItem & {
+  aantalSubthemas: number;
+  aantalActiviteiten: number;
+  aantalDoelkoppelingen: number;
+})[] {
   return t.themas.map((thema) => {
-    const { subthemas: _, ...rest } = themaWeergave(thema);
+    const { subthemas, ...rest } = themaWeergave(thema);
+    const activiteiten = subthemas.flatMap((s) => s.activiteiten);
     return {
       ...rest,
       aantalAfgeleideKlassen: t.plaatsingen.some((p) => p.themaId === thema.id) ? t.klassen.length : 0,
+      aantalSubthemas: subthemas.length,
+      aantalActiviteiten: activiteiten.length,
+      aantalDoelkoppelingen:
+        thema.minimumdoelen.length +
+        subthemas.reduce((som, s) => som + s.subdoelen.length, 0) +
+        activiteiten.reduce((som, a) => som + a.doelkoppelingen.length, 0),
     };
   });
 }
