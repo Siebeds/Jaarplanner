@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 21:40
+bijgewerkt: 2026-09-16 21:44
 opgepakt-door: claude-code-anthropic
 branch: ticket/TB-anthropic-client
-pr:
+pr: 118
 geblokkeerd:
 fr: []
 ---
@@ -58,3 +58,4 @@ deze provider; dat wordt in een ADR en in `docs/constitutie-log.md` vastgelegd.
 - 2026-09-16 21:40 · claude-code-anthropic · Acceptatiecriteria afgevinkt op basis van AnthropicClaudeClientTests (22 tests: endpoint, prompts, sleutel, geen omgevingstoken, usage, weigering, configuratiefouten, providerkeuze). Standaardmodel op wens van de eigenaar: claude-haiku-4-5.
 - 2026-09-16 21:40 · claude-code-anthropic · Antagonist ronde 1: 1 MAJOR (constitutiewijziging niet in eigen commit), opgelost door de commit te splitsen; MINORs opgelost (ADR-0035-noot, Art. VIII-laagregel, FA-noot, registerzin als advies, csproj-volgorde, AuthToken uit de omgeving genegeerd). Ronde 2: COMPLIANT.
 - 2026-09-16 21:40 · claude-code-anthropic · in-uitvoering → klaar: Gebouwd: Claude API-client naast Azure AI Foundry, kiesbaar met Ai:Provider. Gates: unit 1927 groen (4 overgeslagen), integratie 135 groen en 400 overgeslagen (geen Postgres-container), dotnet format schoon; geen frontendwijziging, dus pnpm lint niet nodig.
+- 2026-09-16 21:44 · claude-code-anthropic · PR #118
