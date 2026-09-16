@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
-import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { AiKnop, Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
@@ -32,6 +31,7 @@ import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
+import { MIJLPAAL } from "../doelen/mijlpaal";
 import { themabalans } from "./themabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
@@ -358,7 +358,8 @@ export function ThemadetailScherm() {
             second empty state and a permanent "Geen open suggesties" line.
 
             A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
-            that lead there. The doelsuggesties still propose leerplandoelen; what becomes of them is another ticket.
+            that lead there. The doelsuggesties propose minimumdoelen too (FB-053): accepting one puts it in the list
+            above, so a proposal wears the same MD chip as the themadoel it would become.
 
             The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
             with its motivation and still has to be accepted or rejected by hand, and "Vraag
@@ -488,16 +489,20 @@ export function ThemadetailScherm() {
                 <ul className="mt-2 flex flex-col gap-2">
                   {openSuggesties.map((suggestie) => (
                     <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3 shadow-licht">
-                      <div className="flex items-center gap-2">
-                        {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
-                        <span className="mono text-micro font-medium text-inkt-zacht">
-                          {suggestie.leerplandoelCode}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                          {suggestie.minimumdoelRef}
                         </span>
+                        {suggestie.mijlpaal ? (
+                          <span className="text-meta text-inkt-zacht">
+                            {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                          </span>
+                        ) : null}
                         <Statusmerk status={suggestie.status} className="ml-auto" />
                       </div>
 
-                      {suggestie.tekst ? (
-                        <p className="mt-1.5 text-body text-inkt">{suggestie.tekst}</p>
+                      {suggestie.omschrijving ? (
+                        <p className="mt-1.5 text-body text-inkt">{suggestie.omschrijving}</p>
                       ) : null}
 
                       {suggestie.aiMotivatie ? (

@@ -91,19 +91,10 @@ const THEMA: ThemaWeergave = {
   ],
 };
 
-const SUGGESTIE: DoelMatchSuggestie = {
-  id: "s-1",
-  leerplandoelCode: "6.5.GK2.3",
-  status: "Voorgesteld",
-  aiMotivatie: "Past bij het verkleden.",
-  tekst: THEMADOELTEKST,
-  doelsoort: "Gemeenschappelijk",
-};
 let suggesties: DoelMatchSuggestie[] = [];
 
 const fetchMock = vi.fn((pad: string, init?: RequestInit) => {
   if (init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
-  if (init?.method === "PUT") return Promise.resolve(antwoord({ ...SUGGESTIE, status: "Aanvaard" }));
   const leerplandoel = /\/api\/leerplandoelen\/([^/?]+)$/.exec(pad);
   if (leerplandoel) return Promise.resolve(antwoord(DOELEN[decodeURIComponent(leerplandoel[1])]));
   if (pad.endsWith("/doelsuggesties")) return Promise.resolve(antwoord(suggesties));
@@ -233,21 +224,6 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     const voor = detailReads();
 
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
-
-    await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
-  });
-
-  it("leest de doeldetail opnieuw na een oordeel over een doelsuggestie", async () => {
-    suggesties = [SUGGESTIE];
-    toon();
-    await openHoofdstuk();
-    await screen.findByText(THEMADOELTEKST);
-    const detailReads = () =>
-      fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
-        .length;
-    const voor = detailReads();
-
-    fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
 
     await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
   });

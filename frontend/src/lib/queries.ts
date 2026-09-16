@@ -299,10 +299,11 @@ export function useDoelsuggesties(themaId: string | undefined) {
 }
 
 /**
- * Asks the model for goal matches on one thema (FR-4.1), among the goals of the given jaarfasen.
+ * Asks the model which minimumdoelen fit one thema as themadoel (FR-4.1, FB-053), among those of the mijlpalen the given
+ * leeftijden meet.
  *
- * Everything it returns lands as `Voorgesteld` and nothing is applied (Art. IV): the mutation
- * refreshes the suggestion list and the thema, and the teacher decides one by one.
+ * Everything it returns lands as `Voorgesteld` and nothing is applied (Art. IV): the mutation refreshes the suggestion
+ * list, and a person decides one by one.
  *
  * An empty list sends no choice, and the server then takes the leeftijden of the thema's subthema's (TB-007); the
  * screen sends one only when it knows the jaarfasen to offer.
@@ -313,19 +314,18 @@ export function useGenereerDoelsuggesties(themaId: string) {
     mutationFn: (jaarFasen: string[]) =>
       post<DoelMatchResultaat>(
         `/api/themas/${themaId}/doelsuggesties/genereer`,
-        jaarFasen.length > 0 ? { selectie: { jaarFasen } } : {},
+        jaarFasen.length > 0 ? { jaarFasen } : {},
       ),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
-      void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
-      // A doel's detail lists every doelsuggestie on it under "Gebruikt in", and the thema screen opens
-      // that detail from its own rows (TB-016).
-      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }
 
-/** Records the teacher's verdict on one suggestion. The verdict is the point, so it is persisted. */
+/**
+ * Records the verdict on one proposal: `Aanvaard` makes its minimumdoel a themadoel of the thema, `Geweigerd` keeps it
+ * from being proposed again. The verdict is the point, so it is persisted.
+ */
 export function useBeoordeelSuggestie(themaId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -333,11 +333,10 @@ export function useBeoordeelSuggestie(themaId: string) {
       put<DoelMatchSuggestie>(`/api/themas/${themaId}/doelsuggesties/${suggestieId}/status`, { status }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: themaSleutels.suggesties(themaId) });
+      // Accepting one adds a themadoel to the thema, which the thema's own read carries.
       void qc.invalidateQueries({ queryKey: themaSleutels.detail(themaId) });
-      // Accepting a suggestion can make a leerplandoel covered, so the coverage figures move too.
+      // A new themadoel moves the minimumdoel figures of every klas that plans the thema.
       void qc.invalidateQueries({ queryKey: ["dekking"] });
-      // And the doel's detail shows the suggestion with its status (TB-016).
-      void qc.invalidateQueries({ queryKey: ["leerplandoel"] });
     },
   });
 }
