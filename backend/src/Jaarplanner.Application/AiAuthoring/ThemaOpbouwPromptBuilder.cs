@@ -11,30 +11,48 @@ namespace Jaarplanner.Application.AiAuthoring;
 /// as subdoelen). It is the authoring sibling of <c>MatchingPromptBuilder</c> (E2-02) — a separate
 /// file with its own prompts, deliberately not sharing that whole-thema matching prompt.
 /// <para>
-/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every user-prompt line is rendered
-/// exclusively from the arguments — the wizard's transient thema/subthema context and the loaded
+/// <b>Stable part first</b> (TB-043): each request is the fixed system prompt, then the candidate goal list as
+/// <see cref="AiRequest.VasteContext"/>, then the thema (and subthema) as <see cref="AiRequest.UserPrompt"/>. The
+/// first two depend only on the step and the candidates, so a provider can serve them from its cache.
+/// </para>
+/// <para>
+/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line of the goal list and the user prompt is
+/// rendered exclusively from the arguments — the wizard's transient thema/subthema context and the loaded
 /// Op.stap leerplandoelen. The system prompt forbids external knowledge and invented codes, and asks
 /// for the <b>same structured-JSON contract the E2-03 parser accepts</b>
 /// (<c>{"suggesties":[{"code","motivatie"}]}</c>) so the authoring flow can reuse that parser.
 /// </para>
 /// <para>
 /// The builder is a <b>pure, deterministic</b> function of its inputs: leerplandoelen are ordered by
-/// their stable code so caller ordering cannot leak in, and nothing else is read (no clock, config or
+/// their stable key so caller ordering cannot leak in, and nothing else is read (no clock, config or
 /// I/O). That makes it snapshot-testable.
 /// </para>
 /// </summary>
 public static class ThemaOpbouwPromptBuilder
 {
+    /// <summary>
+    /// The most suggestions one assist asks for (TB-043). The number comes from the TB-004 evaluation's variant and may
+    /// be adjusted by its measurement; the eval runner swaps <see cref="MaxSuggestiesRegel"/> for its own ceiling.
+    /// </summary>
+    public const int MaxSuggesties = 8;
+
+    /// <summary>The rule that sets <see cref="MaxSuggesties"/>, word for word as the system prompts carry it.</summary>
+    public const string MaxSuggestiesRegel =
+        "- Stel hoogstens 8 leerplandoelen voor, het best passende eerst. Minder mag.";
+
     // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI.
     private const string Nl = "\n";
 
     private const string GemeenschappelijkeRegels =
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens in dit bericht: de schoolcontext en de opgegeven " +
-        "Op.stap-leerplandoelen. Gebruik geen externe kennis, geen internet en geen andere bronnen." + Nl +
+        "- Gebruik uitsluitend de gegevens in deze aanvraag: de lijst \"Beschikbare Op.stap-leerplandoelen\" " +
+        "hieronder, en de schoolcontext in het bericht van de gebruiker. Gebruik geen externe kennis, geen internet " +
+        "en geen andere bronnen." + Nl +
         "- Verzin geen leerplandoelen, codes of voorbeelden. Stel enkel leerplandoelen voor waarvan de " +
         "code letterlijk voorkomt in de lijst \"Beschikbare Op.stap-leerplandoelen\" hieronder." + Nl +
-        "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit doel hier?\")." + Nl +
+        "- Stel geen leerplandoel voor dat bij \"Reeds gekozen themadoelen\" staat." + Nl +
+        MaxSuggestiesRegel + Nl +
+        "- Geef bij elk voorstel een motivatie van één korte zin in het Nederlands (\"waarom past dit doel hier?\")." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst eromheen:" + Nl +
         "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
@@ -78,10 +96,13 @@ public static class ThemaOpbouwPromptBuilder
 
         var sb = new StringBuilder();
         SchrijfThema(sb, thema);
-        sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
 
-        return new AiRequest { SystemPrompt = SystemPromptThemadoelen, UserPrompt = sb.ToString() };
+        return new AiRequest
+        {
+            SystemPrompt = SystemPromptThemadoelen,
+            VasteContext = LeerplandoelPromptlijst.Bouw(leerdoelen),
+            UserPrompt = sb.ToString(),
+        };
     }
 
     /// <summary>
@@ -101,10 +122,13 @@ public static class ThemaOpbouwPromptBuilder
         SchrijfThema(sb, thema);
         sb.Append(Nl);
         SchrijfSubthema(sb, subthema);
-        sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
 
-        return new AiRequest { SystemPrompt = SystemPromptSubdoelen, UserPrompt = sb.ToString() };
+        return new AiRequest
+        {
+            SystemPrompt = SystemPromptSubdoelen,
+            VasteContext = LeerplandoelPromptlijst.Bouw(leerdoelen),
+            UserPrompt = sb.ToString(),
+        };
     }
 
     private static void SchrijfThema(StringBuilder sb, ThemaOpbouwContext thema)
@@ -204,10 +228,6 @@ public static class ThemaOpbouwPromptBuilder
             Line(sb, $"  Verwachte uitkomsten: {activiteit.VerwachteUitkomsten}");
         }
     }
-
-    // The goal list is the one the matching prompt ends with too, compact since TB-007: see LeerplandoelPromptlijst.
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
-        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
 
     private static void SchrijfWoordenlijst(StringBuilder sb, string label, IReadOnlyCollection<string>? woorden)
     {

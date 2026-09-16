@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
@@ -43,12 +44,21 @@ public sealed class WeekplanningService : IWeekplanningService
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Rechten? planner = null,
         CancellationToken cancellationToken = default)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
 
         var inhoud = await _opslag.LaadActiviteitinhoudAsync(activiteitId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Activiteit {activiteitId} is niet gevonden.");
+
+        // ADR-0049 D6: an own activiteit is planned by its owner or by directie only; a colleague uses it first and plans
+        // her copy. Without a planner it fails closed.
+        if (inhoud.EigenaarId is { } eigenaarId
+            && !(planner is not null && (planner.IsDirectie || planner.GebruikerId == eigenaarId)))
+        {
+            throw OngeldigeDagplanningFout.EigenActiviteitVanEenAnder();
+        }
 
         // Checked before the day, deliberately. A teacher aiming another class's activiteit at a closed day is told
         // the thing they can act on: the activiteit is the wrong one whatever day they pick, while the day is only

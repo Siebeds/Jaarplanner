@@ -5,13 +5,16 @@ import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { useSubthemaBestemmingen, useThemaVoorKlas } from "../../lib/queries";
-import { useRechten } from "../../lib/rechten";
+import { geenToegangZin, isEigenVan, useRechten } from "../../lib/rechten";
+import { useIk } from "../../lib/aanmelding";
+import { Knop } from "../../components/ui/Knop";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import type { ActiviteitWeergave, SubthemaBestemming, SubthemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { Activiteitformulier } from "../activiteiten/Activiteitformulier";
-import { useMaakActiviteit } from "../themas/mutaties";
+import { useGebruikActiviteit, useMaakActiviteit } from "../themas/mutaties";
+import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Toevoegtegel } from "../hoeken/Toevoegtegel";
 import { STANDAARDDUUR } from "./tijd";
 import { ACTIVITEIT_VOORVOEGSEL, type Activiteitkaartdata } from "./activiteitkaart";
@@ -223,6 +226,7 @@ function Activiteitenlijst({
 }) {
   const thema = useThemaVoorKlas(bestemming.themaId, klasId);
   const { mag } = useRechten();
+  const { data: ik } = useIk();
   const subthema = thema.data?.subthemas.find((sub) => sub.id === bestemming.id);
 
   if (thema.isPending) return <Laadlijst rijen={3} />;
@@ -238,10 +242,11 @@ function Activiteitenlijst({
   }
 
   const activiteiten = subthema?.activiteiten ?? [];
+  const isVanCollega = (activiteit: ActiviteitWeergave) => activiteit.eigenaarId != null && !isEigenVan(ik, activiteit);
   // Making one from here is part of planning (owner, 2026-09-15: no tile for whoever only reads the klas), and needs the
   // content right at the subthema's leeftijd too (R17, R23), and the subthema itself for its onderzoeksvragen.
   const tegel =
-    magPlannen && subthema && mag.activiteitBewerken(bestemming.leeftijd) ? (
+    magPlannen && subthema && mag.activiteitMaken(bestemming.leeftijd) ? (
       <Toevoegtegel
         key="toevoegen"
         ref={tegelRef}
@@ -273,7 +278,14 @@ function Activiteitenlijst({
       <ul className="flex flex-col gap-2">
         {activiteiten.map((activiteit) => (
           <li key={activiteit.id}>
-            {magPlannen ? (
+            {/* A colleague's own activiteit is not planned as it is (ADR-0049 D6): it is used first, as an own copy. */}
+            {magPlannen && isVanCollega(activiteit) ? (
+              <Leeskaart
+                activiteit={activiteit}
+                gebruik={mag.activiteitGebruiken({ ...activiteit, leeftijd: bestemming.leeftijd }) ? activiteit : undefined}
+                themaId={bestemming.themaId}
+              />
+            ) : magPlannen ? (
               <Activiteitkaart activiteit={activiteit} sleepbaar={sleepbaar} onKies={onKies} />
             ) : (
               <Leeskaart activiteit={activiteit} />
@@ -339,7 +351,7 @@ function Activiteitkaart({
           isDragging && "opacity-40",
         )}
       >
-        <Kaartinhoud naam={activiteit.naam} doelen={doelen} />
+        <Kaartinhoud activiteit={activiteit} doelen={doelen} />
       </button>
       <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
     </div>
@@ -347,25 +359,58 @@ function Activiteitkaart({
 }
 
 /**
- * The same card for whoever may only read the klas: what it says, and nothing it does. The info icon stays, because
- * reading an activiteit's goals is reading, not planning.
+ * The same card for whoever may only read the klas, and for a colleague's own activiteit: what it says, and nothing it
+ * plans. The info icon stays, because reading an activiteit's goals is reading, not planning.
+ *
+ * **A colleague's own activiteit carries "Gebruiken"** when the gebruiker may take a copy (ADR-0049 D5). The copy then
+ * lands in this same list as her own card, ready to drag, which is the one gesture the original does not offer.
  */
-function Leeskaart({ activiteit }: { activiteit: ActiviteitWeergave }) {
+function Leeskaart({
+  activiteit,
+  gebruik,
+  themaId,
+}: {
+  activiteit: ActiviteitWeergave;
+  /** The activiteit to copy on "Gebruiken"; absent without that right. */
+  gebruik?: ActiviteitWeergave;
+  themaId?: string;
+}) {
   const doelen = doelenVan(activiteit);
+  const kopie = useGebruikActiviteit(themaId);
   return (
     <div className="relative">
       <div className="w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9">
-        <Kaartinhoud naam={activiteit.naam} doelen={doelen} />
+        <Kaartinhoud activiteit={activiteit} doelen={doelen} />
+        {gebruik ? (
+          <Knop
+            rang="rustig"
+            className="mt-2 h-9 min-h-9 px-3 text-meta"
+            disabled={kopie.isPending}
+            aria-label={t("activiteit.gebruikAria", {
+              naam: activiteit.naam,
+              eigenaar: activiteit.eigenaarNaam ?? t("activiteit.vanEenCollega"),
+            })}
+            onClick={() => kopie.mutate(gebruik.id)}
+          >
+            {kopie.isPending ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
+          </Knop>
+        ) : null}
+        {kopie.isError ? (
+          <p role="alert" className="mt-1.5 text-meta text-attentie-inkt">
+            {geenToegangZin(kopie.error) ?? t("activiteit.gebruikMislukt")}
+          </p>
+        ) : null}
       </div>
       <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
     </div>
   );
 }
 
-function Kaartinhoud({ naam, doelen }: { naam: string; doelen: readonly Infodoel[] }) {
+function Kaartinhoud({ activiteit, doelen }: { activiteit: ActiviteitWeergave; doelen: readonly Infodoel[] }) {
   return (
     <>
-      <p className="text-meta font-medium text-inkt">{naam}</p>
+      <p className="text-meta font-medium text-inkt">{activiteit.naam}</p>
+      <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />
       <Doelmerk aantal={doelen.length} className="mt-1.5" />
     </>
   );
@@ -383,13 +428,12 @@ export function Paneelactiviteitformulier({
   onSluit: () => void;
 }) {
   const maak = useMaakActiviteit(bestemming.themaId);
-  const { mag } = useRechten();
 
   return (
     <Activiteitformulier
       open
-      // Goal codes on a create need the goal-link right at the subthema's leeftijd (R19); without it, no picker.
-      magDoelen={mag.doelenKoppelen(bestemming.leeftijd)}
+      // The leeftijd decides "voor wie" and the goal picker of the new activiteit (ADR-0049 D1, E3; R19).
+      leeftijd={bestemming.leeftijd}
       onderzoeksvragen={bestemming.onderzoeksvragen}
       bezig={maak.isPending}
       fout={maak.isError ? maak.error : undefined}

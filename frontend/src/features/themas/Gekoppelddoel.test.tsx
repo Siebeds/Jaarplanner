@@ -247,7 +247,7 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
         .length;
     const voor = detailReads();
 
-    fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
+    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "6.5.GK2.3" }) }));
 
     await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
   });

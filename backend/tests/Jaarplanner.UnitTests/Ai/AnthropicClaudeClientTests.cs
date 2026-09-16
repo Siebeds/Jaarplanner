@@ -151,16 +151,72 @@ public sealed class AnthropicClaudeClientTests
         Assert.Equal("{\"a\":1}", antwoord.Content);
     }
 
+    /// <summary>
+    /// TB-043: the stable context goes as a second system block after the system prompt, and only that block carries
+    /// <c>cache_control</c>, whose breakpoint caches both. The user prompt stays the one user message.
+    /// </summary>
     [Fact]
-    public async Task Het_tokenverbruik_komt_in_usage()
+    public async Task De_vaste_context_gaat_als_gecachet_systeemblok_na_de_systeemprompt()
+    {
+        var handler = new StubHandler(Envelop([Tekst("{}")]));
+
+        await Client(handler).CompleteAsync(EenRequest() with { VasteContext = "# Beschikbare doelen" });
+
+        using var body = JsonDocument.Parse(handler.LaatsteBody!);
+        var blokken = body.RootElement.GetProperty("system").EnumerateArray().ToList();
+        Assert.Equal(2, blokken.Count);
+
+        Assert.Equal("text", blokken[0].GetProperty("type").GetString());
+        Assert.Equal("systeeminstructies", blokken[0].GetProperty("text").GetString());
+        Assert.False(blokken[0].TryGetProperty("cache_control", out _));
+
+        Assert.Equal("text", blokken[1].GetProperty("type").GetString());
+        Assert.Equal("# Beschikbare doelen", blokken[1].GetProperty("text").GetString());
+        Assert.Equal("ephemeral", blokken[1].GetProperty("cache_control").GetProperty("type").GetString());
+
+        var bericht = Assert.Single(body.RootElement.GetProperty("messages").EnumerateArray());
+        Assert.Equal("de schoolcontent", bericht.GetProperty("content").GetString());
+    }
+
+    [Fact]
+    public async Task Het_tokenverbruik_komt_in_usage_met_cachelezen_en_cacheschrijven_apart()
     {
         var handler = new StubHandler(Envelop([Tekst("{}")], input: 100, output: 50, cacheRead: 30, cacheCreation: 20));
 
-        var antwoord = await Client(handler).CompleteAsync(EenRequest());
+        var antwoord = await Client(handler).CompleteAsync(EenRequest() with { VasteContext = "vast" });
 
         Assert.Equal(
-            new AiUsage { InputTokens = 150, CachedInputTokens = 30, OutputTokens = 50, ReasoningTokens = 0 },
+            new AiUsage
+            {
+                InputTokens = 150,
+                CachedInputTokens = 30,
+                CacheWriteInputTokens = 20,
+                OutputTokens = 50,
+                ReasoningTokens = 0,
+            },
             antwoord.Usage);
+    }
+
+    [Fact]
+    public async Task Zonder_cachecijfers_is_het_cacheverbruik_nul()
+    {
+        var handler = new StubHandler(Envelop([Tekst("{}")], input: 100, output: 50));
+
+        var antwoord = await Client(handler).CompleteAsync(EenRequest());
+
+        Assert.Equal(new AiUsage { InputTokens = 100, OutputTokens = 50 }, antwoord.Usage);
+    }
+
+    /// <summary>TB-043: an answer cut off at max_tokens is incomplete JSON, so it never reaches a parser.</summary>
+    [Fact]
+    public async Task Een_antwoord_dat_op_max_tokens_stopt_wordt_een_afgekapt_fout()
+    {
+        var handler = new StubHandler(Envelop([Tekst("""{"suggesties":[{"code":"A","moti""")], stopReason: "max_tokens"));
+
+        var fout = await Assert.ThrowsAsync<AiAntwoordAfgekaptFout>(() => Client(handler).CompleteAsync(EenRequest()));
+
+        Assert.Equal(AiAntwoordAfgekaptFout.Melding, fout.Message);
+        Assert.DoesNotContain("suggesties", fout.Message, StringComparison.Ordinal);
     }
 
     [Fact]

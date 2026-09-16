@@ -7,6 +7,7 @@ import type {
   ActiviteitWeergave,
   DoelMatchResultaat,
   DoelMatchSuggestie,
+  SubdoelplaatsingOverzicht,
   ThemaDoelenoverzicht,
   ThemaWeergave,
 } from "../../lib/types";
@@ -104,12 +105,18 @@ function toon(
     genereer?: (body: unknown) => Response;
     /** Where the page opens, for a link that asks for one subthema (FB-037). */
     pad?: string;
+    /** The subdoelplaatsing the server answers (FB-057); without it that read fails, as on a server without it. */
+    plaatsing?: SubdoelplaatsingOverzicht;
+    /** Records every write the page sends, with its body. */
+    schrijf?: (methode: string, pad: string, body: unknown) => Response | undefined;
   } = {},
 ) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string, init?: RequestInit) => {
       if (init?.method && init.method !== "GET") {
+        const eigen = opties.schrijf?.(init.method, pad, init.body ? JSON.parse(String(init.body)) : undefined);
+        if (eigen) return eigen;
         if (opties.genereer && pad.endsWith("/doelsuggesties/genereer")) {
           return opties.genereer(JSON.parse(String(init.body ?? "{}")));
         }
@@ -121,6 +128,9 @@ function toon(
       if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3", "L1"]);
       if (pad.endsWith("/api/themas/thema-1/doelenoverzicht")) {
         return json(opties.overzicht ?? { themaId: "thema-1", leeftijden: [] });
+      }
+      if (pad.endsWith("/api/themas/thema-1/subdoelplaatsing")) {
+        return opties.plaatsing ? json(opties.plaatsing) : json({}, 404);
       }
       if (pad.endsWith("/api/themas/thema-1")) return json(opties.thema ?? THEMA);
       return json({}, 404);
@@ -430,8 +440,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
     expect(await screen.findByText(SUGGESTIE.aiMotivatie!)).toBeInTheDocument();
-    expect(knop(t("thema.aanvaard"))).not.toBeNull();
-    expect(knop(t("thema.weiger"))).not.toBeNull();
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
+    expect(knop(t("voorstelstapel.weigerAria", { naam: "WO-3" }))).not.toBeNull();
 
     // I26 needs a wizard run's state the frontend does not read, so the delete is directie's here.
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
@@ -505,9 +515,11 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { weiger: true });
-    fireEvent.click(await screen.findByRole("button", { name: t("thema.aanvaard") }));
+    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "WO-3" }) }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
+    // The refused suggestion is back on the stack, still waiting for a decision.
+    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "WO-3" }))).not.toBeNull();
   });
 });
 
@@ -920,5 +932,164 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
 
     expect(knop(t("activiteit.koppelAan", { naam: "Drie doelen" }))).not.toBeNull();
     expect(screen.getAllByText(telWoord(3, "activiteit.eenDoel", "activiteit.aantalDoelen"))).not.toHaveLength(0);
+  });
+});
+
+describe("ThemadetailScherm: de AI plaatst de leerplandoelen van de themadoelen (FB-057)", () => {
+  const PLAATSING: SubdoelplaatsingOverzicht = {
+    themaId: "thema-1",
+    leeftijden: [
+      {
+        leeftijd: "K3",
+        aantalOpen: 3,
+        magBeslissen: true,
+        subdoelvoorstellen: [
+          {
+            id: "v-1",
+            leerplandoelCode: "WO-5",
+            tekst: "Herkent dieren die zich voorbereiden op de winter",
+            doelsoort: "Gemeenschappelijk",
+            subthemaId: "s-k3",
+            aiMotivatie: "Past bij bladeren en egels.",
+          },
+        ],
+        subthemavoorstellen: [
+          {
+            id: "n-1",
+            naam: "Regen en wind",
+            onderzoeksvraag: "Waar komt de regen vandaan?",
+            duurWeken: 2,
+            aiMotivatie: "Geen subthema gaat over het weer.",
+            doelen: [
+              { id: "v-2", leerplandoelCode: "WO-9", tekst: "Benoemt neerslag", doelsoort: null, subthemaId: null, aiMotivatie: "Weer." },
+              { id: "v-3", leerplandoelCode: "WO-11", tekst: "Maakt wind zichtbaar", doelsoort: null, subthemaId: null, aiMotivatie: "Wind." },
+            ],
+          },
+        ],
+      },
+      { leeftijd: "L1", aantalOpen: 2, magBeslissen: false, subdoelvoorstellen: [], subthemavoorstellen: [] },
+    ],
+  };
+
+  const HL_K3 = ikMet({ hoofdleerkrachtLeeftijden: ["K3"] });
+  const aiKnoppen = () => screen.queryAllByRole("button", { name: t("plaatsing.vraag") });
+
+  it("toont per leeftijd het open aantal, en de AI-knop alleen waar men mag vragen", async () => {
+    toon(HL_K3, { plaatsing: PLAATSING });
+
+    expect(await screen.findByText(telWoord(3, "plaatsing.eenOpen", "plaatsing.open"))).toBeInTheDocument();
+    expect(screen.getByText(telWoord(2, "plaatsing.eenOpen", "plaatsing.open"))).toBeInTheDocument();
+    expect(aiKnoppen()).toHaveLength(1);
+  });
+
+  it("toont een voorgesteld subdoel in zijn subthema met de vage ring, een label en stille beslisknoppen", async () => {
+    toon(HL_K3, { plaatsing: PLAATSING });
+    await screen.findByText("Bladeren");
+
+    // Shut, the chapter says it holds a proposal (FB-011).
+    expect(hoofdstuk("Bladeren", false)).toHaveTextContent(telWoord(1, "plaatsing.eenOpenVoorstel", "plaatsing.openVoorstellen"));
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    const lijst = screen.getByRole("list", { name: t("plaatsing.voorgesteldeSubdoelen") });
+    const voorstel = within(lijst).getByRole("listitem");
+    expect(voorstel).toHaveClass("voorstel-ai");
+    expect(voorstel).toHaveTextContent(t("plaatsing.aiVoorstel"));
+    expect(voorstel).toHaveTextContent(t("status.Voorgesteld"));
+    expect(voorstel).toHaveTextContent("Past bij bladeren en egels.");
+    const aanvaard = within(voorstel).getByRole("button", { name: `${t("plaatsing.aanvaard")}: WO-5` });
+    expect(aanvaard).toHaveAttribute("title", t("plaatsing.aanvaard"));
+    expect(within(voorstel).getByRole("button", { name: `${t("plaatsing.weiger")}: WO-5` })).toBeInTheDocument();
+  });
+
+  it("stuurt een beslissing over een voorgesteld subdoel naar de server", async () => {
+    const schrijf = vi.fn((): Response | undefined => new Response(null, { status: 204 }));
+    toon(HL_K3, { plaatsing: PLAATSING, schrijf });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    fireEvent.click(screen.getByRole("button", { name: `${t("plaatsing.weiger")}: WO-5` }));
+
+    await waitFor(() =>
+      expect(schrijf).toHaveBeenCalledWith("PUT", "/api/subdoelvoorstellen/v-1/status", { status: "Geweigerd" }),
+    );
+  });
+
+  it("laat een voorgesteld nieuw subthema eerst aanpassen en maakt het met de gekozen doelen", async () => {
+    const schrijf = vi.fn((): Response | undefined => new Response(null, { status: 204 }));
+    toon(HL_K3, { plaatsing: PLAATSING, schrijf });
+
+    const kaart = await screen.findByRole("article", { name: t("plaatsing.nieuwSubthemaAria", { naam: "Regen en wind" }) });
+    expect(kaart).toHaveClass("voorstel-ai");
+    expect(kaart).toHaveTextContent("Waar komt de regen vandaan?");
+    expect(kaart).toHaveTextContent(t("plaatsing.nieuwSubthema"));
+
+    fireEvent.click(within(kaart).getByRole("button", { name: `${t("plaatsing.pasAan")}: Regen en wind` }));
+    fireEvent.change(within(kaart).getByLabelText(t("plaatsing.naam")), { target: { value: "Regen" } });
+    fireEvent.change(within(kaart).getByLabelText(t("plaatsing.duurWeken")), { target: { value: "3" } });
+    fireEvent.click(within(kaart).getByRole("checkbox", { name: /WO-11/ }));
+    fireEvent.click(within(kaart).getByRole("button", { name: t("plaatsing.maakSubthema") }));
+
+    await waitFor(() =>
+      expect(schrijf).toHaveBeenCalledWith("PUT", "/api/subthemavoorstellen/n-1/beslissing", {
+        status: "Aanvaard",
+        naam: "Regen",
+        onderzoeksvraag: "Waar komt de regen vandaan?",
+        duurWeken: 3,
+        leerplandoelCodes: ["WO-9"],
+      }),
+    );
+  });
+
+  it("weigert een nieuw subthema zonder doelen en zegt waarom", async () => {
+    const schrijf = vi.fn((): Response | undefined => new Response(null, { status: 204 }));
+    toon(HL_K3, { plaatsing: PLAATSING, schrijf });
+    const kaart = await screen.findByRole("article", { name: t("plaatsing.nieuwSubthemaAria", { naam: "Regen en wind" }) });
+
+    fireEvent.click(within(kaart).getByRole("button", { name: `${t("plaatsing.pasAan")}: Regen en wind` }));
+    for (const vak of within(kaart).getAllByRole("checkbox")) fireEvent.click(vak);
+    fireEvent.click(within(kaart).getByRole("button", { name: t("plaatsing.maakSubthema") }));
+
+    expect(within(kaart).getByRole("alert")).toHaveTextContent(t("plaatsing.minstensEenDoel"));
+    expect(schrijf).not.toHaveBeenCalled();
+  });
+
+  it("vraagt de AI om plaatsen voor één leeftijd en zegt wat er terugkwam", async () => {
+    const schrijf = vi.fn((_methode: string, pad: string): Response | undefined =>
+      pad.endsWith("/subdoelplaatsing/K3/genereer")
+        ? json({ isGeslaagd: true, aantalVoorgesteld: 3, aantalNieuweSubthemas: 1, aantalOvergeslagen: 0, fout: null })
+        : undefined,
+    );
+    toon(HL_K3, { plaatsing: PLAATSING, schrijf });
+
+    const [vraag] = await waitFor(() => {
+      const gevonden = aiKnoppen();
+      expect(gevonden).toHaveLength(1);
+      return gevonden;
+    });
+    fireEvent.click(vraag);
+
+    expect(
+      await screen.findByText(
+        t("plaatsing.voorstellenMetNieuw", {
+          doelen: telWoord(3, "plaatsing.eenVoorstel", "plaatsing.voorstellen"),
+          nieuw: telWoord(1, "plaatsing.eenNieuw", "plaatsing.nieuw"),
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(schrijf).toHaveBeenCalledWith("POST", "/api/themas/thema-1/subdoelplaatsing/K3/genereer", undefined);
+  });
+
+  it("toont wie niet mag beslissen alleen het open aantal", async () => {
+    const zonderRecht: SubdoelplaatsingOverzicht = {
+      themaId: "thema-1",
+      leeftijden: PLAATSING.leeftijden.map((l) => ({ ...l, magBeslissen: false, subdoelvoorstellen: [], subthemavoorstellen: [] })),
+    };
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"] }), { plaatsing: zonderRecht });
+
+    expect(await screen.findByText(telWoord(3, "plaatsing.eenOpen", "plaatsing.open"))).toBeInTheDocument();
+    expect(aiKnoppen()).toHaveLength(0);
+    expect(screen.queryByRole("article")).toBeNull();
+    fireEvent.click(hoofdstuk("Bladeren", false));
+    expect(screen.queryByRole("list", { name: t("plaatsing.voorgesteldeSubdoelen") })).toBeNull();
   });
 });

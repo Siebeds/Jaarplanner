@@ -8,11 +8,18 @@ namespace Jaarplanner.Application.Ai;
 /// </summary>
 public sealed record AiUsage
 {
-    /// <summary>All prompt tokens, the cached ones included.</summary>
+    /// <summary>All prompt tokens, the cached ones and the ones written into the cache included.</summary>
     public int InputTokens { get; init; }
 
     /// <summary>The part of <see cref="InputTokens"/> the provider served from its prompt cache (billed lower).</summary>
     public int CachedInputTokens { get; init; }
+
+    /// <summary>
+    /// The part of <see cref="InputTokens"/> the provider wrote into its prompt cache (TB-043). The Claude API bills
+    /// these above the normal input price and reports them apart; a provider that caches on its own, such as Azure AI
+    /// Foundry, reports none and leaves this 0.
+    /// </summary>
+    public int CacheWriteInputTokens { get; init; }
 
     /// <summary>All completion tokens, the hidden reasoning tokens of a reasoning model included.</summary>
     public int OutputTokens { get; init; }
