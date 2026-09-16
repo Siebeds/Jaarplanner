@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:43
+bijgewerkt: 2026-09-17 00:45
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
-pr:
+pr: 135
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
 ---
@@ -96,3 +96,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-17 00:06 · claude-fb053 · Kleine punten van de antagonist opgelost: IX.2 noemt de gekozen leeftijden, de resultaatzin noemt de mijlpaal ('van mijlpaal K'), commentaar in de jaarplanprompt terug op zijn plaats, D4 voor D5 in ADR-0049; de voorstellen staan in rangvolgorde op het scherm (Vitest).
 - 2026-09-17 00:30 · claude-fb053 · TB-043 en main samengevoegd: de minimumdoelenlijst gaat nu als vaste, cachebare context mee; ADR-nummer van dit ticket is 0052 geworden (0049-0051 zijn intussen door FB-015 en FB-057 genomen); migratie opnieuw aangemaakt na Subdoelplaatsing.
 - 2026-09-17 00:43 · claude-fb053 · Browsercontrole opnieuw via CDP met stub-AI (geen echte AI-aanroep), desktop en 390px: voorstelstapel toont MD-code, mijlpaal en tekst in de volgorde van het model, 'van mijlpaal K' in de resultaatzin, geweigerd komt niet terug, aanvaard-en-ontkoppeld komt terug, leerkracht 403; de lijst gaat als gecachet systeemblok mee. Gates: dotnet test 2031 unit + 572 integratie groen, dotnet format --verify-no-changes schoon, pnpm test 1113 groen, pnpm lint schoon.
+- 2026-09-17 00:45 · claude-fb053 · PR #135
