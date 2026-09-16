@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:24
+bijgewerkt: 2026-09-17 00:25
 opgepakt-door: lange-lijsten
 branch: ticket/lange-lijsten-inklappen
-pr:
+pr: 130
 geblokkeerd:
 fr: []
 ---
@@ -92,3 +92,4 @@ Geen.
 - 2026-09-16 23:53 · lange-lijsten · Subthemahoofdstuk herschikt (woordweb eerst, koppen als vouwknop met klein plus- en zoekicoon, kaartknoppen naast de titel); browser desktop en 390px nagekeken; vitest 1023 groen.
 - 2026-09-17 00:24 · lange-lijsten · Antagonist: COMPLIANT, geen blokkerende bevindingen. MINOR opgelost: minimumdoelzin zonder klassenbijzin, verweesd commentaar weg, tests voor elke ontkoppelzin. MINOR niet opgelost: bij zoeken haalt de pagina de doeltekst per rij op; een bulk-endpoint kan later.
 - 2026-09-17 00:24 · lange-lijsten · in-uitvoering → klaar: Lange lijsten op thema en subthema ingeklapt met laad meer en zoeken, subthemahoofdstuk herschikt, geen plus in activiteitregels, themakaarten tellen minimumdoelen, bevestiging met dekkingsgevolg bij ontkoppelen. Criteria nagekeken met Vitest (1030 groen) en in de browser (desktop en 390px); pnpm lint groen; geen backendwijziging.
+- 2026-09-17 00:25 · lange-lijsten · PR #130
