@@ -2,10 +2,10 @@
 id: FB-050
 titel: Nieuwe activiteit start zonder gekozen soort
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 21:42
+bijgewerkt: 2026-09-16 21:57
 opgepakt-door: claude-fb-050
 branch: ticket/FB-050-activiteit-zonder-soort
 pr:
@@ -32,18 +32,18 @@ met een soort die ze nooit koos.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
-- [ ] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt de activiteit bewaard zonder soort.
-- [ ] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
-- [ ] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld, en kan men die
+- [x] Gegeven een nieuw activiteitformulier, wanneer het opent, dan is er geen soort gekozen.
+- [x] Gegeven dat formulier zonder soort, wanneer men bewaart, dan wordt de activiteit bewaard zonder soort.
+- [x] Gegeven een gekozen soort, wanneer men bewaart, dan heeft de activiteit die soort.
+- [x] Gegeven een bestaande activiteit, wanneer men ze bewerkt, dan staat haar eigen soort ingevuld, en kan men die
   leeg maken.
-- [ ] Gegeven de snelle regel in het koppelpaneel, wanneer ze opent, dan is er geen soort gekozen, en maken zonder
+- [x] Gegeven de snelle regel in het koppelpaneel, wanneer ze opent, dan is er geen soort gekozen, en maken zonder
   soort geeft een activiteit zonder soort.
-- [ ] Gegeven een aanvraag aan de backend zonder soort, dan wordt de activiteit bewaard zonder soort, nooit als
+- [x] Gegeven een aanvraag aan de backend zonder soort, dan wordt de activiteit bewaard zonder soort, nooit als
   Experiment.
-- [ ] Gegeven een activiteit zonder soort, dan tonen de schermen die de soort van een activiteit tonen geen soort voor
+- [x] Gegeven een activiteit zonder soort, dan tonen de schermen die de soort van een activiteit tonen geen soort voor
   haar.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -76,3 +76,6 @@ Het aanmaken van activiteiten via de Excel-import: dat blijft zoals nu (daar bli
 - 2026-09-16 21:29 · eigenaar · te-testen → klaar-voor-bouw: teruggestuurd: ook het koppelpaneel niet standaard op Experiment; de backend maakt nooit stil Experiment, een lege soort blijft leeg (soort optioneel)
 - 2026-09-16 21:29 · claude-fb-050 · klaar-voor-bouw → in-uitvoering: opnieuw opgepakt met de uitbreiding van de eigenaar
 - 2026-09-16 21:42 · claude-fb-050 · Soort optioneel gebouwd: formulier, koppelpaneel, backend (nullable kolom, migratie ActiviteitTypeOptioneel) en Art. IX.2 gewijzigd; backend 2462 en lint groen
+- 2026-09-16 21:57 · claude-fb-050 · Criteria afgevinkt: Vitest, xUnit (ActiviteitSoortEndpointsTests op Postgres) en browserpas op desktop en 390px (worklogs/FB-050/test-report-2.md)
+- 2026-09-16 21:57 · claude-fb-050 · Antagonist ronde 2: COMPLIANT; open MINOR: geen test voor een geplande activiteit zonder soort in de weekweergave (worklogs/FB-050/antagonist.md)
+- 2026-09-16 21:57 · claude-fb-050 · in-uitvoering → te-testen: Soort optioneel: formulier en koppelpaneel starten op 'Geen soort', backend bewaart een lege soort als leeg (migratie), Art. IX.2 gewijzigd; Vitest 1006, xUnit 2462, lint en format groen, browser desktop en 390px PASS, antagonist COMPLIANT

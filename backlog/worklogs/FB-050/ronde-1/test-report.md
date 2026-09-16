@@ -1,3 +1,5 @@
+> **Superseded.** This pass tested the first build (a required soort). The current build makes the soort optional; see `../test-report-2.md`.
+
 # FB-050 — Test report (round 1)
 
 **Verdict:** PASS

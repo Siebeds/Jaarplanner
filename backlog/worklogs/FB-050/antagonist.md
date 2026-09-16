@@ -1,14 +1,20 @@
-# FB-050 antagonist audit
+# FB-050 antagonist audits
 
-Verdict: COMPLIANT, one round, no CRITICAL or MAJOR findings.
+## Round 2: optional soort (current build)
 
-MINOR findings, left open (outside this ticket, for the owner to decide):
-- `frontend/src/features/koppelen/Nieuweactiviteitregel.tsx`: the quick "new activiteit" row in the koppelen sheet
-  still preselects the first soort (Experiment). The ticket covers the activiteit form; this second path is not in its
-  scenarios.
-- `SchoolcontentBeheerDtos.cs`: the create DTO's `ActiviteitType` is non-nullable, so a raw API call without the field
-  gets the enum default. The UI always sends a soort.
-- Browser check was still open at audit time; it has since passed (see `test-report.md`).
+Verdict: COMPLIANT, no CRITICAL or MAJOR findings. Covers the constitution amendment (Art. IX.2), the nullable
+column and migration, the prompt change, the weekplanning records and the frontend.
 
-Test-runner observation: after a refused save, focus stays on Bewaren (same as the existing naam check); the alert is
-announced.
+MINOR findings:
+- Round-1 worklogs described the replaced behaviour (a required soort). Fixed: moved to `ronde-1/`, marked superseded.
+- No test covers a planned activiteit without a soort in the week view (`EfWeekplanningOpslag`, `WeekplanningService`,
+  `Activiteitkiezer`). Left open; the round-2 browser pass placed one in the agenda and the week view loaded
+  (`test-report-2.md`, `r2-desktop-8`).
+- The constitutie-log row is worded more briefly than its neighbours. Left as is; the content is complete.
+- Question for the owner: an FR-1 re-import that matches an activiteit whose soort was cleared writes the import's
+  soort over it, as it does for every activiteit attribute.
+
+## Round 1: required soort (superseded)
+
+COMPLIANT. That build made the soort required; the owner then ruled the soort optional, and the build was replaced.
+The report and screenshots of that round are in `ronde-1/`.
