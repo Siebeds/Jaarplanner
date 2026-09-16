@@ -2,10 +2,10 @@
 id: TB-044
 titel: Lange lijsten op de themapagina starten ingeklapt, met laad meer en zoeken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:53
+bijgewerkt: 2026-09-17 00:24
 opgepakt-door: lange-lijsten
 branch: ticket/lange-lijsten-inklappen
 pr:
@@ -90,3 +90,5 @@ Geen.
 - 2026-09-16 22:52 · lange-lijsten · Inklaplijst gebouwd en toegepast op themadoelen, activiteiten, subdoelen en andere doelen; vitest 1020 groen, lint groen.
 - 2026-09-16 23:04 · lange-lijsten · Browsercheck op kopie jaarplanner_tb044 (desktop en 390px): lijsten ingeklapt, laad meer, zoeken, geen plus in activiteitregels, themakaarten zonder klassen; vitest 1023 groen.
 - 2026-09-16 23:53 · lange-lijsten · Subthemahoofdstuk herschikt (woordweb eerst, koppen als vouwknop met klein plus- en zoekicoon, kaartknoppen naast de titel); browser desktop en 390px nagekeken; vitest 1023 groen.
+- 2026-09-17 00:24 · lange-lijsten · Antagonist: COMPLIANT, geen blokkerende bevindingen. MINOR opgelost: minimumdoelzin zonder klassenbijzin, verweesd commentaar weg, tests voor elke ontkoppelzin. MINOR niet opgelost: bij zoeken haalt de pagina de doeltekst per rij op; een bulk-endpoint kan later.
+- 2026-09-17 00:24 · lange-lijsten · in-uitvoering → klaar: Lange lijsten op thema en subthema ingeklapt met laad meer en zoeken, subthemahoofdstuk herschikt, geen plus in activiteitregels, themakaarten tellen minimumdoelen, bevestiging met dekkingsgevolg bij ontkoppelen. Criteria nagekeken met Vitest (1030 groen) en in de browser (desktop en 390px); pnpm lint groen; geen backendwijziging.
