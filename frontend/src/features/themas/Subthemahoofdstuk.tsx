@@ -153,14 +153,13 @@ export function Subthemahoofdstuk({
         >
           <span className="min-w-0">
             <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
-            {/* The subdoelen figure says how many of them an activiteit already works out (FB-010), so a fold can be
+            {/* The subdoelen figure comes first, the activiteiten second: a subthema is built from its subdoelen and
+                its activiteiten work them out (FB-048). The subdoelen figure says how many of them an activiteit already works out (FB-010), so a fold can be
                 scanned for the chapter that still needs one. It counts the same subdoelen the chapter lists; with none it
                 is the plain count. On a phone the facts stack: wrapped on one line they left a separator dangling at the
                 end of each row. */}
             {open ? null : (
               <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
-                <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
-                <Punt />
                 <span>
                   {subthema.subdoelen.length > 0
                     ? t(
@@ -169,6 +168,8 @@ export function Subthemahoofdstuk({
                       )
                     : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
                 </span>
+                <Punt />
+                <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
                 {zonderDoel > 0 ? (
                   <>
                     <Punt />
