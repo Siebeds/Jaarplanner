@@ -55,16 +55,27 @@ De eigenaar besliste op 2026-09-16 dat een apart ticket beslist wat hiermee gebe
 ## Buiten scope
 
 - AI-voorstellen voor subdoelen van een subthema: die blijven leerplandoelen (FB-026, FB-049).
-- Het gegevensmodel van de bestaande doelsuggesties die een leerplandoel zijn opruimen.
+- Het gegevensmodel van de bestaande doelsuggesties die een leerplandoel zijn opruimen: de gegevens verdwijnen wel
+  (zie hieronder), de structuur in de code mag een apart ticket blijven.
 
 ## Open vragen
 
-- **Vervangt dit de huidige doelsuggesties bij het thema,** of blijven die leerplandoelen voorstellen naast de nieuwe
-  minimumdoelvoorstellen?
-- **Wat met de bestaande voorstellen** (leerplandoelen, open of aanvaard): blijven ze staan, en tellen aanvaarde nog mee
-  voor de dekking?
-- **Welke minimumdoelen zoekt de AI af:** alle mijlpalen, of alleen die van de leeftijden van de subthema's van het
-  thema? Het decreet telt meer dan duizend minimumdoelen, en die passen niet allemaal in één vraag.
+Beantwoord door de eigenaar op 2026-09-16:
+
+- **Vervangt dit de huidige doelsuggesties bij het thema?** Ja. Bij een thema stelt de AI alleen nog minimumdoelen
+  voor; leerplandoelen komen via de subthema's en hun subdoelen.
+- **Wat met de bestaande voorstellen?** Alles weg: de leerplandoel-doelsuggesties op thema-niveau verdwijnen, open én
+  aanvaarde, en tellen niet meer mee voor de dekking. Dat wijzigt de constitutie: Art. V.1 laat een aanvaarde
+  doelsuggestie van een thema vandaag meetellen voor dekkingsprognose en dekking, en Art. IX beschrijft
+  `doelsuggesties[]` als leerplandoel-koppelingen. Die artikels worden eerst aangepast (met een regel in
+  `docs/constitutie-log.md`) voor dit gebouwd wordt.
+- **Welke minimumdoelen zoekt de AI af?** Volgens de leeftijden van de subthema's van het thema: een kleutersubthema
+  brengt de mijlpaal K mee, een subthema in de lagere school de mijlpaal die bij dat leerjaar hoort. Een thema zonder
+  subthema's laat de gebruiker eerst kiezen, zoals nu. Lokaal telt mijlpaal K 208 minimumdoelen (ongeveer 11.000
+  tokens), tegen ongeveer 37.000 tokens voor de K3-leerplandoelen van vandaag.
+
+- **Welke mijlpaal hoort bij welk leerjaar:** zoals de dekking al rekent (`Jaarfasen.MijlpalenVoor`, ADR-0047): de
+  kleuterjaren bij K, L1 tot L4 bij 4, L5 en L6 bij 6.
 
 ## Werklog
 

@@ -246,9 +246,9 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(new[] { "K3" }, catalogus.LaatsteSelectie!.JaarFasen!);
         Assert.Equal(2, resultaat.AantalKandidaten);
         Assert.Equal(new[] { "K3" }, resultaat.JaarFasen);
-        Assert.Contains("NAT-K3-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
-        Assert.Contains("NAT-K3-02", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
-        Assert.DoesNotContain("REK-L1-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("NAT-K3-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
+        Assert.Contains("NAT-K3-02", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("REK-L1-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -277,7 +277,8 @@ public sealed class DoelMatchingServiceTests
 
         Assert.Equal(new[] { "L1" }, resultaat.JaarFasen);
         Assert.Equal(1, resultaat.AantalKandidaten);
-        Assert.DoesNotContain("NAT-K3-01", fake.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("REK-L1-01", fake.LaatsteRequest!.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("NAT-K3-01", fake.LaatsteRequest.VasteContext, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -328,6 +329,52 @@ public sealed class DoelMatchingServiceTests
         Assert.Equal(0, fake.AantalAanroepen);
         Assert.Empty(thema.Doelsuggesties);
         Assert.Equal(0, opslag.AantalKeerBewaard);
+    }
+
+    [Fact]
+    public async Task Een_afgekapt_antwoord_bewaart_niets_en_geeft_de_nederlandse_melding_door()
+    {
+        // TB-043: the client refuses an answer cut off at the output ceiling; the run persists nothing.
+        var thema = EenThema();
+        var service = new DoelMatchingService(
+            new AfgekaptAiClient(), new FakeDoelMatchOpslag(thema), new FakeLeerdoelCatalogus(EenLeerdoelenSet()), Ruim);
+
+        var fout = await Assert.ThrowsAsync<AiAntwoordAfgekaptFout>(() => service.GenereerSuggestiesAsync(ThemaId));
+
+        Assert.Equal(AiAntwoordAfgekaptFout.Melding, fout.Message);
+        Assert.Empty(thema.Doelsuggesties);
+    }
+
+    [Fact]
+    public async Task Twee_themas_van_dezelfde_leeftijd_krijgen_hetzelfde_vaste_deel()
+    {
+        // TB-043, through the real candidate selection: the leeftijd decides the list, the thema does not.
+        var herfst = EenThema();
+        var water = new Thema("Water", duurWeken: 5, invalshoeken: "drijven");
+        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "3K");
+        water.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past"))
+            .WijzigStatus(KoppelingStatus.Geweigerd);
+
+        var eerste = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        await Service(eerste, out _, herfst).GenereerSuggestiesAsync(ThemaId);
+        var tweede = new FakeAiClient(cannedContent: "{\"suggesties\":[]}");
+        await Service(tweede, out _, water).GenereerSuggestiesAsync(ThemaId);
+
+        var a = eerste.LaatsteRequest!;
+        var b = tweede.LaatsteRequest!;
+        Assert.Equal(a.SystemPrompt, b.SystemPrompt);
+        Assert.Equal(a.VasteContext, b.VasteContext);
+        Assert.Contains("NAT-K3-01", a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("REK-L1-01", a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("Niet voorstellen", a.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Al gekoppeld of geweigerd: NAT-K3-01", b.UserPrompt, StringComparison.Ordinal);
+    }
+
+    // Answers as a real client does when the model stopped at its output ceiling.
+    private sealed class AfgekaptAiClient : IAiClient
+    {
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
+            throw new AiAntwoordAfgekaptFout();
     }
 
     [Fact]

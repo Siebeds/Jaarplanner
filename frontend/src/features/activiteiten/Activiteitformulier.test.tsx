@@ -69,6 +69,66 @@ describe("Activiteitformulier", () => {
     expect(bewaar.mock.calls[0][0]).not.toHaveProperty("leerplandoelCodes");
   });
 
+  it("opent een nieuwe activiteit zonder soort, en bewaart ze zonder soort (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+
+    const soort = screen.getByLabelText(t("activiteit.soort"));
+    expect(soort).toHaveValue("");
+    expect(screen.getByRole("option", { name: t("activiteit.geenSoort") })).toHaveProperty("selected", true);
+
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Nieuw" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(bewaar).toHaveBeenCalledTimes(1);
+    expect(bewaar.mock.calls[0][0]).toMatchObject({ naam: "Nieuw", activiteitType: null, hoek: null });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("bewaart een gekozen soort (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Bootjes" } });
+    fireEvent.change(screen.getByLabelText(t("activiteit.soort")), { target: { value: "Hoek" } });
+    fireEvent.change(screen.getByLabelText(t("activiteit.hoek")), { target: { value: "waterhoek" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(bewaar.mock.calls[0][0]).toMatchObject({ activiteitType: "Hoek", hoek: "waterhoek" });
+  });
+
+  it("toont bij het bewerken de eigen soort, en laat die weer leeg maken (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(
+      <Activiteitformulier open activiteit={ACTIVITEIT} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+    );
+
+    const soort = screen.getByLabelText(t("activiteit.soort"));
+    expect(soort).toHaveValue("Spel");
+
+    fireEvent.change(soort, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    expect(bewaar.mock.calls[0][0]).toMatchObject({ activiteitType: null });
+  });
+
+  it("noemt geen soort in de feiten van een activiteit zonder soort (FB-050)", () => {
+    toon(
+      <Activiteitformulier
+        open
+        alleenLezen
+        activiteit={{ ...ACTIVITEIT, activiteitType: null }}
+        onderzoeksvragen={[]}
+        onBewaar={vi.fn()}
+        onSluit={vi.fn()}
+        bezig={false}
+      />,
+    );
+
+    const blad = screen.getByRole("dialog");
+    expect(within(blad).queryByText(t("activiteit.soort"))).toBeNull();
+    expect(within(blad).getByText(t("activiteit.kleur"))).toBeInTheDocument();
+  });
+
   it("biedt ze wel aan wie op die leeftijd doelen mag koppelen", () => {
     toon(<Activiteitformulier open magDoelen onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />);
 

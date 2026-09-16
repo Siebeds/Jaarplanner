@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { AiKnop, Knop } from "../../components/ui/Knop";
+import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -472,9 +472,9 @@ export function ThemadetailScherm() {
               {genereer.isSuccess ? resultaatZin(genereer.data) : null}
             </p>
 
-            {/* Open suggestions, when there are any. They keep a white surface where the rest of
-                this screen has none, and that is the point: everything else here is a fact to
-                read, and these are the only objects on the page waiting for a decision.
+            {/* Open suggestions, when there are any, one at a time in the `Voorstelstapel` (TB-045). Its card keeps a
+                white surface where the rest of this screen has none, and that is the point: everything else here is a
+                fact to read, and these are the only objects on the page waiting for a decision.
 
                 Only for whoever may make that decision (R14: directie and themabeheer). For anyone
                 else a card waiting on somebody else's verdict is noise, and a card without its two
@@ -485,52 +485,24 @@ export function ThemadetailScherm() {
                 <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
                   {t("thema.suggesties")}
                 </h3>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {openSuggesties.map((suggestie) => (
-                    <li key={suggestie.id} className="rounded-kaart border border-lijn bg-kaart p-3 shadow-licht">
-                      <div className="flex items-center gap-2">
-                        {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
-                        <span className="mono text-micro font-medium text-inkt-zacht">
-                          {suggestie.leerplandoelCode}
-                        </span>
-                        <Statusmerk status={suggestie.status} className="ml-auto" />
-                      </div>
-
-                      {suggestie.tekst ? (
-                        <p className="mt-1.5 text-body text-inkt">{suggestie.tekst}</p>
-                      ) : null}
-
-                      {suggestie.aiMotivatie ? (
-                        <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">
-                          {suggestie.aiMotivatie}
-                        </p>
-                      ) : null}
-
-                      <div className="mt-3 flex gap-2">
-                        <Knop
-                          rang="hoofd"
-                          className="h-9 min-h-9 px-3 text-meta"
-                          disabled={beoordeel.isPending}
-                          onClick={() =>
-                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Aanvaard" })
-                          }
-                        >
-                          {t("thema.aanvaard")}
-                        </Knop>
-                        <Knop
-                          rang="rustig"
-                          className="h-9 min-h-9 px-3 text-meta"
-                          disabled={beoordeel.isPending}
-                          onClick={() =>
-                            beoordeel.mutate({ suggestieId: suggestie.id, status: "Geweigerd" })
-                          }
-                        >
-                          {t("thema.weiger")}
-                        </Knop>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-2">
+                  <Voorstelstapel
+                    label={t("voorstelstapel.doelenLabel")}
+                    voorstellen={openSuggesties.map((suggestie) => ({
+                      id: suggestie.id,
+                      naam: suggestie.leerplandoelCode,
+                      kop: (
+                        <>
+                          {suggestie.doelsoort ? <Doelsoortmerk soort={suggestie.doelsoort} /> : null}
+                          <span className="mono text-micro font-medium text-inkt-zacht">{suggestie.leerplandoelCode}</span>
+                        </>
+                      ),
+                      inhoud: suggestie.tekst ?? suggestie.leerplandoelCode,
+                      motivatie: suggestie.aiMotivatie,
+                    }))}
+                    onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
+                  />
+                </div>
               </>
             ) : null}
           </Kop>
@@ -572,50 +544,57 @@ export function ThemadetailScherm() {
           </Kop>
         </Blok>
 
-        {subthemas.map((subthema) => (
-          <Subthemahoofdstuk
-            key={subthema.id}
-            subthema={subthema}
-            mag={mag}
-            gevraagd={subthema.id === gevraagdSubthema}
-            koppelenBezig={
-              koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
-            }
-            onBewerk={() => {
-              wijzigSubthema.reset();
-              setSubthemaBlad({ subthema });
-            }}
-            onVerwijder={() => {
-              verwijderSubthema.reset();
-              setTeVerwijderenSubthema(subthema);
-            }}
-            onNieuweActiviteit={() => {
-              maakActiviteit.reset();
-              setActiviteitBlad({ subthemaId: subthema.id });
-            }}
-            onBewerkActiviteit={(activiteit) => {
-              wijzigActiviteit.reset();
-              setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
-            }}
-            onVerwijderActiviteit={(activiteit) => {
-              verwijderActiviteit.reset();
-              setTeVerwijderenActiviteit(activiteit);
-            }}
-            onKoppelSubdoel={(code) =>
-              koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
-            }
-            onOntkoppelSubdoel={(subdoelId) =>
-              ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
-            }
-            onToonDoel={toonDoel}
-            // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
-            // here shows up there and both invalidate the same query. Removing one stays in the
-            // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
-            // meant for scanning is how the card became a toolbar before.
-            onKoppelActiviteitdoel={(activiteitId, code) =>
-              koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
-            }
-          />
+        {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
+            card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
+            the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
+        {perLeeftijd(subthemas).map((groep) => (
+          <Blok key={groep.leeftijd} stapel boven={t("subthemabeheer.leeftijd")} figuur={groep.leeftijd}>
+            {groep.subthemas.map((subthema) => (
+              <Subthemahoofdstuk
+                key={subthema.id}
+                subthema={subthema}
+                mag={mag}
+                gevraagd={subthema.id === gevraagdSubthema}
+                koppelenBezig={
+                  koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
+                }
+                onBewerk={() => {
+                  wijzigSubthema.reset();
+                  setSubthemaBlad({ subthema });
+                }}
+                onVerwijder={() => {
+                  verwijderSubthema.reset();
+                  setTeVerwijderenSubthema(subthema);
+                }}
+                onNieuweActiviteit={() => {
+                  maakActiviteit.reset();
+                  setActiviteitBlad({ subthemaId: subthema.id });
+                }}
+                onBewerkActiviteit={(activiteit) => {
+                  wijzigActiviteit.reset();
+                  setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
+                }}
+                onVerwijderActiviteit={(activiteit) => {
+                  verwijderActiviteit.reset();
+                  setTeVerwijderenActiviteit(activiteit);
+                }}
+                onKoppelSubdoel={(code) =>
+                  koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
+                }
+                onOntkoppelSubdoel={(subdoelId) =>
+                  ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
+                }
+                onToonDoel={toonDoel}
+                // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
+                // here shows up there and both invalidate the same query. Removing one stays in the
+                // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
+                // meant for scanning is how the card became a toolbar before.
+                onKoppelActiviteitdoel={(activiteitId, code) =>
+                  koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
+                }
+              />
+            ))}
+          </Blok>
         ))}
         </Groep>
       </Schermvlak>
@@ -895,6 +874,17 @@ function opLeeftijd(subthemas: SubthemaWeergave[], jaarfasen: string[] | undefin
       a.leeftijd.localeCompare(b.leeftijd, "nl") ||
       a.naam.localeCompare(b.naam, "nl"),
   );
+}
+
+/** Consecutive subthema's of one leeftijd, in the order `opLeeftijd` gave them, which already puts each leeftijd together. */
+function perLeeftijd(subthemas: SubthemaWeergave[]) {
+  const groepen: { leeftijd: string; subthemas: SubthemaWeergave[] }[] = [];
+  for (const subthema of subthemas) {
+    const laatste = groepen.at(-1);
+    if (laatste?.leeftijd === subthema.leeftijd) laatste.subthemas.push(subthema);
+    else groepen.push({ leeftijd: subthema.leeftijd, subthemas: [subthema] });
+  }
+  return groepen;
 }
 
 function Terug() {

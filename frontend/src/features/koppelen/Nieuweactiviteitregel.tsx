@@ -45,7 +45,8 @@ export function Nieuweactiviteitregel({
 }) {
   const [open, setOpen] = useState(false);
   const [naam, setNaam] = useState("");
-  const [type, setType] = useState<ActiviteitType>(ACTIVITEIT_TYPES[0]);
+  // "" is no soort, and the start: a preselected soort would be saved without anyone choosing it (FB-050).
+  const [type, setType] = useState<ActiviteitType | "">("");
   const [lesuren, setLesuren] = useState(1);
 
   const maak = useMaakActiviteitMetDoel();
@@ -53,7 +54,7 @@ export function Nieuweactiviteitregel({
   function sluit() {
     setOpen(false);
     setNaam("");
-    setType(ACTIVITEIT_TYPES[0]);
+    setType("");
     setLesuren(1);
     maak.reset();
   }
@@ -90,7 +91,7 @@ export function Nieuweactiviteitregel({
             subthemaId,
             invoer: {
               naam: naam.trim(),
-              activiteitType: type,
+              activiteitType: type === "" ? null : type,
               hoek: null,
               verwachteUitkomsten: null,
               onderzoeksvraagId: null,
@@ -125,7 +126,8 @@ export function Nieuweactiviteitregel({
         <div className="grid grid-cols-2 gap-3">
           <Veld label={t("koppelen.activiteitType")}>
             {(id) => (
-              <Keuze id={id} value={type} disabled={maak.isPending} onChange={(e) => setType(e.target.value as ActiviteitType)}>
+              <Keuze id={id} value={type} disabled={maak.isPending} onChange={(e) => setType(e.target.value as ActiviteitType | "")}>
+                <option value="">{t("activiteit.geenSoort")}</option>
                 {ACTIVITEIT_TYPES.map((waarde) => (
                   <option key={waarde} value={waarde}>
                     {t(`activiteitsoort.${waarde}`)}

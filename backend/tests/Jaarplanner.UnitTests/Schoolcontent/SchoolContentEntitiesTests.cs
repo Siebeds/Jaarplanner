@@ -170,6 +170,22 @@ public class SchoolContentEntitiesTests
     }
 
     [Fact]
+    public void Activiteit_without_a_type_keeps_none_and_can_lose_one()
+    {
+        var thema = new Thema("Water", duurWeken: 4);
+        var subthema = thema.VoegSubthemaToe("De plas", 2, "K3");
+
+        var activiteit = subthema.VoegActiviteitToe("Waterproef", activiteitType: null);
+        Assert.Null(activiteit.ActiviteitType);
+
+        activiteit.WerkGegevensBij(ActiviteitType.Hoek, "waterhoek", null);
+        Assert.Equal(ActiviteitType.Hoek, activiteit.ActiviteitType);
+
+        activiteit.WerkGegevensBij(null, null, null);
+        Assert.Null(activiteit.ActiviteitType);
+    }
+
+    [Fact]
     public void Activiteit_rejects_an_undefined_type()
     {
         var thema = new Thema("Water", duurWeken: 4);

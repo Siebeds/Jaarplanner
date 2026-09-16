@@ -87,7 +87,7 @@ public interface IWeekplanningOpslag
 /// </summary>
 /// <param name="ActiviteitId">The activiteit.</param>
 /// <param name="Naam">Its name.</param>
-/// <param name="ActiviteitType">Its type, already serialised to the enum's name.</param>
+/// <param name="ActiviteitType">Its soort, or null when it has none (FB-050).</param>
 /// <param name="SubthemaId">The subthema it realises.</param>
 /// <param name="SubthemaNaam">The subthema's name.</param>
 /// <param name="KlasId">
@@ -114,7 +114,7 @@ public interface IWeekplanningOpslag
 public sealed record Activiteitinhoud(
     Guid ActiviteitId,
     string Naam,
-    string ActiviteitType,
+    ActiviteitType? ActiviteitType,
     Guid SubthemaId,
     string SubthemaNaam,
     string Leeftijd,

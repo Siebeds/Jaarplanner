@@ -28,6 +28,12 @@ public sealed class PromptbegrenzingTests
         Assert.Equal(2, Promptbegrenzing.SchatTokens(new AiRequest { SystemPrompt = "abcd", UserPrompt = "efgh" }));
 
     [Fact]
+    public void Telt_de_vaste_context_mee() =>
+        Assert.Equal(
+            3,
+            Promptbegrenzing.SchatTokens(new AiRequest { SystemPrompt = "abcd", VasteContext = "efgh", UserPrompt = "ijkl" }));
+
+    [Fact]
     public void De_standaardgrens_is_50000() => Assert.Equal(50_000, new Promptbegrenzing().MaxTokens);
 
     [Fact]

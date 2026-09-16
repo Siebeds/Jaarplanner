@@ -263,6 +263,38 @@ public sealed class AzureAiFoundryClientTests
         Assert.Equal(ruw, completion.Content);
     }
 
+    /// <summary>
+    /// TB-043: the stable context follows the system prompt in the system message, after a blank line, so every request
+    /// of the same kind starts with the same bytes and the service's automatic prompt cache can match them.
+    /// </summary>
+    [Fact]
+    public async Task De_vaste_context_volgt_de_systeemprompt_in_het_systeembericht()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var client = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties()));
+
+        await client.CompleteAsync(EenRequest() with { VasteContext = "# Beschikbare doelen" });
+
+        using var payload = JsonDocument.Parse(handler.LaatsteBody!);
+        var messages = payload.RootElement.GetProperty("messages");
+        Assert.Equal(2, messages.GetArrayLength());
+        Assert.Equal("systeeminstructies\n\n# Beschikbare doelen", messages[0].GetProperty("content").GetString());
+        Assert.Equal("de schoolcontent", messages[1].GetProperty("content").GetString());
+    }
+
+    /// <summary>TB-043: an answer cut off at <c>max_completion_tokens</c> is incomplete, so it never reaches a parser.</summary>
+    [Fact]
+    public async Task Een_antwoord_dat_op_de_lengtegrens_stopt_wordt_een_afgekapt_fout()
+    {
+        var handler = new StubHandler(
+            """{"choices":[{"index":0,"finish_reason":"length","message":{"role":"assistant","content":"{\"suggesties\":["}}]}""");
+        var client = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties(maxCompletionTokens: 10)));
+
+        var fout = await Assert.ThrowsAsync<AiAntwoordAfgekaptFout>(() => client.CompleteAsync(EenRequest()));
+
+        Assert.Equal(AiAntwoordAfgekaptFout.Melding, fout.Message);
+    }
+
     /// <summary>A <c>null</c> assistant content is normalised to an empty string, which the parser then rejects.</summary>
     [Fact]
     public async Task Een_lege_assistant_inhoud_wordt_een_lege_string()

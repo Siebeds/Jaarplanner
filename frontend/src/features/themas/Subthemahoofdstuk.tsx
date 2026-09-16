@@ -10,7 +10,7 @@ import type { SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
-import { Blok, Doellijst, Subkop } from "./Fiche";
+import { Doellijst, Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 import { Woordweb } from "./Woordweb";
@@ -22,9 +22,10 @@ import { Woordweb } from "./Woordweb";
  * mattered.** It used to sit nested in a "Subthema's" panel, so the level a doel hangs on was
  * expressed by one border and twenty pixels of indent, and on a wide screen the box stretched to
  * eleven hundred pixels around a list of two short lines. It now hangs off the fiche's own margin as
- * a sibling of the thema's facts and its themadoelen, with its leeftijd and duration set out in that
- * margin and its width bounded by the fiche. Same three levels, carried by where the card sits
- * rather than by how deeply it is buried.
+ * a sibling of the thema's facts and its themadoelen, with its leeftijd set out in that margin and its
+ * width bounded by the fiche. Same three levels, carried by where the card sits rather than by how
+ * deeply it is buried. The screen draws that margin once per leeftijd, beside all of its cards
+ * (FB-047), so this component draws only the card.
  *
  * **The card folds shut, and the heading is what folds it** (owner, 2026-08-31: "ik wil dat de
  * subthema cards collapsible worden, zodat ik ze kan dicht en openklappen"). A disclosure button with
@@ -113,14 +114,9 @@ export function Subthemahoofdstuk({
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
 
   return (
-    <Blok
-      // The leeftijd is the figure and it is LABELLED. The values are free text, from "K3" to "8-9",
-      // and "5-6" beside "2 weken" reads as a second duration; four small letters remove the only
-      // real ambiguity in the margin. A subthema is scoped by age and holds for every klas that
-      // teaches it (Art. IX.2), so no class is named here.
-      boven={t("subthemabeheer.leeftijd")}
-      figuur={subthema.leeftijd}
-      onder={telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}
+    // The leeftijd is not on the card: the screen sets it once in the margin beside all of that leeftijd's cards
+    // (FB-047), so the card carries its own duration instead.
+    <Kaart
       acties={
         magSubthema ? (
           <>
@@ -152,35 +148,44 @@ export function Subthemahoofdstuk({
           className="-mx-2 -my-1.5 flex scroll-mt-6 w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-veld px-2 py-1.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
         >
           <span className="min-w-0">
-            <span className="block font-display text-hoofdstuk text-inkt">{subthema.naam}</span>
-            {/* The subdoelen figure comes first, the activiteiten second: a subthema is built from its subdoelen and
-                its activiteiten work them out (FB-048). The subdoelen figure says how many of them an activiteit
-                already works out (FB-010), so a fold can be
-                scanned for the chapter that still needs one. It counts the same subdoelen the chapter lists; with none it
-                is the plain count. On a phone the facts stack: wrapped on one line they left a separator dangling at the
-                end of each row. */}
-            {open ? null : (
-              <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
-                <span>
-                  {subthema.subdoelen.length > 0
-                    ? t(
-                        subthema.subdoelen.length === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
-                        { aantal: balans.subdoelenInActiviteit, totaal: subthema.subdoelen.length },
-                      )
-                    : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
-                </span>
-                <Punt />
-                <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
-                {zonderDoel > 0 ? (
-                  <>
-                    <Punt />
-                    <span className="font-medium text-attentie-inkt">
-                      {telWoord(zonderDoel, "thema.eenZonderDoel", "thema.aantalZonderDoel")}
-                    </span>
-                  </>
-                ) : null}
-              </span>
-            )}
+            <span className="block font-display text-hoofdstuk text-inkt">
+              {subthema.naam}
+              {/* The margin says the leeftijd once for the whole group, which a screen reader moving from heading to
+                  heading never hears; so each fold names it too (FB-047). A subthema holds for every klas of that
+                  leeftijd (Art. IX.2), so no class is named. */}
+              <span className="sr-only">{t("thema.subthemaLeeftijd", { leeftijd })}</span>
+            </span>
+            {/* The duration always shows; the rest only while shut. The subdoelen figure comes first, the activiteiten
+                second: a subthema is built from its subdoelen and its activiteiten work them out (FB-048). It says how
+                many of them an activiteit already works out (FB-010), so a fold can be scanned for the chapter that
+                still needs one. It counts the same subdoelen the chapter lists; with none it is the plain count. On a
+                phone the facts stack: wrapped on one line they left a separator dangling at the end of each row. */}
+            <span className="mt-1 flex flex-col gap-y-0.5 text-meta text-inkt-zacht sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-2">
+              <span>{telWoord(subthema.duurWeken, "thema.eenWeek", "thema.weken")}</span>
+              {open ? null : (
+                <>
+                  <Punt />
+                  <span>
+                    {subthema.subdoelen.length > 0
+                      ? t(
+                          subthema.subdoelen.length === 1 ? "thema.subdoelInActiviteitEen" : "thema.subdoelenInActiviteit",
+                          { aantal: balans.subdoelenInActiviteit, totaal: subthema.subdoelen.length },
+                        )
+                      : telWoord(0, "thema.eenSubdoel", "thema.subdoelen")}
+                  </span>
+                  <Punt />
+                  <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
+                  {zonderDoel > 0 ? (
+                    <>
+                      <Punt />
+                      <span className="font-medium text-attentie-inkt">
+                        {telWoord(zonderDoel, "thema.eenZonderDoel", "thema.aantalZonderDoel")}
+                      </span>
+                    </>
+                  ) : null}
+                </>
+              )}
+            </span>
           </span>
           <IcoonChevron
             aria-hidden="true"
@@ -311,7 +316,7 @@ export function Subthemahoofdstuk({
           ) : null}
         </>
       ) : null}
-    </Blok>
+    </Kaart>
   );
 }
 
@@ -397,9 +402,14 @@ function Activiteitregel({
         <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
           <p className="mt-0.5 text-meta text-inkt-zacht">
-            {t(`activiteitsoort.${activiteit.activiteitType}`)}
-            {activiteit.hoek ? ` · ${activiteit.hoek}` : ""}
-            {kleur ? ` · ${t(kleurSleutel(kleur))}` : ""}
+            {/* Joined from what is there, so an activiteit without a soort (FB-050) does not start with a separator. */}
+            {[
+              activiteit.activiteitType ? t(`activiteitsoort.${activiteit.activiteitType}`) : null,
+              activiteit.hoek,
+              kleur ? t(kleurSleutel(kleur)) : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
         </div>
 

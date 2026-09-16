@@ -66,6 +66,7 @@ export function Blok({
   acties,
   kaal,
   strak,
+  stapel,
   children,
 }: {
   /** The block's measure, set large in the mono face: `5`, `L3`, a count. */
@@ -89,6 +90,12 @@ export function Blok({
   kaal?: boolean;
   /** No top margin: this block opens a `Groep`, whose own padding is already the space above it. */
   strak?: boolean;
+  /**
+   * The content is a stack of its own cards, all sharing this block's margin: one leeftijd's subthema's (FB-047).
+   * No card here, and the figure lines up with the first card's text as it does beside a single card. `acties` is
+   * ignored: each card in the stack carries its own.
+   */
+  stapel?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -100,7 +107,7 @@ export function Blok({
         className={cn(
           "mb-2 flex items-baseline gap-x-2 sm:mb-0 sm:flex-col sm:items-end sm:gap-x-0 sm:text-right",
           // Lines the figure up with the card's first line of text rather than with its top edge.
-          kaal ? "sm:pt-1" : "sm:pt-5",
+          kaal && !stapel ? "sm:pt-1" : "sm:pt-5",
         )}
       >
         {boven ? (
@@ -125,22 +132,30 @@ export function Blok({
         ) : null}
       </div>
 
-      <div
-        className={cn(
-          "min-w-0",
-          kaal ? "" : "rounded-kaart border border-lijn bg-kaart p-4 shadow-kaart sm:p-5",
-        )}
-      >
-        {acties ? (
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">{children}</div>
-            <div className="flex shrink-0 items-center gap-2">{acties}</div>
-          </div>
-        ) : (
-          children
-        )}
-      </div>
+      {stapel ? (
+        <div className="flex min-w-0 flex-col gap-4">{children}</div>
+      ) : kaal ? (
+        <div className="min-w-0">{children}</div>
+      ) : (
+        <Kaart acties={acties}>{children}</Kaart>
+      )}
     </section>
+  );
+}
+
+/** The white card a block's content sits on, with what acts on it as a whole top right. */
+export function Kaart({ acties, children }: { acties?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="min-w-0 rounded-kaart border border-lijn bg-kaart p-4 shadow-kaart sm:p-5">
+      {acties ? (
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">{children}</div>
+          <div className="flex shrink-0 items-center gap-2">{acties}</div>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
   );
 }
 

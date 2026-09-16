@@ -96,7 +96,7 @@ public sealed record Dagweergave(
 /// <param name="PlaatsingId">The placement's own id — what a move or a delete addresses.</param>
 /// <param name="ActiviteitId">The activiteit.</param>
 /// <param name="ActiviteitNaam">Its name.</param>
-/// <param name="ActiviteitType">The activiteit type, as the API serialises the enum (by name).</param>
+/// <param name="ActiviteitType">The activiteit's soort, serialised by name, or null when it has none (FB-050).</param>
 /// <param name="SubthemaId">The subthema it realises.</param>
 /// <param name="SubthemaNaam">
 /// Its name. Carried because the week view's whole purpose is planning the subthema's of a period, so a day card that
@@ -140,7 +140,7 @@ public sealed record GeplandeActiviteitWeergave(
     Guid PlaatsingId,
     Guid ActiviteitId,
     string ActiviteitNaam,
-    string ActiviteitType,
+    ActiviteitType? ActiviteitType,
     Guid SubthemaId,
     string SubthemaNaam,
     Guid ThemaId,

@@ -34,7 +34,7 @@ public sealed class WeekplanningServiceTests
         new(
             ActiviteitId: activiteitId ?? ActiviteitId,
             Naam: "Bladeren zoeken",
-            ActiviteitType: nameof(ActiviteitType.Hoek),
+            ActiviteitType: ActiviteitType.Hoek,
             SubthemaId: SubthemaId,
             SubthemaNaam: "Herfstbladeren",
             Leeftijd: leeftijd,
