@@ -2,12 +2,12 @@
 id: FB-026
 titel: AI zoekt doelen bij een activiteit en stelt ze voor als subdoel
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-17 00:31
+opgepakt-door: claude-fb026
+branch: ticket/FB-026-doelen-bij-activiteit
 pr:
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
@@ -80,3 +80,5 @@ Dit ticket neemt het activiteitendeel van story E8-07 over.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-17 00:31 · claude-fb026 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 00:31 · claude-fb026 · Eigenaar besliste: alleen aanvaarde en manuele koppelingen houden het verwijderen door de maker tegen (R25); het maximum staat in de configuratie (standaard 5).
