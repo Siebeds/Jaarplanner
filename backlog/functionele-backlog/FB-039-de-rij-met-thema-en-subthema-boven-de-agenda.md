@@ -2,10 +2,10 @@
 id: FB-039
 titel: De rij met thema en subthema boven de agenda verdwijnt
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 14:48
+bijgewerkt: 2026-09-16 14:56
 opgepakt-door: claude-fb-039
 branch: ticket/FB-039-stroken-toegankelijk
 pr:
@@ -90,3 +90,4 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 - 2026-09-16 14:36 · claude-fb-039 · stroken gebouwd: doel van 24 px, de strook met de naam is een tabstop; ADR-0045 vervangt ADR-0042 beslissing 3; vitest 973/973 en lint groen
 - 2026-09-16 14:38 · claude-fb-039 · antagonist: COMPLIANT, de stroken voldoen samen met main aan WCAG 2.2 AA; vier MINOR (o.a. test gesloten maandag, ADR-zin)
 - 2026-09-16 14:48 · claude-fb-039 · browsercheck FAIL (MAJOR): in de maand verbergen de 24px-stroken de activiteiten in de cel; wordt hersteld
+- 2026-09-16 14:56 · claude-fb-039 · in-uitvoering → te-testen: gebouwd: stroken 24px, met Tab en Enter bereikbaar (ADR-0045); maandrij groeit mee zodat activiteiten zichtbaar blijven; browsercheck PASS na hertest (backlog/worklogs/FB-039), plantests en lint groen, antagonist COMPLIANT; het nummer van ADR-0045 kan botsen met FB-043 bij de merge
