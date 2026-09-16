@@ -2,12 +2,12 @@
 id: FB-061
 titel: Formulier om een thema aan te maken en te bewerken is rustiger en duidelijker
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:00
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-17 00:01
+opgepakt-door: claude-fb061
+branch: ticket/FB-061-rustiger-themaformulier
 pr:
 geblokkeerd:
 fr: [FR-3.1]
@@ -92,3 +92,4 @@ Geen.
 ## Werklog
 
 - 2026-09-17 00:00 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-17 00:01 · claude-fb061 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
