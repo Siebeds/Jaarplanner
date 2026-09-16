@@ -680,9 +680,9 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         // Empty, so themabeheer holds the right to delete it; but a klas planned it.
         using (var directie = opzet.Directie())
         {
-            var rooster = await directie.GetFromJsonAsync<RoosterDto>($"/api/schooljaren/{school.SchooljaarId}/rooster");
+            var plan = await directie.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Blauw}/jaarplan");
             Assert.Equal(HttpStatusCode.OK, await StatusAsync(directie.PostAsJsonAsync(
-                $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, blokStart = rooster!.Blokken[0].Start })));
+                $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, van = plan!.EersteSchooldag })));
         }
 
         string naam;
@@ -700,9 +700,8 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
 
     private sealed record NaamDto(string Naam);
 
-    private sealed record RoosterDto(List<BlokDto> Blokken);
+    private sealed record PlanDto(DateOnly EersteSchooldag);
 
-    private sealed record BlokDto(DateOnly Start);
 
     // --- A missing leeftijd (test-runner D2): the write's Dutch 400, and a 403 first wherever the right needs no body. ---
 

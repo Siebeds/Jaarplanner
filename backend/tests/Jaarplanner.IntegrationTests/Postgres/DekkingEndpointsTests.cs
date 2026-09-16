@@ -410,11 +410,8 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     /// <summary>
     /// A class with a thema placed in its jaarplan, the thema carrying <c>DEK-01</c> as an accepted doelsuggestie.
     /// <para>
-    /// <b>The block start is asked of the real <see cref="IPlanningsblokIndeling"/> seam rather than assumed.</b> A
-    /// hard-coded date would make the non-stale case depend on the grid happening to start where the test guessed,
-    /// and a test that silently drifts into asserting the stale path while claiming the healthy one is worse than no
-    /// test. For the stale case the placement is deliberately keyed on a date <i>outside</i> the school year, which no
-    /// derived block can ever start on.
+    /// The healthy placement runs from the year's first day; for the vervallen case it lies <i>outside</i> the school
+    /// year, which a placement may never do (ADR-0049 decision 5).
     /// </para>
     /// </summary>
     private async Task<(Guid KlasId, Guid ThemaId)> ZetGeplaatstThemaOpAsync(
@@ -423,8 +420,6 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     {
         var klasId = await ZetKlasOpAsync();
 
-        using var scope = _factory.Services.CreateScope();
-        var indeling = scope.ServiceProvider.GetRequiredService<IPlanningsblokIndeling>();
         await using var context = _db.MaakContext();
 
         var klas = await context.Klassen.SingleAsync(k => k.Id == klasId);
@@ -432,7 +427,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
 
         var blokStart = vervallen
             ? schooljaar.Start.AddMonths(-1)
-            : indeling.Blokken(schooljaar, JaarplanGeneratieService.GeneratieNiveau)[0].Start;
+            : schooljaar.Start;
 
         var thema = new Thema("Herfstthema", duurWeken: 5);
         thema.VoegDoelsuggestieToe(new DoelKoppeling("DEK-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
@@ -441,8 +436,8 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         var jaarplan = new Jaarplan(klasId);
         jaarplan.VoegPlaatsingToe(
             thema.Id,
-            JaarplanGeneratieService.GeneratieNiveau,
             blokStart,
+            blokStart.AddDays(25),
             plaatsingsstatus,
             plaatsingsstatus == KoppelingStatus.Voorgesteld ? "past bij de herfst" : null);
         context.Jaarplannen.Add(jaarplan);

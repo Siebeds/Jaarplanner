@@ -112,8 +112,8 @@ public sealed class ThemaplaatsingDatumsMigratieTests : IAsyncLifetime
                 // 11 Jan. The kerstvakantie splits it; both parts keep the proposal and its motivation.
                 (Lang, D(2026, 11, 23), D(2026, 12, 18), KoppelingStatus.Voorgesteld, "voor de kerst"),
                 (Lang, D(2027, 1, 4), D(2027, 1, 8), KoppelingStatus.Voorgesteld, "voor de kerst"),
-                // Wednesday 20 Jan + 2 lesweken: the last schooldag before Wednesday 3 Feb.
-                (Tweede, D(2027, 1, 20), D(2027, 2, 2), KoppelingStatus.Aanvaard, null),
+                // Wednesday 20 Jan + 3 lesweken: the last schooldag before Wednesday 10 Feb.
+                (Tweede, D(2027, 1, 20), D(2027, 2, 9), KoppelingStatus.Aanvaard, null),
             ],
             plaatsingen);
     }
