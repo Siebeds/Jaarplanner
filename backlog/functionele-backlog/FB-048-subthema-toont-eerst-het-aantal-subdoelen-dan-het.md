@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:25
+bijgewerkt: 2026-09-16 20:31
 opgepakt-door: sessie-fb048
 branch: ticket/FB-048-subthema-tellingen-volgorde
 pr:
@@ -29,11 +29,11 @@ omgekeerde.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema met subdoelen en activiteiten, wanneer de themapagina opent, dan staat in zijn blokje de
+- [x] Gegeven een subthema met subdoelen en activiteiten, wanneer de themapagina opent, dan staat in zijn blokje de
   telling van de subdoelen vóór die van de activiteiten.
-- [ ] Gegeven een subthema zonder subdoelen, dan staat "0 subdoelen" nog altijd eerst.
-- [ ] Een schermlezer leest de tellingen in dezelfde volgorde als ze op het scherm staan.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een subthema zonder subdoelen, dan staat "0 subdoelen" nog altijd eerst.
+- [x] Een schermlezer leest de tellingen in dezelfde volgorde als ze op het scherm staan.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -55,3 +55,5 @@ De volgorde van de secties in een opengeklapt subthema (activiteiten, dan subdoe
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 20:25 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: open vraag standaard nee
 - 2026-09-16 20:25 · sessie-fb048 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 20:27 · sessie-fb048 · volgorde omgewisseld; twee vitest-tests controleren de volgorde (falen op de oude code), lint groen
+- 2026-09-16 20:31 · sessie-fb048 · criteria afgevinkt: 1-2 door vitest, 3 door de knoptekst in de browser (volgt de DOM), 4 door een browserpas op 1440px en 390px op een wegwerpdatabase, zonder horizontale overloop
