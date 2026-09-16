@@ -6,6 +6,7 @@ import { t } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
 import type { LeerplandoelDetail, MinimumdoelDetail, MinimumdoelenPagina, ThemaWeergave } from "../../lib/types";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { LIJSTKNOP } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -143,7 +144,11 @@ function toon(ik: Ik = DIRECTIE) {
   );
 }
 
-const minimumdoelrij = () => screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
+/** The list of themadoelen starts shut (TB-044); this opens it, then finds the row. */
+async function minimumdoelrij() {
+  fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
+  return screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
+}
 
 /** The minimumdoel's own list item: the page has leeftijd buttons of its own (the doelsuggesties' choice). */
 const binnen = (rij: HTMLElement) => within(rij.closest("li")!);
@@ -194,6 +199,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
   it("zegt het wanneer nog geen leerplandoel naar het minimumdoel leidt", async () => {
     thema = { ...THEMA, minimumdoelen: [{ id: "tm-2", minimumdoelRef: "K-MV-2" }] };
     toon();
+    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
     fireEvent.click(await screen.findByRole("button", { name: /K-MV-2/, expanded: false }));
 
     expect(await screen.findByText(t("thema.minimumdoelZonderLeerplandoel"))).toBeInTheDocument();
@@ -267,6 +273,7 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
       minimumdoelen: ["A", "B", "C", "D", "E"].map((letter) => ({ id: `tm-${letter}`, minimumdoelRef: `K-MV-1${letter}` })),
     };
     toon();
+    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
 
     expect(await screen.findByText("K-MV-1E")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^K-MV-1[A-E]/, expanded: false })).toHaveLength(5);

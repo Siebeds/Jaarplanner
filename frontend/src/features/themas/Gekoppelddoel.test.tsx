@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import type { DoelMatchSuggestie, LeerplandoelDetail, ThemaWeergave } from "../../lib/types";
 import { DIRECTIE, metIk } from "../../test/rechten";
+import { openLijsten } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -140,6 +141,8 @@ function toon() {
 /** The chapter starts shut (FB-011); its subdoelen show once it is opened. */
 async function openHoofdstuk() {
   fireEvent.click(await screen.findByRole("button", { name: /^De stoet/, expanded: false }));
+  // Its lists, and the thema's own, start shut as well (TB-044).
+  openLijsten();
 }
 
 describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => {

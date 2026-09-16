@@ -12,6 +12,7 @@ import type {
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { openLijsten } from "../../test/lijsten";
 import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -159,6 +160,8 @@ async function openHoofdstukken() {
   // The guard: `getByRole` throws unless both are open now, so no absence check below can pass on a shut chapter.
   hoofdstuk("Bladeren", true);
   hoofdstuk("Rekenen", true);
+  // Their lists start shut too (TB-044), with the same risk.
+  openLijsten();
 }
 
 afterEach(() => {
@@ -532,11 +535,49 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     await screen.findByText("Bladeren");
 
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
     expect(screen.getByText("Eigen spel")).toBeInTheDocument();
     expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
     expect(screen.queryByText("Tellen")).toBeNull();
 
     fireEvent.click(hoofdstuk("Bladeren", true));
+    expect(screen.queryByText("Eigen spel")).toBeNull();
+  });
+
+  it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-044)", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    const activiteiten = screen.getByRole("button", { name: telWoord(3, "thema.eenActiviteit", "thema.activiteiten") });
+    expect(activiteiten).toHaveAttribute("aria-expanded", "false");
+    expect(screen.getByRole("button", { name: telWoord(1, "thema.eenSubdoel", "thema.subdoelen") })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    expect(screen.queryByText("Eigen spel")).toBeNull();
+
+    // Activiteiten by name, whatever order the server sent them in.
+    fireEvent.click(activiteiten);
+    const namen = screen
+      .getAllByRole("button", { name: /^Activiteit .* (bekijken|bewerken)$/ })
+      .map((knop) => knop.getAttribute("aria-label"));
+    expect(namen).toEqual(
+      ["Andermans spel", "Eigen spel", "Gekoppeld spel"].map((naam) => t("activiteit.bewerkAria", { naam })),
+    );
+  });
+
+  it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-044)", async () => {
+    toon(DIRECTIE);
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    fireEvent.click(screen.getByRole("button", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }));
+    fireEvent.change(screen.getByRole("textbox", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }), {
+      target: { value: "gekoppeld" },
+    });
+
+    expect(screen.getByText("Gekoppeld spel")).toBeInTheDocument();
     expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 });
@@ -610,6 +651,7 @@ describe("ThemadetailScherm: een link vanuit de agenda opent één subthema (FB-
     await screen.findByText("Rekenen");
 
     const rekenen = await waitFor(() => hoofdstuk("Rekenen", true));
+    openLijsten();
     expect(rekenen).toHaveFocus();
     expect(screen.getByText("Tellen")).toBeInTheDocument();
     expect(hoofdstuk("Bladeren", false)).toBeInTheDocument();
@@ -666,6 +708,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const subdoelen = groep(t("thema.subdoelenTitel"));
     expect(rij(subdoelen, "WIS-1")).toHaveTextContent(
@@ -680,6 +723,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const andere = groep(t("thema.andereDoelenTitel"));
     expect(rij(andere, "NED-9")).toHaveTextContent(t("thema.inEenActiviteit", { namen: "Bladeren wegen" }));
@@ -728,6 +772,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: alleenSubdoelen });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     // The chapter is open: its subdoelen are on screen, and only the other group is absent.
     expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
@@ -748,6 +793,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
     toon(DIRECTIE, { thema: voorgesteld });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
 
     const regel = rij(groep(t("thema.subdoelenTitel")), "WIS-7");
     expect(regel).not.toHaveTextContent(t("thema.nogGeenActiviteit"));
@@ -895,6 +941,7 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
     toon(ik, { thema: MET_DOELEN });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
+    openLijsten();
   }
 
   it("telt de doelen in het meervoud en in het enkelvoud, zonder een doelcode", async () => {

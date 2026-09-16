@@ -203,7 +203,28 @@
     "plaatsDoelsuggestie": "aanvaarde doelsuggestie",
     "plaatsSubdoel": "subdoel in {naam}",
     "plaatsEenActiviteit": "1 activiteit",
-    "plaatsActiviteiten": "{aantal} activiteiten"
+    "plaatsActiviteiten": "{aantal} activiteiten",
+    "eenMinimumdoel": "1 minimumdoel",
+    "minimumdoelen": "{aantal} minimumdoelen",
+    "lijstMinimumdoelen": "minimumdoelen",
+    "lijstActiviteiten": "activiteiten",
+    "lijstSubdoelen": "subdoelen",
+    "lijstAndereDoelen": "andere doelen",
+    "eenAnderDoel": "1 doel",
+    "andereDoelen": "{aantal} doelen",
+    "zoekMinimumdoel": "Nummer of tekst",
+    "zoekActiviteit": "Naam, soort of hoek",
+    "zoekDoel": "Code of tekst"
+  },
+  "lijst": {
+    "zoekIn": "Zoek in {lijst}",
+    "zoekSluit": "Sluit zoeken in {lijst}",
+    "laadMeer": "Laad {aantal} meer",
+    "nogOver": "nog {aantal}",
+    "eenGevonden": "1 van {totaal} gevonden",
+    "gevonden": "{aantal} van {totaal} gevonden",
+    "nietsGevonden": "Niets gevonden",
+    "zoeken": "Zoeken"
   },
   "plan": {
     "titel": "Thema's per periode",

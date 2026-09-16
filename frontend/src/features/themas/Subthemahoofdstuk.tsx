@@ -5,13 +5,16 @@ import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { useLeerplandoelTeksten } from "../../lib/queries";
 import type { Mag } from "../../lib/rechten";
 import type { SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
-import { Doellijst, Kaart, Subkop } from "./Fiche";
+import { Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Inklaplijst } from "./Inklaplijst";
+import { opCode } from "./opCode";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 import { Woordweb } from "./Woordweb";
 
@@ -94,6 +97,22 @@ export function Subthemahoofdstuk({
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
   const balans = subthemabalans(subthema);
+  // The three lists below are shut and paged (TB-044), each in the order it is read in: activiteiten by name, doelen by
+  // code (`subthemabalans` already orders the other doelen). A doel search matches the doel's text too, fetched for
+  // every doel only once one of the two doel searches opens.
+  const activiteitenOpNaam = [...activiteiten].sort((a, b) => a.naam.localeCompare(b.naam, "nl", { numeric: true }));
+  const subdoelenOpCode = [...subthema.subdoelen].sort((a, b) =>
+    opCode(a.koppeling.leerplandoelCode, b.koppeling.leerplandoelCode),
+  );
+  const [doelZoekOpen, setDoelZoekOpen] = useState({ subdoelen: false, andere: false });
+  const { teksten: doelteksten, laadt: doeltekstenLaden } = useLeerplandoelTeksten(
+    [
+      ...subdoelenOpCode.map((s) => s.koppeling.leerplandoelCode),
+      ...balans.andereDoelen.map((d) => d.koppeling.leerplandoelCode),
+    ],
+    doelZoekOpen.subdoelen || doelZoekOpen.andere,
+  );
+  const doelZoektekst = (code: string) => `${code} ${doelteksten.get(code) ?? ""}`;
   // Local, and deliberately not persisted: shut on every visit (FB-011's default), except the chapter a link asked for.
   // Remembering a fold across a route change is a different feature and would need somewhere to remember it.
   const [open, setOpen] = useState(gevraagd === true);
@@ -235,9 +254,21 @@ export function Subthemahoofdstuk({
             {activiteiten.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("activiteit.geen")}</p>
             ) : (
-              <ul className="divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">
-                {activiteiten.map((activiteit) => (
-                  <li key={activiteit.id}>
+              <Inklaplijst
+                items={activiteitenOpNaam}
+                sleutel={(activiteit) => activiteit.id}
+                aantalTekst={telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}
+                lijstnaam={t("thema.lijstActiviteiten")}
+                zoekPlaatshouder={t("thema.zoekActiviteit")}
+                zoektekst={(activiteit) =>
+                  [
+                    activiteit.naam,
+                    activiteit.activiteitType ? t(`activiteitsoort.${activiteit.activiteitType}`) : "",
+                    activiteit.hoek ?? "",
+                  ].join(" ")
+                }
+                render={(activiteit) => (
+                  <li>
                     <Activiteitregel
                       activiteit={activiteit}
                       magBewerken={magActiviteit}
@@ -251,8 +282,8 @@ export function Subthemahoofdstuk({
                       koppelenBezig={koppelenBezig}
                     />
                   </li>
-                ))}
-              </ul>
+                )}
+              />
             )}
           </Subkop>
 
@@ -273,10 +304,17 @@ export function Subthemahoofdstuk({
             {subthema.subdoelen.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("thema.geenSubdoelen")}</p>
             ) : (
-              <Doellijst>
-                {subthema.subdoelen.map((subdoel) => (
+              <Inklaplijst
+                items={subdoelenOpCode}
+                sleutel={(subdoel) => subdoel.id}
+                aantalTekst={telWoord(subdoelenOpCode.length, "thema.eenSubdoel", "thema.subdoelen")}
+                lijstnaam={t("thema.lijstSubdoelen")}
+                zoekPlaatshouder={t("thema.zoekDoel")}
+                zoektekst={(subdoel) => doelZoektekst(subdoel.koppeling.leerplandoelCode)}
+                zoekLaadt={doeltekstenLaden}
+                onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, subdoelen: open }))}
+                render={(subdoel) => (
                   <Gekoppelddoel
-                    key={subdoel.id}
                     koppeling={subdoel.koppeling}
                     ontkoppelLabel={t("activiteit.ontkoppel", { code: subdoel.koppeling.leerplandoelCode })}
                     ontkoppelBezig={koppelenBezig}
@@ -287,8 +325,8 @@ export function Subthemahoofdstuk({
                       beslist(subdoel.koppeling.status),
                     )}
                   />
-                ))}
-              </Doellijst>
+                )}
+              />
             )}
           </Subkop>
 
@@ -301,17 +339,24 @@ export function Subthemahoofdstuk({
               titel={t("thema.andereDoelenTitel")}
               icoon={<IcoonDoelen aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-inkt-zacht" />}
             >
-              <Doellijst>
-                {balans.andereDoelen.map(({ koppeling, dragers }) => (
+              <Inklaplijst
+                items={balans.andereDoelen}
+                sleutel={(doel) => doel.koppeling.leerplandoelCode}
+                aantalTekst={telWoord(balans.andereDoelen.length, "thema.eenAnderDoel", "thema.andereDoelen")}
+                lijstnaam={t("thema.lijstAndereDoelen")}
+                zoekPlaatshouder={t("thema.zoekDoel")}
+                zoektekst={(doel) => doelZoektekst(doel.koppeling.leerplandoelCode)}
+                zoekLaadt={doeltekstenLaden}
+                onZoekOpen={(open) => setDoelZoekOpen((huidig) => ({ ...huidig, andere: open }))}
+                render={({ koppeling, dragers }) => (
                   <Gekoppelddoel
-                    key={koppeling.leerplandoelCode}
                     koppeling={koppeling}
                     ontkoppelLabel={t("activiteit.ontkoppel", { code: koppeling.leerplandoelCode })}
                     onToon={onToonDoel}
                     voet={<Dragers dragers={dragers} />}
                   />
-                ))}
-              </Doellijst>
+                )}
+              />
             </Subkop>
           ) : null}
         </>
