@@ -544,7 +544,7 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
     subthemas: [k2("s-k2a", "Bladeren verzamelen", 2), THEMA.subthemas[0], k2("s-k2b", "Bladeren herkennen", 3)],
   };
   // The K3 chapter is "Bladeren", which both K2 names start with, so it is found by the sr-only leeftijd that follows
-  // its name. jsdom puts a space before that comma where a browser does not, so the patterns allow one.
+  // its name. jsdom, like Chrome, may put a space before that comma, so the patterns allow one.
   const K3_NAAM = "Bladeren\\s?,";
   const metLeeftijd = (naam: string, leeftijd: string) =>
     new RegExp(`^${naam}\\s?${t("thema.subthemaLeeftijd", { leeftijd })}`);

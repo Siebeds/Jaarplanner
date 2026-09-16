@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:02
+bijgewerkt: 2026-09-16 22:07
 opgepakt-door: sessie-fb047
 branch: ticket/FB-047-leeftijd-eenmalig
 pr:
@@ -31,11 +31,11 @@ Vandaag toont elk subthema links zijn eigen leeftijd. Twee K2-subthema's onder e
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met twee K2-subthema's en één K3-subthema, wanneer de themapagina opent, dan staat "K2" één keer,
+- [x] Gegeven een thema met twee K2-subthema's en één K3-subthema, wanneer de themapagina opent, dan staat "K2" één keer,
   met beide K2-subthema's onder elkaar, en "K3" één keer met zijn subthema.
-- [ ] Gegeven die groep, dan is voor elk subthema nog te zien dat het bij K2 hoort, ook voor een schermlezer.
-- [ ] Gegeven een van de K2-subthema's, wanneer men het openklapt, dan blijft het andere zoals het was.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven die groep, dan is voor elk subthema nog te zien dat het bij K2 hoort, ook voor een schermlezer.
+- [x] Gegeven een van de K2-subthema's, wanneer men het openklapt, dan blijft het andere zoals het was.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -57,3 +57,4 @@ Geen.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 22:02 · sessie-fb047 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-16 22:07 · sessie-fb047 · gebouwd: één leeftijdslabel per groep, duur verhuisd naar de kaart, leeftijd voor schermlezers in de vouwknop; 3 nieuwe vitest-tests (falen op de oude code), lint groen
