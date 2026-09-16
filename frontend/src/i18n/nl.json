@@ -191,6 +191,7 @@
     "andereDoelenTitel": "Andere doelen in de activiteiten",
     "subdoelInActiviteitEen": "{aantal} van 1 subdoel in een activiteit",
     "subdoelenInActiviteit": "{aantal} van {totaal} subdoelen in een activiteit",
+    "subthemaLeeftijd": ", leeftijd {leeftijd}",
     "overzichtTitel": "Doelen per leeftijd",
     "overzichtFout": "Doelen per leeftijd niet geladen",
     "overzichtLeerplandoelWoordEen": "leerplandoel",

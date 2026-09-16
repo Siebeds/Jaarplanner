@@ -572,50 +572,57 @@ export function ThemadetailScherm() {
           </Kop>
         </Blok>
 
-        {subthemas.map((subthema) => (
-          <Subthemahoofdstuk
-            key={subthema.id}
-            subthema={subthema}
-            mag={mag}
-            gevraagd={subthema.id === gevraagdSubthema}
-            koppelenBezig={
-              koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
-            }
-            onBewerk={() => {
-              wijzigSubthema.reset();
-              setSubthemaBlad({ subthema });
-            }}
-            onVerwijder={() => {
-              verwijderSubthema.reset();
-              setTeVerwijderenSubthema(subthema);
-            }}
-            onNieuweActiviteit={() => {
-              maakActiviteit.reset();
-              setActiviteitBlad({ subthemaId: subthema.id });
-            }}
-            onBewerkActiviteit={(activiteit) => {
-              wijzigActiviteit.reset();
-              setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
-            }}
-            onVerwijderActiviteit={(activiteit) => {
-              verwijderActiviteit.reset();
-              setTeVerwijderenActiviteit(activiteit);
-            }}
-            onKoppelSubdoel={(code) =>
-              koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
-            }
-            onOntkoppelSubdoel={(subdoelId) =>
-              ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
-            }
-            onToonDoel={toonDoel}
-            // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
-            // here shows up there and both invalidate the same query. Removing one stays in the
-            // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
-            // meant for scanning is how the card became a toolbar before.
-            onKoppelActiviteitdoel={(activiteitId, code) =>
-              koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
-            }
-          />
+        {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
+            card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
+            the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
+        {perLeeftijd(subthemas).map((groep) => (
+          <Blok key={groep.leeftijd} stapel boven={t("subthemabeheer.leeftijd")} figuur={groep.leeftijd}>
+            {groep.subthemas.map((subthema) => (
+              <Subthemahoofdstuk
+                key={subthema.id}
+                subthema={subthema}
+                mag={mag}
+                gevraagd={subthema.id === gevraagdSubthema}
+                koppelenBezig={
+                  koppelSubdoel.isPending || ontkoppelSubdoel.isPending || koppelActiviteitdoel.isPending
+                }
+                onBewerk={() => {
+                  wijzigSubthema.reset();
+                  setSubthemaBlad({ subthema });
+                }}
+                onVerwijder={() => {
+                  verwijderSubthema.reset();
+                  setTeVerwijderenSubthema(subthema);
+                }}
+                onNieuweActiviteit={() => {
+                  maakActiviteit.reset();
+                  setActiviteitBlad({ subthemaId: subthema.id });
+                }}
+                onBewerkActiviteit={(activiteit) => {
+                  wijzigActiviteit.reset();
+                  setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
+                }}
+                onVerwijderActiviteit={(activiteit) => {
+                  verwijderActiviteit.reset();
+                  setTeVerwijderenActiviteit(activiteit);
+                }}
+                onKoppelSubdoel={(code) =>
+                  koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
+                }
+                onOntkoppelSubdoel={(subdoelId) =>
+                  ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
+                }
+                onToonDoel={toonDoel}
+                // Linking from the list uses the same mutation as the bewerk-blad, so a doel linked
+                // here shows up there and both invalidate the same query. Removing one stays in the
+                // blad: that needs a per-koppeling id, and putting a row of remove controls on a list
+                // meant for scanning is how the card became a toolbar before.
+                onKoppelActiviteitdoel={(activiteitId, code) =>
+                  koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
+                }
+              />
+            ))}
+          </Blok>
         ))}
         </Groep>
       </Schermvlak>
@@ -895,6 +902,17 @@ function opLeeftijd(subthemas: SubthemaWeergave[], jaarfasen: string[] | undefin
       a.leeftijd.localeCompare(b.leeftijd, "nl") ||
       a.naam.localeCompare(b.naam, "nl"),
   );
+}
+
+/** Consecutive subthema's of one leeftijd, in the order `opLeeftijd` gave them, which already puts each leeftijd together. */
+function perLeeftijd(subthemas: SubthemaWeergave[]) {
+  const groepen: { leeftijd: string; subthemas: SubthemaWeergave[] }[] = [];
+  for (const subthema of subthemas) {
+    const laatste = groepen.at(-1);
+    if (laatste?.leeftijd === subthema.leeftijd) laatste.subthemas.push(subthema);
+    else groepen.push({ leeftijd: subthema.leeftijd, subthemas: [subthema] });
+  }
+  return groepen;
 }
 
 function Terug() {
