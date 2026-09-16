@@ -541,6 +541,10 @@ async function cmdStatus(values, positionals) {
   if (f.geblokkeerd && to === 'in-uitvoering') {
     throw new Fail(`${ticket.parsed.id} is geblokkeerd: ${f.geblokkeerd}. Pak het pas op als die vraag beantwoord is (unblock).`);
   }
+  // A nieuw ticket is started only when the owner says so in the session; the log records that go-ahead.
+  if (from === 'nieuw' && to === 'in-uitvoering' && !values.log) {
+    throw new Fail(`${ticket.parsed.id} staat op nieuw. Pak het alleen op als de eigenaar zegt dat hij wil starten, en noteer dat met --log "...".`);
+  }
   if (f.geblokkeerd && from === 'in-uitvoering' && to === 'klaar-voor-bouw') {
     throw new Fail(`${ticket.parsed.id} is geblokkeerd: ${f.geblokkeerd}. Houd het ticket tot de vraag beantwoord is; geef het daarna terug.`);
   }

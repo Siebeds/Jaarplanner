@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:27
+bijgewerkt: 2026-09-16 20:34
 opgepakt-door: nieuw-starten
 branch: ticket/TB-nieuw-starten
 pr:
@@ -53,3 +53,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 20:27 · nieuw-starten · aangemaakt (status in-uitvoering)
+- 2026-09-16 20:34 · nieuw-starten · CLI laat nieuw → in-uitvoering toe voor FB, met verplichte --log; tool-tests groen (85)

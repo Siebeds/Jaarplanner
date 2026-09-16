@@ -1,7 +1,7 @@
 # ADR-0033 — A Markdown ticket backlog and a local kanban board
 
 - **Status:** Accepted (project owner ruling, 2026-09-13)
-- **Date:** 2026-09-13
+- **Date:** 2026-09-13. **Revised 2026-09-16** (decision 10: starting a `nieuw` ticket on the owner's word).
 - **Deciders:** Siebe De Saedeleir (projecteigenaar)
 - **Supersedes:** nothing. The epic backlog (`backlog/E*.md`) and the `jaarplan-build` flow stay as they are.
 - **Relates to:** the groepschat protocol (`.claude/skills/groepschat/SKILL.md`), whose claim directory this reuses;
@@ -121,6 +121,11 @@ that the board has the **full flow** of columns including a test column.
       the architect's test result (`ticket-testen`);
     - **agent sessions** still write their own statuses on their branches (`in-uitvoering`, `te-testen`, `klaar`, a
       give-back), on the owner's PC.
+
+    *Revised 2026-09-16 (TB-035), owner ruling:* when the owner says in a session that he wants to start a ticket that
+    is still `nieuw`, that is his go-ahead. The session picks it up straight from `nieuw` to `in-uitvoering` on its
+    branch, FB included, and records the go-ahead in the pickup's `--log`, which the CLI requires for that
+    transition. Without such a word the session still asks first.
 
     Every status write therefore happens on the machine whose branches and worktrees the check in decision 6 can see;
     the architect's clone, which cannot see them, writes none.

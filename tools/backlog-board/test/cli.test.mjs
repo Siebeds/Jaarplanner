@@ -75,8 +75,11 @@ test('a functional ticket from creation to te-testen, through the allowed transi
     out = run('check');
     assert.equal(out.status, 0, out.stdout);
 
-    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--branch', 'feature/x');
-    assert.equal(out.status, 1, 'a functional ticket is refined before it is built');
+    r.git('switch', '-q', '-c', 'feature/probe');
+    out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
+    assert.equal(out.status, 1, "a nieuw ticket needs the owner's go-ahead in the log");
+    assert.match(out.stderr, /staat op nieuw.*--log/);
+    r.git('switch', '-q', 'main');
     assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar').status, 0);
     r.commit('FB-001 ready');
 
@@ -1015,6 +1018,25 @@ test('commands refuse to touch an invalid ticket and explain unknown input', () 
     assert.match(run('status', 'FB-001', 'klaar-voor-bouw').stderr, /--by/);
     assert.match(run('verzin').stderr, /Onbekende opdracht/);
     assert.match(run('new', 'FB', '--title', 'Al verfijnd', '--by', 'fa', '--status', 'klaar-voor-bouw').stderr, /start als nieuw/);
+  } finally {
+    r.cleanup();
+  }
+});
+
+test('a nieuw functional ticket is started straight away when the owner says so', () => {
+  const { r, run, fill } = setup();
+  try {
+    assert.equal(run('new', 'FB', '--title', 'Thema dupliceren', '--by', 'fa').status, 0);
+    fill(REL);
+    r.commit('Add FB-001');
+    r.git('switch', '-q', '-c', 'feature/x');
+    const out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', 'opgepakt op vraag van de eigenaar');
+    assert.equal(out.status, 0, out.stderr);
+    const p = fieldsOf(r);
+    assert.equal(p.fields.status, 'in-uitvoering');
+    assert.equal(p.fields['opgepakt-door'], 's1');
+    assert.equal(p.fields.branch, 'feature/x');
+    assert.equal(p.worklog.at(-1).text, 'nieuw → in-uitvoering: opgepakt op vraag van de eigenaar');
   } finally {
     r.cleanup();
   }
