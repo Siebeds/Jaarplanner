@@ -21,6 +21,7 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
         builder.Property(t => t.Naam).HasMaxLength(256).IsRequired();
         builder.Property(t => t.Invalshoeken);
         builder.Property(t => t.DuurWeken).IsRequired();
+        builder.Property(t => t.Icoon).HasMaxLength(ThemaIcoon.MaxLengte);
 
         // School-wide two-tier vocabulary — Npgsql maps List<string> to text[] (Art. IX.2).
         builder.PrimitiveCollection(t => t.Kernwoordenschat)

@@ -138,6 +138,7 @@ public sealed record GeblokkeerdePeriodeWeergave(DateOnly BlokStart, string Mome
 /// <c>RequirePositive</c> in the domain, so 0 means "unknown thema", never "a thema of no length".
 /// </para>
 /// </param>
+/// <param name="ThemaIcoon">The thema's emoji (FB-060), shown beside <paramref name="ThemaNaam"/>; <c>null</c> when it has none.</param>
 public sealed record ThemaplaatsingWeergave(
     Guid Id,
     Guid ThemaId,
@@ -151,4 +152,5 @@ public sealed record ThemaplaatsingWeergave(
     string? AiMotivatie,
     bool Vergrendeld,
     IReadOnlyList<string> Doelcodes,
-    int DuurWeken);
+    int DuurWeken,
+    string? ThemaIcoon = null);

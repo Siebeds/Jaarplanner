@@ -1051,7 +1051,8 @@ public sealed class JaarplanGeneratieService : IJaarplanLezer
                     p.AiMotivatie,
                     p.Vergrendeld,
                     thema is null ? [] : JaarplanGeneratiePromptBuilder.ThemaDoelcodes(thema),
-                    thema?.DuurWeken ?? 0);
+                    thema?.DuurWeken ?? 0,
+                    thema?.Icoon);
             })
             .ToList();
 

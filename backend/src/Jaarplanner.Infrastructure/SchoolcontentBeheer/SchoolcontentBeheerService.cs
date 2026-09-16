@@ -43,6 +43,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         try
         {
             thema = new Thema(creatie.Naam, creatie.DuurWeken, creatie.Invalshoeken);
+            thema.WijzigIcoon(creatie.Icoon);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -173,6 +174,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         {
             thema.WijzigNaam(wijziging.Naam);
             thema.WerkBasisGegevensBij(wijziging.DuurWeken, wijziging.Invalshoeken);
+            thema.WijzigIcoon(wijziging.Icoon);
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -995,7 +997,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.HeeftVoldoendeThemadoelen,
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
-        thema.Subthemas.Select(MapSubthema).ToList());
+        thema.Subthemas.Select(MapSubthema).ToList(),
+        thema.Icoon);
 
     private static ThemaBibliotheekItem MapBibliotheekItem(
         Thema thema,
@@ -1015,7 +1018,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         aantalAfgeleideKlassen,
         aantalSubthemas,
         aantalActiviteiten,
-        aantalDoelkoppelingen);
+        aantalDoelkoppelingen,
+        thema.Icoon);
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>
         new(themadoel.Id, MapKoppeling(themadoel.Koppeling));
