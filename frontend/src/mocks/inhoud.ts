@@ -30,6 +30,8 @@ export const ONDERBREKINGEN = [
 /**
  * The themaperiodes of the mock year, never across a vacation. Cut around the two thema's: on `main` a thema belongs
  * to one period, so the one that runs across the kerstvakantie is placed in the period before it and the one after it.
+ * That leaves periods of one and three weeks, outside the 4 to 6 weeks of Art. IX: a workaround for this fixture only,
+ * which goes once FB-035 gives a thema its own dates.
  */
 export const THEMAPERIODES: { start: string; eind: string }[] = [
   { start: "2026-09-01", eind: "2026-10-02" },
@@ -44,9 +46,7 @@ export const THEMAPERIODES: { start: string; eind: string }[] = [
   { start: "2027-05-24", eind: "2027-06-30" },
 ];
 
-export const BLOKINDELING =
-  "themaperiode 5 wk, subthemaperiode 2 wk (blokken breken op schoolvakanties en worden gelijkmatig over elke " +
-  "lesperiode verdeeld; subthemaperiodes verdelen telkens één themaperiode)";
+export const BLOKINDELING = "mockrooster: themaperiodes op maat van de twee thema's, niet volgens de ingestelde indeling";
 
 export const GEBRUIKER = {
   id: vastId(2),

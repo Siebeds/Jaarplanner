@@ -2,10 +2,10 @@
 id: TB-047
 titel: Mockdata krijgt twee ingeplande thema's en afwisselende activiteiten
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:59
+bijgewerkt: 2026-09-17 00:01
 opgepakt-door: mockdata-rijker
 branch: ticket/mockdata-rijker
 pr:
@@ -55,3 +55,5 @@ weken na de kerstvakantie, en een volle agenda alleen van 16 tot en met 27 novem
 
 - 2026-09-16 23:52 · mockdata-rijker · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:59 · mockdata-rijker · inhoud herschreven: 2 thema's (16 nov-11 dec; 14-18 dec + 4-22 jan), 6 subthema's (1+1+2 en 1+2+1 weken), 10 minimumdoelen, 26 leerplandoelen, 50 activiteiten; routes.test.ts dekt alle criteria, screenshots van week 23 nov, december, januari en thema's per periode; lint, 1017 tests en build groen; beperking: 'thema's per periode' telt thema 2 twee keer tot FB-035
+- 2026-09-17 00:01 · mockdata-rijker · antagonist: COMPLIANT; MINOR opgelost: commentaar noemt de te korte mockperiodes, BLOKINDELING zegt dat het een mockrooster is; MINOR open: elke plaatsing van thema 2 toont 4 weken ook in de periode van 1 week, en een handmatige plaatsing telt altijd de volle themaduur (beide tot FB-035)
+- 2026-09-17 00:01 · mockdata-rijker · in-uitvoering → klaar: rijkere mockdata klaar: 2 ingeplande thema's, subthemaweken tellen op, afwisselende activiteiten; lint, 1017 tests en build groen, antagonist COMPLIANT
