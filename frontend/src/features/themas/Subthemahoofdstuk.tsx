@@ -13,6 +13,8 @@ import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Doellijst, Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
+import { ActiviteitvoorstelKnop, ActiviteitvoorstelMelding, Activiteitvoorstellen } from "./Activiteitvoorstellen";
+import { useActiviteitvoorstellen, useStelActiviteitenVoor } from "./voorgesteldeActiviteiten";
 import { Subdoelvoorstellen } from "./Subdoelplaatsing";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 import { Woordweb } from "./Woordweb";
@@ -122,6 +124,11 @@ export function Subthemahoofdstuk({
   // A new activiteit is the gebruiker's own, or for a hoofdleerkracht a shared one by choice (ADR-0049 D1, D2).
   const magActiviteit = mag.activiteitMaken(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
+  // AI activiteiten (FB-025): whoever may make an own activiteit here, since an accepted one becomes hers (ADR-0052 D1).
+  // Her open proposals are fetched only while the chapter is open.
+  const magVoorstellen = mag.eigenActiviteitMaken(leeftijd);
+  const activiteitvoorstellen = useActiviteitvoorstellen(subthema.id, open && magVoorstellen);
+  const stelVoor = useStelActiviteitenVoor(subthema.id);
 
   return (
     // The leeftijd is not on the card: the screen sets it once in the margin beside all of that leeftijd's cards
@@ -248,7 +255,12 @@ export function Subthemahoofdstuk({
           <Subkop
             titel={t("thema.activiteitenTitel")}
             acties={
-              magActiviteit ? <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} /> : undefined
+              magActiviteit || magVoorstellen ? (
+                <>
+                  {magActiviteit ? <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} /> : null}
+                  {magVoorstellen ? <ActiviteitvoorstelKnop stelVoor={stelVoor} /> : null}
+                </>
+              ) : undefined
             }
           >
             {activiteiten.length === 0 ? (
@@ -277,6 +289,16 @@ export function Subthemahoofdstuk({
                 ))}
               </ul>
             )}
+            {magVoorstellen ? (
+              <>
+                <ActiviteitvoorstelMelding stelVoor={stelVoor} />
+                <Activiteitvoorstellen
+                  subthemaId={subthema.id}
+                  voorstellen={activiteitvoorstellen.data ?? []}
+                  onToon={onToonDoel}
+                />
+              </>
+            ) : null}
           </Subkop>
 
           <Subkop

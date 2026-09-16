@@ -626,6 +626,49 @@ export interface SubthemavoorstelBeslissing {
   leerplandoelCodes?: string[];
 }
 
+// --- Activiteitvoorstellen (FB-025, ADR-0052). Personal: only the asker is sent hers, and they count for nothing. ---
+
+export interface ActiviteitvoorstelDoel {
+  leerplandoelCode: string;
+  tekst: string | null;
+  doelsoort: Doelsoort | null;
+}
+
+export interface ActiviteitvoorstelWeergave {
+  id: string;
+  subthemaId: string;
+  naam: string;
+  activiteitType: ActiviteitType | null;
+  verwachteUitkomsten: string;
+  lengteInLesuren: number;
+  onderzoeksvraagId: string | null;
+  onderzoeksvraag: string | null;
+  doelen: ActiviteitvoorstelDoel[];
+  aiMotivatie: string;
+}
+
+export interface ActiviteitvoorstelResultaat {
+  isGeslaagd: boolean;
+  aantalVoorgesteld: number;
+  aantalOvergeslagen: number;
+  fout: string | null;
+}
+
+/** Without `naam` an acceptance takes the proposal as it is; with it, every field is the edited form's. */
+export interface ActiviteitvoorstelBeslissing {
+  status: Extract<KoppelingStatus, "Aanvaard" | "Geweigerd">;
+  naam?: string;
+  activiteitType?: ActiviteitType | null;
+  verwachteUitkomsten?: string;
+  lengteInLesuren?: number;
+  leerplandoelCodes?: string[];
+}
+
+export interface ActiviteitvoorstelBesluit {
+  status: KoppelingStatus;
+  activiteitId: string | null;
+}
+
 // --- Jaarplan (FR-5 to FR-8) ---
 
 export interface Themaplaatsing {

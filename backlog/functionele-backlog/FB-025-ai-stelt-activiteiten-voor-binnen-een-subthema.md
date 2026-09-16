@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 00:19
+bijgewerkt: 2026-09-17 00:40
 opgepakt-door: claude-fb025
 branch: ticket/FB-025-activiteitvoorstellen
 pr:
@@ -70,3 +70,4 @@ Vandaag bedenkt een leerkracht elke activiteit zelf. De AI doet niets onder een 
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-17 00:19 · claude-fb025 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; grondwet mag aangepast worden zodat de AI activiteiten bedenkt
+- 2026-09-17 00:40 · claude-fb025 · grondwet (Art. IV.1, IV.4, IV.5, IX.2, XII) en ADR-0052 geschreven; backend gebouwd, unit- en Postgres-tests groen

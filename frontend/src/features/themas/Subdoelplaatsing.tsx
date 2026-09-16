@@ -151,7 +151,7 @@ export function Beslisknoppen({
 }
 
 /** The wand and a word: what the ring means, said without colour (ADR-0051 decision 2). */
-function Aimerk({ label }: { label: string }) {
+export function Aimerk({ label }: { label: string }) {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 text-micro font-medium text-inkt-zacht">
       <IcoonToverstok aria-hidden="true" className="h-3.5 w-3.5" />
@@ -161,11 +161,11 @@ function Aimerk({ label }: { label: string }) {
 }
 
 /** One proposed doel: its mark, code and text, which open its detail like any doel on this page (TB-016). */
-function Voorsteldoel({
+export function Voorsteldoel({
   doel,
   onToon,
 }: {
-  doel: SubdoelvoorstelWeergave;
+  doel: Pick<SubdoelvoorstelWeergave, "leerplandoelCode" | "tekst" | "doelsoort">;
   onToon: (code: string, knop: HTMLElement) => void;
 }) {
   return (
