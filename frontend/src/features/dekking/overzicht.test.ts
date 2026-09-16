@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { LeerplandoelDekking } from "../../lib/types";
-import { MAX_THEMAACTIES, bepaalActies, groepeerPerDiscipline, sorteerDisciplines } from "./overzicht";
+import type { LeerplandoelDekking, MinimumdoelDekking } from "../../lib/types";
+import {
+  MAX_THEMAACTIES,
+  bepaalActies,
+  groepeerPerDiscipline,
+  groepeerPerLeergebied,
+  sorteerDisciplines,
+  telStappen,
+} from "./overzicht";
 
 const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): LeerplandoelDekking => ({
   code,
@@ -18,11 +25,66 @@ const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): Leerpland
   dekkendeFiches: [],
   oorzaak: "GeenThema",
   kandidaatThemas: [],
+  stap: "Geen",
+  prognoseBronnen: [],
   ...delen,
 });
 
 const gedekt = (code: string, delen: Partial<LeerplandoelDekking> = {}) =>
-  doel(code, { isGedekt: true, dekkendeThemas: ["Herfst"], oorzaak: null, ...delen });
+  doel(code, { isGedekt: true, dekkendeThemas: ["Herfst"], oorzaak: null, stap: "Gedekt", ...delen });
+
+const minimumdoel = (ref: string, delen: Partial<MinimumdoelDekking> = {}): MinimumdoelDekking => ({
+  ref,
+  leeftijd: "K-",
+  nr: "1",
+  omschrijving: `Tekst van ${ref}`,
+  leergebied: "Wiskunde",
+  rubriek: "Getallen",
+  subrubriek: null,
+  nietMeerInOpstap: false,
+  stap: "Geen",
+  isGedekt: false,
+  prognoseThemas: [],
+  dekkendeThemas: [],
+  oorzaak: "GeenThema",
+  kandidaatThemas: [],
+  ...delen,
+});
+
+describe("telStappen", () => {
+  it("telt gedekt en prognose apart, zodat ze samen nooit meer dan het totaal zijn", () => {
+    expect(
+      telStappen([gedekt("A"), doel("B", { stap: "Prognose" }), doel("C", { stap: "Prognose" }), doel("D")]),
+    ).toEqual({ gedekt: 1, prognose: 2, totaal: 4 });
+  });
+});
+
+describe("groepeerPerLeergebied", () => {
+  it("groepeert de minimumdoelen per leergebied in de volgorde van de server, met de ongeordende apart", () => {
+    const groepen = groepeerPerLeergebied([
+      minimumdoel("K-2", { leergebied: "Nederlands", isGedekt: true, stap: "Gedekt" }),
+      minimumdoel("K-1"),
+      minimumdoel("K-3", { leergebied: "Nederlands" }),
+      minimumdoel("K-9", { leergebied: null }),
+    ]);
+
+    expect(groepen.map((g) => [g.naam, g.doelen.map((d) => d.ref), g.gedekt, g.totaal])).toEqual([
+      ["Nederlands", ["K-2", "K-3"], 1, 2],
+      ["Wiskunde", ["K-1"], 0, 1],
+      [null, ["K-9"], 0, 1],
+    ]);
+  });
+
+  it("maakt van minimumdoelen dezelfde acties als van leerplandoelen", () => {
+    const acties = bepaalActies([
+      minimumdoel("K-1", { stap: "Prognose", oorzaak: "NietIngepland", kandidaatThemas: ["Herfst"] }),
+      minimumdoel("K-2"),
+    ]);
+
+    expect(acties.themaacties).toEqual([{ soort: "NietIngepland", thema: "Herfst", aantal: 1 }]);
+    expect(acties.aantalZonderThema).toBe(1);
+  });
+});
 
 describe("groepeerPerDiscipline", () => {
   it("groepeert per discipline en daarin per domein, in de volgorde van de server", () => {

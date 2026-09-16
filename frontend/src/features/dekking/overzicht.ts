@@ -1,4 +1,4 @@
-import type { Lacuneoorzaak, LeerplandoelDekking } from "../../lib/types";
+import type { Dekkingsstap, Lacuneoorzaak, LeerplandoelDekking, MinimumdoelDekking } from "../../lib/types";
 
 /**
  * The shape of the dekkingsoverzicht (TB-022): the goals grouped by discipline and then domein, and the gaps turned
@@ -12,6 +12,53 @@ import type { Lacuneoorzaak, LeerplandoelDekking } from "../../lib/types";
  * the total (directie 2026-07-28), every count here is a piece of that total: the tallies add up to it and the action
  * counts partition its gaps. The screen owns that gate and renders none of them then.
  */
+
+/** What the action list needs of a goal, leerplandoel or minimumdoel alike. */
+export interface Lacunerij {
+  isGedekt: boolean;
+  oorzaak: Lacuneoorzaak | null;
+  kandidaatThemas: string[];
+}
+
+/** How many goals of a set stand in each step (ADR-0047). `prognose` excludes the gedekte. */
+export interface Stappen {
+  gedekt: number;
+  prognose: number;
+  totaal: number;
+}
+
+export function telStappen(doelen: readonly { stap: Dekkingsstap }[]): Stappen {
+  return {
+    gedekt: doelen.filter((d) => d.stap === "Gedekt").length,
+    prognose: doelen.filter((d) => d.stap === "Prognose").length,
+    totaal: doelen.length,
+  };
+}
+
+/** One leergebied of the decree with its minimumdoelen, in the server's order. */
+export interface Leergebiedgroep {
+  /** Null for the minimumdoelen whose ordering is not known; the screen names that group. */
+  naam: string | null;
+  doelen: MinimumdoelDekking[];
+  gedekt: number;
+  totaal: number;
+}
+
+/** The minimumdoelen grouped by the decree's leergebied, keeping the server's order (unordered last). */
+export function groepeerPerLeergebied(doelen: MinimumdoelDekking[]): Leergebiedgroep[] {
+  const groepen = new Map<string | null, Leergebiedgroep>();
+  for (const doel of doelen) {
+    let groep = groepen.get(doel.leergebied);
+    if (!groep) {
+      groep = { naam: doel.leergebied, doelen: [], gedekt: 0, totaal: 0 };
+      groepen.set(doel.leergebied, groep);
+    }
+    groep.doelen.push(doel);
+    groep.totaal += 1;
+    if (doel.isGedekt) groep.gedekt += 1;
+  }
+  return [...groepen.values()];
+}
 
 export interface Domein {
   naam: string;
@@ -93,7 +140,7 @@ export interface Acties {
   aantalOverig: number;
   /** Goals only an undecided link points at: decided on Thema's, not on the kalender. */
   aantalOnbeslist: number;
-  /** Goals no thema covers: no thema action closes these (a planned algemene fiche still can). */
+  /** Goals nothing aims at: no planning action closes these (a planned algemene fiche still can close a leerplandoel). */
   aantalZonderThema: number;
 }
 
@@ -106,7 +153,7 @@ export const MAX_THEMAACTIES = 5;
  * A cause this client does not know is skipped rather than guessed at: the server's list of causes is kept in step by
  * hand, and a sentence for an unknown state would be a sentence nobody checked.
  */
-export function bepaalActies(doelen: LeerplandoelDekking[]): Acties {
+export function bepaalActies(doelen: readonly Lacunerij[]): Acties {
   const perActie = new Map<string, Themaactie>();
   let aantalOnbeslist = 0;
   let aantalZonderThema = 0;

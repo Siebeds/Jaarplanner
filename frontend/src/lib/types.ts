@@ -683,6 +683,9 @@ export type Dekkingsbereik = "EigenJaarFase" | "HeelCurriculum";
  */
 export type Lacuneoorzaak = "WachtOpBeslissing" | "PlaatsingGeweigerd" | "NietIngepland" | "KoppelingNietBeslist" | "GeenThema";
 
+/** Where a goal stands for a klas (Art. V.1, ADR-0047). */
+export type Dekkingsstap = "Geen" | "Prognose" | "Gedekt";
+
 export interface LeerplandoelDekking {
   code: string;
   doelsoort: Doelsoort;
@@ -706,6 +709,29 @@ export interface LeerplandoelDekking {
   /** Why the goal is not covered (E5-05); null exactly when it is. */
   oorzaak: Lacuneoorzaak | null;
   /** The thema's a teacher would act on to close the gap, for its cause only. Empty for GeenThema. */
+  kandidaatThemas: string[];
+  stap: Dekkingsstap;
+  /** What aims at the goal: "subthema (thema)" for a subthema link, the thema for a doelsuggestie. */
+  prognoseBronnen: string[];
+}
+
+/** One minimumdoel of the klas's mijlpaal and where it stands; it counts only through a thema (ADR-0047). */
+export interface MinimumdoelDekking {
+  ref: string;
+  leeftijd: string;
+  nr: string;
+  omschrijving: string;
+  leergebied: string | null;
+  rubriek: string | null;
+  subrubriek: string | null;
+  nietMeerInOpstap: boolean;
+  stap: Dekkingsstap;
+  isGedekt: boolean;
+  /** Every thema it is a themadoel of. */
+  prognoseThemas: string[];
+  /** Those of them placed in this klas's plan. */
+  dekkendeThemas: string[];
+  oorzaak: Lacuneoorzaak | null;
   kandidaatThemas: string[];
 }
 
@@ -745,6 +771,12 @@ export interface DekkingWeergave {
   aantalGedekt: number | null;
   aantalLeerplandoelen: number;
   doelen: LeerplandoelDekking[];
+  /** Leerplandoelen in the prognose and not yet gedekt; null with the other figures. */
+  aantalInPrognose: number | null;
+  aantalMinimumdoelenGedekt: number | null;
+  aantalMinimumdoelenInPrognose: number | null;
+  aantalMinimumdoelen: number;
+  minimumdoelen: MinimumdoelDekking[];
 }
 
 // --- Weekplanning: activiteiten on individual teaching days (E9-03, FR-6.2/FR-7.2) ---
