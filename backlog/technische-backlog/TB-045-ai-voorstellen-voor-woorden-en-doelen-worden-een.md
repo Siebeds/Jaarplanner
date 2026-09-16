@@ -2,10 +2,10 @@
 id: TB-045
 titel: AI-voorstellen voor woorden en doelen worden één voor één beoordeeld, als kaartenstapel
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:32
+bijgewerkt: 2026-09-16 23:34
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
 pr:
@@ -34,11 +34,11 @@ https://claude.ai/artifact/HsoYvQxTxZM8Yj1UUJTT5Z.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven open voorstellen, wanneer de lijst verschijnt, dan staat er één voorstel tegelijk, met zijn motivatie, "1 van n" en een voortgangsbalk.
-- [ ] Gegeven de bovenste kaart, wanneer de gebruiker Aanvaard of Weiger kiest (klik, of A/W), dan wordt die beslissing bewaard en schuift de volgende kaart naar boven.
-- [ ] Gegeven nog open voorstellen, wanneer de gebruiker "Rest aanvaarden" of "Rest weigeren" kiest, dan verschijnt een melding met "Ongedaan maken", en pas als die niet gebruikt wordt, worden de resterende voorstellen zo bewaard.
-- [ ] Gegeven die melding, wanneer de gebruiker "Ongedaan maken" kiest, dan wordt niets bewaard en staan de voorstellen weer open.
-- [ ] Gegeven een scherm van 390 px breed, dan past de stapel zonder horizontaal te scrollen.
+- [x] Gegeven open voorstellen, wanneer de lijst verschijnt, dan staat er één voorstel tegelijk, met zijn motivatie, "1 van n" en een voortgangsbalk.
+- [x] Gegeven de bovenste kaart, wanneer de gebruiker Aanvaard of Weiger kiest (klik, of A/W), dan wordt die beslissing bewaard en schuift de volgende kaart naar boven.
+- [x] Gegeven nog open voorstellen, wanneer de gebruiker "Rest aanvaarden" of "Rest weigeren" kiest, dan verschijnt een melding met "Ongedaan maken", en pas als die niet gebruikt wordt, worden de resterende voorstellen zo bewaard.
+- [x] Gegeven die melding, wanneer de gebruiker "Ongedaan maken" kiest, dan wordt niets bewaard en staan de voorstellen weer open.
+- [x] Gegeven een scherm van 390 px breed, dan past de stapel zonder horizontaal te scrollen.
 
 ## Buiten scope
 
@@ -54,3 +54,5 @@ Geen.
 - 2026-09-16 22:59 · claude-ai-voorstellen · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:21 · claude-ai-voorstellen · Voorstelstapel gebouwd en ingezet voor woordweb en doelsuggesties; Alle aanvaarden/weigeren wacht 6 s met Ongedaan maken; Vitest, lint en browserpas (1440, 390, donker) groen
 - 2026-09-16 23:32 · claude-ai-voorstellen · Antagonist ronde 1: 2 MAJOR (toegankelijkheid) opgelost: wachttijd pauzeert bij muis of toetsenbordfocus en focus gaat naar Ongedaan maken; voortgangsbalk toont enkel voortgang. MINOR opgelost: geen reset tijdens lopende schrijfacties, versturen bij pagehide, sneltoetsen uit de catalogus
+- 2026-09-16 23:33 · claude-ai-voorstellen · Antagonist ronde 2: COMPLIANT. Open MINOR: een foutmelding van één mislukte schrijfactie in Alle n kan wegvallen door een latere geslaagde; de regel Alles beoordeeld is zelden zichtbaar omdat de ouder de stapel weghaalt; een pas met NVDA (bladermodus) op de pauze is nog niet gedaan
+- 2026-09-16 23:34 · claude-ai-voorstellen · in-uitvoering → klaar: Klaar: Voorstelstapel voor woordweb en doelsuggesties; criteria afgevinkt op Voorstelstapel.test.tsx en browserpas (1440, 390, donker, pauze met toetsenbord en muis); Vitest (1020), lint groen

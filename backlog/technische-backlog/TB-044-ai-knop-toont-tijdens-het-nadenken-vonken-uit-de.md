@@ -2,10 +2,10 @@
 id: TB-044
 titel: AI-knop toont tijdens het nadenken vonken uit de toverstok en springende puntjes
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:21
+bijgewerkt: 2026-09-16 23:33
 opgepakt-door: claude-ai-voorstellen
 branch: ticket/TB-ai-voorstellen
 pr:
@@ -31,10 +31,10 @@ puntjes van variant A.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een AI-knop, wanneer een run loopt, dan stijgen gekleurde vonkjes op uit de toverstok en springen drie puntjes achter het label.
-- [ ] Gegeven een AI-knop in rust, wanneer niets loopt, dan staan er geen vonken of puntjes.
-- [ ] Gegeven "minder beweging" in het besturingssysteem, wanneer een run loopt, dan beweegt er niets en meldt het label de bezigheid nog altijd in tekst.
-- [ ] Gegeven een schermlezer, wanneer een run loopt, dan leest die de vonken en puntjes niet voor (`aria-hidden`) en blijft `aria-busy` gezet.
+- [x] Gegeven een AI-knop, wanneer een run loopt, dan stijgen gekleurde vonkjes op uit de toverstok en springen drie puntjes achter het label.
+- [x] Gegeven een AI-knop in rust, wanneer niets loopt, dan staan er geen vonken of puntjes.
+- [x] Gegeven "minder beweging" in het besturingssysteem, wanneer een run loopt, dan beweegt er niets en meldt het label de bezigheid nog altijd in tekst.
+- [x] Gegeven een schermlezer, wanneer een run loopt, dan leest die de vonken en puntjes niet voor (`aria-hidden`) en blijft `aria-busy` gezet.
 
 ## Buiten scope
 
@@ -48,3 +48,4 @@ Geen.
 
 - 2026-09-16 22:59 · claude-ai-voorstellen · aangemaakt (status in-uitvoering)
 - 2026-09-16 23:21 · claude-ai-voorstellen · AiKnop toont tijdens een run vonken uit de toverstok en drie springende puntjes; Vitest, lint en browserpas (1440, vonken boven de knop zichtbaar) groen
+- 2026-09-16 23:33 · claude-ai-voorstellen · in-uitvoering → klaar: Klaar: vonken en springende puntjes op elke AI-knop; criteria afgevinkt op Knop.test.tsx en browserpas; Vitest (1020), lint groen; antagonist COMPLIANT; geen backendwijziging, dus dotnet format niet nodig
