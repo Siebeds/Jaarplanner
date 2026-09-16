@@ -112,163 +112,201 @@ export function Inklaplijst<T>({
     setZichtbaar(PAGINA);
   };
 
-  const chevron = (
-    <IcoonChevron
-      aria-hidden="true"
-      className={cn(
-        "shrink-0 text-inkt-zacht transition-transform duration-200 motion-reduce:transition-none",
-        kop ? "h-3.5 w-3.5" : "h-4 w-4",
-        !open && "-rotate-90",
-      )}
-    />
+  const zoekLabel = t("lijst.zoekIn", { lijst: lijstnaam });
+  const sluitLabel = t("lijst.zoekSluit", { lijst: lijstnaam });
+
+  const zoekveld = (
+    <div className="relative min-w-0 flex-1">
+      <IcoonZoek
+        aria-hidden="true"
+        className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-inkt-zwak"
+      />
+      <Invoer
+        autoFocus
+        value={zoek}
+        aria-label={zoekLabel}
+        placeholder={zoekPlaatshouder}
+        onChange={(e) => {
+          setZoek(e.target.value);
+          setZichtbaar(PAGINA);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault();
+            sluitZoek();
+          }
+        }}
+        // Important: `Invoer` sets `h-raak`, which `cn` does not recognise as a height, so a plain `h-8` loses.
+        className="h-8! min-h-8 pl-7 pr-2 text-meta"
+      />
+    </div>
   );
 
-  const vouwknop = kop ? (
-    <h3 className="min-w-0">
-      {leeg ? (
-        <span className="inline-flex h-8 items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zacht">
-          {kop.icoon}
-          {kop.titel}
-        </span>
-      ) : (
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={vouw}
-          className="-ml-1.5 inline-flex h-8 items-center gap-1.5 rounded-veld px-1.5 text-micro uppercase tracking-wide text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt"
-        >
-          {chevron}
-          {kop.icoon}
-          {kop.titel}
-          {/* A space in the text too, so the name reads "Activiteiten 5" and not "Activiteiten5". */}{" "}
-          <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium normal-case tracking-normal text-inkt">
-            {items.length}
-          </span>
-        </button>
-      )}
-    </h3>
-  ) : (
+  const zoekknopOpen = (
     <button
+      ref={zoekknop}
       type="button"
-      aria-expanded={open}
-      onClick={vouw}
-      className="-ml-2 inline-flex h-9 items-center gap-1.5 rounded-veld px-2 text-meta font-medium text-inkt transition-colors duration-150 hover:bg-inkt/[0.035]"
+      aria-label={zoekLabel}
+      title={zoekLabel}
+      aria-expanded={false}
+      onClick={() => zetZoekOpen(true)}
+      className={cn(ICOONKNOP, "h-8 w-8")}
     >
-      {chevron}
-      {aantalTekst}
+      <IcoonZoek aria-hidden="true" className="h-4 w-4" />
     </button>
   );
 
-  const inhoud = (
-    <>
-      {/* The field is small: it looks for one thing and needs no more room than a word or a code (owner, 2026-09-16:
-          "de zoekbalk is te groot"). On a phone it takes a line of its own. */}
-      <div className={cn("flex flex-wrap items-center", kop ? "gap-x-0.5 gap-y-2" : "gap-2")}>
-        {vouwknop}
-        {kop?.acties}
+  const zoekknopDicht = (
+    <button
+      type="button"
+      aria-label={sluitLabel}
+      title={sluitLabel}
+      aria-expanded
+      onClick={sluitZoek}
+      className={cn(ICOONKNOP, "h-8 w-8")}
+    >
+      <IcoonKruis aria-hidden="true" className="h-4 w-4" />
+    </button>
+  );
 
-        {leeg ? null : zoekOpen ? (
-          // The field and its close button stay together, so on a narrow card they take the next line as a pair.
-          <div
-            className={cn(
-              "order-last flex min-w-0 basis-full items-center gap-0.5 sm:order-none sm:basis-auto",
-              kop ? "sm:ml-1" : "sm:ml-auto",
-            )}
+  // Mounted while the field is open, with only its text swapped, so a screen reader announces each new count.
+  const status = zoekOpen ? (
+    <p role="status" className={zoekt ? "mt-1 text-meta text-inkt-zacht" : "sr-only"}>
+      {!zoekt
+        ? null
+        : gefilterd.length > 0
+          ? t(gefilterd.length === 1 ? "lijst.eenGevonden" : "lijst.gevonden", {
+              aantal: gefilterd.length,
+              totaal: items.length,
+            })
+          : zoekLaadt
+            ? t("lijst.zoeken")
+            : t("lijst.nietsGevonden")}
+    </p>
+  ) : null;
+
+  const rijen = (klasse: string) =>
+    getoond.length > 0 ? (
+      <ul ref={lijst} className={cn("divide-y divide-lijn", klasse)}>
+        {getoond.map((item) => (
+          <Fragment key={sleutel(item)}>{render(item)}</Fragment>
+        ))}
+      </ul>
+    ) : null;
+
+  const laadMeer = (klasse: string) =>
+    rest > 0 ? (
+      <button
+        type="button"
+        onClick={() => {
+          focusOp.current = getoond.length;
+          setZichtbaar(zichtbaar + PAGINA);
+        }}
+        className={cn(
+          "items-center gap-2 text-meta font-medium text-inkt transition-colors duration-150 hover:bg-inkt/[0.035]",
+          klasse,
+        )}
+      >
+        {t("lijst.laadMeer", { aantal: Math.min(PAGINA, rest) })}
+        <span className="font-normal text-inkt-zacht">{t("lijst.nogOver", { aantal: rest })}</span>
+      </button>
+    ) : null;
+
+  if (!kop) {
+    // A FRAMED ROW, the shape of a leeftijd in "Doelen per leeftijd" (owner, 2026-09-16): the count on the left, the
+    // chevron on the right, and the list opening inside the same frame. The search icon is laid over the fold button,
+    // which covers the whole row, so the two stay separate controls.
+    return (
+      <div className="overflow-hidden rounded-veld border border-lijn">
+        <div className="relative">
+          <button
+            type="button"
+            aria-expanded={open}
+            onClick={vouw}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
           >
-            <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
-              <IcoonZoek
-                aria-hidden="true"
-                className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-inkt-zwak"
-              />
-              <Invoer
-                autoFocus
-                value={zoek}
-                aria-label={t("lijst.zoekIn", { lijst: lijstnaam })}
-                placeholder={zoekPlaatshouder}
-                onChange={(e) => {
-                  setZoek(e.target.value);
-                  setZichtbaar(PAGINA);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    e.preventDefault();
-                    sluitZoek();
-                  }
-                }}
-                // Important: `Invoer` sets `h-raak`, which `cn` does not recognise as a height, so a plain `h-8` loses.
-                className="h-8! min-h-8 pl-7 pr-2 text-meta"
-              />
-            </div>
+            <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{aantalTekst}</span>
+            {/* Room for the search icon. */}
+            <span aria-hidden="true" className="w-8 shrink-0" />
+            <IcoonChevron
+              aria-hidden="true"
+              className={cn(
+                "h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
+                open && "rotate-180",
+              )}
+            />
+          </button>
+          <span className="absolute right-10 top-1/2 flex -translate-y-1/2">
+            {zoekOpen ? zoekknopDicht : zoekknopOpen}
+          </span>
+        </div>
+
+        {zoekOpen ? (
+          <div className="border-t border-lijn px-3 py-2">
+            <div className="flex sm:w-72">{zoekveld}</div>
+            {status}
+          </div>
+        ) : null}
+
+        {rijen("border-t border-lijn")}
+        {laadMeer("flex w-full border-t border-lijn px-3 py-2.5 text-left")}
+      </div>
+    );
+  }
+
+  // THE LIST UNDER ITS OWN HEADING: the heading folds it. The field is small: it looks for one thing and needs no more
+  // room than a word or a code (owner, 2026-09-16: "de zoekbalk is te groot"). On a phone it takes a line of its own,
+  // together with its close button.
+  return (
+    <section className="mt-5 border-t border-lijn pt-2">
+      <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2">
+        <h3 className="min-w-0">
+          {leeg ? (
+            <span className="inline-flex h-8 items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zacht">
+              {kop.icoon}
+              {kop.titel}
+            </span>
+          ) : (
             <button
               type="button"
-              aria-label={t("lijst.zoekSluit", { lijst: lijstnaam })}
-              title={t("lijst.zoekSluit", { lijst: lijstnaam })}
-              aria-expanded
-              onClick={sluitZoek}
-              className={cn(ICOONKNOP, "h-8 w-8")}
+              aria-expanded={open}
+              onClick={vouw}
+              className="-ml-1.5 inline-flex h-8 items-center gap-1.5 rounded-veld px-1.5 text-micro uppercase tracking-wide text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt"
             >
-              <IcoonKruis aria-hidden="true" className="h-4 w-4" />
+              <IcoonChevron
+                aria-hidden="true"
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0 text-inkt-zacht transition-transform duration-200 motion-reduce:transition-none",
+                  !open && "-rotate-90",
+                )}
+              />
+              {kop.icoon}
+              {kop.titel}
+              {/* A space in the text too, so the name reads "Activiteiten 5" and not "Activiteiten5". */}{" "}
+              <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium normal-case tracking-normal text-inkt">
+                {items.length}
+              </span>
             </button>
+          )}
+        </h3>
+        {kop.acties}
+
+        {leeg ? null : zoekOpen ? (
+          <div className="order-last flex min-w-0 basis-full items-center gap-0.5 sm:order-none sm:ml-1 sm:basis-auto">
+            <div className="flex min-w-0 flex-1 sm:w-56 sm:flex-none">{zoekveld}</div>
+            {zoekknopDicht}
           </div>
         ) : (
-          <button
-            ref={zoekknop}
-            type="button"
-            aria-label={t("lijst.zoekIn", { lijst: lijstnaam })}
-            title={t("lijst.zoekIn", { lijst: lijstnaam })}
-            aria-expanded={false}
-            onClick={() => zetZoekOpen(true)}
-            className={cn(ICOONKNOP, kop ? "h-8 w-8" : "ml-auto h-9 w-9")}
-          >
-            <IcoonZoek aria-hidden="true" className="h-4 w-4" />
-          </button>
+          zoekknopOpen
         )}
       </div>
 
-      {leeg && kop ? <p className="mt-1 text-meta text-inkt-zacht">{kop.leeg}</p> : null}
-
-      {/* Mounted while the field is open, with only its text swapped, so a screen reader announces each new count. */}
-      {zoekOpen ? (
-        <p role="status" className={zoekt ? "mt-1 text-meta text-inkt-zacht" : "sr-only"}>
-          {!zoekt
-            ? null
-            : gefilterd.length > 0
-              ? t(gefilterd.length === 1 ? "lijst.eenGevonden" : "lijst.gevonden", {
-                  aantal: gefilterd.length,
-                  totaal: items.length,
-                })
-              : zoekLaadt
-                ? t("lijst.zoeken")
-                : t("lijst.nietsGevonden")}
-        </p>
-      ) : null}
-
-      {getoond.length > 0 ? (
-        <ul ref={lijst} className="mt-2 divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">
-          {getoond.map((item) => (
-            <Fragment key={sleutel(item)}>{render(item)}</Fragment>
-          ))}
-        </ul>
-      ) : null}
-
-      {rest > 0 ? (
-        <button
-          type="button"
-          onClick={() => {
-            focusOp.current = getoond.length;
-            setZichtbaar(zichtbaar + PAGINA);
-          }}
-          className="mt-2 inline-flex h-9 items-center gap-2 rounded-veld px-2 text-meta font-medium text-inkt transition-colors duration-150 hover:bg-inkt/[0.035]"
-        >
-          {t("lijst.laadMeer", { aantal: Math.min(PAGINA, rest) })}
-          <span className="font-normal text-inkt-zacht">{t("lijst.nogOver", { aantal: rest })}</span>
-        </button>
-      ) : null}
-    </>
+      {leeg ? <p className="mt-1 text-meta text-inkt-zacht">{kop.leeg}</p> : null}
+      {status}
+      {rijen("mt-2 overflow-hidden rounded-veld border border-lijn")}
+      {laadMeer("mt-2 inline-flex h-9 rounded-veld px-2")}
+    </section>
   );
-
-  // With a heading, the list is a section of the chapter, divided from the one above by the rule `Subkop` uses.
-  return kop ? <section className="mt-5 border-t border-lijn pt-2">{inhoud}</section> : <div>{inhoud}</div>;
 }
 
 const ICOONKNOP =

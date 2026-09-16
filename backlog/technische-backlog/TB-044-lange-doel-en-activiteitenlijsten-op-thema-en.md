@@ -45,6 +45,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   (activiteit toevoegen, doel koppelen) en het zoekicoon, in plaats van woordknoppen en een extra regel eronder. De
   bewerk- en verwijderknop van het subthema staan alleen nog naast de titel, zodat de lijsten de volle breedte krijgen.
   In de marge naast de themadoelen staat "minimumdoelen" in plaats van "doelen" (eigenaar, 2026-09-16).
+- De ingeklapte lijst themadoelen is een omkaderde rij zoals een leeftijd bij "Doelen per leeftijd": het aantal links,
+  het zoekicoon en de pijl rechts, en de lijst opent binnen hetzelfde kader.
 - Het zoekveld is klein (smal en 32px hoog), en staat op gsm samen met zijn sluitknop op een eigen regel.
 - Teksten in `nl.json`; bestaande tests aangepast en nieuwe tests voor de lijstcomponent.
 
