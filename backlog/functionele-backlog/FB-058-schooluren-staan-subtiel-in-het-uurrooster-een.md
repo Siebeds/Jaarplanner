@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:36
+bijgewerkt: 2026-09-16 23:48
 opgepakt-door: schooluren-tint
 branch: ticket/FB-058-schooluren-tint
 pr:
@@ -84,3 +84,5 @@ Geen.
 
 - 2026-09-16 23:32 · Siebeds · aangemaakt (status nieuw)
 - 2026-09-16 23:36 · schooluren-tint · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-16 23:40 · schooluren-tint · Arcering vervangen door een effen tint (bg-vlak/70), grenstijden in de uurkolom, activiteitblokken dekkend; tests en lint groen.
+- 2026-09-16 23:48 · schooluren-tint · Browserpas (wegwerp-DB jp_fb058, 1440 px en 390 px, licht en donker): tint 249,249,251 op wit, gesloten dag 242,244,246 met naam; grenstijden 17,8:1 licht en 13,1:1 donker; activiteitblokken zonder alfa.

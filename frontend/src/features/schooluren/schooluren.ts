@@ -51,6 +51,41 @@ export function openingsminuut(
   return Math.floor(Math.min(...begins) / 60) * 60;
 }
 
+/**
+ * The minutes a label in the hour gutter takes up below its line, and so how close two gutter labels may come (FB-058).
+ * A `text-micro` line hangs about seventeen pixels, which is eighteen minutes at `PX_PER_MINUUT`.
+ */
+export const GOOTLABEL_MINUTEN = 18;
+
+/**
+ * The times the hour gutter writes where the school day starts, pauses and ends, for the teaching days on screen
+ * (FB-058): the tinted stretches carry no words of their own, so these say where each one begins and ends.
+ *
+ * One gutter serves every column, so the times of all visible days are merged, sorted and deduplicated. A time that
+ * would hang over the label before it is dropped: two words on top of each other say nothing, and the tint still
+ * shows that day's edge.
+ */
+export function grenstijden(
+  uren: readonly Schooldaguren[] | undefined,
+  dagen: readonly { datum: string; isLesdag: boolean }[],
+): number[] {
+  const alle = new Set<number>();
+  for (const dag of dagen) {
+    if (!dag.isLesdag) continue;
+    const eigen = urenOp(uren, dag.datum);
+    if (!eigen) continue;
+    for (const tijd of [eigen.begin, eigen.middagpauzeBegin, eigen.middagpauzeEinde, eigen.einde]) {
+      if (tijd) alle.add(minuten(tijd));
+    }
+  }
+
+  const uit: number[] = [];
+  for (const minuut of [...alle].sort((a, b) => a - b)) {
+    if (uit.length === 0 || minuut - uit[uit.length - 1] >= GOOTLABEL_MINUTEN) uit.push(minuut);
+  }
+  return uit;
+}
+
 /** One weekday as the form holds it: `HH:mm` or empty, as a time field gives it. */
 export interface Dagvelden {
   begin: string;

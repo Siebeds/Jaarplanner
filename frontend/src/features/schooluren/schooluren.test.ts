@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Schooldaguren } from "./gegevens";
-import { Dagnaam, beginVelden, dagnaam, naarInvoer, openingsminuut, urenOp } from "./schooluren";
+import { Dagnaam, beginVelden, dagnaam, grenstijden, naarInvoer, openingsminuut, urenOp } from "./schooluren";
 
 /** The school's hours as the screens compute with them (FB-023). */
 const maandag: Schooldaguren = {
@@ -40,6 +40,21 @@ describe("schooluren", () => {
 
     expect(openingsminuut([], dagen)).toBeUndefined();
     expect(openingsminuut(undefined, dagen)).toBeUndefined();
+  });
+
+  it("schrijft de grenzen van de schooldag in de uurkolom, samengevoegd over de dagen en zonder botsingen", () => {
+    const dagen = [
+      { datum: "2026-09-14", isLesdag: true },
+      { datum: "2026-09-16", isLesdag: true },
+    ];
+    // Monday 8:30, 12:00, 13:15, 15:30; Wednesday 8:15 and 12:00. 8:30 hangs over 8:15's label and is dropped, and
+    // the shared 12:00 is written once.
+    expect(grenstijden([maandag, woensdag], dagen)).toEqual([495, 720, 795, 930]);
+
+    // A closed day and a weekday without hours add nothing.
+    expect(grenstijden([maandag, woensdag], [dagen[0], { ...dagen[1], isLesdag: false }])).toEqual([510, 720, 795, 930]);
+    expect(grenstijden([maandag], [{ datum: "2026-09-15", isLesdag: true }])).toEqual([]);
+    expect(grenstijden(undefined, dagen)).toEqual([]);
   });
 
   it("vult het formulier met wat de school heeft, en een lege dag met de pauze aangevinkt", () => {
