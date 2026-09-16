@@ -62,6 +62,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0049](0049-eigen-activiteit-van-de-leerkracht.md) | **A leerkracht's new activiteit is her own**: it belongs to her and follows her across schooljaren; her jaarfase colleagues read it and copy it; its goals count for a klas only once the activiteit is planned in that klas's agenda; a removed owner's activiteiten become shared (answers 0030 §4 (a) for activiteiten) | Accepted |
 | [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted |
 | [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
+| [0052](0052-ai-stelt-activiteiten-voor.md) | **The AI proposes activiteiten under a subthema**, and an accepted one is the asker's own activiteit (a third Art. IV.4 exception) | Accepted |
 
 ## Compliance traceability matrix
 
