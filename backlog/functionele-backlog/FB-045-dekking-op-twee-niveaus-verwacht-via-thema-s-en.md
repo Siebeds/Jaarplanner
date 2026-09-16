@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 16:38
+bijgewerkt: 2026-09-16 16:39
 opgepakt-door: claude-fb045
 branch: ticket/FB-045-dekkingsprognose
-pr:
+pr: 114
 geblokkeerd:
 fr: [FR-9.1, FR-9.2, FR-9.3]
 ---
@@ -114,3 +114,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 16:38 · claude-fb045 · antagonist: COMPLIANT, geen blokkerende punten; kleine punten opgelost of genoteerd in backlog/worklogs/FB-045/antagonist.md
 - 2026-09-16 16:38 · claude-fb045 · criteria afgevinkt: berekening in DekkingsprognoseTests en de Postgres-tests (subthema pas gedekt in de agenda, andere klas en leeftijd, minimumdoel alleen via thema), HTTP-test voor de minimumdoelen, schermtests voor stap en woorden, browser op desktop en 390px
 - 2026-09-16 16:38 · claude-fb045 · in-uitvoering → te-testen: gebouwd: dekkingsprognose en dekking voor minimumdoelen en leerplandoelen, Art. V.1 en ADR-0047; alle gates groen
+- 2026-09-16 16:39 · claude-fb045 · PR #114
