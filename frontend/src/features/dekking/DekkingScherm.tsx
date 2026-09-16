@@ -622,7 +622,7 @@ function Minimumdoelrij({ doel }: { doel: MinimumdoelDekking }) {
             </span>
           ) : null}
         </div>
-        <p className="mt-1 whitespace-pre-line text-body text-inkt">{doel.omschrijving}</p>
+        <p className="mt-1 line-clamp-3 whitespace-pre-line text-body text-inkt">{doel.omschrijving}</p>
         <Staplijn
           stap={doel.stap}
           dekkend={doel.dekkendeThemas}

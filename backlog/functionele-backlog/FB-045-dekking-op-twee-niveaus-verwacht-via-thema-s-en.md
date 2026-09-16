@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 16:19
+bijgewerkt: 2026-09-16 16:31
 opgepakt-door: claude-fb045
 branch: ticket/FB-045-dekkingsprognose
 pr:
@@ -110,3 +110,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 15:56 · claude-fb045 · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 15:58 · claude-fb045 · standaarden vastgelegd: mijlpaal per klas (K-, 4-, 6-) en een thema telt als ingepland wanneer het beslist geplaatst is
 - 2026-09-16 16:19 · claude-fb045 · backend klaar: dekkingsprognose en dekking per leerplandoel en per minimumdoel (mijlpaal van de klas), subthema telt pas als het in de agenda staat, themadoelen uit de import tellen niet; unit- en integratietests groen
+- 2026-09-16 16:31 · claude-fb045 · frontend klaar: dekkingsscherm met minimumdoelen (per leergebied) en leerplandoelen, meter met dekking en prognose per niveau, stap per doel in woorden en vorm; browser op een kopie van de dev-database, desktop en 390px, zonder horizontaal scrollen
