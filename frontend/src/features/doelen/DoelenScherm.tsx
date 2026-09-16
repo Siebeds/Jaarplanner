@@ -137,7 +137,6 @@ export function DoelenScherm() {
   });
 
   const aantalFilters = Object.values(filter).filter(Boolean).length;
-  const gefilterd = aantalFilters > 0 || zoek.length > 0;
 
   // Each doel sits in exactly one domein, so the domein counts under the active filter add up to
   // the number of doelen the filter matches.
@@ -283,7 +282,6 @@ export function DoelenScherm() {
                   // keeps the open state where it belongs: inside each level, set once on mount.
                   key={JSON.stringify(doelenFilter)}
                   basisFilter={doelenFilter}
-                  gefilterd={gefilterd}
                   gekozenCode={gekozenCode}
                   onKies={kiesLeerplandoel}
                 />
@@ -292,7 +290,6 @@ export function DoelenScherm() {
               <Minimumdoelenboom
                 key={JSON.stringify(minimumdoelFilter)}
                 filter={minimumdoelFilter}
-                gefilterd={gefilterd || mijlpaal !== null}
                 gekozenRef={gekozenRef}
                 onKies={kiesMinimumdoel}
                 onWisFilters={wisAlles}

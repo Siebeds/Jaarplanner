@@ -18,16 +18,16 @@ import { cn } from "../../lib/cn";
  * with a school-wide count. So a discipline only fetches its domeinen once it is opened, which also
  * means the screen opens with one request instead of ten.
  *
+ * Every level starts closed, whatever the filter or search (FB-041): the teacher opens what she wants to see.
+ *
  * Subdomeinen come free: they arrive nested in the domein facet that is already scoped.
  */
 export function Doelenboom({
   basisFilter,
-  gefilterd,
   gekozenCode,
   onKies,
 }: {
   basisFilter: LeerplandoelFilterQuery;
-  gefilterd: boolean;
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
@@ -40,17 +40,13 @@ export function Doelenboom({
 
   return (
     <ul className="flex flex-col gap-2">
-      {disciplines.map((discipline, index) => (
+      {disciplines.map((discipline) => (
         <li key={discipline.nummer}>
           <Disciplinekaart
             nummer={discipline.nummer}
             naam={discipline.naam ?? discipline.nummer}
             aantal={discipline.aantal}
             basisFilter={basisFilter}
-            // While a filter is active the first discipline with hits opens itself, so a search
-            // lands on results instead of on a row the teacher has to open by hand.
-            standaardOpen={gefilterd && index === 0}
-            gefilterd={gefilterd}
             gekozenCode={gekozenCode}
             onKies={onKies}
           />
@@ -65,8 +61,6 @@ function Disciplinekaart({
   naam,
   aantal,
   basisFilter,
-  standaardOpen,
-  gefilterd,
   gekozenCode,
   onKies,
 }: {
@@ -74,12 +68,10 @@ function Disciplinekaart({
   naam: string;
   aantal: number;
   basisFilter: LeerplandoelFilterQuery;
-  standaardOpen: boolean;
-  gefilterd: boolean;
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
-  const [open, setOpen] = useState(standaardOpen);
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
@@ -98,7 +90,6 @@ function Disciplinekaart({
           <Domeinen
             discipline={nummer}
             basisFilter={basisFilter}
-            gefilterd={gefilterd}
             gekozenCode={gekozenCode}
             onKies={onKies}
           />
@@ -111,13 +102,11 @@ function Disciplinekaart({
 function Domeinen({
   discipline,
   basisFilter,
-  gefilterd,
   gekozenCode,
   onKies,
 }: {
   discipline: string;
   basisFilter: LeerplandoelFilterQuery;
-  gefilterd: boolean;
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
@@ -143,8 +132,6 @@ function Domeinen({
             domein={domein}
             discipline={discipline}
             basisFilter={basisFilter}
-            standaardOpen={gefilterd && domeinen.length === 1}
-            gefilterd={gefilterd}
             gekozenCode={gekozenCode}
             onKies={onKies}
           />
@@ -158,20 +145,16 @@ function Domein({
   domein,
   discipline,
   basisFilter,
-  standaardOpen,
-  gefilterd,
   gekozenCode,
   onKies,
 }: {
   domein: DomeinFacet;
   discipline: string;
   basisFilter: LeerplandoelFilterQuery;
-  standaardOpen: boolean;
-  gefilterd: boolean;
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
-  const [open, setOpen] = useState(standaardOpen);
+  const [open, setOpen] = useState(false);
   const subdomeinen = domein.subdomeinen.filter((s) => s.aantal > 0);
 
   return (
@@ -194,7 +177,6 @@ function Domein({
                 subdomein={sub.subdomein}
                 aantal={sub.aantal}
                 filter={{ ...basisFilter, discipline, domein: domein.domein, subdomein: sub.subdomein }}
-                standaardOpen={gefilterd && subdomeinen.length === 1}
                 gekozenCode={gekozenCode}
                 onKies={onKies}
               />
@@ -210,18 +192,16 @@ function Subdomein({
   subdomein,
   aantal,
   filter,
-  standaardOpen,
   gekozenCode,
   onKies,
 }: {
   subdomein: string;
   aantal: number;
   filter: LeerplandoelFilterQuery;
-  standaardOpen: boolean;
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
-  const [open, setOpen] = useState(standaardOpen);
+  const [open, setOpen] = useState(false);
   // The page size is the subdomein's own count, so an open subdomein always shows all of itself.
   // Subdomeinen are small by construction (they are the leaves of Op.stap's ordering), and the
   // backend caps a page at 200 regardless.

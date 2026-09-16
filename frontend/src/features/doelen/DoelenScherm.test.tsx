@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KlasWeergave, LeerplandoelDetail, MinimumdoelDetail, MinimumdoelRegel } from "../../lib/types";
@@ -15,9 +15,8 @@ import { DoelenScherm } from "./DoelenScherm";
  * a sheet with nothing to press (the E3-06 rule).
  *
  * The doel is opened from the minimumdoelen register, on a wide screen so the detail is the column beside the list
- * rather than a sheet. *Since TB-010 (merged here before the PR) that register is the decree's tree and a minimumdoel's
- * detail lists its concorded leerplandoelen, so the way in is: the branch the filter opens, the minimumdoel's row, then
- * the code in its detail. Until then the rows listed the codes themselves.*
+ * rather than a sheet. That register is the decree's tree (TB-010) and opens with every branch closed (FB-041), so the
+ * way in is: open the branch by hand, the minimumdoel's row, then the code in its detail.
  */
 
 const selectie = vi.hoisted(() => ({ klas: null as unknown }));
@@ -132,7 +131,13 @@ function antwoord(pad: string): unknown {
     case `/api/minimumdoelen/${REF}`:
       return MINIMUMDOEL;
     case "/api/leerplandoelen/facetten":
-      return { totaalAantalDoelen: 1, disciplines: [], domeinen: [], doelsoorten: [], jaarFasen: [] };
+      return {
+        totaalAantalDoelen: 1,
+        disciplines: [{ nummer: "2", naam: "Wiskunde", aantal: 1 }],
+        domeinen: [{ domein: "Getallen", aantal: 1, subdomeinen: [{ subdomein: "Tellen", aantal: 1 }] }],
+        doelsoorten: [],
+        jaarFasen: [],
+      };
     case `/api/leerplandoelen/${CODE}`:
       return DETAIL;
     case "/api/themas/bibliotheek":
@@ -161,8 +166,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function openDoel(klasJaarfase: string) {
-  selectie.klas = klasVan(klasJaarfase);
+function toonScherm() {
   const client = metIk(
     new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }),
@@ -174,7 +178,14 @@ async function openDoel(klasJaarfase: string) {
       </MemoryRouter>
     </QueryClientProvider>,
   );
-  // The klas's one jaarfase is a filter, so the tree opens its first branch down to the minimumdoelen by itself.
+}
+
+async function openDoel(klasJaarfase: string) {
+  selectie.klas = klasVan(klasJaarfase);
+  toonScherm();
+  for (const tak of [/^Wiskunde/, /^Getallen/, /^Tellen/]) {
+    fireEvent.click(await screen.findByRole("button", { name: tak }));
+  }
   fireEvent.click((await screen.findByText(REF)).closest("button")!);
   fireEvent.click((await screen.findByText(CODE)).closest("button")!);
   await screen.findByText(DETAIL.tekst);
@@ -189,5 +200,41 @@ describe("DoelenScherm: Koppel dit doel", () => {
   it("biedt het wel aan met een K3-klas gekozen", async () => {
     await openDoel("K3");
     expect(screen.getByRole("button", { name: t("doel.koppelAan") })).toBeInTheDocument();
+  });
+});
+
+// FB-041: whoever goes to Doelen finds both registers closed, whatever filter or search is active.
+describe("DoelenScherm: alles ingeklapt", () => {
+  const takken = () => screen.getAllByRole("button", { expanded: true });
+
+  it("opent de minimumdoelen met elk leergebied dicht, ook met de klasfilter", async () => {
+    selectie.klas = klasVan("K3");
+    toonScherm();
+
+    expect(await screen.findByRole("button", { name: /^Wiskunde/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryAllByRole("button", { expanded: true })).toHaveLength(0);
+    expect(screen.queryByText(REF)).not.toBeInTheDocument();
+  });
+
+  it("opent de leerplandoelen met elke discipline dicht, ook na een zoekterm", async () => {
+    selectie.klas = klasVan("K3");
+    useDoelenfilter.setState({ bron: "leerplandoelen", zoek: "tellen" });
+    toonScherm();
+
+    expect(await screen.findByRole("button", { name: /^Wiskunde/ })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryAllByRole("button", { expanded: true })).toHaveLength(0);
+  });
+
+  it("houdt een zelf geopende tak open, en klapt ze dicht als de zoekterm wijzigt", async () => {
+    selectie.klas = klasVan("K3");
+    toonScherm();
+
+    fireEvent.click(await screen.findByRole("button", { name: /^Wiskunde/ }));
+    expect(await screen.findByRole("button", { name: /^Getallen/ })).toBeInTheDocument();
+    expect(takken().map((knop) => knop.textContent)).toEqual(["Wiskunde1"]);
+
+    act(() => useDoelenfilter.setState({ zoek: "tel" }));
+    expect(await screen.findByRole("button", { name: /^Wiskunde/, expanded: false })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Getallen/ })).not.toBeInTheDocument();
   });
 });

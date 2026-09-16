@@ -90,7 +90,6 @@ let paden: string[] = [];
 
 function toon(opties: {
   facetten: MinimumdoelFacetten;
-  gefilterd?: boolean;
   gekozenRef?: string | null;
   onKies?: (ref: string) => void;
   onWisFilters?: () => void;
@@ -127,7 +126,6 @@ function toon(opties: {
       <QueryClientProvider client={client}>
         <Minimumdoelenboom
           filter={{}}
-          gefilterd={opties.gefilterd ?? false}
           gekozenRef={opties.gekozenRef ?? null}
           onKies={opties.onKies ?? vi.fn()}
           onWisFilters={opties.onWisFilters ?? vi.fn()}
@@ -221,10 +219,14 @@ describe("Minimumdoelenboom", () => {
     expect(onKies).toHaveBeenCalledWith("6-1.1.2");
   });
 
-  it("opent bij een filter zelf de eerste tak tot op de minimumdoelen", async () => {
-    toon({ facetten: facetten({ leergebieden: [facetten().leergebieden[0]], aantalTreffers: 2, aantalZonderOrdening: 0 }), gefilterd: true });
+  // FB-041: the register opens with every branch closed, even when the filter leaves a single branch.
+  it("opent geen tak vanzelf, ook niet als er maar één tak is", async () => {
+    toon({ facetten: facetten({ leergebieden: [facetten().leergebieden[0]], aantalTreffers: 2, aantalZonderOrdening: 0 }) });
 
-    expect(await screen.findByText("4-1.1.1")).toBeInTheDocument();
+    const knop = await screen.findByRole("button", { name: /^Nederlands/ });
+    expect(knop).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("4-1.1.1")).not.toBeInTheDocument();
+    expect(paden.every((pad) => pad.startsWith("/api/minimumdoelen/facetten"))).toBe(true);
   });
 
   it("zegt alleen dat er nog geen minimumdoelen zijn als er geen enkel is, en wijst naar Inladen", async () => {

@@ -29,13 +29,11 @@ import { Rij } from "./Doelenboom";
  */
 export function Minimumdoelenboom({
   filter,
-  gefilterd,
   gekozenRef,
   onKies,
   onWisFilters,
 }: {
   filter: MinimumdoelFilterQuery;
-  gefilterd: boolean;
   gekozenRef: string | null;
   onKies: (ref: string) => void;
   onWisFilters: () => void;
@@ -63,17 +61,15 @@ export function Minimumdoelenboom({
     );
   }
 
-  const gedeeld = { gefilterd, gekozenRef, onKies };
+  const gedeeld = { gekozenRef, onKies };
 
   return (
     <ul className="flex flex-col gap-2">
-      {data.leergebieden.map((leergebied, index) => (
+      {data.leergebieden.map((leergebied) => (
         <li key={leergebied.naam}>
           <Leergebiedkaart
             leergebied={leergebied}
             filter={filter}
-            // While a filter is active the first leergebied with hits opens itself, so a search lands on results.
-            standaardOpen={gefilterd && index === 0}
             {...gedeeld}
           />
         </li>
@@ -83,7 +79,6 @@ export function Minimumdoelenboom({
           <ZonderOrdening
             aantal={data.aantalZonderOrdening}
             filter={filter}
-            standaardOpen={gefilterd && data.leergebieden.length === 0}
             {...gedeeld}
           />
         </li>
@@ -93,7 +88,6 @@ export function Minimumdoelenboom({
 }
 
 interface Gedeeld {
-  gefilterd: boolean;
   gekozenRef: string | null;
   onKies: (ref: string) => void;
 }
@@ -101,10 +95,9 @@ interface Gedeeld {
 function Leergebiedkaart({
   leergebied,
   filter,
-  standaardOpen,
   ...gedeeld
-}: Gedeeld & { leergebied: LeergebiedFacet; filter: MinimumdoelFilterQuery; standaardOpen: boolean }) {
-  const [open, setOpen] = useState(standaardOpen);
+}: Gedeeld & { leergebied: LeergebiedFacet; filter: MinimumdoelFilterQuery }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
@@ -126,7 +119,6 @@ function Leergebiedkaart({
                 <Rubriek
                   rubriek={rubriek}
                   filter={{ ...filter, leergebied: leergebied.naam, rubriek: rubriek.naam }}
-                  standaardOpen={gedeeld.gefilterd && leergebied.rubrieken.length === 1}
                   {...gedeeld}
                 />
               </li>
@@ -141,11 +133,9 @@ function Leergebiedkaart({
 function Rubriek({
   rubriek,
   filter,
-  standaardOpen,
   ...gedeeld
-}: Gedeeld & { rubriek: RubriekFacet; filter: MinimumdoelFilterQuery; standaardOpen: boolean }) {
-  const [open, setOpen] = useState(standaardOpen);
-  const enigeTak = rubriek.subrubrieken.length + (rubriek.aantalZonderSubrubriek > 0 ? 1 : 0) === 1;
+}: Gedeeld & { rubriek: RubriekFacet; filter: MinimumdoelFilterQuery }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -174,7 +164,6 @@ function Rubriek({
                   naam={sub.naam}
                   aantal={sub.aantal}
                   filter={{ ...filter, subrubriek: sub.naam }}
-                  standaardOpen={gedeeld.gefilterd && enigeTak}
                   {...gedeeld}
                 />
               </li>
@@ -190,10 +179,9 @@ function Subrubriek({
   naam,
   aantal,
   filter,
-  standaardOpen,
   ...gedeeld
-}: Gedeeld & { naam: string; aantal: number; filter: MinimumdoelFilterQuery; standaardOpen: boolean }) {
-  const [open, setOpen] = useState(standaardOpen);
+}: Gedeeld & { naam: string; aantal: number; filter: MinimumdoelFilterQuery }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <>
@@ -223,10 +211,9 @@ function Subrubriek({
 function ZonderOrdening({
   aantal,
   filter,
-  standaardOpen,
   ...gedeeld
-}: Gedeeld & { aantal: number; filter: MinimumdoelFilterQuery; standaardOpen: boolean }) {
-  const [open, setOpen] = useState(standaardOpen);
+}: Gedeeld & { aantal: number; filter: MinimumdoelFilterQuery }) {
+  const [open, setOpen] = useState(false);
 
   return (
     <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
