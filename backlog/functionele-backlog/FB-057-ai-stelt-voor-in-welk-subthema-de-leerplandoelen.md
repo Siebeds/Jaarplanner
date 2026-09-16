@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:02
+bijgewerkt: 2026-09-16 23:51
 opgepakt-door: claude-fb057
 branch: ticket/FB-057-subdoelplaatsing
 pr:
@@ -117,3 +117,5 @@ doel zelf opzoeken en met de hand als subdoel toevoegen, en ziet niet in één o
 - 2026-09-16 22:49 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-16 22:53 · claude-fb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-16 23:02 · claude-fb057 · Grondwet (Art. IV, VI.1, IX.2, XII) aangepast met ADR-0050 en ADR-0051; de bouw begint met de backend.
+- 2026-09-16 23:15 · claude-fb057 · Backend klaar: twee tabellen, AI-vraag met controle per voorstel, rechten per leeftijd (hoofdleerkracht en directie); unit- en Postgres-tests groen. Nu de frontend.
+- 2026-09-16 23:51 · claude-fb057 · Frontend klaar; browsercontrole op een kopie van de dev-database met een echte AI-vraag: 9 doelen geplaatst in 3 nieuwe subthema's, aanvaarden maakt subdoel en subthema, desktop, 390px, licht en donker nagekeken (labels 6,51:1 licht, 7,58:1 donker).
