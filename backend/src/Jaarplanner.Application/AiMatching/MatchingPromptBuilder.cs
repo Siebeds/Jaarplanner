@@ -11,15 +11,22 @@ namespace Jaarplanner.Application.AiMatching;
 /// themadoelen/subthema's/activiteiten) plus the relevant, already-loaded Op.stap leerplandoelen
 /// (and, optionally, their concorded minimumdoelen) into an <see cref="AiRequest"/>.
 /// <para>
-/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line of the user prompt is
-/// rendered <b>exclusively</b> from the arguments — the school's own content and the loaded Op.stap
-/// goals — and the system prompt explicitly forbids external knowledge, invented codes and invented
-/// examples. Nothing else is read: no clock, no environment, no configuration, no I/O.
+/// <b>Stable part first</b> (TB-043). The request is the fixed <see cref="SystemPrompt"/>, then the candidate goal list
+/// as <see cref="AiRequest.VasteContext"/>, then the thema as <see cref="AiRequest.UserPrompt"/>. The first two depend
+/// only on the candidates, so two thema's whose subthema's share a leeftijd send a byte-identical prefix that the
+/// provider can serve from its cache. The codes the thema already links, or that were rejected on it, are named in the
+/// user prompt as "niet voorstellen" and never taken out of the list, which would make the list differ per thema.
+/// </para>
+/// <para>
+/// <b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line of the stable context and the user prompt is
+/// rendered <b>exclusively</b> from the arguments (the school's own content and the loaded Op.stap goals), and the
+/// system prompt explicitly forbids external knowledge, invented codes and invented examples. Nothing else is read: no
+/// clock, no environment, no configuration, no I/O.
 /// </para>
 /// <para>
 /// The builder is a <b>pure, deterministic</b> function of its inputs: given the same thema and the
-/// same set of leerplandoelen it produces byte-for-byte the same prompt (leerplandoelen and
-/// minimumdoelen are ordered by their stable key so caller ordering cannot leak in), which is what
+/// same set of leerplandoelen it produces byte-for-byte the same prompt (leerplandoelen, minimumdoelen and excluded
+/// codes are ordered by their stable key so caller ordering cannot leak in), which is what
 /// makes it snapshot-testable. It only constructs the prompt; requesting the model, validating the
 /// structured-JSON response (E2-03) and persisting suggestions as <c>DoelKoppeling</c> (E2-04) are
 /// separate stories.
@@ -27,6 +34,19 @@ namespace Jaarplanner.Application.AiMatching;
 /// </summary>
 public static class MatchingPromptBuilder
 {
+    /// <summary>
+    /// The most suggestions one run asks for (TB-043). The number comes from the TB-004 evaluation's variant and may be
+    /// adjusted by its measurement.
+    /// </summary>
+    public const int MaxSuggesties = 8;
+
+    /// <summary>The rule that sets <see cref="MaxSuggesties"/>, word for word as <see cref="SystemPrompt"/> carries it.</summary>
+    public const string MaxSuggestiesRegel =
+        "- Stel hoogstens 8 leerplandoelen voor, het best passende eerst. Minder mag.";
+
+    /// <summary>The heading of the user prompt's section with the codes the model must not propose.</summary>
+    public const string NietVoorstellenKop = "# Niet voorstellen";
+
     // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI,
     // keeping the snapshot stable across platforms.
     private const string Nl = "\n";
@@ -41,21 +61,24 @@ public static class MatchingPromptBuilder
         "de eigen thema's en activiteiten van de school." + Nl +
         Nl +
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens die in het bericht van de gebruiker staan: de " +
-        "schoolcontent (thema, themadoelen, subthema's, activiteiten) en de opgegeven Op.stap-" +
-        "leerplandoelen en -minimumdoelen." + Nl +
+        "- Gebruik uitsluitend de gegevens in deze aanvraag: de lijst \"Beschikbare Op.stap-leerplandoelen\" " +
+        "hieronder, en de schoolcontent (thema, themadoelen, subthema's, activiteiten) in het bericht van de " +
+        "gebruiker." + Nl +
         "- Gebruik geen externe kennis, geen internet en geen andere bronnen. Verzin geen " +
         "leerplandoelen, codes, voorbeelden of woordenschat." + Nl +
         "- Stel enkel leerplandoelen voor waarvan de code letterlijk voorkomt in de lijst " +
         "\"Beschikbare Op.stap-leerplandoelen\" hieronder." + Nl +
-        "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit doel " +
+        "- Stel geen leerplandoel voor waarvan de code in het bericht van de gebruiker onder " +
+        "\"Niet voorstellen\" staat." + Nl +
+        MaxSuggestiesRegel + Nl +
+        "- Geef bij elk voorstel een motivatie van één korte zin in het Nederlands (\"waarom past dit doel " +
         "hier?\")." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg " +
         "eromheen:" + Nl +
         "  {\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
         "- Gebruik exact de veldnamen \"suggesties\", \"code\" en \"motivatie\". \"code\" is een " +
-        "leerplandoelcode uit de lijst hierboven; \"motivatie\" is één zin." + Nl +
+        "leerplandoelcode uit de lijst \"Beschikbare Op.stap-leerplandoelen\"; \"motivatie\" is één zin." + Nl +
         "- Vind je geen enkel passend doel, antwoord dan met een lege lijst: {\"suggesties\": []}.";
 
     /// <summary>
@@ -65,11 +88,11 @@ public static class MatchingPromptBuilder
     /// <param name="thema">The school thema whose themadoelen/subthema's/activiteiten need goal matches.</param>
     /// <param name="leerdoelen">The relevant, already-loaded Op.stap leerplandoelen to choose from.</param>
     /// <param name="minimumdoelen">
-    /// Optional minimumdoelen (Op.stap data), written as a section of their own; defaults to none, which is what the
-    /// matching service passes. The compact goal list (TB-007) does not name each goal's <c>minimumdoelRef</c>, so the
-    /// section is context only and is not tied to the listed goals.
+    /// Optional minimumdoelen (Op.stap data), written as a section of their own after the goal list in the stable
+    /// context; defaults to none, which is what the matching service passes. The compact goal list (TB-007) does not
+    /// name each goal's <c>minimumdoelRef</c>, so the section is context only and is not tied to the listed goals.
     /// </param>
-    /// <returns>The grounded request (system + user prompt), ready for <see cref="IAiClient"/>.</returns>
+    /// <returns>The grounded request (system prompt, stable goal list, thema), ready for <see cref="IAiClient"/>.</returns>
     public static AiRequest Bouw(
         Thema thema,
         IReadOnlyCollection<Leerplandoel> leerdoelen,
@@ -81,26 +104,33 @@ public static class MatchingPromptBuilder
         return new AiRequest
         {
             SystemPrompt = SystemPrompt,
-            UserPrompt = BouwUserPrompt(thema, leerdoelen, minimumdoelen ?? []),
+            VasteContext = BouwVasteContext(leerdoelen, minimumdoelen ?? []),
+            UserPrompt = BouwUserPrompt(thema),
         };
     }
 
-    private static string BouwUserPrompt(
-        Thema thema,
+    // The stable part: a function of the candidates alone (TB-043).
+    private static string BouwVasteContext(
         IReadOnlyCollection<Leerplandoel> leerdoelen,
         IReadOnlyCollection<Minimumdoel> minimumdoelen)
     {
-        var sb = new StringBuilder();
-
-        SchrijfSchoolcontent(sb, thema);
-        sb.Append(Nl);
-        SchrijfLeerplandoelen(sb, leerdoelen);
+        var sb = new StringBuilder(LeerplandoelPromptlijst.Bouw(leerdoelen));
 
         if (minimumdoelen.Count > 0)
         {
             sb.Append(Nl);
             SchrijfMinimumdoelen(sb, minimumdoelen);
         }
+
+        return sb.ToString();
+    }
+
+    private static string BouwUserPrompt(Thema thema)
+    {
+        var sb = new StringBuilder();
+
+        SchrijfSchoolcontent(sb, thema);
+        SchrijfNietVoorstellen(sb, thema);
 
         return sb.ToString();
     }
@@ -202,9 +232,28 @@ public static class MatchingPromptBuilder
         }
     }
 
-    // The goal list is the one the authoring prompts end with too, compact since TB-007: see LeerplandoelPromptlijst.
-    private static void SchrijfLeerplandoelen(StringBuilder sb, IReadOnlyCollection<Leerplandoel> leerdoelen) =>
-        LeerplandoelPromptlijst.Schrijf(sb, leerdoelen);
+    // The codes this thema already links (a themadoel, or a doelsuggestie of any status, the rejected ones included),
+    // which the model is told not to propose (TB-043). They stay in the goal list, which must not differ per thema; the
+    // duplicate check in DoelMatchingService remains the safety net. Without such codes the section is left out.
+    private static void SchrijfNietVoorstellen(StringBuilder sb, Thema thema)
+    {
+        var codes = thema.Themadoelen.Select(td => td.Koppeling.LeerplandoelCode)
+            .Concat(thema.Doelsuggesties.Select(k => k.LeerplandoelCode))
+            .Where(c => !string.IsNullOrWhiteSpace(c))
+            .Select(c => c.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+        if (codes.Count == 0)
+        {
+            return;
+        }
+
+        Line(sb, string.Empty);
+        Line(sb, NietVoorstellenKop);
+        Line(sb, string.Empty);
+        Line(sb, $"Al gekoppeld of geweigerd: {string.Join(", ", codes)}");
+    }
 
     private static void SchrijfMinimumdoelen(StringBuilder sb, IReadOnlyCollection<Minimumdoel> minimumdoelen)
     {

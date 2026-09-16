@@ -65,6 +65,52 @@ public sealed class ThemaOpbouwPromptBuilderTests
             minimumdoelRef: "K-20"),
     ];
 
+    // The stable part of both steps (TB-043): the goal list alone, the same for every thema over these candidates.
+    private static readonly string VerwachteDoelenlijst = string.Join(Nl,
+    [
+        "# Beschikbare Op.stap-leerplandoelen",
+        "",
+        "Voor alle doelen hieronder: jaarfase K3.",
+        "",
+        "## Wereldoriëntatie > Natuur",
+        "- WAT-K3-01 (MD): De kleuter onderzoekt water.",
+        "- WAT-K3-02 (G): De kleuter benoemt nat en droog.",
+    ]) + Nl;
+
+    [Fact]
+    public void Het_vaste_deel_hangt_niet_af_van_het_thema_of_het_subthema()
+    {
+        var andereThema = new ThemaOpbouwContext { Naam = "Vuur", GekozenThemadoelCodes = ["WAT-K3-02"] };
+        var anderSubthema = new SubthemaOpbouwContext { Naam = "Kampvuur", Leeftijd = "K3" };
+
+        var a = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(EenThema(), EenSubthema(), EenLeerdoelenSet());
+        var b = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(andereThema, anderSubthema, EenLeerdoelenSet());
+
+        Assert.Equal(a.SystemPrompt + a.VasteContext, b.SystemPrompt + b.VasteContext);
+        Assert.DoesNotContain("Water", a.SystemPrompt + a.VasteContext, StringComparison.Ordinal);
+        Assert.DoesNotContain("Vuur", b.SystemPrompt + b.VasteContext, StringComparison.Ordinal);
+        Assert.StartsWith("# Thema (in opbouw)", b.UserPrompt, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Systeemprompts_begrenzen_het_aantal_suggesties_en_sluiten_gekozen_doelen_uit()
+    {
+        foreach (var systemPrompt in new[]
+        {
+            ThemaOpbouwPromptBuilder.SystemPromptThemadoelen,
+            ThemaOpbouwPromptBuilder.SystemPromptSubdoelen,
+        })
+        {
+            Assert.Contains(ThemaOpbouwPromptBuilder.MaxSuggestiesRegel, systemPrompt, StringComparison.Ordinal);
+            Assert.Contains("\"Reeds gekozen themadoelen\"", systemPrompt, StringComparison.Ordinal);
+        }
+
+        Assert.Contains(
+            $"hoogstens {ThemaOpbouwPromptBuilder.MaxSuggesties} ",
+            ThemaOpbouwPromptBuilder.MaxSuggestiesRegel,
+            StringComparison.Ordinal);
+    }
+
     [Fact]
     public void Stap2_bouwt_de_verwachte_grounded_themadoel_prompt()
     {
@@ -81,16 +127,10 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "Invalshoeken: natuur en techniek",
             "Kernwoordenschat: nat, droog",
             "Rijke woordenschat: waterkringloop",
-            "",
-            "# Beschikbare Op.stap-leerplandoelen",
-            "",
-            "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter onderzoekt water.",
-            "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter benoemt nat en droog.",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
+        Assert.Equal(VerwachteDoelenlijst, request.VasteContext);
     }
 
     [Fact]
@@ -122,16 +162,10 @@ public sealed class ThemaOpbouwPromptBuilderTests
             "- Gieten en meten (waarneming)",
             "  Hoek: watertafel",
             "  Verwachte uitkomsten: vergelijkt hoeveelheden",
-            "",
-            "# Beschikbare Op.stap-leerplandoelen",
-            "",
-            "- WAT-K3-01 | MD | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter onderzoekt water.",
-            "- WAT-K3-02 | G | K3 | Wereldoriëntatie > Natuur",
-            "  Tekst: De kleuter benoemt nat en droog.",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
+        Assert.Equal(VerwachteDoelenlijst, request.VasteContext);
     }
 
     [Fact]
@@ -143,6 +177,7 @@ public sealed class ThemaOpbouwPromptBuilderTests
         var a = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), leerdoelen);
         var b = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(EenThema(), omgekeerd);
 
+        Assert.Equal(a.VasteContext, b.VasteContext);
         Assert.Equal(a.UserPrompt, b.UserPrompt);
     }
 

@@ -695,3 +695,141 @@
     opacity: 1;
   }
 }
+
+/*
+ * What an `AiKnop` does while its run lasts, besides the sweep (TB-044): sparks rise from the wand, one in each ring
+ * colour, and three dots bounce after the label. Part of the same motion as the sweep, not a new one: it starts and
+ * stops with `bezig`, since `AiKnop` renders these spans only then.
+ *
+ * Under reduced motion the base block runs each animation once, in a hundredth of a millisecond, to its last frame. A
+ * spark's last frame is invisible, which is right; the dots are pinned to full ink below, so the label keeps them.
+ */
+@keyframes ai-vonk {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(45deg) scale(0.4);
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--vonk-x), var(--vonk-y)) rotate(45deg) scale(1);
+  }
+}
+
+@keyframes ai-stip {
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@layer components {
+  .ai-vonken {
+    position: absolute;
+    right: 0;
+    top: 0;
+    pointer-events: none;
+  }
+
+  .ai-vonken > i {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 1px;
+    opacity: 0;
+    animation: ai-vonk 1.4s ease-out infinite;
+  }
+
+  .ai-vonken > i:nth-child(1) {
+    background: var(--color-ai-oranje);
+    --vonk-x: -16px;
+    --vonk-y: -26px;
+  }
+
+  .ai-vonken > i:nth-child(2) {
+    background: var(--color-ai-roze);
+    --vonk-x: 4px;
+    --vonk-y: -34px;
+    animation-delay: 0.28s;
+  }
+
+  .ai-vonken > i:nth-child(3) {
+    background: var(--color-ai-paars);
+    --vonk-x: 18px;
+    --vonk-y: -22px;
+    animation-delay: 0.56s;
+  }
+
+  .ai-vonken > i:nth-child(4) {
+    background: var(--color-ai-blauw);
+    --vonk-x: -8px;
+    --vonk-y: -36px;
+    animation-delay: 0.84s;
+  }
+
+  .ai-vonken > i:nth-child(5) {
+    background: var(--color-ai-cyaan);
+    --vonk-x: 13px;
+    --vonk-y: -34px;
+    animation-delay: 1.12s;
+  }
+
+  .ai-puntjes {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 3px;
+    margin-left: -4px;
+    padding-top: 4px;
+  }
+
+  .ai-puntjes > i {
+    width: 4px;
+    height: 4px;
+    border-radius: 9999px;
+    background: currentColor;
+    animation: ai-stip 1.2s ease-in-out infinite;
+  }
+
+  .ai-puntjes > i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .ai-puntjes > i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ai-puntjes > i {
+      animation: none;
+      opacity: 1;
+    }
+  }
+}
+
+/*
+ * The proposal stack (TB-045): the next card slides in from the right, the way the decided one left, and the line of a
+ * waiting "rest" decision runs down its wait. Both answer a press. Reduced motion puts each on its last frame.
+ */
+@keyframes stapel-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+@keyframes stapel-aftellen {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}

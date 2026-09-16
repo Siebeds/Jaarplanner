@@ -2,13 +2,13 @@
 id: TB-043
 titel: AI-aanvragen worden goedkoper: caching, begrensde output, geen gekoppelde doelen
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:23
-opgepakt-door:
-branch: main
-pr:
+bijgewerkt: 2026-09-16 23:24
+opgepakt-door: claude-tb043
+branch: ticket/TB-043-ai-goedkoper
+pr: 122
 geblokkeerd:
 fr: []
 ---
@@ -62,17 +62,17 @@ prompts.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven twee thema's met subthema's van dezelfde leeftijd, wanneer hun prompts gebouwd worden, dan is het vaste
+- [x] Gegeven twee thema's met subthema's van dezelfde leeftijd, wanneer hun prompts gebouwd worden, dan is het vaste
   deel (systeemprompt en doelenlijst) byte voor byte gelijk en staat alle schoolcontent erna (snapshottest).
-- [ ] Gegeven de Claude-client, wanneer hij een vraag stuurt, dan draagt het vaste deel `cache_control`, en
+- [x] Gegeven de Claude-client, wanneer hij een vraag stuurt, dan draagt het vaste deel `cache_control`, en
   `AiUsage` geeft de gecachete en de in de cache geschreven tokens apart terug (unittest met een nep-HTTP-antwoord).
 - [ ] Gegeven een echte Claude-sleutel, wanneer de eigenaar kort na elkaar suggesties vraagt voor twee thema's van
   dezelfde leeftijd, dan toont de tweede vraag gecachete inputtokens (handmatige controle, resultaat in de Werklog).
-- [ ] Gegeven een thema met gekoppelde en geweigerde doelen, wanneer de prompt gebouwd wordt, dan staan hun codes in het
+- [x] Gegeven een thema met gekoppelde en geweigerde doelen, wanneer de prompt gebouwd wordt, dan staan hun codes in het
   variabele deel als "niet voorstellen" en is de doelenlijst ongewijzigd.
-- [ ] Gegeven een antwoord dat op `max_tokens` stopt, wanneer het verwerkt wordt, dan wordt er niets bewaard en krijgt de
+- [x] Gegeven een antwoord dat op `max_tokens` stopt, wanneer het verwerkt wordt, dan wordt er niets bewaard en krijgt de
   gebruiker een duidelijke Nederlandse melding.
-- [ ] `dotnet test`, `dotnet format` en `pnpm lint` zijn groen.
+- [x] `dotnet test`, `dotnet format` en `pnpm lint` zijn groen.
 
 ## Buiten scope
 
@@ -89,3 +89,10 @@ prompts.
 ## Werklog
 
 - 2026-09-16 22:23 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-16 22:34 · claude-tb043 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met het andere ticket
+- 2026-09-16 22:43 · claude-tb043 · AiRequest heeft een VasteContext; de doelenlijst staat nu vóór de schoolcontent, compacter, en beide clients cachen of begrenzen de output
+- 2026-09-16 22:56 · claude-tb043 · Criteria 1, 2, 4 en 5 afgevinkt op unittests (MatchingPromptBuilderTests, AnthropicClaudeClientTests, DoelMatchingServiceTests) en een integratietest (502 met Nederlandse melding, niets bewaard); criterium 3 wacht op de handmatige controle van de eigenaar met een echte sleutel
+- 2026-09-16 22:56 · claude-tb043 · Gates groen: dotnet test (1944 unit, 559 integratie tegen Postgres), dotnet format zonder wijzigingen, pnpm lint
+- 2026-09-16 22:56 · claude-tb043 · in-uitvoering → klaar: Gebouwd: VasteContext in AiRequest, doelenlijst vóór de schoolcontent en compacter, 'niet voorstellen'-regel, cache_control bij Claude, afgekapte antwoorden geweigerd met Nederlandse melding, MaxTokens 2000; gates groen. Criterium 3 (echte sleutel) blijft voor de eigenaar
+- 2026-09-16 23:02 · claude-tb043 · Antagonist: COMPLIANT. Twee MINOR-punten opgelost: een afgekapte rapportherschrijving meldt nu een onbruikbaar antwoord in plaats van 'AI antwoordde niet', en het woordweb toont de melding bij een 502. Open (MINOR): de outputgrens van 2000 is niet gemeten voor de jaarplangeneratie en de rapportherschrijving; een grens per soort vraag beslist de eigenaar.
+- 2026-09-16 23:24 · claude-tb043 · PR #122

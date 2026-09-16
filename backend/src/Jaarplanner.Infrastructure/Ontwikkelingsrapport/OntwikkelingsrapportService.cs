@@ -219,6 +219,13 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
             // The teacher navigated away or the request was cut off: not a failure to report to her.
             throw;
         }
+        catch (AiAntwoordAfgekaptFout)
+        {
+            // The model did answer, but ran into the output ceiling: an answer outside its contract, not a silent AI.
+            return HerschrijfResultaat.Mislukt(
+                Herschrijfmislukking.OnbruikbaarAntwoord,
+                "The AI answer was cut off at the output token limit.");
+        }
         catch (Exception fout)
         {
             // Caught as a whole, and the diagnostic names the type and nothing else. A message from an AI call can carry
