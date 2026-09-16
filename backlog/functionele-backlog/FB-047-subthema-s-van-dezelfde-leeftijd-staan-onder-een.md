@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:07
+bijgewerkt: 2026-09-16 22:09
 opgepakt-door: sessie-fb047
 branch: ticket/FB-047-leeftijd-eenmalig
 pr:
@@ -58,3 +58,4 @@ Geen.
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 22:02 · sessie-fb047 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-16 22:07 · sessie-fb047 · gebouwd: één leeftijdslabel per groep, duur verhuisd naar de kaart, leeftijd voor schermlezers in de vouwknop; 3 nieuwe vitest-tests (falen op de oude code), lint groen
+- 2026-09-16 22:09 · sessie-fb047 · criteria afgevinkt: 1 en 3 door vitest en de browser, 2 door de toegankelijke namen in Chrome ('..., leeftijd K2'), 4 door een browserpas op 1440px en 390px op een wegwerpdatabase, zonder horizontale overloop
