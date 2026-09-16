@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:39
+bijgewerkt: 2026-09-16 21:28
 opgepakt-door: nieuw-starten
 branch: ticket/TB-nieuw-starten
-pr:
+pr: 116
 geblokkeerd:
 fr: []
 ---
@@ -56,3 +56,4 @@ Geen.
 - 2026-09-16 20:34 · nieuw-starten · CLI laat nieuw → in-uitvoering toe voor FB, met verplichte --log; tool-tests groen (85)
 - 2026-09-16 20:39 · nieuw-starten · antagonist: COMPLIANT; MINOR opgelost (lege --log geweigerd, architect-tekst in ticket-aanmaken en TICKETS.md bijgewerkt); open MINOR: geen aparte test voor een TB die later vanuit nieuw wordt opgepakt
 - 2026-09-16 20:39 · nieuw-starten · in-uitvoering → klaar: nieuw ticket mag starten op het woord van de eigenaar (CLI, skill, TICKETS.md, ADR-0033); tool-tests groen, antagonist COMPLIANT
+- 2026-09-16 21:28 · nieuw-starten · PR #116
