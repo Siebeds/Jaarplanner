@@ -385,7 +385,7 @@ function Activiteitregel({
         )}
       />
 
-      {/* `pointer-events-none` so the name, the soort and the codes hand their clicks down to the
+      {/* `pointer-events-none` so the name, the soort and the doelmerk hand their clicks down to the
           overlay; every control above it turns them back on for itself. */}
       <div className="pointer-events-none relative z-10 flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5">
         {/* `basis-full` on a phone, so the name gets the whole line and the doelmerk plus the two
@@ -401,12 +401,9 @@ function Activiteitregel({
           </p>
         </div>
 
+        {/* The count, never the codes (FB-046): with several doelen per activiteit the codes made a long list
+            restless, and the activiteit's own sheet names each doel with its code and text. */}
         <div className="ml-auto flex min-w-0 items-center gap-2">
-          {codes.length > 0 ? (
-            <span className="mono hidden min-w-0 truncate text-meta text-inkt-zacht lg:block">
-              {codes.join(" · ")}
-            </span>
-          ) : null}
           <Doelmerk aantal={codes.length} />
           {/* `contents` so the wrapper adds no box of its own: the koppelaar's open state is a
               full-width panel that has to stay a direct child of the wrapping row to take its own

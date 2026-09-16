@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:28
+bijgewerkt: 2026-09-16 14:31
 opgepakt-door: claude-fb-046
 branch: ticket/FB-046-activiteit-aantal-doelen
 pr:
@@ -60,3 +60,4 @@ activiteit wordt de lijst lang en onrustig.
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
 - 2026-09-16 14:28 · claude-fb-046 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:31 · claude-fb-046 · activiteitregel toont alleen nog het doelmerk (aantal of 'Nog geen doel'), de codes zijn weg; koppelknop blijft; Vitest 968 groen, lint groen
