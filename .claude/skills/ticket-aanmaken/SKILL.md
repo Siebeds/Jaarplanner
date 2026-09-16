@@ -110,8 +110,9 @@ Show the user the finished ticket (title, criteria, scenarios) and ask for a go.
 The functional architect **never changes a status**: of the two of them only the owner does (sessions set their own on their
 branches), on his PC, where the board runs and the
 sessions work (owner ruling 2026-09-13). The architect may still sharpen a ticket's text **while it is `nieuw`**,
-after `git pull --ff-only`. From `klaar-voor-bouw` on, a session may already hold it on the owner's PC, where the
-architect's clone cannot look: log the addition as a new ticket, or ask the owner. If the owner promoted a ticket
+after `git pull --ff-only`. A session may already hold it on the owner's PC (from `klaar-voor-bouw` on, or straight
+from `nieuw` when the owner started it), where the architect's clone cannot look: after a change of status, log the
+addition as a new ticket, or ask the owner. When in doubt, ask the owner first. If the owner promoted a ticket
 that the architect then edited, the next pull shows a merge conflict on that one file: keep the owner's status and
 the architect's text. Pull `main` right before `new` and push right after it, so two clones rarely mint the same
 number; if they do, `backlog/TICKETS.md` describes the one permitted rename.

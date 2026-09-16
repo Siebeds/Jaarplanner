@@ -30,6 +30,7 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
 
