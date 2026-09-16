@@ -73,7 +73,7 @@ public sealed class SchooljarenController : ControllerBase
 
     /// <summary>
     /// Creates a school year with its vakantie-/periodestructuur. Each closure is classified
-    /// <c>Vakantie</c> (splits a thema, ADR-0049) or <c>VrijeDag</c> (does not) — data the school owns, never a
+    /// <c>Vakantie</c> (splits a thema, ADR-0053) or <c>VrijeDag</c> (does not) — data the school owns, never a
     /// threshold in code.
     /// </summary>
     /// <remarks>Directie only (E6-02: the row <c>Beheer</c>, ADR-0030 R2, R3, R16).</remarks>

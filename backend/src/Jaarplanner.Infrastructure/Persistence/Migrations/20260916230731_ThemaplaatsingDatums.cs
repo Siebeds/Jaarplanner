@@ -6,8 +6,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     /// <summary>
-    /// A thema placement gets its own first and last day (FB-035, ADR-0049), and every existing plan is converted by the
-    /// owner's rules of 2026-09-16 (ADR-0049 decision 8):
+    /// A thema placement gets its own first and last day (FB-035, ADR-0053), and every existing plan is converted by the
+    /// owner's rules of 2026-09-16 (ADR-0053 decision 8):
     /// <list type="number">
     /// <item>a rejected placement is deleted;</item>
     /// <item>a period holding one placement gives it its first and last schooldag;</item>

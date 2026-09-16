@@ -9,7 +9,7 @@ using Jaarplanner.Infrastructure.Planning;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// What is left of the jaarplan generation while it is switched off (ADR-0049 decision 9): the service refuses a run
+/// What is left of the jaarplan generation while it is switched off (ADR-0053 decision 9): the service refuses a run
 /// after checking the class, it still reads the kept pre-generation parameters, and the parked pieces the rework will
 /// build on — the prompt builder and the parameters' own rules — keep their behaviour.
 /// </summary>
@@ -25,7 +25,8 @@ public sealed class JaarplanGeneratieServiceTests
     {
         var thema = new Thema("Herfst", duurWeken: 5, invalshoeken: "natuur");
         thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Aanvaard, "anchor"));
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "nog niet beslist"));
+        thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "nog niet beslist"));
+        thema.KoppelMinimumdoel("K-1.1.1");
 
         return thema;
     }
@@ -161,7 +162,7 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Empty(tweePeriodes.Validate(new ValidationContext(tweePeriodes)));
     }
 
-    // --- The parked prompt builder (ADR-0049 decision 9): its behaviour is kept for the generation's rework. ---
+    // --- The parked prompt builder (ADR-0053 decision 9): its behaviour is kept for the generation's rework. ---
 
     private static (Klas Klas, Schooljaar Schooljaar, IReadOnlyList<Planningsblok> Blokken, IReadOnlyList<Thema> Themas)
         PromptOpzet()
@@ -208,6 +209,9 @@ public sealed class JaarplanGeneratieServiceTests
         // Only teacher-backed goals are shown (aanvaard/manueel).
         Assert.Contains("NAT-K3-01", prompt);
         Assert.DoesNotContain("NAT-K3-02", prompt);
+
+        // The thema's minimumdoelen, its themadoelen, reach the model too (FB-053).
+        Assert.Contains("Themadoelen, minimumdoelen (1): K-1.1.1", prompt);
     }
 
     [Fact]

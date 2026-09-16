@@ -3,10 +3,10 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// One thema placed in a <see cref="Jaarplan"/> from one day to another (Art. IX.3, ADR-0049): the thema runs from
+/// One thema placed in a <see cref="Jaarplan"/> from one day to another (Art. IX.3, ADR-0053): the thema runs from
 /// <see cref="Van"/> to <see cref="Tot"/>, both inclusive.
 /// <para>
-/// <b>It keys on its own dates, not on a derived period.</b> Until ADR-0049 a placement stored the start of the
+/// <b>It keys on its own dates, not on a derived period.</b> Until ADR-0053 a placement stored the start of the
 /// themaperiode it sat in and always filled that period. The owner ruled that thema's are not planned in fixed periods,
 /// so a placement now says exactly which days the thema runs. A vacation never lies inside a placement: the service
 /// splits a range at every vacation and stores the parts, which <c>Themareeks</c> reads back as one thema.
@@ -14,7 +14,7 @@ namespace Jaarplanner.Domain.Planning;
 /// <para>
 /// <b>Dates can still stop fitting.</b> When the school edits its vacations, a placement may come to hold one, or reach
 /// outside the year. It is then <i>vervallen</i>: never moved, reported with a lasting notice, and dekking reads
-/// <i>te herzien</i> until the teacher saves it again (directie 2026-07-28, kept by ADR-0049 decision 5). Deciding that
+/// <i>te herzien</i> until the teacher saves it again (directie 2026-07-28, kept by ADR-0053 decision 5). Deciding that
 /// takes the <see cref="Schooljaar"/>, so it is <see cref="Themakalender.IsVervallen"/>'s job, not this type's.
 /// </para>
 /// <para>
@@ -92,7 +92,7 @@ public sealed class Themaplaatsing
     /// <summary>
     /// Whether this placement means the thema is actually <b>planned</b>: anything except a rejected one.
     /// <para>
-    /// Since ADR-0049 a rejection deletes the proposal and the migration deleted the old rejections, so a
+    /// Since ADR-0053 a rejection deletes the proposal and the migration deleted the old rejections, so a
     /// <see cref="KoppelingStatus.Geweigerd"/> placement no longer arises. The predicate stays because the status does,
     /// and every rule that asks "is this thema taught here?" keeps asking it through this one test.
     /// </para>

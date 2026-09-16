@@ -1,7 +1,7 @@
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// Thrown when anyone asks for a jaarplan generation while it is switched off (ADR-0049 decision 9). The owner ruled on
+/// Thrown when anyone asks for a jaarplan generation while it is switched off (ADR-0053 decision 9). The owner ruled on
 /// 2026-09-16 that the AI generation is reworked in its own ticket for plans with dates, and is off until then. The
 /// (thin) Api maps it to a 409: the request is well-formed, the feature is what is unavailable.
 /// </summary>

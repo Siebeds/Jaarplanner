@@ -8,7 +8,7 @@ import { periode, volleDag } from "../../lib/datum";
 import { Themaplaatsingblad } from "./Themaplaatsingblad";
 
 /**
- * Placing a thema by hand (ADR-0049): the server's proposed end fills the field until the teacher picks her own, the
+ * Placing a thema by hand (ADR-0053): the server's proposed end fills the field until the teacher picks her own, the
  * parts around a vacation are shown before saving, and a refusal is shown in the server's words.
  */
 
@@ -22,7 +22,6 @@ const HERFST: ThemaBibliotheekItem = {
   heeftVoldoendeThemadoelen: false,
   themadoelen: [],
   minimumdoelen: [],
-  aantalAfgeleideKlassen: 0,
 };
 
 const VOORSTEL: Eindvoorstel = {

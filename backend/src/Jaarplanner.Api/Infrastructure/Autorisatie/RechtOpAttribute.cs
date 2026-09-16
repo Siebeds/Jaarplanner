@@ -44,6 +44,12 @@ public enum Rechtbron
 
     /// <summary>A woordweb with its owner (<see cref="Application.Toegang.Woordwebbron"/>, FB-036).</summary>
     Woordweb,
+
+    /// <summary>The leeftijd of a proposed subdoel (<see cref="Leeftijdsinhoud"/>, FB-057).</summary>
+    Subdoelvoorstel,
+
+    /// <summary>The leeftijd of a proposed new subthema (<see cref="Leeftijdsinhoud"/>, FB-057).</summary>
+    Subthemavoorstel,
 }
 
 /// <summary>
@@ -163,6 +169,12 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
             case Rechtbron.Woordweb:
                 return await bronnen.VoorWoordwebAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout("Dit woordweb bestaat niet meer.");
+            case Rechtbron.Subdoelvoorstel:
+                return await bronnen.VoorSubdoelvoorstelAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
+            case Rechtbron.Subthemavoorstel:
+                return await bronnen.VoorSubthemavoorstelAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
             default:
                 throw new InvalidOperationException($"No resource resolver for {Bron}.");
         }

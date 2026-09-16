@@ -156,7 +156,7 @@ public sealed class DemoDataSeeder : IHostedService
         context.Themas.AddRange(themas);
 
         // Place the thema's one after another from the first schooldag, with the calendar rules the app itself uses
-        // (ADR-0049), never on hard-coded dates: the plan then splits at the school year's own vacations.
+        // (ADR-0053), never on hard-coded dates: the plan then splits at the school year's own vacations.
         var kalender = new Themakalender(schooljaar);
         var jaarplan = new Jaarplan(klas.Id);
         DateOnly? cursor = kalender.EersteSchooldag;

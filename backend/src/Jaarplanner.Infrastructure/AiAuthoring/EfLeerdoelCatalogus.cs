@@ -78,6 +78,44 @@ public sealed class EfLeerdoelCatalogus : ILeerdoelCatalogus
             .ToListAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+        IReadOnlyCollection<string> mijlpalen,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(mijlpalen);
+        var gevraagd = mijlpalen.Where(m => !string.IsNullOrWhiteSpace(m)).Select(m => m.Trim()).Distinct().ToList();
+        if (gevraagd.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Minimumdoelen
+            .AsNoTracking()
+            .Where(m => gevraagd.Contains(m.Leeftijd) && !m.NietMeerInOpstap)
+            .OrderBy(m => m.Ref)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenOpRefAsync(
+        IReadOnlyCollection<string> refs,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(refs);
+        var gevraagd = refs.Where(r => !string.IsNullOrWhiteSpace(r)).Select(r => r.Trim()).Distinct().ToList();
+        if (gevraagd.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context.Minimumdoelen
+            .AsNoTracking()
+            .Where(m => gevraagd.Contains(m.Ref))
+            .OrderBy(m => m.Ref)
+            .ToListAsync(cancellationToken);
+    }
+
     // Trims, drops blanks, and case-folds so the comparison above is case-insensitive (see the class summary).
     private static List<string> Genormaliseerd(IReadOnlyCollection<string>? waarden) =>
         (waarden ?? [])

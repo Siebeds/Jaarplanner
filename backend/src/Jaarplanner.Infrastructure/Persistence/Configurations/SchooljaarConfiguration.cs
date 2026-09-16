@@ -6,7 +6,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
 /// EF Core mapping for <see cref="Schooljaar"/> and its owned <see cref="Schoolsluiting"/> collection
-/// (Art. IX.3: the schooljaar carries its vacations and free days). A vacation splits a thema placement (ADR-0049).
+/// (Art. IX.3: the schooljaar carries its vacations and free days). A vacation splits a thema placement (ADR-0053).
 /// </summary>
 public sealed class SchooljaarConfiguration : IEntityTypeConfiguration<Schooljaar>
 {

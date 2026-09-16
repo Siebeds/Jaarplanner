@@ -1,6 +1,6 @@
 # ADR-0047 — Dekking in two steps: the dekkingsprognose and the dekking
 
-- **Status:** Accepted
+- **Status:** Accepted; S2 and the doelsuggestie half of D4 superseded by [ADR-0052](0052-doelsuggesties-zijn-minimumdoelen.md)
 - **Date:** 2026-09-16
 - **Deciders:** Project owner, 2026-09-16: the rulings D1 to D7 below, given after the demo and in the FB-045 session.
   Directie has not been asked.

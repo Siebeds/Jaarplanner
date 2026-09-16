@@ -15,7 +15,7 @@ namespace Jaarplanner.Application.AiAuthoring;
 /// </summary>
 public interface IThemaOpbouwAssistService
 {
-    /// <summary>Step 2: proposes candidate leerplandoelen to anchor the whole thema as themadoelen.</summary>
+    /// <summary>Step 2: proposes minimumdoelen to anchor the whole thema as themadoelen (FB-053).</summary>
     Task<ThemaOpbouwAdviesResultaat> StelThemadoelenVoorAsync(
         ThemadoelSuggestieVerzoek verzoek,
         CancellationToken cancellationToken = default);
@@ -33,8 +33,9 @@ public sealed record ThemadoelSuggestieVerzoek
     public required ThemaOpbouwContext Thema { get; init; }
 
     /// <summary>
-    /// The filter bounding which Op.stap leerplandoelen are offered as candidates. Its jaar/fasen are required: without
-    /// them the request is refused (TB-007), since a thema being authored has no subthema to take a leeftijd from.
+    /// Only its jaar/fasen apply: the minimumdoelen of the mijlpalen they meet are the candidates (FB-053). They are
+    /// required: without them the request is refused (TB-007), since a thema being authored has no subthema to take a
+    /// leeftijd from.
     /// </summary>
     public LeerdoelSelectie? Selectie { get; init; }
 }

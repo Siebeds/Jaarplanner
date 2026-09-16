@@ -2,7 +2,10 @@ import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { useThemasVoorKlas } from "../../lib/queries";
-import { useRechten } from "../../lib/rechten";
+import { isEigenVan, useRechten } from "../../lib/rechten";
+import { useIk } from "../../lib/aanmelding";
+import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
+import { useGebruikActiviteit } from "../themas/mutaties";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { IcoonPlus } from "../../components/Iconen";
@@ -64,6 +67,8 @@ export function Activiteitkiezer({
 }) {
   const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
   const { mag } = useRechten();
+  const { data: ik } = useIk();
+  const gebruik = useGebruikActiviteit();
 
   // Offered only when there is somewhere to put it. An activiteit belongs to a subthema, so a period
   // whose thema's have none cannot take one, and a row that opens a sheet with an empty dropdown is a
@@ -72,7 +77,7 @@ export function Activiteitkiezer({
   //
   // "Somewhere" means a subthema this gebruiker may make an activiteit in (E6-02: R17, R23, the leerkrachten and
   // hoofdleerkrachten of its leeftijd, and directie). The sheet then offers only those.
-  const kanNieuw = themas.some((thema) => thema.subthemas.some((sub) => mag.activiteitBewerken(sub.leeftijd)));
+  const kanNieuw = themas.some((thema) => thema.subthemas.some((sub) => mag.activiteitMaken(sub.leeftijd)));
 
   return (
     <Blad
@@ -106,14 +111,46 @@ export function Activiteitkiezer({
                     <div key={subthema.id} className="flex flex-col gap-1">
                       <p className="text-meta font-medium text-inkt-zacht">{subthema.naam}</p>
                       <ul className="flex flex-col gap-1">
-                        {subthema.activiteiten.map((activiteit) => (
+                        {subthema.activiteiten.map((activiteit) => {
+                          // A colleague's own activiteit is used first (ADR-0049 D5, D6): choosing it takes an own copy
+                          // and plans that copy. Without the right to copy it, it is listed and not offered.
+                          const vanCollega = activiteit.eigenaarId != null && !isEigenVan(ik, activiteit);
+                          const magGebruiken = mag.activiteitGebruiken({ ...activiteit, leeftijd: subthema.leeftijd });
+                          const duur = (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR;
+                          if (vanCollega && !magGebruiken) {
+                            return (
+                              <li
+                                key={activiteit.id}
+                                className="flex items-center justify-between gap-3 rounded-veld border border-lijn px-3 py-2.5"
+                              >
+                                <span className="min-w-0">
+                                  <span className="block truncate text-body text-inkt-zacht">{activiteit.naam}</span>
+                                  <Eigenaarmerk activiteit={activiteit} className="flex" />
+                                </span>
+                                <Doelmerk aantal={activiteit.doelkoppelingen.length} />
+                              </li>
+                            );
+                          }
+                          return (
                           <li key={activiteit.id}>
                             <button
                               type="button"
-                              disabled={bezig}
+                              disabled={bezig || gebruik.isPending}
+                              aria-label={
+                                vanCollega
+                                  ? t("activiteit.gebruikAria", {
+                                      naam: activiteit.naam,
+                                      eigenaar: activiteit.eigenaarNaam ?? t("activiteit.vanEenCollega"),
+                                    })
+                                  : undefined
+                              }
                               // The default length travels with the choice: the screen knows where the block
                               // starts, and only the activiteit knows how long it usually runs.
-                              onClick={() => onKies(activiteit.id, (activiteit.lengteInLesuren ?? 1) * STANDAARDDUUR)}
+                              onClick={() =>
+                                vanCollega
+                                  ? gebruik.mutate(activiteit.id, { onSuccess: (kopie) => onKies(kopie.id, duur) })
+                                  : onKies(activiteit.id, duur)
+                              }
                               className="flex w-full items-center justify-between gap-3 rounded-veld border border-lijn bg-kaart px-3 py-2.5 text-left transition-colors duration-150 hover:border-accent disabled:opacity-50"
                             >
                               <span className="min-w-0">
@@ -121,6 +158,12 @@ export function Activiteitkiezer({
                                 {activiteit.activiteitType ? (
                                   <span className="mono block text-[0.625rem] text-inkt-zwak">
                                     {activiteit.activiteitType}
+                                  </span>
+                                ) : null}
+                                <Eigenaarmerk activiteit={activiteit} className="flex" />
+                                {vanCollega ? (
+                                  <span className="block text-meta font-medium text-inkt underline decoration-dotted underline-offset-2">
+                                    {gebruik.isPending ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
                                   </span>
                                 ) : null}
                               </span>
@@ -134,7 +177,8 @@ export function Activiteitkiezer({
                               <Doelmerk aantal={activiteit.doelkoppelingen.length} />
                             </button>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     </div>
                   ),

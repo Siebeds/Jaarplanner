@@ -129,7 +129,7 @@ public sealed record Dagweergave(
 /// </para>
 /// </param>
 /// <param name="ValtBuitenThemaperiode">
-/// True when this day lies outside every placement of its thema (ADR-0049 decision 11).
+/// True when this day lies outside every placement of its thema (ADR-0053 decision 11).
 /// <para>
 /// <b>Reported, never refused</b> (E9-03's stated invariant). A teacher who front-loads one activiteit is not making a
 /// mistake, and refusing it would be the tool inventing a rule the school never stated. Null-free by construction: a

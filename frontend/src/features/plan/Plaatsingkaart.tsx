@@ -9,14 +9,14 @@ import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 
 /**
- * One placed thema, and everything a teacher can do to it (FR-7, ADR-0049): its days, the verdict on a proposal, and
+ * One placed thema, and everything a teacher can do to it (FR-7, ADR-0053): its days, the verdict on a proposal, and
  * removing it. Less is more (owner, 2026-09-16): the begin and end date do what week buttons did, and a changed end is
  * not marked.
  *
  * **The days are two fields and a button**, not fields that save on change: a date field fires on every digit typed,
  * and a half-typed date would move the thema. The fields are also the keyboard's way to do what a drag does.
  *
- * **Rejecting a proposal removes it** (ADR-0049 R12), and the card says so before the button is pressed.
+ * **Rejecting a proposal removes it** (ADR-0053 R12), and the card says so before the button is pressed.
  *
  * **All of it is the klas's planning** (E6-02, ADR-0030 §3, R7). For a gebruiker without that right the card is what
  * the placement is: its days, its status, its motivation, and "Vergrendeld" as a word when it is locked.

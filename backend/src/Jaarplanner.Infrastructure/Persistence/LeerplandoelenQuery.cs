@@ -429,18 +429,6 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
                     td.Koppeling.Status)))
             .ToListAsync(cancellationToken);
 
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.LeerplandoelCode == code)
-                .Select(k => new DoelKoppelingWeergave(
-                    KoppelingHerkomst.Doelsuggestie,
-                    t.Naam,
-                    null,
-                    null,
-                    k.Status)))
-            .ToListAsync(cancellationToken);
-
         List<DoelKoppelingWeergave> subdoelen = [];
         List<DoelKoppelingWeergave> activiteiten = [];
         List<DoelKoppelingWeergave> fiches = [];
@@ -472,7 +460,9 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
             activiteiten = await _context.Themas
                 .AsNoTracking()
                 .SelectMany(t => t.Subthemas
+                    // Shared activiteiten only: another gebruiker's own activiteit is not shown here (ADR-0049 D3, D9).
                     .SelectMany(st => st.Activiteiten
+                        .Where(a => a.EigenaarId == null)
                         .SelectMany(a => a.Doelkoppelingen
                             .Where(k => k.LeerplandoelCode == code)
                             .Select(k => new DoelKoppelingWeergave(
@@ -504,7 +494,6 @@ public sealed class LeerplandoelenQuery : ILeerplandoelenQuery
         return
         [
             .. themadoelen
-                .Concat(suggesties)
                 .Concat(subdoelen)
                 .Concat(activiteiten)
                 .Concat(fiches)

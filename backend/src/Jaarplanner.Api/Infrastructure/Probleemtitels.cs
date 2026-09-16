@@ -32,7 +32,7 @@ public static class Probleemtitels
     public const string ImportNietDoorgevoerd = "Import niet doorgevoerd";
 
     /// <summary>
-    /// The jaarplan generation is switched off (409, ADR-0049): the request is fine, the feature is unavailable until its
+    /// The jaarplan generation is switched off (409, ADR-0053): the request is fine, the feature is unavailable until its
     /// rework for plans with dates lands. Nothing was changed.
     /// </summary>
     public const string GeneratieUitgeschakeld = "Genereren staat uit";

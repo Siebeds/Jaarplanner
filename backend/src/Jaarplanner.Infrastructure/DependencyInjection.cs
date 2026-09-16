@@ -138,9 +138,9 @@ public static class DependencyInjection
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
-        // Planningsblok-indeling seam (E3-05, ADR-0013). Since ADR-0049 nothing in the planning consumes it: a thema
+        // Planningsblok-indeling seam (E3-05, ADR-0013). Since ADR-0053 nothing in the planning consumes it: a thema
         // placement carries its own dates. It is kept, with its configuration, for the generation's rework, which
-        // decides whether blocks survive as a hint for the model (ADR-0049 decision 9).
+        // decides whether blocks survive as a hint for the model (ADR-0053 decision 9).
         services.Configure<PlanningsblokOptions>(
             configuration.GetSection(PlanningsblokOptions.SectionName));
         services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
@@ -196,7 +196,7 @@ public static class DependencyInjection
         services.AddScoped<ISchoolurenService, SchoolurenService>();
 
         // The school year's frame as a read model: its span and its vacations, which the timeline and the agenda are
-        // drawn in (ADR-0049).
+        // drawn in (ADR-0053).
         services.AddScoped<IPlanningsroosterService, PlanningsroosterService>();
 
         // CRUD for the autonomous school-content hierarchy + manual goal links (E1-10, FR-3.1/3.2).
@@ -207,6 +207,7 @@ public static class DependencyInjection
         // A gebruiker's own woordweb per subthema (FB-036, ADR-0043). Its AI words go through the same IAiClient seam,
         // so the flow runs against the stub in tests (Art. IV.6).
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
+        services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
         // AI seam (E2-01, Art. IV.6 / VI.4). The matching/plan logic depends on the injectable
         // IAiClient interface (Application) so it is fakeable with no network in tests; the real
@@ -241,18 +242,13 @@ public static class DependencyInjection
         // is fakeable with no database in tests. EF Core implementation over AppDbContext.
         services.AddScoped<IDoelMatchOpslag, EfDoelMatchOpslag>();
 
-        // The read-only Op.stap leerplandoel query (E2-07). Shared by the authoring assist and — since
-        // E2-08 — by the matching service, which needs it to resolve the candidate set a match run may
-        // choose from and to check that an "aanpassen" substitution names a code Op.stap really carries
-        // (Art. III.1/III.5). Registered once, above both consumers.
+        // The read-only Op.stap goal query (E2-07): leerplandoelen and minimumdoelen. Shared by the authoring assist and
+        // the doelsuggesties, which read their candidates through it (Art. III.1/III.5). Registered once, above both.
         services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
 
-        // The AI goal-matching service (FR-4), wired end-to-end (E2-08 candidate selection → E2-02 prompt →
-        // E2-01 client → E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on
-        // IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against the
-        // fakes in tests (Art. IV.6). It is reachable through DoelsuggestiesController — POST
-        // /api/themas/{themaId}/doelsuggesties/genereer — rather than only from its own unit tests, which
-        // was the entire defect E2-08 exists to fix.
+        // A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel, stored as `voorgesteld`.
+        // It depends only on IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against
+        // the fakes in tests (Art. IV.6). Reached through DoelsuggestiesController.
         services.AddScoped<DoelMatchingService>();
 
         // Goal-first authoring assist (E2-07, Art. IV.8, Gap A.7): the wizard's step 2 (themadoel) and
@@ -269,9 +265,9 @@ public static class DependencyInjection
         services.AddScoped<IWizardrunService, WizardrunService>();
         // --- end E6-02 slice 3 ---
 
-        // The jaarplan (FR-6, FR-7, ADR-0049). The persistence port keeps EF Core out of the services, so they run
+        // The jaarplan (FR-6, FR-7, ADR-0053). The persistence port keeps EF Core out of the services, so they run
         // against fakes with no database in tests. The generation service is switched off and only refuses and reads the
-        // kept parameters (ADR-0049 decision 9).
+        // kept parameters (ADR-0053 decision 9).
         services.AddScoped<IJaarplanOpslag, EfJaarplanOpslag>();
         services.AddScoped<JaarplanService>();
         services.AddScoped<JaarplanGeneratieService>();
@@ -285,7 +281,7 @@ public static class DependencyInjection
         // four more methods on it: that port documents itself as the generation flow's, and a fake for one flow that
         // has to implement the other's methods is how a test ends up asserting against a stub it never exercises.
         //
-        // "This activiteit falls outside its thema's days" is measured against the placements themselves (ADR-0049).
+        // "This activiteit falls outside its thema's days" is measured against the placements themselves (ADR-0053).
         // Reachable through WeekplanningController, not only from tests.
         services.AddScoped<IWeekplanningOpslag, EfWeekplanningOpslag>();
         services.AddScoped<IWeekplanningService, WeekplanningService>();

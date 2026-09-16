@@ -19,13 +19,13 @@ import { Themaplaatsingblad } from "./Themaplaatsingblad";
 
 /**
  * The year plan of one class: which thema runs from which day to which day, and every change a teacher makes to that
- * (FR-6, FR-7, ADR-0049).
+ * (FR-6, FR-7, ADR-0053).
  *
  * **The timeline is the overview and the way in.** Above it the year balance says how many lesweken have a thema.
  * Pressing a bar opens its card below the timeline, where its days are changed; dragging a bar moves it by whole
  * weeks.
  *
- * **The generation is switched off** (ADR-0049 decision 9): its button stays, disabled, with the reason beside it, so
+ * **The generation is switched off** (ADR-0053 decision 9): its button stays, disabled, with the reason beside it, so
  * a teacher who looks for it learns why rather than wondering where it went.
  *
  * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15). Anyone else who may

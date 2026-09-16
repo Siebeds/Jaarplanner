@@ -264,8 +264,9 @@ public sealed class WizardrunService : IWizardrunService
         var subthema = await LaadSubthemaAsync(subthemaId, cancellationToken);
         VereisThemaVanRun(run, subthema.ThemaId, NietVanDitThema);
 
-        // The caller is the maker (I18), through the same path as a hand create, so the same rules apply to it.
-        var activiteit = await _beheer.MaakActiviteitAsync(subthemaId, makerId, creatie, cancellationToken);
+        // The caller is the maker (I18), through the same path as a hand create, so the same rules apply to it. What the
+        // wizard creates is shared content of its thema (R32, ADR-0049 D1), never the caller's own.
+        var activiteit = await _beheer.MaakActiviteitAsync(subthemaId, makerId, creatie with { Gedeeld = true }, cancellationToken);
         run.RegistreerAanmaak(Wizarditemsoort.Activiteit, activiteit.Id, nu);
 
         await _context.SaveChangesAsync(cancellationToken);

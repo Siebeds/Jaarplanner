@@ -34,7 +34,7 @@ public sealed class FakeDoelMatchOpslag : IDoelMatchOpslag
         IReadOnlyList<DoelMatchSuggestieWeergave> lijst = _thema is null
             ? []
             : _thema.Doelsuggesties
-                .Select(k => new DoelMatchSuggestieWeergave(k.Id, k.LeerplandoelCode, k.Status.ToString(), k.AiMotivatie))
+                .Select(s => new DoelMatchSuggestieWeergave(s.Id, s.MinimumdoelRef, s.Status.ToString(), s.AiMotivatie))
                 .ToList();
         return Task.FromResult(lijst);
     }

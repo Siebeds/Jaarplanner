@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { themablokken, themaIdsOpDag, themavakken, vakOpDag } from "./themavakken";
 
 /**
- * A thema placement is a stretch of days with its own first and last day (ADR-0049), so the agenda looks each day up
+ * A thema placement is a stretch of days with its own first and last day (ADR-0053), so the agenda looks each day up
  * against the placements themselves. The cases are a real calendar: a thema split around the herfstvakantie is two
  * placements, and a week the teacher left open has no thema.
  */

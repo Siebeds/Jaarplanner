@@ -13,9 +13,10 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// The dekkingsvooruitzicht (E3-03, FR-5.3) over <b>open AI proposals</b> against real PostgreSQL: nothing is accepted,
-/// and the figures say both what the plan covers (nothing) and what accepting it would cover.
+/// and the figures say both what the plan covers and what accepting it would cover. Since ADR-0052 a thema placement
+/// reaches no leerplandoel, so accepting a proposal moves neither figure; a subthema placed in the agenda moves both.
 /// <para>
-/// The generation is switched off (ADR-0049 decision 9), so the proposals are seeded as a run left them: placements
+/// The generation is switched off (ADR-0053 decision 9), so the proposals are seeded as a run left them: placements
 /// with status <c>Voorgesteld</c> and a motivation. Everything that reads them is production: the planning service, the
 /// EF storage ports and <see cref="DekkingService"/>.
 /// </para>
@@ -75,45 +76,40 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
         Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
         Assert.Equal(0, vooruitzicht.AantalGedekt);
+        Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
+        Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
+    }
+
+    /// <summary>
+    /// The route a leerplandoel is covered by (Art. V.1): the subthema in the klas's agenda, whatever the thema
+    /// placement's status.
+    /// </summary>
+    [PostgresFact]
+    public async Task Een_ingepland_subthema_telt_bij_een_open_voorstel_in_beide_cijfers()
+    {
+        var seed = await SeedAsync();
+        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId);
+
+        await using (var context = _db.MaakContext())
+        {
+            var jaarplanId = await context.Jaarplannen.Where(j => j.KlasId == seed.KlasId).Select(j => j.Id).SingleAsync();
+            var van = new DateOnly(2026, 9, 7);
+            context.Subthemaplaatsingen.Add(new Subthemaplaatsing(jaarplanId, seed.HerfstSubthemaId, van, van.AddDays(11)));
+            await context.SaveChangesAsync();
+        }
+
+        await using var lees = _db.MaakContext();
+        var vooruitzicht = await MaakDekking(lees).BerekenVooruitzichtAsync(seed.KlasId);
+
+        Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
+        Assert.Equal(1, vooruitzicht.AantalGedekt);
         Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
         Assert.Equal(2, vooruitzicht.AantalOnbereikbaar);
     }
 
     /// <summary>
-    /// The ceiling widens the PLACEMENT status set, not the LINK filter (aanvaard/manueel), which lives in SQL inside
-    /// <c>EfDekkingOpslag</c>: a placed thema's unaccepted suggestion raises nothing.
-    /// </summary>
-    [PostgresFact]
-    public async Task Een_nog_niet_aanvaarde_doelsuggestie_verhoogt_het_plafond_niet()
-    {
-        var seed = await SeedAsync();
-
-        await using (var context = _db.MaakContext())
-        {
-            // A third L3 doel, carried by the placed thema through an UNACCEPTED suggestion.
-            var suggestieCode = $"L3S-{Guid.NewGuid():N}"[..12];
-            context.Leerplandoelen.Add(new Leerplandoel(
-                suggestieCode, Doelsoort.Gemeenschappelijk, "L3", "Natuur", "Levende natuur", "9.1",
-                tekst: $"Tekst van {suggestieCode}"));
-
-            var herfst = await context.Themas.SingleAsync(t => t.Id == seed.HerfstId);
-            herfst.VoegDoelsuggestieToe(new DoelKoppeling(suggestieCode, KoppelingStatus.Voorgesteld, "AI stelde dit voor"));
-            await context.SaveChangesAsync();
-        }
-
-        await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId);
-
-        await using var lees = _db.MaakContext();
-        var vooruitzicht = await MaakDekking(lees).BerekenVooruitzichtAsync(seed.KlasId);
-
-        Assert.Equal(4, vooruitzicht.AantalLeerplandoelen);
-        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
-        Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
-    }
-
-    /// <summary>
-    /// Two open proposals: nothing is covered and accepting them would cover two of the three doelen in scope; the
-    /// third is the gap no acceptance closes.
+    /// Two open proposals and no subthema in the agenda: nothing is covered, and accepting the proposals would cover
+    /// nothing either (ADR-0052).
     /// </summary>
     [PostgresFact]
     public async Task Open_voorstellen_dekken_nog_niets_en_melden_wat_aanvaarden_zou_opleveren()
@@ -127,9 +123,9 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 
         Assert.True(vooruitzicht.IsBetrouwbaar);
         Assert.Equal(0, vooruitzicht.AantalGedekt);
-        Assert.Equal(2, vooruitzicht.AantalMogelijkGedekt);
+        Assert.Equal(0, vooruitzicht.AantalMogelijkGedekt);
         Assert.Equal(3, vooruitzicht.AantalLeerplandoelen);
-        Assert.Equal(1, vooruitzicht.AantalOnbereikbaar);
+        Assert.Equal(3, vooruitzicht.AantalOnbereikbaar);
 
         Assert.Equal(Dekkingsbereik.EigenJaarFase, vooruitzicht.Bereik);
         Assert.Equal(["L3"], vooruitzicht.GemetenJaarFasen);
@@ -141,11 +137,11 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Accepting ONE of two proposals moves the figure and not the ceiling: accepting changes who stands behind a
-    /// placement, not which doelen the plan can reach.
+    /// Since ADR-0052 a thema placement reaches no leerplandoel: accepting one of two proposals moves neither the
+    /// figure nor the ceiling.
     /// </summary>
     [PostgresFact]
-    public async Task Na_het_aanvaarden_van_een_voorstel_loopt_het_cijfer_naar_het_plafond_toe()
+    public async Task Het_aanvaarden_van_een_themavoorstel_verandert_de_leerplandoelcijfers_niet()
     {
         var seed = await SeedAsync();
         await VoegVoorstellenToeAsync(seed.KlasId, seed.HerfstId, seed.WinterId);
@@ -156,15 +152,15 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
 
         var voor = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
         Assert.Equal(0, voor.AantalGedekt);
-        Assert.Equal(2, voor.AantalMogelijkGedekt);
+        Assert.Equal(0, voor.AantalMogelijkGedekt);
 
         var eerste = (await planning.HaalJaarplanAsync(seed.KlasId)).Plaatsingen.First();
         await planning.WijzigPlaatsingStatusAsync(seed.KlasId, eerste.Id, KoppelingStatus.Aanvaard);
 
         var na = await dekking.BerekenVooruitzichtAsync(seed.KlasId);
 
-        Assert.Equal(1, na.AantalGedekt);
-        Assert.Equal(2, na.AantalMogelijkGedekt);
+        Assert.Equal(0, na.AantalGedekt);
+        Assert.Equal(0, na.AantalMogelijkGedekt);
         Assert.Equal(voor.AantalMogelijkGedekt, na.AantalMogelijkGedekt);
         Assert.Equal(voor.AantalOnbereikbaar, na.AantalOnbereikbaar);
     }
@@ -200,10 +196,10 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A school year with one L3 class, three L3 doelen (two of them carried by a thema, one by nothing) plus one
-    /// out-of-scope K3 doel, and two thema's.
+    /// A school year with one L3 class, three L3 doelen (two of them subdoelen of an L3 subthema of a thema, one carried
+    /// by nothing) plus one out-of-scope K3 doel, and two thema's.
     /// </summary>
-    private async Task<(Guid KlasId, Guid HerfstId, Guid WinterId)> SeedAsync()
+    private async Task<(Guid KlasId, Guid HerfstId, Guid WinterId, Guid HerfstSubthemaId)> SeedAsync()
     {
         await using var context = _db.MaakContext();
 
@@ -231,15 +227,16 @@ public sealed class DekkingsvooruitzichtPostgresTests : IAsyncLifetime
                 tekst: $"Tekst van {code}"));
         }
 
-        // Accepted links, because only aanvaard/manueel links count (Art. V.1).
+        // Decided links, because only aanvaard/manueel links count (Art. V.1).
         var herfst = new Thema($"Herfst-{Guid.NewGuid():N}", duurWeken: 5);
-        herfst.VoegDoelsuggestieToe(new DoelKoppeling(herfstCode, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        var herfstSubthema = herfst.VoegSubthemaToe("Bladeren", 2, "L3");
+        herfstSubthema.VoegSubdoelToe("L3", new DoelKoppeling(herfstCode, KoppelingStatus.Manueel));
         var winter = new Thema($"Winter-{Guid.NewGuid():N}", duurWeken: 5);
-        winter.VoegDoelsuggestieToe(new DoelKoppeling(winterCode, KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        winter.VoegSubthemaToe("Sneeuw", 2, "L3").VoegSubdoelToe("L3", new DoelKoppeling(winterCode, KoppelingStatus.Manueel));
         context.Themas.AddRange(herfst, winter);
 
         await context.SaveChangesAsync();
 
-        return (klas.Id, herfst.Id, winter.Id);
+        return (klas.Id, herfst.Id, winter.Id, herfstSubthema.Id);
     }
 }

@@ -5,7 +5,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// The AI jaarplan generation (FR-5.1), <b>switched off</b> (ADR-0049 decision 9).
+/// The AI jaarplan generation (FR-5.1), <b>switched off</b> (ADR-0053 decision 9).
 /// <para>
 /// The owner ruled on 2026-09-16 that thema placements carry their own dates and that the generation is reworked for
 /// that in its own ticket. The run that lived here proposed thema's per themaperiode, several per period, which the
@@ -40,7 +40,7 @@ public sealed class JaarplanGeneratieService
     /// <summary>
     /// The class's kept pre-generation settings (E3-04, FR-5.4). A class with nothing kept yields
     /// <see cref="JaarplanGeneratieParameters.Geen"/> rather than a not-found. Kept for the generation's rework; since
-    /// ADR-0049 a kept vast moment blocks no placement.
+    /// ADR-0053 a kept vast moment blocks no placement.
     /// </summary>
     /// <exception cref="SchoolcontentNietGevondenFout">The class does not exist.</exception>
     public async Task<JaarplanGeneratieParameters> HaalParametersAsync(

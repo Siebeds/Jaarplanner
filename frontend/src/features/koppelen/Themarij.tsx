@@ -103,7 +103,10 @@ function Subthemarij({
   const koppelSubthema = useKoppelDoelAanSubthema();
   const { mag } = useRechten();
   const leeftijd = subtak.subthema.leeftijd;
-  const magKoppelen = mag.doelenKoppelen(leeftijd);
+  // A new activiteit here is the gebruiker's own when she may make one (ADR-0049 E1), and then its goal is hers to
+  // link (E3); otherwise a shared one, which needs the R19 goal-link right as well.
+  const magEigenMaken = mag.eigenActiviteitMaken(leeftijd);
+  const magNieuwMetDoel = magEigenMaken || (mag.gedeeldeActiviteitMaken(leeftijd) && mag.doelenKoppelen(leeftijd));
 
   return (
     <div className="rounded-veld border border-lijn bg-kaart">
@@ -158,15 +161,15 @@ function Subthemarij({
                   activiteitId={activiteit.id}
                   naam={activiteit.naam}
                   alGekoppeld={alGekoppeld}
-                  magKoppelen={magKoppelen}
+                  magKoppelen={mag.activiteitDoelenKoppelen({ ...activiteit, leeftijd })}
                   code={code}
                 />
               </li>
             ))}
           </ul>
 
-          {/* Making an activiteit WITH this doel on it: the create right and the goal-link right at this leeftijd
-              together (R17, R19). A leerkracht makes activiteiten on the thema screen, without a doel. Always
+          {/* Making an activiteit WITH this doel on it: an own one (ADR-0049 E1, E3), or a shared one with the goal-link
+              right at this leeftijd (R19). Always
               rendered, and the regel checks its own failure before these rights, as `Activiteitrij` does: a refusal
               refetches the rights, and a regel gated here would take its reason with it (F10). */}
           <Nieuweactiviteitregel
@@ -174,7 +177,8 @@ function Subthemarij({
             subthemaNaam={subtak.subthema.naam}
             code={code}
             klasId={klasId}
-            magMaken={mag.activiteitBewerken(leeftijd) && magKoppelen}
+            magMaken={magNieuwMetDoel}
+            gedeeld={!magEigenMaken}
           />
         </div>
       ) : null}

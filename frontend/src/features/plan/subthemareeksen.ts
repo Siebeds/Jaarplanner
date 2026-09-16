@@ -28,7 +28,7 @@ export interface Subthemareeks {
 }
 
 /**
- * Every subthema run in `dagen`, split per thema placement (`blokken`, ADR-0049).
+ * Every subthema run in `dagen`, split per thema placement (`blokken`, ADR-0053).
  *
  * **The split is on the placement boundary, not on a gap of N days.** A subthema planned in september
  * and again in march is two runs, and joining them would draw a band across half the school year.

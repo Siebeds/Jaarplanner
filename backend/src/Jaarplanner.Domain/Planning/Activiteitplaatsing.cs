@@ -18,7 +18,7 @@ namespace Jaarplanner.Domain.Planning;
 /// assumption Art. XIV still leaves open, in the one place the constitution asked us not to.
 /// </para>
 /// <para>
-/// <b>2. A block boundary moves; a Tuesday does not.</b> A thema placement keyed until ADR-0049 on a
+/// <b>2. A block boundary moves; a Tuesday does not.</b> A thema placement keyed until ADR-0053 on a
 /// <i>derived</i> boundary, so editing one vakantie can leave it pointing at a date that is no longer the start of any
 /// block — that is what <c>IsVervallen</c> exists for, and it costs this codebase a persistent notice, a re-placement
 /// route and a withheld dekkingscijfer. A concrete teaching day inherits none of that: edit the calendar and a date
@@ -42,10 +42,11 @@ namespace Jaarplanner.Domain.Planning;
 /// by construction.
 /// </para>
 /// <para>
-/// <b>This does not affect dekking, and that is not an oversight.</b> Art. V.1 makes an activiteit's goal gedekt once its
-/// subthema is placed in the klas's agenda (the <see cref="Subthemaplaatsing"/>, ADR-0047). Scheduling the activiteit
-/// onto a Tuesday moves nothing in that computation; anything here that started to raise a dekkingscijfer would be
-/// letting the calendar grant coverage twice for the same content.
+/// <b>For a shared activiteit this does not affect dekking, and that is not an oversight.</b> Art. V.1 makes a shared
+/// activiteit's goal gedekt once its subthema is placed in the klas's agenda (the <see cref="Subthemaplaatsing"/>,
+/// ADR-0047). Scheduling it onto a Tuesday moves nothing in that computation; anything here that started to raise a
+/// dekkingscijfer for it would be letting the calendar grant coverage twice for the same content. <b>An own activiteit
+/// is the one exception</b> (ADR-0049 D7): it never counts through its subthema, so this placement is its only route.
 /// </para>
 /// </summary>
 public sealed class Activiteitplaatsing

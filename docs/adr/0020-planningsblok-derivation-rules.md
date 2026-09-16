@@ -1,6 +1,6 @@
 # ADR-0020 — Planningsblok derivation rules (refines ADR-0013)
 
-- **Status:** Superseded by [ADR-0049](0049-themaplaatsing-met-eigen-datums.md) for the jaarplan
+- **Status:** Superseded by [ADR-0053](0053-themaplaatsing-met-eigen-datums.md) for the jaarplan
 - **Date:** 2026-07-28
 - **Deciders:** Architect (Siebe De Saedeleir / team), prompted by the antagonist audit of E3-05
 - **Refines:** [ADR-0013](0013-planningsblok-abstraction.md) — supersedes its "granularity is configuration

@@ -55,7 +55,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         Assert.False(plaatsing.IsVervallen);
     }
 
-    /// <summary>The generation is switched off (ADR-0049 decision 9): 409 with the Dutch reason, and nothing changes.</summary>
+    /// <summary>The generation is switched off (ADR-0053 decision 9): 409 with the Dutch reason, and nothing changes.</summary>
     [Fact]
     public async Task Genereren_staat_uit_en_geeft_409()
     {
@@ -156,7 +156,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
 
     /// <summary>
     /// A teacher sets neither <c>voorgesteld</c> (AI-only) nor <c>geweigerd</c> (a proposal is rejected by removing it,
-    /// ADR-0049 R12): both are a 400 and the placement is unchanged.
+    /// ADR-0053 R12): both are a 400 and the placement is unchanged.
     /// </summary>
     [Theory]
     [InlineData("Voorgesteld")]

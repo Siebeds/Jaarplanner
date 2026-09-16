@@ -53,7 +53,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>
     /// The school years with their vacations and free days (Art. IX.3). A vacation splits a thema placement
-    /// (ADR-0049); there are no periods to store.
+    /// (ADR-0053); there are no periods to store.
     /// </summary>
     public DbSet<Schooljaar> Schooljaren => Set<Schooljaar>();
 
@@ -85,6 +85,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>The minimumdoelen each thema aims at as its themadoelen (FB-043).</summary>
     public DbSet<ThemaMinimumdoel> ThemaMinimumdoelen => Set<ThemaMinimumdoel>();
+
+    /// <summary>The AI's proposals of a minimumdoel as a themadoel (FB-053).</summary>
+    public DbSet<Minimumdoelsuggestie> Minimumdoelsuggesties => Set<Minimumdoelsuggestie>();
 
     /// <summary>The class/age-scoped subthema's (Art. IX.2).</summary>
     public DbSet<Subthema> Subthemas => Set<Subthema>();
@@ -184,6 +187,15 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// everyone, edited by its owner and directie. Never read by the dekking.
     /// </summary>
     public DbSet<Woordweb> Woordwebs => Set<Woordweb>();
+
+    /// <summary>
+    /// The AI's proposed new subthema's for a thema's open leerplandoelen (FB-057, ADR-0050). Not subthema's: nothing
+    /// reads them but the thema page, and they count for nothing until accepted.
+    /// </summary>
+    public DbSet<Subthemavoorstel> Subthemavoorstellen => Set<Subthemavoorstel>();
+
+    /// <summary>The AI's proposed places for a thema's open leerplandoelen (FB-057, ADR-0050). Never read by the dekking.</summary>
+    public DbSet<Subdoelvoorstel> Subdoelvoorstellen => Set<Subdoelvoorstel>();
 
     /// <summary>
     /// The children of the K3 klassen, for the ontwikkelingsrapport (FB-001, Art. IX.4). <b>Pupil data</b> (Art. VI.7):

@@ -4,7 +4,7 @@ namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
 /// Thrown when a teacher's placement of a thema cannot be honoured: adding one, giving one new dates or dragging one
-/// (FR-6.2, FR-7.2, ADR-0049). The (thin) Api maps it to a 400 via <c>PlanningExceptionHandler</c>.
+/// (FR-6.2, FR-7.2, ADR-0053). The (thin) Api maps it to a 400 via <c>PlanningExceptionHandler</c>.
 /// <para>
 /// <b>One factory per case</b>, following the <c>OngeldigeImportFout</c> precedent: a refusal composed at the throw
 /// site ends up existing twice once a second caller needs it, and the copies drift. Every sentence a teacher can read

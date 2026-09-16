@@ -246,7 +246,8 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A class with a thema placed in its jaarplan, the thema carrying <c>EXP-01</c> as a themadoel. Mirrors
+    /// A class with a thema placed in its jaarplan, and its K3 subthema, carrying <c>EXP-01</c> as a subdoel, placed in
+    /// the agenda: the route a leerplandoel is covered by since ADR-0052. Mirrors
     /// <see cref="DekkingEndpointsTests"/>'s arrangement: the vervallen placement lies outside the school year.
     /// </summary>
     private async Task<(Guid KlasId, Guid ThemaId)> ZetGeplaatstThemaOpAsync(
@@ -265,7 +266,8 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
             : schooljaar.Start;
 
         var thema = new Thema("Herfstthema", duurWeken: 5);
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("EXP-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
+        subthema.VoegSubdoelToe("K3", new DoelKoppeling("EXP-01", KoppelingStatus.Manueel));
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klasId);
@@ -276,6 +278,8 @@ public sealed class DekkingExportEndpointTests : IAsyncLifetime
             plaatsingsstatus,
             plaatsingsstatus == KoppelingStatus.Voorgesteld ? "past bij de herfst" : null);
         context.Jaarplannen.Add(jaarplan);
+        context.Subthemaplaatsingen.Add(new Subthemaplaatsing(
+            jaarplan.Id, subthema.Id, schooljaar.Start.AddDays(13), schooljaar.Start.AddDays(24)));
 
         await context.SaveChangesAsync();
 

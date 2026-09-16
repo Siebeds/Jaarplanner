@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Planning;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// The calendar rules every thema placement is built on (ADR-0049 decision 2). Highest-risk planning logic, so each
+/// The calendar rules every thema placement is built on (ADR-0053 decision 2). Highest-risk planning logic, so each
 /// expected date below is worked out by hand in a comment.
 /// <para>
 /// The year runs from Tuesday 1 September 2026 to Wednesday 30 June 2027, with the herfstvakantie (Mon 2 – Sun 8 Nov),

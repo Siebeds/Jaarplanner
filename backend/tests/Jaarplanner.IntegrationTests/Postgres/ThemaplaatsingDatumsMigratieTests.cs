@@ -7,7 +7,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// The migration <c>ThemaplaatsingDatums</c> converts plans keyed on themaperiodes into placements with their own days,
-/// by the owner's rules of 2026-09-16 (FB-035, ADR-0049 decision 8). Every expected date below is worked out by hand
+/// by the owner's rules of 2026-09-16 (FB-035, ADR-0053 decision 8). Every expected date below is worked out by hand
 /// from the school year in <see cref="BouwSchooljaar"/>, so the PL/pgSQL is checked against the rules rather than
 /// against itself.
 /// <para>
@@ -19,7 +19,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </summary>
 public sealed class ThemaplaatsingDatumsMigratieTests : IAsyncLifetime
 {
-    private const string VorigeMigratie = "20260916193154_ActiviteitTypeOptioneel";
+    private const string VorigeMigratie = "20260916222758_Minimumdoelsuggesties";
 
     // Fixed ids, so the order the migration puts several thema's of one period in (by thema id) is known here.
     private static readonly Guid Eerste = Guid.Parse("10000000-0000-0000-0000-000000000001");

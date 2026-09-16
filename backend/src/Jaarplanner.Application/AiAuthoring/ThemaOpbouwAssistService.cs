@@ -45,8 +45,9 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
 
     /// <inheritdoc />
     /// <remarks>
-    /// The jaar/fasen are required here (TB-007): a thema being authored has no subthema yet to take a leeftijd from, and
-    /// without them the whole catalogue would go into the prompt.
+    /// The candidates are minimumdoelen (FB-053): those of the mijlpalen the chosen jaar/fasen meet. The jaar/fasen are
+    /// required here (TB-007), since a thema being authored has no subthema yet to take a leeftijd from. The selection's
+    /// other dimensions do not apply to minimumdoelen and are ignored. A ref already chosen is not proposed again.
     /// </remarks>
     public async Task<ThemaOpbouwAdviesResultaat> StelThemadoelenVoorAsync(
         ThemadoelSuggestieVerzoek verzoek,
@@ -55,16 +56,26 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
         ArgumentNullException.ThrowIfNull(verzoek);
         ArgumentNullException.ThrowIfNull(verzoek.Thema);
 
-        var basis = verzoek.Selectie ?? new LeerdoelSelectie();
-        var jaarFasen = basis.GekozenJaarFasen();
-        if (jaarFasen.Count == 0)
+        var jaarFasen = (verzoek.Selectie ?? new LeerdoelSelectie()).GekozenJaarFasen()
+            .Select(j => Jaarfasen.Normaliseer(j.ToUpperInvariant()));
+        var mijlpalen = Jaarfasen.MijlpalenVoor(jaarFasen);
+        if (mijlpalen.Count == 0)
         {
             throw new JaarfaseKeuzeNodigFout("Kies eerst voor welke leeftijden je themadoelen wil laten voorstellen.");
         }
 
-        var leerdoelen = await _catalogus.HaalLeerdoelenAsync(basis with { JaarFasen = jaarFasen }, cancellationToken);
-        var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(verzoek.Thema, leerdoelen);
-        return await VoerAssistUitAsync(request, leerdoelen, verzoek.Thema.GekozenThemadoelCodes, cancellationToken);
+        var minimumdoelen = await _catalogus.HaalMinimumdoelenAsync(mijlpalen, cancellationToken);
+        var request = ThemaOpbouwPromptBuilder.BouwThemadoelRequest(verzoek.Thema, minimumdoelen);
+
+        // Over the ceiling the model is not called (TB-007).
+        _begrenzing.Bewaak(request, minimumdoelen);
+        var kandidaten = minimumdoelen
+            .GroupBy(m => m.Ref, StringComparer.Ordinal)
+            .ToDictionary(
+                g => g.Key,
+                g => new Kandidaat(g.Key, g.First().Omschrijving, Doelsoort.Minimumdoel.ToCode(), g.First().Leeftijd),
+                StringComparer.Ordinal);
+        return await VoerAssistUitAsync(request, kandidaten, verzoek.Thema.GekozenThemadoelCodes ?? [], cancellationToken);
     }
 
     /// <inheritdoc />
@@ -90,21 +101,37 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
         }
 
         var leerdoelen = await _catalogus.HaalLeerdoelenAsync(basis with { JaarFasen = jaarFasen }, cancellationToken);
-        var request = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(verzoek.Thema, verzoek.Subthema, leerdoelen);
-        return await VoerAssistUitAsync(request, leerdoelen, verzoek.Thema.GekozenThemadoelCodes, cancellationToken);
+
+        // The thema's chosen minimumdoelen go into the prompt with their text, so the subdoelen build toward them (FB-053).
+        var themadoelRefs = verzoek.Thema.GekozenThemadoelCodes ?? [];
+        var themadoelen = themadoelRefs.Count == 0
+            ? []
+            : await _catalogus.HaalMinimumdoelenOpRefAsync(themadoelRefs, cancellationToken);
+        var request = ThemaOpbouwPromptBuilder.BouwSubdoelRequest(verzoek.Thema, verzoek.Subthema, leerdoelen, themadoelen);
+
+        // Over the ceiling the model is not called (TB-007).
+        _begrenzing.Bewaak(request, leerdoelen);
+        var kandidaten = leerdoelen
+            .GroupBy(d => d.Code, StringComparer.Ordinal)
+            .ToDictionary(
+                g => g.Key,
+                g => new Kandidaat(g.Key, g.First().Tekst, g.First().Doelsoort.ToCode(), g.First().JaarFase),
+                StringComparer.Ordinal);
+        return await VoerAssistUitAsync(request, kandidaten, uitgesloten: null, cancellationToken);
     }
+
+    // What the advice needs of a candidate goal, a leerplandoel or a minimumdoel alike.
+    private sealed record Kandidaat(string Code, string Tekst, string Doelsoort, string JaarFase);
 
     // Shared step 3–5: call the model, validate (reusing the E2-03 parser), then turn the validated
     // suggestions into advisory, transient advice — resolving/enriching against the loaded set and
     // skipping fabricated codes. Nothing is persisted here (Art. IV.1/IV.2).
     private async Task<ThemaOpbouwAdviesResultaat> VoerAssistUitAsync(
         AiRequest request,
-        IReadOnlyCollection<Leerplandoel> leerdoelen,
-        IReadOnlyCollection<string>? reedsGekozenCodes,
+        IReadOnlyDictionary<string, Kandidaat> perCode,
+        IReadOnlyCollection<string>? uitgesloten,
         CancellationToken cancellationToken)
     {
-        // Over the ceiling the model is not called (TB-007).
-        _begrenzing.Bewaak(request, leerdoelen);
         var completion = await _aiClient.CompleteAsync(request, cancellationToken);
         var parse = DoelMatchResponseParser.Parse(completion);
 
@@ -114,14 +141,9 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
             return ThemaOpbouwAdviesResultaat.Mislukt(parse.Fout!);
         }
 
-        var perCode = leerdoelen
-            .GroupBy(d => d.Code, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
-
-        // Exclude any themadoel codes already chosen (step 2 output) so a subdoel run never re-proposes
-        // an anchor; harmless/empty at step 2 itself.
-        var uitgesloten = new HashSet<string>(
-            (reedsGekozenCodes ?? []).Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()),
+        // At step 2 a minimumdoel already chosen is not proposed again; step 6 excludes nothing.
+        var nietVoorstellen = new HashSet<string>(
+            (uitgesloten ?? []).Where(c => !string.IsNullOrWhiteSpace(c)).Select(c => c.Trim()),
             StringComparer.Ordinal);
 
         var gezien = new HashSet<string>(StringComparer.Ordinal);
@@ -136,7 +158,7 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
                 continue;
             }
 
-            if (uitgesloten.Contains(suggestie.Code))
+            if (nietVoorstellen.Contains(suggestie.Code))
             {
                 continue;
             }
@@ -148,12 +170,18 @@ public sealed class ThemaOpbouwAssistService : IThemaOpbouwAssistService
                 continue;
             }
 
+            // Step 2 keeps at most eight minimumdoelen, as the thema page does (ADR-0052 D3).
+            if (uitgesloten is not null && suggesties.Count == AiMatching.MatchingPromptBuilder.MaxSuggesties)
+            {
+                break;
+            }
+
             suggesties.Add(new ThemaOpbouwAdvies
             {
                 Code = doel.Code,
                 Motivatie = suggestie.Motivatie,
                 Tekst = doel.Tekst,
-                Doelsoort = doel.Doelsoort.ToCode(),
+                Doelsoort = doel.Doelsoort,
                 JaarFase = doel.JaarFase,
             });
         }

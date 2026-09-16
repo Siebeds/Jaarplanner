@@ -2,7 +2,7 @@ namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
 /// The read view of a class's jaarplan (FR-5.1, FR-6.1, Art. IV.2): every placement with its dates, the school year's
-/// lesweken and the balance the plan screen shows above its timeline (ADR-0049 decision 6).
+/// lesweken and the balance the plan screen shows above its timeline (ADR-0053 decision 6).
 /// <para>
 /// <b>Everything calendar-shaped is computed here, not in the browser.</b> Which week is a lesweek, which parts form one
 /// thema, whether an end differs from the thema's duration and whether a placement no longer fits the year are all
@@ -36,11 +36,11 @@ public sealed record JaarplanWeergave(
 /// <param name="Maandag">The Monday of the week, which identifies it.</param>
 /// <param name="HeeftThema">
 /// Whether a planned placement covers a day of this week. A lesweek without one is what the timeline marks
-/// (ADR-0049 R7).
+/// (ADR-0053 R7).
 /// </param>
 public sealed record LesweekWeergave(DateOnly Maandag, bool HeeftThema);
 
-/// <summary>The year balance above the timeline (ADR-0049 R7).</summary>
+/// <summary>The year balance above the timeline (ADR-0053 R7).</summary>
 /// <param name="Lesweken">The lesweken of the school year.</param>
 /// <param name="MetThema">The lesweken in which a planned thema runs.</param>
 /// <param name="ZonderThema">The lesweken in which none does.</param>
@@ -86,7 +86,7 @@ public sealed record ThemaplaatsingWeergave(
     ReeksWeergave? Reeks);
 
 /// <summary>
-/// A placement's place in its thema's run: the parts stored around a vacation (ADR-0049 decision 4).
+/// A placement's place in its thema's run: the parts stored around a vacation (ADR-0053 decision 4).
 /// </summary>
 /// <param name="Deel">This part's position in the run, 1-based.</param>
 /// <param name="AantalDelen">How many parts the run has.</param>
@@ -98,7 +98,7 @@ public sealed record ThemaplaatsingWeergave(
 /// end, the next thema cut it, or the year did.
 /// </param>
 /// <param name="StoptBijEindeSchooljaar">
-/// Whether the run was cut because the school year ends before the thema's duration is over (ADR-0049 R5).
+/// Whether the run was cut because the school year ends before the thema's duration is over (ADR-0053 R5).
 /// </param>
 public sealed record ReeksWeergave(
     int Deel,
@@ -111,7 +111,7 @@ public sealed record ReeksWeergave(
 
 /// <summary>
 /// The end the tool proposes for a thema starting on a chosen day, and the parts that would be stored
-/// (<c>GET …/jaarplan/voorstel</c>, ADR-0049 R2 and R3).
+/// (<c>GET …/jaarplan/voorstel</c>, ADR-0053 R2 and R3).
 /// </summary>
 /// <param name="Van">The chosen first day.</param>
 /// <param name="Tot">The proposed last day.</param>

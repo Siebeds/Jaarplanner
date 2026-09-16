@@ -155,9 +155,9 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
 - 2026-09-16 22:00 · eigenaar · nieuw → klaar-voor-bouw: eigenaar: verfijnd in sessie 2026-09-16, thema's krijgen begin- en einddatum
 - 2026-09-16 22:00 · fb035-datums · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 22:51 · fb035-datums · Backend, migratie en tijdlijn gebouwd; unittests (1952) en frontendtests (1015) groen; integratietests lopen nog.
-- 2026-09-16 23:23 · fb035-datums · Antagonist ronde 1: 2 MAJOR (overlap in de migratie, Art. IV.2) opgelost; ronde 2: COMPLIANT. MINOR-punten opgelost of in TB-045.
+- 2026-09-16 23:23 · fb035-datums · Antagonist ronde 1: 2 MAJOR (overlap in de migratie, Art. IV.2) opgelost; ronde 2: COMPLIANT. MINOR-punten opgelost of in TB-053.
 - 2026-09-16 23:25 · fb035-datums · Afgevinkt met bewijs: 12 criteria (unit-, integratie- en migratietests, browserpas ronde 1-3 in worklogs/FB-035/browserpas.md). Niet afgevinkt: plannen in de agenda op een dag van een doorlopend thema en plaatsen op een dag met een vast moment; die zijn gebouwd maar niet apart in de browser nagekeken.
-- 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-045). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.
+- 2026-09-16 23:25 · fb035-datums · in-uitvoering → te-testen: Thema's met eigen begin- en einddatum, tijdlijn per lesweek, omzetting van bestaande plannen, generatie uit (TB-053). Gates groen: unit 1952, integratie 546, frontend 1016, lint, dotnet format, browserpas, antagonist COMPLIANT.
 - 2026-09-16 23:37 · fb035-datums · Eigenaar na het bekijken: blokjes 'Geen thema' weg, geen melding of oranje rand voor een aangepast einde, knoppen week vroeger/later en vergrendeld weg, smallere datumvelden. Wordt op deze branch aangepast.
 - 2026-09-16 23:43 · fb035-datums · Aanpassingen na het bekijken gebouwd: geen blokjes 'Geen thema', geen melding of oranje rand voor een aangepast einde, geen week- en slotknoppen, smalle datumvelden, neutrale jaarbalans. Browserpas ronde 4 groen; frontendtests en lint groen.
 - 2026-09-17 00:04 · fb035-datums · PR #124

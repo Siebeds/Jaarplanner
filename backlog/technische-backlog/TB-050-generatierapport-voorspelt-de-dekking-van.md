@@ -1,5 +1,5 @@
 ---
-id: TB-046
+id: TB-050
 titel: Generatierapport voorspelt de dekking van minimumdoelen in plaats van leerplandoelen
 soort: technisch
 status: nieuw
@@ -17,7 +17,7 @@ fr: []
 
 Na het genereren van een jaarplan toont het rapport hoeveel doelen gedekt zijn, en hoeveel er gedekt zouden zijn "als
 je het plan aanvaardt" (`Dekkingsvooruitzicht`, `DekkingService.BerekenVooruitzichtAsync`, en het voortgangsendpoint).
-Die telling gaat over leerplandoelen. Sinds FB-053 (ADR-0049) verandert het inplannen van een thema de dekking van
+Die telling gaat over leerplandoelen. Sinds FB-053 (ADR-0052) verandert het inplannen van een thema de dekking van
 leerplandoelen niet meer: een thema dekt alleen minimumdoelen, via zijn themadoelen. Daarom is het cijfer "als je het
 plan aanvaardt" nu altijd gelijk aan het huidige cijfer (`mogelijkGedekt = nuGedekt`), en zegt het rapport niets.
 

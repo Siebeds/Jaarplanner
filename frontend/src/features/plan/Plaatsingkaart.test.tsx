@@ -7,7 +7,7 @@ import { periode } from "../../lib/datum";
 import { Plaatsingkaart } from "./Plaatsingkaart";
 
 /**
- * A placed thema with its own days (ADR-0049), for a gebruiker who may plan this klas and for one who may only read it
+ * A placed thema with its own days (ADR-0053), for a gebruiker who may plan this klas and for one who may only read it
  * (E6-02, ADR-0030 §3, R7).
  */
 

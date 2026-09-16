@@ -28,4 +28,18 @@ public interface ILeerdoelCatalogus
     Task<IReadOnlyList<Leerplandoel>> HaalLeerdoelenAsync(
         LeerdoelSelectie selectie,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The minimumdoelen a thema-level proposal may choose from (FB-053): those of the given mijlpalen (<c>K-</c>,
+    /// <c>4-</c>, <c>6-</c>) that Op.stap still carries, ordered by ref. An empty <paramref name="mijlpalen"/> yields none,
+    /// never the whole register. Read-only (Art. III.1).
+    /// </summary>
+    Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+        IReadOnlyCollection<string> mijlpalen,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>The minimumdoelen with the given refs (exact match), ordered by ref; an unknown ref is left out.</summary>
+    Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenOpRefAsync(
+        IReadOnlyCollection<string> refs,
+        CancellationToken cancellationToken = default);
 }

@@ -12,7 +12,7 @@ handled.
    *Fixed:* the lone placement is cut before the next group (and deleted when no day is left);
    `Een_losse_begindatum_in_een_periode_met_een_thema_overlapt_niet` covers both cases.
 2. **[MAJOR] Rejecting by deleting contradicts Art. IV.2, which the diff left unchanged.** *Fixed:* Art. IV.2 gains
-   the exception for a proposed thema placement; ADR-0049's compliance trace, the ADR index and the constitutie-log
+   the exception for a proposed thema placement; ADR-0053's compliance trace, the ADR index and the constitutie-log
    row name IV.2.
 
 ## Not blocking
@@ -23,8 +23,8 @@ handled.
   *Fixed.* `EfJaarplanOpslag` names the `BlokStart` of a kept startthema, which still exists; `Jaarplan`'s note on
   regeneration states the rule that still holds. Both left as they are.
 - [MINOR] Code kept without a caller (`ProbeerGeneratieparametersToeTeVoegenAsync`, `BestaandePlaatsing`,
-  `BouwVoorPeriode`). *Listed in TB-045.*
-- [MINOR] Art. I.1 items 4 and 6 still promise regeneration of a single period. *Listed in TB-045.*
+  `BouwVoorPeriode`). *Listed in TB-053.*
+- [MINOR] Art. I.1 items 4 and 6 still promise regeneration of a single period. *Listed in TB-053.*
 - [MINOR] The migration orders several thema's of one period by `ThemaId::text`, which matches .NET ordering under the
   usual collations only. *Not changed:* the ids are lowercase hex with hyphens, which every deterministic collation
   orders like .NET; noted here.

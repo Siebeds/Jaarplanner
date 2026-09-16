@@ -313,7 +313,7 @@ public sealed class AzureAiFoundryClientTests
     /// <summary>
     /// <b>The full offline seam of the story's "real AI client" criterion.</b> A grounded prompt from the real prompt
     /// builder goes through the real client, and a canned Azure envelope comes back through the real parser as a valid
-    /// placement. The generation service that stored it is switched off (ADR-0049 decision 9); the pieces it will be
+    /// placement. The generation service that stored it is switched off (ADR-0053 decision 9); the pieces it will be
     /// rebuilt from stay covered here.
     /// </summary>
     [Fact]

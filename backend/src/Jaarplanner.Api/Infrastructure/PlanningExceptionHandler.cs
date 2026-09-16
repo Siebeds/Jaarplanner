@@ -11,13 +11,13 @@ namespace Jaarplanner.Api.Infrastructure;
 /// <list type="bullet">
 /// <item><see cref="OngeldigePlaatsingsstatusFout"/> — a status the teacher cannot set on a placement (Art. IV.1/IV.2);</item>
 /// <item><see cref="OngeldigePlaatsingFout"/> — a thema placed, re-dated or dragged onto days that are no schooldagen,
-/// lie outside the year or already belong to another thema (ADR-0049);</item>
+/// lie outside the year or already belong to another thema (ADR-0053);</item>
 /// <item><see cref="OngeldigeDagplanningFout"/> (E9-03) — scheduling an activiteit onto a day the school is closed on
 /// or outside the school year, onto a day it already sits on, or from another class.</item>
 /// </list>
 /// <para>
 /// And one becomes <b>409</b>: <see cref="GeneratieUitgeschakeldFout"/> — a generation asked for while it is switched
-/// off (ADR-0049 decision 9). The request is well-formed; the feature is what is unavailable.
+/// off (ADR-0053 decision 9). The request is well-formed; the feature is what is unavailable.
 /// </para>
 /// <para>
 /// Planning not-found deliberately reuses <c>SchoolcontentNietGevondenFout</c>, which

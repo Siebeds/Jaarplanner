@@ -9,7 +9,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// Persistence of <see cref="Jaarplan"/> + its owned <see cref="Themaplaatsing"/> collection, and the Schooljaar↔Klas
-/// containment, against real PostgreSQL (Art. IX.3, ADR-0049). Owned collections, the <c>DateOnly</c> → <c>date</c>
+/// containment, against real PostgreSQL (Art. IX.3, ADR-0053). Owned collections, the <c>DateOnly</c> → <c>date</c>
 /// mapping of a placement's days, the enum-as-name columns, the unique indexes and the FK behaviours are all things the
 /// EF in-memory provider cannot honestly verify.
 /// </summary>
@@ -74,7 +74,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A placement's days are real <c>date</c> columns and nothing of the old period key is left (ADR-0049 decision 1).
+    /// A placement's days are real <c>date</c> columns and nothing of the old period key is left (ADR-0053 decision 1).
     /// </summary>
     [PostgresFact]
     public async Task De_dagen_zijn_datums_en_er_is_geen_periodesleutel()
@@ -147,7 +147,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
 
     /// <summary>
     /// A hand-placement through the production service creates the plan when the class has none, and stores the thema
-    /// in two rows when a vacation lies inside it (ADR-0049 R3). The herfstvakantie runs 2–8 November; a 5-week thema
+    /// in two rows when a vacation lies inside it (ADR-0053 R3). The herfstvakantie runs 2–8 November; a 5-week thema
     /// from Monday 19 October ends before Monday 30 November, split around it.
     /// </summary>
     [PostgresFact]
@@ -462,7 +462,7 @@ public sealed class JaarplanPersistentieTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// The plain read, from a fresh context, carries the lesweken and the balance (ADR-0049 decision 6). The year with
+    /// The plain read, from a fresh context, carries the lesweken and the balance (ADR-0053 decision 6). The year with
     /// its four vacations has 38 lesweken; a 5-week placement from Tuesday 1 September covers the first six (it ends on
     /// Monday 5 October, the last schooldag before Tuesday 6 October).
     /// </summary>

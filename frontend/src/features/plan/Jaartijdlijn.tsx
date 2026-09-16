@@ -20,7 +20,7 @@ import { kalenderMeldingen, sleepUitleg } from "./sleep";
 import { bouwRaster, dagenVerschil, volgendDeel, type Weekkolomdata } from "./jaarraster";
 
 /**
- * The school year as a timeline, one column per lesweek (FB-035, ADR-0049, owner's choice of 2026-09-16).
+ * The school year as a timeline, one column per lesweek (FB-035, ADR-0053, owner's choice of 2026-09-16).
  *
  * **Every column is five day tracks wide**, so a thema that starts on a Wednesday starts on the Wednesday. A week
  * without a schooldag is not a column: consecutive ones fold into one narrow hatched gap that names the vacation.

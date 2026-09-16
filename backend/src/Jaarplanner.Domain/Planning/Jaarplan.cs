@@ -7,7 +7,7 @@ namespace Jaarplanner.Domain.Planning;
 /// thema's placed from one day to another, with a <c>vergrendeld</c> flag per placement).
 /// <para>
 /// <b>It stores placements with their own dates.</b> Each <see cref="Themaplaatsing"/> says from which day to which
-/// day its thema runs (ADR-0049); there is no grid of periods behind it. <b>No two placements share a day</b>, the
+/// day its thema runs (ADR-0053); there is no grid of periods behind it. <b>No two placements share a day</b>, the
 /// same thema twice included (owner ruling 2026-09-16): <see cref="VoegPlaatsingToe"/> refuses one that would.
 /// </para>
 /// <para>
@@ -253,7 +253,7 @@ public sealed class Jaarplan
     /// <summary>
     /// Places a thema from <paramref name="van"/> to <paramref name="tot"/>.
     /// <para>
-    /// <b>No two placements share a day</b> (owner ruling 2026-09-16, ADR-0049 R4), so one that would is refused. The
+    /// <b>No two placements share a day</b> (owner ruling 2026-09-16, ADR-0053 R4), so one that would is refused. The
     /// service checks <see cref="Overlappend"/> first and refuses in Dutch, naming the other thema; this guard is the
     /// backstop, and reaching it is a programmer error.
     /// </para>
@@ -291,7 +291,7 @@ public sealed class Jaarplan
         Plaatsingen.FirstOrDefault(p => p.Id != behalve && p.Overlapt(van, tot));
 
     /// <summary>
-    /// Gives a placement new dates, checked against every other placement like a new one (ADR-0049 R4).
+    /// Gives a placement new dates, checked against every other placement like a new one (ADR-0053 R4).
     /// </summary>
     /// <exception cref="InvalidOperationException">
     /// The placement is not this plan's, or the new range shares a day with another placement. Both are programmer
@@ -339,7 +339,7 @@ public sealed class Jaarplan
     /// <b>Why status is deliberately not checked here.</b> Art. IV.2 reserves the disposal of a human decision to the
     /// human; it does not make that decision permanent. This method is only ever reached from an explicit teacher
     /// action, which is exactly the actor allowed to discard it. It is also how a teacher rejects an open proposal
-    /// (ADR-0049 R12).
+    /// (ADR-0053 R12).
     /// </para>
     /// <para>
     /// It exists because the <c>Klas</c> delete guard counts <see cref="MenselijkBeslotenPlaatsingen"/>, and a guard

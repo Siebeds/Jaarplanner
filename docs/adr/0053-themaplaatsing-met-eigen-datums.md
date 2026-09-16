@@ -1,4 +1,4 @@
-# ADR-0049 — A thema placement carries its own dates; the themaperiodes leave the planning
+# ADR-0053 — A thema placement carries its own dates; the themaperiodes leave the planning
 
 - **Status:** Accepted
 - **Date:** 2026-09-16

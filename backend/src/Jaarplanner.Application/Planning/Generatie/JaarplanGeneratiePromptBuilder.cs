@@ -501,6 +501,17 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, $"  Kernwoordenschat: {string.Join(", ", thema.Kernwoordenschat)}");
         }
 
+        // The minimumdoelen the thema aims at, its themadoelen (FB-053): what a thema covers for a klas (Art. V.1).
+        var minimumdoelen = thema.Minimumdoelen
+            .Select(m => m.MinimumdoelRef)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(r => r, StringComparer.Ordinal)
+            .ToList();
+        if (minimumdoelen.Count > 0)
+        {
+            Line(sb, $"  Themadoelen, minimumdoelen ({minimumdoelen.Count}): {string.Join(", ", minimumdoelen)}");
+        }
+
         // Only the goals the teacher actually stands behind (aanvaard/manueel, Art. V.1) — a `voorgesteld`
         // suggestion is not yet a goal of this thema, and a `geweigerd` one never was. Feeding the model
         // unconfirmed links would let the AI reason about goals the teacher has rejected.
@@ -515,12 +526,12 @@ public static class JaarplanGeneratiePromptBuilder
     }
 
     /// <summary>
-    /// The leerplandoel codes a thema carries <b>on the thema itself</b>: its themadoelen and its accepted/manual
-    /// thema-level goal links (status <c>aanvaard</c> or <c>manueel</c>, Art. V.1), ordered and de-duplicated.
-    /// Shared with the read view so the prompt and the API report the same set.
+    /// The leerplandoel codes a thema carries <b>on the thema itself</b>: the decided themadoelen the FR-1 import wrote
+    /// (status <c>aanvaard</c> or <c>manueel</c>), ordered and de-duplicated. Shared with the read view so the prompt and
+    /// the API report the same set. A thema's minimumdoelen are written separately.
     /// <para>
     /// <b>This is not the rule dekking uses.</b> Since ADR-0047 <c>DekkingService</c> counts no themadoel that links a
-    /// leerplandoel, counts a thema's minimumdoelen and accepted doelsuggesties through the thema's placement, and counts
+    /// leerplandoel, counts a thema's minimumdoelen through the thema's placement, and counts
     /// subdoel and activiteit links only through their own subthema's placement, which it can because it computes for
     /// <i>one klas</i>. This method has only a school-wide <see cref="Thema"/>. Aligning the generation's coverage goal
     /// with ADR-0047 is a follow-up of FB-045.
@@ -538,7 +549,6 @@ public static class JaarplanGeneratiePromptBuilder
 
         return thema.Themadoelen
             .Select(td => td.Koppeling)
-            .Concat(thema.Doelsuggesties)
             .Where(k => k.Status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel)
             .Select(k => k.LeerplandoelCode)
             .Distinct(StringComparer.Ordinal)

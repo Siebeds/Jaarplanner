@@ -4,7 +4,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// The <see cref="Jaarplan"/> aggregate and its <see cref="Themaplaatsing"/> invariants (Art. IX.3, ADR-0049): a
+/// The <see cref="Jaarplan"/> aggregate and its <see cref="Themaplaatsing"/> invariants (Art. IX.3, ADR-0053): a
 /// placement carries its own days, no two placements share a day, and <c>vergrendeld</c> still marks what a
 /// regeneration may not discard.
 /// </summary>
@@ -30,7 +30,7 @@ public sealed class JaarplanTests
         Assert.Equal("past bij de herfst", plaatsing.AiMotivatie);
     }
 
-    /// <summary>No block ordinal and no block key survive on the placement (ADR-0049).</summary>
+    /// <summary>No block ordinal and no block key survive on the placement (ADR-0053).</summary>
     [Fact]
     public void Themaplaatsing_heeft_geen_periodesleutel_meer()
     {

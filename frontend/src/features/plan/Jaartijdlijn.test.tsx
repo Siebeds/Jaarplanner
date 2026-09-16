@@ -7,7 +7,7 @@ import { Jaartijdlijn } from "./Jaartijdlijn";
 import { bouwRaster } from "./jaarraster";
 
 /**
- * The year timeline (ADR-0049): a column of five day tracks per lesweek, one gap per vacation, bars that start and end
+ * The year timeline (ADR-0053): a column of five day tracks per lesweek, one gap per vacation, bars that start and end
  * on their own weekday; an empty lesweek and a changed end are not marked (owner, 2026-09-16).
  *
  * The calendar: school from Monday 19 October, the herfstvakantie the week of 2 November, school again from

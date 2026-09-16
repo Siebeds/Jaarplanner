@@ -10,7 +10,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// EF Core mapping for <see cref="Jaarplan"/> and its <see cref="Themaplaatsing"/> collection (Art. IX.3, E3-01).
 /// <para>
 /// <b>A placement stores its own days</b>, <see cref="Themaplaatsing.Van"/> and <see cref="Themaplaatsing.Tot"/>
-/// (ADR-0049). There is no period table and no period column: the themaperiodes left the planning.
+/// (ADR-0053). There is no period table and no period column: the themaperiodes left the planning.
 /// </para>
 /// <para>
 /// <b>No two placements of a plan share a day</b> is a domain rule the aggregate and the service enforce. The database
@@ -76,7 +76,7 @@ public sealed class JaarplanConfiguration : IEntityTypeConfiguration<Jaarplan>
 
             plaatsing.Property(p => p.ThemaId).IsRequired();
 
-            // The placement's own days (ADR-0049): DateOnly → PostgreSQL `date`, both inclusive.
+            // The placement's own days (ADR-0053): DateOnly → PostgreSQL `date`, both inclusive.
             plaatsing.Property(p => p.Van).IsRequired();
             plaatsing.Property(p => p.Tot).IsRequired();
 

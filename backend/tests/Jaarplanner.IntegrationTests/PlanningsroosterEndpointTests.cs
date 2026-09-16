@@ -12,7 +12,7 @@ namespace Jaarplanner.IntegrationTests;
 
 /// <summary>
 /// Reachability + correctness for <c>GET /api/schooljaren/{id}/rooster</c>: the school year's span and its vacations,
-/// the frame the timeline and the agenda are drawn in (ADR-0049 decision 6). A <c>VrijeDag</c> is a day off inside a
+/// the frame the timeline and the agenda are drawn in (ADR-0053 decision 6). A <c>VrijeDag</c> is a day off inside a
 /// week, never a gap, so it is not reported.
 /// </summary>
 public sealed class PlanningsroosterEndpointTests : IClassFixture<PlanningsroosterEndpointTests.Factory>

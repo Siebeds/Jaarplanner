@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for a class's <c>Jaarplan</c> (FR-6, FR-7, ADR-0049). All logic lives in
+/// Thin REST controller (Art. VIII) for a class's <c>Jaarplan</c> (FR-6, FR-7, ADR-0053). All logic lives in
 /// <see cref="JaarplanService"/>; the controller binds, delegates and returns.
 /// <para>
 /// <c>GET …/jaarplan</c> reads the plan; <c>GET …/jaarplan/voorstel</c> proposes an end for a thema and a begin;
@@ -16,7 +16,7 @@ namespace Jaarplanner.Api.Controllers;
 /// whatever its status or lock, and is also how a proposal is rejected. Every write returns the updated plan.
 /// </para>
 /// <para>
-/// <b>Generation is switched off</b> (ADR-0049 decision 9): <c>POST …/jaarplan/generatie</c> answers 409 until its
+/// <b>Generation is switched off</b> (ADR-0053 decision 9): <c>POST …/jaarplan/generatie</c> answers 409 until its
 /// rework lands. <c>GET …/jaarplan/parameters</c> still reads the class's kept pre-generation settings.
 /// </para>
 /// </summary>
@@ -76,7 +76,7 @@ public sealed class JaarplanController : ControllerBase
         Ok(await _service.StelEindeVoorAsync(klasId, themaId, van, cancellationToken));
 
     /// <summary>
-    /// Always refuses: the AI generation is switched off until its rework (ADR-0049 decision 9). <b>409</b> with a Dutch
+    /// Always refuses: the AI generation is switched off until its rework (ADR-0053 decision 9). <b>409</b> with a Dutch
     /// sentence for an existing class, <b>404</b> for an unknown one.
     /// </summary>
     [HttpPost("generatie")]

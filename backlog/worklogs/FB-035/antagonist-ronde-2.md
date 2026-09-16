@@ -8,7 +8,7 @@
   group's first schooldag and starts only increase, so the unique first day cannot be broken.
   `Een_losse_begindatum_in_een_periode_met_een_thema_overlapt_niet` covers both cases; its expected dates match the SQL
   traced by hand.
-- **[MAJOR] Art. IV.2 contradicted rejection by deletion: RESOLVED.** IV.2 carries the exception; ADR-0049's trace, the
+- **[MAJOR] Art. IV.2 contradicted rejection by deletion: RESOLVED.** IV.2 carries the exception; ADR-0053's trace, the
   ADR index and the constitutie-log row name it; IV.1 is correctly listed as unchanged.
 
 The fix introduces no new CRITICAL or MAJOR finding.

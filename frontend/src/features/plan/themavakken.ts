@@ -2,7 +2,7 @@ import { t } from "../../i18n";
 import { valtBinnen } from "../../lib/datum";
 
 /**
- * Which thema runs on which days, as stretches of days (ADR-0049).
+ * Which thema runs on which days, as stretches of days (ADR-0053).
  *
  * **A day is looked up on its own**, never inferred from the anchored day: the month grid shows a whole month, and a
  * thema that ends mid-month must not be printed over the days after it. Same conclusion the subthema strips reached

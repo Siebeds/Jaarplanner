@@ -63,16 +63,28 @@ const TURNEN = {
   momenten: [{ id: "fm-1", datum: "2026-09-08", begin: "10:30:00", einde: "11:20:00" }],
 };
 
+/** Activiteiten planned per day, for the tests that need one; empty for every other test. */
+let geplandOp: Record<string, string[]> = {};
+
+function activiteit(naam: string, datum: string) {
+  return {
+    plaatsingId: `p-${naam}-${datum}`, activiteitId: "a-1", activiteitNaam: naam, activiteitType: "Kring",
+    subthemaId: "s-1", subthemaNaam: "De eekhoorn", themaId: "t-1", themaNaam: "Herfst", begin: "10:00:00",
+    einde: "10:50:00", status: "Manueel", kleur: null, doelcodes: [], valtBuitenThemaperiode: false,
+  };
+}
+
 /** Every day from `van` to `tot`, a school day from Monday to Friday. */
 function dagen(van: string, tot: string) {
   const lijst = [];
   for (let dag = new Date(`${van}T12:00:00Z`); dag <= new Date(`${tot}T12:00:00Z`); dag.setUTCDate(dag.getUTCDate() + 1)) {
     const weekdag = dag.getUTCDay();
+    const datum = dag.toISOString().slice(0, 10);
     lijst.push({
-      datum: dag.toISOString().slice(0, 10),
+      datum,
       isLesdag: weekdag !== 0 && weekdag !== 6,
       sluitingsnaam: null,
-      activiteiten: [],
+      activiteiten: (geplandOp[datum] ?? []).map((naam) => activiteit(naam, datum)),
     });
   }
   return lijst;
@@ -141,19 +153,20 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  geplandOp = {};
   zetSchermbreedte(false);
   useHoekenpaneel.setState({ open: false, soort: "hoeken", subthemaKeuze: null });
   vi.unstubAllGlobals();
 });
 
-function toon(ik: Ik) {
+function toon(ik: Ik, adres = "/agenda/dag/2026-09-08") {
   const client = metIk(
     new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
     ik,
   );
   render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/agenda/dag/2026-09-08"]}>
+      <MemoryRouter initialEntries={[adres]}>
         <Routes>
           <Route path="agenda/dag/:datum" element={<Agendascherm />} />
         </Routes>
@@ -295,5 +308,83 @@ describe("Agendascherm: een activiteit uit het zijpaneel inplannen (FB-017)", ()
       activiteitId: "a-1",
       datum: "2026-09-08",
     });
+  });
+});
+
+describe("Agendascherm: de werkweek (FB-040)", () => {
+  const PLANNER = ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] });
+  const weergave = (naam: string) => screen.getByRole("radio", { name: naam });
+  const kolom = (dag: RegExp) => screen.queryByRole("button", { name: dag });
+
+  it("opent zonder weergave in de URL op maandag tot vrijdag, zonder zaterdag en zondag", async () => {
+    toon(PLANNER);
+
+    expect(await screen.findByRole("button", { name: /^Open maandag 7 september/ })).toBeInTheDocument();
+    expect(weergave(t("periode.werkweek"))).toHaveAttribute("aria-checked", "true");
+    expect(kolom(/^Open vrijdag 11 september/)).not.toBeNull();
+    expect(kolom(/^Open zaterdag/)).toBeNull();
+    expect(kolom(/^Open zondag/)).toBeNull();
+  });
+
+  it("toont in de week ook zaterdag en zondag", async () => {
+    toon(PLANNER, "/agenda/dag/2026-09-08?weergave=week");
+
+    expect(await screen.findByRole("button", { name: /^Open zaterdag 12 september/ })).toBeInTheDocument();
+    expect(kolom(/^Open zondag 13 september/)).not.toBeNull();
+    expect(weergave(t("periode.week"))).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("gaat met Volgende naar maandag tot vrijdag van de volgende week", async () => {
+    toon(PLANNER);
+    await screen.findByRole("button", { name: /^Open maandag 7 september/ });
+
+    fireEvent.click(screen.getByRole("button", { name: t("periode.volgende") }));
+
+    expect(await screen.findByRole("button", { name: /^Open maandag 14 september/ })).toBeInTheDocument();
+    expect(kolom(/^Open vrijdag 18 september/)).not.toBeNull();
+    expect(kolom(/^Open zaterdag/)).toBeNull();
+  });
+
+  it("meldt wat er in het overgeslagen weekend staat, en opent die week in de weekweergave", async () => {
+    geplandOp = { "2026-09-12": ["Eikels rapen"] };
+    toon(PLANNER);
+
+    const aanwijzing = await screen.findByText(
+      t("periode.weekendAanwijzing", { weekend: "12 sep – 13 sep", wat: t("periode.weekendActiviteit") }),
+    );
+    expect(aanwijzing).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Eikels rapen/ })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: t("periode.weekendToonWeek") }));
+
+    expect(await screen.findByRole("button", { name: /^Open zaterdag 12 september/ })).toBeInTheDocument();
+    expect(weergave(t("periode.week"))).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("button", { name: /^Eikels rapen/ })).toBeInTheDocument();
+    expect(screen.queryByText(t("periode.weekendToonWeek"))).toBeNull();
+  });
+
+  it("zwijgt over een leeg weekend", async () => {
+    geplandOp = { "2026-09-09": ["Eikels rapen"] };
+    toon(PLANNER);
+
+    expect(await screen.findByRole("button", { name: /^Eikels rapen/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("periode.weekendToonWeek") })).toBeNull();
+  });
+
+  it("toont op een telefoon drie werkdagen, en na vrijdag komt maandag", async () => {
+    // Below `lg` an open side panel is a sheet that hides the page, so it stays closed here.
+    zetSchermbreedte(false);
+    useHoekenpaneel.setState({ open: false });
+    toon(PLANNER, "/agenda/dag/2026-09-10");
+
+    expect(await screen.findByRole("button", { name: /^Open donderdag 10 september/ })).toBeInTheDocument();
+    expect(kolom(/^Open vrijdag 11 september/)).not.toBeNull();
+    expect(kolom(/^Open maandag 14 september/)).not.toBeNull();
+    expect(kolom(/^Open zaterdag/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: t("periode.volgende") }));
+
+    expect(await screen.findByRole("button", { name: /^Open dinsdag 15 september/ })).toBeInTheDocument();
+    expect(kolom(/^Open donderdag 17 september/)).not.toBeNull();
   });
 });

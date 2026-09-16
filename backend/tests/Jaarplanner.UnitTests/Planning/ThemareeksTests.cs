@@ -4,7 +4,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// A reeks is the parts of one thema with no schooldag between them (ADR-0049 decision 4). Uses
+/// A reeks is the parts of one thema with no schooldag between them (ADR-0053 decision 4). Uses
 /// <see cref="TestSchooljaar.MetVakanties"/>: herfstvakantie 2–8 November 2026.
 /// </summary>
 public sealed class ThemareeksTests

@@ -99,8 +99,8 @@ public interface IWeekplanningOpslag
 /// <param name="Doelcodes">
 /// The leerplandoel codes the activiteit carries through its own <b>accepted or manual</b> links.
 /// <para>
-/// <b>Two bounds, and reading only the first one is what went wrong.</b> <i>Display only</i> — coverage runs through
-/// the thema's placement, never through this (Art. V.1). And <i>decided links only</i>: a <c>Voorgesteld</c> link is
+/// <b>Two bounds, and reading only the first one is what went wrong.</b> <i>Display only</i> — this list feeds the day card, and the
+/// dekking reads the links itself (Art. V.1; an own activiteit's placement counts there, ADR-0049 D7). And <i>decided links only</i>: a <c>Voorgesteld</c> link is
 /// an AI suggestion nobody has answered and a <c>Geweigerd</c> one is a doel the teacher rejected, so neither may be
 /// presented as a doel this activiteit works toward (Art. IV.1/IV.2). The first version filtered on nothing; no route
 /// produces those statuses on an activiteit link yet, so the widening was latent rather than visible.
@@ -122,7 +122,9 @@ public sealed record Activiteitinhoud(
     string ThemaNaam,
     IReadOnlyList<string> Doelcodes,
     /// <summary>The teacher's colour label, or null. A label they chose, never a signal the app reads.</summary>
-    Activiteitkleur? Kleur = null);
+    Activiteitkleur? Kleur = null,
+    /// <summary>The owner of an own activiteit (ADR-0049), or null for a shared one.</summary>
+    Guid? EigenaarId = null);
 
 /// <summary>
 /// A subthema's identity and the names above it, for a screen that has to label a period it holds no content for.

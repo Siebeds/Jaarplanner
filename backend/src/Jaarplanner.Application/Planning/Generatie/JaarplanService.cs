@@ -5,7 +5,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// A class's jaarplan as the teacher builds it by hand (FR-6, FR-7, ADR-0049): read it, propose an end for a thema,
+/// A class's jaarplan as the teacher builds it by hand (FR-6, FR-7, ADR-0053): read it, propose an end for a thema,
 /// place a thema from one day to another, give a placement new dates or drag it, decide a proposal, lock it, remove it.
 /// <para>
 /// <b>Every rule about days comes from <see cref="Themakalender"/></b>: which day is a schooldag, where a vacation
@@ -45,7 +45,7 @@ public sealed class JaarplanService : IJaarplanLezer
 
     /// <summary>
     /// The end the tool proposes for <paramref name="themaId"/> starting on <paramref name="van"/>, and the parts that
-    /// would be stored (ADR-0049 R2, R3, R5).
+    /// would be stored (ADR-0053 R2, R3, R5).
     /// <para>
     /// The proposal is the thema's duration counted in lesweken, cut to the last schooldag before the next placement
     /// when that one starts earlier, and to the last schooldag of the year. It writes nothing.
@@ -75,7 +75,7 @@ public sealed class JaarplanService : IJaarplanLezer
     /// vacation, and persists it at once. Creates the class's jaarplan when it has none yet.
     /// <para>
     /// <b>Without an end, the proposed one is used</b> (<see cref="StelEindeVoorAsync"/>). An end after the last
-    /// schooldag is cut to it (ADR-0049 R5). Every part lands as <see cref="KoppelingStatus.Manueel"/>: the teacher
+    /// schooldag is cut to it (ADR-0053 R5). Every part lands as <see cref="KoppelingStatus.Manueel"/>: the teacher
     /// chose these days, so it counts for dekking and no regeneration may discard it.
     /// </para>
     /// </summary>
@@ -116,7 +116,7 @@ public sealed class JaarplanService : IJaarplanLezer
     /// The placement keeps the first part; any further part is stored as a new manual placement of the same thema.
     /// <b>Nothing is written when the days do not change</b>, so opening a card and saving it unchanged does not cost a
     /// standing proposal its status and motivation. A <i>vervallen</i> placement saved with the same days is split again,
-    /// which is how the teacher resolves it (ADR-0049 decision 5).
+    /// which is how the teacher resolves it (ADR-0053 decision 5).
     /// </para>
     /// </summary>
     /// <exception cref="OngeldigePlaatsingFout">The days are invalid or taken.</exception>
@@ -178,7 +178,7 @@ public sealed class JaarplanService : IJaarplanLezer
     /// <summary>
     /// Records the teacher's decision on a proposed placement (Art. IV.1/IV.2): accept it, or take it as their own.
     /// <para>
-    /// <b>Rejecting is not a status any more</b> (ADR-0049 R12): a teacher rejects a proposal by removing it, so a
+    /// <b>Rejecting is not a status any more</b> (ADR-0053 R12): a teacher rejects a proposal by removing it, so a
     /// rejected placement cannot sit on the timeline holding days that no other thema may use.
     /// </para>
     /// </summary>
@@ -298,7 +298,7 @@ public sealed class JaarplanService : IJaarplanLezer
 
     /// <summary>
     /// Checks a requested range and cuts it into the parts that will be stored: the first day must be a schooldag
-    /// inside the year, the end not before it; an end after the year is cut to the last schooldag (ADR-0049 R5).
+    /// inside the year, the end not before it; an end after the year is cut to the last schooldag (ADR-0053 R5).
     /// </summary>
     private static IReadOnlyList<(DateOnly Van, DateOnly Tot)> Delen(
         Themakalender kalender,
@@ -408,7 +408,7 @@ public sealed class JaarplanService : IJaarplanLezer
 
     /// <summary>
     /// Projects the persisted plan for the screen: each placement with its run and whether it still fits, every lesweek
-    /// with whether a thema runs in it, and the balance (ADR-0049 decision 6).
+    /// with whether a thema runs in it, and the balance (ADR-0053 decision 6).
     /// </summary>
     private static JaarplanWeergave Projecteer(
         Klas klas,

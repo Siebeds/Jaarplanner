@@ -4,7 +4,7 @@ namespace Jaarplanner.Application.Planning.Rooster;
 /// Reads a school year's span and the vacations inside it — the frame the plan screen's timeline and the agenda are
 /// drawn in (FR-6.1).
 /// <para>
-/// <b>No periods any more</b> (ADR-0049). Until then this read returned the derived themaperiodes too; a thema
+/// <b>No periods any more</b> (ADR-0053). Until then this read returned the derived themaperiodes too; a thema
 /// placement now carries its own dates, and the lesweken of the year ride on the jaarplan read, where they are
 /// counted against a class's placements.
 /// </para>
@@ -26,7 +26,7 @@ public interface IPlanningsroosterService
 /// <param name="Start">First day of the year.</param>
 /// <param name="Eind">Last day of the year, inclusive.</param>
 /// <param name="Onderbrekingen">
-/// Only the vacations, chronological: the closures that split a thema (ADR-0049 R3). A
+/// Only the vacations, chronological: the closures that split a thema (ADR-0053 R3). A
 /// <c>Sluitingssoort.VrijeDag</c> is deliberately absent; it is a day without school inside a week, not a gap.
 /// </param>
 public sealed record PlanningsroosterWeergave(

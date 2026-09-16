@@ -151,26 +151,29 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_geplaatst_thema_dekt_zijn_doel_en_noemt_zichzelf_als_bewijs()
+    public async Task Een_geplaatst_thema_dekt_zijn_minimumdoel_en_noemt_zichzelf_als_bewijs()
     {
         // THE SENTENCE THIS STORY EXISTS TO DELIVER, asserted end to end for the first time: "a leerplandoel is
         // gedekt when a thema carrying it is placed in a real period of the class's plan". Everything else verifies a
         // half — the unit tests fake the database, the layer tests never touch a jaarplan — so without this the two
         // halves were only ever checked against each other's fakes. For a coverage feature that is the difference
         // between a green suite and a screen reporting 0% for a fully planned class.
+        // Since ADR-0052 the thema route is a minimumdoel's: the placed thema covers its minimumdoel themadoel, and no
+        // leerplandoel.
         var (klasId, _) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
 
         var dekking = await HaalDekkingAsync(klasId);
 
         Assert.True(dekking.IsBetrouwbaar);
-        Assert.Equal(1, dekking.AantalGedekt);
+        Assert.Equal(1, dekking.AantalMinimumdoelenGedekt);
 
-        var gedekt = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        var gedekt = Md(dekking, "DEK-MD-K1");
         Assert.True(gedekt.IsGedekt);
         Assert.Equal(["Herfstthema"], gedekt.DekkendeThemas);
 
-        // The other loaded goal is untouched by this plan, so the gap list has something in it.
-        Assert.False(dekking.Doelen.Single(d => d.Code == "DEK-02").IsGedekt);
+        // The other minimumdoel is untouched by this plan, and no leerplandoel is covered by a thema placement.
+        Assert.False(Md(dekking, "DEK-MD-K2").IsGedekt);
+        Assert.Equal(0, dekking.AantalGedekt);
     }
 
     [PostgresFact]
@@ -186,9 +189,10 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         Assert.False(dekking.IsBetrouwbaar);
         Assert.Equal(1, dekking.AantalOnopgelosteVervallenPlaatsingen);
         Assert.Null(dekking.AantalGedekt);
+        Assert.Null(dekking.AantalMinimumdoelenGedekt);
 
         // And the stale placement covers nothing: it sits in no period at all.
-        Assert.False(dekking.Doelen.Single(d => d.Code == "DEK-01").IsGedekt);
+        Assert.False(Md(dekking, "DEK-MD-K1").IsGedekt);
 
         // The denominator survives, because it is a property of the curriculum rather than of this plan.
         Assert.Equal(2, dekking.AantalLeerplandoelen);
@@ -205,8 +209,8 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         var dekking = await HaalDekkingAsync(klasId);
 
         Assert.True(dekking.IsBetrouwbaar);
-        Assert.Equal(0, dekking.AantalGedekt);
-        Assert.False(dekking.Doelen.Single(d => d.Code == "DEK-01").IsGedekt);
+        Assert.Equal(0, dekking.AantalMinimumdoelenGedekt);
+        Assert.False(Md(dekking, "DEK-MD-K1").IsGedekt);
     }
 
     [PostgresFact]
@@ -303,14 +307,14 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
 
         var dekking = await HaalDekkingAsync(klasId);
 
-        var wachtend = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        var wachtend = Md(dekking, "DEK-MD-K1");
         Assert.False(wachtend.IsGedekt);
         Assert.Equal("WachtOpBeslissing", wachtend.Oorzaak);
         Assert.Equal(["Herfstthema"], wachtend.KandidaatThemas);
 
         // The second goal is in the same scope and no thema carries it at all, so the two causes are distinguishable
         // in one answer. Without it this test would pass for a server that stamped every gap with the same cause.
-        var geenThema = dekking.Doelen.Single(d => d.Code == "DEK-02");
+        var geenThema = Md(dekking, "DEK-MD-K2");
         Assert.Equal("GeenThema", geenThema.Oorzaak);
         Assert.Empty(geenThema.KandidaatThemas);
     }
@@ -328,7 +332,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
 
         var dekking = await HaalDekkingAsync(klasId);
 
-        var lacune = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        var lacune = Md(dekking, "DEK-MD-K1");
         Assert.Equal("NietIngepland", lacune.Oorzaak);
         Assert.Equal(["Herfstthema"], lacune.KandidaatThemas);
 
@@ -347,33 +351,26 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
 
         var dekking = await HaalDekkingAsync(klasId);
 
-        var gedekt = dekking.Doelen.Single(d => d.Code == "DEK-01");
+        var gedekt = Md(dekking, "DEK-MD-K1");
         Assert.True(gedekt.IsGedekt);
         Assert.Null(gedekt.Oorzaak);
         Assert.Empty(gedekt.KandidaatThemas);
 
         // Every row obeys it, not just this one: a cause is present exactly when the goal is a gap.
         Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.Oorzaak is null));
+        Assert.All(dekking.Minimumdoelen, md => Assert.Equal(md.IsGedekt, md.Oorzaak is null));
     }
 
     [PostgresFact]
     public async Task Een_minimumdoel_op_een_geplaatst_thema_is_over_HTTP_gedekt_en_een_ander_staat_nergens()
     {
         // ADR-0047 D2 end to end: the payload carries the minimumdoelen of the klas's mijlpaal, each with its step.
+        // The placed thema carries DEK-MD-K1 already; DEK-MD-4 is of another mijlpaal.
         var (klasId, themaId) = await ZetGeplaatstThemaOpAsync(KoppelingStatus.Aanvaard, vervallen: false);
         await using (var context = _db.MaakContext())
         {
-            foreach (var (minimumdoelRef, mijlpaal) in new[] { ("DEK-MD-K1", "K-"), ("DEK-MD-K2", "K-"), ("DEK-MD-4", "4-") })
-            {
-                if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef))
-                {
-                    context.Minimumdoelen.Add(new Minimumdoel(minimumdoelRef, mijlpaal, "1", $"Tekst van {minimumdoelRef}"));
-                }
-            }
-
-            await context.SaveChangesAsync();
             var thema = await context.Themas.SingleAsync(t => t.Id == themaId);
-            context.ThemaMinimumdoelen.AddRange(thema.KoppelMinimumdoel("DEK-MD-K1"), thema.KoppelMinimumdoel("DEK-MD-4"));
+            context.ThemaMinimumdoelen.Add(thema.KoppelMinimumdoel("DEK-MD-4"));
             await context.SaveChangesAsync();
         }
 
@@ -408,10 +405,10 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A class with a thema placed in its jaarplan, the thema carrying <c>DEK-01</c> as an accepted doelsuggestie.
+    /// A class with a thema placed in its jaarplan, the thema carrying the minimumdoel <c>DEK-MD-K1</c> as a themadoel.
     /// <para>
     /// The healthy placement runs from the year's first day; for the vervallen case it lies <i>outside</i> the school
-    /// year, which a placement may never do (ADR-0049 decision 5).
+    /// year, which a placement may never do (ADR-0053 decision 5).
     /// </para>
     /// </summary>
     private async Task<(Guid KlasId, Guid ThemaId)> ZetGeplaatstThemaOpAsync(
@@ -430,7 +427,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
             : schooljaar.Start;
 
         var thema = new Thema("Herfstthema", duurWeken: 5);
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("DEK-01", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
+        thema.KoppelMinimumdoel("DEK-MD-K1");
         context.Themas.Add(thema);
 
         var jaarplan = new Jaarplan(klasId);
@@ -469,16 +466,19 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
 
         var dekking = await HaalDekkingAsync(klasId);
 
-        // A mixed pattern, not all-covered or all-uncovered: 1 of 2. Either extreme would let a broken count coincide
-        // with the right answer.
-        Assert.Equal(1, dekking.Doelen.Count(d => d.IsGedekt));
-        Assert.Equal(2, dekking.Doelen.Count);
+        // A mixed pattern, not all-covered or all-uncovered: 1 of 2 minimumdoelen. Either extreme would let a broken
+        // count coincide with the right answer.
+        Assert.Equal(1, dekking.Minimumdoelen.Count(m => m.IsGedekt));
+        Assert.Equal(2, dekking.Minimumdoelen.Count);
 
+        Assert.Equal(dekking.Minimumdoelen.Count(m => m.IsGedekt), dekking.AantalMinimumdoelenGedekt);
+        Assert.Equal(dekking.Minimumdoelen.Count, dekking.AantalMinimumdoelen);
         Assert.Equal(dekking.Doelen.Count(d => d.IsGedekt), dekking.AantalGedekt);
         Assert.Equal(dekking.Doelen.Count, dekking.AantalLeerplandoelen);
 
         // And the evidence half travels with it: a doel is covered exactly when it names a thema, so a client counting
         // either field reaches the same total.
+        Assert.All(dekking.Minimumdoelen, md => Assert.Equal(md.IsGedekt, md.DekkendeThemas.Count > 0));
         Assert.All(dekking.Doelen, doel => Assert.Equal(doel.IsGedekt, doel.DekkendeThemas.Count > 0));
     }
 
@@ -522,6 +522,15 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
             }
         }
 
+        // Two minimumdoelen of the kleuter mijlpaal and one of 4-, seeded the same way and for the same reason.
+        foreach (var (minimumdoelRef, mijlpaal) in new[] { ("DEK-MD-K1", "K-"), ("DEK-MD-K2", "K-"), ("DEK-MD-4", "4-") })
+        {
+            if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef))
+            {
+                context.Minimumdoelen.Add(new Minimumdoel(minimumdoelRef, mijlpaal, "1", $"Tekst van {minimumdoelRef}"));
+            }
+        }
+
         // Truncated to fit Schooljaar.Naam's varchar(32).
         var schooljaar = new Schooljaar(
             $"2026-2027-{Guid.NewGuid():N}"[..20],
@@ -556,7 +565,20 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
         int AantalOnopgelosteVervallenPlaatsingen,
         int? AantalGedekt,
         int AantalLeerplandoelen,
-        List<DoelDto> Doelen);
+        List<DoelDto> Doelen,
+        int? AantalMinimumdoelenGedekt,
+        int AantalMinimumdoelen,
+        List<MinimumdoelDto> Minimumdoelen);
+
+    private sealed record MinimumdoelDto(
+        string Ref,
+        bool IsGedekt,
+        List<string> DekkendeThemas,
+        string? Oorzaak,
+        List<string> KandidaatThemas);
+
+    private static MinimumdoelDto Md(DekkingDto dekking, string minimumdoelRef) =>
+        dekking.Minimumdoelen.Single(m => m.Ref == minimumdoelRef);
 
     private sealed record DoelDto(
         string Code,

@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
 /// One run of a thema in a plan: the placements of the same thema that follow each other with no schooldag between
-/// them, which in practice are the parts the service stored around a vacation (ADR-0049 decision 4).
+/// them, which in practice are the parts the service stored around a vacation (ADR-0053 decision 4).
 /// <para>
 /// <b>Derived, never stored.</b> A reeks has no identity of its own: moving one part away from the other makes two
 /// reeksen, and that is what the teacher did. Storing a link between the parts would be a second fact to keep in step.

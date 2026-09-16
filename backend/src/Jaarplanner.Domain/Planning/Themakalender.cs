@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Planning;
 
 /// <summary>
-/// The calendar questions a jaarplan asks of a <see cref="Schooljaar"/>, answered in one place (ADR-0049 decision 2).
+/// The calendar questions a jaarplan asks of a <see cref="Schooljaar"/>, answered in one place (ADR-0053 decision 2).
 /// <para>
 /// <b>A schooldag</b> is a weekday on which <see cref="Schooljaar.IsLesdag"/> holds. <b>A lesweek</b> is a
 /// Monday-to-Friday week holding at least one schooldag. Every rule below is stated in those two terms, so the plan
@@ -104,7 +104,7 @@ public sealed class Themakalender
     /// The week of <paramref name="begin"/> counts as the first lesweek, whatever day of it the thema starts on, and a
     /// week without a schooldag is skipped. Beyond the last day of the year the count goes on over virtual full weeks,
     /// so a thema that fits exactly into the year's last weeks is not reported as cut; one that would run past the
-    /// year ends on <see cref="LaatsteSchooldag"/> and <paramref name="afgekapt"/> is set (ADR-0049 R5).
+    /// year ends on <see cref="LaatsteSchooldag"/> and <paramref name="afgekapt"/> is set (ADR-0053 R5).
     /// </para>
     /// </summary>
     /// <param name="begin">The first day. Expected to be a schooldag; the caller checks.</param>
@@ -253,7 +253,7 @@ public sealed class Themakalender
 
     /// <summary>
     /// Whether a placement from <paramref name="van"/> to <paramref name="tot"/> no longer fits the year as it stands: a
-    /// vacation lies inside it, or it reaches outside the year (ADR-0049 decision 5).
+    /// vacation lies inside it, or it reaches outside the year (ADR-0053 decision 5).
     /// </summary>
     public bool IsVervallen(DateOnly van, DateOnly tot)
     {

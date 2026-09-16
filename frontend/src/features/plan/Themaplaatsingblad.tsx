@@ -9,7 +9,7 @@ import { periode, volleDag } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 
 /**
- * Placing a thema by hand (FR-7.2, ADR-0049): which thema, its first day, and its last day.
+ * Placing a thema by hand (FR-7.2, ADR-0053): which thema, its first day, and its last day.
  *
  * **The server proposes the end** from the thema's duration in lesweken, as soon as a thema and a first day are
  * chosen, and says when the next thema or the end of the year makes it earlier. The teacher may change it; once she

@@ -28,34 +28,6 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<DekkendeKoppeling>> HaalDekkendeKoppelingenAsync(
-        IReadOnlyCollection<Guid> themaIds,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(themaIds);
-
-        if (themaIds.Count == 0)
-        {
-            // No placed thema means nothing to read, and it keeps an empty IN () list out of the SQL.
-            return [];
-        }
-
-        var ids = themaIds.Distinct().ToList();
-
-        // Accepted doelsuggesties only: a themadoel that links a leerplandoel counts nowhere (ADR-0047 D5), and the
-        // subthema layers have their own route through their subthema's placement.
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .Where(t => ids.Contains(t.Id))
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
-                .Select(k => new DekkendeKoppeling(k.LeerplandoelCode, t.Naam)))
-            .ToListAsync(cancellationToken);
-
-        return suggesties.Distinct().ToList();
-    }
-
-    /// <inheritdoc />
     public async Task<IReadOnlyList<Subthemakoppeling>> HaalSubthemakoppelingenAsync(
         Guid klasId,
         CancellationToken cancellationToken = default)
@@ -80,6 +52,8 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
             .SelectMany(t => t.Subthemas
                 .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Activiteiten
+                    // An own activiteit never counts through its subthema (ADR-0049 D7).
+                    .Where(a => a.EigenaarId == null)
                     .SelectMany(a => a.Doelkoppelingen
                         .Where(k => k.Status == KoppelingStatus.Aanvaard
                             || k.Status == KoppelingStatus.Manueel)
@@ -126,18 +100,6 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
     {
         var codes = (await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken)).Waarden;
 
-        var suggesties = await _context.Themas
-            .AsNoTracking()
-            .SelectMany(t => t.Doelsuggesties
-                .Where(k => k.Status != KoppelingStatus.Geweigerd)
-                .Select(k => new KandidaatKoppeling(
-                    k.LeerplandoelCode,
-                    t.Id,
-                    t.Naam,
-                    k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel,
-                    true)))
-            .ToListAsync(cancellationToken);
-
         var subdoelen = await _context.Themas
             .AsNoTracking()
             .SelectMany(t => t.Subthemas
@@ -149,8 +111,7 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
                         t.Id,
                         t.Naam,
                         sd.Koppeling.Status == KoppelingStatus.Aanvaard
-                            || sd.Koppeling.Status == KoppelingStatus.Manueel,
-                        false))))
+                            || sd.Koppeling.Status == KoppelingStatus.Manueel))))
             .ToListAsync(cancellationToken);
 
         var activiteiten = await _context.Themas
@@ -158,18 +119,18 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
             .SelectMany(t => t.Subthemas
                 .Where(st => codes == null || codes.Contains(st.Leeftijd))
                 .SelectMany(st => st.Activiteiten
+                    // An own activiteit is no route through a thema (ADR-0049 D7).
+                    .Where(a => a.EigenaarId == null)
                     .SelectMany(a => a.Doelkoppelingen
                         .Where(k => k.Status != KoppelingStatus.Geweigerd)
                         .Select(k => new KandidaatKoppeling(
                             k.LeerplandoelCode,
                             t.Id,
                             t.Naam,
-                            k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel,
-                            false)))))
+                            k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))))
             .ToListAsync(cancellationToken);
 
-        return suggesties
-            .Concat(subdoelen)
+        return subdoelen
             .Concat(activiteiten)
             .Distinct()
             .ToList();
@@ -191,6 +152,43 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
             .ToListAsync(cancellationToken);
 
         return rijen.Distinct().ToList();
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<EigenActiviteitkoppeling>> HaalEigenActiviteitkoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        var codes = (await Klasleeftijden.VoorKlasAsync(_context, klasId, cancellationToken)).Waarden;
+        var leerkrachten = await _context.Klastoewijzingen
+            .AsNoTracking()
+            .Where(t => t.KlasId == klasId)
+            .Select(t => t.GebruikerId)
+            .ToListAsync(cancellationToken);
+        var gepland = await (
+                from plaatsing in _context.Activiteitplaatsingen.AsNoTracking()
+                join jaarplan in _context.Jaarplannen on plaatsing.JaarplanId equals jaarplan.Id
+                where jaarplan.KlasId == klasId
+                select plaatsing.ActiviteitId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        var rijen = await (
+                from activiteit in _context.Activiteiten.AsNoTracking()
+                join subthema in _context.Subthemas on activiteit.SubthemaId equals subthema.Id
+                where activiteit.EigenaarId != null
+                    && (gepland.Contains(activiteit.Id)
+                        || (leerkrachten.Contains(activiteit.EigenaarId!.Value)
+                            && (codes == null || codes.Contains(subthema.Leeftijd))))
+                from koppeling in activiteit.Doelkoppelingen
+                where koppeling.Status == KoppelingStatus.Aanvaard || koppeling.Status == KoppelingStatus.Manueel
+                select new { koppeling.LeerplandoelCode, activiteit.Id, activiteit.Naam })
+            .ToListAsync(cancellationToken);
+
+        return rijen
+            .Select(r => new EigenActiviteitkoppeling(r.LeerplandoelCode, r.Naam, gepland.Contains(r.Id)))
+            .Distinct()
+            .ToList();
     }
 
     /// <inheritdoc />

@@ -69,35 +69,35 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// <b>The story's central claim.</b> A thema carrying a linked doel, placed but only <c>Voorgesteld</c>, covers
-    /// nothing today and raises the ceiling — so a teacher sees their work reflected without the tool calling an AI
-    /// proposal "gedekt" (Art. IV.1/V.1).
+    /// Since ADR-0052 no thema placement reaches a leerplandoel: whatever the placement's status, the leerplandoel of
+    /// the thema's subthema is covered only once that subthema is in the agenda (Art. V.1).
     /// </summary>
-    [PostgresFact]
-    public async Task Een_voorgestelde_plaatsing_dekt_niets_maar_verhoogt_het_plafond()
+    [PostgresTheory]
+    [InlineData(KoppelingStatus.Voorgesteld)]
+    [InlineData(KoppelingStatus.Aanvaard)]
+    public async Task Een_themaplaatsing_alleen_beweegt_geen_van_beide_cijfers(KoppelingStatus status)
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
-        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Voorgesteld);
+        await MaakGekoppeldThemaAsync(client, opzet, status, subthemaIngepland: false);
 
         var voortgang = await client.GetFromJsonAsync<VoortgangDto>(
             $"/api/klassen/{opzet.KlasId}/dekking/voortgang");
 
         Assert.True(voortgang!.IsBetrouwbaar);
         Assert.Equal(0, voortgang.AantalGedekt);
-        Assert.Equal(1, voortgang.AantalMogelijkGedekt);
+        Assert.Equal(0, voortgang.AantalMogelijkGedekt);
     }
 
     /// <summary>
-    /// Accepting the same placement moves the real figure up to the ceiling. This is the pair the bar draws: a solid
-    /// segment that only a teacher's decision can grow, and a lighter one that says what accepting would reach.
+    /// The subthema placed in the agenda covers its subdoel in both figures.
     /// </summary>
     [PostgresFact]
-    public async Task Een_aanvaarde_plaatsing_telt_wel_mee()
+    public async Task Een_ingepland_subthema_telt_in_beide_cijfers()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
-        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard);
+        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Voorgesteld, subthemaIngepland: true);
 
         var voortgang = await client.GetFromJsonAsync<VoortgangDto>(
             $"/api/klassen/{opzet.KlasId}/dekking/voortgang");
@@ -138,7 +138,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
-        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard);
+        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard, subthemaIngepland: true);
 
         // A placement reaching outside the school year: the vervallen state.
         await using (var context = _db.MaakContext())
@@ -171,10 +171,11 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
-        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard);
+        await MaakGekoppeldThemaAsync(client, opzet, KoppelingStatus.Aanvaard, subthemaIngepland: true);
 
         var voortgang = await client.GetFromJsonAsync<VoortgangDto>(
             $"/api/klassen/{opzet.KlasId}/dekking/voortgang");
+        Assert.Equal(1, voortgang!.AantalGedekt);
         var overzicht = await client.GetFromJsonAsync<DekkingDto>(
             $"/api/klassen/{opzet.KlasId}/dekking");
 
@@ -202,9 +203,9 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
         Assert.Equal(0, voortgang.AantalGedekt);
     }
 
-    private async Task MaakGekoppeldThemaAsync(HttpClient client, Opzet opzet, KoppelingStatus status)
+    private async Task MaakGekoppeldThemaAsync(HttpClient client, Opzet opzet, KoppelingStatus status, bool subthemaIngepland)
     {
-        var themaId = await MaakThemaMetDoelAsync(client, opzet);
+        var (themaId, subthemaId) = await MaakThemaMetDoelAsync(client, opzet);
 
         await using var context = _db.MaakContext();
         var plan = await context.Jaarplannen.FirstOrDefaultAsync(j => j.KlasId == opzet.KlasId);
@@ -216,14 +217,19 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         plan.VoegPlaatsingToe(themaId, opzet.EersteBlok, opzet.EersteBlok.AddDays(25), status);
         await context.SaveChangesAsync();
+
+        if (subthemaIngepland)
+        {
+            context.Subthemaplaatsingen.Add(new Subthemaplaatsing(plan.Id, subthemaId, opzet.EersteBlok, opzet.EersteBlok.AddDays(11)));
+            await context.SaveChangesAsync();
+        }
     }
 
     /// <summary>
-    /// A thema with an accepted doelsuggestie as <c>Manueel</c> — a link the teacher stands behind, so only the
-    /// <i>placement</i>'s status is left to vary between tests. A doelsuggestie is the link that follows the thema's
-    /// placement (Art. V.1, ADR-0047).
+    /// A thema with a K3 subthema whose subdoel links <c>VOR-01</c> as <c>Manueel</c>: a link the teacher stands behind,
+    /// so only the placements are left to vary between tests (Art. V.1, ADR-0047).
     /// </summary>
-    private async Task<Guid> MaakThemaMetDoelAsync(HttpClient client, Opzet opzet)
+    private async Task<(Guid ThemaId, Guid SubthemaId)> MaakThemaMetDoelAsync(HttpClient client, Opzet opzet)
     {
         var themaResp = await client.PostAsJsonAsync(
             "/api/themas",
@@ -233,14 +239,12 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            // An accepted doelsuggestie: the thema-level link whose route to dekking is the thema's placement (ADR-0047).
-            var geladen = await context.Themas.SingleAsync(t => t.Id == thema!.Id);
-            geladen.VoegDoelsuggestieToe(new DoelKoppeling("VOR-01", KoppelingStatus.Voorgesteld, "past"))
-                .WijzigStatus(KoppelingStatus.Manueel);
+            var geladen = await context.Themas.Include(t => t.Subthemas).SingleAsync(t => t.Id == thema!.Id);
+            var subthema = geladen.VoegSubthemaToe("Regen", 2, "K3");
+            subthema.VoegSubdoelToe("K3", new DoelKoppeling("VOR-01", KoppelingStatus.Manueel));
             await context.SaveChangesAsync();
+            return (thema!.Id, subthema.Id);
         }
-
-        return thema.Id;
     }
 
     private async Task<Opzet> ZetOpAsync()

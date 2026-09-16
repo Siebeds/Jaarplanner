@@ -72,7 +72,7 @@ export interface WoordwebVoorstelResultaat {
  * Which content layer a register link lives in. For `AlgemeneFiche` there is no thema: `themaNaam` carries the
  * fiche's name and `onderdeel` its klas (server contract, 2026-09-11).
  */
-export type KoppelingHerkomst = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit" | "AlgemeneFiche";
+export type KoppelingHerkomst = "Themadoel" | "Subdoel" | "Activiteit" | "AlgemeneFiche";
 
 // --- Curriculum ---
 
@@ -442,6 +442,13 @@ export interface ActiviteitWeergave {
    * Optional because a fixture or an older server may leave it out; absent reads as no maker, the safe direction.
    */
   makerId?: string | null;
+  /**
+   * The owner of an own activiteit, or null for a shared one (ADR-0049). Optional for the reason `makerId` is: absent
+   * reads as shared, which grants only what the shared rows grant.
+   */
+  eigenaarId?: string | null;
+  /** The owner's name, for a colleague's own activiteit; null when unknown or shared. */
+  eigenaarNaam?: string | null;
 }
 
 export interface SubthemaWeergave {
@@ -487,7 +494,7 @@ export interface ThemaWeergave {
 }
 
 /** Where in a thema a leerplandoel is linked (FB-009). */
-export type DoelPlaatsSoort = "Themadoel" | "Doelsuggestie" | "Subdoel" | "Activiteit";
+export type DoelPlaatsSoort = "Themadoel" | "Subdoel" | "Activiteit";
 
 export interface DoelPlaats {
   soort: DoelPlaatsSoort;
@@ -542,18 +549,20 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
-  aantalAfgeleideKlassen: number;
 }
 
-// --- AI matching (FR-4). Advisory only: everything lands as Voorgesteld (Art. IV). ---
+// --- A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel. Advisory only (Art. IV). ---
 
 export interface DoelMatchSuggestie {
   id: string;
-  leerplandoelCode: string;
+  minimumdoelRef: string;
+  /** Voorgesteld until decided, then Aanvaard (the minimumdoel is a themadoel) or Geweigerd. */
   status: KoppelingStatus;
-  aiMotivatie: string | null;
-  tekst: string | null;
-  doelsoort: Doelsoort | null;
+  aiMotivatie: string;
+  /** The minimumdoel's decreed text; null when its ref no longer resolves. */
+  omschrijving: string | null;
+  /** Its mijlpaal ("K-", "4-", "6-"); null when its ref no longer resolves. */
+  mijlpaal: string | null;
 }
 
 export interface DoelMatchResultaat {
@@ -563,11 +572,65 @@ export interface DoelMatchResultaat {
   overgeslagenOnbekend: string[];
   overgeslagenDuplicaat: string[];
   aantalKandidaten: number;
-  /** The jaarfasen the candidates came from (TB-007): the choice sent, or else the leeftijden of the subthema's. */
+  /** The leeftijden the run was for (TB-007): the choice sent, or else the leeftijden of the subthema's. */
   jaarFasen: string[];
+  /** The mijlpalen those leeftijden meet, whose minimumdoelen were the candidates. */
+  mijlpalen: string[];
 }
 
-// --- Jaarplan (FR-6, FR-7, ADR-0049) ---
+// --- Subdoelplaatsing (FB-057, ADR-0050). Advisory only: open proposals count for nothing until decided. ---
+
+export interface SubdoelvoorstelWeergave {
+  id: string;
+  leerplandoelCode: string;
+  tekst: string | null;
+  doelsoort: Doelsoort | null;
+  /** Set for a goal proposed for an existing subthema; null inside a proposed new one. */
+  subthemaId: string | null;
+  aiMotivatie: string;
+}
+
+export interface SubthemavoorstelWeergave {
+  id: string;
+  naam: string;
+  onderzoeksvraag: string;
+  duurWeken: number;
+  aiMotivatie: string;
+  doelen: SubdoelvoorstelWeergave[];
+}
+
+export interface LeeftijdPlaatsing {
+  leeftijd: string;
+  /** Leerplandoelen of the themadoelen in no subthema of this leeftijd yet. Needs no AI. */
+  aantalOpen: number;
+  /** Whether the caller may decide here; without it the two lists arrive empty (D6). */
+  magBeslissen: boolean;
+  subdoelvoorstellen: SubdoelvoorstelWeergave[];
+  subthemavoorstellen: SubthemavoorstelWeergave[];
+}
+
+export interface SubdoelplaatsingOverzicht {
+  themaId: string;
+  leeftijden: LeeftijdPlaatsing[];
+}
+
+export interface SubdoelplaatsingResultaat {
+  isGeslaagd: boolean;
+  aantalVoorgesteld: number;
+  aantalNieuweSubthemas: number;
+  aantalOvergeslagen: number;
+  fout: string | null;
+}
+
+export interface SubthemavoorstelBeslissing {
+  status: Extract<KoppelingStatus, "Aanvaard" | "Geweigerd">;
+  naam?: string;
+  onderzoeksvraag?: string;
+  duurWeken?: number;
+  leerplandoelCodes?: string[];
+}
+
+// --- Jaarplan (FR-6, FR-7, ADR-0053) ---
 
 /**
  * A placement's place in its thema's run: the parts the server stored around a vacation. Derived by the server,
@@ -692,6 +755,11 @@ export interface LeerplandoelDekking {
    * exactly when this or `dekkendeThemas` is non-empty, so neither list alone says whether a goal is covered.
    */
   dekkendeFiches: string[];
+  /**
+   * The own activiteiten planned in this class's agenda that cover the goal (ADR-0049 D7). Optional for an older server;
+   * absent reads as none.
+   */
+  dekkendeActiviteiten?: string[];
   /** Why the goal is not covered (E5-05); null exactly when it is. */
   oorzaak: Lacuneoorzaak | null;
   /** The thema's a teacher would act on to close the gap, for its cause only. Empty for GeenThema. */

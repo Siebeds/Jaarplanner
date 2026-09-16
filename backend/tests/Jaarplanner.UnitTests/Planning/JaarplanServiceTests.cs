@@ -6,7 +6,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// The jaarplan as a teacher builds it by hand (FR-6, FR-7, ADR-0049), against <see cref="FakeJaarplanOpslag"/> with no
+/// The jaarplan as a teacher builds it by hand (FR-6, FR-7, ADR-0053), against <see cref="FakeJaarplanOpslag"/> with no
 /// database. The year is <see cref="TestSchooljaar.MetVakanties"/>: Tuesday 1 September 2026 to Wednesday 30 June 2027,
 /// herfstvakantie 2–8 Nov, kerstvakantie 21 Dec – 3 Jan, krokusvakantie 15–21 Feb, paasvakantie 5–18 Apr. Herfst lasts
 /// 5 weeks and Water 2.

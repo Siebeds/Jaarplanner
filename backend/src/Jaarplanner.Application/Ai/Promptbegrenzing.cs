@@ -47,6 +47,20 @@ public sealed class Promptbegrenzing
     }
 
     /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for a prompt whose candidates are minimumdoelen
+    /// (FB-053). The advice counts mijlpalen where the leerplandoel overload counts leeftijden.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void Bewaak(AiRequest request, IReadOnlyCollection<Minimumdoel> kandidaten)
+    {
+        ArgumentNullException.ThrowIfNull(kandidaten);
+        Bewaak(
+            request,
+            kandidaten.Select(m => m.Ref).Distinct(StringComparer.Ordinal).Count(),
+            kandidaten.Select(m => m.Leeftijd).Distinct(StringComparer.Ordinal).Count());
+    }
+
+    /// <summary>
     /// Refuses <paramref name="request"/> when it is over the ceiling. The sentence names the size and gives the one
     /// remedy that exists for this run: fewer leeftijden when the candidates span more than one, and otherwise a higher
     /// ceiling, which only whoever runs the app can set.
@@ -57,15 +71,19 @@ public sealed class Promptbegrenzing
     public void Bewaak(AiRequest request, IReadOnlyCollection<Leerplandoel> kandidaten)
     {
         ArgumentNullException.ThrowIfNull(kandidaten);
+        Bewaak(
+            request,
+            kandidaten.Select(d => d.Code).Distinct(StringComparer.Ordinal).Count(),
+            kandidaten.Select(d => d.JaarFase).Distinct(StringComparer.Ordinal).Count());
+    }
 
+    private void Bewaak(AiRequest request, int aantalDoelen, int aantalLeeftijden)
+    {
         var tokens = SchatTokens(request);
         if (tokens <= MaxTokens)
         {
             return;
         }
-
-        var aantalDoelen = kandidaten.Select(d => d.Code).Distinct(StringComparer.Ordinal).Count();
-        var aantalLeeftijden = kandidaten.Select(d => d.JaarFase).Distinct(StringComparer.Ordinal).Count();
 
         var doelen = aantalDoelen == 1 ? "1 doel" : string.Create(Nederlands, $"{aantalDoelen:N0} doelen");
         // "Beheer" is the directie's right in this app, and the ceiling is no in-app setting, so the one-leeftijd advice

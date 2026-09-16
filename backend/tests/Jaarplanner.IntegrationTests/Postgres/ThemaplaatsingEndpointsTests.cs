@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// The jaarplan endpoints with a placement's own days (FB-035, ADR-0049), over HTTP against real PostgreSQL: the
+/// The jaarplan endpoints with a placement's own days (FB-035, ADR-0053), over HTTP against real PostgreSQL: the
 /// proposed end, the split around a vacation, the refusal of overlap, new days, a drag, the refusal of a rejection as a
 /// status, removal, the read's lesweken and runs, a placement that a new vacation makes vervallen, and the rights.
 /// <para>
@@ -193,7 +193,7 @@ public sealed class ThemaplaatsingEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A rejection is not a status any more (ADR-0049 R12): it is a 400; deleting the proposal rejects it, and deleting
+    /// A rejection is not a status any more (ADR-0053 R12): it is a 400; deleting the proposal rejects it, and deleting
     /// one part leaves the other, whose run is now shorter than the thema.
     /// </summary>
     [PostgresFact]
@@ -223,7 +223,7 @@ public sealed class ThemaplaatsingEndpointsTests : IAsyncLifetime
 
     /// <summary>
     /// The read carries the lesweken and the balance, and a vacation added inside a placement makes it vervallen
-    /// without moving it; saving its days again splits it and clears the state (ADR-0049 decision 5).
+    /// without moving it; saving its days again splits it and clears the state (ADR-0053 decision 5).
     /// </summary>
     [PostgresFact]
     public async Task Een_nieuwe_vakantie_maakt_een_plaatsing_vervallen_tot_ze_opnieuw_bewaard_wordt()

@@ -99,7 +99,6 @@ function bibliotheekItem(item: ThemaWeergave): ThemaBibliotheekItem {
     heeftVoldoendeThemadoelen: false,
     themadoelen: [],
     minimumdoelen: [],
-    aantalAfgeleideKlassen: 0,
   };
 }
 

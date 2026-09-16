@@ -1,5 +1,5 @@
 ---
-id: TB-045
+id: TB-053
 titel: AI-jaarplangeneratie werkt met thema's die een eigen begin- en einddatum hebben
 soort: technisch
 status: nieuw
@@ -16,7 +16,7 @@ fr: []
 ## Aanleiding
 
 Sinds FB-035 krijgt een thema in het jaarplan een eigen begin- en einddatum, lopen twee thema's nooit op dezelfde dag
-en zijn de themaperiodes uit de planning verdwenen ([ADR-0049](../../docs/adr/0049-themaplaatsing-met-eigen-datums.md)).
+en zijn de themaperiodes uit de planning verdwenen ([ADR-0053](../../docs/adr/0053-themaplaatsing-met-eigen-datums.md)).
 De AI-generatie dacht in themaperiodes en zette soms meerdere thema's in één periode. De eigenaar besliste op
 2026-09-16 dat ze in een apart ticket herwerkt wordt en tot dan uitstaat: de knop "Genereer jaarplan" is
 uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
