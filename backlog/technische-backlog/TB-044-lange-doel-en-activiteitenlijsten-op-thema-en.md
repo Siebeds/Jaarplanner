@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:43
+bijgewerkt: 2026-09-16 22:52
 opgepakt-door: lange-lijsten
 branch: ticket/lange-lijsten-inklappen
 pr:
@@ -64,3 +64,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 22:43 · lange-lijsten · aangemaakt (status in-uitvoering)
+- 2026-09-16 22:52 · lange-lijsten · Inklaplijst gebouwd en toegepast op themadoelen, activiteiten, subdoelen en andere doelen; vitest 1020 groen, lint groen.
