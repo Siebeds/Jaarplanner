@@ -49,6 +49,10 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
    **verwijderd** uit het plan.
 10. De **AI-generatie wordt in een ander ticket herwerkt**. Tot dan staat de knop "Genereer jaarplan" uit, met een zin
     die zegt waarom.
+11. **Vaste momenten** (bv. "Sportweek") **blokkeren geen plaatsing** meer. Alleen een vakantie onderbreekt een thema.
+    Bewaarde vaste momenten en startthema's blijven staan voor het AI-ticket.
+12. Plaatsingen die een leerkracht als AI-voorstel **geweigerd** had, worden bij het omzetten **verwijderd**. Een
+    openstaand voorstel weigeren verwijdert het voorstel.
 
 ## Gewenst gedrag
 
@@ -106,6 +110,10 @@ Bij het verfijnen op 2026-09-16 besliste de eigenaar dat de oplossing geen start
   zijn periode en ziet de leerkracht dezelfde thema's op dezelfde plaats.
 - [ ] Gegeven een periode van vóór deze wijziging met meerdere thema's, dan staan ze na de omzetting na elkaar, elk met
   zijn eigen duur en nooit over het volgende thema heen; een thema zonder vrije dag is verwijderd uit het plan.
+- [ ] Gegeven een plan van vóór deze wijziging met een geweigerd voorstel, dan is dat voorstel na de omzetting weg; en
+  wanneer de leerkracht een openstaand voorstel weigert, dan verdwijnt het uit het plan.
+- [ ] Gegeven een bewaard vast moment dat plaatsing blokkeerde, dan kan de leerkracht toch een thema plaatsen op die
+  dag.
 - [ ] Gegeven een plaatsing, wanneer directie een vakantie toevoegt die erin valt, dan toont de kaart een blijvende
   melding, staat de dekking op "te herzien" en is de plaatsing niet verschoven.
 - [ ] De knop "Genereer jaarplan" staat uit met een zin die zegt waarom, en de server weigert een generatie.
