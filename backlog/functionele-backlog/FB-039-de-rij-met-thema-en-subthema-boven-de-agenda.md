@@ -2,13 +2,13 @@
 id: FB-039
 titel: De rij met thema en subthema boven de agenda verdwijnt
 soort: functioneel
-status: klaar-voor-bouw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 15:07
+opgepakt-door: claude-fb-039
+branch: ticket/FB-039-stroken-toegankelijk
+pr: 108
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -47,14 +47,14 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de week-, dag- of maandweergave met een lopend thema en subthema, dan staat er boven de agenda geen rij
+- [x] Gegeven de week-, dag- of maandweergave met een lopend thema en subthema, dan staat er boven de agenda geen rij
   met het thema en het subthema.
-- [ ] Gegeven een themastrook of subthemastrook in een dagkop, wanneer de leerkracht erop klikt, dan opent de
+- [x] Gegeven een themastrook of subthemastrook in een dagkop, wanneer de leerkracht erop klikt, dan opent de
   themapagina zoals voorheen (FB-037).
-- [ ] Gegeven een strook in de week-, dag- of maandweergave, dan is haar aanraakdoel minstens 24 px hoog, ook op ~390px.
-- [ ] Gegeven de agenda, wanneer de leerkracht met Tab door de dagkoppen gaat, dan krijgt elke strook een zichtbare
+- [x] Gegeven een strook in de week-, dag- of maandweergave, dan is haar aanraakdoel minstens 24 px hoog, ook op ~390px.
+- [x] Gegeven de agenda, wanneer de leerkracht met Tab door de dagkoppen gaat, dan krijgt elke strook een zichtbare
   focus, en Enter opent dezelfde pagina als een klik.
-- [ ] Nagekeken in een echte browser op desktop en op ~390px, ook met het toetsenbord.
+- [x] Nagekeken in een echte browser op desktop en op ~390px, ook met het toetsenbord.
 
 ## Testscenario's
 
@@ -86,3 +86,9 @@ stroken en een ADR die ADR-0042 beslissing 3 vervangt.
 - 2026-09-15 22:20 · wensen-hoeken · aangemaakt (status nieuw)
 - 2026-09-15 22:51 · claude-fb039 · PR #105
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-039 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 14:36 · claude-fb-039 · stroken gebouwd: doel van 24 px, de strook met de naam is een tabstop; ADR-0045 vervangt ADR-0042 beslissing 3; vitest 973/973 en lint groen
+- 2026-09-16 14:38 · claude-fb-039 · antagonist: COMPLIANT, de stroken voldoen samen met main aan WCAG 2.2 AA; vier MINOR (o.a. test gesloten maandag, ADR-zin)
+- 2026-09-16 14:48 · claude-fb-039 · browsercheck FAIL (MAJOR): in de maand verbergen de 24px-stroken de activiteiten in de cel; wordt hersteld
+- 2026-09-16 14:56 · claude-fb-039 · in-uitvoering → te-testen: gebouwd: stroken 24px, met Tab en Enter bereikbaar (ADR-0045); maandrij groeit mee zodat activiteiten zichtbaar blijven; browsercheck PASS na hertest (backlog/worklogs/FB-039), plantests en lint groen, antagonist COMPLIANT; het nummer van ADR-0045 kan botsen met FB-043 bij de merge
+- 2026-09-16 15:07 · claude-fb-039 · PR #108
