@@ -57,6 +57,16 @@ describe("schooluren", () => {
     expect(grenstijden(undefined, dagen)).toEqual([]);
   });
 
+  it("geeft het einde van een schooldag voorrang op een middagpauze die ermee botst", () => {
+    // Monday's pause starts at 12:00, Wednesday ends at 12:05: the end of a school day is the one written.
+    const kortWoensdag = { ...woensdag, begin: "08:30:00", einde: "12:05:00" };
+    const dagen = [
+      { datum: "2026-09-14", isLesdag: true },
+      { datum: "2026-09-16", isLesdag: true },
+    ];
+    expect(grenstijden([maandag, kortWoensdag], dagen)).toEqual([510, 725, 795, 930]);
+  });
+
   it("vult het formulier met wat de school heeft, en een lege dag met de pauze aangevinkt", () => {
     const velden = beginVelden([maandag, woensdag]);
 

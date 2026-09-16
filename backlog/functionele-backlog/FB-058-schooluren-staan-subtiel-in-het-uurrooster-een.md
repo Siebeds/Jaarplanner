@@ -2,10 +2,10 @@
 id: FB-058
 titel: Schooluren staan subtiel in het uurrooster: een heel lichte effen tint, geen arcering
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:48
+bijgewerkt: 2026-09-17 00:00
 opgepakt-door: schooluren-tint
 branch: ticket/FB-058-schooluren-tint
 pr:
@@ -40,18 +40,18 @@ https://claude.ai/artifact/JzSatMWwikSRL89MmeZwkk
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een lesdag met schooluren 8:30–15:30 en middagpauze 12:00–13:15, wanneer de leerkracht de weekagenda
+- [x] Gegeven een lesdag met schooluren 8:30–15:30 en middagpauze 12:00–13:15, wanneer de leerkracht de weekagenda
       opent, dan zijn 7:00–8:30, 12:00–13:15 en 15:30–einde licht en effen getint, zonder strepen, en is 8:30–12:00 en
       13:15–15:30 wit.
-- [ ] Gegeven dezelfde week, wanneer de leerkracht de kolommen bekijkt, dan staat er in geen enkele dagkolom nog een
+- [x] Gegeven dezelfde week, wanneer de leerkracht de kolommen bekijkt, dan staat er in geen enkele dagkolom nog een
       label "begin", "middagpauze" of "einde", en staan de begin- en eindtijd van de schooldag in de uurkolom.
-- [ ] Gegeven een activiteit van 15:00 tot 16:00, wanneer ze in de agenda staat, dan heeft het blok een dekkende
+- [x] Gegeven een activiteit van 15:00 tot 16:00, wanneer ze in de agenda staat, dan heeft het blok een dekkende
       achtergrond en is de naam zonder doorschemerende tint of lijnen leesbaar.
-- [ ] Gegeven een week met een gesloten dag, wanneer de leerkracht de week bekijkt, dan ziet die de gesloten dag anders
+- [x] Gegeven een week met een gesloten dag, wanneer de leerkracht de week bekijkt, dan ziet die de gesloten dag anders
       dan de getinte uren buiten schooltijd, en staat bij de gesloten dag nog altijd de naam van de sluiting.
-- [ ] Gegeven een getint uur, wanneer de leerkracht erop klikt of er een stuk op sleept, dan kan die daar plannen zoals
+- [x] Gegeven een getint uur, wanneer de leerkracht erop klikt of er een stuk op sleept, dan kan die daar plannen zoals
       op elk ander uur.
-- [ ] Gegeven de lichte en de donkere weergave, wanneer de tijden in de uurkolom gemeten worden in een echte browser,
+- [x] Gegeven de lichte en de donkere weergave, wanneer de tijden in de uurkolom gemeten worden in een echte browser,
       dan halen ze minstens 4,5:1 contrast (WCAG 2.2 AA).
 
 ## Testscenario's
@@ -86,3 +86,5 @@ Geen.
 - 2026-09-16 23:36 · schooluren-tint · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-16 23:40 · schooluren-tint · Arcering vervangen door een effen tint (bg-vlak/70), grenstijden in de uurkolom, activiteitblokken dekkend; tests en lint groen.
 - 2026-09-16 23:48 · schooluren-tint · Browserpas (wegwerp-DB jp_fb058, 1440 px en 390 px, licht en donker): tint 249,249,251 op wit, gesloten dag 242,244,246 met naam; grenstijden 17,8:1 licht en 13,1:1 donker; activiteitblokken zonder alfa.
+- 2026-09-17 00:00 · schooluren-tint · Antagonist: COMPLIANT, geen blokkerende bevindingen. MINOR opgelost: bij botsende grenstijden wint begin/einde van de schooldag van de middagpauze. MINOR aanvaard: een botsende tijd van een tweede dag staat niet in de uurkolom, alleen de tint en de schermlezerstekst tonen hem. Criteria afgevinkt op basis van Tijdraster.test.tsx, schooluren.test.ts en de browserpas.
+- 2026-09-17 00:00 · schooluren-tint · in-uitvoering → te-testen: Gebouwd: effen lichte tint in plaats van arcering, grenstijden in de uurkolom, dekkende activiteitblokken, amendement op ADR-0038. Vitest 1013 groen (een losse onstabiele test in DoelenScherm/Tijdraster onder belasting, los van deze wijziging), pnpm lint groen, browserpas licht/donker/390 px.

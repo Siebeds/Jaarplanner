@@ -90,7 +90,7 @@ because the block's half-transparent ground let the stripes through its name.
   two still read as different things. Still ink, never a hue.
 - The stretches carry **no words**. The hour gutter writes each boundary of the teaching days on screen (begin,
   middagpauze begin and end, einde) in full ink with a short tick, merged across the days (`grenstijden` in
-  `schooluren.ts`); an hour label it would overlap is left out. A boundary that would hang over the one before it is
+  `schooluren.ts`); an hour label it would overlap is left out. When two boundaries would overlap, a begin or end of the school day wins over a middagpauze, and otherwise the earlier one; the other is
   dropped, and that day's edge is then shown by the tint alone, with its hours still spoken in the day heading.
 - An activiteit block gets an **opaque** ground: the same grey mixed with the card instead of laid over it.
 
