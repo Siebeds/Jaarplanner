@@ -24,7 +24,7 @@ describe("AiKnop", () => {
   });
 
   it("toont vonken en puntjes alleen tijdens een run, verborgen voor een schermlezer", () => {
-    const { rerender } = render(<AiKnop>{t("plan.genereerNu")}</AiKnop>);
+    const { rerender } = render(<AiKnop>{t("plan.genereer")}</AiKnop>);
     expect(screen.queryByTestId("ai-vonken")).toBeNull();
     expect(screen.queryByTestId("ai-puntjes")).toBeNull();
 
