@@ -41,6 +41,9 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     /// </summary>
     public string? AiAntwoord { get; set; }
 
+    /// <summary>The last request the stub received, so a test can check what the prompt holds.</summary>
+    public AiRequest? LaatsteAiVerzoek { get; private set; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
@@ -71,7 +74,7 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
                 services.Remove(descriptor);
             }
 
-            services.AddSingleton<IAiClient>(new StubAiClient(() => AiAntwoord));
+            services.AddSingleton<IAiClient>(new StubAiClient(() => AiAntwoord, verzoek => LaatsteAiVerzoek = verzoek));
         });
     }
 
@@ -79,15 +82,23 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     private sealed class StubAiClient : IAiClient
     {
         private readonly Func<string?> _antwoord;
+        private readonly Action<AiRequest> _ontvangen;
 
-        public StubAiClient(Func<string?> antwoord) => _antwoord = antwoord;
+        public StubAiClient(Func<string?> antwoord, Action<AiRequest> ontvangen)
+        {
+            _antwoord = antwoord;
+            _ontvangen = ontvangen;
+        }
 
-        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-            Task.FromResult(new AiCompletion
+        public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default)
+        {
+            _ontvangen(request);
+            return Task.FromResult(new AiCompletion
             {
                 Content = _antwoord()
                     ?? throw new InvalidOperationException(
                         "The AI client was reached on a Postgres test that set no canned answer."),
             });
+        }
     }
 }

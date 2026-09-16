@@ -256,7 +256,7 @@ internal sealed class RechtenTestOpzet
 
     public sealed record IdDto(Guid Id);
 
-    public sealed record ActiviteitDto(Guid Id, Guid? MakerId, Guid? EigenaarId = null, string? EigenaarNaam = null);
+    public sealed record ActiviteitDto(Guid Id, Guid? MakerId, Guid? EigenaarId = null, string? EigenaarNaam = null, string? Naam = null);
 
     public sealed record RunDto(
         Guid Id,

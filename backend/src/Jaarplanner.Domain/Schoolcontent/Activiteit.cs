@@ -44,7 +44,8 @@ public sealed class Activiteit
     /// <summary>
     /// The gebruiker who created this activiteit by hand, or <c>null</c> (Art. IX.2, Art. VI.1, ADR-0030 R25, R26).
     /// <para>
-    /// <b>It only decides who may delete it:</b> the maker may, while no goal is linked to it, with or without a klas
+    /// <b>It only decides who may delete it:</b> the maker may, while no decided goal is linked to it
+    /// (<see cref="HeeftBeslisteDoelkoppeling"/>, ADR-0052 D5), with or without a klas
     /// at this leeftijd and after the schooljaar (R33). The activiteit stays shared; this is not E6-10's personal
     /// content. <c>null</c> for an activiteit that predates the rule, for one the FR-1 import created, and for one
     /// whose maker was removed as a gebruiker (the database sets it to null, I17), all of which are purely shared.
@@ -160,6 +161,34 @@ public sealed class Activiteit
         ArgumentNullException.ThrowIfNull(koppeling);
         _doelkoppelingen.Add(koppeling);
     }
+
+    /// <summary>
+    /// Whether a decided goal is linked (<c>aanvaard</c> or <c>manueel</c>). A proposal or a rejected goal is not a link
+    /// for any rule that asks whether one exists (ADR-0052 D5).
+    /// </summary>
+    public bool HeeftBeslisteDoelkoppeling => _doelkoppelingen.Any(k => k.IsBeslist);
+
+    /// <summary>Adds the AI's proposal of a goal, as <see cref="KoppelingStatus.Voorgesteld"/> with its motivation (FB-026).</summary>
+    public DoelKoppeling StelDoelVoor(string leerplandoelCode, string aiMotivatie)
+    {
+        if (string.IsNullOrWhiteSpace(aiMotivatie))
+        {
+            throw new ArgumentException("A proposal carries a motivation (Art. IV.3).", nameof(aiMotivatie));
+        }
+
+        if (_doelkoppelingen.Any(k => string.Equals(k.LeerplandoelCode, leerplandoelCode?.Trim(), StringComparison.Ordinal)))
+        {
+            throw new InvalidOperationException($"Goal '{leerplandoelCode}' is already on this activiteit.");
+        }
+
+        var koppeling = new DoelKoppeling(leerplandoelCode!, KoppelingStatus.Voorgesteld, aiMotivatie);
+        _doelkoppelingen.Add(koppeling);
+        return koppeling;
+    }
+
+    /// <summary>Removes the proposals nobody has decided yet, ahead of a new run (ADR-0052 D3). Decided links stay.</summary>
+    public void VerwijderOpenDoelvoorstellen() =>
+        _doelkoppelingen.RemoveAll(k => k.Status == KoppelingStatus.Voorgesteld);
 
     /// <summary>
     /// Removes a goal link from this activiteit (CRUD, E1-10). Used when a teacher unlinks a leerdoel;

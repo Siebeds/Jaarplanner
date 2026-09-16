@@ -46,6 +46,14 @@ public sealed class Subdoelvoorstel
     public static Subdoelvoorstel InSubthema(Guid themaId, string leeftijd, string leerplandoelCode, Guid subthemaId, string aiMotivatie) =>
         new(themaId, leeftijd, leerplandoelCode, subthemaId, null, aiMotivatie);
 
+    /// <summary>
+    /// A proposal to add a goal accepted on an activiteit to that activiteit's subthema (FB-026, ADR-0052 D4). It is
+    /// decided like any proposal in an existing subthema, and an FB-057 run leaves it alone.
+    /// </summary>
+    public static Subdoelvoorstel VanuitActiviteit(
+        Guid themaId, string leeftijd, string leerplandoelCode, Guid subthemaId, Guid activiteitId, string aiMotivatie) =>
+        new(themaId, leeftijd, leerplandoelCode, subthemaId, null, aiMotivatie) { ActiviteitId = activiteitId };
+
     /// <summary>A proposal to place the goal in a proposed new subthema.</summary>
     public static Subdoelvoorstel InNieuwSubthema(Guid themaId, string leeftijd, string leerplandoelCode, Guid subthemavoorstelId, string aiMotivatie) =>
         new(themaId, leeftijd, leerplandoelCode, null, subthemavoorstelId, aiMotivatie);
@@ -67,6 +75,12 @@ public sealed class Subdoelvoorstel
 
     /// <summary>The proposed new subthema it belongs to; <c>null</c> for a goal placed in an existing one.</summary>
     public Guid? SubthemavoorstelId { get; private set; }
+
+    /// <summary>
+    /// The activiteit whose accepted goal this proposal came from (ADR-0052), or <c>null</c> for one of FB-057's runs. The
+    /// database clears it when that activiteit is deleted; the proposal stays.
+    /// </summary>
+    public Guid? ActiviteitId { get; private set; }
 
     /// <summary>Voorgesteld until decided (Art. IV.2).</summary>
     public KoppelingStatus Status { get; private set; }

@@ -171,10 +171,8 @@ public sealed record Rapportklas(Guid KlasId);
 /// <param name="Leeftijd">The leeftijd of its subthema.</param>
 /// <param name="MakerId">Who created it, or <c>null</c> (imported, older than the rule, or its maker was removed).</param>
 /// <param name="HeeftDoelkoppelingen">
-/// Whether any goal is linked to it, whatever the link's status. Counting a <c>geweigerd</c> or <c>voorgesteld</c> link
-/// as linked is the fail-closed reading of R25's "while no goal is linked to it". It is neither ruled nor a listed
-/// default; the owner's answer is owed before any path creates an activiteit link that is not <c>manueel</c> (E8-07).
-/// See the R25 carry-forward under E6-02 in <c>backlog/E6-beheer-rollen-samenwerking.md</c>.
+/// Whether a decided goal is linked to it: an <c>aanvaard</c> or <c>manueel</c> link. A <c>voorgesteld</c> or
+/// <c>geweigerd</c> link does not count for R25's "while no goal is linked to it" (owner, 2026-09-17, ADR-0052 D5).
 /// </param>
 /// <param name="EigenaarId">
 /// The owner of an own activiteit (ADR-0049), or <c>null</c> for a shared one. On an own activiteit only the owner's

@@ -157,7 +157,7 @@ public sealed class WizardrunService : IWizardrunService
             // Q4 (a), owner 2026-09-14: a goal link protects an activiteit the run created, too. The re-scope carries the
             // link out of this leeftijd's dekking and into the new one's, so the goal-link right is needed "at both the old
             // and the new leeftijd" (I27 as ratified on the owner's Q5 answer; R19), as I13 asks the subthema right at both.
-            if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(), cancellationToken)
+            if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel), cancellationToken)
                 && !(await MagDoelenKoppelenAsync(gebruikerId, huidig.Leeftijd, cancellationToken)
                      && await MagDoelenKoppelenAsync(gebruikerId, nieuw, cancellationToken)))
             {
@@ -200,7 +200,7 @@ public sealed class WizardrunService : IWizardrunService
 
         // I27: an activiteit the run created may carry a goal link someone linked since (R19). Deleting it removes that
         // link, which takes the goal-link right at that leeftijd, exactly as creating one does.
-        if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(), cancellationToken)
+        if (await _context.Activiteiten.AnyAsync(a => a.SubthemaId == subthemaId && a.Doelkoppelingen.Any(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel), cancellationToken)
             && !await MagDoelenKoppelenAsync(gebruikerId, subthema.Leeftijd, cancellationToken))
         {
             throw new WizardrunWeigering(SubthemaMetDoelen);
@@ -362,7 +362,7 @@ public sealed class WizardrunService : IWizardrunService
                 from activiteit in _context.Activiteiten
                 where activiteit.Id == activiteitId
                 join subthema in _context.Subthemas on activiteit.SubthemaId equals subthema.Id
-                select new Activiteitplek(subthema.ThemaId, subthema.Leeftijd, activiteit.Doelkoppelingen.Any()))
+                select new Activiteitplek(subthema.ThemaId, subthema.Leeftijd, activiteit.Doelkoppelingen.Any(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)))
             .SingleOrDefaultAsync(cancellationToken)
         ?? throw new SchoolcontentNietGevondenFout(ActiviteitNietGevonden);
 

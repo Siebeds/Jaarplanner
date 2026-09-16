@@ -14,7 +14,9 @@ import { STANDAARDDUUR } from "../plan/tijd";
 import { Doellijst, Feit } from "../themas/Fiche";
 import { Gekoppelddoel } from "../themas/Gekoppelddoel";
 import { Doeldetailblad } from "../themas/Doeldetailblad";
+import { beslist } from "../themas/subthemabalans";
 import { Doelkoppelaar } from "./Doelkoppelaar";
+import { Doelvoorstellen } from "./Doelvoorstellen";
 import { Eigenaarmerk } from "./Eigenaarmerk";
 
 /**
@@ -108,6 +110,7 @@ export function Activiteitformulier({
   leeftijd,
   onGebruik,
   gebruikBezig = false,
+  themaId,
 }: {
   open: boolean;
   /** The activiteit being changed, or undefined when making a new one. */
@@ -139,6 +142,8 @@ export function Activiteitformulier({
   /** Take an own copy of this (someone else's own) activiteit; shown on the facts only. */
   onGebruik?: () => void;
   gebruikBezig?: boolean;
+  /** The thema of an existing activiteit: with it, whoever may link its goals can also ask the AI for some (FB-026). */
+  themaId?: string;
 }) {
   const id = useId();
   const { mag } = useRechten();
@@ -193,7 +198,8 @@ export function Activiteitformulier({
   }
 
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
-  const koppelingen = activiteit?.doelkoppelingen ?? [];
+  // Only decided doelen are linked; a proposal waits below and a rejected one is not shown (ADR-0052 D5).
+  const koppelingen = (activiteit?.doelkoppelingen ?? []).filter((k) => beslist(k.status));
 
   // ONE DIALOG FOR BOTH STATES (E6-02 slice 4, fix round 3, F8). A refusal refetches the rights, and a gebruiker who
   // loses the content right with it turns this from the form into the facts while the sheet is open. Two dialogs
@@ -481,6 +487,8 @@ export function Activiteitformulier({
                   alGekozen={koppelingen.map((k) => k.leerplandoelCode)}
                 />
               </div>
+
+              {themaId ? <Doelvoorstellen themaId={themaId} activiteit={activiteit} onToon={toonDoel} /> : null}
             </section>
           ) : null
         ) : magNieuweDoelen ? (
@@ -596,15 +604,16 @@ function Feitdoelen({
   activiteit: ActiviteitMetKleur;
   onToon: (code: string, knop: HTMLElement) => void;
 }) {
+  const gekoppeld = activiteit.doelkoppelingen.filter((k) => beslist(k.status));
   return (
     <section className="border-t border-lijn pt-5">
-      <Doelenkop aantal={activiteit.doelkoppelingen.length} />
-      {activiteit.doelkoppelingen.length === 0 ? (
+      <Doelenkop aantal={gekoppeld.length} />
+      {gekoppeld.length === 0 ? (
         <p className="mt-2 text-meta text-inkt-zacht">{t("activiteit.geenDoel")}</p>
       ) : (
         <div className="mt-2">
           <Doellijst>
-            {activiteit.doelkoppelingen.map((koppeling) => (
+            {gekoppeld.map((koppeling) => (
               <Gekoppelddoel
                 key={koppeling.id}
                 koppeling={koppeling}

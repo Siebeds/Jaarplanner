@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
@@ -58,6 +58,76 @@ function toon(ui: ReactElement, ik?: Ik) {
 }
 
 describe("Activiteitformulier", () => {
+  it("toont AI-voorstellen apart van de gekoppelde doelen en beslist ze met vinkje en kruisje (FB-026)", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        url.endsWith("/doelsuggesties/genereer")
+          ? new Response(JSON.stringify({ isGeslaagd: true, aantalVoorgesteld: 2, aantalOvergeslagen: 0, fout: null }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            })
+          : new Response(null, { status: 204 }),
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const activiteit: ActiviteitMetKleur = {
+        ...ACTIVITEIT,
+        doelkoppelingen: [
+          ...ACTIVITEIT.doelkoppelingen,
+          { id: "k-2", leerplandoelCode: "WO-7", status: "Voorgesteld", aiMotivatie: "Sorteren is ordenen." },
+          { id: "k-3", leerplandoelCode: "WO-9", status: "Geweigerd", aiMotivatie: "Afgewezen." },
+        ],
+      };
+      toon(
+        <Activiteitformulier
+          open
+          activiteit={activiteit}
+          themaId="t-1"
+          magDoelen
+          onKoppel={vi.fn()}
+          onOntkoppel={vi.fn()}
+          onderzoeksvragen={[]}
+          onBewaar={vi.fn()}
+          onSluit={vi.fn()}
+          bezig={false}
+        />,
+      );
+
+      // One linked doel; the proposal waits in its own list with its motivation; the rejected one is not shown.
+      const voorstellen = screen.getByRole("list", { name: t("doelvoorstel.lijst") });
+      expect(within(voorstellen).getByText("WO-7")).toBeInTheDocument();
+      expect(within(voorstellen).getByText("Sorteren is ordenen.")).toBeInTheDocument();
+      expect(screen.queryByText("WO-9")).toBeNull();
+      expect(screen.queryByText("Afgewezen.")).toBeNull();
+
+      fireEvent.click(within(voorstellen).getByRole("button", { name: `${t("plaatsing.aanvaard")}: WO-7` }));
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining("/api/activiteiten/a-1/doelkoppelingen/k-2/status"),
+          expect.objectContaining({ method: "PUT", body: JSON.stringify({ status: "Aanvaard" }) }),
+        ),
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: t("doelvoorstel.vraag") }));
+      expect(await screen.findByText(t("doelvoorstel.voorstellen", { aantal: 2 }))).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("/api/activiteiten/a-1/doelsuggesties/genereer"),
+        expect.objectContaining({ method: "POST" }),
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("biedt geen AI-knop aan zonder het koppelrecht (FB-026)", () => {
+    toon(
+      <Activiteitformulier open activiteit={ACTIVITEIT} themaId="t-1" onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
+    );
+
+    expect(screen.queryByRole("button", { name: t("doelvoorstel.vraag") })).toBeNull();
+  });
+
   it("biedt bij een nieuwe activiteit geen doelen aan zonder het koppelrecht, en stuurt er ook geen mee", () => {
     const bewaar = vi.fn();
     toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);

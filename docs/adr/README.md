@@ -62,6 +62,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0049](0049-eigen-activiteit-van-de-leerkracht.md) | **A leerkracht's new activiteit is her own**: it belongs to her and follows her across schooljaren; her jaarfase colleagues read it and copy it; its goals count for a klas only once the activiteit is planned in that klas's agenda; a removed owner's activiteiten become shared (answers 0030 §4 (a) for activiteiten) | Accepted |
 | [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted |
 | [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
+| [0052](0052-ai-zoekt-doelen-bij-een-activiteit.md) | **The AI proposes goals for an activiteit**, decided by whoever may link its goals; an accepted goal is proposed as subdoel, and only a decided link counts as linked (R25) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -116,6 +117,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0049 | Art. V.1, VI.1, IX.2 and XII (amended); part 2 of the 0030 §5 amendment, for activiteiten; relates to 0043 and 0047 | FB-015; FB-016 and FB-025 build on it | FR-3.1, FR-3.2 |
 | 0050 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; relates to 0043 and 0046 | FB-057; FB-054 builds on it | FR-4.1–FR-4.4; FA A.7 steps 4–6 |
 | 0051 | Art. XII, II.3; WCAG 2.2 AA via 0017; amends 0039 decision 5 | FB-057; later AI proposals | FR-4.2, FR-4.3; NFR-2 |
+| 0052 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
 
 ## Open decisions referenced by ADRs
 

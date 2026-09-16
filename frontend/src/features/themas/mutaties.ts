@@ -1,7 +1,13 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { del, post, put } from "../../lib/api";
 import { themaSleutels } from "../../lib/queries";
-import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
+import type {
+  ActiviteitDoelsuggestieResultaat,
+  ActiviteitWeergave,
+  KoppelingStatus,
+  SubthemaWeergave,
+  ThemaWeergave,
+} from "../../lib/types";
 import type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
 
 /**
@@ -237,6 +243,29 @@ export function useOntkoppelActiviteitdoel(themaId: string) {
   return useSchoolcontentMutatie<{ activiteitId: string; koppelingId: string }, void>(
     ({ activiteitId, koppelingId }) =>
       del<void>(`/api/activiteiten/${activiteitId}/doelkoppelingen/${koppelingId}`),
+    themaId,
+  );
+}
+
+/**
+ * Asks the AI for doelen of an activiteit's leeftijd (FB-026, ADR-0052): they land on the activiteit as `Voorgesteld`,
+ * replacing its open proposals, and count for nothing until decided (Art. IV.1).
+ */
+export function useStelActiviteitdoelenVoor(themaId: string) {
+  return useSchoolcontentMutatie<string, ActiviteitDoelsuggestieResultaat>(
+    (activiteitId) => post<ActiviteitDoelsuggestieResultaat>(`/api/activiteiten/${activiteitId}/doelsuggesties/genereer`),
+    themaId,
+  );
+}
+
+/** Accepts or rejects one proposed doel of an activiteit; an accepted one may also become a subdoelvoorstel. */
+export function useBeslisActiviteitdoelvoorstel(themaId: string) {
+  return useSchoolcontentMutatie<
+    { activiteitId: string; koppelingId: string; status: Extract<KoppelingStatus, "Aanvaard" | "Geweigerd"> },
+    void
+  >(
+    ({ activiteitId, koppelingId, status }) =>
+      put<void>(`/api/activiteiten/${activiteitId}/doelkoppelingen/${koppelingId}/status`, { status }),
     themaId,
   );
 }

@@ -46,14 +46,18 @@ public sealed record LeeftijdPlaatsing(
     IReadOnlyList<SubdoelvoorstelWeergave> Subdoelvoorstellen,
     IReadOnlyList<SubthemavoorstelWeergave> Subthemavoorstellen);
 
-/// <summary>One open goal proposal. <see cref="SubthemaId"/> is set for one in an existing subthema.</summary>
+/// <summary>
+/// One open goal proposal. <see cref="SubthemaId"/> is set for one in an existing subthema;
+/// <see cref="ActiviteitNaam"/> names the activiteit an accepted goal came from (ADR-0052 D4), while it still exists.
+/// </summary>
 public sealed record SubdoelvoorstelWeergave(
     Guid Id,
     string LeerplandoelCode,
     string? Tekst,
     Doelsoort? Doelsoort,
     Guid? SubthemaId,
-    string AiMotivatie);
+    string AiMotivatie,
+    string? ActiviteitNaam = null);
 
 /// <summary>One open proposed new subthema with its goals.</summary>
 public sealed record SubthemavoorstelWeergave(

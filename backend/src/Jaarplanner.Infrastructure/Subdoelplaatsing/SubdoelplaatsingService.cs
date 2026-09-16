@@ -43,6 +43,12 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
             .Where(v => v.ThemaId == themaId && v.Status == KoppelingStatus.Voorgesteld)
             .ToListAsync(cancellationToken);
         var doelen = await DoelenAsync(voorstellen.Select(v => v.LeerplandoelCode), cancellationToken);
+        var activiteitIds = voorstellen.Where(v => v.ActiviteitId is not null).Select(v => v.ActiviteitId!.Value).Distinct().ToList();
+        var activiteitNamen = activiteitIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await _context.Activiteiten.AsNoTracking()
+                .Where(a => activiteitIds.Contains(a.Id))
+                .ToDictionaryAsync(a => a.Id, a => a.Naam, cancellationToken);
 
         var leeftijden = perLeeftijd.Keys
             .OrderBy(l => Jaarfasen.Alle.ToList().IndexOf(l))
@@ -53,7 +59,7 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
                 voorstellen
                     .Where(v => v.Leeftijd == leeftijd && v.SubthemaId is not null)
                     .OrderBy(v => v.LeerplandoelCode, StringComparer.Ordinal)
-                    .Select(v => Map(v, doelen))
+                    .Select(v => Map(v, doelen, activiteitNamen))
                     .ToList(),
                 subthemavoorstellen
                     .Where(s => s.Leeftijd == leeftijd)
@@ -104,15 +110,22 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
 
         var plan = SubdoelplaatsingValidator.Keur(context, antwoord);
 
-        // D2: the run replaces this leeftijd's open proposals; decided ones stay, as the rejected ones must (D3).
-        _context.Subdoelvoorstellen.RemoveRange(await _context.Subdoelvoorstellen
+        // D2: the run replaces this leeftijd's open proposals; decided ones stay, as the rejected ones must (D3). One that
+        // came from an activiteit is not this run's to replace (ADR-0052 D4), and its goal is not placed a second time.
+        var openVoorstellen = await _context.Subdoelvoorstellen
             .Where(v => v.ThemaId == themaId && v.Leeftijd == code && v.Status == KoppelingStatus.Voorgesteld)
-            .ToListAsync(cancellationToken));
+            .ToListAsync(cancellationToken);
+        _context.Subdoelvoorstellen.RemoveRange(openVoorstellen.Where(v => v.ActiviteitId is null));
+        var wachtend = openVoorstellen
+            .Where(v => v.ActiviteitId is not null)
+            .Select(v => (v.LeerplandoelCode, v.SubthemaId))
+            .ToHashSet();
         _context.Subthemavoorstellen.RemoveRange(await _context.Subthemavoorstellen
             .Where(v => v.ThemaId == themaId && v.Leeftijd == code && v.Status == KoppelingStatus.Voorgesteld)
             .ToListAsync(cancellationToken));
 
-        foreach (var plaatsing in plan.InBestaand)
+        var inBestaand = plan.InBestaand.Where(p => !wachtend.Contains((p.Code, p.SubthemaId))).ToList();
+        foreach (var plaatsing in inBestaand)
         {
             _context.Subdoelvoorstellen.Add(Subdoelvoorstel.InSubthema(themaId, code, plaatsing.Code, plaatsing.SubthemaId, plaatsing.Motivatie));
         }
@@ -129,9 +142,9 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
 
         await _context.SaveChangesAsync(cancellationToken);
         return SubdoelplaatsingResultaat.Geslaagd(
-            plan.InBestaand.Count + plan.Nieuw.Sum(n => n.Doelen.Count),
+            inBestaand.Count + plan.Nieuw.Sum(n => n.Doelen.Count),
             plan.Nieuw.Count,
-            plan.AantalOvergeslagen);
+            plan.AantalOvergeslagen + plan.InBestaand.Count - inBestaand.Count);
     }
 
     public async Task BeslisSubdoelAsync(Guid subdoelvoorstelId, KoppelingStatus status, CancellationToken cancellationToken = default)
@@ -410,15 +423,25 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
             .ToDictionaryAsync(l => l.Code, StringComparer.Ordinal, cancellationToken);
     }
 
-    private static SubdoelvoorstelWeergave Map(Subdoelvoorstel voorstel, IReadOnlyDictionary<string, Leerplandoel> doelen)
+    private static SubdoelvoorstelWeergave Map(
+        Subdoelvoorstel voorstel,
+        IReadOnlyDictionary<string, Leerplandoel> doelen,
+        IReadOnlyDictionary<Guid, string>? activiteitNamen = null)
     {
         doelen.TryGetValue(voorstel.LeerplandoelCode, out var doel);
+        string? activiteitNaam = null;
+        if (voorstel.ActiviteitId is { } activiteitId)
+        {
+            activiteitNamen?.TryGetValue(activiteitId, out activiteitNaam);
+        }
+
         return new SubdoelvoorstelWeergave(
             voorstel.Id,
             voorstel.LeerplandoelCode,
             doel?.Tekst,
             doel?.Doelsoort,
             voorstel.SubthemaId,
-            voorstel.AiMotivatie);
+            voorstel.AiMotivatie,
+            activiteitNaam);
     }
 }
