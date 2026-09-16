@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-17 01:17
+bijgewerkt: 2026-09-17 01:38
 opgepakt-door: claude-fb025
 branch: ticket/FB-025-activiteitvoorstellen
-pr:
+pr: 137
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3]
 ---
@@ -73,3 +73,4 @@ Vandaag bedenkt een leerkracht elke activiteit zelf. De AI doet niets onder een 
 - 2026-09-17 00:40 · claude-fb025 · grondwet (Art. IV.1, IV.4, IV.5, IX.2, XII) en ADR-0052 geschreven; backend gebouwd, unit- en Postgres-tests groen
 - 2026-09-17 00:53 · claude-fb025 · alle criteria afgevinkt: ActiviteitvoorstellenEndpointsTests, ActiviteitvoorstelTests en Activiteitvoorstellen.test.tsx; browserpas met de echte Claude API op een wegwerpdatabase (desktop en 390px): voorstellen, aanvaarden, aanpassen, weigeren en opnieuw vragen werken
 - 2026-09-17 01:17 · claude-fb025 · in-uitvoering → te-testen: gebouwd: grondwet (Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2, XII) en ADR-0052; AI-activiteitvoorstellen onder een subthema, persoonlijk, directie ziet en beslist alles (A3); unit-, Postgres- en frontendtests groen, dotnet format en pnpm lint schoon, browserpas met de echte Claude API; antagonist ronde 2 COMPLIANT
+- 2026-09-17 01:38 · claude-fb025 · PR #137
