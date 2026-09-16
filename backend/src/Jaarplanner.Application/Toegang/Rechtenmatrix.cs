@@ -75,6 +75,8 @@ public static class Rechtenmatrix
         public const string RapportInvullen = "RapportInvullen";
         public const string RapportsetBewerken = "RapportsetBewerken";
         public const string WoordwebBewerken = "WoordwebBewerken";
+        public const string SubdoelplaatsingVragen = "SubdoelplaatsingVragen";
+        public const string SubdoelplaatsingBeslissen = "SubdoelplaatsingBeslissen";
     }
 
     // --- Resource-free rows: directie, and themabeheer where the row has it. ---
@@ -293,6 +295,24 @@ public static class Rechtenmatrix
         "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen: de eigenaar (ADR-0043 W2; D3)",
         Kolom.Eigenaar);
 
+    /// <summary>
+    /// "AI laten voorstellen in welk subthema de leerplandoelen van de themadoelen passen" (FB-057, ADR-0050 P4).
+    /// Resource: <see cref="Leeftijdsinhoud"/> of the leeftijd asked for. Themabeheer alone does not ask.
+    /// </summary>
+    public static readonly Matrixrij SubdoelplaatsingVragen = new(
+        Beleid.SubdoelplaatsingVragen,
+        "AI laten voorstellen in welk subthema de leerplandoelen van de themadoelen passen (ADR-0050 P4)",
+        Kolom.Hoofdleerkracht);
+
+    /// <summary>
+    /// "Een subdoelplaatsing aanvaarden of weigeren" (FB-057, ADR-0050 P4, D6). Resource: <see cref="Leeftijdsinhoud"/>
+    /// of the proposal. Also decides who is sent the open proposals of a leeftijd.
+    /// </summary>
+    public static readonly Matrixrij SubdoelplaatsingBeslissen = new(
+        Beleid.SubdoelplaatsingBeslissen,
+        "Een subdoelplaatsing aanvaarden of weigeren, en de open voorstellen zien (ADR-0050 P4, D6)",
+        Kolom.Hoofdleerkracht);
+
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
     public static IReadOnlyList<Matrixrij> Rijen { get; } =
     [
@@ -320,6 +340,8 @@ public static class Rechtenmatrix
         RapportInvullen,
         RapportsetBewerken,
         WoordwebBewerken,
+        SubdoelplaatsingVragen,
+        SubdoelplaatsingBeslissen,
     ];
 
     /// <summary>

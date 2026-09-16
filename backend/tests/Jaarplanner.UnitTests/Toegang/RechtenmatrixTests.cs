@@ -75,6 +75,9 @@ public sealed class RechtenmatrixTests
         // FB-036 (ADR-0043 W2, D3): on someone else's woordweb, only directie. Every relation on her own web is the test
         // Een_woordweb_is_van_zijn_eigenaar below.
         [Rechtenmatrix.Beleid.WoordwebBewerken] = ["Directie"],
+        // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd and directie; themabeheer alone does not.
+        [Rechtenmatrix.Beleid.SubdoelplaatsingVragen] = ["Directie", "HL"],
+        [Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen] = ["Directie", "HL"],
     };
 
     private static readonly string[] ActiviteitRijen =

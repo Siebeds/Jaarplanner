@@ -151,6 +151,28 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
     }
 
     /// <summary>The woordweb's owner, read as an id only (FB-036).</summary>
+    public async Task<Leeftijdsinhoud?> VoorSubdoelvoorstelAsync(Guid subdoelvoorstelId, CancellationToken cancellationToken = default)
+    {
+        var leeftijd = await _context.Subdoelvoorstellen
+            .AsNoTracking()
+            .Where(v => v.Id == subdoelvoorstelId)
+            .Select(v => v.Leeftijd)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return leeftijd is null ? null : new Leeftijdsinhoud(leeftijd);
+    }
+
+    public async Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default)
+    {
+        var leeftijd = await _context.Subthemavoorstellen
+            .AsNoTracking()
+            .Where(v => v.Id == subthemavoorstelId)
+            .Select(v => v.Leeftijd)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return leeftijd is null ? null : new Leeftijdsinhoud(leeftijd);
+    }
+
     public async Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default)
     {
         var eigenaar = await _context.Woordwebs

@@ -26,6 +26,12 @@ public interface IRechtenbronnen
     /// <summary>An activiteit with its leeftijd, maker and whether any goal is linked to it: for the activiteit rows.</summary>
     Task<Activiteitbron?> VoorActiviteitAsync(Guid activiteitId, CancellationToken cancellationToken = default);
 
+    /// <summary>The leeftijd of a proposed subdoel (FB-057, ADR-0050): for deciding it.</summary>
+    Task<Leeftijdsinhoud?> VoorSubdoelvoorstelAsync(Guid subdoelvoorstelId, CancellationToken cancellationToken = default);
+
+    /// <summary>The leeftijd of a proposed new subthema (FB-057, ADR-0050): for deciding it.</summary>
+    Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default);
+
     /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
     Task<Themabron?> VoorThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
