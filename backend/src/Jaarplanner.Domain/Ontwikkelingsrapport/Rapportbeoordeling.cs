@@ -39,20 +39,40 @@ public sealed class Rapportbeoordeling
     /// <summary>Who wrote <see cref="Tekst"/>; <c>null</c> exactly when there is no text.</summary>
     public Tekststatus? TekstStatus { get; private set; }
 
-    /// <summary>Whether the row holds nothing and should not exist.</summary>
+    /// <summary>
+    /// That an AI rewrite of <see cref="Tekst"/> was rejected (FB-004, R23): the decision, kept without the text that was
+    /// proposed for it (Art. IV.2 as amended, ADR-0035 §3.5). It is a mark beside the text, not the text's own status,
+    /// because the saved text and its status stay exactly as they were.
+    /// <para>
+    /// <b>It belongs to the text it was proposed for</b>, so a text that changes clears it: a mark left behind would say
+    /// a proposal was rejected for a text nobody ever proposed one for.
+    /// </para>
+    /// </summary>
+    public bool HerschrijvingGeweigerd { get; private set; }
+
+    /// <summary>
+    /// Whether the row holds nothing and should not exist. A rejection alone never keeps a row alive: it is only ever set
+    /// on a row that holds a text, and clearing that text clears the mark with it.
+    /// </summary>
     internal bool IsLeeg => GradatieId is null && Tekst is null;
 
     /// <summary>
-    /// Sets the star and the text. A text that changes becomes <see cref="Tekststatus.Manueel"/>, since the teacher
-    /// typed it; an unchanged one keeps its status, so choosing a star does not relabel an accepted rewrite.
+    /// Sets the star and the text. A text that changes takes <paramref name="herkomst"/>: <see cref="Tekststatus.Manueel"/>
+    /// for anything the teacher typed, and <see cref="Tekststatus.Aanvaard"/> only for an AI rewrite the server itself
+    /// found to be accepted unchanged (FB-004, D13). An unchanged text keeps its status, so choosing a star does not
+    /// relabel an accepted rewrite.
     /// </summary>
-    internal void Zet(Guid? gradatieId, string? tekst)
+    internal void Zet(Guid? gradatieId, string? tekst, Tekststatus herkomst = Tekststatus.Manueel)
     {
         GradatieId = gradatieId;
         if (!string.Equals(Tekst, tekst, StringComparison.Ordinal))
         {
             Tekst = tekst;
-            TekstStatus = tekst is null ? null : Tekststatus.Manueel;
+            TekstStatus = tekst is null ? null : herkomst;
+            HerschrijvingGeweigerd = false;
         }
     }
+
+    /// <summary>Records that a rewrite proposed for the current text was rejected (R23). Nothing of the proposal is kept.</summary>
+    internal void WeigerHerschrijving() => HerschrijvingGeweigerd = true;
 }

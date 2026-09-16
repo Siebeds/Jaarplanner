@@ -28,8 +28,9 @@ import { themapaginaPad } from "../themas/themapagina";
  *
  * **A pointer's shortcut to the thema's page** (FB-037, ADR-0042). A band that names a thema is a link a mouse or a
  * finger can press, on every day it covers. It stays out of the tab order and, like the strip below it, `aria-hidden`:
- * the day's own button already speaks both facts, once (see `themaZin`), and the subthemabalk above the grid is where a
- * keyboard reaches the same page, one link per thema instead of one per day.
+ * the day's own button already speaks both facts, once (see `themaZin`), and a keyboard reaches the same page through the
+ * menu Thema's. There is no row of links above the grid any more (FB-039): the owner chose the bands alone, knowing
+ * they are smaller than the 24 pixel target of WCAG 2.2 AA.
  */
 export function Themastroken({
   vak,
@@ -65,7 +66,7 @@ export function Themastroken({
 
   const naam = themaLabel(vak);
   // The thema the label names first is the one the band opens. With two in a period it reads "Herfst +1", and the
-  // other is one of the thema links in the subthemabalk. An empty period names nothing, so it opens nothing.
+  // other is reached through the menu Thema's. An empty period names nothing, so it opens nothing.
   const genoemd = vak.themas.at(0);
 
   const band = cn(

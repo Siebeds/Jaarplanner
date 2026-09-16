@@ -68,6 +68,65 @@ public sealed class OntwikkelingsrapportenController : ControllerBase
         Ok(await _service.BewaarBesluitAsync(leerlingId, moment, invoer, cancellationToken));
 
     /// <summary>
+    /// Asks the AI to rewrite one text of this report (FB-004, R21, R22). The same right as filling it in, so after the
+    /// schooljaar a leerkracht cannot reach it by the address either, and nothing is stored whatever the answer.
+    /// <para>
+    /// <b>The failure bodies are English operator diagnostics</b> (Art. II.3) and quote no text. The screen never shows
+    /// them: it says its own Dutch sentence per status, because a teacher cannot act on "Malformed JSON".
+    /// </para>
+    /// </summary>
+    [HttpPost("herschrijvingen")]
+    [RechtOp(Rechtenmatrix.Beleid.RapportInvullen, Rechtbron.Leerling, "leerlingId")]
+    public async Task<ActionResult<HerschrijfVoorstel>> Herschrijf(
+        Guid leerlingId,
+        int moment,
+        [FromBody] HerschrijfAanvraag aanvraag,
+        CancellationToken cancellationToken)
+    {
+        var resultaat = await _service.StelHerschrijvingVoorAsync(
+            leerlingId,
+            moment,
+            aanvraag?.RapportdoelId,
+            aanvraag?.Tekst,
+            cancellationToken);
+
+        if (resultaat.IsGeslaagd)
+        {
+            return Ok(new HerschrijfVoorstel(resultaat.Voorstel!, resultaat.Zegel!));
+        }
+
+        var status = resultaat.Mislukking == Herschrijfmislukking.AiOnbereikbaar
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status422UnprocessableEntity;
+        return StatusCode(status, new ProblemDetails
+        {
+            Status = status,
+            Title = resultaat.Mislukking == Herschrijfmislukking.AiOnbereikbaar
+                ? "AI unavailable"
+                : "Invalid AI response",
+            Detail = resultaat.Fout,
+        });
+    }
+
+    /// <summary>Records that the teacher rejected a proposal (R23). 204 also when the text it was meant for is gone.</summary>
+    [HttpPost("herschrijvingen/geweigerd")]
+    [RechtOp(Rechtenmatrix.Beleid.RapportInvullen, Rechtbron.Leerling, "leerlingId")]
+    public async Task<IActionResult> WeigerHerschrijving(
+        Guid leerlingId,
+        int moment,
+        [FromBody] HerschrijfWeigering weigering,
+        CancellationToken cancellationToken)
+    {
+        await _service.WeigerHerschrijvingAsync(
+            leerlingId,
+            moment,
+            weigering?.RapportdoelId,
+            weigering?.Herschrijving,
+            cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
     /// The kindtekening's image (FB-005). Only through this route, which asks the same right as the report and answers
     /// <c>no-store</c>: there is no public or lasting address of a drawing (ADR-0035 D15). No file name is sent, so none
     /// exists to leak; <c>nosniff</c> holds the browser to the stated type.

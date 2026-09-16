@@ -2,13 +2,13 @@
 id: FB-004
 titel: Leerkracht laat een rapporttekst of het besluit herwerken door AI
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-14 14:38
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 13:03
+opgepakt-door: rapport-herwerken
+branch: ticket/FB-004-rapporttekst-herwerken
+pr: 107
 geblokkeerd:
 fr: [FR-13.4]
 ---
@@ -52,12 +52,12 @@ toewijst (`IAiClient.cs` en `JaarplanGeneratiePromptBuilder.cs`).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een tekst bij een rapportdoel of het algemeen besluit, wanneer de leerkracht op herwerken klikt, dan ziet die bij de knop de melding over de namen, en daarna de oude en de nieuwe tekst naast elkaar, zonder uitleg.
-- [ ] Gegeven een tekst met de naam van een kind van de klas, wanneer het voorstel terugkomt, dan staat die naam er correct in, en blijft een gewoon woord in kleine letters dat ook een voornaam is (zoals "roos") onveranderd.
-- [ ] Gegeven een voorstel, wanneer de leerkracht het zonder wijziging aanvaardt, dan wordt het bewaard als aanvaard; past de leerkracht het eerst aan, dan als manueel.
-- [ ] Gegeven een voorstel, wanneer de leerkracht het weigert, dan blijft de bewaarde tekst ongewijzigd, en is de voorgestelde tekst na herladen nergens terug te vinden.
-- [ ] Gegeven een schooljaar dat voorbij is, of een gebruiker die het rapport alleen mag lezen, dan is er geen knop om te herwerken, en weigert de app een herwerking ook via het adres.
-- [ ] Gegeven dat de AI-dienst niet antwoordt of een onbruikbaar antwoord geeft, dan krijgt de leerkracht een Nederlandse melding, en blijft de eigen tekst staan.
+- [x] Gegeven een tekst bij een rapportdoel of het algemeen besluit, wanneer de leerkracht op herwerken klikt, dan ziet die bij de knop de melding over de namen, en daarna de oude en de nieuwe tekst naast elkaar, zonder uitleg.
+- [x] Gegeven een tekst met de naam van een kind van de klas, wanneer het voorstel terugkomt, dan staat die naam er correct in, en blijft een gewoon woord in kleine letters dat ook een voornaam is (zoals "roos") onveranderd.
+- [x] Gegeven een voorstel, wanneer de leerkracht het zonder wijziging aanvaardt, dan wordt het bewaard als aanvaard; past de leerkracht het eerst aan, dan als manueel.
+- [x] Gegeven een voorstel, wanneer de leerkracht het weigert, dan blijft de bewaarde tekst ongewijzigd, en is de voorgestelde tekst na herladen nergens terug te vinden.
+- [x] Gegeven een schooljaar dat voorbij is, of een gebruiker die het rapport alleen mag lezen, dan is er geen knop om te herwerken, en weigert de app een herwerking ook via het adres.
+- [x] Gegeven dat de AI-dienst niet antwoordt of een onbruikbaar antwoord geeft, dan krijgt de leerkracht een Nederlandse melding, en blijft de eigen tekst staan.
 
 ## Testscenario's
 
@@ -87,3 +87,11 @@ Geen.
 ## Werklog
 
 - 2026-09-14 14:38 · rapport-tickets · aangemaakt (status nieuw)
+- 2026-09-16 09:32 · eigenaar · nieuw → klaar-voor-bouw: eigenaar geeft groen licht om te bouwen tegen de fake AI-client; de echte AI-test volgt zodra er een Foundry-endpoint is
+- 2026-09-16 09:32 · rapport-herwerken · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 10:02 · rapport-herwerken · backend klaar: naamvervanging (D14), promptbouwer, antwoordvalidatie, zegel over Data Protection (D13), routes en migratie; 1870 unit tests groen, dotnet format schoon
+- 2026-09-16 10:32 · rapport-herwerken · alle 6 acceptatiecriteria aangevinkt; browserpass op 1440 en 390px geslaagd tegen een lokale nep-Foundry: de prompt die de server verstuurde bevatte geen enkele naam van de klas (#NAAM1#/#NAAM2#), 'een roos' bleef staan, en geen kindnaam of rapporttekst in de serverlog
+- 2026-09-16 10:50 · rapport-herwerken · antagonist ronde 1: COMPLIANT, 0 critical, 0 major, 8 minor; 6 minor opgelost (zie backlog/worklogs/FB-004/antagonist.md), 3 bewust gelaten met reden
+- 2026-09-16 11:03 · rapport-herwerken · browserpass ronde 2 na de antagonist-fixes: overnemen, weigeren, aanpassen en de weigering op een intussen gewijzigde tekst allemaal groen; paneel toont links nu de tekst waarvoor het voorstel gemaakt werd
+- 2026-09-16 11:06 · rapport-herwerken · in-uitvoering → te-testen: AI herwerkt de tekst van een rapportdoel en het algemeen besluit: namen van de klas vervangen (D14), voorstel met zegel (D13), overnemen/aanpassen/weigeren; geen voorstel bewaard. Poorten groen: 1877 unit + 550 integratietests, 965 fronttests, dotnet format en pnpm lint schoon, antagonist COMPLIANT, browserpass op 1440 en 390px. Let op: de AI-antwoorden zijn getest tegen een lokale nep-Foundry; een echt model is nog niet geprobeerd
+- 2026-09-16 13:03 · rapport-herwerken · PR #107
