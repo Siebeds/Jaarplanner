@@ -216,9 +216,23 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
         expect.objectContaining({ method: "POST", body: JSON.stringify({ minimumdoelRef: "K-MV-2" }) }),
       ),
     );
-    // The picker closes after a pick; the linked minimumdoel shows up in the list.
+    // The picker closes after a pick, and focus goes back to the button it came from.
     expect(screen.queryByRole("textbox", { name: t("thema.minimumdoelZoek") })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("thema.minimumdoelKoppelen") })).toHaveFocus();
     expect(fetchMock.mock.calls.some(([pad]) => pad.endsWith("/themadoelen"))).toBe(false);
+  });
+
+  it("sluit het zoekveld met Escape en geeft de focus terug aan de knop", async () => {
+    toon();
+    await minimumdoelrij();
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelKoppelen") }));
+    const veld = screen.getByRole("textbox", { name: t("thema.minimumdoelZoek") });
+    expect(veld).toHaveFocus();
+
+    fireEvent.keyDown(veld, { key: "Escape" });
+
+    expect(screen.queryByRole("textbox", { name: t("thema.minimumdoelZoek") })).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: t("thema.minimumdoelKoppelen") })).toHaveFocus());
   });
 
   it("ontkoppelt het minimumdoel en neemt zo zijn leerplandoelen mee", async () => {

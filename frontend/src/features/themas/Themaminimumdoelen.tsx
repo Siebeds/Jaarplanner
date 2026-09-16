@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Knop } from "../../components/ui/Knop";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { Invoer } from "../../components/ui/Veld";
@@ -224,17 +224,32 @@ export function Minimumdoelkoppelaar({
 }) {
   const [open, setOpen] = useState(false);
   const [zoek, setZoek] = useState("");
+  // Closing unmounts the field that had focus; the add button it came from takes it back, so a keyboard user is not
+  // dropped at the top of the page.
+  const focusTerug = useRef(false);
+  const knopHouder = useRef<HTMLSpanElement>(null);
   const term = zoek.trim();
   const { data, isPending } = useMinimumdoelen({ zoek: term, aantal: 8 }, { enabled: open && term.length >= 2 });
   const gevonden = (data?.regels ?? []).filter((regel) => !alGekozen.includes(regel.ref));
 
+  useEffect(() => {
+    if (open || !focusTerug.current) return;
+    focusTerug.current = false;
+    knopHouder.current?.querySelector("button")?.focus();
+  }, [open]);
+
   if (!open) {
-    return <Toevoegknop label={t("thema.minimumdoelKoppelen")} disabled={bezig} onClick={() => setOpen(true)} />;
+    return (
+      <span ref={knopHouder} className="contents">
+        <Toevoegknop label={t("thema.minimumdoelKoppelen")} disabled={bezig} onClick={() => setOpen(true)} />
+      </span>
+    );
   }
 
   const sluit = () => {
     setZoek("");
     setOpen(false);
+    focusTerug.current = true;
   };
 
   return (

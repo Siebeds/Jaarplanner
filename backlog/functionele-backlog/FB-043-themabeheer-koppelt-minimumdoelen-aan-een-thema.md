@@ -2,10 +2,10 @@
 id: FB-043
 titel: Themabeheer koppelt minimumdoelen aan een thema, uitklapbaar met hun leerplandoelen
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:58
+bijgewerkt: 2026-09-16 15:07
 opgepakt-door: claude-fb043
 branch: ticket/FB-043-minimumdoelen-als-themadoel
 pr:
@@ -55,20 +55,20 @@ FB-045.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven iemand met themabeheer, wanneer ze een minimumdoel als themadoel koppelt, dan staat het bij de themadoelen
+- [x] Gegeven iemand met themabeheer, wanneer ze een minimumdoel als themadoel koppelt, dan staat het bij de themadoelen
   en zijn geconcordeerde leerplandoelen hangen eronder, zonder dat ze die apart kiest.
-- [ ] Gegeven een gekoppeld minimumdoel, wanneer de pagina opent, dan is het ingeklapt; uitgeklapt toont het per leeftijd
+- [x] Gegeven een gekoppeld minimumdoel, wanneer de pagina opent, dan is het ingeklapt; uitgeklapt toont het per leeftijd
   het aantal leerplandoelen, en een leeftijd uitgeklapt toont die leerplandoelen, zonder minimumdoelen in die lijst.
-- [ ] Gegeven een gekoppeld minimumdoel, wanneer het ontkoppeld wordt, dan verdwijnen ook de leerplandoelen die het
+- [x] Gegeven een gekoppeld minimumdoel, wanneer het ontkoppeld wordt, dan verdwijnen ook de leerplandoelen die het
   meebracht.
-- [ ] Gegeven een gewone leerkracht of hoofdleerkracht, dan ziet ze de minimumdoelen van het thema maar kan ze er geen
+- [x] Gegeven een gewone leerkracht of hoofdleerkracht, dan ziet ze de minimumdoelen van het thema maar kan ze er geen
   koppelen of ontkoppelen; de server weigert het ook.
-- [ ] Gegeven een thema met al drie themadoelen, wanneer er een vierde en een vijfde gekoppeld worden, dan staan ze er
+- [x] Gegeven een thema met al drie themadoelen, wanneer er een vierde en een vijfde gekoppeld worden, dan staan ze er
   alle vijf.
-- [ ] Gegeven een bestaand thema met themadoelen die leerplandoelen zijn, na de migratie zijn die verdwenen, en op de
+- [x] Gegeven een bestaand thema met themadoelen die leerplandoelen zijn, na de migratie zijn die verdwenen, en op de
   themapagina kan men geen leerplandoel meer als themadoel toevoegen.
-- [ ] Gegeven een subthema, dan koppelt men daar zoals nu leerplandoelen als subdoel, geen minimumdoelen.
-- [ ] Getest aan de serverkant (koppelen, meebrengen, ontkoppelen, rechten) en nagekeken in een echte browser op desktop
+- [x] Gegeven een subthema, dan koppelt men daar zoals nu leerplandoelen als subdoel, geen minimumdoelen.
+- [x] Getest aan de serverkant (koppelen, meebrengen, ontkoppelen, rechten) en nagekeken in een echte browser op desktop
   en ~390px, met het toetsenbord bedienbaar.
 
 ## Testscenario's
@@ -124,3 +124,6 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-16 14:29 · claude-fb043 · eigenaar bevestigt: bestaande leerplandoel-themadoelen verwijderen (datamodel blijft), import ongemoeid; de niet-gecommitte tekst op main is achterhaald
 - 2026-09-16 14:41 · claude-fb043 · backend klaar: koppeling thema-minimumdoel (zonder maximum), POST/DELETE /api/themas/{id}/minimumdoelen met themabeheerrecht, POST .../themadoelen weg, migratie wist de leerplandoel-themadoelen; unit- en integratietests groen
 - 2026-09-16 14:58 · claude-fb043 · frontend klaar: themadoelen op de themapagina zijn minimumdoelen (uitklapbaar per leeftijd), geen 'Koppel aan thema' meer in het doelenregister; ADR-0046, grondwet Art. IX.2/XII/IV.8 en constitutie-log bijgewerkt; alle tests, lint en dotnet format groen
+- 2026-09-16 15:07 · claude-fb043 · criteria afgevinkt: koppelen, meebrengen, ontkoppelen en geen maximum in xUnit en Vitest; rechten in RechtenAfdwingingTests (leerkracht en hoofdleerkracht geweigerd) en Vitest (knoppen verborgen); migratie in ThemaMinimumdoelenMigratieTests; browser op een wegwerpdatabase als directie, desktop en 390px, met toetsenbord (koppelen, uitklappen, detail, ontkoppelen, focus terug), contrast 4,97 en 6,51; leerkrachtweergave niet in de browser bekeken
+- 2026-09-16 15:07 · claude-fb043 · antagonist ronde 1: 1 MAJOR (Art. XI.1: grondwetswijziging in eigen commit en functionele analyse mee aanpassen), opgelost; ronde 2: COMPLIANT; kleine punten opgelost, rapport in backlog/worklogs/FB-043/antagonist.md
+- 2026-09-16 15:07 · claude-fb043 · in-uitvoering → te-testen: gebouwd: minimumdoelen als themadoel zonder maximum, uitklapbaar per leeftijd; oude leerplandoel-themadoelen gewist via migratie; import, AI en dekking ongemoeid; ADR-0046; alle gates groen
