@@ -1,13 +1,23 @@
-import { Fragment, useMemo, useState } from "react";
-import { DndContext, DragOverlay, closestCenter, useDraggable, useDroppable } from "@dnd-kit/core";
-import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import { Fragment, useMemo, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  TouchSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { CollisionDetection, DragEndEvent, DragStartEvent, KeyboardCoordinateGetter } from "@dnd-kit/core";
 import type { Lesweek, Planningsonderbreking, Themaplaatsing } from "../../lib/types";
 import { dagMaand, maandagVan, periode, verschuif, volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { IcoonInfo, IcoonPlus } from "../../components/Iconen";
-import { kalenderMeldingen, sleepUitleg, useSleepSensors } from "./sleep";
-import { bouwRaster, dagenVerschil, volgendDeel, type Weekkolomdata } from "./jaarraster";
+import { IcoonInfo } from "../../components/Iconen";
+import { kalenderMeldingen, sleepUitleg } from "./sleep";
+import { bouwRaster, dagenVerschil, eindeKort, eindeZin, volgendDeel, type Weekkolomdata } from "./jaarraster";
 
 /**
  * The school year as a timeline, one column per lesweek (FB-035, ADR-0049, owner's choice of 2026-09-16).
@@ -24,6 +34,11 @@ import { bouwRaster, dagenVerschil, volgendDeel, type Weekkolomdata } from "./ja
  *
  * **A bar is a button that opens the card and a handle that drags** (Enter opens, Space picks up, as everywhere in
  * the agenda). Dropping on another week moves the thema by whole weeks; the server keeps its number of schooldagen.
+ *
+ * **The week that moves is the week under the pointer**, not the week under the bar's middle: a bar of five weeks
+ * grabbed on its first week and nudged a few pixels stays where it was. The drop target is therefore found at the
+ * pointer's place on the dragged bar (`grijpX`), and the move is the number of weeks between the week grabbed and the
+ * week dropped on. A keyboard grabs the bar's first day and moves it one week per arrow.
  */
 export function Jaartijdlijn({
   lesweken,
@@ -46,8 +61,36 @@ export function Jaartijdlijn({
   onVerschuif: (plaatsing: Themaplaatsing, van: string) => void;
   onVoegToeInWeek: (maandag: string) => void;
 }) {
-  const sensors = useSleepSensors();
   const [gesleept, setGesleept] = useState<Themaplaatsing | null>(null);
+  // Where on the bar it was grabbed, in pixels from its left edge, and the week that was under that point.
+  const grijpX = useRef(1);
+  const bronWeek = useRef<string | null>(null);
+  const weekBreedte = useRef(80);
+
+  // The agenda's three sensors (see `useSleepSensors`), with arrows that step one week column instead of 25 pixels.
+  const weekStap: KeyboardCoordinateGetter = (event, { currentCoordinates }) => {
+    if (event.code === "ArrowRight") return { ...currentCoordinates, x: currentCoordinates.x + weekBreedte.current };
+    if (event.code === "ArrowLeft") return { ...currentCoordinates, x: currentCoordinates.x - weekBreedte.current };
+    return undefined;
+  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor, {
+      keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space"] },
+      coordinateGetter: weekStap,
+    }),
+  );
+
+  // The week column under the grabbed point of the dragged bar.
+  const onderGrijppunt: CollisionDetection = ({ collisionRect, droppableContainers, droppableRects }) => {
+    const x = collisionRect.left + grijpX.current;
+    for (const container of droppableContainers) {
+      const rect = droppableRects.get(container.id);
+      if (rect && x >= rect.left && x < rect.left + rect.width) return [{ id: container.id }];
+    }
+    return [];
+  };
   const raster = useMemo(() => bouwRaster(lesweken, onderbrekingen), [lesweken, onderbrekingen]);
   const zichtbaar = useMemo(() => plaatsingen.filter((p) => p.status !== "Geweigerd"), [plaatsingen]);
   const perId = useMemo(() => new Map(zichtbaar.map((p) => [p.id, p])), [zichtbaar]);
@@ -59,15 +102,35 @@ export function Jaartijdlijn({
   }
 
   function beginSleep(event: DragStartEvent) {
-    setGesleept(perId.get(String(event.active.id)) ?? null);
+    const plaatsing = perId.get(String(event.active.id)) ?? null;
+    setGesleept(plaatsing);
+
+    const start = event.active.rect.current.initial;
+    const aanzet = event.activatorEvent;
+    const pointerX =
+      aanzet instanceof MouseEvent
+        ? aanzet.clientX
+        : "touches" in aanzet && (aanzet as TouchEvent).touches.length > 0
+          ? (aanzet as TouchEvent).touches[0].clientX
+          : undefined;
+    grijpX.current = start && pointerX !== undefined ? pointerX - start.left : 1;
+
+    const kolommen = [...document.querySelectorAll<HTMLElement>("[data-lesweek]")];
+    weekBreedte.current = kolommen[0]?.getBoundingClientRect().width || 80;
+    const x = (start?.left ?? 0) + grijpX.current;
+    bronWeek.current =
+      kolommen.find((kolom) => {
+        const rect = kolom.getBoundingClientRect();
+        return x >= rect.left && x < rect.right;
+      })?.dataset.lesweek ?? (plaatsing ? maandagVan(plaatsing.van) : null);
   }
 
   function eindigSleep(event: DragEndEvent) {
     setGesleept(null);
     const plaatsing = perId.get(String(event.active.id));
-    if (!plaatsing || !event.over) return;
+    if (!plaatsing || !event.over || !bronWeek.current) return;
     const doelMaandag = String(event.over.id);
-    const bronMaandag = maandagVan(plaatsing.van);
+    const bronMaandag = bronWeek.current;
     const weken = Math.round(dagenVerschil(bronMaandag, doelMaandag) / 7);
     if (weken === 0) return;
     onVerschuif(plaatsing, verschuif(plaatsing.van, weken * 7));
@@ -76,7 +139,7 @@ export function Jaartijdlijn({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={onderGrijppunt}
       accessibility={{ announcements: kalenderMeldingen(naamVan), screenReaderInstructions: sleepUitleg }}
       onDragStart={beginSleep}
       onDragEnd={eindigSleep}
@@ -135,10 +198,10 @@ export function Jaartijdlijn({
                 {volgende && raster.spoorVan(volgende.van) > einde + 1 ? (
                   <div
                     aria-hidden="true"
-                    className="flex items-center px-1"
+                    className="relative z-10 flex items-center"
                     style={{ gridRow: 3, gridColumn: `${einde + 1} / ${raster.spoorVan(volgende.van)}` }}
                   >
-                    <div className="w-full border-t-2 border-dashed border-lijn-veld" />
+                    <div className="w-full border-t-[3px] border-dashed border-inkt-zacht" />
                   </div>
                 ) : null}
               </Fragment>
@@ -158,18 +221,17 @@ export function Jaartijdlijn({
                     disabled={bezig}
                     onClick={() => onVoegToeInWeek(kolom.maandag)}
                     aria-label={t("plan.geenThemaWeekAria", { datum: volleDag(kolom.maandag) })}
-                    className="flex min-h-6 w-full items-center justify-center gap-1 rounded border border-attentie bg-attentie-zacht px-1 text-[0.6875rem] font-medium text-attentie-inkt transition-colors duration-150 hover:bg-kaart disabled:opacity-60"
+                    className="flex min-h-6 w-full items-center justify-center rounded border border-attentie bg-attentie-zacht px-0.5 text-[0.6875rem] font-medium text-attentie-inkt transition-colors duration-150 hover:bg-kaart disabled:opacity-60"
                   >
-                    <IcoonPlus aria-hidden="true" className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{t("plan.geenThemaWeek")}</span>
+                    <span className="whitespace-nowrap">{t("plan.geenThemaWeek")}</span>
                   </button>
                 ) : (
                   <span
-                    className="flex w-full items-center justify-center rounded border border-attentie bg-attentie-zacht px-1 text-[0.6875rem] font-medium text-attentie-inkt"
+                    className="flex w-full items-center justify-center rounded border border-attentie bg-attentie-zacht px-0.5 text-[0.6875rem] font-medium text-attentie-inkt"
                     aria-label={t("plan.weekZonderThemaAria", { datum: volleDag(kolom.maandag) })}
                     role="img"
                   >
-                    <span aria-hidden="true" className="truncate">
+                    <span aria-hidden="true" className="whitespace-nowrap">
                       {t("plan.geenThemaWeek")}
                     </span>
                   </span>
@@ -198,6 +260,7 @@ function Weekkolom({ kolom }: { kolom: Weekkolomdata }) {
   return (
     <div
       ref={setNodeRef}
+      data-lesweek={kolom.maandag}
       className={cn(
         "border-l border-lijn pl-1 pt-0.5 transition-colors duration-100",
         isOver && "bg-accent-zacht",
@@ -242,7 +305,7 @@ function Balk({
     }),
     reeks && reeks.aantalDelen > 1 ? t("plan.deel", { deel: reeks.deel, aantal: reeks.aantalDelen }) : null,
     t(`status.${plaatsing.status}`),
-    aangepast && reeks ? t("plan.eindeAangepast", { weken: reeks.weken, duur: plaatsing.duurWeken }) : null,
+    aangepast && reeks ? eindeZin(reeks.weken, plaatsing.duurWeken) : null,
     plaatsing.isVervallen ? t("plan.vervallen") : null,
   ]
     .filter(Boolean)
@@ -275,7 +338,9 @@ function Balk({
           <span className="truncate text-meta font-semibold text-inkt">{plaatsing.themaNaam}</span>
         </span>
         <span className={cn("mono truncate text-[0.625rem]", aangepast ? "text-attentie-inkt" : "text-inkt-zacht")}>
-          {aangepast && reeks ? t("plan.eindeAangepast", { weken: reeks.weken, duur: plaatsing.duurWeken }) : onderregel}
+          {aangepast && reeks
+            ? eindeKort(reeks.weken, plaatsing.duurWeken)
+            : onderregel}
         </span>
       </button>
     </div>

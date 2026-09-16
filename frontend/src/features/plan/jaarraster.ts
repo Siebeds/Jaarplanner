@@ -1,5 +1,6 @@
 import type { Lesweek, Planningsonderbreking, Themaplaatsing } from "../../lib/types";
 import { maandagVan, maandJaar, verschuif, weekdagIndex } from "../../lib/datum";
+import { t } from "../../i18n";
 
 /*
  * The grid the year timeline (`Jaartijdlijn`) is drawn on, apart from the component so it can be tested on its own:
@@ -51,11 +52,11 @@ export function bouwRaster(lesweken: Lesweek[], onderbrekingen: Planningsonderbr
       const tot = verschuif(week.maandag, -1);
       const namen = onderbrekingen.filter((o) => o.start <= tot && o.eind >= van).map((o) => o.naam);
       kolommen.push({ soort: "gat", van, tot, naam: [...new Set(namen)].join(" · "), spoor });
-      sporen.push("1.75rem");
+      sporen.push("2.25rem");
       spoor += 1;
     }
     kolommen.push({ soort: "week", maandag: week.maandag, heeftThema: week.heeftThema, spoor });
-    sporen.push("repeat(5, 0.875rem)");
+    sporen.push("repeat(5, 1rem)");
     spoor += 5;
   });
 
@@ -75,18 +76,32 @@ export function bouwRaster(lesweken: Lesweek[], onderbrekingen: Planningsonderbr
     return datum < eersteMaandag ? 1 : laatsteSpoor;
   }
 
-  // A month is named on the first week whose Friday falls in it, so a week from 31 August is September's.
+  // A month is named on the first week whose Wednesday falls in it: most of that week's days are the month's, so a week
+  // from 31 August is September's and a week from 28 September is still September's.
   const maanden: { maandag: string; naam: string; spoor: number }[] = [];
   let vorigeMaand = "";
   for (const kolom of kolommen) {
     if (kolom.soort !== "week") continue;
-    const vrijdag = verschuif(kolom.maandag, 4);
-    const maand = vrijdag.slice(0, 7);
+    const woensdag = verschuif(kolom.maandag, 2);
+    const maand = woensdag.slice(0, 7);
     if (maand !== vorigeMaand) {
-      maanden.push({ maandag: kolom.maandag, naam: maandJaar(vrijdag).split(" ")[0], spoor: kolom.spoor });
+      maanden.push({ maandag: kolom.maandag, naam: maandJaar(woensdag).split(" ")[0], spoor: kolom.spoor });
       vorigeMaand = maand;
     }
   }
 
   return { kolommen, sporen: sporen.join(" "), maanden, spoorVan };
+}
+
+/**
+ * What a run whose end differs from its thema's duration says (ADR-0049 R7). As many whole lesweken as the duration
+ * means the run is a few days longer, and "5 van 5 weken" would contradict the word "aangepast".
+ */
+export function eindeZin(weken: number, duur: number): string {
+  return weken === duur ? t("plan.eindeLanger", { duur }) : t("plan.eindeAangepast", { weken, duur });
+}
+
+/** The same, short enough for a bar. */
+export function eindeKort(weken: number, duur: number): string {
+  return weken === duur ? t("plan.eindeLangerKort", { duur }) : t("plan.eindeAangepastKort", { weken, duur });
 }

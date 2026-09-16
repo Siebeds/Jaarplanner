@@ -4,7 +4,7 @@ import type { Lesweek, Themaplaatsing } from "../../lib/types";
 import { t } from "../../i18n";
 import { volleDag } from "../../lib/datum";
 import { Jaartijdlijn } from "./Jaartijdlijn";
-import { bouwRaster } from "./jaarraster";
+import { bouwRaster, eindeKort, eindeZin } from "./jaarraster";
 
 /**
  * The year timeline (ADR-0049): a column of five day tracks per lesweek, one gap per vacation, bars that start and end
@@ -75,7 +75,7 @@ describe("bouwRaster", () => {
     expect(raster.spoorVan("2026-11-11")).toBe(14);
   });
 
-  it("noemt elke maand bij de eerste week waarvan de vrijdag erin valt", () => {
+  it("noemt elke maand bij de eerste week waarvan de woensdag erin valt", () => {
     expect(raster.maanden.map((m) => [m.maandag, m.naam])).toEqual([
       ["2026-10-19", "oktober"],
       ["2026-11-09", "november"],
@@ -157,6 +157,15 @@ describe("Jaartijdlijn", () => {
     );
 
     const balk = screen.getByRole("button", { name: /^Herfst/ });
-    expect(balk).toHaveTextContent(t("plan.eindeAangepast", { weken: 2, duur: 3 }));
+    expect(balk).toHaveTextContent(eindeKort(2, 3));
+    expect(balk).toHaveAccessibleName(expect.stringContaining(eindeZin(2, 3)));
+  });
+});
+
+describe("eindeZin", () => {
+  it("zegt niet '5 van 5 weken' voor een reeks die enkele dagen langer loopt", () => {
+    expect(eindeZin(5, 5)).toBe(t("plan.eindeLanger", { duur: 5 }));
+    expect(eindeKort(5, 5)).toBe(t("plan.eindeLangerKort", { duur: 5 }));
+    expect(eindeZin(4, 5)).toBe(t("plan.eindeAangepast", { weken: 4, duur: 5 }));
   });
 });

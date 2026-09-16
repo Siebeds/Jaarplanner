@@ -347,7 +347,9 @@ export function useBeoordeelSuggestie(themaId: string) {
 export const jaarplanSleutels = {
   plan: (klasId: string) => ["jaarplan", klasId] as const,
   rooster: (schooljaarId: string) => ["rooster", schooljaarId] as const,
-  voorstel: (klasId: string, themaId: string, van: string) => ["jaarplan", klasId, "voorstel", themaId, van] as const,
+  // Not under "jaarplan": a change to the plan must not refetch a proposal for a thema that was just placed there,
+  // which the server then refuses because those days are taken.
+  voorstel: (klasId: string, themaId: string, van: string) => ["eindvoorstel", klasId, themaId, van] as const,
 };
 
 export function useJaarplan(klasId: string | null) {

@@ -7,6 +7,7 @@ import { Invoer, Veld } from "../../components/ui/Veld";
 import { periode, verschuif, volleDag } from "../../lib/datum";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { eindeZin } from "./jaarraster";
 
 /**
  * One placed thema, and everything a teacher can do to it (FR-7, ADR-0049): its days, a week earlier or later, the
@@ -99,7 +100,7 @@ export function Plaatsingkaart({
 
       {reeks?.eindeAangepast ? (
         <p className="mt-3 rounded-veld border border-dashed border-attentie px-3 py-2 text-meta text-attentie-inkt">
-          {t("plan.eindeAangepast", { weken: reeks.weken, duur: plaatsing.duurWeken })}
+          {eindeZin(reeks.weken, plaatsing.duurWeken)}
           {reeks.stoptBijEindeSchooljaar ? ` ${t("plan.stoptBijEinde")}` : ""}
         </p>
       ) : null}
