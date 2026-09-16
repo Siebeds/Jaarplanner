@@ -2,12 +2,12 @@
 id: FB-058
 titel: Schooluren staan subtiel in het uurrooster: een heel lichte effen tint, geen arcering
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:32
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 23:36
+opgepakt-door: schooluren-tint
+branch: ticket/FB-058-schooluren-tint
 pr:
 geblokkeerd:
 fr: [FR-12.1]
@@ -83,3 +83,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 23:32 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-16 23:36 · schooluren-tint · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
