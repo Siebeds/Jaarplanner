@@ -775,7 +775,12 @@ settled", then "Five are open".*
   *Owner: E6-10.* Nothing personal is built until this is answered.
   - *Answered for the woordweb only* by [ADR-0043](0043-eigen-woordweb-per-subthema.md) (2026-09-15, W2 and W4): a
     woordweb belongs to the gebruiker, follows her across schooljaren, and every signed-in gebruiker reads it; its
-    owner and directie edit it. For personal activiteiten and subdoelen (a) stays open with E6-10.
+    owner and directie edit it.
+  - *Answered for activiteiten* by [ADR-0049](0049-eigen-activiteit-van-de-leerkracht.md) (FB-015, rulings of
+    2026-09-15): an own activiteit belongs to the leerkracht and follows her; her jaarfase colleagues read and copy it;
+    its goals count for a klas once it is planned there. That ADR is part 2 of §5 for activiteiten, and supersedes
+    this ADR's §3 row "Eigen activiteiten en subdoelen onder een subthema plaatsen" for activiteiten. For personal
+    subdoelen (a) stays open with E6-10.
 - **(b) The FR-1 import.** *Settled by statement 13 (R9).*
   - The import is for directie and themabeheer only. That is also the only route by which it creates subthema's at
     any leeftijd, a power R5 otherwise gives to that jaar's hoofdleerkrachten, and the only route by which it can

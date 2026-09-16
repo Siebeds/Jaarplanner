@@ -251,16 +251,54 @@ public sealed class Subthema
     /// The gebruiker creating it by hand (ADR-0030 R26), or <c>null</c>. The FR-1 import passes none, because an
     /// imported activiteit has no maker and is purely shared.
     /// </param>
+    /// <param name="eigenaarId">
+    /// The gebruiker whose own activiteit this becomes (ADR-0049), or <c>null</c> for a shared one.
+    /// </param>
     public Activiteit VoegActiviteitToe(
         string naam,
         ActiviteitType? activiteitType,
         string? hoek = null,
         string? verwachteUitkomsten = null,
-        Guid? makerId = null)
+        Guid? makerId = null,
+        Guid? eigenaarId = null)
     {
-        var activiteit = new Activiteit(Id, naam, activiteitType, hoek, verwachteUitkomsten, makerId);
+        var activiteit = new Activiteit(Id, naam, activiteitType, hoek, verwachteUitkomsten, makerId, eigenaarId);
         _activiteiten.Add(activiteit);
         return activiteit;
+    }
+
+    /// <summary>
+    /// Adds an own copy of <paramref name="bron"/>, one of this subthema's activiteiten, for
+    /// <paramref name="eigenaarId"/> (ADR-0049 E2, D5): every field, and every goal link as <c>manueel</c>, because the
+    /// new owner takes them over as her own decision. The copy is not tied to the original.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The activiteit is not under this subthema.</exception>
+    public Activiteit KopieerActiviteitVoor(Activiteit bron, Guid eigenaarId)
+    {
+        ArgumentNullException.ThrowIfNull(bron);
+        if (bron.SubthemaId != Id)
+        {
+            throw new InvalidOperationException("An activiteit is copied within its own subthema.");
+        }
+
+        if (eigenaarId == Guid.Empty)
+        {
+            throw new ArgumentException("A copy has an owner.", nameof(eigenaarId));
+        }
+
+        var kopie = VoegActiviteitToe(bron.Naam, bron.ActiviteitType, bron.Hoek, bron.VerwachteUitkomsten, eigenaarId, eigenaarId);
+        kopie.KoppelAanOnderzoeksvraag(bron.OnderzoeksvraagId);
+        kopie.KiesKleur(bron.Kleur);
+        kopie.StelLengteIn(bron.LengteInLesuren);
+        foreach (var code in bron.Doelkoppelingen
+                     .Where(k => k.Status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel)
+                     .Select(k => k.LeerplandoelCode)
+                     .Distinct(StringComparer.Ordinal))
+        {
+            kopie.VoegDoelkoppelingToe(new DoelKoppeling(code, KoppelingStatus.Manueel));
+        }
+
+        return kopie;
     }
 
     private static string Require(string value, string paramName)

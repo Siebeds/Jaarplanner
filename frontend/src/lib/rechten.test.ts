@@ -54,7 +54,15 @@ const RELATIES: Record<string, Ik> = {
 };
 
 /** §3 as data: the relations that pass each row. The server's `Verwacht`, row for row. */
-const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaatsen">, string[]> = {
+type Activiteitrij = "ActiviteitVerwijderen" | "ActiviteitVerplaatsen" | "EigenActiviteitLezen" | "EigenActiviteitGebruiken";
+const ACTIVITEITRIJEN: Activiteitrij[] = [
+  "ActiviteitVerwijderen",
+  "ActiviteitVerplaatsen",
+  "EigenActiviteitLezen",
+  "EigenActiviteitGebruiken",
+];
+
+const VERWACHT: Record<Exclude<Rij, Activiteitrij>, string[]> = {
   Curriculumbeheer: ["Directie"],
   Beheer: ["Directie"],
   MenselijkeBeslissingenVerwijderen: ["Directie"],
@@ -71,6 +79,9 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   DoelenKoppelen: ["Directie", "HL"],
   StreefwoordenschatAanpassen: ["Directie", "HL", "LK leeftijd"],
   GedeeldeActiviteitBewerken: ["Directie", "HL", "LK leeftijd"],
+  // ADR-0049 D1, D2: a shared one is created by HL, an own one by a leerkracht of that leeftijd.
+  GedeeldeActiviteitMaken: ["Directie", "HL"],
+  EigenActiviteitMaken: ["Directie", "LK leeftijd"],
   KlasplanningBewerken: ["Directie", "LK eigen"],
   // FB-013 (ADR-0040 Z1-Z5): a K3 klas is read by its own leerkracht, the leerkrachten and hoofdleerkrachten of K3,
   // themabeheer and directie. Not by another leeftijd, and not by a gebruiker without a right.
@@ -100,11 +111,12 @@ function bronVoor(rij: Rij): Rechtbron | undefined {
     : undefined;
 }
 
-const activiteit = (makerId: string | null, heeftDoelkoppelingen: boolean): Rechtbron => ({
+const activiteit = (makerId: string | null, heeftDoelkoppelingen: boolean, eigenaarId: string | null = null): Rechtbron => ({
   soort: "activiteit",
   leeftijd: LEEFTIJD,
   makerId,
   heeftDoelkoppelingen,
+  eigenaarId,
 });
 
 describe("de rechtenmatrix van de frontend", () => {
@@ -118,10 +130,10 @@ describe("de rechtenmatrix van de frontend", () => {
 
   it("heeft een verwachting voor elke rij, en elke rij van de server", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
-    expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
+    expect([...Object.keys(VERWACHT), ...ACTIVITEITRIJEN].sort()).toEqual(rijen);
     // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set
-    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row.
-    expect(rijen).toHaveLength(24);
+    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row, 28 with FB-015's four own-activiteit rows.
+    expect(rijen).toHaveLength(28);
   });
 
   it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0043)", () => {
@@ -208,6 +220,66 @@ describe("de rechtenmatrix van de frontend", () => {
       expect(mag.activiteitVerwijderen({ leeftijd: LEEFTIJD, makerId: IK, doelkoppelingen: [{}] })).toBe(false);
       // No `makerId` in the payload reads as no maker, the safe direction.
       expect(mag.activiteitVerwijderen({ leeftijd: LEEFTIJD, doelkoppelingen: [] })).toBe(false);
+    });
+  });
+
+  describe("een eigen activiteit (ADR-0049)", () => {
+    const eigen = (eigenaar: string, metDoelen = false) => activiteit(eigenaar, metDoelen, eigenaar);
+    const bewerkingen: Rij[] = ["GedeeldeActiviteitBewerken", "ActiviteitVerwijderen", "DoelenKoppelen", "ActiviteitVerplaatsen"];
+
+    it("bewerkt, koppelt, verplaatst en verwijdert alleen de eigenaar en de directie, ook met doelen", () => {
+      const alles = ik({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: [LEEFTIJD], leerkrachtLeeftijden: [LEEFTIJD] });
+      for (const rij of bewerkingen) {
+        expect(staatToe(alles, rij, eigen(ANDERE_PERSOON))).toBe(false);
+        expect(staatToe(RELATIES.Directie, rij, eigen(ANDERE_PERSOON))).toBe(true);
+        expect(staatToe(RELATIES.Ander, rij, eigen(IK, true))).toBe(true);
+      }
+    });
+
+    it.each([
+      ["Directie", true],
+      ["HL", true],
+      ["LK leeftijd", true],
+      ["TB", false],
+      ["HL andere leeftijd", false],
+      ["LK andere leeftijd", false],
+      ["LK eigen", false],
+      ["Ander", false],
+    ] as const)("lezen: %s %s", (relatie, mag) => {
+      expect(staatToe(RELATIES[relatie], "EigenActiviteitLezen", eigen(ANDERE_PERSOON))).toBe(mag);
+    });
+
+    it.each([
+      ["Directie", true],
+      ["LK leeftijd", true],
+      ["HL", false],
+      ["TB", false],
+      ["LK andere leeftijd", false],
+      ["Ander", false],
+    ] as const)("gebruiken: %s %s", (relatie, mag) => {
+      expect(staatToe(RELATIES[relatie], "EigenActiviteitGebruiken", eigen(ANDERE_PERSOON))).toBe(mag);
+    });
+
+    it("biedt gebruiken niet aan op een eigen of een gedeelde activiteit", () => {
+      const mag = magVoor(RELATIES["LK leeftijd"]);
+      expect(mag.activiteitGebruiken({ leeftijd: LEEFTIJD, eigenaarId: ANDERE_PERSOON, doelkoppelingen: [] })).toBe(true);
+      expect(mag.activiteitGebruiken({ leeftijd: LEEFTIJD, eigenaarId: IK, doelkoppelingen: [] })).toBe(false);
+      expect(mag.activiteitGebruiken({ leeftijd: LEEFTIJD, eigenaarId: null, doelkoppelingen: [] })).toBe(false);
+    });
+
+    it("laat een leerkracht een eigen activiteit maken en een hoofdleerkracht ook een gedeelde", () => {
+      const lk = magVoor(RELATIES["LK leeftijd"]);
+      expect([lk.activiteitMaken(LEEFTIJD), lk.eigenActiviteitMaken(LEEFTIJD), lk.gedeeldeActiviteitMaken(LEEFTIJD)]).toEqual([true, true, false]);
+      const hl = magVoor(RELATIES.HL);
+      expect([hl.activiteitMaken(LEEFTIJD), hl.eigenActiviteitMaken(LEEFTIJD), hl.gedeeldeActiviteitMaken(LEEFTIJD)]).toEqual([true, false, true]);
+      expect(magVoor(RELATIES.Ander).activiteitMaken(LEEFTIJD)).toBe(false);
+    });
+
+    it("opent geen woordweb, en een woordweb opent geen eigen activiteit", () => {
+      expect(staatToe(RELATIES.Ander, "WoordwebBewerken", eigen(IK))).toBe(false);
+      for (const rij of bewerkingen) {
+        expect(staatToe(RELATIES.Ander, rij, { soort: "woordweb", eigenaarId: IK })).toBe(false);
+      }
     });
   });
 

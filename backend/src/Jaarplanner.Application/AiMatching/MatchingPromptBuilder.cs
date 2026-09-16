@@ -205,10 +205,12 @@ public static class MatchingPromptBuilder
             }
         }
 
-        if (subthema.Activiteiten.Count > 0)
+        // Shared activiteiten only: an own activiteit is one gebruiker's content, not the thema's (ADR-0049 D9).
+        var gedeeld = subthema.Activiteiten.Where(a => !a.IsEigen).ToList();
+        if (gedeeld.Count > 0)
         {
             Line(sb, "  Activiteiten:");
-            foreach (var activiteit in subthema.Activiteiten)
+            foreach (var activiteit in gedeeld)
             {
                 SchrijfActiviteit(sb, activiteit);
             }

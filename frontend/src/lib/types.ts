@@ -442,6 +442,13 @@ export interface ActiviteitWeergave {
    * Optional because a fixture or an older server may leave it out; absent reads as no maker, the safe direction.
    */
   makerId?: string | null;
+  /**
+   * The owner of an own activiteit, or null for a shared one (ADR-0049). Optional for the reason `makerId` is: absent
+   * reads as shared, which grants only what the shared rows grant.
+   */
+  eigenaarId?: string | null;
+  /** The owner's name, for a colleague's own activiteit; null when unknown or shared. */
+  eigenaarNaam?: string | null;
 }
 
 export interface SubthemaWeergave {
@@ -698,6 +705,11 @@ export interface LeerplandoelDekking {
    * exactly when this or `dekkendeThemas` is non-empty, so neither list alone says whether a goal is covered.
    */
   dekkendeFiches: string[];
+  /**
+   * The own activiteiten planned in this class's agenda that cover the goal (ADR-0049 D7). Optional for an older server;
+   * absent reads as none.
+   */
+  dekkendeActiviteiten?: string[];
   /** Why the goal is not covered (E5-05); null exactly when it is. */
   oorzaak: Lacuneoorzaak | null;
   /** The thema's a teacher would act on to close the gap, for its cause only. Empty for GeenThema. */

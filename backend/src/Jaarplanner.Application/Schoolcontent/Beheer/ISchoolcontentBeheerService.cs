@@ -1,3 +1,5 @@
+using Jaarplanner.Application.Toegang;
+
 namespace Jaarplanner.Application.Schoolcontent.Beheer;
 
 /// <summary>
@@ -22,9 +24,16 @@ public interface ISchoolcontentBeheerService
 
     Task<ThemaWeergave> MaakThemaAsync(ThemaCreatie creatie, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(CancellationToken cancellationToken = default);
+    /// <param name="lezer">
+    /// The rights of whoever reads, which decide the own activiteiten of others they see (ADR-0049 D3). <c>null</c> shows
+    /// shared activiteiten only.
+    /// </param>
+    Task<IReadOnlyList<ThemaWeergave>> HaalThemasOpAsync(Rechten? lezer = null, CancellationToken cancellationToken = default);
 
-    Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, CancellationToken cancellationToken = default);
+    /// <param name="themaId">The thema.</param>
+    /// <param name="lezer">As for <see cref="HaalThemasOpAsync"/>.</param>
+    /// <param name="cancellationToken">Cancellation.</param>
+    Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, Rechten? lezer = null, CancellationToken cancellationToken = default);
 
     // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
 
@@ -42,7 +51,7 @@ public interface ISchoolcontentBeheerService
     /// appear under class B even though both derive from the same shared thema (Art. IX.2). Coherent with
     /// <see cref="HaalThemaBibliotheekOpAsync"/>: same school-wide layer, class-filtered derivations.
     /// </summary>
-    Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, CancellationToken cancellationToken = default);
+    Task<ThemaWeergave> HaalThemaVoorKlasAsync(Guid themaId, Guid klasId, Rechten? lezer = null, CancellationToken cancellationToken = default);
 
     Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default);
 
@@ -88,7 +97,18 @@ public interface ISchoolcontentBeheerService
     /// R26), required on purpose so no hand-create path can forget it; a maker who does not exist (any more) is stored
     /// as none, which is what their removal would have left anyway (I17).
     /// </summary>
+    /// <remarks>
+    /// Unless <see cref="ActiviteitCreatie.Gedeeld"/> is set, the new activiteit is the maker's own (ADR-0049 E1). A maker
+    /// that does not exist as a gebruiker leaves it shared, since there is no one to own it.
+    /// </remarks>
     Task<ActiviteitWeergave> MaakActiviteitAsync(Guid subthemaId, Guid? makerId, ActiviteitCreatie creatie, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Makes an own copy of an own activiteit for <paramref name="eigenaarId"/> (ADR-0049 E2, D5), under the same subthema,
+    /// with every field and every decided goal link. The caller has checked <c>EigenActiviteitGebruiken</c>.
+    /// </summary>
+    /// <exception cref="SchoolcontentValidatieFout">The activiteit is shared, or the gebruiker does not exist.</exception>
+    Task<ActiviteitWeergave> KopieerActiviteitAsync(Guid activiteitId, Guid eigenaarId, CancellationToken cancellationToken = default);
 
     Task<ActiviteitWeergave> WijzigActiviteitAsync(Guid activiteitId, ActiviteitWijzigingInvoer wijziging, CancellationToken cancellationToken = default);
 

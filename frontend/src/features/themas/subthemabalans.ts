@@ -19,8 +19,8 @@ export interface Drager {
  *
  * **This says nothing about dekking** either, for the reason `themabalans.ts` gives: no plan is known here. It counts
  * which leerplandoelen the subthema's own activiteiten carry, and nothing else. Only this subthema's shared activiteiten
- * are read, because the subthema holds for its whole leeftijd (Art. IX.2). If personal activiteiten (FB-015) ever arrive
- * in the same array, this is the place that decides whether they count; the ticket's default is that they do not.
+ * are read, because the subthema holds for its whole leeftijd (Art. IX.2). Own activiteiten (FB-015, ADR-0049 D9) arrive
+ * in the same array for whoever may read them, and are skipped here: they are one gebruiker's, not the subthema's.
  *
  * Derived from the subthema the screen already holds, so it can never disagree with the lists rendered beside it.
  */
@@ -41,6 +41,7 @@ export function subthemabalans(subthema: SubthemaWeergave): Subthemabalans {
   const eersteKoppeling = new Map<string, DoelKoppelingWeergave>();
 
   for (const activiteit of subthema.activiteiten) {
+    if (activiteit.eigenaarId != null) continue;
     for (const koppeling of activiteit.doelkoppelingen) {
       if (!beslist(koppeling.status)) continue;
       const code = koppeling.leerplandoelCode;

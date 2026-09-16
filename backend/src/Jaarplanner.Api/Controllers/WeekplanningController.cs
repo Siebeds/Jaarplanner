@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Toegang;
@@ -30,8 +31,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class WeekplanningController : ControllerBase
 {
     private readonly IWeekplanningService _service;
+    private readonly IRechtenService _rechten;
 
-    public WeekplanningController(IWeekplanningService service) => _service = service;
+    public WeekplanningController(IWeekplanningService service, IRechtenService rechten)
+    {
+        _service = service;
+        _rechten = rechten;
+    }
 
     /// <summary>
     /// The days between <paramref name="van"/> and <paramref name="tot"/> (both inclusive) with what is scheduled on
@@ -59,15 +65,22 @@ public sealed class WeekplanningController : ControllerBase
     /// The placement lands as <c>manueel</c> — nothing here proposes anything, so there is no status for a teacher to
     /// review (Art. IV.2).
     /// </para>
+    /// <para>
+    /// Someone else's own activiteit is a 400 unless the caller holds directie (ADR-0049 D6), so the planner's rights go
+    /// along.
+    /// </para>
     /// </summary>
     [HttpPost]
     [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
     public async Task<ActionResult<Weekplanningweergave>> PlanActiviteit(
         Guid klasId,
         [FromBody] Dagplanning planning,
-        CancellationToken cancellationToken) =>
-        Ok(await _service.PlanActiviteitAsync(
-            klasId, planning.ActiviteitId, planning.Datum, planning.Begin, planning.Einde, cancellationToken));
+        CancellationToken cancellationToken)
+    {
+        var planner = Aanmelding.GebruikerId(User) is { } id ? await _rechten.HaalRechtenOpAsync(id, cancellationToken) : null;
+        return Ok(await _service.PlanActiviteitAsync(
+            klasId, planning.ActiviteitId, planning.Datum, planning.Begin, planning.Einde, planner, cancellationToken));
+    }
 
     /// <summary>
     /// Marks off a stretch of days for a subthema, or moves the stretch it already had (owner ruling, 2026-08-25).

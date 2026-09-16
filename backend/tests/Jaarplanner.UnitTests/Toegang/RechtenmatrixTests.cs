@@ -58,6 +58,9 @@ public sealed class RechtenmatrixTests
         [Rechtenmatrix.Beleid.DoelenKoppelen] = ["Directie", "HL"],
         [Rechtenmatrix.Beleid.StreefwoordenschatAanpassen] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
+        // ADR-0049 D1, D2: a shared one is created by HL, an own one by a leerkracht of that leeftijd.
+        [Rechtenmatrix.Beleid.GedeeldeActiviteitMaken] = ["Directie", "HL"],
+        [Rechtenmatrix.Beleid.EigenActiviteitMaken] = ["Directie", "LK leeftijd", "LK K3 lopend"],
         [Rechtenmatrix.Beleid.KlasplanningBewerken] = ["Directie", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
         // FB-013 (ADR-0040 Z1-Z5): reading a K3 klas is for its own leerkracht, every leerkracht and hoofdleerkracht of
         // K3, themabeheer and directie. Not for another leeftijd, and not for a gebruiker without a right (Z4).
@@ -78,7 +81,13 @@ public sealed class RechtenmatrixTests
     };
 
     private static readonly string[] ActiviteitRijen =
-        [Rechtenmatrix.Beleid.ActiviteitVerwijderen, Rechtenmatrix.Beleid.ActiviteitVerplaatsen];
+    [
+        Rechtenmatrix.Beleid.ActiviteitVerwijderen,
+        Rechtenmatrix.Beleid.ActiviteitVerplaatsen,
+        // ADR-0049: they need an own activiteit as resource, and have their own tests below.
+        Rechtenmatrix.Beleid.EigenActiviteitLezen,
+        Rechtenmatrix.Beleid.EigenActiviteitGebruiken,
+    ];
 
     public static TheoryData<string, string> ElkeRijMetElkeRelatie()
     {
@@ -566,6 +575,89 @@ public sealed class RechtenmatrixTests
             rij => Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, eigen)));
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, new Leeftijdsinhoud(Leeftijd)));
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, bron: null));
+    }
+
+    /// <summary>The rows about one existing activiteit, each asked on an own activiteit (ADR-0049 D4).</summary>
+    private static readonly Matrixrij[] Activiteitbewerkingen =
+    [
+        Rechtenmatrix.GedeeldeActiviteitBewerken,
+        Rechtenmatrix.ActiviteitVerwijderen,
+        Rechtenmatrix.DoelenKoppelen,
+        Rechtenmatrix.ActiviteitVerplaatsen,
+    ];
+
+    private static Activiteitbron EigenActiviteit(Guid eigenaar, bool metKoppelingen = false) =>
+        new(Guid.NewGuid(), Leeftijd, eigenaar, metKoppelingen, eigenaar);
+
+    [Fact]
+    public void Een_eigen_activiteit_bewerkt_alleen_haar_eigenaar_en_de_directie()
+    {
+        // D4: HL, "LK leeftijd" and even the maker column do not reach someone else's own activiteit.
+        var andermans = EigenActiviteit(AnderePersoon, metKoppelingen: false);
+        var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
+
+        Assert.All(Activiteitbewerkingen, rij =>
+        {
+            Assert.False(Rechtenmatrix.StaatToe(alles, rij, andermans));
+            Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], rij, andermans));
+        });
+    }
+
+    [Fact]
+    public void De_eigenaar_bewerkt_koppelt_verplaatst_en_verwijdert_haar_eigen_activiteit_ook_met_doelen()
+    {
+        // D4, E3: whatever else she holds, and with goal links too, which the shared maker column does not allow.
+        var eigen = EigenActiviteit(Ik, metKoppelingen: true);
+
+        Assert.All(Activiteitbewerkingen, rij =>
+            Assert.All(Relaties.Values, rechten => Assert.True(Rechtenmatrix.StaatToe(rechten, rij, eigen))));
+    }
+
+    [Theory]
+    [InlineData("Directie", true)]
+    [InlineData("HL", true)]
+    [InlineData("LK leeftijd", true)]
+    [InlineData("LK K3 lopend", true)]
+    [InlineData("TB", false)]
+    [InlineData("HL andere leeftijd", false)]
+    [InlineData("LK andere leeftijd", false)]
+    [InlineData("LK eigen", false)]
+    [InlineData("LK K3 afgelopen", false)]
+    [InlineData("Leerlingzorg", false)]
+    [InlineData("Ander", false)]
+    public void Een_eigen_activiteit_lezen_de_leerkrachten_en_hoofdleerkrachten_van_haar_leeftijd(string relatie, bool mag)
+    {
+        // D3: a colleague of another leeftijd, or of an ended schooljaar only, does not see it.
+        Assert.Equal(mag, Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.EigenActiviteitLezen, EigenActiviteit(AnderePersoon)));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.EigenActiviteitLezen, EigenActiviteit(Ik)));
+    }
+
+    [Theory]
+    [InlineData("Directie", true)]
+    [InlineData("LK leeftijd", true)]
+    [InlineData("LK K3 lopend", true)]
+    [InlineData("HL", false)]
+    [InlineData("TB", false)]
+    [InlineData("LK andere leeftijd", false)]
+    [InlineData("LK K3 afgelopen", false)]
+    [InlineData("Ander", false)]
+    public void Een_eigen_activiteit_gebruiken_de_leerkrachten_van_haar_leeftijd(string relatie, bool mag)
+    {
+        // D5: whoever may create an own activiteit at that leeftijd.
+        Assert.Equal(mag, Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.EigenActiviteitGebruiken, EigenActiviteit(AnderePersoon)));
+    }
+
+    [Fact]
+    public void De_rijen_van_een_eigen_activiteit_openen_geen_gedeelde_activiteit_en_geen_woordweb()
+    {
+        var gedeeld = new Activiteitbron(Guid.NewGuid(), Leeftijd, Ik, HeeftDoelkoppelingen: false);
+        var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
+
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.EigenActiviteitGebruiken, gedeeld));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.EigenActiviteitGebruiken, new Leeftijdsinhoud(Leeftijd)));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], Rechtenmatrix.WoordwebBewerken, EigenActiviteit(Ik)));
+        Assert.All(Activiteitbewerkingen, rij =>
+            Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, new Woordwebbron(Guid.NewGuid(), Ik))));
     }
 
     private static object? BronVoor(Matrixrij rij) => rij.Kolommen switch

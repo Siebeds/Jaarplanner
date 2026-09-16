@@ -187,7 +187,11 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         await WijsToeAsync(an.Id, lopend.Klassen.Single().Id);
         await StelAanAsync(an.Id, lopend.Id, "K3");
         using var client = _factory.MaakClientVoor(an.Id);
-        var activiteit = await MaakActiviteitAsync(client, await MaakSubthemaAsync(client, "K3"));
+        var subthemaId = await MaakSubthemaAsync(client, "K3");
+        var activiteit = await MaakActiviteitAsync(client, subthemaId);
+        // ADR-0049 D8: her own activiteit becomes shared too.
+        var eigen = await MaakActiviteitAsync(client, subthemaId, gedeeld: false);
+        Assert.Equal(an.Id, eigen.EigenaarId);
 
         await using (var verwijder = _db.MaakContext())
         {
@@ -197,6 +201,9 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         await using var context = _db.MaakContext();
         var bewaard = await context.Activiteiten.SingleAsync(a => a.Id == activiteit.Id);
         Assert.Null(bewaard.MakerId);
+        var eigenBewaard = await context.Activiteiten.SingleAsync(a => a.Id == eigen.Id);
+        Assert.Null(eigenBewaard.EigenaarId);
+        Assert.Null(eigenBewaard.MakerId);
         Assert.False(await context.Klastoewijzingen.AnyAsync(t => t.GebruikerId == an.Id));
         Assert.False(await context.Hoofdleerkrachtaanstellingen.AnyAsync(a => a.GebruikerId == an.Id));
     }
@@ -426,11 +433,12 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         return (await subthemaAntwoord.Content.ReadFromJsonAsync<IdDto>())!.Id;
     }
 
-    private static async Task<ActiviteitDto> MaakActiviteitAsync(HttpClient client, Guid subthemaId)
+    /// <summary>A shared activiteit unless <paramref name="gedeeld"/> is false (ADR-0049): the builders here are hoofdleerkrachten.</summary>
+    private static async Task<ActiviteitDto> MaakActiviteitAsync(HttpClient client, Guid subthemaId, bool gedeeld = true)
     {
         using var antwoord = await client.PostAsJsonAsync(
             $"/api/subthemas/{subthemaId}/activiteiten",
-            new { naam = $"Proef {Guid.NewGuid():N}", activiteitType = nameof(ActiviteitType.Experiment) });
+            new { naam = $"Proef {Guid.NewGuid():N}", activiteitType = nameof(ActiviteitType.Experiment), gedeeld });
         Assert.Equal(HttpStatusCode.Created, antwoord.StatusCode);
         return (await antwoord.Content.ReadFromJsonAsync<ActiviteitDto>())!;
     }
@@ -444,7 +452,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
 
     private sealed record IdDto(Guid Id);
 
-    private sealed record ActiviteitDto(Guid Id, Guid? MakerId);
+    private sealed record ActiviteitDto(Guid Id, Guid? MakerId, Guid? EigenaarId = null);
 
     private sealed record IkDto(
         Guid Id,
