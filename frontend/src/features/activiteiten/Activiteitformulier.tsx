@@ -118,13 +118,15 @@ export function Activiteitformulier({
 }) {
   const id = useId();
   const [naam, setNaam] = useState(activiteit?.naam ?? "");
-  const [soort, setSoort] = useState<ActiviteitType>(activiteit?.activiteitType ?? "Experiment");
+  // Empty on a new activiteit (FB-050): a preselected soort is one the teacher never chose but still saves.
+  const [soort, setSoort] = useState<ActiviteitType | "">(activiteit?.activiteitType ?? "");
   const [hoek, setHoek] = useState(activiteit?.hoek ?? "");
   const [uitkomsten, setUitkomsten] = useState(activiteit?.verwachteUitkomsten ?? "");
   const [vraagId, setVraagId] = useState(activiteit?.onderzoeksvraagId ?? "");
   const [kleur, setKleur] = useState<Activiteitkleur | null>(activiteit?.kleur ?? null);
   const [lengte, setLengte] = useState(activiteit?.lengteInLesuren ?? 1);
   const [naamFout, setNaamFout] = useState(false);
+  const [soortFout, setSoortFout] = useState(false);
   // The goal whose detail is open over this sheet, with the row that opened it.
   const [doel, setDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
   const toonDoel = (code: string, knop: HTMLElement) => setDoel({ code, knop });
@@ -137,10 +139,11 @@ export function Activiteitformulier({
 
   function verstuur(event: FormEvent) {
     event.preventDefault();
-    if (naam.trim().length === 0) {
-      setNaamFout(true);
-      return;
-    }
+    // Both checked before returning, so a teacher who left both empty reads both messages at once.
+    const zonderNaam = naam.trim().length === 0;
+    setNaamFout(zonderNaam);
+    setSoortFout(soort === "");
+    if (zonderNaam || soort === "") return;
     onBewaar({
       naam: naam.trim(),
       activiteitType: soort,
@@ -225,20 +228,34 @@ export function Activiteitformulier({
                   id={`${id}-soort`}
                   value={soort}
                   disabled={bezig}
+                  aria-invalid={soortFout || undefined}
+                  aria-describedby={soortFout ? `${id}-soort-fout` : undefined}
                   onChange={(e) => {
                     const nieuw = e.target.value as ActiviteitType;
                     setSoort(nieuw);
+                    setSoortFout(false);
                     // Cleared rather than kept: see the note in the component docstring.
                     if (nieuw !== "Hoek") setHoek("");
                   }}
                   className="mt-1.5"
                 >
+                  {/* Disabled: once a soort is chosen there is no way back to none, since none cannot be saved. */}
+                  {soort === "" ? (
+                    <option value="" disabled>
+                      {t("activiteit.kiesSoort")}
+                    </option>
+                  ) : null}
                   {ACTIVITEIT_TYPES.map((type) => (
                     <option key={type} value={type}>
                       {t(`activiteitsoort.${type}`)}
                     </option>
                   ))}
                 </Keuze>
+                {soortFout ? (
+                  <p id={`${id}-soort-fout`} role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+                    {t("activiteit.soortVerplicht")}
+                  </p>
+                ) : null}
               </div>
 
               {isHoek ? (

@@ -63,10 +63,65 @@ describe("Activiteitformulier", () => {
     expect(screen.queryByText(t("activiteit.doelenBijBewaren"))).toBeNull();
 
     fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Nieuw" } });
+    fireEvent.change(screen.getByLabelText(t("activiteit.soort")), { target: { value: "Spel" } });
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
 
     expect(bewaar).toHaveBeenCalledTimes(1);
     expect(bewaar.mock.calls[0][0]).not.toHaveProperty("leerplandoelCodes");
+  });
+
+  it("opent een nieuwe activiteit zonder gekozen soort (FB-050)", () => {
+    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />);
+
+    const soort = screen.getByLabelText(t("activiteit.soort"));
+    expect(soort).toHaveValue("");
+    expect(screen.getByRole("option", { name: t("activiteit.kiesSoort") })).toHaveProperty("selected", true);
+  });
+
+  it("bewaart niets zonder soort, en zegt dat bij het veld (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+
+    fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Nieuw" } });
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(bewaar).not.toHaveBeenCalled();
+    const melding = screen.getByRole("alert");
+    expect(melding).toHaveTextContent(t("activiteit.soortVerplicht"));
+    const soort = screen.getByLabelText(t("activiteit.soort"));
+    expect(soort).toHaveAttribute("aria-invalid", "true");
+    expect(soort).toHaveAccessibleDescription(t("activiteit.soortVerplicht"));
+
+    // Choosing one clears the message and lets the save through, with that soort.
+    fireEvent.change(soort, { target: { value: "Hoek" } });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByRole("option", { name: t("activiteit.kiesSoort") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    expect(bewaar).toHaveBeenCalledTimes(1);
+    expect(bewaar.mock.calls[0][0]).toMatchObject({ naam: "Nieuw", activiteitType: "Hoek" });
+  });
+
+  it("meldt zonder naam en zonder soort beide tegelijk (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(bewaar).not.toHaveBeenCalled();
+    const meldingen = screen.getAllByRole("alert").map((m) => m.textContent);
+    expect(meldingen).toEqual([t("activiteit.naamVerplicht"), t("activiteit.soortVerplicht")]);
+  });
+
+  it("toont bij het bewerken de eigen soort van de activiteit (FB-050)", () => {
+    const bewaar = vi.fn();
+    toon(
+      <Activiteitformulier open activiteit={ACTIVITEIT} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+    );
+
+    expect(screen.getByLabelText(t("activiteit.soort"))).toHaveValue("Spel");
+    expect(screen.queryByRole("option", { name: t("activiteit.kiesSoort") })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));
+    expect(bewaar.mock.calls[0][0]).toMatchObject({ activiteitType: "Spel" });
   });
 
   it("biedt ze wel aan wie op die leeftijd doelen mag koppelen", () => {
