@@ -2,13 +2,13 @@
 id: FB-057
 titel: AI stelt voor in welk subthema de leerplandoelen van de themadoelen passen
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:49
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 00:10
+opgepakt-door: claude-fb057
+branch: ticket/FB-057-subdoelplaatsing
+pr: 129
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3, FR-4.4]
 ---
@@ -61,19 +61,19 @@ doel zelf opzoeken en met de hand als subdoel toevoegen, en ziet niet in één o
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met een minimumdoel dat voor K2 vier leerplandoelen meebrengt, waarvan één al subdoel is van
+- [x] Gegeven een thema met een minimumdoel dat voor K2 vier leerplandoelen meebrengt, waarvan één al subdoel is van
   een K2-subthema, wanneer ik de themapagina open, dan staat bij K2 dat drie leerplandoelen nog in geen subthema
   hangen, zonder AI-aanroep.
-- [ ] Gegeven die drie open doelen, wanneer de hoofdleerkracht van K2 "Plaats de open doelen" kiest, dan staat elk
+- [x] Gegeven die drie open doelen, wanneer de hoofdleerkracht van K2 "Plaats de open doelen" kiest, dan staat elk
   voorstel met een motivatie in een bestaand K2-subthema of in een voorgesteld nieuw subthema, met de vage
   regenboogring, het label "Voorgesteld" en de icoontjes aanvaarden en weigeren.
-- [ ] Gegeven een voorgesteld subdoel, wanneer ik het aanvaard, dan is het een subdoel van dat subthema en telt het in
+- [x] Gegeven een voorgesteld subdoel, wanneer ik het aanvaard, dan is het een subdoel van dat subthema en telt het in
   "Doelen per leeftijd"; wanneer ik het weiger, blijft het open en komt het bij een nieuwe vraag niet terug.
-- [ ] Gegeven een voorgesteld nieuw subthema, wanneer ik het aanvaard, dan bestaat het subthema bij die leeftijd met
+- [x] Gegeven een voorgesteld nieuw subthema, wanneer ik het aanvaard, dan bestaat het subthema bij die leeftijd met
   zijn doelen als subdoelen; het icoontje "aanpassen" laat naam, onderzoeksvraag en lengte eerst wijzigen.
-- [ ] Gegeven een modelantwoord met een doelcode die niet bij de open doelen van die leeftijd hoort, of een subthema dat
+- [x] Gegeven een modelantwoord met een doelcode die niet bij de open doelen van die leeftijd hoort, of een subthema dat
   niet bestaat of bij een andere leeftijd hoort, dan wordt dat voorstel niet getoond en niet bewaard.
-- [ ] Gegeven een hoofdleerkracht van K3 of een leerkracht, dan ziet die geen AI-knop bij K2 en weigert de server het
+- [x] Gegeven een hoofdleerkracht van K3 of een leerkracht, dan ziet die geen AI-knop bij K2 en weigert de server het
   vragen en het beslissen; de logica is getest met een nep-AI-client.
 
 ## Testscenario's
@@ -103,15 +103,22 @@ doel zelf opzoeken en met de hand als subdoel toevoegen, en ziet niet in één o
 
 ## Open vragen
 
-- **Grondwet:** dat de AI zelf een naam en een onderzoeksvraag voor een nieuw subthema bedenkt, vraagt de wijziging van
-  Art. IV.4 en IV.8 die bij FB-054 al beslist is. Die moet geschreven zijn, met een ADR, vóór het deel "nieuw subthema"
-  gebouwd wordt. Het deel "bestaand subthema" mag eerder.
-- **ADR-0039, besluit 5,** zegt dat de regenboog alleen bij de knop hoort en dat een voorstel de kleuren van de
-  suggestiestatus houdt. De vage ring op een voorstel vraagt een nieuwe ADR die dat besluit aanpast, met de gemeten
-  contrasten in beide weergaven.
-- **Omvang van de AI-vraag:** als een leeftijd veel open doelen heeft, passen ze mogelijk niet in één vraag (TB-007).
-  Hoe dat opgedeeld wordt, beslist de bouw.
+Beantwoord tijdens de bouw (2026-09-16):
+
+- **Grondwet:** Art. IV.4 en IV.8 zijn aangepast (ADR-0050, met een regel in `docs/constitutie-log.md`): de AI mag de
+  naam en de onderzoeksvraag van een voorgesteld thema of subthema zelf bedenken, maar plaatst alleen geladen doelen.
+  Die wijziging geldt ook voor FB-054.
+- **ADR-0039, besluit 5:** aangepast door ADR-0051: een AI-voorstel draagt de vage ring, met stille icoontjes.
+- **Omvang van de AI-vraag:** niet opgedeeld. Heeft een leeftijd te veel open doelen voor één vraag, dan weigert de app
+  met de bestaande zin over de grens (TB-007). Opdelen is een later ticket, als het in de praktijk voorkomt.
 
 ## Werklog
 
 - 2026-09-16 22:49 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-16 22:53 · claude-fb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-16 23:02 · claude-fb057 · Grondwet (Art. IV, VI.1, IX.2, XII) aangepast met ADR-0050 en ADR-0051; de bouw begint met de backend.
+- 2026-09-16 23:15 · claude-fb057 · Backend klaar: twee tabellen, AI-vraag met controle per voorstel, rechten per leeftijd (hoofdleerkracht en directie); unit- en Postgres-tests groen. Nu de frontend.
+- 2026-09-16 23:51 · claude-fb057 · Frontend klaar; browsercontrole op een kopie van de dev-database met een echte AI-vraag: 9 doelen geplaatst in 3 nieuwe subthema's, aanvaarden maakt subdoel en subthema, desktop, 390px, licht en donker nagekeken (labels 6,51:1 licht, 7,58:1 donker).
+- 2026-09-17 00:02 · claude-fb057 · Antagonist ronde 1: 1 MAJOR (rechtencontrole op een verouderde leeftijd na het verplaatsen van een subthema), opgelost met test; ook de MINOR over naam en open doelen bij het aanvaarden van een nieuw subthema. Blijven als MINOR: de frontend koppelt een subthema met een niet-standaard leeftijd (bv. 3K) niet aan zijn voorstellen; een hard verwijderd leerplandoel zou ook geweigerde voorstellen meenemen (de import verwijdert er geen); te veel open doelen worden geweigerd, niet opgedeeld. Alle criteria afgevinkt op basis van de unit-, Postgres- en Vitest-tests en de browsercontrole.
+- 2026-09-17 00:03 · claude-fb057 · in-uitvoering → te-testen: Gebouwd: AI stelt per leeftijd een plaats voor de open leerplandoelen van de themadoelen voor (bestaand of nieuw subthema), met vage ring en stille icoontjes; grondwet en ADR-0050/0051 bijgewerkt. Gates groen (unit, Postgres, Vitest, lint, format, browser); antagonist COMPLIANT na ronde 2.
+- 2026-09-17 00:10 · claude-fb057 · PR #129

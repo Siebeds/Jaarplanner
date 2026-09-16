@@ -69,7 +69,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Since ADR-0050 no thema placement reaches a leerplandoel: whatever the placement's status, the leerplandoel of
+    /// Since ADR-0052 no thema placement reaches a leerplandoel: whatever the placement's status, the leerplandoel of
     /// the thema's subthema is covered only once that subthema is in the agenda (Art. V.1).
     /// </summary>
     [PostgresTheory]

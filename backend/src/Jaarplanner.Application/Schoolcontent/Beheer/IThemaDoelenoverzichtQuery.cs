@@ -28,7 +28,7 @@ public interface IThemaDoelenoverzichtQuery
 
 /// <summary>
 /// Where in the thema a leerplandoel is linked. A thema's doelsuggestie proposes a minimumdoel and is no place of a
-/// leerplandoel (ADR-0050).
+/// leerplandoel (ADR-0052).
 /// </summary>
 public enum DoelPlaatsSoort
 {

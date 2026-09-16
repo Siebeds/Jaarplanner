@@ -615,6 +615,30 @@
  * `:disabled` is overridden while busy on purpose: `Knop` fades every disabled button to 45%, and
  * a run disables its own button, which would dim the one thing that shows the run is going.
  */
+/*
+ * The faint ring of an undecided AI proposal (ADR-0051), the quiet sibling of `knop-ai` below.
+ *
+ * The same five stops, each mixed half-way with the card, 1px instead of 2, static, with no glow and no hover. So it
+ * reads as the same family without reading as something to press. It is decoration beside text: the card also carries
+ * the wand with its label and the status mark with its word, which is why it need not reach the 3:1 of WCAG 1.4.11. A
+ * decided proposal drops the class and becomes an ordinary row.
+ */
+@utility voorstel-ai {
+  border: 1px solid transparent;
+  background-image:
+    linear-gradient(var(--color-kaart), var(--color-kaart)),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-ai-oranje) 55%, var(--color-kaart)),
+      color-mix(in srgb, var(--color-ai-roze) 55%, var(--color-kaart)),
+      color-mix(in srgb, var(--color-ai-paars) 55%, var(--color-kaart)),
+      color-mix(in srgb, var(--color-ai-blauw) 55%, var(--color-kaart)),
+      color-mix(in srgb, var(--color-ai-cyaan) 55%, var(--color-kaart))
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}
+
 @keyframes ai-veeg {
   from {
     background-position: 0 0, 0 0;

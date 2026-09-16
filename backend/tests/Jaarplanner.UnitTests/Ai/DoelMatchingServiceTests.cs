@@ -7,7 +7,7 @@ using Jaarplanner.UnitTests.AiAuthoring;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// A thema's doelsuggesties run end to end (FB-053, ADR-0050, Art. IV.1/IV.2/IV.5/IV.6, FR-4.1/4.2): the leeftijden give
+/// A thema's doelsuggesties run end to end (FB-053, ADR-0052, Art. IV.1/IV.2/IV.5/IV.6, FR-4.1/4.2): the leeftijden give
 /// the mijlpalen, their minimumdoelen are the candidates, the injected <see cref="FakeAiClient"/> answers with <b>no
 /// network</b>, and each valid, new proposal is stored as <c>voorgesteld</c> with its motivation through the in-memory
 /// <see cref="FakeDoelMatchOpslag"/> with <b>no database</b>. A malformed answer stores nothing.
@@ -205,7 +205,7 @@ public sealed class DoelMatchingServiceTests
     [Fact]
     public async Task Een_aanvaard_en_later_ontkoppeld_minimumdoel_komt_terug_op_zijn_eigen_rij()
     {
-        // Owner ruling 2026-09-16 (ADR-0050 D1): only themadoelen and open or rejected proposals stay excluded.
+        // Owner ruling 2026-09-16 (ADR-0052 D1): only themadoelen and open or rejected proposals stay excluded.
         var thema = EenThema();
         var eerder = thema.VoegDoelsuggestieToe("K-1.1.1", "eerste run");
         thema.OntkoppelMinimumdoel(thema.AanvaardDoelsuggestie(eerder)!);

@@ -64,7 +64,7 @@ public sealed class EfDoelMatchOpslag : IDoelMatchOpslag
             .ToListAsync(cancellationToken);
 
         return rijen
-            // The model's order, best fit first, and a later run after an earlier one (ADR-0050 D6).
+            // The model's order, best fit first, and a later run after an earlier one (ADR-0052 D6).
             .OrderBy(r => r.Rang)
             .ThenBy(r => r.MinimumdoelRef, StringComparer.Ordinal)
             .Select(r => new DoelMatchSuggestieWeergave(r.Id, r.MinimumdoelRef, r.Status.ToString(), r.AiMotivatie, r.Omschrijving, r.Mijlpaal))

@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Schoolcontent;
 
 /// <summary>
-/// A thema's minimumdoel proposals in the domain (FB-053, ADR-0050): their rank follows the order they are added in, and
+/// A thema's minimumdoel proposals in the domain (FB-053, ADR-0052): their rank follows the order they are added in, and
 /// which minimumdoelen a run may propose (D1).
 /// </summary>
 public sealed class MinimumdoelsuggestieTests

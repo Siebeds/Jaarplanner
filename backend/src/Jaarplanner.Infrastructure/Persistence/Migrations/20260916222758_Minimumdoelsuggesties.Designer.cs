@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916222357_Minimumdoelsuggesties")]
+    [Migration("20260916222758_Minimumdoelsuggesties")]
     partial class Minimumdoelsuggesties
     {
         /// <inheritdoc />
@@ -967,6 +967,56 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("subdoelen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AiMotivatie")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Leeftijd")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("LeerplandoelCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("leerplandoel_code");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("SubthemaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("SubthemavoorstelId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ThemaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LeerplandoelCode");
+
+                    b.HasIndex("SubthemaId");
+
+                    b.HasIndex("SubthemavoorstelId");
+
+                    b.HasIndex("ThemaId", "Leeftijd");
+
+                    b.ToTable("subdoelvoorstellen", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_subdoelvoorstellen_EenBestemming", "(\"SubthemaId\" IS NULL) <> (\"SubthemavoorstelId\" IS NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
                     b.Property<Guid>("Id")
@@ -995,6 +1045,52 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.HasIndex("ThemaId");
 
                     b.ToTable("subthemas", (string)null);
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthemavoorstel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AiMotivatie")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("DuurWeken")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Leeftijd")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<string>("Naam")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Onderzoeksvraag")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("SubthemaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ThemaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubthemaId");
+
+                    b.HasIndex("ThemaId", "Leeftijd");
+
+                    b.ToTable("subthemavoorstellen", (string)null);
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
@@ -1823,10 +1919,49 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
+                        .WithMany()
+                        .HasForeignKey("LeerplandoelCode")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
+                        .WithMany()
+                        .HasForeignKey("SubthemaId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthemavoorstel", null)
+                        .WithMany()
+                        .HasForeignKey("SubthemavoorstelId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                        .WithMany()
+                        .HasForeignKey("ThemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthema", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
                         .WithMany("Subthemas")
+                        .HasForeignKey("ThemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subthemavoorstel", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
+                        .WithMany()
+                        .HasForeignKey("SubthemaId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                        .WithMany()
                         .HasForeignKey("ThemaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();

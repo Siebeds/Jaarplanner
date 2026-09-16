@@ -1,4 +1,4 @@
-# ADR-0050 — A thema's doelsuggesties propose minimumdoelen as themadoelen
+# ADR-0052 — A thema's doelsuggesties propose minimumdoelen as themadoelen
 
 - **Status:** Accepted
 - **Date:** 2026-09-16

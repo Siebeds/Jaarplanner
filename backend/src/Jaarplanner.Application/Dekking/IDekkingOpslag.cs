@@ -26,7 +26,7 @@ namespace Jaarplanner.Application.Dekking;
 /// <para>
 /// A <c>Themadoel</c> that links a leerplandoel counts nowhere (ADR-0047 D5): only the FR-1 import still writes one. A
 /// thema's doelsuggestie proposes a minimumdoel and counts only as the <c>ThemaMinimumdoel</c> its acceptance makes
-/// (ADR-0050).
+/// (ADR-0052).
 /// </para>
 /// <para>
 /// <b>Only <c>aanvaard</c>/<c>manueel</c> links count</b> (Art. V.1): a <c>voorgesteld</c> suggestion is not yet a goal

@@ -153,6 +153,34 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
     }
 
     /// <summary>The woordweb's owner, read as an id only (FB-036).</summary>
+    /// <summary>
+    /// A proposal for an existing subthema answers with that subthema's leeftijd <b>now</b>, not the one copied when it was
+    /// proposed: the subthema may have been moved since, and deciding writes a subdoel at its current leeftijd.
+    /// </summary>
+    public async Task<Leeftijdsinhoud?> VoorSubdoelvoorstelAsync(Guid subdoelvoorstelId, CancellationToken cancellationToken = default)
+    {
+        var gevonden = await (
+                from voorstel in _context.Subdoelvoorstellen.AsNoTracking()
+                where voorstel.Id == subdoelvoorstelId
+                join subthema in _context.Subthemas on voorstel.SubthemaId equals (Guid?)subthema.Id into subthemas
+                from subthema in subthemas.DefaultIfEmpty()
+                select new { voorstel.Leeftijd, SubthemaLeeftijd = subthema == null ? null : subthema.Leeftijd })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return gevonden is null ? null : new Leeftijdsinhoud(gevonden.SubthemaLeeftijd ?? gevonden.Leeftijd);
+    }
+
+    public async Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default)
+    {
+        var leeftijd = await _context.Subthemavoorstellen
+            .AsNoTracking()
+            .Where(v => v.Id == subthemavoorstelId)
+            .Select(v => v.Leeftijd)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return leeftijd is null ? null : new Leeftijdsinhoud(leeftijd);
+    }
+
     public async Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default)
     {
         var eigenaar = await _context.Woordwebs

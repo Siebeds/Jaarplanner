@@ -6,7 +6,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.AiMatching;
 
 /// <summary>
-/// Builds the grounded prompt for a thema's doelsuggesties (FB-053, ADR-0050): which minimumdoelen fit the thema as
+/// Builds the grounded prompt for a thema's doelsuggesties (FB-053, ADR-0052): which minimumdoelen fit the thema as
 /// themadoel. <see cref="DoelMatchingService"/> hands it to the injectable <see cref="IAiClient"/>.
 /// <para>
 /// <b>Stable part first</b> (TB-043). The request is the fixed <see cref="SystemPrompt"/>, then the candidate list
@@ -25,7 +25,7 @@ namespace Jaarplanner.Application.AiMatching;
 public static class MatchingPromptBuilder
 {
     /// <summary>
-    /// The most proposals a run asks for and keeps (TB-043, ADR-0050 D3). The number comes from the TB-004 evaluation's
+    /// The most proposals a run asks for and keeps (TB-043, ADR-0052 D3). The number comes from the TB-004 evaluation's
     /// variant and may be adjusted by its measurement.
     /// </summary>
     public const int MaxSuggesties = 8;

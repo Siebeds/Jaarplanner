@@ -1,6 +1,6 @@
 # ADR-0046 — A thema's themadoelen are minimumdoelen, without a maximum
 
-- **Status:** Accepted; M7 settled by [ADR-0050](0050-doelsuggesties-zijn-minimumdoelen.md)
+- **Status:** Accepted; M7 settled by [ADR-0052](0052-doelsuggesties-zijn-minimumdoelen.md)
 - **Date:** 2026-09-16
 - **Deciders:** Project owner, 2026-09-16: the rulings M1 to M7 below, given after the demo and in the FB-043 session.
   Directie has not been asked.

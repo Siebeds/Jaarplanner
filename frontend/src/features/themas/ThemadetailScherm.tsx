@@ -26,6 +26,8 @@ import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Ac
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
+import { Plaatsingsbalk, Subthemavoorstelkaart } from "./Subdoelplaatsing";
+import { beslisFout, useBeslisSubdoelvoorstel, useSubdoelplaatsing } from "./plaatsingen";
 import { Blok, Feit, Groep, Kop } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
@@ -163,6 +165,9 @@ export function ThemadetailScherm() {
   const ontkoppelSubdoel = useOntkoppelSubdoel(id);
   const koppelActiviteitdoel = useKoppelActiviteitdoel(id);
   const ontkoppelActiviteitdoel = useOntkoppelActiviteitdoel(id);
+  // FB-057: per leeftijd the open count and the AI's open proposals of where those doelen go.
+  const { data: plaatsing } = useSubdoelplaatsing(themaId);
+  const beslisSubdoel = useBeslisSubdoelvoorstel(id);
 
   if (isError) {
     return (
@@ -245,6 +250,7 @@ export function ThemadetailScherm() {
     koppelActiviteitdoel,
     ontkoppelActiviteitdoel,
     beoordeel,
+    beslisSubdoel,
     verwijder,
     verwijderSubthema,
     // The form shows its own refusal while it is open; once the rights closed it, this line does.
@@ -557,8 +563,28 @@ export function ThemadetailScherm() {
         {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
             card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
             the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
-        {perLeeftijd(subthemas).map((groep) => (
+        {perLeeftijd(subthemas).map((groep) => {
+          const plaatsen = plaatsing?.leeftijden.find((l) => l.leeftijd === groep.leeftijd);
+          // A refusal other than a 403 (decided elsewhere, subthema gone) is shown at the leeftijd it happened in.
+          const beslisFoutHier =
+            beslisSubdoel.isError &&
+            geenToegangZin(beslisSubdoel.error) === null &&
+            plaatsen?.subdoelvoorstellen.some((v) => v.id === beslisSubdoel.variables?.voorstelId);
+          return (
           <Blok key={groep.leeftijd} stapel boven={t("subthemabeheer.leeftijd")} figuur={groep.leeftijd}>
+            {plaatsen ? (
+              <Plaatsingsbalk
+                themaId={id}
+                leeftijd={plaatsen.leeftijd}
+                aantalOpen={plaatsen.aantalOpen}
+                magVragen={mag.subdoelplaatsingVragen(plaatsen.leeftijd)}
+              />
+            ) : null}
+            {beslisFoutHier ? (
+              <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {beslisFout(beslisSubdoel.error)}
+              </p>
+            ) : null}
             {groep.subthemas.map((subthema) => (
               <Subthemahoofdstuk
                 key={subthema.id}
@@ -602,10 +628,27 @@ export function ThemadetailScherm() {
                 onKoppelActiviteitdoel={(activiteitId, code) =>
                   koppelActiviteitdoel.mutate({ activiteitId, leerplandoelCode: code })
                 }
+                voorstellen={plaatsen?.subdoelvoorstellen.filter((v) => v.subthemaId === subthema.id)}
+                beslisBezig={beslisSubdoel.isPending}
+                onBeslisVoorstel={
+                  plaatsen?.magBeslissen
+                    ? (voorstelId, status) => beslisSubdoel.mutate({ voorstelId, status })
+                    : undefined
+                }
+              />
+            ))}
+            {plaatsen?.subthemavoorstellen.map((voorstel) => (
+              <Subthemavoorstelkaart
+                key={voorstel.id}
+                themaId={id}
+                voorstel={voorstel}
+                magBeslissen={plaatsen.magBeslissen}
+                onToon={toonDoel}
               />
             ))}
           </Blok>
-        ))}
+          );
+        })}
         </Groep>
       </Schermvlak>
 

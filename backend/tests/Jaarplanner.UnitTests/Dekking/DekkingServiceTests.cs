@@ -35,7 +35,7 @@ public sealed class DekkingServiceTests
     /// </summary>
     private const int KleuterLeerjaar = 0;
 
-    // ── A thema placement covers the minimumdoelen that are its themadoelen (Art. V.1). Since ADR-0050 it is the only
+    // ── A thema placement covers the minimumdoelen that are its themadoelen (Art. V.1). Since ADR-0052 it is the only
     // route a placement opens, so the placement-status rules are pinned on minimumdoelen. ────────────────────────
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class DekkingServiceTests
     [Fact]
     public async Task Een_ingepland_thema_dekt_geen_leerplandoel()
     {
-        // ADR-0050: a thema's doelsuggestie proposes a minimumdoel, so no thema placement reaches a leerplandoel, not
+        // ADR-0052: a thema's doelsuggestie proposes a minimumdoel, so no thema placement reaches a leerplandoel, not
         // even one that concords to the thema's minimumdoel.
         var service = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Aanvaard)],
@@ -661,7 +661,7 @@ public sealed class DekkingServiceTests
     [Fact]
     public async Task Een_leerplandoel_wacht_nooit_op_een_themaplaatsing()
     {
-        // ADR-0050: no thema placement reaches a leerplandoel, so a proposed or rejected placement of the thema above
+        // ADR-0052: no thema placement reaches a leerplandoel, so a proposed or rejected placement of the thema above
         // its subthema is no cause for it. It is in the prognose, and the agenda does not hold its subthema.
         foreach (var status in new[] { KoppelingStatus.Voorgesteld, KoppelingStatus.Geweigerd })
         {
@@ -737,7 +737,7 @@ public sealed class DekkingServiceTests
     public async Task Het_vooruitzicht_en_de_dekking_tellen_dezelfde_leerplandoelen()
     {
         // THE PIN BETWEEN THE TWO STORIES. E3-03's vooruitzicht counts what accepting every standing proposal would
-        // cover. Since ADR-0050 no thema placement reaches a leerplandoel, so for leerplandoelen that ceiling is the
+        // cover. Since ADR-0052 no thema placement reaches a leerplandoel, so for leerplandoelen that ceiling is the
         // figure itself, and no leerplandoel waits on a placement decision.
         var service = Maak(
             plaatsingen:
@@ -1033,7 +1033,7 @@ public sealed class DekkingServiceTests
     public async Task Het_vooruitzicht_telt_de_fiches_en_een_themavoorstel_verhoogt_het_niet()
     {
         // The fiche covers LO-K3-01 in both halves; the standing thema proposal adds nothing, since no thema
-        // placement reaches a leerplandoel (ADR-0050).
+        // placement reaches a leerplandoel (ADR-0052).
         var (service, _) = MaakMetFiches(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
             fichekoppelingen: [new DekkendeFichekoppeling("LO-K3-01", "Turnen")],

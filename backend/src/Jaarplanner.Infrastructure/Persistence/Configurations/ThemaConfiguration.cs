@@ -57,7 +57,7 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
             .HasField("_subthemas")
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
-        // The AI's proposals of a minimumdoel as themadoel (FB-053, ADR-0050), open and decided, in their own table.
+        // The AI's proposals of a minimumdoel as themadoel (FB-053, ADR-0052), open and decided, in their own table.
         // Not auto-included: only the suggestion flow reads them.
         builder.HasMany(t => t.Doelsuggesties)
             .WithOne()

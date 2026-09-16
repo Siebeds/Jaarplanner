@@ -15,7 +15,7 @@ using Microsoft.Extensions.Hosting;
 namespace Jaarplanner.IntegrationTests;
 
 /// <summary>
-/// Drives a thema's doelsuggestie endpoints end-to-end (HTTP → controller → service → EF), FB-053 (ADR-0050): the AI
+/// Drives a thema's doelsuggestie endpoints end-to-end (HTTP → controller → service → EF), FB-053 (ADR-0052): the AI
 /// proposes minimumdoelen as themadoel, and a decision accepts or rejects each.
 /// <para>
 /// The generation tests go <b>through</b> <c>POST …/doelsuggesties/genereer</c> (the real controller, the real

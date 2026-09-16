@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:06
+bijgewerkt: 2026-09-17 00:30
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -94,3 +94,4 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-17 00:02 · claude-fb053 · Eigenaar 2026-09-16: geen 'aanpassen' (D2 blijft); een voorstel wordt aanvaard of geweigerd, een ander minimumdoel koppel je met de hand. Constitutie IV.2, VI.1 en XII aangepast, ADR-0049 O6-O8.
 - 2026-09-17 00:03 · claude-fb053 · Eigenaar 2026-09-16: de prognose in het generatierapport (minimumdoelen tellen) wordt een apart ticket.
 - 2026-09-17 00:06 · claude-fb053 · Kleine punten van de antagonist opgelost: IX.2 noemt de gekozen leeftijden, de resultaatzin noemt de mijlpaal ('van mijlpaal K'), commentaar in de jaarplanprompt terug op zijn plaats, D4 voor D5 in ADR-0049; de voorstellen staan in rangvolgorde op het scherm (Vitest).
+- 2026-09-17 00:30 · claude-fb053 · TB-043 en main samengevoegd: de minimumdoelenlijst gaat nu als vaste, cachebare context mee; ADR-nummer van dit ticket is 0052 geworden (0049-0051 zijn intussen door FB-015 en FB-057 genomen); migratie opnieuw aangemaakt na Subdoelplaatsing.

@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
-/// The AI's proposal of a minimumdoel as a themadoel of a <see cref="Thema"/> (FB-053, ADR-0050, Art. IX.2): a
+/// The AI's proposal of a minimumdoel as a themadoel of a <see cref="Thema"/> (FB-053, ADR-0052, Art. IX.2): a
 /// thema's doelsuggestie. It starts <see cref="KoppelingStatus.Voorgesteld"/> with the model's
 /// <see cref="AiMotivatie"/>, and only a person decides it (Art. IV.1): accepted, the minimumdoel becomes a themadoel
 /// through <see cref="Thema.AanvaardDoelsuggestie"/>; rejected, it stays stored so a next run does not propose it again.
@@ -53,12 +53,12 @@ public sealed class Minimumdoelsuggestie
     public string AiMotivatie { get; private set; }
 
     /// <summary>
-    /// Where the proposal stands in the order the screen shows (ADR-0050 D6): the model's own order, best fit first,
+    /// Where the proposal stands in the order the screen shows (ADR-0052 D6): the model's own order, best fit first,
     /// and a later run after the proposals already on the thema. Lower is earlier.
     /// </summary>
     public int Rang { get; private set; }
 
-    /// <summary>Records the person's decision. A proposal is decided once, from <c>voorgesteld</c> (ADR-0050 D2).</summary>
+    /// <summary>Records the person's decision. A proposal is decided once, from <c>voorgesteld</c> (ADR-0052 D2).</summary>
     /// <exception cref="ArgumentOutOfRangeException"><paramref name="besluit"/> is not aanvaard or geweigerd.</exception>
     /// <exception cref="InvalidOperationException">The proposal was already decided.</exception>
     internal void Beslis(KoppelingStatus besluit)
@@ -77,7 +77,7 @@ public sealed class Minimumdoelsuggestie
     }
 
     /// <summary>
-    /// Proposes an accepted minimumdoel again, after it was unlinked as themadoel (ADR-0050 D1): the same row goes back to
+    /// Proposes an accepted minimumdoel again, after it was unlinked as themadoel (ADR-0052 D1): the same row goes back to
     /// <c>voorgesteld</c> with the new run's motivation and rank, since a thema holds one proposal per minimumdoel.
     /// </summary>
     /// <exception cref="InvalidOperationException">The proposal is not an accepted one.</exception>

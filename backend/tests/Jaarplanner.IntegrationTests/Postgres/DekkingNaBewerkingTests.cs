@@ -253,7 +253,7 @@ public sealed class DekkingNaBewerkingTests : IAsyncLifetime
         context.Schooljaren.Add(schooljaar);
 
         var herfst = new Thema("Herfstthema", duurWeken: 5);
-        // Since ADR-0050 a thema placement covers the thema's minimumdoelen, and no leerplandoel.
+        // Since ADR-0052 a thema placement covers the thema's minimumdoelen, and no leerplandoel.
         foreach (var minimumdoelRef in new[] { "NAB-K-1", "NAB-K-2" })
         {
             if (!await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef))
