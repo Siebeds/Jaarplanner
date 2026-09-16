@@ -30,13 +30,13 @@ describe("AiKnop", () => {
 
     rerender(
       <AiKnop bezig disabled>
-        {t("plan.bezig")}
+        {t("periode.bezig")}
       </AiKnop>,
     );
     expect(screen.getByTestId("ai-vonken")).toHaveAttribute("aria-hidden", "true");
     expect(screen.getByTestId("ai-puntjes")).toHaveAttribute("aria-hidden", "true");
     // The dots add nothing to what a screen reader hears.
-    expect(screen.getByRole("button", { name: t("plan.bezig") })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: t("periode.bezig") })).toBeInTheDocument();
   });
 
   it("laat een gewone knop zonder ring", () => {

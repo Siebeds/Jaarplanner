@@ -19,7 +19,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </summary>
 public sealed class ThemaplaatsingDatumsMigratieTests : IAsyncLifetime
 {
-    private const string VorigeMigratie = "20260916122525_ThemaMinimumdoelen";
+    private const string VorigeMigratie = "20260916193154_ActiviteitTypeOptioneel";
 
     // Fixed ids, so the order the migration puts several thema's of one period in (by thema id) is known here.
     private static readonly Guid Eerste = Guid.Parse("10000000-0000-0000-0000-000000000001");
