@@ -5,7 +5,7 @@ namespace Jaarplanner.Application.Ai;
 /// plan generation (FR-5), a woordweb's words (FB-036) and the rewrite of a rapporttekst (FR-13.4,
 /// FB-004) all depend only on this abstraction, never on Azure AI Foundry directly, so:
 /// <list type="bullet">
-/// <item>the provider (currently Azure AI Foundry) is swappable and its key stays server-side
+/// <item>the provider (Azure AI Foundry or the Claude API, picked by <c>Ai:Provider</c>, ADR-0048) is swappable and its key stays server-side
 /// (Art. VI.4) — the interface exposes no endpoint or credential;</item>
 /// <item>the matching/plan logic is <b>testable with a faked client, no network</b> (Art. IV.6) —
 /// tests inject a fake that returns canned completions.</item>

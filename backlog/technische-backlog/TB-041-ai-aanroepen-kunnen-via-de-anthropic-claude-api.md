@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 21:28
+bijgewerkt: 2026-09-16 21:35
 opgepakt-door: claude-code-anthropic
 branch: ticket/TB-anthropic-client
 pr:
@@ -54,3 +54,4 @@ deze provider; dat wordt in een ADR en in `docs/constitutie-log.md` vastgelegd.
 ## Werklog
 
 - 2026-09-16 21:28 · claude-code-anthropic · aangemaakt (status in-uitvoering)
+- 2026-09-16 21:35 · claude-code-anthropic · Client (AnthropicClaudeClient, officiële SDK), providerkeuze Ai:Provider, tests, ADR-0048 en constitutiewijziging Art. VI.3/VIII gebouwd; volledige testsuite loopt.
