@@ -58,6 +58,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     {
         // The subthema row at the body's leeftijd (ThemasController.MaakSubthema).
         ["POST api/themas/{themaId:guid}/subthemas"] = new { naam = "Regen", duurWeken = 2, leeftijd = "K3" },
+        // The own or shared activiteit row, by the body's choice (SubthemasController.MaakActiviteit, ADR-0049 D1, D2).
+        ["POST api/subthemas/{subthemaId:guid}/activiteiten"] = new { naam = "Plassen", gedeeld = false },
     };
 
     private PostgresTestDatabase _db = null!;

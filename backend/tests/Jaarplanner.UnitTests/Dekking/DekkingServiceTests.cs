@@ -1023,6 +1023,56 @@ public sealed class DekkingServiceTests
     }
 
     [Fact]
+    public async Task Een_eigen_activiteit_dekt_een_doel_alleen_waar_ze_ingepland_is()
+    {
+        // ADR-0049 D7: planned in this klas, it covers and names itself; only aimed at (its owner teaches here), it is
+        // prognose and the lacune says to plan it.
+        var (service, opslag) = MaakMetFiches(plaatsingen: [], koppelingen: [], fichekoppelingen: [],
+            doelen: [Doel("NAT-K3-01"), Doel("NAT-K3-02"), Doel("NAT-K3-03")]);
+        opslag.EigenActiviteitkoppelingen =
+        [
+            new EigenActiviteitkoppeling("NAT-K3-01", "Bladeren drogen", IsIngepland: true),
+            new EigenActiviteitkoppeling("NAT-K3-02", "Kastanjes tellen", IsIngepland: false),
+        ];
+
+        var dekking = await service.BerekenAsync(KlasId);
+
+        var gedekt = Doelvan(dekking, "NAT-K3-01");
+        Assert.True(gedekt.IsGedekt);
+        Assert.Equal(Dekkingsstap.Gedekt, gedekt.Stap);
+        Assert.Equal(["Bladeren drogen"], gedekt.DekkendeActiviteiten);
+        Assert.Empty(gedekt.DekkendeThemas);
+        Assert.Empty(gedekt.DekkendeFiches);
+
+        var prognose = Doelvan(dekking, "NAT-K3-02");
+        Assert.False(prognose.IsGedekt);
+        Assert.Equal(Dekkingsstap.Prognose, prognose.Stap);
+        Assert.Empty(prognose.DekkendeActiviteiten);
+        Assert.Equal(["Kastanjes tellen (eigen activiteit)"], prognose.PrognoseBronnen);
+        Assert.Equal(Lacuneoorzaak.NietIngepland, prognose.Oorzaak);
+
+        Assert.Equal(Dekkingsstap.Geen, Doelvan(dekking, "NAT-K3-03").Stap);
+        Assert.Equal(1, dekking.AantalGedekt);
+    }
+
+    [Fact]
+    public async Task Het_vooruitzicht_telt_een_ingeplande_eigen_activiteit_mee()
+    {
+        var (service, opslag) = MaakMetFiches(plaatsingen: [], koppelingen: [], fichekoppelingen: [],
+            doelen: [Doel("NAT-K3-01"), Doel("NAT-K3-02")]);
+        opslag.EigenActiviteitkoppelingen =
+        [
+            new EigenActiviteitkoppeling("NAT-K3-01", "Bladeren drogen", IsIngepland: true),
+            new EigenActiviteitkoppeling("NAT-K3-02", "Kastanjes tellen", IsIngepland: false),
+        ];
+
+        var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
+
+        Assert.Equal(1, vooruitzicht.AantalGedekt);
+        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
+    }
+
+    [Fact]
     public async Task Een_geplande_algemene_fiche_dekt_een_doel_ook_zonder_enig_geplaatst_thema()
     {
         // The case the ruling was made for: the turnles covers a bewegingsopvoeding goal no thema carries, and the

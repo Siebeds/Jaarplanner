@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916210946_Subdoelplaatsing")]
+    [Migration("20260916221228_Subdoelplaatsing")]
     partial class Subdoelplaatsing
     {
         /// <inheritdoc />
@@ -791,6 +791,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("activiteit_type");
 
+                    b.Property<Guid?>("EigenaarId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Hoek")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -824,6 +827,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("EigenaarId");
 
                     b.HasIndex("MakerId");
 
@@ -1675,6 +1680,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Activiteit", b =>
                 {
+                    b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
+                        .WithMany()
+                        .HasForeignKey("EigenaarId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Jaarplanner.Domain.Toegang.Gebruiker", null)
                         .WithMany()
                         .HasForeignKey("MakerId")

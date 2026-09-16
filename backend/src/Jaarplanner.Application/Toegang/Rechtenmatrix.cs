@@ -23,8 +23,11 @@ namespace Jaarplanner.Application.Toegang;
 /// dekking declares it, and <c>GET /api/klassen</c> filters its list by it.
 /// </para>
 /// <para>
-/// <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal activiteiten and subdoelen (R6) wait for
-/// E6-10's shape (the one personal content that exists, a woordweb, is <see cref="WoordwebBewerken"/>, ADR-0043);
+/// <b>Personal content.</b> A woordweb is <see cref="WoordwebBewerken"/> (ADR-0043). An own activiteit (ADR-0049) goes
+/// through the same activiteit rows as a shared one, and the <see cref="Activiteitbron"/> tells them apart: on an own
+/// activiteit only <see cref="Kolom.EigenActiviteitEigenaar"/> and the columns of <see cref="EigenActiviteitLezen"/> and
+/// <see cref="EigenActiviteitGebruiken"/> match. <b>Not expressed here, on purpose</b> (see the E6-02 worklog): personal
+/// subdoelen (R6) wait for E6-10's shape;
 /// and two of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), downloading a report and
 /// wiping a schooljaar, which get their policies with FB-006 and FB-007, since no route serves them before. The other
 /// four have one: <see cref="OntwikkelingsrapportLezen"/> and <see cref="LeerlingenBeheren"/> (FB-001),
@@ -64,6 +67,10 @@ public static class Rechtenmatrix
         public const string SubthemaBeheren = "SubthemaBeheren";
         public const string StreefwoordenschatAanpassen = "StreefwoordenschatAanpassen";
         public const string GedeeldeActiviteitBewerken = "GedeeldeActiviteitBewerken";
+        public const string GedeeldeActiviteitMaken = "GedeeldeActiviteitMaken";
+        public const string EigenActiviteitMaken = "EigenActiviteitMaken";
+        public const string EigenActiviteitLezen = "EigenActiviteitLezen";
+        public const string EigenActiviteitGebruiken = "EigenActiviteitGebruiken";
         public const string ActiviteitVerwijderen = "ActiviteitVerwijderen";
         public const string SubdoelenBeheren = "SubdoelenBeheren";
         public const string DoelenKoppelen = "DoelenKoppelen";
@@ -163,13 +170,53 @@ public static class Rechtenmatrix
         Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijd);
 
     /// <summary>
-    /// §3 "Gedeelde activiteiten aanmaken en hun inhoud aanpassen" (R17, R23; I15). Resource: <see cref="Leeftijdsinhoud"/>
-    /// of the subthema for a new one, or the <see cref="Activiteitbron"/> for an existing one.
+    /// §3 "Gedeelde activiteiten … hun inhoud aanpassen" (R17, R23; I15), and the content of an own activiteit, which only
+    /// its owner edits (ADR-0049 D4). Resource: the <see cref="Activiteitbron"/>, or the subthema's
+    /// <see cref="Leeftijdsinhoud"/> where a screen asks whether the leeftijd's shared content is editable. Creating one is
+    /// <see cref="GedeeldeActiviteitMaken"/> or <see cref="EigenActiviteitMaken"/>.
     /// </summary>
     public static readonly Matrixrij GedeeldeActiviteitBewerken = new(
         Beleid.GedeeldeActiviteitBewerken,
-        "Gedeelde activiteiten aanmaken en hun inhoud aanpassen (R17, R23)",
-        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijd);
+        "De inhoud van een activiteit aanpassen: een gedeelde de hoofdleerkracht en de leerkrachten van die leeftijd, een eigen de eigenaar (R17, R23; ADR-0049 D4)",
+        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijd | Kolom.EigenActiviteitEigenaar);
+
+    /// <summary>
+    /// §3 "Gedeelde activiteiten aanmaken" (R17, R23), narrowed by ADR-0049 D1: what a leerkracht creates is her own, so
+    /// a shared one is created by a hoofdleerkracht of that leeftijd, and directie. Resource: the subthema's
+    /// <see cref="Leeftijdsinhoud"/>. The wizard's own write actions are <see cref="Wizardinhoud"/>.
+    /// </summary>
+    public static readonly Matrixrij GedeeldeActiviteitMaken = new(
+        Beleid.GedeeldeActiviteitMaken,
+        "Een gedeelde activiteit aanmaken (R17, R23; ADR-0049 D1)",
+        Kolom.Hoofdleerkracht);
+
+    /// <summary>
+    /// "Eigen activiteiten onder een subthema plaatsen" (R6; ADR-0049 E1, D2): a leerkracht with a klas at the subthema's
+    /// leeftijd, and directie. Resource: the subthema's <see cref="Leeftijdsinhoud"/>. The owner is always the caller,
+    /// never an id from the body.
+    /// </summary>
+    public static readonly Matrixrij EigenActiviteitMaken = new(
+        Beleid.EigenActiviteitMaken,
+        "Een eigen activiteit aanmaken onder een subthema van de eigen leeftijd (R6; ADR-0049 E1, D2)",
+        Kolom.LeerkrachtLeeftijd);
+
+    /// <summary>
+    /// Reading an own activiteit (ADR-0049 E2, D3): its owner, the leerkrachten and hoofdleerkrachten of its leeftijd, and
+    /// directie. Resource: the <see cref="Activiteitbron"/>. A shared activiteit needs no row to be read.
+    /// </summary>
+    public static readonly Matrixrij EigenActiviteitLezen = new(
+        Beleid.EigenActiviteitLezen,
+        "Een eigen activiteit lezen: de eigenaar en de leerkrachten en hoofdleerkrachten van die leeftijd (ADR-0049 E2, D3)",
+        Kolom.EigenActiviteitEigenaar | Kolom.JaarfaseVanEigenActiviteit);
+
+    /// <summary>
+    /// Using (copying) an own activiteit (ADR-0049 E2, D5): whoever may create an own activiteit at its leeftijd.
+    /// Resource: the <see cref="Activiteitbron"/> of an own activiteit; a shared one matches no column.
+    /// </summary>
+    public static readonly Matrixrij EigenActiviteitGebruiken = new(
+        Beleid.EigenActiviteitGebruiken,
+        "Een eigen activiteit gebruiken als eigen kopie: de leerkrachten van die leeftijd (ADR-0049 E2, D5)",
+        Kolom.LeerkrachtVanEigenActiviteit);
 
     /// <summary>
     /// §3's two delete rows as one policy, because they are one action on one route and the resource tells them apart:
@@ -178,8 +225,8 @@ public static class Rechtenmatrix
     /// </summary>
     public static readonly Matrixrij ActiviteitVerwijderen = new(
         Beleid.ActiviteitVerwijderen,
-        "Een activiteit verwijderen: de maker zolang er geen doel aan gekoppeld is, de hoofdleerkracht altijd (R25, R26, R33)",
-        Kolom.Hoofdleerkracht | Kolom.MakerZonderKoppelingen);
+        "Een activiteit verwijderen: een gedeelde de maker zolang er geen doel aan gekoppeld is en de hoofdleerkracht altijd, een eigen de eigenaar (R25, R26, R33; ADR-0049 D4)",
+        Kolom.Hoofdleerkracht | Kolom.MakerZonderKoppelingen | Kolom.EigenActiviteitEigenaar);
 
     /// <summary>§3 "Subdoelen aanmaken, wijzigen en verwijderen" (R24; (c)). Resource: <see cref="Leeftijdsinhoud"/>.</summary>
     public static readonly Matrixrij SubdoelenBeheren = new(
@@ -191,8 +238,8 @@ public static class Rechtenmatrix
     /// </summary>
     public static readonly Matrixrij DoelenKoppelen = new(
         Beleid.DoelenKoppelen,
-        "Doelen met de hand koppelen aan of ontkoppelen van gedeelde activiteiten (R19)",
-        Kolom.Hoofdleerkracht);
+        "Doelen met de hand koppelen aan of ontkoppelen van activiteiten: een gedeelde de hoofdleerkracht, een eigen de eigenaar (R19; ADR-0049 E3)",
+        Kolom.Hoofdleerkracht | Kolom.EigenActiviteitEigenaar);
 
     /// <summary>
     /// §3 "Een activiteit naar een ander thema verplaatsen" (R19, R23; I19: "LK leeftijd" only without goal links³).
@@ -200,8 +247,8 @@ public static class Rechtenmatrix
     /// </summary>
     public static readonly Matrixrij ActiviteitVerplaatsen = new(
         Beleid.ActiviteitVerplaatsen,
-        "Een activiteit naar een ander thema verplaatsen (R19, R23; I19)",
-        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijdZonderKoppelingen);
+        "Een activiteit naar een ander thema verplaatsen: een eigen de eigenaar (R19, R23; I19; ADR-0049 D4)",
+        Kolom.Hoofdleerkracht | Kolom.LeerkrachtLeeftijdZonderKoppelingen | Kolom.EigenActiviteitEigenaar);
 
     // --- Resource-based row: the planning of one klas. ---
 
@@ -329,6 +376,10 @@ public static class Rechtenmatrix
         SubthemaBeheren,
         StreefwoordenschatAanpassen,
         GedeeldeActiviteitBewerken,
+        GedeeldeActiviteitMaken,
+        EigenActiviteitMaken,
+        EigenActiviteitLezen,
+        EigenActiviteitGebruiken,
         ActiviteitVerwijderen,
         SubdoelenBeheren,
         DoelenKoppelen,
@@ -394,6 +445,16 @@ public static class Rechtenmatrix
             && thema.GekoppeldeLeeftijden.All(leeftijd => StaatToe(rechten, DoelenKoppelen, new Leeftijdsinhoud(leeftijd))))
         {
             return true;
+        }
+
+        // ADR-0049: on an own activiteit only its owner and the read and copy columns match (D3 to D5). The shared
+        // columns (HL, "LK leeftijd", the maker) do not, so a colleague neither edits, links, moves nor deletes it.
+        if (bron is Activiteitbron { EigenaarId: { } eigenaarId } eigen)
+        {
+            return (kolommen.HasFlag(Kolom.EigenActiviteitEigenaar) && eigenaarId == rechten.GebruikerId)
+                || (kolommen.HasFlag(Kolom.JaarfaseVanEigenActiviteit)
+                    && (rechten.IsLeerkrachtVanLeeftijd(eigen.Leeftijd) || rechten.IsHoofdleerkrachtVan(eigen.Leeftijd)))
+                || (kolommen.HasFlag(Kolom.LeerkrachtVanEigenActiviteit) && rechten.IsLeerkrachtVanLeeftijd(eigen.Leeftijd));
         }
 
         var leeftijd = bron switch
@@ -578,4 +639,22 @@ public enum Kolom
     /// The owner of a <see cref="Woordwebbron"/> (ADR-0043 W2): her own woordweb, whatever other right she holds or lacks.
     /// </summary>
     Eigenaar = 16384,
+
+    /// <summary>
+    /// "LK leeftijd" or "HL" of an own <see cref="Activiteitbron"/>'s leeftijd, in a schooljaar that has not ended:
+    /// reading it (ADR-0049 D3). Matches no shared activiteit and no other resource.
+    /// </summary>
+    JaarfaseVanEigenActiviteit = 32768,
+
+    /// <summary>
+    /// "LK leeftijd" of an own <see cref="Activiteitbron"/>'s leeftijd: copying it (ADR-0049 D5). Matches no shared
+    /// activiteit and no other resource.
+    /// </summary>
+    LeerkrachtVanEigenActiviteit = 65536,
+
+    /// <summary>
+    /// The owner of an own <see cref="Activiteitbron"/> (ADR-0049 D4): her own activiteit, whatever other right she holds
+    /// or lacks. A column apart from <see cref="Eigenaar"/>, so a woordweb opens no activiteit row and the reverse.
+    /// </summary>
+    EigenActiviteitEigenaar = 131072,
 }

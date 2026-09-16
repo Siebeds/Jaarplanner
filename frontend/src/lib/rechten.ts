@@ -33,6 +33,10 @@ export type Rij =
   | "SubthemaBeheren"
   | "StreefwoordenschatAanpassen"
   | "GedeeldeActiviteitBewerken"
+  | "GedeeldeActiviteitMaken"
+  | "EigenActiviteitMaken"
+  | "EigenActiviteitLezen"
+  | "EigenActiviteitGebruiken"
   | "ActiviteitVerwijderen"
   | "SubdoelenBeheren"
   | "DoelenKoppelen"
@@ -63,7 +67,10 @@ export type Kolom =
   | "LeerkrachtLeeftijdLezen"
   | "LeerkrachtEigenLezen"
   | "Leerlingzorg"
-  | "Eigenaar";
+  | "Eigenaar"
+  | "JaarfaseVanEigenActiviteit"
+  | "LeerkrachtVanEigenActiviteit"
+  | "EigenActiviteitEigenaar";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -86,11 +93,17 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   DoelsuggestiesBeoordelen: ["Themabeheer"],
   SubthemaBeheren: ["Hoofdleerkracht"],
   StreefwoordenschatAanpassen: ["Hoofdleerkracht", "LeerkrachtLeeftijd"],
-  GedeeldeActiviteitBewerken: ["Hoofdleerkracht", "LeerkrachtLeeftijd"],
-  ActiviteitVerwijderen: ["Hoofdleerkracht", "MakerZonderKoppelingen"],
+  // ADR-0049: on an own activiteit only its owner passes the four rows about an existing one (D4); the shared columns
+  // do not match it. What a leerkracht creates is her own (D1, D2); a shared one is the hoofdleerkracht's to create.
+  GedeeldeActiviteitBewerken: ["Hoofdleerkracht", "LeerkrachtLeeftijd", "EigenActiviteitEigenaar"],
+  GedeeldeActiviteitMaken: ["Hoofdleerkracht"],
+  EigenActiviteitMaken: ["LeerkrachtLeeftijd"],
+  EigenActiviteitLezen: ["EigenActiviteitEigenaar", "JaarfaseVanEigenActiviteit"],
+  EigenActiviteitGebruiken: ["LeerkrachtVanEigenActiviteit"],
+  ActiviteitVerwijderen: ["Hoofdleerkracht", "MakerZonderKoppelingen", "EigenActiviteitEigenaar"],
   SubdoelenBeheren: ["Hoofdleerkracht"],
-  DoelenKoppelen: ["Hoofdleerkracht"],
-  ActiviteitVerplaatsen: ["Hoofdleerkracht", "LeerkrachtLeeftijdZonderKoppelingen"],
+  DoelenKoppelen: ["Hoofdleerkracht", "EigenActiviteitEigenaar"],
+  ActiviteitVerplaatsen: ["Hoofdleerkracht", "LeerkrachtLeeftijdZonderKoppelingen", "EigenActiviteitEigenaar"],
   KlasplanningBewerken: ["LeerkrachtEigen"],
   // Reading a klas's planning (FB-013, ADR-0040): themabeheer every klas; a hoofdleerkracht and a leerkracht the klassen
   // of their jaarfase; a klastoewijzing its own klas. Columns of their own, as on the server. No screen asks it about one
@@ -131,7 +144,14 @@ export const ZONDER_DIRECTIE: ReadonlySet<Rij> = new Set<Rij>(["RapportsetBewerk
  */
 export type Rechtbron =
   | { soort: "leeftijd"; leeftijd: string }
-  | { soort: "activiteit"; leeftijd: string; makerId: string | null; heeftDoelkoppelingen: boolean }
+  | {
+      soort: "activiteit";
+      leeftijd: string;
+      makerId: string | null;
+      heeftDoelkoppelingen: boolean;
+      /** The owner of an own activiteit (ADR-0049), or null for a shared one. */
+      eigenaarId: string | null;
+    }
   | { soort: "klas"; klasId: string }
   /**
    * The part of the server's `Themabron` the frontend can know: whether the thema is empty. `useThema` reads every
@@ -178,6 +198,16 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
     bron.leeg
   ) {
     return true;
+  }
+
+  // ADR-0049: on an own activiteit only its owner and the read and copy columns match (D3 to D5), as on the server.
+  if (bron?.soort === "activiteit" && bron.eigenaarId !== null) {
+    return (
+      (kolommen.includes("EigenActiviteitEigenaar") && zelfdeId(bron.eigenaarId, ik.id)) ||
+      (kolommen.includes("JaarfaseVanEigenActiviteit") &&
+        (ik.leerkrachtLeeftijden.includes(bron.leeftijd) || ik.hoofdleerkrachtLeeftijden.includes(bron.leeftijd))) ||
+      (kolommen.includes("LeerkrachtVanEigenActiviteit") && ik.leerkrachtLeeftijden.includes(bron.leeftijd))
+    );
   }
 
   const leeftijd = bron?.soort === "leeftijd" || bron?.soort === "activiteit" ? bron.leeftijd : null;
@@ -229,10 +259,14 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
   );
 }
 
-/** What an activiteit row needs to be asked about: its subthema's leeftijd, its maker and whether a goal is linked. */
+/**
+ * What an activiteit row needs to be asked about: its subthema's leeftijd, its maker, its owner and whether a goal is
+ * linked. An absent owner reads as a shared activiteit, which only ever grants what the shared rows grant.
+ */
 export interface Activiteitfeiten {
   leeftijd: string;
   makerId?: string | null;
+  eigenaarId?: string | null;
   doelkoppelingen: readonly unknown[];
 }
 
@@ -242,7 +276,13 @@ function activiteitbron(activiteit: Activiteitfeiten): Rechtbron {
     leeftijd: activiteit.leeftijd,
     makerId: activiteit.makerId ?? null,
     heeftDoelkoppelingen: activiteit.doelkoppelingen.length > 0,
+    eigenaarId: activiteit.eigenaarId ?? null,
   };
+}
+
+/** Whether this activiteit is the signed-in gebruiker's own (ADR-0049). */
+export function isEigenVan(ik: Ik | undefined, activiteit: { eigenaarId?: string | null }): boolean {
+  return ik !== undefined && activiteit.eigenaarId != null && zelfdeId(activiteit.eigenaarId, ik.id);
 }
 
 /**
@@ -279,15 +319,28 @@ export interface Mag {
   subthemaHerschikken: (van: string, naar: string) => boolean;
   /** The streefwoordenschat of a subthema at this leeftijd (R28). No editor exists yet (E10-01). */
   streefwoordenschatAanpassen: (leeftijd: string) => boolean;
-  /** Creating a shared activiteit at this leeftijd, and editing an activiteit's content (R17, R23; I15). */
-  activiteitBewerken: (leeftijd: string) => boolean;
+  /**
+   * Creating an activiteit under a subthema at this leeftijd, own or shared (ADR-0049 D1, D2): a leerkracht of that
+   * leeftijd creates her own, a hoofdleerkracht and directie also a shared one.
+   */
+  activiteitMaken: (leeftijd: string) => boolean;
+  /** Creating an own activiteit at this leeftijd (ADR-0049 D2). */
+  eigenActiviteitMaken: (leeftijd: string) => boolean;
+  /** Creating a shared activiteit at this leeftijd (ADR-0049 D1): hoofdleerkracht and directie. */
+  gedeeldeActiviteitMaken: (leeftijd: string) => boolean;
+  /** Changing this activiteit's content: a shared one HL and "LK leeftijd", an own one its owner (R17, R23; D4). */
+  activiteitInhoudBewerken: (activiteit: Activiteitfeiten) => boolean;
+  /** Linking goals to, or unlinking them from, this activiteit: a shared one HL, an own one its owner (R19; E3). */
+  activiteitDoelenKoppelen: (activiteit: Activiteitfeiten) => boolean;
+  /** Using someone else's own activiteit as an own copy (ADR-0049 E2, D5). False for one's own and a shared one. */
+  activiteitGebruiken: (activiteit: Activiteitfeiten) => boolean;
   /** Deleting this activiteit: hoofdleerkracht, or its maker while no goal is linked (R25, R26, R33). */
   activiteitVerwijderen: (activiteit: Activiteitfeiten) => boolean;
   /** Moving this activiteit to another thema (R19, R23; I19). No screen moves one yet. */
   activiteitVerplaatsen: (activiteit: Activiteitfeiten) => boolean;
   /** Subdoelen of a subthema at this leeftijd (R24). */
   subdoelenBeheren: (leeftijd: string) => boolean;
-  /** Linking goals to, or unlinking them from, shared activiteiten at this leeftijd, by hand or on create (R19). */
+  /** Linking goals to, or unlinking them from, shared activiteiten at this leeftijd, by hand or on a shared create (R19). */
   doelenKoppelen: (leeftijd: string) => boolean;
   /**
    * Linking a doel somewhere in a tree of thema's scoped to these leeftijden: on a thema (themadoel, R4), or on a
@@ -377,7 +430,17 @@ export function magVoor(ik: Ik | undefined): Mag {
       rij("SubthemaBeheren", { soort: "leeftijd", leeftijd: van }) &&
       rij("SubthemaBeheren", { soort: "leeftijd", leeftijd: naar }),
     streefwoordenschatAanpassen: opLeeftijd("StreefwoordenschatAanpassen"),
-    activiteitBewerken: opLeeftijd("GedeeldeActiviteitBewerken"),
+    activiteitMaken: (leeftijd) =>
+      rij("EigenActiviteitMaken", { soort: "leeftijd", leeftijd }) ||
+      rij("GedeeldeActiviteitMaken", { soort: "leeftijd", leeftijd }),
+    eigenActiviteitMaken: opLeeftijd("EigenActiviteitMaken"),
+    gedeeldeActiviteitMaken: opLeeftijd("GedeeldeActiviteitMaken"),
+    activiteitInhoudBewerken: (activiteit) => rij("GedeeldeActiviteitBewerken", activiteitbron(activiteit)),
+    activiteitDoelenKoppelen: (activiteit) => rij("DoelenKoppelen", activiteitbron(activiteit)),
+    activiteitGebruiken: (activiteit) =>
+      activiteit.eigenaarId != null &&
+      !isEigenVan(ik, activiteit) &&
+      rij("EigenActiviteitGebruiken", activiteitbron(activiteit)),
     activiteitVerwijderen: (activiteit) => rij("ActiviteitVerwijderen", activiteitbron(activiteit)),
     activiteitVerplaatsen: (activiteit) => rij("ActiviteitVerplaatsen", activiteitbron(activiteit)),
     subdoelenBeheren: opLeeftijd("SubdoelenBeheren"),

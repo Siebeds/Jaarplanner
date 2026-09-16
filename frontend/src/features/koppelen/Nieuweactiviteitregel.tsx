@@ -31,6 +31,7 @@ export function Nieuweactiviteitregel({
   code,
   klasId,
   magMaken,
+  gedeeld = false,
 }: {
   subthemaId: string;
   subthemaNaam: string;
@@ -42,6 +43,11 @@ export function Nieuweactiviteitregel({
    * would take the reason along (E6-02 slice 4, the mini-fix after audit round 4, F10).
    */
   magMaken: boolean;
+  /**
+   * Whether the new activiteit is shared (ADR-0049 D1). By default it is the creator's own; the caller sets this only for
+   * a gebruiker who may create a shared one and no own one here.
+   */
+  gedeeld?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [naam, setNaam] = useState("");
@@ -98,6 +104,7 @@ export function Nieuweactiviteitregel({
               kleur: null,
               lengteInLesuren: lesuren,
               leerplandoelCodes: [code],
+              gedeeld,
             },
           },
           { onSuccess: sluit },

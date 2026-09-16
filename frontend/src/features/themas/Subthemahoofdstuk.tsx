@@ -10,6 +10,7 @@ import type { SubdoelvoorstelWeergave, SubthemaWeergave } from "../../lib/types"
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
+import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Doellijst, Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { Subdoelvoorstellen } from "./Subdoelplaatsing";
@@ -118,8 +119,8 @@ export function Subthemahoofdstuk({
 
   const leeftijd = subthema.leeftijd;
   const magSubthema = mag.subthemaBeheren(leeftijd);
-  const magActiviteit = mag.activiteitBewerken(leeftijd);
-  const magKoppelen = mag.doelenKoppelen(leeftijd);
+  // A new activiteit is the gebruiker's own, or for a hoofdleerkracht a shared one by choice (ADR-0049 D1, D2).
+  const magActiviteit = mag.activiteitMaken(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
 
   return (
@@ -258,14 +259,18 @@ export function Subthemahoofdstuk({
                   <li key={activiteit.id}>
                     <Activiteitregel
                       activiteit={activiteit}
-                      magBewerken={magActiviteit}
+                      magBewerken={mag.activiteitInhoudBewerken({ ...activiteit, leeftijd })}
                       onBewerk={() => onBewerkActiviteit(activiteit)}
                       onVerwijder={
                         mag.activiteitVerwijderen({ ...activiteit, leeftijd })
                           ? () => onVerwijderActiviteit(activiteit)
                           : undefined
                       }
-                      onKoppelDoel={magKoppelen ? (code) => onKoppelActiviteitdoel(activiteit.id, code) : undefined}
+                      onKoppelDoel={
+                        mag.activiteitDoelenKoppelen({ ...activiteit, leeftijd })
+                          ? (code) => onKoppelActiviteitdoel(activiteit.id, code)
+                          : undefined
+                      }
                       koppelenBezig={koppelenBezig}
                     />
                   </li>
@@ -425,6 +430,8 @@ function Activiteitregel({
             `sm` the basis goes back to zero and the two sit side by side. */}
         <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
+          {/* Whose it is, for an own activiteit (ADR-0049): its own line, so the soort line below keeps its shape. */}
+          <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />
           <p className="mt-0.5 text-meta text-inkt-zacht">
             {/* Joined from what is there, so an activiteit without a soort (FB-050) does not start with a separator. */}
             {[

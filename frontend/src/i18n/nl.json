@@ -259,7 +259,7 @@
     "vanDag": "Van deze dag halen",
     "vanDagAria": "{naam} van deze dag halen",
     "mislukt": "Niet gelukt",
-    "activiteitWeg": "Deze activiteit staat niet meer in dit thema. Ze is verwijderd of naar een ander thema verplaatst.",
+    "activiteitWeg": "Deze activiteit kan je hier niet openen. Ze staat niet meer in dit thema, of ze is de eigen activiteit van een collega.",
     "agendaVernieuwen": "Agenda vernieuwen",
     "voegToeOp": "Activiteit toevoegen op {dag}",
     "planSubthema": "Subthema inplannen",
@@ -382,7 +382,8 @@
     "geenDoelen": "Geen doelen in dit bereik",
     "geenKlas": "Kies eerst een klas",
     "fout": "Dekking niet geladen",
-    "alsFiche": "{naam} (algemene fiche)"
+    "alsFiche": "{naam} (algemene fiche)",
+    "alsEigenActiviteit": "{naam} (eigen activiteit)"
   },
   "doelsoort": {
     "Minimumdoel": "Minimumdoel",
@@ -564,9 +565,6 @@
     "nietIngesteld": "Niet ingesteld",
     "geenPauze": "Geen middagpauze",
     "pauzeLijst": "Middagpauze {bereik}",
-    "beginRaster": "begin {tijd}",
-    "eindeRaster": "einde {tijd}",
-    "pauzeRaster": "middagpauze",
     "dagZin": ", schooldag van {begin} tot {einde}",
     "pauzeZin": ", middagpauze van {begin} tot {einde}"
   },
@@ -932,7 +930,19 @@
     "geenDoel": "Nog geen doel",
     "koppelAan": "Doel koppelen aan {naam}",
     "doelenBijBewaren": "Deze doelen worden samen met de activiteit bewaard.",
-    "codeWeg": "{code} uit de lijst halen"
+    "codeWeg": "{code} uit de lijst halen",
+    "eigen": "Eigen",
+    "vanCollega": "Van {naam}",
+    "vanEenCollega": "Van een collega",
+    "voorWie": "Voor wie",
+    "alleenVoorMij": "Alleen voor mij",
+    "gedeeldMetSubthema": "Gedeeld met het subthema",
+    "voorWieUitleg": "Een gedeelde activiteit zien en bewerken alle leerkrachten van deze leeftijd.",
+    "gebruik": "Gebruiken",
+    "gebruikBezig": "Kopie maken…",
+    "gebruikAria": "{naam} van {eigenaar} gebruiken",
+    "gebruikUitleg": "Je krijgt een eigen kopie die je kan aanpassen en inplannen.",
+    "gebruikMislukt": "De kopie is niet gemaakt."
   },
   "activiteitsoort": {
     "Experiment": "Experiment",

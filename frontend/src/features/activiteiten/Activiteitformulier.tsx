@@ -1,6 +1,8 @@
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
+import { Segment } from "../../components/ui/Segment";
+import { useRechten } from "../../lib/rechten";
 import { Invoer, Keuze } from "../../components/ui/Veld";
 import { ApiError } from "../../lib/api";
 import { ACTIVITEIT_TYPES } from "../../lib/types";
@@ -13,6 +15,7 @@ import { Doellijst, Feit } from "../themas/Fiche";
 import { Gekoppelddoel } from "../themas/Gekoppelddoel";
 import { Doeldetailblad } from "../themas/Doeldetailblad";
 import { Doelkoppelaar } from "./Doelkoppelaar";
+import { Eigenaarmerk } from "./Eigenaarmerk";
 
 /**
  * `ActiviteitWeergave` plus the colour the API now returns.
@@ -43,6 +46,10 @@ export interface ActiviteitInvoer {
    * same save. Absent while editing, where the picker writes through those endpoints on the spot.
    */
   leerplandoelCodes?: string[];
+  /**
+   * Only sent while creating: true for a shared activiteit, false (the default) for the creator's own (ADR-0049 D1).
+   */
+  gedeeld?: boolean;
 }
 
 /**
@@ -73,6 +80,14 @@ export interface ActiviteitInvoer {
  * and `alleenLezen` replaces the form with the facts for a gebruiker who may not change the content. A reader opening
  * an activiteit gets what it is, not a form whose Bewaren the server would refuse.
  *
+ * **A new activiteit is the creator's own** (ADR-0049 E1). A gebruiker who may also create a shared one (a
+ * hoofdleerkracht, directie) chooses "voor wie"; one who may only create a shared one gets that without a choice. Goals
+ * on a new own activiteit are the creator's to link (E3), so the picker shows for it whatever `magDoelen` says; on a
+ * new shared one it follows the R19 row. Both need the subthema's `leeftijd`, which every create passes.
+ *
+ * **A colleague's own activiteit opens as its facts, with "Gebruiken"** when the caller passes `onGebruik`: the one
+ * thing she may do with it is take an own copy (D5).
+ *
  * **A goal reads as its text and opens its detail**, in all three states (TB-025): the row the thema page uses
  * (`Gekoppelddoel`), and the doel's detail on top of this sheet, which gives focus back to the row when it closes.
  */
@@ -90,6 +105,9 @@ export function Activiteitformulier({
   extra,
   alleenLezen = false,
   magDoelen = false,
+  leeftijd,
+  onGebruik,
+  gebruikBezig = false,
 }: {
   open: boolean;
   /** The activiteit being changed, or undefined when making a new one. */
@@ -116,8 +134,20 @@ export function Activiteitformulier({
    * caller that forgets it offers no picker rather than one the server refuses.
    */
   magDoelen?: boolean;
+  /** The leeftijd of the subthema a NEW activiteit goes under: it decides "voor wie" and the goal picker. */
+  leeftijd?: string;
+  /** Take an own copy of this (someone else's own) activiteit; shown on the facts only. */
+  onGebruik?: () => void;
+  gebruikBezig?: boolean;
 }) {
   const id = useId();
+  const { mag } = useRechten();
+  const magEigen = leeftijd !== undefined && mag.eigenActiviteitMaken(leeftijd);
+  const magGedeeld = leeftijd !== undefined && mag.gedeeldeActiviteitMaken(leeftijd);
+  const [kiesGedeeld, setKiesGedeeld] = useState(false);
+  // Without the own right, a shared one is the only one this gebruiker may make; with both, it is their choice.
+  const gedeeld = magGedeeld && (!magEigen || kiesGedeeld);
+  const magNieuweDoelen = leeftijd === undefined ? magDoelen : gedeeld ? mag.doelenKoppelen(leeftijd) : magEigen;
   const [naam, setNaam] = useState(activiteit?.naam ?? "");
   // "" is no soort. Never preselected on a new activiteit (FB-050): a soort nobody chose would still be saved as if
   // it had been chosen.
@@ -157,7 +187,8 @@ export function Activiteitformulier({
       // Left off entirely while editing rather than sent empty: the update endpoint has no such field,
       // and an empty list there would read like "remove every goal" to the next person who adds one.
       // Left off too for a gebruiker without the goal-link right, who was offered no picker (R19).
-      ...(activiteit || !magDoelen ? {} : { leerplandoelCodes: nieuweCodes }),
+      ...(activiteit || !magNieuweDoelen ? {} : { leerplandoelCodes: nieuweCodes }),
+      ...(activiteit ? {} : { gedeeld }),
     });
   }
 
@@ -180,7 +211,16 @@ export function Activiteitformulier({
       // No footer on the facts: with nothing to save, the sheet's own close control is the only action, and a second
       // "Sluiten" beside it would be the same control twice under the same name.
       voet={
-        fiche ? undefined : (
+        fiche ? (
+          onGebruik ? (
+            <div className="flex flex-col gap-1.5 @sm:flex-row @sm:items-center @sm:gap-3">
+              <Knop rang="hoofd" vol onClick={onGebruik} disabled={gebruikBezig} className="@sm:w-auto @sm:px-6">
+                {gebruikBezig ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
+              </Knop>
+              <p className="text-meta text-inkt-zacht">{t("activiteit.gebruikUitleg")}</p>
+            </div>
+          ) : undefined
+        ) : (
           <div className="flex items-center gap-2">
             <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
               {bezig ? t("themabeheer.bewaarBezig") : t("themabeheer.bewaar")}
@@ -197,6 +237,23 @@ export function Activiteitformulier({
           <Feiten activiteit={fiche} onderzoeksvragen={onderzoeksvragen} />
         ) : (
           <form id={id} onSubmit={verstuur} className="flex flex-col gap-5">
+            {activiteit ? (
+              <Eigenaarmerk activiteit={activiteit} />
+            ) : magEigen && magGedeeld ? (
+              <div>
+                <Segment
+                  label={t("activiteit.voorWie")}
+                  waarde={kiesGedeeld ? "gedeeld" : "eigen"}
+                  opties={[
+                    { waarde: "eigen", label: t("activiteit.alleenVoorMij") },
+                    { waarde: "gedeeld", label: t("activiteit.gedeeldMetSubthema") },
+                  ]}
+                  onKies={(waarde) => setKiesGedeeld(waarde === "gedeeld")}
+                  className="w-full @md:w-auto"
+                />
+                <p className="mt-1.5 text-meta text-inkt-zacht">{t("activiteit.voorWieUitleg")}</p>
+              </div>
+            ) : null}
             <div>
               <label htmlFor={`${id}-naam`} className="text-meta font-medium text-inkt">
                 {t("themabeheer.naam")}
@@ -426,7 +483,7 @@ export function Activiteitformulier({
               </div>
             </section>
           ) : null
-        ) : magDoelen ? (
+        ) : magNieuweDoelen ? (
           <section className="border-t border-lijn pt-5">
             <Doelenkop aantal={nieuweCodes.length} uitleg={t("activiteit.doelenBijBewaren")} />
 
@@ -508,6 +565,8 @@ function Feiten({
 
   return (
     <dl className="flex flex-col gap-2">
+      {/* Above the facts, not as one: the mark already says "Van An", and a label "Van" before it would say it twice. */}
+      {activiteit.eigenaarId != null ? <Eigenaarmerk activiteit={activiteit} /> : null}
       {activiteit.activiteitType ? (
         <Feit label={t("activiteit.soort")}>{t(`activiteitsoort.${activiteit.activiteitType}`)}</Feit>
       ) : null}

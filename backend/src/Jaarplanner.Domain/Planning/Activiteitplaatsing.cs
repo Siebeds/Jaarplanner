@@ -42,10 +42,11 @@ namespace Jaarplanner.Domain.Planning;
 /// by construction.
 /// </para>
 /// <para>
-/// <b>This does not affect dekking, and that is not an oversight.</b> Art. V.1 makes an activiteit's goal gedekt once its
-/// subthema is placed in the klas's agenda (the <see cref="Subthemaplaatsing"/>, ADR-0047). Scheduling the activiteit
-/// onto a Tuesday moves nothing in that computation; anything here that started to raise a dekkingscijfer would be
-/// letting the calendar grant coverage twice for the same content.
+/// <b>For a shared activiteit this does not affect dekking, and that is not an oversight.</b> Art. V.1 makes a shared
+/// activiteit's goal gedekt once its subthema is placed in the klas's agenda (the <see cref="Subthemaplaatsing"/>,
+/// ADR-0047). Scheduling it onto a Tuesday moves nothing in that computation; anything here that started to raise a
+/// dekkingscijfer for it would be letting the calendar grant coverage twice for the same content. <b>An own activiteit
+/// is the one exception</b> (ADR-0049 D7): it never counts through its subthema, so this placement is its only route.
 /// </para>
 /// </summary>
 public sealed class Activiteitplaatsing
