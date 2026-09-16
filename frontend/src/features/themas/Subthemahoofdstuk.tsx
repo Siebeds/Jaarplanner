@@ -6,12 +6,13 @@ import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import type { Mag } from "../../lib/rechten";
-import type { SubthemaWeergave } from "../../lib/types";
+import type { SubdoelvoorstelWeergave, SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { Doellijst, Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Subdoelvoorstellen } from "./Subdoelplaatsing";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 import { Woordweb } from "./Woordweb";
 
@@ -73,6 +74,9 @@ export function Subthemahoofdstuk({
   onKoppelActiviteitdoel,
   onToonDoel,
   koppelenBezig,
+  voorstellen = [],
+  onBeslisVoorstel,
+  beslisBezig,
 }: {
   subthema: SubthemaWeergave;
   /** What the signed-in gebruiker may do, from `useRechten()` on the screen. */
@@ -90,6 +94,11 @@ export function Subthemahoofdstuk({
   /** Open the detail of a subdoel's leerplandoel; the page owns the one sheet it opens in (TB-016). */
   onToonDoel: (leerplandoelCode: string, knop: HTMLElement) => void;
   koppelenBezig?: boolean;
+  /** The AI's open proposals to add a doel to this subthema (FB-057); only whoever may decide them is sent any. */
+  voorstellen?: SubdoelvoorstelWeergave[];
+  /** Absent without the right to decide them. */
+  onBeslisVoorstel?: (voorstelId: string, status: "Aanvaard" | "Geweigerd") => void;
+  beslisBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
@@ -175,6 +184,15 @@ export function Subthemahoofdstuk({
                   </span>
                   <Punt />
                   <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
+                  {/* A shut chapter must not hide a proposal waiting for a decision (FB-057, FB-011's default). */}
+                  {voorstellen.length > 0 ? (
+                    <>
+                      <Punt />
+                      <span className="font-medium text-inkt">
+                        {telWoord(voorstellen.length, "plaatsing.eenOpenVoorstel", "plaatsing.openVoorstellen")}
+                      </span>
+                    </>
+                  ) : null}
                   {zonderDoel > 0 ? (
                     <>
                       <Punt />
@@ -290,6 +308,12 @@ export function Subthemahoofdstuk({
                 ))}
               </Doellijst>
             )}
+            <Subdoelvoorstellen
+              voorstellen={voorstellen}
+              bezig={beslisBezig}
+              onBeslis={onBeslisVoorstel}
+              onToon={onToonDoel}
+            />
           </Subkop>
 
           {/* WHAT THE ACTIVITEITEN OFFER BESIDES THE SUBDOELEN (FB-010), under its own heading so that "a doel of

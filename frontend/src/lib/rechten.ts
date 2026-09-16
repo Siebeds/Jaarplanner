@@ -43,7 +43,9 @@ export type Rij =
   | "LeerlingenBeheren"
   | "RapportInvullen"
   | "RapportsetBewerken"
-  | "WoordwebBewerken";
+  | "WoordwebBewerken"
+  | "SubdoelplaatsingVragen"
+  | "SubdoelplaatsingBeslissen";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
@@ -109,6 +111,9 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   RapportsetBewerken: ["Rapportsetleerkracht"],
   // FB-036 (ADR-0043 W2, D3): a woordweb is its owner's; directie passes every row. Keeping one needs no row (D2).
   WoordwebBewerken: ["Eigenaar"],
+  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; themabeheer alone does not.
+  SubdoelplaatsingVragen: ["Hoofdleerkracht"],
+  SubdoelplaatsingBeslissen: ["Hoofdleerkracht"],
 };
 
 /**
@@ -343,6 +348,8 @@ export interface Mag {
   ontwikkelingsrapportTab: boolean;
   /** Changing this woordweb and asking the AI for words: its owner, and directie (ADR-0043 W2, D3). */
   woordwebBewerken: (eigenaarId: string) => boolean;
+  /** Asking the AI where the open doelen of this leeftijd go (FB-057, ADR-0050 P4). */
+  subdoelplaatsingVragen: (leeftijd: string) => boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -417,6 +424,7 @@ export function magVoor(ik: Ik | undefined): Mag {
       // mapping (that stays the server's, `Leeftijdsrechten.VoorKlas`).
       hoofdleerkrachtLeeftijden.includes("K3"),
     woordwebBewerken: (eigenaarId) => rij("WoordwebBewerken", { soort: "woordweb", eigenaarId }),
+    subdoelplaatsingVragen: opLeeftijd("SubdoelplaatsingVragen"),
   };
 }
 

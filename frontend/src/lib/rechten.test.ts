@@ -84,6 +84,9 @@ const VERWACHT: Record<Exclude<Rij, "ActiviteitVerwijderen" | "ActiviteitVerplaa
   RapportsetBewerken: ["LK rapport"],
   // FB-036 (ADR-0043): on someone else's woordweb only directie; her own web is its own case below.
   WoordwebBewerken: ["Directie"],
+  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; not themabeheer alone.
+  SubdoelplaatsingVragen: ["Directie", "HL"],
+  SubdoelplaatsingBeslissen: ["Directie", "HL"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
@@ -120,8 +123,9 @@ describe("de rechtenmatrix van de frontend", () => {
     const rijen = Object.keys(RECHTENMATRIX).sort();
     expect([...Object.keys(VERWACHT), "ActiviteitVerwijderen", "ActiviteitVerplaatsen"].sort()).toEqual(rijen);
     // The server's `Rechtenmatrix.Rijen`, by policy name: twenty since FB-001's two report rows, 21 with FB-002's set
-    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row.
-    expect(rijen).toHaveLength(24);
+    // row, 22 with FB-013's read row, 23 with FB-003's filling-in row, 24 with FB-036's woordweb row, 26 with FB-057's
+    // two subdoelplaatsing rows.
+    expect(rijen).toHaveLength(26);
   });
 
   it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0043)", () => {
