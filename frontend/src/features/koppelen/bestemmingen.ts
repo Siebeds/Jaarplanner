@@ -1,4 +1,3 @@
-import { MAX_THEMADOELEN } from "../../lib/types";
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
 import type { Mag } from "../../lib/rechten";
 
@@ -31,17 +30,8 @@ export interface Subthemabestemming {
 /** One thema as a destination, with the subthema's that survived the search. */
 export interface Themabestemming {
   thema: ThemaWeergave;
+  /** Whether an older themadoel, or one the FR-1 import wrote, already links the doel to the thema. */
   alGekoppeld: boolean;
-  /**
-   * Whether a themadoel can still be added.
-   *
-   * Read here rather than discovered from a 400. A thema anchors at most three school-wide
-   * themadoelen (Art. IX.2) and the domain refuses the fourth, so a "Koppel aan thema" button on a
-   * full thema is a control that cannot do its job, which is the thing the E3-06 rule forbids. The row says
-   * the thema is full instead, which is also the more useful sentence: three themadoelen is a
-   * finished thema, not an error.
-   */
-  themaVol: boolean;
   subthemas: Subthemabestemming[];
 }
 
@@ -107,7 +97,6 @@ export function filterBestemmingen(
       return {
         thema,
         alGekoppeld: themaHeeftDoel(thema, code),
-        themaVol: thema.themadoelen.length >= MAX_THEMADOELEN,
         subthemas,
       };
     })
@@ -115,13 +104,13 @@ export function filterBestemmingen(
 }
 
 /** The rights the sheet's link controls ask for, as `Themarij` asks them. A test passes `magVoor(ik)`. */
-export type Koppelrechten = Pick<Mag, "themaBewerken" | "subdoelenBeheren" | "doelenKoppelen" | "activiteitBewerken">;
+export type Koppelrechten = Pick<Mag, "subdoelenBeheren" | "doelenKoppelen" | "activiteitBewerken">;
 
 /**
  * The thema's where this gebruiker has a link control to press (E6-02 slice 4, fix round 2; the E3-06 rule).
  *
- * Mirrors `Themarij` level by level: the thema level for directie and themabeheer (R4); a subthema's "Koppel aan
- * subthema" where they may manage subdoelen (R24); its activiteiten, and a new activiteit with the doel on it, where
+ * Mirrors `Themarij` level by level. A thema itself takes no leerplandoel (FB-043), so what counts is a subthema's
+ * "Koppel aan subthema" where they may manage subdoelen (R24); its activiteiten, and a new activiteit with the doel on it, where
  * they may link goals (R19, with R17 for the new one). A thema with none of these opened onto rows with nothing to
  * press: a hoofdleerkracht of K3 met it on a thema without subthema's.
  *
@@ -129,7 +118,6 @@ export type Koppelrechten = Pick<Mag, "themaBewerken" | "subdoelenBeheren" | "do
  * lacks.
  */
 export function themasMetKoppelactie(themas: readonly ThemaWeergave[], mag: Koppelrechten): ThemaWeergave[] {
-  if (mag.themaBewerken) return [...themas];
   return themas.filter((thema) =>
     thema.subthemas.some(
       (subthema) =>

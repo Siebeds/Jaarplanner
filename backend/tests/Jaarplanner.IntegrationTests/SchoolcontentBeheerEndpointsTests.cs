@@ -55,9 +55,11 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         var thema = await themaResp.Content.ReadFromJsonAsync<ThemaDto>();
         Assert.NotNull(thema);
 
-        // 2. Add a manual themadoel (manueel, Art. IV.2).
-        var tdResp = await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/themadoelen", new { leerplandoelCode = "NL-001" });
+        // 2. Link a minimumdoel as a themadoel (FB-043).
+        var tdResp = await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/minimumdoelen", new { minimumdoelRef = "MD-1" });
         tdResp.EnsureSuccessStatusCode();
+        var themaMinimumdoel = await tdResp.Content.ReadFromJsonAsync<ThemaMinimumdoelDto>();
+        Assert.Equal("MD-1", themaMinimumdoel!.MinimumdoelRef);
 
         // 3. Create an age-scoped subthema, at the age the seeded klas teaches (Art. IX.2, 2026-08-30). The
         //    request no longer carries a klasId: the API takes none, and posting one would only make this read
@@ -90,13 +92,29 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         // 6. Read the thema back and assert the whole subtree + manual statuses persisted.
         var detail = await client.GetFromJsonAsync<ThemaDto>($"/api/themas/{thema.Id}");
         Assert.NotNull(detail);
-        Assert.Single(detail!.Themadoelen);
-        Assert.Equal("Manueel", detail.Themadoelen[0].Koppeling.Status);
+        Assert.Equal(themaMinimumdoel, Assert.Single(detail!.Minimumdoelen));
+        Assert.Empty(detail.Themadoelen);
         var sub = Assert.Single(detail.Subthemas);
         Assert.Equal(Leeftijd, sub.Leeftijd);
         Assert.Equal("Manueel", Assert.Single(sub.Subdoelen).Koppeling.Status);
         var act = Assert.Single(sub.Activiteiten);
         Assert.Equal("Manueel", Assert.Single(act.Doelkoppelingen).Status);
+
+        // 7. The minimumdoel brings along the leerplandoelen that concord to it, per jaar/fase, without being chosen.
+        var minimumdoel = await client.GetFromJsonAsync<JsonElement>("/api/minimumdoelen/MD-1");
+        // Every jaar/fase is listed; only K3 carries a leerplandoel here.
+        var jaarFase = Assert.Single(
+            minimumdoel.GetProperty("jaarFasen").EnumerateArray(),
+            j => j.GetProperty("leerplandoelen").GetArrayLength() > 0);
+        Assert.Equal("K3", jaarFase.GetProperty("jaarFase").GetString());
+        Assert.Equal("NL-001", Assert.Single(jaarFase.GetProperty("leerplandoelen").EnumerateArray()).GetProperty("code").GetString());
+
+        // 8. Unlinking it takes them along: nothing of it stays on the thema.
+        var ontkoppel = await client.DeleteAsync($"/api/themas/{thema.Id}/minimumdoelen/{themaMinimumdoel.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, ontkoppel.StatusCode);
+        var na = await client.GetFromJsonAsync<ThemaDto>($"/api/themas/{thema.Id}");
+        Assert.Empty(na!.Minimumdoelen);
+        Assert.Empty(na.Themadoelen);
     }
 
     /// <summary>FB-009 through HTTP: the route, the DI registration and the not-found mapping, which the query's unit tests cannot see.</summary>
@@ -106,8 +124,14 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         var client = _factory.CreateClient();
         var themaResp = await client.PostAsJsonAsync("/api/themas", new { naam = "Overzicht", duurWeken = 4 });
         var thema = await themaResp.Content.ReadFromJsonAsync<ThemaDto>();
-        (await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/themadoelen", new { leerplandoelCode = "NL-001" }))
-            .EnsureSuccessStatusCode();
+        // A leerplandoel themadoel as the FR-1 import still writes one: no route adds it any more (FB-043).
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var geladen = await db.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == thema!.Id);
+            db.Themadoelen.Add(geladen.VoegThemadoelToe(new DoelKoppeling("NL-001", KoppelingStatus.Manueel)));
+            await db.SaveChangesAsync();
+        }
 
         var overzicht = await client.GetFromJsonAsync<JsonElement>($"/api/themas/{thema.Id}/doelenoverzicht");
         var doelen = overzicht.GetProperty("leeftijden").EnumerateArray()
@@ -168,15 +192,22 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
     }
 
     [Fact]
-    public async Task Linking_to_an_unknown_leerplandoel_is_rejected_with_400()
+    public async Task Linking_what_is_no_loaded_minimumdoel_is_rejected_with_400()
     {
         var client = _factory.CreateClient();
 
         var themaResp = await client.PostAsJsonAsync("/api/themas", new { naam = "Vuur", duurWeken = 4 });
         var thema = await themaResp.Content.ReadFromJsonAsync<ThemaDto>();
 
-        var tdResp = await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/themadoelen", new { leerplandoelCode = "BESTAAT-NIET" });
-        Assert.Equal(HttpStatusCode.BadRequest, tdResp.StatusCode);
+        // An unknown ref, a leerplandoel code, and no body field at all.
+        foreach (var lichaam in new object[] { new { minimumdoelRef = "BESTAAT-NIET" }, new { minimumdoelRef = "NL-001" }, new { } })
+        {
+            var tdResp = await client.PostAsJsonAsync($"/api/themas/{thema!.Id}/minimumdoelen", lichaam);
+            Assert.Equal(HttpStatusCode.BadRequest, tdResp.StatusCode);
+        }
+
+        var detail = await client.GetFromJsonAsync<ThemaDto>($"/api/themas/{thema!.Id}");
+        Assert.Empty(detail!.Minimumdoelen);
     }
 
     [Fact]
@@ -251,7 +282,15 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
 
     // --- Response DTOs (mirror the Application read views; only the fields asserted here). ---
 
-    private sealed record ThemaDto(Guid Id, string Naam, int DuurWeken, IReadOnlyList<ThemadoelDto> Themadoelen, IReadOnlyList<SubthemaDto> Subthemas);
+    private sealed record ThemaDto(
+        Guid Id,
+        string Naam,
+        int DuurWeken,
+        IReadOnlyList<ThemadoelDto> Themadoelen,
+        IReadOnlyList<ThemaMinimumdoelDto> Minimumdoelen,
+        IReadOnlyList<SubthemaDto> Subthemas);
+
+    private sealed record ThemaMinimumdoelDto(Guid Id, string MinimumdoelRef);
 
     private sealed record ThemadoelDto(Guid Id, KoppelingDto Koppeling);
 
@@ -333,8 +372,9 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
                     var schooljaar = TestSchooljaar.Maak();
                     klas = schooljaar.VoegKlasToe("L1 — eerste leerjaar", "L1");
                     db.Schooljaren.Add(schooljaar);
+                    db.Minimumdoelen.Add(new Minimumdoel("MD-1", "K-", "1", "minimumdoeltekst"));
                     db.Leerplandoelen.AddRange(
-                        Leerdoel("NL-001"),
+                        Leerdoel("NL-001", minimumdoelRef: "MD-1"),
                         Leerdoel("WIS-001"));
                     db.SaveChanges();
                 }
@@ -344,7 +384,7 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
             }
         }
 
-        private static Leerplandoel Leerdoel(string code) =>
-            new(code, Doelsoort.Minimumdoel, "K3", "Domein", "Subdomein", "1", tekst: "doeltekst");
+        private static Leerplandoel Leerdoel(string code, string? minimumdoelRef = null) =>
+            new(code, Doelsoort.Minimumdoel, "K3", "Domein", "Subdomein", "1", tekst: "doeltekst", minimumdoelRef: minimumdoelRef);
     }
 }

@@ -14,19 +14,46 @@ Recipe for bringing up the Jaarplanner **for the owner to look at**: the API on 
 `jaarplanner` and the Vite dev server proxying `/api` to it. Every step below was run end to end on
 2026-09-10; each trap listed has cost a session real time.
 
-**The owner works on two machines, and they differ.** Find out which one you are on before step 2:
+**The owner works on three machines, and they differ.** Find out which one you are on before step 2:
 
-| | Machine A | Machine B (set up 2026-09-13) |
-|---|---|---|
-| PostgreSQL | Windows service `postgresql-x64-17` | Docker container `jaarplanner-db`, host port 5433 |
-| pnpm | only through `corepack pnpm` | `corepack pnpm`; also installed globally in `%APPDATA%\npm` |
+| | Machine A | Machine B (set up 2026-09-13) | Machine C (set up 2026-09-15) |
+|---|---|---|---|
+| PostgreSQL | Windows service `postgresql-x64-17` | Docker container `jaarplanner-db`, host port 5433 | as machine B |
+| Docker Desktop | not used | `C:\Program Files\Docker\Docker` | per user, `%LOCALAPPDATA%\Programs\DockerDesktop` |
+| pnpm | only through `corepack pnpm` | `corepack pnpm`; also installed globally in `%APPDATA%\npm` | only through `corepack pnpm` |
 
 ```bash
 powershell -NoProfile -Command "Get-Service postgresql-x64-17 -ErrorAction SilentlyContinue | Select Status"
+command -v docker
 ```
 
-prints the service on machine A and nothing on machine B. The machine B route was run end to end on
-2026-09-13, on a commit from before E6-01, so the sign-in checks in step 6 have not been run there yet.
+The first prints the service on machine A only. The second tells B from C: a path under `Program Files` is
+machine B, one under `AppData/Local/Programs/DockerDesktop` is machine C. The machine B route was run end to
+end on 2026-09-13, on a commit from before E6-01, so the sign-in checks in step 6 have not been run there yet.
+The machine C route has not been run end to end at all; *A new machine* below says where its set-up stands.
+
+### A new machine
+
+What a fresh Windows machine needs before step 1. Machine C lacked every item:
+
+- **.NET SDK 10.0.4xx**, the band `global.json` pins: `winget install Microsoft.DotNet.SDK.10`.
+- **Node 24**: `frontend/package.json` asks `>=24`, and 24 still bundles the corepack step 5 uses.
+  `winget install OpenJS.NodeJS.LTS`. Both winget installs ask for UAC consent.
+- **`dotnet tool restore`** in `backend`, for the `dotnet-ef` pinned in `backend/.config/dotnet-tools.json`.
+- **A git identity and a GitHub sign-in.** Git for Windows starts without an identity, and the first commit
+  fails with *"Author identity unknown"*. Ask the owner which one; the history is no guide, since every commit
+  there is `Siebeds` while machine C uses the GitHub account `dyllisd` with its no-reply address. Git pushes
+  through Git Credential Manager, but `gh` needs its own `gh auth login`, which the owner runs in a separate window.
+- **For Docker, WSL 2 and hardware virtualization.** In an elevated PowerShell, `wsl --install
+  --no-distribution` turns on Virtual Machine Platform and WSL and installs the WSL package. Virtualization must
+  also be on in the firmware (SVM Mode on AMD, VT-x on Intel): `Get-CimInstance Win32_Processor | Select
+  VirtualizationFirmwareEnabled` must say `True`. Both take effect only after a restart.
+- **`.env` and the user-secret** of step 2.
+- **A program installed during a session is not on that session's PATH.** Until a new session starts, prefix
+  commands with `export PATH="/c/Program Files/dotnet:/c/Program Files/nodejs:$PATH"`.
+
+Machine C on 2026-09-15: every item is done except the firmware setting and the restart, which only the owner
+can do. Until then `VirtualizationFirmwareEnabled` says `False` and Docker cannot start (step 2).
 
 Use **Bash** (Git Bash) for everything except where PowerShell is named. Report to the owner in **Dutch**.
 
@@ -65,8 +92,9 @@ under a running Vite changes what he sees mid-look.
 powershell -NoProfile -Command "Get-Service postgresql-x64-17 | Select Status"   # must be Running
 ```
 
-**Machine B**, the Docker container. Docker Desktop has to be running first; start it from the Start menu, or
-with `"/c/Program Files/Docker/Docker/Docker Desktop.exe" &`, and give it a minute.
+**Machines B and C**, the Docker container. Docker Desktop has to be running first; start it from the Start
+menu, or with `"/c/Program Files/Docker/Docker/Docker Desktop.exe" &` on machine B and
+`"$LOCALAPPDATA/Programs/DockerDesktop/Docker Desktop.exe" &` on machine C, and give it a minute.
 
 ```bash
 docker info --format '{{.ServerVersion}}'                            # must print a version, e.g. 29.7.2
@@ -75,13 +103,18 @@ docker inspect --format '{{.State.Health.Status}}' jaarplanner-db   # must be he
 ```
 
 - **`docker info` exits 0 on an engine that failed to start.** It then prints *"Error response from daemon:
-  Docker Desktop is unable to start"* with exit code 0, so a readiness loop that checks only the exit code
-  reports a daemon that is not there. Accept only a version number. The reason for the failure is in the `[E]`
-  lines of `%LOCALAPPDATA%\Docker\log\host\com.docker.backend.exe.log`, not in Docker's error dialog.
+  Docker Desktop is unable to start"*, or with no virtualization at all *"request returned 500 Internal Server
+  Error for API route and version …"*, with exit code 0, so a readiness loop that checks only the exit code
+  reports a daemon that is not there. Accept only a version number.
+- **The reason is in the logs, not in Docker's error dialog**: `%LOCALAPPDATA%\Docker\log\host\com.docker.backend.exe.log`
+  and `monitor.log` beside it, in a line near the engine's start that can be a `[W]` rather than an `[E]` (on
+  machine C: *"no virtualization found: … Virtual Machine Platform not enabled"*). After it the backend log
+  repeats *"event streamer: error: http response error status 500"* every 45 seconds, so its tail shows only
+  that. Search with `grep 'failed to start'` instead.
 - `docker compose up` reads the gitignored `.env` in the repo root (a copy of `.env.example`). Without it,
   compose refuses to start with *"set POSTGRES_USER in .env"*.
 
-Then, on either machine:
+Then, on every machine:
 
 ```bash
 cd $REPO/backend && dotnet ef migrations list \
@@ -97,7 +130,7 @@ dotnet ef database update --project src/Jaarplanner.Infrastructure --startup-pro
 
 The connection string comes from **user-secrets**, key `ConnectionStrings:Postgres`
 (`dotnet user-secrets list` in `backend/src/Jaarplanner.Api`). It must use `Host=127.0.0.1` and
-`SSL Mode=Disable`, or Npgsql hangs. On machine B it also needs `Port=5433` and the password from `.env`.
+`SSL Mode=Disable`, or Npgsql hangs. On machines B and C it also needs `Port=5433` and the password from `.env`.
 `dotnet ef` 8.x works against this EF 10 model.
 
 ## 3. Which database — decide before anything writes
@@ -109,8 +142,8 @@ database instead (copy the connection string, change `Database=`, migrate it, pa
 anyway, with every symptom saying it worked. Never create or delete rows in `jaarplanner` to "try something";
 the owner may have a page open on it.
 
-The two machines do not share this database. Machine B's was created empty on 2026-09-13 and started with
-only what the demo seeder (step 4) put in it.
+The machines do not share this database. Machine B's was created empty on 2026-09-13 and started with
+only what the demo seeder (step 4) put in it; machine C's first `docker compose up` creates it the same way.
 
 ## 4. Build and start the API
 
@@ -149,7 +182,7 @@ Then, **in the background, with the `cd` inside the same command**:
 cd $REPO/frontend && VITE_API_PROXY_TARGET=http://localhost:5185 corepack pnpm dev > $LOGS/vite.log 2>&1
 ```
 
-- **Use `corepack pnpm` on both machines.** On machine A pnpm is not on PATH at all. On machine B it is
+- **Use `corepack pnpm` on every machine.** On machines A and C pnpm is not on PATH at all. On machine B it is
   installed globally in `%APPDATA%\npm`, but a session started before that install inherits a PATH without
   it, so plain `pnpm` fails there while `corepack pnpm` works (both checked 2026-09-13).
 - **A background command does not inherit the directory you think it does.** Started without its own `cd`,

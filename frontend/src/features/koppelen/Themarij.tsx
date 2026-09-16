@@ -4,31 +4,26 @@ import { IcoonChevron, IcoonPlus, IcoonVink } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
-import { MAX_THEMADOELEN } from "../../lib/types";
 import type { Subthemabestemming, Themabestemming } from "./bestemmingen";
-import {
-  useKoppelDoelAanActiviteit,
-  useKoppelDoelAanSubthema,
-  useKoppelDoelAanThema,
-} from "./mutaties";
+import { useKoppelDoelAanActiviteit, useKoppelDoelAanSubthema } from "./mutaties";
 import { Nieuweactiviteitregel } from "./Nieuweactiviteitregel";
 
 /**
  * One thema, its subthema's, and their activiteiten, as places this doel could go.
  *
  * **Two kinds of row, and the difference is deliberate.** A thema and a subthema have children, so
- * pressing the row opens them and linking is a named button beside it. An activiteit has no
- * children, so pressing the row *is* the link. The rule is "the row does the ordinary thing": on a
- * thema the ordinary thing is going deeper, because a thema anchors at most three school-wide
- * themadoelen and most teachers are heading for an activiteit.
+ * pressing the row opens them. A subthema also takes the doel as a subdoel, through a named button
+ * beside it. An activiteit has no children, so pressing the row *is* the link.
+ *
+ * **A thema takes no leerplandoel.** Its themadoelen are minimumdoelen, linked on the thema page (FB-043), so the
+ * thema row only opens. It still says "Gekoppeld" when an older themadoel or the FR-1 import put this doel on it.
  *
  * **A row the doel already sits on states that instead of offering the link again.** Linking twice
  * is refused by the server, and a button that produces an error for doing the obvious thing is worse
  * than no button. The word "Gekoppeld" carries it, with the tick as reinforcement rather than as the
  * signal (Art. XII, WCAG 2.2 AA 1.4.1).
  *
- * **Each level is offered to whoever may link there** (E6-02, ADR-0030 §3): the thema to directie and themabeheer
- * (R4), a subthema and its activiteiten to directie and that leeftijd's hoofdleerkrachten (R24, R19), and a new
+ * **Each level is offered to whoever may link there** (E6-02, ADR-0030 §3): a subthema and its activiteiten to directie and that leeftijd's hoofdleerkrachten (R24, R19), and a new
  * activiteit made with this doel on it likewise, since its create carries a goal code (R19). A level the gebruiker may
  * not link to still shows where the doel already sits; it just offers nothing to press.
  */
@@ -44,8 +39,6 @@ export function Themarij({
   standaardOpen: boolean;
 }) {
   const [open, setOpen] = useState(standaardOpen);
-  const koppelThema = useKoppelDoelAanThema();
-  const { mag } = useRechten();
 
   const aantalSubthemas = tak.thema.subthemas.length;
 
@@ -65,47 +58,17 @@ export function Themarij({
           <span className="min-w-0">
             <span className="block truncate text-sectie text-inkt">{tak.thema.naam}</span>
             <span className="mt-0.5 block text-meta text-inkt-zacht">
-              {[
-                telWoord(aantalSubthemas, "koppelen.eenSubthema", "koppelen.aantalSubthemas"),
-                t("koppelen.themadoelenTelling", { aantal: tak.thema.themadoelen.length, max: MAX_THEMADOELEN }),
-              ].join(" · ")}
+              {telWoord(aantalSubthemas, "koppelen.eenSubthema", "koppelen.aantalSubthemas")}
             </span>
           </span>
         </button>
 
-        {/* Closed, a thema row states what is inside it and nothing else.
-            The link button used to sit here, and nine of them down the list turned the first look at
-            the sheet into a wall of identical controls for the rarest action on it: a thema anchors
-            at most three school-wide themadoelen, while most teachers are on their way to an
-            activiteit. It now appears when the thema is opened, one row down, where it competes with
-            nothing. */}
+        {/* Closed, a thema row states what is inside it and nothing else. */}
         {tak.alGekoppeld ? <Gekoppeldmerk /> : null}
       </div>
 
-      <Koppelfout zichtbaar={koppelThema.isError} fout={koppelThema.error} />
-
       {open ? (
         <div className="border-t border-lijn bg-vlak/50 p-2">
-          {/* The thema level only for directie and themabeheer (R4). Without the right there is nothing to say here:
-              the closed row already shows "Gekoppeld" where the doel sits, and "Al 3 themadoelen" explains a button
-              this gebruiker would not get anyway. */}
-          {mag.themaBewerken ? (
-            <div className="flex px-1 pb-2 pt-1">
-              <Koppelactie
-                alGekoppeld={tak.alGekoppeld}
-                // A full thema is not an error state and does not get the attention styling of one:
-                // three themadoelen is what a finished thema looks like. It is said, and the button
-                // is gone.
-                geblokkeerd={tak.themaVol}
-                geblokkeerdeTekst={t("koppelen.themaVol", { max: MAX_THEMADOELEN })}
-                label={t("koppelen.koppelAanThema")}
-                toelichting={t("koppelen.koppelAanThemaUitleg", { thema: tak.thema.naam })}
-                bezig={koppelThema.isPending}
-                onKoppel={() => koppelThema.mutate({ themaId: tak.thema.id, leerplandoelCode: code })}
-              />
-            </div>
-          ) : null}
-
           {tak.subthemas.length === 0 ? (
             // Not a dead end dressed as one: a thema without subthema's for this class is a normal
             // state, and the sentence says what would have to happen rather than only what is absent.
@@ -339,22 +302,17 @@ function Koppelfout({ zichtbaar, fout }: { zichtbaar: boolean; fout?: unknown })
 }
 
 /**
- * The link control for a thema or a subthema: a button, an "already linked" statement, or a reason
- * it cannot be offered. One component so the three stay the same size and in the same place, and a
- * row does not visibly reflow when its state changes under a click.
+ * The link control for a subthema: a button or an "already linked" statement. One component so the two stay the same
+ * size and in the same place, and a row does not visibly reflow when its state changes under a click.
  */
 function Koppelactie({
   alGekoppeld,
-  geblokkeerd = false,
-  geblokkeerdeTekst,
   label,
   toelichting,
   bezig,
   onKoppel,
 }: {
   alGekoppeld: boolean;
-  geblokkeerd?: boolean;
-  geblokkeerdeTekst?: string;
   label: string;
   toelichting: string;
   bezig: boolean;
@@ -362,15 +320,10 @@ function Koppelactie({
 }) {
   if (alGekoppeld) return <Gekoppeldmerk />;
 
-  if (geblokkeerd) {
-    return <span className="shrink-0 px-2 py-1.5 text-meta text-inkt-zwak">{geblokkeerdeTekst}</span>;
-  }
-
   return (
     <Knop
-      // `rustig` rather than `stil`, because these two are the only real buttons in the tree and a
-      // borderless one did not read as one: on its own line above the subthema's, "Koppel aan thema"
-      // looked like a section heading. Everything around it is a row you press, so the control that
+      // `rustig` rather than `stil`, because this is the only real button in the tree and a borderless one did not
+      // read as one: beside a row you press, it looked like part of the row. Everything around it is a row you press, so the control that
       // does something different has to be the one that is drawn differently.
       rang="rustig"
       className="h-9 min-h-9 shrink-0 px-3 text-meta"

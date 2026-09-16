@@ -25,6 +25,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTests.Omgeving>
 {
     private const string Doelcode = "WIZ-01";
+    private const string Minimumdoelref = "WIZ-MD-01";
 
     // The wizard's sentences, written out: a reword shows up here as a failure, not silently on a screen.
     private const string NietGevonden = "Deze wizard is niet gevonden.";
@@ -175,7 +176,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PutAsJsonAsync(
             $"/api/themas/{run.ThemaId}", new { naam = $"Hernoemd {Guid.NewGuid():N}", duurWeken = 5, kernwoordenschat = new[] { "regen" } })));
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(client.PostAsJsonAsync(
-            $"/api/themas/{run.ThemaId}/themadoelen", new { leerplandoelCode = Doelcode })));
+            $"/api/themas/{run.ThemaId}/minimumdoelen", new { minimumdoelRef = Minimumdoelref })));
 
         Assert.Equal(voor, await LaatsteSchrijfactieAsync(run.Id));
     }
@@ -463,6 +464,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
             Db = await PostgresTestDatabase.MaakAsync("wizardrun");
             Factory = new PostgresApiFactory(Db.ConnectionString);
             await ZaaiDoelAsync(Db, Doelcode);
+            await ZaaiMinimumdoelAsync(Db, Minimumdoelref);
         }
 
         public async Task DisposeAsync()

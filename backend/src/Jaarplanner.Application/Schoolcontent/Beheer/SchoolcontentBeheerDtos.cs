@@ -117,6 +117,12 @@ public sealed record DoelKoppelingWeergave(Guid Id, string LeerplandoelCode, Kop
 /// <summary>Read view of a themadoel (school-scoped; owns one goal link).</summary>
 public sealed record ThemadoelWeergave(Guid Id, DoelKoppelingWeergave Koppeling);
 
+/// <summary>
+/// Read view of a minimumdoel a thema aims at (FB-043). Only the ref: its text and the leerplandoelen it brings along
+/// are the minimumdoel's own detail (<c>GET /api/minimumdoelen/{ref}</c>), which a client already reads.
+/// </summary>
+public sealed record ThemaMinimumdoelWeergave(Guid Id, string MinimumdoelRef);
+
 /// <summary>Read view of a subdoel (class/age-scoped; owns one goal link).</summary>
 public sealed record SubdoelWeergave(Guid Id, string Leeftijd, DoelKoppelingWeergave Koppeling);
 
@@ -174,6 +180,7 @@ public sealed record ThemaWeergave(
     IReadOnlyList<string> RijkeWoordenschat,
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
+    IReadOnlyList<ThemaMinimumdoelWeergave> Minimumdoelen,
     IReadOnlyList<SubthemaWeergave> Subthemas);
 
 /// <summary>
@@ -198,6 +205,7 @@ public sealed record ThemaBibliotheekItem(
     IReadOnlyList<string> RijkeWoordenschat,
     bool HeeftVoldoendeThemadoelen,
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
+    IReadOnlyList<ThemaMinimumdoelWeergave> Minimumdoelen,
     int AantalAfgeleideLeeftijden,
     int AantalSubthemas,
     int AantalActiviteiten,

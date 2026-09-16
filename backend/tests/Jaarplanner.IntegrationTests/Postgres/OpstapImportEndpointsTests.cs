@@ -138,7 +138,7 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
     /// <b>The headline acceptance criterion (Art. III.4).</b> A goal that disappears from Op.stap while a
     /// thema still links it is <b>flagged, never deleted</b>, and the teacher's link survives with its
     /// status untouched. Driven entirely over HTTP: the goal is imported through the import endpoint, the
-    /// themadoel is created through the beheer endpoint, and the re-import runs through the import
+    /// themadoel is written as the FR-1 import writes one, and the re-import runs through the import
     /// endpoint again, so the FK that makes this guarantee real (<c>Restrict</c>) is the production one.
     /// </summary>
     [PostgresFact]
@@ -147,13 +147,18 @@ public sealed class OpstapImportEndpointsTests : IAsyncLifetime
         var client = _factory.CreateClient();
         await Upload(Werkboek(Rij("WIS-1"), Rij("WIS-2")), client: client);
 
-        // A teacher anchors a thema on WIS-1 (E1-10's themadoel path, Art. IX.2).
+        // A thema anchored on WIS-1 by a themadoel (Art. IX.2).
         var thema = await client.PostAsJsonAsync("/api/themas", new { naam = "Meten", duurWeken = 5 });
         thema.EnsureSuccessStatusCode();
         var themaId = (await thema.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
-        var themadoel = await client.PostAsJsonAsync(
-            $"/api/themas/{themaId}/themadoelen", new { leerplandoelCode = "WIS-1" });
-        themadoel.EnsureSuccessStatusCode();
+        // Written straight to the database, the way the FR-1 import still writes one (FB-043: no route adds it).
+        await using (var schrijf = _db.MaakContext())
+        {
+            var geladen = await schrijf.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == themaId);
+            schrijf.Themadoelen.Add(geladen.VoegThemadoelToe(
+                new Jaarplanner.Domain.Schoolcontent.DoelKoppeling("WIS-1", Jaarplanner.Domain.Schoolcontent.KoppelingStatus.Manueel)));
+            await schrijf.SaveChangesAsync();
+        }
 
         // Op.stap drops WIS-1 in the next release.
         var antwoord = await Upload(Werkboek(Rij("WIS-2")), client: client);

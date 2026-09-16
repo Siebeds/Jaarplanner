@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
@@ -22,28 +22,27 @@ import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { DoelMatchResultaat, SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
-import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
 import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
-import { Blok, Doellijst, Feit, Groep, Kop } from "./Fiche";
-import { Gekoppelddoel } from "./Gekoppelddoel";
+import { Blok, Feit, Groep, Kop } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
+import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
 import { themabalans } from "./themabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
+  useKoppelMinimumdoel,
   useKoppelSubdoel,
-  useKoppelThemadoel,
   useMaakActiviteit,
   useMaakSubthema,
   useOntkoppelActiviteitdoel,
+  useOntkoppelMinimumdoel,
   useOntkoppelSubdoel,
-  useOntkoppelThemadoel,
   useVerwijderActiviteit,
   useVerwijderSubthema,
   useVerwijderThema,
@@ -115,6 +114,18 @@ export function ThemadetailScherm() {
 
   // The leeftijden a doelsuggestie run searches, once the gebruiker touched the buttons; null follows the subthema's.
   const [leeftijdkeuze, setLeeftijdkeuze] = useState<string[] | null>(null);
+  // Whether that choice is showing (FB-042): "Vraag suggesties" only opens it, the send button inside asks the model.
+  const [vraagOpen, setVraagOpen] = useState(false);
+  // Focus follows the swap: into the choice when it opens, back to "Vraag suggesties" when it closes. Null on the
+  // first render, so arriving on the page moves nothing.
+  const vraagRef = useRef<HTMLDivElement>(null);
+  const vorigeVraagOpen = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (vorigeVraagOpen.current !== null && vorigeVraagOpen.current !== vraagOpen) {
+      vraagRef.current?.querySelector<HTMLButtonElement>("button:not(:disabled)")?.focus();
+    }
+    vorigeVraagOpen.current = vraagOpen;
+  }, [vraagOpen]);
   const [bewerkOpen, setBewerkOpen] = useState(false);
   const [verwijderOpen, setVerwijderOpen] = useState(false);
   // One piece of state per sheet, holding what it is editing. `{}` means "a new one"; two booleans
@@ -149,8 +160,8 @@ export function ThemadetailScherm() {
   const maakActiviteit = useMaakActiviteit(id);
   const wijzigActiviteit = useWijzigActiviteit(id);
   const verwijderActiviteit = useVerwijderActiviteit(id);
-  const koppelThemadoel = useKoppelThemadoel(id);
-  const ontkoppelThemadoel = useOntkoppelThemadoel(id);
+  const koppelMinimumdoel = useKoppelMinimumdoel(id);
+  const ontkoppelMinimumdoel = useOntkoppelMinimumdoel(id);
   const koppelSubdoel = useKoppelSubdoel(id);
   const ontkoppelSubdoel = useOntkoppelSubdoel(id);
   const koppelActiviteitdoel = useKoppelActiviteitdoel(id);
@@ -193,6 +204,12 @@ export function ThemadetailScherm() {
   const standaardLeeftijden = (jaarfasen ?? []).filter((fase) => thema.subthemas.some((s) => s.leeftijd === fase));
   const gekozenLeeftijden = leeftijdkeuze ?? standaardLeeftijden;
   const geenLeeftijd = jaarfasen !== undefined && gekozenLeeftijden.length === 0;
+  // Closing forgets the choice, so the next opening is pre-set to the subthema's leeftijden again.
+  const sluitVraag = () => {
+    setVraagOpen(false);
+    setLeeftijdkeuze(null);
+  };
+  const verstuurVraag = () => genereer.mutate(gekozenLeeftijden, { onSuccess: sluitVraag });
 
   // The sheet holds IDS, not objects, and the objects are looked up from the freshly invalidated
   // thema on every render. Holding the object would freeze the goal list at the moment the sheet
@@ -224,8 +241,8 @@ export function ThemadetailScherm() {
     (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
 
   const geweigerd = [
-    koppelThemadoel,
-    ontkoppelThemadoel,
+    koppelMinimumdoel,
+    ontkoppelMinimumdoel,
     koppelSubdoel,
     ontkoppelSubdoel,
     koppelActiviteitdoel,
@@ -342,16 +359,18 @@ export function ThemadetailScherm() {
           </dl>
         </Blok>
 
-        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. A doelsuggestie is a proposed themadoel:
-            accepting one makes it a themadoel, in this very list. As a sibling section it cost a
-            second heading, a second empty state and a permanent "Geen open suggesties" line.
+        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. As a sibling section the suggesties cost a second heading, a
+            second empty state and a permanent "Geen open suggesties" line.
+
+            A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
+            that lead there. The doelsuggesties still propose leerplandoelen; what becomes of them is another ticket.
 
             The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
             with its motivation and still has to be accepted or rejected by hand, and "Vraag
             suggesties" is always reachable rather than appearing only when the list is empty. */}
         <Blok
-          figuur={thema.themadoelen.length}
-          onder={t(thema.themadoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
+          figuur={thema.minimumdoelen.length}
+          onder={t(thema.minimumdoelen.length === 1 ? "themas.doelEen" : "themas.doelMeer")}
         >
           <Kop
             titel={t("thema.themadoelen")}
@@ -360,65 +379,86 @@ export function ThemadetailScherm() {
               mag.themaBewerken || mag.doelsuggestiesMaken ? (
                 <>
                   {mag.themaBewerken ? (
-                    <Doelkoppelaar
-                      onKies={(code) => koppelThemadoel.mutate(code)}
-                      bezig={koppelThemadoel.isPending}
-                      alGekozen={thema.themadoelen.map((td) => td.koppeling.leerplandoelCode)}
+                    <Minimumdoelkoppelaar
+                      onKies={(ref) => koppelMinimumdoel.mutate(ref)}
+                      bezig={koppelMinimumdoel.isPending}
+                      alGekozen={thema.minimumdoelen.map((m) => m.minimumdoelRef)}
                     />
                   ) : null}
                   {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
                       legible: this does not add a themadoel, it asks the model for candidates that a
                       teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
-                  {/* The button and its scope read as one phrase, "Vraag suggesties voor K3 L1", and wrap as one. */}
+                  {/* FB-042: the heading carries only "Vraag suggesties". It asks nothing yet: it swaps itself for the
+                      choice, which reads on as the same phrase, "Vraag suggesties voor K3 L1", then the send button
+                      that does call the model and so is the one ring on show (ADR-0039), and a way back. */}
                   {mag.doelsuggestiesMaken ? (
-                    <span className="flex flex-wrap items-center gap-2">
-                      <AiKnop
-                        className="h-9 min-h-9 px-2.5 text-meta"
-                        bezig={genereer.isPending}
-                        disabled={genereer.isPending || geenLeeftijd}
-                        onClick={() => genereer.mutate(gekozenLeeftijden)}
-                      >
-                        {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVragen")}
-                      </AiKnop>
-                      {jaarfasen ? (
-                        <>
-                          <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVoor")}</span>
-                          <Leeftijdkeuze
-                            jaarfasen={jaarfasen}
-                            gekozen={gekozenLeeftijden}
-                            onWijzig={setLeeftijdkeuze}
-                          />
-                        </>
-                      ) : null}
-                    </span>
+                    <div ref={vraagRef} className="contents">
+                      {vraagOpen ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVragenVoor")}</span>
+                          {jaarfasen ? (
+                            <Leeftijdkeuze
+                              jaarfasen={jaarfasen}
+                              gekozen={gekozenLeeftijden}
+                              onWijzig={setLeeftijdkeuze}
+                            />
+                          ) : null}
+                          <AiKnop
+                            className="h-9 min-h-9 px-2.5 text-meta"
+                            bezig={genereer.isPending}
+                            disabled={genereer.isPending || geenLeeftijd}
+                            aria-describedby={geenLeeftijd ? "doelsuggesties-kies-leeftijd" : undefined}
+                            onClick={verstuurVraag}
+                          >
+                            {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVersturen")}
+                          </AiKnop>
+                          <Knop
+                            className="h-9 min-h-9 px-2.5 text-meta"
+                            disabled={genereer.isPending}
+                            onClick={sluitVraag}
+                          >
+                            {t("thema.suggestiesAnnuleren")}
+                          </Knop>
+                        </div>
+                      ) : (
+                        <AiKnop
+                          className="h-9 min-h-9 px-2.5 text-meta"
+                          onClick={() => setVraagOpen(true)}
+                        >
+                          {t("thema.suggestiesVragen")}
+                        </AiKnop>
+                      )}
+                    </div>
                   ) : null}
                 </>
               ) : undefined
             }
           >
             {/* Why the AI button is disabled, directly under it, and only while it is. */}
-            {mag.doelsuggestiesMaken && geenLeeftijd ? (
-              <p className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
+            {mag.doelsuggestiesMaken && vraagOpen && geenLeeftijd ? (
+              <p id="doelsuggesties-kies-leeftijd" className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
             ) : null}
 
-            {thema.themadoelen.length === 0 ? (
+            {thema.minimumdoelen.length === 0 ? (
               <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
             ) : (
-              <Doellijst>
-                {thema.themadoelen.map((themadoel) => (
-                  <Gekoppelddoel
-                    key={themadoel.id}
-                    koppeling={themadoel.koppeling}
-                    ontkoppelLabel={t("activiteit.ontkoppel", {
-                      code: themadoel.koppeling.leerplandoelCode,
-                    })}
-                    ontkoppelBezig={ontkoppelThemadoel.isPending}
-                    onOntkoppel={mag.themaBewerken ? () => ontkoppelThemadoel.mutate(themadoel.id) : undefined}
-                    onToon={toonDoel}
-                  />
-                ))}
-              </Doellijst>
+              <Themaminimumdoelen
+                koppelingen={thema.minimumdoelen}
+                ontkoppelBezig={ontkoppelMinimumdoel.isPending}
+                onOntkoppel={mag.themaBewerken ? (koppelingId) => ontkoppelMinimumdoel.mutate(koppelingId) : undefined}
+                onToonDoel={toonDoel}
+              />
             )}
+
+            {/* A link that did not happen, other than a refusal (the page's line below says that): an already linked
+                minimumdoel or one no longer loaded. The server's own Dutch sentence. */}
+            {koppelMinimumdoel.isError && geenToegangZin(koppelMinimumdoel.error) === null ? (
+              <p role="alert" className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {koppelMinimumdoel.error instanceof ApiError && koppelMinimumdoel.error.detail
+                  ? koppelMinimumdoel.error.detail
+                  : t("thema.minimumdoelKoppelMislukt")}
+              </p>
+            ) : null}
 
             {/* A refusal's own Dutch sentence where the server wrote one (too many goals, no leeftijd). A 422 is a bad
                 model answer and its detail is an English operator diagnostic (Art. II.3), so the catalogue line stands

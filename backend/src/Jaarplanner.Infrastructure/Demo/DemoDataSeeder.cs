@@ -196,14 +196,14 @@ public sealed class DemoDataSeeder : IHostedService
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 
     /// <summary>
-    /// Gives each demo thema two themadoelen, so the cards show a goal count instead of all reading
-    /// "Nog geen doelen gekoppeld".
+    /// Gives each demo thema one minimumdoel as its themadoel (FB-043), with two leerplandoelen concorded to it, so the
+    /// cards show a goal and the thema page has something to unfold.
     /// <para>
     /// <b>Why it needs leerplandoelen at all.</b> <c>DoelKoppeling.LeerplandoelCode</c> is a real foreign key
     /// to <c>Leerplandoel.Code</c>, and a fresh database has no curriculum (the Op.stap import is E1-15, and
     /// minimumdoelen are blocked on E1-12). So the seed creates a small set of its own — clearly marked
-    /// <c>DEMO-*</c> codes against discipline 1, which the E0 migration seeds, and with
-    /// <c>minimumdoelRef = null</c> so they need no <c>Minimumdoel</c> row.
+    /// <c>DEMO-*</c> codes against discipline 1, which the E0 migration seeds — and one <c>DEMO-*</c> minimumdoel per
+    /// thema that they concord to.
     /// </para>
     /// <para>
     /// <b>These are not Op.stap goals and must never be mistaken for them</b> (Art. III.1: imported
@@ -217,12 +217,28 @@ public sealed class DemoDataSeeder : IHostedService
         List<Thema> themas,
         CancellationToken cancellationToken)
     {
-        var codes = new List<string>();
+        var refs = new List<string>();
+
+        for (var i = 1; i <= themas.Count; i++)
+        {
+            var minimumdoelRef = $"DEMO-4-{i:D2}";
+            refs.Add(minimumdoelRef);
+
+            if (await context.Minimumdoelen.AnyAsync(m => m.Ref == minimumdoelRef, cancellationToken))
+            {
+                continue;
+            }
+
+            context.Minimumdoelen.Add(new Minimumdoel(
+                minimumdoelRef,
+                leeftijd: "4-",
+                nr: $"{i}",
+                omschrijving: $"Voorbeeldminimumdoel {i}: demodata voor de review, geen minimumdoel uit het decreet."));
+        }
 
         for (var i = 1; i <= themas.Count * 2; i++)
         {
             var code = $"DEMO-L3-{i:D2}";
-            codes.Add(code);
 
             if (await context.Leerplandoelen.AnyAsync(d => d.Code == code, cancellationToken))
             {
@@ -236,15 +252,13 @@ public sealed class DemoDataSeeder : IHostedService
                 domein: "Demo",
                 subdomein: "Demo",
                 disciplineNummer: "1",
-                tekst: $"Voorbeelddoel {i} — demodata voor de review, geen Op.stap-leerplandoel."));
+                tekst: $"Voorbeelddoel {i} — demodata voor de review, geen Op.stap-leerplandoel.",
+                minimumdoelRef: refs[(i - 1) / 2]));
         }
 
         foreach (var (thema, index) in themas.Select((t, i) => (t, i)))
         {
-            // Two per thema: Art. IX.2's advisory lower bound, so the demo does not also illustrate an
-            // under-anchored thema while it is illustrating everything else.
-            thema.VoegThemadoelToe(new DoelKoppeling(codes[index * 2], KoppelingStatus.Manueel));
-            thema.VoegThemadoelToe(new DoelKoppeling(codes[(index * 2) + 1], KoppelingStatus.Manueel));
+            context.ThemaMinimumdoelen.Add(thema.KoppelMinimumdoel(refs[index]));
         }
     }
 

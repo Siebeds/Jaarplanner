@@ -980,6 +980,30 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("themas", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.ThemaMinimumdoel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("MinimumdoelRef")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("minimumdoel_ref");
+
+                    b.Property<Guid>("ThemaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MinimumdoelRef");
+
+                    b.HasIndex("ThemaId", "MinimumdoelRef")
+                        .IsUnique();
+
+                    b.ToTable("thema_minimumdoelen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Themadoel", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1787,6 +1811,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Navigation("Doelsuggesties");
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.ThemaMinimumdoel", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Curriculum.Minimumdoel", null)
+                        .WithMany()
+                        .HasForeignKey("MinimumdoelRef")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                        .WithMany("Minimumdoelen")
+                        .HasForeignKey("ThemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Themadoel", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
@@ -1979,6 +2018,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
                 {
+                    b.Navigation("Minimumdoelen");
+
                     b.Navigation("Subthemas");
 
                     b.Navigation("Themadoelen");

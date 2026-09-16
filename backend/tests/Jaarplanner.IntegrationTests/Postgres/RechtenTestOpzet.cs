@@ -3,7 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
+using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
+using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -39,6 +41,26 @@ internal sealed class RechtenTestOpzet
         await using var context = db.MaakContext();
         context.Leerplandoelen.Add(new Leerplandoel(
             code, Doelsoort.Gemeenschappelijk, "K3", "Natuur", "Levende natuur", "9.1", tekst: "Tekst"));
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>A minimumdoel to link as a themadoel (FB-043), once per database.</summary>
+    public static async Task ZaaiMinimumdoelAsync(PostgresTestDatabase db, string minimumdoelRef)
+    {
+        await using var context = db.MaakContext();
+        context.Minimumdoelen.Add(new Minimumdoel(minimumdoelRef, "K-", "1", "Tekst"));
+        await context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// A themadoel that links a leerplandoel, written straight to the database the way the FR-1 import still writes one:
+    /// no route adds it any more (FB-043).
+    /// </summary>
+    public async Task LeerplandoelThemadoelAsync(Guid themaId, string code)
+    {
+        await using var context = _db.MaakContext();
+        var thema = await context.Themas.Include(t => t.Themadoelen).SingleAsync(t => t.Id == themaId);
+        context.Themadoelen.Add(thema.VoegThemadoelToe(new DoelKoppeling(code, KoppelingStatus.Manueel)));
         await context.SaveChangesAsync();
     }
 

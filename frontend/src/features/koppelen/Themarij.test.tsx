@@ -63,6 +63,7 @@ function thema(themadoelCodes: string[] = []): ThemaWeergave {
       id: `td${i}`,
       koppeling: { id: `k${i}`, leerplandoelCode: code, status: "Manueel" as const, aiMotivatie: null },
     })),
+    minimumdoelen: [],
     subthemas: [subthema("Bladeren sorteren", [activiteit("Bladerslinger"), activiteit("Blad tellen", [CODE])])],
   };
 }
@@ -72,7 +73,6 @@ function tak(themadoelCodes: string[] = []): Themabestemming {
   return {
     thema: t,
     alGekoppeld: t.themadoelen.some((td) => td.koppeling.leerplandoelCode === CODE),
-    themaVol: t.themadoelen.length >= 3,
     subthemas: t.subthemas.map((s) => ({
       subthema: s,
       alGekoppeld: false,
@@ -168,22 +168,15 @@ describe("Themarij", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("koppelt aan het thema zolang er ruimte is", async () => {
-    toon(tak(["NED-1.1"]));
-
-    fireEvent.click(screen.getByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }));
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/themas/thema-1/themadoelen");
-  });
-
-  it("biedt geen vierde themadoel aan, maar zegt waarom", () => {
+  // FB-043: a themadoel is a minimumdoel, linked on the thema page. The thema row here only opens, whoever looks.
+  it("biedt op het thema zelf niets om te koppelen, ook niet aan wie themabeheer heeft", () => {
     toon(tak(["A-1", "A-2", "A-3"]));
 
-    expect(
-      screen.queryByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText(t("koppelen.themaVol", { max: 3 }))).toBeInTheDocument();
+    // The one button that names the thema is the row that opens it.
+    const themaknoppen = screen.getAllByRole("button", { name: /Herfst en bladeren/ });
+    expect(themaknoppen).toHaveLength(1);
+    expect(themaknoppen[0]).toHaveAttribute("aria-expanded", "true");
+    expect(screen.queryByText(/themadoelen/i)).not.toBeInTheDocument();
   });
 
   it("houdt de dichtgeklapte rij leeg, op een gekoppelde na", () => {
@@ -191,9 +184,7 @@ describe("Themarij", () => {
     // down the list drowned the sheet, but "Gekoppeld" stayed out here: it is the one thing a
     // teacher must be able to see without opening every thema.
     toon(tak(), false);
-    expect(
-      screen.queryByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
-    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByText(t("koppelen.gekoppeld"))).not.toBeInTheDocument();
 
     toon(tak([CODE]), false);
@@ -241,20 +232,15 @@ describe("Themarij", () => {
       screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
-    ).not.toBeInTheDocument();
-    expect(
       screen.queryByRole("button", { name: t("koppelen.nieuweActiviteitUitleg", { subthema: "Bladeren sorteren" }) }),
     ).not.toBeInTheDocument();
     expect(screen.getAllByText(t("koppelen.gekoppeld")).length).toBeGreaterThan(0);
   });
 
-  it("biedt themabeheer zonder hoofdleerkrachtschap alleen het thema aan", () => {
+  it("biedt themabeheer zonder hoofdleerkrachtschap niets om te koppelen", () => {
     toon(tak(["NED-1.1"]), true, ikMet({ heeftThemabeheer: true }));
 
-    expect(
-      screen.getByRole("button", { name: t("koppelen.koppelAanThemaUitleg", { thema: "Herfst en bladeren" }) }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /Herfst en bladeren/ })).toHaveLength(1);
     expect(
       screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
     ).not.toBeInTheDocument();

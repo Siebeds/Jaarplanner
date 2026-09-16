@@ -170,8 +170,7 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         var themaId = await Opzet.ThemaAsync();
         var subthemaId = await Opzet.SubthemaAsync("K3", themaId);
         using var directie = Opzet.Directie();
-        Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/themas/{themaId}/themadoelen", new { leerplandoelCode = Doelcode })));
+        await Opzet.LeerplandoelThemadoelAsync(themaId, Doelcode);
         var voor = await directie.GetStringAsync($"/api/klassen/{school.K3Blauw}/dekking");
 
         using var an = Opzet.Als(await PersoonAsync("Leerkracht An", klassen: [school.K3Blauw]));
