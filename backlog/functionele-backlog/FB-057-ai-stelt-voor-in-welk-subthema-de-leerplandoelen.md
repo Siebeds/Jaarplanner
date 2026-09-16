@@ -2,12 +2,12 @@
 id: FB-057
 titel: AI stelt voor in welk subthema de leerplandoelen van de themadoelen passen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:49
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 22:53
+opgepakt-door: claude-fb057
+branch: ticket/FB-057-subdoelplaatsing
 pr:
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-4.3, FR-4.4]
@@ -115,3 +115,4 @@ doel zelf opzoeken en met de hand als subdoel toevoegen, en ziet niet in één o
 ## Werklog
 
 - 2026-09-16 22:49 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-16 22:53 · claude-fb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
