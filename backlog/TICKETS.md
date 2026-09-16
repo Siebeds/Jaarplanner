@@ -147,7 +147,8 @@ statussen op hun branch (oppakken, te testen, teruggeven).
 
 - **Functioneel architect:** maakt tickets aan met de skill `ticket-aanmaken`, op `main`, in een eigen clone van de
   repo, en pusht ze. Een ticket begint altijd als `nieuw`. De architect wijzigt **geen status**, en mag de tekst van
-  een ticket aanscherpen zolang het `nieuw` is, na een `git pull`. Heeft de eigenaar het intussen op
+  een ticket aanscherpen zolang het `nieuw` is, na een `git pull`; een sessie kan het dan al vasthouden als de eigenaar
+  het meteen liet starten, dus bij twijfel eerst de eigenaar vragen. Heeft de eigenaar het intussen op
   `klaar-voor-bouw` gezet maar nog niet gepusht, dan botst dat bij de volgende pull als merge-conflict op dat ene
   ticket: houd dan de status van de eigenaar en de tekst van de architect. De architect **test** functionele tickets
   in `te-testen` en meldt het resultaat aan de eigenaar.

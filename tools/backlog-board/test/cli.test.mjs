@@ -79,6 +79,7 @@ test('a functional ticket from creation to te-testen, through the allowed transi
     out = run('status', 'FB-001', 'in-uitvoering', '--by', 's1');
     assert.equal(out.status, 1, "a nieuw ticket needs the owner's go-ahead in the log");
     assert.match(out.stderr, /staat op nieuw.*--log/);
+    assert.equal(run('status', 'FB-001', 'in-uitvoering', '--by', 's1', '--log', ' ').status, 1, 'a blank go-ahead is no go-ahead');
     r.git('switch', '-q', 'main');
     assert.equal(run('status', 'FB-001', 'klaar-voor-bouw', '--by', 'eigenaar').status, 0);
     r.commit('FB-001 ready');

@@ -2,10 +2,10 @@
 id: TB-035
 titel: Sessie mag een nieuw ticket oppakken wanneer de eigenaar zegt dat hij wil starten
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 20:34
+bijgewerkt: 2026-09-16 20:39
 opgepakt-door: nieuw-starten
 branch: ticket/TB-nieuw-starten
 pr:
@@ -33,13 +33,13 @@ meteen op (`nieuw` → `in-uitvoering`), met de vrijgave van de eigenaar in het 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een FB-ticket op `nieuw`, wanneer een sessie op haar branch `status FB-nnn in-uitvoering --by <sessie>
+- [x] Gegeven een FB-ticket op `nieuw`, wanneer een sessie op haar branch `status FB-nnn in-uitvoering --by <sessie>
   --log "..."` uitvoert, dan staat het ticket op `in-uitvoering` met die sessie als houder.
-- [ ] Gegeven een ticket op `nieuw`, wanneer die opdracht zonder `--log` loopt, dan weigert de CLI en vraagt om de
+- [x] Gegeven een ticket op `nieuw`, wanneer die opdracht zonder `--log` loopt, dan weigert de CLI en vraagt om de
   vrijgave van de eigenaar in `--log`.
-- [ ] Gegeven een ticket op `nieuw` waarvan de eigenaar niet gezegd heeft dat hij het wil starten, dan vraagt de sessie
+- [x] Gegeven een ticket op `nieuw` waarvan de eigenaar niet gezegd heeft dat hij het wil starten, dan vraagt de sessie
   het eerst (skill `ticket-uitvoeren` stap 1).
-- [ ] `backlog/TICKETS.md` en ADR-0033 beschrijven de nieuwe overgang; de tests van de tool zijn groen.
+- [x] `backlog/TICKETS.md` en ADR-0033 beschrijven de nieuwe overgang; de tests van de tool zijn groen.
 
 ## Buiten scope
 
@@ -54,3 +54,5 @@ Geen.
 
 - 2026-09-16 20:27 · nieuw-starten · aangemaakt (status in-uitvoering)
 - 2026-09-16 20:34 · nieuw-starten · CLI laat nieuw → in-uitvoering toe voor FB, met verplichte --log; tool-tests groen (85)
+- 2026-09-16 20:39 · nieuw-starten · antagonist: COMPLIANT; MINOR opgelost (lege --log geweigerd, architect-tekst in ticket-aanmaken en TICKETS.md bijgewerkt); open MINOR: geen aparte test voor een TB die later vanuit nieuw wordt opgepakt
+- 2026-09-16 20:39 · nieuw-starten · in-uitvoering → klaar: nieuw ticket mag starten op het woord van de eigenaar (CLI, skill, TICKETS.md, ADR-0033); tool-tests groen, antagonist COMPLIANT
