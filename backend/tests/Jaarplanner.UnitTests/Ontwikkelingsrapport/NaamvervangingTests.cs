@@ -124,6 +124,30 @@ public sealed class NaamvervangingTests
     }
 
     [Fact]
+    public void Een_plaatshouder_die_de_leerkracht_zelf_typte_blijft_van_haar()
+    {
+        // Vanishingly rare, but the cost of getting it wrong is a child's name put where she wrote a token. Her own
+        // token is mapped to itself, and the names get numbers above it.
+        var masker = Naamvervanging.Maskeer("Roos schreef #NAAM1# op het bord.", Klas);
+
+        Assert.Equal("#NAAM2# schreef #NAAM1# op het bord.", masker.Tekst);
+        Assert.Equal("#NAAM1#", masker.Plaatshouders["#NAAM1#"]);
+        Assert.Equal("Roos", masker.Plaatshouders["#NAAM2#"]);
+        Assert.Equal("Roos schreef #NAAM1# op het bord.", Naamvervanging.Herstel(masker.Tekst, masker.Plaatshouders));
+        Assert.True(Naamvervanging.HeeftPreciesDeze(masker.Tekst, masker.Plaatshouders));
+    }
+
+    [Fact]
+    public void Een_zelf_getypte_plaatshouder_zonder_naam_van_de_klas_telt_ook_mee()
+    {
+        var masker = Naamvervanging.Maskeer("Het kind schreef #NAAM3# op het bord.", Klas);
+
+        Assert.Equal("Het kind schreef #NAAM3# op het bord.", masker.Tekst);
+        Assert.True(Naamvervanging.HeeftPreciesDeze(masker.Tekst, masker.Plaatshouders));
+        Assert.False(Naamvervanging.HeeftPreciesDeze("Het kind schreef niets op het bord.", masker.Plaatshouders));
+    }
+
+    [Fact]
     public void Heeft_precies_deze_weigert_een_plaatshouder_in_een_tekst_die_er_geen_kreeg()
     {
         var masker = Naamvervanging.Maskeer("Het kind speelt graag buiten.", Klas);

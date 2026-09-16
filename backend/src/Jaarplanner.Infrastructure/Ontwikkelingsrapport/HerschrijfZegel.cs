@@ -14,10 +14,10 @@ namespace Jaarplanner.Infrastructure.Ontwikkelingsrapport;
 /// by every instance, and there is no second thing an operator has to set or rotate.
 /// </para>
 /// <para>
-/// <b>The seal carries no text.</b> Its payload names the doel and a SHA-256 of the proposal, never the proposal itself:
-/// the server can recognise the text it is handed back without ever having stored it, and a seal that leaks tells no one
-/// what was proposed. Data Protection encrypts and authenticates that payload, so the doel does not leak either, and a
-/// seal cannot be edited into one for another child.
+/// <b>The seal carries no text.</b> Its payload names the doel and a SHA-256 of each of the two texts, never a text:
+/// the server can recognise what it handed out without ever having stored it, and a seal that leaks tells no one what
+/// was proposed. Data Protection encrypts and authenticates that payload, so the doel does not leak either, and a seal
+/// cannot be edited into one for another child.
 /// </para>
 /// <para>
 /// <b>The expiry is inside the payload</b>, checked here against the injected clock, rather than taken from
@@ -36,7 +36,13 @@ public sealed class HerschrijfZegel : IHerschrijfZegel
     /// <summary>Stands in for the rapportdoel id of the algemeen besluit, which has none.</summary>
     private const string Besluitsleutel = "besluit";
 
+    /// <summary>
+    /// The field separator. Every field is a number, a GUID, a fixed word or base64, and none of those can contain it,
+    /// so the payload parses back unambiguously.
+    /// </summary>
     private const char Scheiding = '|';
+
+    private const int Velden = 6;
 
     private readonly IDataProtector _beschermer;
     private readonly TimeProvider _tijd;
@@ -49,23 +55,41 @@ public sealed class HerschrijfZegel : IHerschrijfZegel
     }
 
     /// <inheritdoc />
-    public string Onderteken(Herschrijfdoel doel, string voorstel)
+    public string Onderteken(Herschrijfdoel doel, string brontekst, string voorstel)
     {
         ArgumentNullException.ThrowIfNull(doel);
+        ArgumentNullException.ThrowIfNull(brontekst);
         ArgumentNullException.ThrowIfNull(voorstel);
 
         var vervalt = _tijd.GetUtcNow().Add(Geldigheidsduur).ToUnixTimeSeconds();
-        return _beschermer.Protect(
-            vervalt.ToString(CultureInfo.InvariantCulture) + Scheiding + Lading(doel, voorstel));
+        return _beschermer.Protect(string.Join(
+            Scheiding,
+            vervalt.ToString(CultureInfo.InvariantCulture),
+            doel.LeerlingId.ToString("D", CultureInfo.InvariantCulture),
+            doel.Moment.ToString(CultureInfo.InvariantCulture),
+            Doelsleutel(doel),
+            Afdruk(brontekst),
+            Afdruk(voorstel)));
     }
 
     /// <inheritdoc />
-    public bool Klopt(Herschrijfdoel doel, string? voorstel, string zegel)
+    public bool DektVoorstel(Herschrijfdoel doel, string? voorstel, string? zegel) =>
+        voorstel is not null && Lees(doel, zegel) is { } velden && velden[5] == Afdruk(voorstel);
+
+    /// <inheritdoc />
+    public bool DektBrontekst(Herschrijfdoel doel, string? brontekst, string? zegel) =>
+        brontekst is not null && Lees(doel, zegel) is { } velden && velden[4] == Afdruk(brontekst);
+
+    /// <summary>
+    /// The payload of a seal that is this server's own, this doel's, and not expired, or <c>null</c> when it is none of
+    /// those. All three failures mean the same to a caller: this is not the server's word, so it proves nothing.
+    /// </summary>
+    private string[]? Lees(Herschrijfdoel doel, string? zegel)
     {
         ArgumentNullException.ThrowIfNull(doel);
         if (string.IsNullOrWhiteSpace(zegel))
         {
-            return false;
+            return null;
         }
 
         string ontsloten;
@@ -75,39 +99,34 @@ public sealed class HerschrijfZegel : IHerschrijfZegel
         }
         catch (CryptographicException)
         {
-            // Tampered with, or sealed with a key this ring no longer has. Both mean the same to the caller: this is not
-            // the server's own word, so it proves nothing.
-            return false;
+            // Tampered with, or sealed with a key this ring no longer has.
+            return null;
         }
         catch (FormatException)
         {
             // Not even base64: someone sent something that was never a seal.
-            return false;
+            return null;
         }
 
-        var streep = ontsloten.IndexOf(Scheiding, StringComparison.Ordinal);
-        if (streep < 0
-            || !long.TryParse(ontsloten[..streep], CultureInfo.InvariantCulture, out var vervalt)
+        var velden = ontsloten.Split(Scheiding);
+        if (velden.Length != Velden
+            || !long.TryParse(velden[0], CultureInfo.InvariantCulture, out var vervalt)
             || DateTimeOffset.FromUnixTimeSeconds(vervalt) <= _tijd.GetUtcNow())
         {
-            return false;
+            return null;
         }
 
-        var lading = ontsloten[(streep + 1)..];
-
-        // A rejection sends no text, because none may be stored: then only the doel is proven, which is all a rejection
-        // needs. Ordinal, because both sides are of the server's own making.
-        return voorstel is null
-            ? lading.StartsWith(Doeldeel(doel), StringComparison.Ordinal)
-            : string.Equals(lading, Lading(doel, voorstel), StringComparison.Ordinal);
+        // Ordinal throughout: both sides are of the server's own making.
+        return string.Equals(velden[1], doel.LeerlingId.ToString("D", CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            && string.Equals(velden[2], doel.Moment.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal)
+            && string.Equals(velden[3], Doelsleutel(doel), StringComparison.Ordinal)
+                ? velden
+                : null;
     }
 
-    private static string Lading(Herschrijfdoel doel, string voorstel) =>
-        Doeldeel(doel) + Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(voorstel)));
+    private static string Doelsleutel(Herschrijfdoel doel) =>
+        doel.RapportdoelId is { } id ? id.ToString("D", CultureInfo.InvariantCulture) : Besluitsleutel;
 
-    /// <summary>The doel's part of the payload, ending in its separator so it cannot match a longer id by prefix.</summary>
-    private static string Doeldeel(Herschrijfdoel doel) =>
-        string.Create(
-            CultureInfo.InvariantCulture,
-            $"{doel.LeerlingId:D}{Scheiding}{doel.Moment}{Scheiding}{(doel.RapportdoelId is { } id ? id.ToString("D", CultureInfo.InvariantCulture) : Besluitsleutel)}{Scheiding}");
+    private static string Afdruk(string tekst) =>
+        Convert.ToBase64String(SHA256.HashData(Encoding.UTF8.GetBytes(tekst)));
 }

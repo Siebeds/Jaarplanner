@@ -57,12 +57,27 @@ public static partial class Naamvervanging
             .ThenBy(naam => naam, StringComparer.Ordinal)
             .ToList();
 
-        if (teZoeken.Count == 0)
+        // A text that already holds a token of this shape, because the teacher typed one, would otherwise make every
+        // answer look wrong, and, if a name were given the same number, would have a child's name put in its place on
+        // the way back. Each one is kept as it stands: mapped to itself, so the check on the way back accepts it and
+        // Herstel leaves it alone, while new placeholders are numbered above every number already in the text.
+        var plaatshouders = new Dictionary<string, string>(StringComparer.Ordinal);
+        var volgend = 1;
+        foreach (Match treffer in PlaatshouderPatroon().Matches(tekst))
         {
-            return new Naammasker(tekst, new Dictionary<string, string>(StringComparer.Ordinal));
+            plaatshouders[treffer.Value] = treffer.Value;
+            if (int.TryParse(treffer.Groups[1].ValueSpan, NumberStyles.None, CultureInfo.InvariantCulture, out var nummer)
+                && nummer >= volgend)
+            {
+                volgend = nummer + 1;
+            }
         }
 
-        var plaatshouders = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (teZoeken.Count == 0)
+        {
+            return new Naammasker(tekst, plaatshouders);
+        }
+
         var perNaam = new Dictionary<string, string>(StringComparer.Ordinal);
         var gemaskeerd = new StringBuilder(tekst.Length);
 
@@ -79,7 +94,7 @@ public static partial class Naamvervanging
 
             if (!perNaam.TryGetValue(naam, out var plaatshouder))
             {
-                plaatshouder = Plaatshouder(plaatshouders.Count + 1);
+                plaatshouder = Plaatshouder(volgend++);
                 perNaam[naam] = plaatshouder;
                 plaatshouders[plaatshouder] = naam;
             }
@@ -144,6 +159,6 @@ public static partial class Naamvervanging
         return !ervoor && !erna;
     }
 
-    [GeneratedRegex(@"#NAAM\d+#", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"#NAAM(\d+)#", RegexOptions.CultureInvariant)]
     private static partial Regex PlaatshouderPatroon();
 }

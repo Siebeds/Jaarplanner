@@ -235,12 +235,39 @@ public sealed class RapportherschrijvingTests
     [Fact]
     public async Task Een_weigering_maakt_geen_leeg_rapport_aan()
     {
+        // Nothing was ever saved, so there is no text the proposal could have been for. The rejection is refused rather
+        // than swallowed, and above all no empty report is written to hang a mark on.
         var (_, zegel) = await Voorstel();
 
-        await Dienst().WeigerHerschrijvingAsync(_roos, 1, _rapportdoel, zegel);
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Dienst().WeigerHerschrijvingAsync(_roos, 1, _rapportdoel, zegel));
 
+        Assert.Equal(OntwikkelingsrapportService.ZegelKloptNiet, fout.Message);
         await using var db = new AppDbContext(_options);
         Assert.Empty(db.Ontwikkelingsrapporten);
+    }
+
+    [Fact]
+    public async Task Een_tekst_die_intussen_veranderde_krijgt_het_weigermerk_niet()
+    {
+        // She kept typing while the panel stood open, or a co-teacher wrote over it. The mark belongs to the text the
+        // proposal was made for, and marking what stands there now would say a proposal was rejected for a text nobody
+        // ever proposed one for.
+        var dienst = Dienst();
+        await dienst.BewaarBeoordelingAsync(_roos, 1, _rapportdoel, new BeoordelingInvoer(null, EigenTekst));
+        var (_, zegel) = await Voorstel();
+        await dienst.BewaarBeoordelingAsync(_roos, 1, _rapportdoel, new BeoordelingInvoer(null, "Intussen iets anders."));
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => dienst.WeigerHerschrijvingAsync(_roos, 1, _rapportdoel, zegel));
+
+        await using var db = new AppDbContext(_options);
+        var rij = await db.Ontwikkelingsrapporten
+            .Include(r => r.Beoordelingen)
+            .SelectMany(r => r.Beoordelingen)
+            .SingleAsync();
+        Assert.Equal("Intussen iets anders.", rij.Tekst);
+        Assert.False(rij.HerschrijvingGeweigerd);
     }
 
     [Fact]

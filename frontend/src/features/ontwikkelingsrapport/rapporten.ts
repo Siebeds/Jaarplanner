@@ -212,6 +212,10 @@ export function useBewaarBesluit(leerlingId: string, moment: number) {
  */
 export function useHerschrijf(leerlingId: string, moment: number) {
   return useMutation({
+    // `gcTime: 0` so the mutation cache drops the answer the moment the component unmounts. Without it a proposal the
+    // teacher walked away from without deciding would linger in memory, which is the one thing this whole path is built
+    // not to do.
+    gcTime: 0,
     mutationFn: ({ rapportdoelId, tekst }: { rapportdoelId: string | null; tekst: string }) =>
       post<Herschrijfvoorstel>(`${pad(leerlingId, moment)}/herschrijvingen`, { rapportdoelId, tekst }),
   });

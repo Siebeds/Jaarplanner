@@ -38,10 +38,11 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
     internal const string GeenTekstOmTeHerschrijven = "Typ eerst zelf een tekst. Daarna kan de AI ze herwerken.";
 
     /// <summary>
-    /// The seal of a rejected proposal is not this server's, or not this field's, or too old (D13). The sentence names
-    /// the one cause a teacher can act on, and the way out is the same for all three.
+    /// The seal of a rejected proposal is not this server's, or not this field's, or too old (D13). The sentence says
+    /// only what all three have in common, since the server cannot tell the teacher which one it was, and the way out is
+    /// the same for each.
     /// </summary>
-    internal const string ZegelKloptNiet = "Dit voorstel is verlopen. Vraag een nieuw voorstel.";
+    internal const string ZegelKloptNiet = "Dit voorstel geldt niet meer. Vraag een nieuw voorstel.";
 
     private readonly AppDbContext _db;
     private readonly IRapportsetService _rapportset;
@@ -255,7 +256,7 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
         }
 
         var doel = new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId);
-        return HerschrijfResultaat.Geslaagd(voorstel, _zegel.Onderteken(doel, voorstel));
+        return HerschrijfResultaat.Geslaagd(voorstel, _zegel.Onderteken(doel, bron, voorstel));
     }
 
     public async Task WeigerHerschrijvingAsync(
@@ -267,30 +268,35 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
     {
         var moment1tot3 = KeurMoment(moment);
         await VereisKindAsync(leerlingId, cancellationToken);
+        var doel = new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId);
 
-        if (zegel is null || !_zegel.Klopt(new Herschrijfdoel(leerlingId, moment1tot3, rapportdoelId), null, zegel))
+        // Loaded rather than made: a rejection is never a first write. An empty report may not be created for a mark's
+        // sake, and the stored text is also what the seal is held against.
+        var rapport = await _db.Ontwikkelingsrapporten
+            .Include(r => r.Beoordelingen)
+            .SingleOrDefaultAsync(r => r.LeerlingId == leerlingId && r.Moment == moment1tot3, cancellationToken);
+
+        var huidigeTekst = rapportdoelId is { } doelId
+            ? rapport?.Beoordelingen.FirstOrDefault(b => b.RapportdoelId == doelId)?.Tekst
+            : rapport?.Besluit;
+
+        // One question, two things it settles. The seal must be this server's word for this field and still valid, and
+        // it must have been made for the text that stands there now. A text that moved on under her, because she kept
+        // typing or a co-teacher wrote over it, takes the mark's meaning with it: marking what stands there now would
+        // say a proposal was rejected for a text nobody ever proposed one for. She is told, rather than left with a
+        // decision that quietly went nowhere.
+        if (!_zegel.DektBrontekst(doel, huidigeTekst, zegel))
         {
             throw new SchoolcontentValidatieFout(ZegelKloptNiet);
         }
 
-        // Loaded rather than made: a rejection is never a first write. A report exists here in every real case, because
-        // a proposal was made for a text that was in it; if it is gone, there is nothing left to mark and an empty
-        // report may not be created for the mark's sake.
-        var rapport = await _db.Ontwikkelingsrapporten
-            .Include(r => r.Beoordelingen)
-            .SingleOrDefaultAsync(r => r.LeerlingId == leerlingId && r.Moment == moment1tot3, cancellationToken);
-        if (rapport is null)
+        if (rapportdoelId is { } id)
         {
-            return;
-        }
-
-        if (rapportdoelId is { } doelId)
-        {
-            rapport.WeigerHerschrijving(doelId);
+            rapport!.WeigerHerschrijving(id);
         }
         else
         {
-            rapport.WeigerBesluitHerschrijving();
+            rapport!.WeigerBesluitHerschrijving();
         }
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -302,9 +308,7 @@ public sealed class OntwikkelingsrapportService : IOntwikkelingsrapportService
     /// <see cref="Tekststatus.Manueel"/>, which is what a text the teacher shaped is.
     /// </summary>
     private Tekststatus Herkomst(Herschrijfdoel doel, string? tekst, string? zegel) =>
-        tekst is not null && zegel is not null && _zegel.Klopt(doel, tekst, zegel)
-            ? Tekststatus.Aanvaard
-            : Tekststatus.Manueel;
+        _zegel.DektVoorstel(doel, tekst, zegel) ? Tekststatus.Aanvaard : Tekststatus.Manueel;
 
     /// <summary>
     /// Applies <paramref name="wijziging"/> to the child's report at the moment, making the report on the first write.

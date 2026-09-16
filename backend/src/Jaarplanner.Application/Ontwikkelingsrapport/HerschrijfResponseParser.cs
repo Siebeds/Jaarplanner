@@ -53,9 +53,11 @@ public static class HerschrijfResponseParser
         {
             ruw = JsonSerializer.Deserialize<RawHerschrijving>(StripMarkdownFence(content.Trim()), Options);
         }
-        catch (JsonException ex)
+        catch (JsonException)
         {
-            return HerschrijfParseResultaat.Ongeldig($"Malformed JSON: {ex.Message}");
+            // The exception's own message quotes the offending character of the answer, and that answer is a rewrite of
+            // pupil data: it names the shape, never a character of it.
+            return HerschrijfParseResultaat.Ongeldig("Malformed JSON in the AI response.");
         }
 
         if (ruw is null)
