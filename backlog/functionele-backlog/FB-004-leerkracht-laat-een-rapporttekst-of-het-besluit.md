@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-16 10:32
+bijgewerkt: 2026-09-16 11:03
 opgepakt-door: rapport-herwerken
 branch: ticket/FB-004-rapporttekst-herwerken
 pr:
@@ -91,3 +91,5 @@ Geen.
 - 2026-09-16 09:32 · rapport-herwerken · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-16 10:02 · rapport-herwerken · backend klaar: naamvervanging (D14), promptbouwer, antwoordvalidatie, zegel over Data Protection (D13), routes en migratie; 1870 unit tests groen, dotnet format schoon
 - 2026-09-16 10:32 · rapport-herwerken · alle 6 acceptatiecriteria aangevinkt; browserpass op 1440 en 390px geslaagd tegen een lokale nep-Foundry: de prompt die de server verstuurde bevatte geen enkele naam van de klas (#NAAM1#/#NAAM2#), 'een roos' bleef staan, en geen kindnaam of rapporttekst in de serverlog
+- 2026-09-16 10:50 · rapport-herwerken · antagonist ronde 1: COMPLIANT, 0 critical, 0 major, 8 minor; 6 minor opgelost (zie backlog/worklogs/FB-004/antagonist.md), 3 bewust gelaten met reden
+- 2026-09-16 11:03 · rapport-herwerken · browserpass ronde 2 na de antagonist-fixes: overnemen, weigeren, aanpassen en de weigering op een intussen gewijzigde tekst allemaal groen; paneel toont links nu de tekst waarvoor het voorstel gemaakt werd

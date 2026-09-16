@@ -528,6 +528,22 @@ describe("RapportScherm, een tekst laten herwerken door AI", () => {
     expect(screen.queryByText(/motivatie/i)).not.toBeInTheDocument();
   });
 
+  it("toont links de tekst waarvoor het voorstel gemaakt werd, ook als zij intussen verder typt", async () => {
+    // "Je eigen tekst" names the text this proposal was made for. Following the field would put that heading over a
+    // sentence the AI never saw, and the pair would silently stop belonging together.
+    toon(LEERKRACHT, { begin: MET_TEKST });
+    await screen.findByRole("heading", { name: LUISTEREN.titel });
+
+    fireEvent.click(herschrijfknop(LUISTEREN.titel));
+    await screen.findByText("Herwerkt: Fien luistert graag.");
+
+    fireEvent.change(tekstvak(LUISTEREN.titel), { target: { value: "Fien luistert graag naar een verhaal." } });
+
+    const paneel = within(screen.getByText(t("ontwikkelingsrapport.herschrijfNamen")).parentElement!);
+    expect(paneel.getByText("Fien luistert graag.")).toBeInTheDocument();
+    expect(paneel.queryByText("Fien luistert graag naar een verhaal.")).not.toBeInTheDocument();
+  });
+
   it("overnemen bewaart het voorstel met het zegel van de server", async () => {
     const verzoeken = toon(LEERKRACHT, { begin: MET_TEKST });
     await screen.findByRole("heading", { name: LUISTEREN.titel });

@@ -494,6 +494,10 @@ function Herschrijfvak({
   const [open, setOpen] = useState(false);
   const [voorstel, setVoorstel] = useState<Herschrijfvoorstel | null>(null);
   const [bewerkt, setBewerkt] = useState("");
+  // The text as it stood when the AI was asked, held apart from the field. "Je eigen tekst" then names the text this
+  // proposal was actually made for, also when the teacher keeps typing in the field while the panel is open. Showing
+  // the live field there would put a heading over a text the proposal has nothing to do with.
+  const [bron, setBron] = useState("");
   const eigenId = useId();
   const voorstelId = useId();
 
@@ -502,6 +506,7 @@ function Herschrijfvak({
   function vraag() {
     setOpen(true);
     setVoorstel(null);
+    setBron(tekst);
     herschrijf.reset();
     weiger.reset();
     herschrijf.mutate(
@@ -567,7 +572,7 @@ function Herschrijfvak({
                     {t("ontwikkelingsrapport.herschrijfEigen")}
                   </h4>
                   <p className="whitespace-pre-line break-words rounded-veld border border-lijn bg-kaart px-3 py-2 text-body text-inkt">
-                    {tekst}
+                    {bron}
                   </p>
                 </div>
                 <div className="flex min-w-0 flex-col gap-1">
