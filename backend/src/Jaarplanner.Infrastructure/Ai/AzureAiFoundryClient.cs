@@ -15,6 +15,12 @@ namespace Jaarplanner.Infrastructure.Ai;
 /// and returns the model's <b>raw</b> completion text — validation of that text against the
 /// structured-JSON contract is a separate concern (E2-03).
 /// <para>
+/// <b>Prompt order (TB-043).</b> The system message is the system prompt followed by the stable context
+/// (<see cref="AiRequest.VasteContext"/>), the user message the user prompt. The service caches an identical prefix on
+/// its own, so the order is all it needs. An answer cut off at <c>max_completion_tokens</c>
+/// (<c>finish_reason</c> <c>length</c>) becomes an <see cref="AiAntwoordAfgekaptFout"/>.
+/// </para>
+/// <para>
 /// <b>The v1 API (ADR-0036).</b> Requests go to <c>{endpoint}/openai/v1/chat/completions</c> with the deployment as
 /// <c>model</c>. That route needs no monthly <c>api-version</c>, and it is the one the gpt-5 family is served on.
 /// </para>
@@ -77,7 +83,7 @@ public sealed class AzureAiFoundryClient : IAiClient
             ["model"] = _options.Deployment!.Trim(),
             ["messages"] = new[]
             {
-                new { role = "system", content = request.SystemPrompt },
+                new { role = "system", content = Systeembericht(request) },
                 new { role = "user", content = request.UserPrompt },
             },
             // Always ask the model for structured JSON (Art. IV.5); it is validated downstream (E2-03).
@@ -114,14 +120,30 @@ public sealed class AzureAiFoundryClient : IAiClient
             .ConfigureAwait(false);
 
         // Extract the raw assistant message (choices[0].message.content); leave parsing to E2-03.
-        var content = document.RootElement
-            .GetProperty("choices")[0]
+        var choice = document.RootElement.GetProperty("choices")[0];
+
+        // Cut off at max_completion_tokens: the JSON is incomplete, so no caller may parse or persist it (TB-043).
+        if (choice.TryGetProperty("finish_reason", out var finishReason)
+            && finishReason.ValueKind == JsonValueKind.String
+            && finishReason.GetString() == "length")
+        {
+            throw new AiAntwoordAfgekaptFout();
+        }
+
+        var content = choice
             .GetProperty("message")
             .GetProperty("content")
             .GetString() ?? string.Empty;
 
         return new AiCompletion { Content = content, Usage = ReadUsage(document.RootElement) };
     }
+
+    // The system prompt, then the stable context after a blank line (TB-043): the same bytes for every request of the
+    // same kind, so the provider's automatic prompt cache (identical prefixes from 1,024 tokens) can match them.
+    private static string Systeembericht(AiRequest request) =>
+        string.IsNullOrEmpty(request.VasteContext)
+            ? request.SystemPrompt
+            : request.SystemPrompt + "\n\n" + request.VasteContext;
 
     // Server-side credentials are attached here only — never exposed to the frontend (Art. VI.4).
     private async Task AuthenticateAsync(HttpRequestMessage httpRequest, CancellationToken cancellationToken)

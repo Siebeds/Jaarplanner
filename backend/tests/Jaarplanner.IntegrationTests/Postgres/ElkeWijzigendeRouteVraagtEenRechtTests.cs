@@ -58,6 +58,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     {
         // The subthema row at the body's leeftijd (ThemasController.MaakSubthema).
         ["POST api/themas/{themaId:guid}/subthemas"] = new { naam = "Regen", duurWeken = 2, leeftijd = "K3" },
+        // The own or shared activiteit row, by the body's choice (SubthemasController.MaakActiviteit, ADR-0049 D1, D2).
+        ["POST api/subthemas/{subthemaId:guid}/activiteiten"] = new { naam = "Plassen", gedeeld = false },
     };
 
     private PostgresTestDatabase _db = null!;
@@ -274,6 +276,10 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         "leerlingId" => zaad.LeerlingId.ToString(),
         "runId" => zaad.RunId.ToString(),
         "woordwebId" => zaad.WoordwebId.ToString(),
+        "subdoelvoorstelId" => zaad.SubdoelvoorstelId.ToString(),
+        "subthemavoorstelId" => zaad.SubthemavoorstelId.ToString(),
+        // The subdoelplaatsing's leeftijd is a route value (FB-057): a real one, so the rights check runs, not the 400.
+        "leeftijd" => "K3",
         "plaatsingId" when route.StartsWith("api/hoekplaatsingen/", StringComparison.Ordinal) => zaad.HoekplaatsingId.ToString(),
         "plaatsingId" when route.StartsWith("api/algemene-ficheplaatsingen/", StringComparison.Ordinal) => zaad.FicheplaatsingId.ToString(),
         "blokStart" => "2026-09-07",
@@ -328,6 +334,16 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         var woordwebId = await IdAsync(eigenaar.PostAsJsonAsync(
             $"/api/subthemas/{subthemaId}/woordwebs/eigen/woorden", new { woorden = new[] { "regen" } }));
 
+        // One open proposal of each kind (FB-057), written straight to the database: only the AI makes them.
+        var subthemavoorstel = new Jaarplanner.Domain.Schoolcontent.Subthemavoorstel(themaId, "K3", "Wind", "Waar komt wind vandaan?", 2, "Reden.");
+        var subdoelvoorstel = Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel.InSubthema(themaId, "K3", Doelcode, subthemaId, "Reden.");
+        await using (var context = _db.MaakContext())
+        {
+            context.Subthemavoorstellen.Add(subthemavoorstel);
+            context.Subdoelvoorstellen.Add(subdoelvoorstel);
+            await context.SaveChangesAsync();
+        }
+
         // An open run with one item of each kind it creates, so its item routes are sent the run's own items.
         var run = await RechtenTestOpzet.StartWizardAsync(client);
         var wizard = $"{RechtenTestOpzet.Wizard}/{run.Id}";
@@ -351,7 +367,9 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             runSubthemaId,
             runSubdoelId,
             runActiviteitId,
-            woordwebId);
+            woordwebId,
+            subdoelvoorstel.Id,
+            subthemavoorstel.Id);
     }
 
     private static async Task<Guid> IdAsync(Task<HttpResponseMessage> verzoek)
@@ -376,5 +394,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Guid RunSubthemaId,
         Guid RunSubdoelId,
         Guid RunActiviteitId,
-        Guid WoordwebId);
+        Guid WoordwebId,
+        Guid SubdoelvoorstelId,
+        Guid SubthemavoorstelId);
 }

@@ -18,9 +18,9 @@ its unit tests (`backend/tests/Jaarplanner.UnitTests/Eval/`), all against fakes.
 
 Both use the **production step 6 prompt** (`ThemaOpbouwPromptBuilder`), with two differences:
 
-- a ceiling on the number of suggestions (`--max`, default 8);
-- with `--goal-format compact` (the default), the goal list is shortened to code, taxonomy and text. `--goal-format
-  full` sends exactly what production sends today, examples and explanation included.
+- the ceiling on the number of suggestions is the run's own (`--max`, default 8, the same as production's);
+- with `--goal-format compact` (the default), the goal list is written one line a goal: code, taxonomy and text.
+  `--goal-format full` sends the goal list exactly as production does, grouped under domein and subdomein.
 
 Answers go through the production parser (`DoelMatchResponseParser`), and a code that is among the thema's
 `gekozenThemadoelCodes` is dropped first, as production step 6 does. A code that is not in the candidate list counts

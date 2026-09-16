@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Application.Toegang;
@@ -16,6 +17,10 @@ namespace Jaarplanner.Api.Controllers;
 /// <c>ActiviteitVerwijderen</c> (HL; the maker while no goal is linked; R25, R26, R33). Moving it:
 /// <c>ActiviteitVerplaatsen</c> (HL; a leerkracht of that leeftijd while no goal is linked; I19), and the domain keeps
 /// the move at the same leeftijd, so the destination needs no second check.
+/// </para>
+/// <para>
+/// <b>An own activiteit (ADR-0049)</b> goes through the same rows, and the resource makes only its owner (and directie)
+/// pass them (D4). Using one as an own copy is <c>EigenActiviteitGebruiken</c> (D5).
 /// </para>
 /// </summary>
 [ApiController]
@@ -63,6 +68,20 @@ public sealed class ActiviteitenController : ControllerBase
     {
         await _service.OntkoppelActiviteitDoelAsync(activiteitId, koppelingId, cancellationToken);
         return NoContent();
+    }
+
+    /// <summary>
+    /// Makes the caller an own copy of an own activiteit (ADR-0049 E2, D5). The copy's owner is the signed-in gebruiker,
+    /// never an id from the body.
+    /// </summary>
+    [HttpPost("{activiteitId:guid}/kopie")]
+    [RechtOp(Rechtenmatrix.Beleid.EigenActiviteitGebruiken, Rechtbron.Activiteit, "activiteitId")]
+    public async Task<ActionResult<ActiviteitWeergave>> Kopieer(Guid activiteitId, CancellationToken cancellationToken)
+    {
+        var gebruikerId = Aanmelding.GebruikerId(User)
+            ?? throw new InvalidOperationException("A request past the rights check carries a gebruiker id.");
+        var kopie = await _service.KopieerActiviteitAsync(activiteitId, gebruikerId, cancellationToken);
+        return Created($"/api/activiteiten/{kopie.Id}", kopie);
     }
 
     /// <summary>Links or unlinks an activiteit to an onderzoeksvraag. Send null to clear. A content field (I15).</summary>

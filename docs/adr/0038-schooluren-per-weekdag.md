@@ -79,3 +79,21 @@ does not pull a teacher back.
 | Never colour alone (Art. XII) | `Schooltijdlagen` and `urenZin` in `Tijdraster.tsx`; `Tijdraster.test.tsx` |
 | Every hour stays plannable (ADR-0028) | the hatch is `pointer-events-none` under the empty column's button; `Tijdraster.test.tsx` |
 | The screen offers fields to directie only | `SchoolurenScherm` (`mag.beheer`); `SchoolurenScherm.test.tsx` |
+
+## Amendment (2026-09-16): a very light flat tint, and the times in the hour gutter
+
+FB-058 replaces the mark of decision 4. The owner found the hatch far too loud, and an activiteit on it hard to read,
+because the block's half-transparent ground let the stripes through its name.
+
+- The hours before and after the school day and the middagpauze get **a very light flat tint** (`bg-vlak/70` on the
+  card), no pattern. It stays lighter than a closed day's `bg-vlak-diep/60`, and a closed day keeps its name, so the
+  two still read as different things. Still ink, never a hue.
+- The stretches carry **no words**. The hour gutter writes each boundary of the teaching days on screen (begin,
+  middagpauze begin and end, einde) in full ink with a short tick, merged across the days (`grenstijden` in
+  `schooluren.ts`); an hour label it would overlap is left out. When two boundaries would overlap, a begin or end of the school day wins over a middagpauze, and otherwise the earlier one; the other is
+  dropped, and that day's edge is then shown by the tint alone, with its hours still spoken in the day heading.
+- An activiteit block gets an **opaque** ground: the same grey mixed with the card instead of laid over it.
+
+Everything under *What does not change* still holds: the tint is `pointer-events-none` under the empty column's
+button. In the compliance trace, "the hatch" now reads "the tint", and never colour alone is also enforced by
+`grenstijden` (`schooluren.test.ts`) and the gutter test in `Tijdraster.test.tsx`.

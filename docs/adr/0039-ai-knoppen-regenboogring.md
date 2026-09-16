@@ -1,6 +1,6 @@
 # ADR-0039 — A control that calls the AI wears a rainbow ring
 
-- **Status:** Accepted
+- **Status:** Accepted; decision 5 amended by [ADR-0051](0051-ai-voorstel-draagt-een-vage-ring.md) (a proposal wears a faint ring)
 - **Date:** 2026-09-15
 - **Deciders:** Project owner, in session on 2026-09-15: *"ik wil voor alle buttons die met AI ondersteuning te maken
   hebben (zoals "genereren") dat de knop een regenboogachtige stijl heeft zoals apple dat doet zodat het duidelijk is

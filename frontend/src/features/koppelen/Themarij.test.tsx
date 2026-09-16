@@ -217,11 +217,11 @@ describe("Themarij", () => {
   });
 
   /*
-    E6-02, ADR-0030 §3: each level is offered to whoever may link there. A leerkracht of K3 may make activiteiten but
-    not link goals to them (R19), a subthema is the hoofdleerkracht's (R24), and a thema is themabeheer's (R4). The
-    tree still says where the doel already sits.
+    E6-02, ADR-0030 §3: each level is offered to whoever may link there. A leerkracht of K3 may not link goals to a
+    shared activiteit (R19), a subthema is the hoofdleerkracht's (R24), and a thema is themabeheer's (R4). She may make an
+    own activiteit with the doel on it (ADR-0049 E1, E3). The tree still says where the doel already sits.
   */
-  it("biedt een leerkracht van de leeftijd niets om te koppelen, maar toont waar het doel al hangt", () => {
+  it("biedt een leerkracht van de leeftijd alleen een eigen nieuwe activiteit, en toont waar het doel al hangt", () => {
     toon(tak(), true, ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
 
     expect(screen.getByText("Bladerslinger")).toBeInTheDocument();
@@ -232,8 +232,8 @@ describe("Themarij", () => {
       screen.queryByRole("button", { name: t("koppelen.koppelAanSubthemaUitleg", { subthema: "Bladeren sorteren" }) }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: t("koppelen.nieuweActiviteitUitleg", { subthema: "Bladeren sorteren" }) }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: t("koppelen.nieuweActiviteitUitleg", { subthema: "Bladeren sorteren" }) }),
+    ).toBeInTheDocument();
     expect(screen.getAllByText(t("koppelen.gekoppeld")).length).toBeGreaterThan(0);
   });
 

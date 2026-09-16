@@ -7,14 +7,16 @@ import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { useLeerplandoelTeksten } from "../../lib/queries";
 import type { Mag } from "../../lib/rechten";
-import type { SubthemaWeergave } from "../../lib/types";
+import type { SubdoelvoorstelWeergave, SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
+import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Kaart, Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { Inklaplijst } from "./Inklaplijst";
 import { opCode } from "./opCode";
+import { Subdoelvoorstellen } from "./Subdoelplaatsing";
 import { beslist, subthemabalans, type Drager } from "./subthemabalans";
 import { Woordweb } from "./Woordweb";
 
@@ -75,6 +77,9 @@ export function Subthemahoofdstuk({
   onOntkoppelSubdoel,
   onToonDoel,
   koppelenBezig,
+  voorstellen = [],
+  onBeslisVoorstel,
+  beslisBezig,
 }: {
   subthema: SubthemaWeergave;
   /** What the signed-in gebruiker may do, from `useRechten()` on the screen. */
@@ -91,6 +96,11 @@ export function Subthemahoofdstuk({
   /** Open the detail of a subdoel's leerplandoel; the page owns the one sheet it opens in (TB-016). */
   onToonDoel: (leerplandoelCode: string, knop: HTMLElement) => void;
   koppelenBezig?: boolean;
+  /** The AI's open proposals to add a doel to this subthema (FB-057); only whoever may decide them is sent any. */
+  voorstellen?: SubdoelvoorstelWeergave[];
+  /** Absent without the right to decide them. */
+  onBeslisVoorstel?: (voorstelId: string, status: "Aanvaard" | "Geweigerd") => void;
+  beslisBezig?: boolean;
 }) {
   const activiteiten = subthema.activiteiten as ActiviteitMetKleur[];
   const zonderDoel = activiteiten.filter((a) => a.doelkoppelingen.length === 0).length;
@@ -126,7 +136,8 @@ export function Subthemahoofdstuk({
 
   const leeftijd = subthema.leeftijd;
   const magSubthema = mag.subthemaBeheren(leeftijd);
-  const magActiviteit = mag.activiteitBewerken(leeftijd);
+  // A new activiteit is the gebruiker's own, or for a hoofdleerkracht a shared one by choice (ADR-0049 D1, D2).
+  const magActiviteit = mag.activiteitMaken(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
 
   return (
@@ -177,6 +188,15 @@ export function Subthemahoofdstuk({
                     </span>
                     <Punt />
                     <span>{telWoord(activiteiten.length, "thema.eenActiviteit", "thema.activiteiten")}</span>
+                    {/* A shut chapter must not hide a proposal waiting for a decision (FB-057, FB-011's default). */}
+                    {voorstellen.length > 0 ? (
+                      <>
+                        <Punt />
+                        <span className="font-medium text-inkt">
+                          {telWoord(voorstellen.length, "plaatsing.eenOpenVoorstel", "plaatsing.openVoorstellen")}
+                        </span>
+                      </>
+                    ) : null}
                     {zonderDoel > 0 ? (
                       <>
                         <Punt />
@@ -257,7 +277,7 @@ export function Subthemahoofdstuk({
               <li>
                 <Activiteitregel
                   activiteit={activiteit}
-                  magBewerken={magActiviteit}
+                  magBewerken={mag.activiteitInhoudBewerken({ ...activiteit, leeftijd })}
                   onBewerk={() => onBewerkActiviteit(activiteit)}
                   onVerwijder={
                     mag.activiteitVerwijderen({ ...activiteit, leeftijd })
@@ -301,6 +321,14 @@ export function Subthemahoofdstuk({
                 voet={subdoelvoet(balans.dragersPerSubdoel.get(subdoel.id) ?? [], beslist(subdoel.koppeling.status))}
               />
             )}
+          />
+          {/* The AI's open subdoel proposals (FB-057), under the subdoelen and outside their fold: a proposal waiting
+              for a decision is never hidden. */}
+          <Subdoelvoorstellen
+            voorstellen={voorstellen}
+            bezig={beslisBezig}
+            onBeslis={onBeslisVoorstel}
+            onToon={onToonDoel}
           />
 
           {/* WHAT THE ACTIVITEITEN OFFER BESIDES THE SUBDOELEN (FB-010), under its own heading so that "a doel of
@@ -412,6 +440,8 @@ function Activiteitregel({
             `sm` the basis goes back to zero and the two sit side by side. */}
         <div className="min-w-0 flex-1 basis-full sm:basis-0">
           <p className="text-body font-medium text-inkt">{activiteit.naam}</p>
+          {/* Whose it is, for an own activiteit (ADR-0049): its own line, so the soort line below keeps its shape. */}
+          <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />
           <p className="mt-0.5 text-meta text-inkt-zacht">
             {/* Joined from what is there, so an activiteit without a soort (FB-050) does not start with a separator. */}
             {[

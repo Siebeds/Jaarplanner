@@ -1,3 +1,4 @@
+using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Application.Toegang;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
@@ -19,7 +20,9 @@ namespace Jaarplanner.Api.Controllers;
 /// it is the subthema row at the leeftijd in the body (<c>SubthemaBeheren</c>: directie and that leeftijd's
 /// hoofdleerkrachten; R5, R21), so themabeheer gets no right there (I22) and the wizard has its own route for it. Reads
 /// stay open to every signed-in gebruiker: a thema and its subthema's are shared content, not a klas's planning, and
-/// <c>voor-klas</c> only narrows them to that klas's leeftijden (FB-013, ADR-0040).
+/// <c>voor-klas</c> only narrows them to that klas's leeftijden (FB-013, ADR-0040). The own activiteiten in a thema are
+/// the exception: a read shows another gebruiker's own activiteit only to whom <c>EigenActiviteitLezen</c> allows
+/// (ADR-0049 D3), so the reads pass the reader's rights to the service.
 /// </para>
 /// </summary>
 [ApiController]
@@ -28,11 +31,13 @@ public sealed class ThemasController : ControllerBase
 {
     private readonly ISchoolcontentBeheerService _service;
     private readonly IAuthorizationService _autorisatie;
+    private readonly IRechtenService _rechten;
 
-    public ThemasController(ISchoolcontentBeheerService service, IAuthorizationService autorisatie)
+    public ThemasController(ISchoolcontentBeheerService service, IAuthorizationService autorisatie, IRechtenService rechten)
     {
         _service = service;
         _autorisatie = autorisatie;
+        _rechten = rechten;
     }
 
     /// <summary>Body for adding a manual goal link: just the read-only leerplandoel code (Art. III.5).</summary>
@@ -43,11 +48,11 @@ public sealed class ThemasController : ControllerBase
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<ThemaWeergave>>> Lijst(CancellationToken cancellationToken) =>
-        Ok(await _service.HaalThemasOpAsync(cancellationToken));
+        Ok(await _service.HaalThemasOpAsync(await LezerAsync(cancellationToken), cancellationToken));
 
     [HttpGet("{themaId:guid}")]
     public async Task<ActionResult<ThemaWeergave>> Detail(Guid themaId, CancellationToken cancellationToken) =>
-        Ok(await _service.HaalThemaOpAsync(themaId, cancellationToken));
+        Ok(await _service.HaalThemaOpAsync(themaId, await LezerAsync(cancellationToken), cancellationToken));
 
     /// <summary>
     /// The shared thema-bibliotheek (E1-11, FR-3.3 resolved per-level, Art. IX.2): school-wide themadoelen +
@@ -63,7 +68,11 @@ public sealed class ThemasController : ControllerBase
     /// </summary>
     [HttpGet("{themaId:guid}/voor-klas/{klasId:guid}")]
     public async Task<ActionResult<ThemaWeergave>> VoorKlas(Guid themaId, Guid klasId, CancellationToken cancellationToken) =>
-        Ok(await _service.HaalThemaVoorKlasAsync(themaId, klasId, cancellationToken));
+        Ok(await _service.HaalThemaVoorKlasAsync(themaId, klasId, await LezerAsync(cancellationToken), cancellationToken));
+
+    /// <summary>The reader's rights, or none without a gebruiker id: then only shared activiteiten show.</summary>
+    private async Task<Rechten?> LezerAsync(CancellationToken cancellationToken) =>
+        Aanmelding.GebruikerId(User) is { } id ? await _rechten.HaalRechtenOpAsync(id, cancellationToken) : null;
 
     [HttpPost]
     [Authorize(Policy = Rechtenmatrix.Beleid.ThemaBewerken)]

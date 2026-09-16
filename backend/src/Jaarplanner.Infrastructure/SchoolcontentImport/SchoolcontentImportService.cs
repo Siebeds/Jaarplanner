@@ -367,8 +367,9 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
         foreach (var rij in subthemaGroep)
         {
             var activiteitNaam = rij.ActiviteitNaam.Trim();
+            // An own activiteit is never matched or overwritten (ADR-0049 D9): a row with its name adds a shared one.
             var bestaandeActiviteit = bestaandSubthema?.Activiteiten
-                .FirstOrDefault(a => KeyComparer.Equals(a.Naam, activiteitNaam));
+                .FirstOrDefault(a => !a.IsEigen && KeyComparer.Equals(a.Naam, activiteitNaam));
 
             if (bestaandeActiviteit is null)
             {

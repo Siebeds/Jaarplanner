@@ -326,12 +326,14 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
             sheet.Cell(rij, (int)DekkingKolom.Gedekt).SetValue(doel.IsGedekt ? "Ja" : "Nee");
 
             // ';'-separated, the same list convention the import template uses, so a name containing a comma stays
-            // one name. Empty exactly when the doel is not covered, which is the payload's own guarantee over the two
+            // one name. Empty exactly when the doel is not covered, which is the payload's own guarantee over the three
             // lists together. The thema's come first and each fiche says it is one (owner ruling, 2026-09-11): in a
-            // document handed to an inspecteur, "Turnen" alone would read as the name of a thema.
+            // document handed to an inspecteur, "Turnen" alone would read as the name of a thema. An own activiteit says so too (ADR-0049).
             sheet.Cell(rij, (int)DekkingKolom.DekkendeThemas).SetValue(string.Join(
                 "; ",
-                doel.DekkendeThemas.Concat(doel.DekkendeFiches.Select(fiche => $"{fiche} (algemene fiche)"))));
+                doel.DekkendeThemas
+                    .Concat(doel.DekkendeFiches.Select(fiche => $"{fiche} (algemene fiche)"))
+                    .Concat(doel.DekkendeActiviteiten.Select(activiteit => $"{activiteit} (eigen activiteit)"))));
 
             // Only marked when true. A "Nee" in every row of a column that is almost always empty reads as data.
             sheet.Cell(rij, (int)DekkingKolom.NietMeerInOpstap)
