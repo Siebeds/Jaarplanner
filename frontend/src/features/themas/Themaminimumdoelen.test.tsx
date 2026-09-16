@@ -247,6 +247,13 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
 
     fireEvent.click(screen.getByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MV-1" }) }));
 
+    // First a confirmation that names what it does to dekking, and that the thema is then left without themadoelen.
+    const vraag = await screen.findByRole("dialog", { name: t("thema.minimumdoelOntkoppelTitel", { ref: "K-MV-1" }) });
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelGevolg", { ref: "K-MV-1", thema: "Carnaval" }));
+    expect(vraag).toHaveTextContent(t("thema.minimumdoelOntkoppelGeen"));
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: "DELETE" }));
+    fireEvent.click(within(vraag).getByRole("button", { name: t("thema.ontkoppelBevestig") }));
+
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/themas/t-1/minimumdoelen/tm-1",

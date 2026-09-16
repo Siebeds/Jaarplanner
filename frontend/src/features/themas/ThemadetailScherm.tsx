@@ -33,6 +33,7 @@ import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
 import { themabalans } from "./themabalans";
+import { beslist, subthemabalans } from "./subthemabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
   useKoppelActiviteitdoel,
@@ -144,6 +145,12 @@ export function ThemadetailScherm() {
   const [teVerwijderenActiviteit, setTeVerwijderenActiviteit] = useState<ActiviteitMetKleur | null>(null);
   // The leerplandoel whose detail is open (TB-016), from any list on the page, and the row button that opened it, which
   // gets focus back when the sheet closes.
+  // An unlink waits for a confirmation that names what it does to dekking (owner, 2026-09-16, TB-044). Ids only, for
+  // the reason the sheets above give: the objects are looked up in the current thema on every render.
+  const [teOntkoppelenMinimumdoel, setTeOntkoppelenMinimumdoel] = useState<string | null>(null);
+  const [teOntkoppelenSubdoel, setTeOntkoppelenSubdoel] = useState<{ subthemaId: string; subdoelId: string } | null>(
+    null,
+  );
   const [getoondDoel, setGetoondDoel] = useState<{ code: string; knop: HTMLElement } | null>(null);
   const toonDoel = (code: string, knop: HTMLElement) => setGetoondDoel({ code, knop });
 
@@ -231,6 +238,12 @@ export function ThemadetailScherm() {
     leeftijd to offer would be a Bewaren that can only be refused (fix round 1, F4). It then closes, like the agenda's
     pickers, and its refusal moves to the line below.
   */
+  const ontkoppelMd = thema.minimumdoelen.find((m) => m.id === teOntkoppelenMinimumdoel) ?? null;
+  const ontkoppelSubthema = teOntkoppelenSubdoel
+    ? (thema.subthemas.find((s) => s.id === teOntkoppelenSubdoel.subthemaId) ?? null)
+    : null;
+  const ontkoppelSd = ontkoppelSubthema?.subdoelen.find((s) => s.id === teOntkoppelenSubdoel?.subdoelId) ?? null;
+
   const magSubthemaBlad =
     subthemaBlad !== null &&
     (subthemaBlad.subthema ? mag.subthemaBeheren(subthemaBlad.subthema.leeftijd) : mag.subthemaToevoegen);
@@ -440,7 +453,14 @@ export function ThemadetailScherm() {
               <Themaminimumdoelen
                 koppelingen={thema.minimumdoelen}
                 ontkoppelBezig={ontkoppelMinimumdoel.isPending}
-                onOntkoppel={mag.themaBewerken ? (koppelingId) => ontkoppelMinimumdoel.mutate(koppelingId) : undefined}
+                onOntkoppel={
+                  mag.themaBewerken
+                    ? (koppelingId) => {
+                        ontkoppelMinimumdoel.reset();
+                        setTeOntkoppelenMinimumdoel(koppelingId);
+                      }
+                    : undefined
+                }
                 onToonDoel={toonDoel}
               />
             )}
@@ -607,9 +627,10 @@ export function ThemadetailScherm() {
                 onKoppelSubdoel={(code) =>
                   koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
                 }
-                onOntkoppelSubdoel={(subdoelId) =>
-                  ontkoppelSubdoel.mutate({ subthemaId: subthema.id, subdoelId })
-                }
+                onOntkoppelSubdoel={(subdoelId) => {
+                  ontkoppelSubdoel.reset();
+                  setTeOntkoppelenSubdoel({ subthemaId: subthema.id, subdoelId });
+                }}
                 onToonDoel={toonDoel}
               />
             ))}
@@ -653,6 +674,47 @@ export function ThemadetailScherm() {
             onSuccess: () => navigeer("/themas", { replace: true }),
           })
         }
+      />
+
+      {/* WHAT AN UNLINK DOES TO DEKKING, said before it happens (TB-044). Each sentence claims only what this page knows:
+          the link on this thema or this subthema, not whether another thema or subthema carries the same doel. */}
+      <Bevestiging
+        open={ontkoppelMd !== null}
+        titel={t("thema.minimumdoelOntkoppelTitel", { ref: ontkoppelMd?.minimumdoelRef ?? "" })}
+        gevolg={[
+          t("thema.minimumdoelOntkoppelGevolg", { ref: ontkoppelMd?.minimumdoelRef ?? "", thema: thema.naam }),
+          // Art. IX.2 asks at least two themadoelen; say so when this unlink takes the thema below that.
+          thema.minimumdoelen.length === 2
+            ? t("thema.minimumdoelOntkoppelNogEen")
+            : thema.minimumdoelen.length === 1
+              ? t("thema.minimumdoelOntkoppelGeen")
+              : null,
+        ]
+          .filter((zin) => zin !== null)
+          .join(" ")}
+        bevestigLabel={t("thema.ontkoppelBevestig")}
+        bezig={ontkoppelMinimumdoel.isPending}
+        onSluit={() => setTeOntkoppelenMinimumdoel(null)}
+        onBevestig={() => {
+          if (!ontkoppelMd) return;
+          ontkoppelMinimumdoel.mutate(ontkoppelMd.id, { onSettled: () => setTeOntkoppelenMinimumdoel(null) });
+        }}
+      />
+
+      <Bevestiging
+        open={ontkoppelSd !== null && ontkoppelSubthema !== null}
+        titel={t("thema.subdoelOntkoppelTitel", { code: ontkoppelSd?.koppeling.leerplandoelCode ?? "" })}
+        gevolg={ontkoppelSd && ontkoppelSubthema ? subdoelOntkoppelGevolg(ontkoppelSubthema, ontkoppelSd.id) : undefined}
+        bevestigLabel={t("thema.ontkoppelBevestig")}
+        bezig={ontkoppelSubdoel.isPending}
+        onSluit={() => setTeOntkoppelenSubdoel(null)}
+        onBevestig={() => {
+          if (!ontkoppelSd || !ontkoppelSubthema) return;
+          ontkoppelSubdoel.mutate(
+            { subthemaId: ontkoppelSubthema.id, subdoelId: ontkoppelSd.id },
+            { onSettled: () => setTeOntkoppelenSubdoel(null) },
+          );
+        }}
       />
 
       {subthemaBlad && magSubthemaBlad ? (
@@ -865,6 +927,29 @@ function resultaatZin(resultaat: DoelMatchResultaat): string {
   return nieuw === 1
     ? t("thema.suggestiesEenNieuw", { doelen, leeftijden })
     : t("thema.suggestiesNieuw", { aantal: nieuw, doelen, leeftijden });
+}
+
+/**
+ * What unlinking a subdoel does to dekking (TB-044). A subdoel and a decided link on an activiteit of the same subthema
+ * reach a klas's dekking by the same route (ADR-0047), so the leerplandoel keeps counting while such an activiteit
+ * carries it; the sentence says which, from the same count the chapter shows under the subdoel.
+ */
+function subdoelOntkoppelGevolg(subthema: SubthemaWeergave, subdoelId: string): string {
+  const subdoel = subthema.subdoelen.find((s) => s.id === subdoelId);
+  if (!subdoel) return "";
+  const dragers = subthemabalans(subthema).dragersPerSubdoel.get(subdoelId) ?? [];
+  const namen = dragers.map((d) => d.naam).join(", ");
+  const woorden = { code: subdoel.koppeling.leerplandoelCode, subthema: subthema.naam, leeftijd: subthema.leeftijd };
+  // An undecided subdoel never counted, so nothing is said about what it stops counting for.
+  if (!beslist(subdoel.koppeling.status)) return t("thema.subdoelOntkoppelOnbeslist", woorden);
+  const eerste = t("thema.subdoelOntkoppelGevolg", woorden);
+  const tweede =
+    dragers.length === 0
+      ? t("thema.subdoelOntkoppelGeenDrager")
+      : dragers.length === 1
+        ? t("thema.subdoelOntkoppelBlijftEen", { namen })
+        : t("thema.subdoelOntkoppelBlijftMeer", { aantal: dragers.length, namen });
+  return `${eerste} ${tweede}`;
 }
 
 /** "K3", "K3 en L1", "JK, K2 en K3". */

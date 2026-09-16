@@ -47,6 +47,9 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   In de marge naast de themadoelen staat "minimumdoelen" in plaats van "doelen" (eigenaar, 2026-09-16).
 - De ingeklapte lijst themadoelen is een omkaderde rij zoals een leeftijd bij "Doelen per leeftijd": het aantal links,
   het zoekicoon en de pijl rechts, en de lijst opent binnen hetzelfde kader.
+- Een minimumdoel of subdoel ontkoppelen vraagt eerst bevestiging, met wat het doet voor de dekking: via dit thema of
+  dit subdoel telt het doel niet meer mee; een subdoel dat een activiteit van het subthema ook draagt, blijft meetellen
+  (met de namen); en het thema houdt minder dan twee themadoelen over (eigenaar, 2026-09-16).
 - Het zoekveld is klein (smal en 32px hoog), en staat op gsm samen met zijn sluitknop op een eigen regel.
 - Teksten in `nl.json`; bestaande tests aangepast en nieuwe tests voor de lijstcomponent.
 
@@ -67,6 +70,8 @@ activiteit erbij zit, moet de hele lijst doorlopen.
   het aantal minimumdoelen van het thema.
 - [ ] Gegeven een opengeklapt subthema, wanneer ik het bekijk, dan staat het woordweb boven de onderzoeksvragen, en
   klap ik de activiteiten en subdoelen open met hun kop, waarnaast een klein "+" en het zoekicoon staan.
+- [ ] Gegeven een gekoppeld minimumdoel of subdoel, wanneer ik op ontkoppelen klik, dan zie ik eerst een bevestiging met
+  de gevolgen voor de dekking, en pas na "Ontkoppelen" is het weg; annuleren laat het staan.
 - [ ] Toevoegen, ontkoppelen en een doel of activiteit openen werken zoals voordien, en alles werkt met het toetsenbord.
 - [ ] Nagekeken in een echte browser op desktop en ~390px.
 

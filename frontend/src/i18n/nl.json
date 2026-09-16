@@ -212,7 +212,18 @@
     "lijstAndereDoelen": "andere doelen",
     "zoekMinimumdoel": "Nummer of tekst",
     "zoekActiviteit": "Naam, soort of hoek",
-    "zoekDoel": "Code of tekst"
+    "zoekDoel": "Code of tekst",
+    "ontkoppelBevestig": "Ontkoppelen",
+    "minimumdoelOntkoppelTitel": "Minimumdoel {ref} ontkoppelen?",
+    "minimumdoelOntkoppelGevolg": "{ref} is dan geen themadoel meer van {thema}. Via dit thema telt het niet meer mee voor de dekkingsprognose en de dekking van de klassen die dit thema plannen. De leerplandoelen die ernaar leiden, verdwijnen hier mee.",
+    "minimumdoelOntkoppelNogEen": "Het thema houdt dan 1 themadoel over, minder dan de twee die het hoort te hebben.",
+    "minimumdoelOntkoppelGeen": "Het thema houdt dan geen themadoelen over, terwijl het er minstens twee hoort te hebben.",
+    "subdoelOntkoppelTitel": "Subdoel {code} ontkoppelen?",
+    "subdoelOntkoppelGevolg": "{code} is dan geen subdoel meer van {subthema}. Als subdoel telt het niet meer mee voor de dekkingsprognose en de dekking van de klassen van {leeftijd}.",
+    "subdoelOntkoppelOnbeslist": "{code} is dan geen subdoel meer van {subthema}.",
+    "subdoelOntkoppelBlijftEen": "Het blijft wel meetellen via de activiteit {namen}, die dit doel ook draagt.",
+    "subdoelOntkoppelBlijftMeer": "Het blijft wel meetellen via {aantal} activiteiten die dit doel ook dragen: {namen}.",
+    "subdoelOntkoppelGeenDrager": "Geen activiteit van dit subthema draagt dit doel, dus via dit subthema telt het dan niet meer mee."
   },
   "lijst": {
     "zoekIn": "Zoek in {lijst}",
