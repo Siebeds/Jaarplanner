@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { knopklassen } from "../../components/ui/knopklassen";
 import { cn } from "../../lib/cn";
@@ -32,6 +32,7 @@ export function ThemasScherm() {
   const [nieuwOpen, setNieuwOpen] = useState(false);
   const maak = useMaakThema();
   const { mag } = useRechten();
+  const navigeer = useNavigate();
 
   return (
     <>
@@ -150,7 +151,8 @@ export function ThemasScherm() {
           bezig={maak.isPending}
           fout={maak.isError ? maak.error : undefined}
           onSluit={() => setNieuwOpen(false)}
-          onBewaar={(invoer) => maak.mutate(invoer, { onSuccess: () => setNieuwOpen(false) })}
+          // Straight to the new thema's page: its themadoelen and subthema's are added there (FB-061).
+          onBewaar={(invoer) => maak.mutate(invoer, { onSuccess: (thema) => navigeer(`/themas/${thema.id}`) })}
         />
       ) : null}
     </>

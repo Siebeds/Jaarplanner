@@ -26,6 +26,8 @@ export function Woordchips({
   label,
   gevuld,
   uitgeschakeld,
+  uitleg,
+  gewijzigd,
 }: {
   woorden: string[];
   /**
@@ -47,6 +49,10 @@ export function Woordchips({
    */
   gevuld?: boolean;
   uitgeschakeld?: boolean;
+  /** One short line under the box saying what the list is for (FB-061). */
+  uitleg?: string;
+  /** The list differs from what was saved, said beside the label in words (FB-061). */
+  gewijzigd?: boolean;
 }) {
   const id = useId();
   const invoer = useRef<HTMLInputElement>(null);
@@ -100,8 +106,9 @@ export function Woordchips({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <label htmlFor={id} className="text-meta font-medium text-inkt">
+        <label htmlFor={id} className="flex items-baseline gap-2 text-meta font-medium text-inkt">
           {label}
+          {gewijzigd ? <span className="text-micro font-medium text-inkt-zacht">{t("algemeen.gewijzigd")}</span> : null}
         </label>
         <span className="mono shrink-0 text-micro text-inkt-zwak">{woorden.length}</span>
       </div>
@@ -120,7 +127,7 @@ export function Woordchips({
           <span
             key={woord}
             className={cn(
-              "inline-flex items-center gap-1 rounded-full py-1 pl-2.5 pr-1 text-meta",
+              "inline-flex items-center gap-1 rounded py-1 pl-2.5 pr-1 text-meta",
               gevuld ? "bg-vlak-diep font-medium text-inkt" : "border border-lijn text-inkt-zacht",
             )}
           >
@@ -133,7 +140,7 @@ export function Woordchips({
                 e.stopPropagation();
                 onWijzig((huidige) => huidige.filter((ander) => ander !== woord));
               }}
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-inkt-zwak transition-colors duration-150 hover:bg-kaart hover:text-inkt"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-inkt-zwak transition-colors duration-150 hover:bg-kaart hover:text-inkt"
             >
               <IcoonKruis aria-hidden="true" className="h-3.5 w-3.5" />
             </button>
@@ -159,6 +166,7 @@ export function Woordchips({
           placeholder={woorden.length === 0 ? t("woorden.eersteWoord") : t("woorden.volgendWoord")}
         />
       </div>
+      {uitleg ? <p className="mt-1.5 text-meta text-inkt-zacht">{uitleg}</p> : null}
     </div>
   );
 }
