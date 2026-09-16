@@ -41,13 +41,15 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
                 {
                     subthema.Leeftijd,
                     activiteit.MakerId,
+                    activiteit.EigenaarId,
                     HeeftDoelkoppelingen = activiteit.Doelkoppelingen.Any(),
                 })
             .SingleOrDefaultAsync(cancellationToken);
 
         return gevonden is null
             ? null
-            : new Activiteitbron(activiteitId, gevonden.Leeftijd, gevonden.MakerId, gevonden.HeeftDoelkoppelingen);
+            : new Activiteitbron(
+                activiteitId, gevonden.Leeftijd, gevonden.MakerId, gevonden.HeeftDoelkoppelingen, gevonden.EigenaarId);
     }
 
     /// <summary>

@@ -38,6 +38,7 @@ import {
   useKoppelActiviteitdoel,
   useKoppelMinimumdoel,
   useKoppelSubdoel,
+  useGebruikActiviteit,
   useMaakActiviteit,
   useMaakSubthema,
   useOntkoppelActiviteitdoel,
@@ -154,6 +155,7 @@ export function ThemadetailScherm() {
   const verwijderSubthema = useVerwijderSubthema(id);
   const maakActiviteit = useMaakActiviteit(id);
   const wijzigActiviteit = useWijzigActiviteit(id);
+  const gebruikActiviteit = useGebruikActiviteit(id);
   const verwijderActiviteit = useVerwijderActiviteit(id);
   const koppelMinimumdoel = useKoppelMinimumdoel(id);
   const ontkoppelMinimumdoel = useOntkoppelMinimumdoel(id);
@@ -752,17 +754,38 @@ export function ThemadetailScherm() {
         <Activiteitformulier
           open
           activiteit={bladActiviteit}
-          // The facts rather than the form for a gebruiker who may not change this leeftijd's activiteiten; the goal
-          // section for whoever may link goals there (R19), on an existing activiteit and on a new one's create.
-          alleenLezen={bladActiviteit !== undefined && !mag.activiteitBewerken(bladSubthema.leeftijd)}
-          magDoelen={mag.doelenKoppelen(bladSubthema.leeftijd)}
+          // The facts rather than the form for a gebruiker who may not change this activiteit (a colleague's own one
+          // included, ADR-0049 D4); the goal section for whoever may link its goals (R19, E3). A new one takes its
+          // "voor wie" and its goal picker from the subthema's leeftijd.
+          alleenLezen={
+            bladActiviteit !== undefined &&
+            !mag.activiteitInhoudBewerken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          magDoelen={
+            bladActiviteit !== undefined &&
+            mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+          }
+          leeftijd={bladActiviteit ? undefined : bladSubthema.leeftijd}
+          onGebruik={
+            bladActiviteit && mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+              ? () =>
+                  gebruikActiviteit.mutate(bladActiviteit.id, {
+                    // Closed rather than switched to the copy: the list has not refetched yet, and a sheet looking
+                    // for an id it does not hold would open as a NEW activiteit. The copy shows in the list as "Eigen".
+                    onSuccess: () => setActiviteitBlad(null),
+                  })
+              : undefined
+          }
+          gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
             bladActiviteit
               ? wijzigActiviteit.isError
                 ? wijzigActiviteit.error
-                : undefined
+                : gebruikActiviteit.isError
+                  ? gebruikActiviteit.error
+                  : undefined
               : maakActiviteit.isError
                 ? maakActiviteit.error
                 : undefined

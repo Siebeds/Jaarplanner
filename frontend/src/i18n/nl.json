@@ -384,7 +384,8 @@
     "geenDoelen": "Geen doelen in dit bereik",
     "geenKlas": "Kies eerst een klas",
     "fout": "Dekking niet geladen",
-    "alsFiche": "{naam} (algemene fiche)"
+    "alsFiche": "{naam} (algemene fiche)",
+    "alsEigenActiviteit": "{naam} (eigen activiteit)"
   },
   "doelsoort": {
     "Minimumdoel": "Minimumdoel",
@@ -884,7 +885,19 @@
     "geenDoel": "Nog geen doel",
     "koppelAan": "Doel koppelen aan {naam}",
     "doelenBijBewaren": "Deze doelen worden samen met de activiteit bewaard.",
-    "codeWeg": "{code} uit de lijst halen"
+    "codeWeg": "{code} uit de lijst halen",
+    "eigen": "Eigen",
+    "vanCollega": "Van {naam}",
+    "vanEenCollega": "Van een collega",
+    "voorWie": "Voor wie",
+    "alleenVoorMij": "Alleen voor mij",
+    "gedeeldMetSubthema": "Gedeeld met het subthema",
+    "voorWieUitleg": "Een gedeelde activiteit zien en bewerken alle leerkrachten van deze leeftijd.",
+    "gebruik": "Gebruiken",
+    "gebruikBezig": "Kopie maken…",
+    "gebruikAria": "{naam} van {eigenaar} gebruiken",
+    "gebruikUitleg": "Je krijgt een eigen kopie die je kan aanpassen en inplannen.",
+    "gebruikMislukt": "De kopie is niet gemaakt."
   },
   "activiteitsoort": {
     "Experiment": "Experiment",

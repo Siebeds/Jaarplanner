@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 22:51
+bijgewerkt: 2026-09-16 23:43
 opgepakt-door: claude-fb015
 branch: ticket/FB-015-eigen-activiteit
 pr:
@@ -93,3 +93,5 @@ Dit ticket neemt het activiteitendeel van story E6-10 over. Het voorstel aan het
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-16 22:51 · claude-fb015 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, als voorwaarde voor FB-025
+- 2026-09-16 23:02 · claude-fb015 · ADR-0049 en de grondwetswijziging (Art. V.1, VI.1, IX.2, XII) geschreven; beslissingen E1-E4 van de eigenaar, standaarden D1-D9
+- 2026-09-16 23:43 · claude-fb015 · Backend en frontend gebouwd: eigen activiteit (EigenaarId + migratie), rechten, gebruiken als kopie, planning alleen door eigenaar of directie, dekking via eigen plaatsing; unit-, vitest- en rechten-integratietests groen

@@ -170,7 +170,16 @@ public sealed record Rapportklas(Guid KlasId);
 /// default; the owner's answer is owed before any path creates an activiteit link that is not <c>manueel</c> (E8-07).
 /// See the R25 carry-forward under E6-02 in <c>backlog/E6-beheer-rollen-samenwerking.md</c>.
 /// </param>
-public sealed record Activiteitbron(Guid ActiviteitId, string Leeftijd, Guid? MakerId, bool HeeftDoelkoppelingen);
+/// <param name="EigenaarId">
+/// The owner of an own activiteit (ADR-0049), or <c>null</c> for a shared one. On an own activiteit only the owner's
+/// column and the columns that read or copy one match (D3 to D5); the shared columns do not.
+/// </param>
+public sealed record Activiteitbron(
+    Guid ActiviteitId,
+    string Leeftijd,
+    Guid? MakerId,
+    bool HeeftDoelkoppelingen,
+    Guid? EigenaarId = null);
 
 /// <summary>
 /// A thema, as deleting it needs it (E6-02, default I26). The delete takes every subthema, subdoel and activiteit under

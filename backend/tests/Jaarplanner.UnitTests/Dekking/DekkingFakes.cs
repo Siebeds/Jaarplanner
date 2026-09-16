@@ -169,6 +169,17 @@ internal sealed class FakeDekkingOpslag : IDekkingOpslag
     }
 
     /// <summary>
+    /// The own activiteit links that concern the klas (ADR-0049 D7). Empty by default, the state every test before
+    /// FB-015 was written in.
+    /// </summary>
+    public IReadOnlyList<EigenActiviteitkoppeling> EigenActiviteitkoppelingen { get; set; } = [];
+
+    public Task<IReadOnlyList<EigenActiviteitkoppeling>> HaalEigenActiviteitkoppelingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(EigenActiviteitkoppelingen);
+
+    /// <summary>
     /// The jaar/fase scope the service asked for: the codes for <c>Dekkingsbereik.EigenJaarFase</c>, null for
     /// <c>HeelCurriculum</c>. This is where E5-02's ruling is observable as a <b>request</b>, independently of what
     /// comes back.
