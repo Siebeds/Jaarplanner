@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:08
+bijgewerkt: 2026-09-17 00:10
 opgepakt-door: claude-fb061
 branch: ticket/FB-061-rustiger-themaformulier
 pr:
@@ -94,3 +94,4 @@ Geen.
 - 2026-09-17 00:00 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-17 00:01 · claude-fb061 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-17 00:08 · claude-fb061 · Formulier herbouwd, Woordchips kreeg uitleg, gewijzigd-markering en hoekige chips (ook in het woordweb, dezelfde control); vitest 1031/1031 en pnpm lint groen.
+- 2026-09-17 00:10 · claude-fb061 · Correctie op de vorige regel: het woordweb gebruikt Woordchips niet, alleen dit formulier kreeg de hoekige chips. Antagonist: COMPLIANT; kleine punten opgelost (paneel blijft open tijdens bewaren, één gedeelde gewijzigd-markering).

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Blad } from "../../components/ui/Blad";
+import { Gewijzigd } from "../../components/ui/Gewijzigd";
 import { Knop } from "../../components/ui/Knop";
 import { Invoer, Tekstvlak } from "../../components/ui/Veld";
 import { Woordchips } from "../../components/ui/Woordchips";
@@ -82,8 +83,10 @@ export function Themaformulier({
   };
   const vuil = Object.values(gewijzigd).some(Boolean);
 
+  // While a save runs the sheet stays open: closing it then would still land the teacher on the new thema.
   function probeerSluiten() {
-    if (vuil && !bezig) setSluitVraag(true);
+    if (bezig) return;
+    if (vuil) setSluitVraag(true);
     else onSluit();
   }
 
@@ -311,11 +314,6 @@ function Label({ htmlFor, gewijzigd, children }: { htmlFor: string; gewijzigd: b
       {gewijzigd ? <Gewijzigd /> : null}
     </label>
   );
-}
-
-/** Words, not a dot: the marker has to be read, and a coloured dot alone would say nothing (WCAG 2.2 AA). */
-function Gewijzigd() {
-  return <span className="text-micro font-medium normal-case tracking-normal text-inkt-zacht">{t("algemeen.gewijzigd")}</span>;
 }
 
 /**

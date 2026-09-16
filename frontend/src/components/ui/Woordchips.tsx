@@ -1,5 +1,6 @@
 import { useId, useRef, useState, type ClipboardEvent, type Dispatch, type KeyboardEvent, type SetStateAction } from "react";
 import { IcoonKruis } from "../Iconen";
+import { Gewijzigd } from "./Gewijzigd";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 
@@ -108,7 +109,7 @@ export function Woordchips({
       <div className="flex items-baseline justify-between gap-2">
         <label htmlFor={id} className="flex items-baseline gap-2 text-meta font-medium text-inkt">
           {label}
-          {gewijzigd ? <span className="text-micro font-medium text-inkt-zacht">{t("algemeen.gewijzigd")}</span> : null}
+          {gewijzigd ? <Gewijzigd /> : null}
         </label>
         <span className="mono shrink-0 text-micro text-inkt-zwak">{woorden.length}</span>
       </div>
