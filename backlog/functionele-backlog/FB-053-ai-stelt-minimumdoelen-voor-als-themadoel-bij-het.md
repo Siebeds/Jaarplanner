@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 00:01
+bijgewerkt: 2026-09-17 00:03
 opgepakt-door: claude-fb053
 branch: ticket/FB-053-minimumdoelsuggesties
 pr:
@@ -91,3 +91,5 @@ Beantwoord door de eigenaar op 2026-09-16:
 - 2026-09-17 00:01 · claude-fb053 · Eigenaar 2026-09-16: voorstellen staan in de volgorde van het model (het best passende eerst); een rang-kolom zit in dezelfde migratie, een latere vraag komt achter de bestaande voorstellen.
 - 2026-09-17 00:01 · claude-fb053 · Eigenaar 2026-09-16: een aanvaard en later ontkoppeld minimumdoel mag opnieuw voorgesteld worden (op dezelfde rij); themadoelen, open en geweigerde voorstellen blijven uitgesloten.
 - 2026-09-17 00:01 · claude-fb053 · Een gelijktijdige koppeling met de hand bij het aanvaarden geeft nu een 409 met een Nederlandse zin in plaats van een 500 (Postgres-test).
+- 2026-09-17 00:02 · claude-fb053 · Eigenaar 2026-09-16: geen 'aanpassen' (D2 blijft); een voorstel wordt aanvaard of geweigerd, een ander minimumdoel koppel je met de hand. Constitutie IV.2, VI.1 en XII aangepast, ADR-0049 O6-O8.
+- 2026-09-17 00:03 · claude-fb053 · Eigenaar 2026-09-16: de prognose in het generatierapport (minimumdoelen tellen) wordt een apart ticket.
