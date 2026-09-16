@@ -116,6 +116,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0049 | Art. V.1, VI.1, IX.2 and XII (amended); part 2 of the 0030 §5 amendment, for activiteiten; relates to 0043 and 0047 | FB-015; FB-016 and FB-025 build on it | FR-3.1, FR-3.2 |
 | 0050 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; relates to 0043 and 0046 | FB-057; FB-054 builds on it | FR-4.1–FR-4.4; FA A.7 steps 4–6 |
 | 0051 | Art. XII, II.3; WCAG 2.2 AA via 0017; amends 0039 decision 5 | FB-057; later AI proposals | FR-4.2, FR-4.3; NFR-2 |
+| 0052 | Art. IV.1, IV.4, IV.5, IX.2 and XII (amended); I.2, V.1 and VI.1 unchanged; relates to 0043, 0049, 0050 and 0051 | FB-025 | FR-4.1–FR-4.3; FA A.7 step 7 |
 
 ## Open decisions referenced by ADRs
 
