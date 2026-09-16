@@ -83,8 +83,7 @@ const TRANSITIONS = {
 
 export function transitionAllowed(prefix, from, to) {
   if (!TRANSITIONS[from]?.includes(to)) return false;
-  // A functional ticket is refined before anyone builds it, and it always passes the tester.
-  if (prefix === 'FB' && from === 'nieuw' && to === 'in-uitvoering') return false;
+  // A functional ticket always passes the tester.
   if (prefix === 'FB' && from === 'in-uitvoering' && to === 'klaar') return false;
   // A technical ticket has no tester column.
   if (prefix === 'TB' && to === 'te-testen') return false;
