@@ -493,7 +493,7 @@
   },
   "themabeheer": {
     "nieuwTitel": "Nieuw thema",
-    "wijzigTitel": "Thema bewerken",
+    "wijzigTitel": "{naam} bewerken",
     "bewerk": "Bewerken",
     "bewerkAria": "{naam} bewerken",
     "verwijderAria": "{naam} verwijderen",
@@ -509,7 +509,14 @@
     "woordenschat": "Woordenschat",
     "woordenTotaal": "{aantal} woorden",
     "kernwoordenschat": "Kernwoordenschat",
+    "kernUitleg": "Wat elk kind op het einde kent.",
     "rijkeWoordenschat": "Rijke woordenschat",
+    "rijkUitleg": "Extra woorden voor wie verder kan.",
+    "aanmaken": "Thema aanmaken",
+    "aanmakenBezig": "Aanmaken",
+    "nietBewaard": "Je wijzigingen zijn nog niet bewaard.",
+    "weggooien": "Weggooien",
+    "verderBewerken": "Verder bewerken",
     "bewaar": "Bewaren",
     "bewaarBezig": "Bewaren",
     "annuleer": "Annuleren",
@@ -902,6 +909,7 @@
   },
   "algemeen": {
     "sluiten": "Sluiten",
+    "gewijzigd": "gewijzigd",
     "bezig": "Bezig",
     "nietTerugTeDraaien": "Dat is niet terug te draaien."
   },

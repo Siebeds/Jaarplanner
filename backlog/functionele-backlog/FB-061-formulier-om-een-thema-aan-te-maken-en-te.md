@@ -2,13 +2,13 @@
 id: FB-061
 titel: Formulier om een thema aan te maken en te bewerken is rustiger en duidelijker
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:00
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 00:30
+opgepakt-door: claude-fb061
+branch: ticket/FB-061-rustiger-themaformulier
+pr: 133
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -47,19 +47,19 @@ niets toevoegt, valt ze weg. De woordenschat met een teller en een korte uitleg 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven het formulier voor een nieuw thema op een breed scherm, wanneer het opent, dan staan naam, duur en
+- [x] Gegeven het formulier voor een nieuw thema op een breed scherm, wanneer het opent, dan staan naam, duur en
       invalshoeken onder elkaar, staan de twee woordenschatlijsten naast elkaar, elk met een teller en de korte
       uitleg, en is er geen voorbeeldkaart.
-- [ ] Gegeven een nieuw thema met een naam, wanneer de gebruiker "Thema aanmaken" kiest, dan opent de themapagina
+- [x] Gegeven een nieuw thema met een naam, wanneer de gebruiker "Thema aanmaken" kiest, dan opent de themapagina
       van dat nieuwe thema.
-- [ ] Gegeven een bestaand thema "Op de boerderij", wanneer themabeheer het formulier opent, dan heet het paneel
+- [x] Gegeven een bestaand thema "Op de boerderij", wanneer themabeheer het formulier opent, dan heet het paneel
       "Op de boerderij bewerken" en werkt "Bewaren" nog niet.
-- [ ] Gegeven dat formulier, wanneer de gebruiker de duur wijzigt, dan staat "gewijzigd" bij Duur en werkt
+- [x] Gegeven dat formulier, wanneer de gebruiker de duur wijzigt, dan staat "gewijzigd" bij Duur en werkt
       "Bewaren". Zet de gebruiker de oorspronkelijke duur terug, dan verdwijnen beide weer.
-- [ ] Gegeven onbewaarde wijzigingen, wanneer de gebruiker het paneel sluit of Annuleren kiest, dan vraagt het
+- [x] Gegeven onbewaarde wijzigingen, wanneer de gebruiker het paneel sluit of Annuleren kiest, dan vraagt het
       formulier eerst om weg te gooien of verder te bewerken. "Verder bewerken" laat alles staan, "Weggooien" sluit
       het paneel zonder te bewaren.
-- [ ] Gegeven het formulier op een telefoon van 390 pixels breed, wanneer het opent, dan staan de woordenschatlijsten
+- [x] Gegeven het formulier op een telefoon van 390 pixels breed, wanneer het opent, dan staan de woordenschatlijsten
       onder elkaar, schuift de pagina niet horizontaal en zijn de woordchips geen pillen.
 
 ## Testscenario's
@@ -92,3 +92,8 @@ Geen.
 ## Werklog
 
 - 2026-09-17 00:00 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-17 00:01 · claude-fb061 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 00:08 · claude-fb061 · Formulier herbouwd, Woordchips kreeg uitleg, gewijzigd-markering en hoekige chips (ook in het woordweb, dezelfde control); vitest 1031/1031 en pnpm lint groen.
+- 2026-09-17 00:10 · claude-fb061 · Correctie op de vorige regel: het woordweb gebruikt Woordchips niet, alleen dit formulier kreeg de hoekige chips. Antagonist: COMPLIANT; kleine punten opgelost (paneel blijft open tijdens bewaren, één gedeelde gewijzigd-markering).
+- 2026-09-17 00:13 · claude-fb061 · in-uitvoering → te-testen: Gebouwd: rustiger themaformulier (één kolom, tekstvak voor invalshoeken, woordenlijsten naast elkaar met teller en uitleg, hoekige chips, Thema aanmaken opent de themapagina, gewijzigd-markering, Bewaren pas na een wijziging, vraag voor weggooien). Vitest en lint groen; browsercontrole op 1440 en 390 geslaagd, contrast 6,51:1 en 9,39:1 (test-report.md); antagonist COMPLIANT.
+- 2026-09-17 00:30 · claude-fb061 · PR #133
