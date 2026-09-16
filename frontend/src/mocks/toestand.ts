@@ -97,6 +97,8 @@ interface Plaatsing {
   id: string;
   themaId: string;
   blokStart: string;
+  /** How many of the thema's weeks fall in this period: a thema that runs across a vacation has two placements. */
+  weken: number;
   status: Themaplaatsing["status"];
   vergrendeld: boolean;
 }
@@ -119,46 +121,69 @@ function koppeling(code: string) {
   return { id: nieuwId(), leerplandoelCode: code, status: "Manueel" as const, aiMotivatie: null };
 }
 
+function naarThemaWeergave(thema: inhoud.MockThema): ThemaWeergave {
+  return {
+    id: thema.id,
+    naam: thema.naam,
+    duurWeken: thema.duurWeken,
+    invalshoeken: thema.invalshoeken,
+    kernwoordenschat: [...thema.kernwoordenschat],
+    rijkeWoordenschat: [...thema.rijkeWoordenschat],
+    heeftVoldoendeThemadoelen: true,
+    themadoelen: [],
+    minimumdoelen: thema.minimumdoelen.map((ref) => ({ id: nieuwId(), minimumdoelRef: ref })),
+    subthemas: thema.subthemas.map((sub) => ({
+      id: sub.id,
+      themaId: thema.id,
+      naam: sub.naam,
+      duurWeken: sub.weken.length,
+      leeftijd: inhoud.KLAS.jaarfase,
+      onderzoeksvragen: [sub.onderzoeksvraag],
+      subdoelen: sub.subdoelen.map((code) => ({ id: nieuwId(), leeftijd: inhoud.KLAS.jaarfase, koppeling: koppeling(code) })),
+      activiteiten: sub.activiteiten.map(
+        (act): ActiviteitWeergave => ({
+          id: act.id,
+          naam: act.naam,
+          activiteitType: act.activiteitType,
+          hoek: act.hoek,
+          verwachteUitkomsten: act.verwachteUitkomsten,
+          onderzoeksvraagId: sub.onderzoeksvraag.id,
+          kleur: act.kleur,
+          lengteInLesuren: 1,
+          doelkoppelingen: act.doelen.map(koppeling),
+          makerId: null,
+        }),
+      ),
+    })),
+  };
+}
+
 export function beginToestand(): Toestand {
-  const subthemas = inhoud.SUBTHEMAS.map((sub) => ({
-    id: sub.id,
-    themaId: inhoud.THEMA.id,
-    naam: sub.naam,
-    duurWeken: 1,
-    leeftijd: inhoud.KLAS.jaarfase,
-    onderzoeksvragen: [sub.onderzoeksvraag],
-    subdoelen: sub.subdoelen.map((code) => ({ id: nieuwId(), leeftijd: inhoud.KLAS.jaarfase, koppeling: koppeling(code) })),
-    activiteiten: sub.activiteiten.map(
-      (act): ActiviteitWeergave => ({
-        id: act.id,
-        naam: act.naam,
-        activiteitType: act.activiteitType,
-        hoek: act.hoek,
-        verwachteUitkomsten: act.verwachteUitkomsten,
-        onderzoeksvraagId: sub.onderzoeksvraag.id,
-        kleur: act.kleur,
-        lengteInLesuren: 1,
-        doelkoppelingen: act.doelen.map(koppeling),
-        makerId: null,
-      }),
-    ),
+  const subthemas = inhoud.THEMAS.flatMap((thema) => thema.subthemas);
+
+  // Each subthema runs from the Monday of its first week to the Friday of its last.
+  const periodes: Periode[] = subthemas.map((sub) => ({
+    id: nieuwId(),
+    subthemaId: sub.id,
+    van: sub.weken[0],
+    tot: verschuifDagen(sub.weken.at(-1)!, 4),
   }));
 
-  // Every slot of every school day of a subthema's week gets one of its activiteiten, in turn.
+  // Every slot of every school day in the full stretch gets an activiteit of the subthema that runs that day. Each
+  // subthema hands them out in turn and has more of them than a day has slots, so no day repeats one and no two days
+  // in a row show the same set.
   const dagplaatsingen: Dagplaatsing[] = [];
-  const periodes: Periode[] = [];
-  for (const sub of inhoud.SUBTHEMAS) {
-    const vrijdag = verschuifDagen(sub.week, 4);
-    periodes.push({ id: nieuwId(), subthemaId: sub.id, van: sub.week, tot: vrijdag });
-    let beurt = 0;
-    for (const datum of dagenTussen(sub.week, vrijdag)) {
-      if (!isLesdag(datum)) continue;
-      const sloten = inhoud.TIJDSLOTEN.filter((slot) => slot.voormiddag || weekdag(datum) !== 3);
-      for (const slot of sloten) {
-        const act = sub.activiteiten[beurt % sub.activiteiten.length];
-        beurt += 1;
-        dagplaatsingen.push({ id: nieuwId(), activiteitId: act.id, datum, begin: slot.begin, einde: slot.einde });
-      }
+  const beurten = new Map<string, number>();
+  for (const datum of dagenTussen(inhoud.VOLLE_AGENDA.van, inhoud.VOLLE_AGENDA.tot)) {
+    if (!isLesdag(datum)) continue;
+    const periode = periodes.find((p) => datum >= p.van && datum <= p.tot);
+    const sub = subthemas.find((s) => s.id === periode?.subthemaId);
+    if (!sub) continue;
+    for (const slot of inhoud.TIJDSLOTEN.filter((sl) => sl.voormiddag || weekdag(datum) !== 3)) {
+      const beurt = beurten.get(sub.id) ?? 0;
+      beurten.set(sub.id, beurt + 1);
+      const act = sub.activiteiten[beurt % sub.activiteiten.length];
+      dagplaatsingen.push({ id: nieuwId(), activiteitId: act.id, datum, begin: slot.begin, einde: slot.einde });
     }
   }
 
@@ -172,23 +197,17 @@ export function beginToestand(): Toestand {
 
   return {
     klassen: [{ ...inhoud.KLAS }],
-    themas: [
-      {
-        id: inhoud.THEMA.id,
-        naam: inhoud.THEMA.naam,
-        duurWeken: inhoud.THEMA.duurWeken,
-        invalshoeken: inhoud.THEMA.invalshoeken,
-        kernwoordenschat: [...inhoud.THEMA.kernwoordenschat],
-        rijkeWoordenschat: [...inhoud.THEMA.rijkeWoordenschat],
-        heeftVoldoendeThemadoelen: true,
-        themadoelen: [],
-        minimumdoelen: inhoud.THEMA.minimumdoelen.map((ref) => ({ id: nieuwId(), minimumdoelRef: ref })),
-        subthemas,
-      },
-    ],
-    plaatsingen: [
-      { id: nieuwId(), themaId: inhoud.THEMA.id, blokStart: inhoud.THEMA.blokStart, status: "Manueel", vergrendeld: false },
-    ],
+    themas: inhoud.THEMAS.map(naarThemaWeergave),
+    plaatsingen: inhoud.THEMAS.flatMap((thema) =>
+      thema.plaatsingen.map((p) => ({
+        id: nieuwId(),
+        themaId: thema.id,
+        blokStart: p.blokStart,
+        weken: p.weken,
+        status: "Manueel" as const,
+        vergrendeld: false,
+      })),
+    ),
     dagplaatsingen,
     periodes,
     hoeken: inhoud.HOEKEN.map((h) => ({ ...h })),
@@ -553,7 +572,9 @@ export function jaarplan(t: Toestand, klas: Toestand["klassen"][number]): Jaarpl
     blokken: inhoud.THEMAPERIODES.map((p, i) => {
       const hier = plaatsingen.filter((pl) => pl.blokStart === p.start && pl.status !== "Geweigerd");
       const beschikbareWeken = Math.round(openDagen(p.start, p.eind) / 5);
-      const benodigdeWeken = hier.reduce((som, pl) => som + pl.duurWeken, 0);
+      const benodigdeWeken = t.plaatsingen
+        .filter((pl) => pl.blokStart === p.start && pl.status !== "Geweigerd")
+        .reduce((som, pl) => som + pl.weken, 0);
       return {
         ordinaal: i + 1,
         start: p.start,

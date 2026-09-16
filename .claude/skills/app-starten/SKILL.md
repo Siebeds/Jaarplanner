@@ -22,9 +22,10 @@ alone** ("alleen de frontend", "met nepdata", "mockmodus"), the mock mode below 
 
 `pnpm dev:mock` runs Vite in mode `mock` (TB-046): every `/api` request is answered in the page by
 `frontend/src/mocks/`, so no API, no Docker and no database run, and the machine keeps its memory. What it holds:
-one K3 klas "K3 De Uilen" in 2026-2027, one thema of 4 weeks with three minimumdoelen, two subthema's of one week
-with their leerplandoelen and activiteiten, and a full agenda for 16 to 27 november 2026 (8u30 to 15u30, lunch
-12u to 13u free, wednesday only until 12u). The goals are invented and do not exist in Op.stap. The user is
+one K3 klas "K3 De Uilen" in 2026-2027 with two planned thema's of 4 weeks (16 november to 11 december, and
+14 to 18 december plus 4 to 22 january around the kerstvakantie, TB-047), each with minimumdoelen and subthema's
+whose weeks add up to the thema's, with leerplandoelen and varied activiteiten, and a full agenda for 16 to 27
+november 2026 (8u30 to 15u30, lunch 12u to 13u free, wednesday only until 12u). The goals are invented and do not exist in Op.stap. The user is
 directie, without a sign-in page, and the app opens on the week of 16 november.
 
 ```bash

@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:52
+bijgewerkt: 2026-09-16 23:59
 opgepakt-door: mockdata-rijker
 branch: ticket/mockdata-rijker
 pr:
@@ -36,10 +36,10 @@ Alleen de vaste inhoud in `frontend/src/mocks/` verandert, plus het rooster van 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de mockmodus, dan staan er twee thema's van 4 weken in het jaarplan: het eerste van 16 november tot en met 11 december, het tweede op 14 tot en met 18 december en 4 tot en met 22 januari.
-- [ ] Gegeven elk thema, dan tellen de weken van zijn subthema's op tot 4, en valt elke subthemaperiode binnen de periode van haar thema.
-- [ ] Gegeven de agenda van 16 tot en met 27 november, dan heeft geen dag een activiteit twee keer, en tonen twee opeenvolgende schooldagen nooit dezelfde activiteiten; de uren blijven 8u30 tot 15u30 met de middagpauze vrij en woensdag alleen de voormiddag.
-- [ ] Gegeven de mockmodus, dan zijn er meer minimumdoelen en leerplandoelen dan in TB-046, elk subdoel wordt door minstens één activiteit van zijn subthema gedragen, en `pnpm lint`, `pnpm test` en `pnpm build` zijn groen.
+- [x] Gegeven de mockmodus, dan staan er twee thema's van 4 weken in het jaarplan: het eerste van 16 november tot en met 11 december, het tweede op 14 tot en met 18 december en 4 tot en met 22 januari.
+- [x] Gegeven elk thema, dan tellen de weken van zijn subthema's op tot 4, en valt elke subthemaperiode binnen de periode van haar thema.
+- [x] Gegeven de agenda van 16 tot en met 27 november, dan heeft geen dag een activiteit twee keer, en tonen twee opeenvolgende schooldagen nooit dezelfde activiteiten; de uren blijven 8u30 tot 15u30 met de middagpauze vrij en woensdag alleen de voormiddag.
+- [x] Gegeven de mockmodus, dan zijn er meer minimumdoelen en leerplandoelen dan in TB-046, elk subdoel wordt door minstens één activiteit van zijn subthema gedragen, en `pnpm lint`, `pnpm test` en `pnpm build` zijn groen.
 
 ## Buiten scope
 
@@ -54,3 +54,4 @@ weken na de kerstvakantie, en een volle agenda alleen van 16 tot en met 27 novem
 ## Werklog
 
 - 2026-09-16 23:52 · mockdata-rijker · aangemaakt (status in-uitvoering)
+- 2026-09-16 23:59 · mockdata-rijker · inhoud herschreven: 2 thema's (16 nov-11 dec; 14-18 dec + 4-22 jan), 6 subthema's (1+1+2 en 1+2+1 weken), 10 minimumdoelen, 26 leerplandoelen, 50 activiteiten; routes.test.ts dekt alle criteria, screenshots van week 23 nov, december, januari en thema's per periode; lint, 1017 tests en build groen; beperking: 'thema's per periode' telt thema 2 twee keer tot FB-035
