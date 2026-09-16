@@ -2,13 +2,13 @@
 id: FB-048
 titel: Subthema toont eerst het aantal subdoelen, dan het aantal activiteiten
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:46
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-16 21:28
+opgepakt-door: sessie-fb048
+branch: ticket/FB-048-subthema-tellingen-volgorde
+pr: 117
 geblokkeerd:
 fr: [FR-3.1]
 ---
@@ -29,11 +29,11 @@ omgekeerde.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema met subdoelen en activiteiten, wanneer de themapagina opent, dan staat in zijn blokje de
+- [x] Gegeven een subthema met subdoelen en activiteiten, wanneer de themapagina opent, dan staat in zijn blokje de
   telling van de subdoelen vóór die van de activiteiten.
-- [ ] Gegeven een subthema zonder subdoelen, dan staat "0 subdoelen" nog altijd eerst.
-- [ ] Een schermlezer leest de tellingen in dezelfde volgorde als ze op het scherm staan.
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een subthema zonder subdoelen, dan staat "0 subdoelen" nog altijd eerst.
+- [x] Een schermlezer leest de tellingen in dezelfde volgorde als ze op het scherm staan.
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -53,3 +53,9 @@ De volgorde van de secties in een opengeklapt subthema (activiteiten, dan subdoe
 ## Werklog
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-16 20:25 · eigenaar · nieuw → klaar-voor-bouw: verfijnd: open vraag standaard nee
+- 2026-09-16 20:25 · sessie-fb048 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-16 20:27 · sessie-fb048 · volgorde omgewisseld; twee vitest-tests controleren de volgorde (falen op de oude code), lint groen
+- 2026-09-16 20:31 · sessie-fb048 · criteria afgevinkt: 1-2 door vitest, 3 door de knoptekst in de browser (volgt de DOM), 4 door een browserpas op 1440px en 390px op een wegwerpdatabase, zonder horizontale overloop
+- 2026-09-16 20:32 · sessie-fb048 · in-uitvoering → te-testen: gebouwd: in het blokje staat de subdoelentelling nu vóór de activiteitentelling; vitest en lint groen, browserpas 1440/390 ok; antagonist COMPLIANT (MINOR: verwachtVoor in de test vergelijkt met indexOf op textContent, volstaat voor deze fixtures)
+- 2026-09-16 21:28 · sessie-fb048 · PR #117
