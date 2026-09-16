@@ -2,12 +2,12 @@
 id: FB-046
 titel: Activiteit onder een subthema toont het aantal doelen, niet hun codes
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 14:27
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-16 14:28
+opgepakt-door: claude-fb-046
+branch: ticket/FB-046-activiteit-aantal-doelen
 pr:
 geblokkeerd:
 fr: [FR-3.2]
@@ -59,3 +59,4 @@ activiteit wordt de lijst lang en onrustig.
 
 - 2026-09-16 13:46 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-16 14:27 · eigenaar · nieuw → klaar-voor-bouw: open vragen beantwoord door de eigenaar; klaar voor bouw
+- 2026-09-16 14:28 · claude-fb-046 · klaar-voor-bouw → in-uitvoering: opgepakt
