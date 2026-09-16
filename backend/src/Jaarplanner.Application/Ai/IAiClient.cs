@@ -23,8 +23,12 @@ public interface IAiClient
     /// structured-JSON text (Art. IV.5) that each caller's parser validates before it reaches the
     /// domain.
     /// </summary>
-    /// <param name="request">The grounded system + user prompt, built by the caller's prompt builder.</param>
+    /// <param name="request">
+    /// The grounded system prompt, stable context and user prompt, built by the caller's prompt builder. A client sends
+    /// them in that order and may let the provider cache the first two (TB-043).
+    /// </param>
     /// <param name="cancellationToken">Cancels an in-flight call.</param>
     /// <returns>The model's raw completion.</returns>
+    /// <exception cref="AiAntwoordAfgekaptFout">The model reached the ceiling on output tokens; nothing may be persisted.</exception>
     Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default);
 }

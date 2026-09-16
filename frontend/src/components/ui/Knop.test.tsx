@@ -23,6 +23,22 @@ describe("AiKnop", () => {
     expect(screen.getByRole("button", { name: t("plan.bezig") })).toHaveAttribute("aria-busy", "true");
   });
 
+  it("toont vonken en puntjes alleen tijdens een run, verborgen voor een schermlezer", () => {
+    const { rerender } = render(<AiKnop>{t("plan.genereerNu")}</AiKnop>);
+    expect(screen.queryByTestId("ai-vonken")).toBeNull();
+    expect(screen.queryByTestId("ai-puntjes")).toBeNull();
+
+    rerender(
+      <AiKnop bezig disabled>
+        {t("plan.bezig")}
+      </AiKnop>,
+    );
+    expect(screen.getByTestId("ai-vonken")).toHaveAttribute("aria-hidden", "true");
+    expect(screen.getByTestId("ai-puntjes")).toHaveAttribute("aria-hidden", "true");
+    // The dots add nothing to what a screen reader hears.
+    expect(screen.getByRole("button", { name: t("plan.bezig") })).toBeInTheDocument();
+  });
+
   it("laat een gewone knop zonder ring", () => {
     render(<Knop rang="hoofd">{t("plan.annuleer")}</Knop>);
 

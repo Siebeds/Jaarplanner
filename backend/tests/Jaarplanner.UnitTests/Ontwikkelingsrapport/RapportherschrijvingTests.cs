@@ -146,6 +146,19 @@ public sealed class RapportherschrijvingTests
     }
 
     [Fact]
+    public async Task Een_afgekapt_antwoord_is_een_onbruikbaar_antwoord_en_geen_stille_AI()
+    {
+        // The teacher must not read that the AI did not answer: it did, only too long (TB-043).
+        _ai.Fout = new AiAntwoordAfgekaptFout();
+
+        var resultaat = await Dienst().StelHerschrijvingVoorAsync(_roos, 1, _rapportdoel, EigenTekst);
+
+        Assert.False(resultaat.IsGeslaagd);
+        Assert.Equal(Herschrijfmislukking.OnbruikbaarAntwoord, resultaat.Mislukking);
+        Assert.Equal("The AI answer was cut off at the output token limit.", resultaat.Fout);
+    }
+
+    [Fact]
     public async Task Zonder_eigen_tekst_herschrijft_de_AI_niets()
     {
         var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(

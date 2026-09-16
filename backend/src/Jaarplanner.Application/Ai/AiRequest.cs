@@ -1,28 +1,40 @@
 namespace Jaarplanner.Application.Ai;
 
 /// <summary>
-/// A single, transport-agnostic request to the AI model (Art. IV, Art. VIII). It carries only the
-/// two grounded prompt parts and no provider details, so the same request type serves both the
-/// goal-matching (FR-4) and the plan-generation (FR-5) flows without leaking Azure specifics into
-/// the Application layer — the seam an <see cref="IAiClient"/> speaks.
+/// A single, transport-agnostic request to the AI model (Art. IV, Art. VIII). It carries only the grounded prompt parts
+/// and no provider details, so the same request type serves every AI flow without leaking a provider's specifics into
+/// the Application layer: the seam an <see cref="IAiClient"/> speaks.
 /// <para>
-/// The prompt itself is built downstream (E2-02) exclusively from the school's own thema's/
-/// activiteiten and the loaded Op.stap goals — never external sources (Art. IV.4). This record is
-/// only the envelope that carries that grounded prompt to whatever client is wired.
+/// <b>Three parts, in this order</b> (TB-043): <see cref="SystemPrompt"/>, then <see cref="VasteContext"/>, then
+/// <see cref="UserPrompt"/>. The first two are the stable prefix, identical across requests of the same kind, which a
+/// provider can serve from its prompt cache; everything that differs per request, the school's own content above all,
+/// goes in the last. A cache only matches an identical beginning, so a builder that puts anything volatile in the first
+/// two parts silently makes every request pay the full price.
+/// </para>
+/// <para>
+/// The prompt itself is built by each caller's prompt builder, grounded on what Art. IV.4 allows that flow. This record
+/// is only the envelope that carries it to whatever client is wired.
 /// </para>
 /// </summary>
 public sealed record AiRequest
 {
     /// <summary>
-    /// The system prompt: the role/instructions that frame the model (e.g. "match Op.stap
-    /// leerplandoelen to school thema's and answer only with structured JSON"). Built in E2-02.
+    /// The system prompt: the role and instructions that frame the model (e.g. "match Op.stap leerplandoelen to school
+    /// thema's and answer only with structured JSON"). Fixed text per kind of request.
     /// </summary>
     public required string SystemPrompt { get; init; }
 
     /// <summary>
-    /// The user prompt: the grounded payload (the relevant leerplandoelen + the thema's
-    /// themadoelen/subthema's/activiteiten). Contains only school + Op.stap data (Art. IV.4).
-    /// Built in E2-02.
+    /// The stable part of the prompt (e.g. the candidate goal list), identical across requests of the same kind, sent
+    /// after the <see cref="SystemPrompt"/> and before the <see cref="UserPrompt"/>, and cached where the provider
+    /// supports it; empty means none. Never put anything here that differs per thema, per klas or per person: the codes a
+    /// thema already links, for instance, belong in the <see cref="UserPrompt"/>.
+    /// </summary>
+    public string VasteContext { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The user prompt: the volatile, grounded payload (the thema's themadoelen, subthema's and activiteiten, and which
+    /// goals not to propose). Contains only what Art. IV.4 allows the flow.
     /// </summary>
     public required string UserPrompt { get; init; }
 }

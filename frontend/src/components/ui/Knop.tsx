@@ -34,6 +34,11 @@ export function Knop({
  * colour (Art. XII). This is the one way to the `ai` look: a caller that wants the ring gets the wand with
  * it. `bezig` sets `aria-busy` for the run, which is also what keeps the ring bright and sweeping while
  * the button is disabled.
+ *
+ * During a run the wand throws sparks in the five ring colours and three dots bounce after the label (TB-044), so a
+ * wait of several seconds reads as thinking rather than as a button that stuck. Both are decoration, hidden from a
+ * screen reader, which hears `aria-busy` and the caller's busy label instead. Under reduced motion the sparks do not
+ * show and the dots stand still, so the label and its dots still say that the run is going.
  */
 export function AiKnop({
   bezig,
@@ -42,8 +47,26 @@ export function AiKnop({
 }: Omit<ComponentProps<typeof Knop>, "rang"> & { bezig?: boolean }) {
   return (
     <Knop rang="ai" aria-busy={bezig || undefined} {...props}>
-      <IcoonToverstok aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span className="relative inline-flex shrink-0">
+        <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
+        {bezig ? (
+          <span aria-hidden="true" data-testid="ai-vonken" className="ai-vonken">
+            <i />
+            <i />
+            <i />
+            <i />
+            <i />
+          </span>
+        ) : null}
+      </span>
       {children}
+      {bezig ? (
+        <span aria-hidden="true" data-testid="ai-puntjes" className="ai-puntjes">
+          <i />
+          <i />
+          <i />
+        </span>
+      ) : null}
     </Knop>
   );
 }
