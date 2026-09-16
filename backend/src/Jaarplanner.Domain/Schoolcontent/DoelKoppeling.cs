@@ -51,6 +51,19 @@ public sealed class DoelKoppeling
     /// </summary>
     public void WijzigStatus(KoppelingStatus status) => Status = Validate(status);
 
+    /// <summary>Whether a person decided this link into counting: <c>aanvaard</c> or <c>manueel</c> (Art. V.1).</summary>
+    public bool IsBeslist => Status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel;
+
+    /// <summary>
+    /// A person links by hand the goal this link proposed or that was rejected: it becomes <see cref="KoppelingStatus.Manueel"/>
+    /// and loses the AI motivation, which was never her reason (ADR-0054 D6).
+    /// </summary>
+    public void MaakManueel()
+    {
+        Status = KoppelingStatus.Manueel;
+        AiMotivatie = null;
+    }
+
     /// <summary>
     /// The teacher substitutes a <b>different</b> leerplandoel on this link — FR-4.3's third action,
     /// <i>"aanpassen"</i> ("the AI proposed this doel; I think it should be that one"). The link becomes

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { t } from "../../i18n";
+import { t, type Vertaalsleutel } from "../../i18n";
 import { ApiError, get, post, put } from "../../lib/api";
 import { geenToegangZin } from "../../lib/rechten";
 import { themaSleutels } from "../../lib/queries";
@@ -77,4 +77,13 @@ export function beslisFout(fout: unknown): string {
   if (geweigerd) return geweigerd;
   if (fout instanceof ApiError && (fout.status === 400 || fout.status === 404) && fout.detail) return fout.detail;
   return t("plaatsing.beslisMislukt");
+}
+
+/** The sentence for a failed AI request; `mislukt` is the general one, which names what was asked. */
+export function aiFout(fout: unknown, mislukt: Vertaalsleutel = "plaatsing.aiMislukt"): string {
+  const geweigerd = geenToegangZin(fout);
+  if (geweigerd) return geweigerd;
+  if (fout instanceof ApiError && fout.status === 422) return t("plaatsing.aiOngeldig");
+  if (fout instanceof ApiError && fout.status === 400 && fout.detail) return fout.detail;
+  return t(mislukt);
 }

@@ -121,7 +121,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                     + t.Subthemas.SelectMany(s => s.Activiteiten)
                         .Where(a => a.EigenaarId == null)
                         .SelectMany(a => a.Doelkoppelingen)
-                        .Count(),
+                        // Decided links only: a proposal or a rejected goal is not built on (ADR-0054 D5).
+                        .Count(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel),
             })
             .ToListAsync(cancellationToken);
 
@@ -795,9 +796,18 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var activiteit = await LaadActiviteitAsync(activiteitId, cancellationToken);
         var code = await VereisLeerplandoelAsync(leerplandoelCode, cancellationToken);
 
-        if (activiteit.Doelkoppelingen.Any(k => string.Equals(k.LeerplandoelCode, code, StringComparison.Ordinal)))
+        var bestaand = activiteit.Doelkoppelingen.FirstOrDefault(k => string.Equals(k.LeerplandoelCode, code, StringComparison.Ordinal));
+        if (bestaand is { IsBeslist: true })
         {
             throw new SchoolcontentValidatieFout($"Activiteit is al gekoppeld aan leerdoel '{code}'.");
+        }
+
+        // ADR-0054 D6: a goal the AI proposed, or that was rejected, becomes a manual link when linked by hand.
+        if (bestaand is not null)
+        {
+            bestaand.MaakManueel();
+            await _context.SaveChangesAsync(cancellationToken);
+            return MapKoppeling(bestaand);
         }
 
         var koppeling = new DoelKoppeling(code, KoppelingStatus.Manueel);
@@ -1032,7 +1042,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 && Rechtenmatrix.StaatToe(
                     Rechten,
                     Rechtenmatrix.EigenActiviteitLezen,
-                    new Activiteitbron(activiteit.Id, leeftijd, activiteit.MakerId, activiteit.Doelkoppelingen.Count > 0, eigenaarId)));
+                    new Activiteitbron(activiteit.Id, leeftijd, activiteit.MakerId, activiteit.HeeftBeslisteDoelkoppeling, eigenaarId)));
     }
 
     private async Task<Lezer> LezerAsync(Rechten? rechten, IEnumerable<Thema> themas, CancellationToken cancellationToken)

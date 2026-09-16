@@ -64,6 +64,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
 | [0052](0052-doelsuggesties-zijn-minimumdoelen.md) | **A thema's doelsuggesties propose minimumdoelen as themadoelen**: the AI at thema level (thema page and wizard step 2) proposes only minimumdoelen of the mijlpalen the thema's leeftijden meet; accepting one makes it a themadoel and a rejected one is not proposed again; the leerplandoel doelsuggesties are deleted and no longer count for dekking (supersedes 0047 S2) | Accepted |
 | [0053](0053-themaplaatsing-met-eigen-datums.md) | **A thema placement carries its own dates; the themaperiodes leave the planning**: a placement has a first and a last day, no two share a day, a vacation splits a thema into parts, the plan screen is a week timeline, existing plans are converted by one migration, and the generation is switched off until it is reworked for dates (supersedes 0013 and 0020 for the jaarplan) | Accepted |
+| [0054](0054-ai-zoekt-doelen-bij-een-activiteit.md) | **The AI proposes goals for an activiteit**, decided by whoever may link its goals; an accepted goal is proposed as subdoel, and only a decided link counts as linked (R25) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -120,6 +121,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0051 | Art. XII, II.3; WCAG 2.2 AA via 0017; amends 0039 decision 5 | FB-057; later AI proposals | FR-4.2, FR-4.3; NFR-2 |
 | 0052 | Art. V.1 and IX.2 (amended); IV and VI.1 unchanged; supersedes 0047 S2 and part of D4; settles 0046 M7 | FB-053 | FR-4.1, FR-4.2, FR-4.3 |
 | 0053 | Art. IX.3, XII and IV.2 (amended); IV.1 and V.1 unchanged; supersedes 0013 and 0020 for the jaarplan; relates to 0023, 0028 | FB-035; the AI generation ticket | FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 paused |
+| 0054 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
 
 ## Open decisions referenced by ADRs
 

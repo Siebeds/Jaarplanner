@@ -531,7 +531,18 @@
     "duurOngeldig": "Vul een aantal weken in, van 1 tot 6.",
     "minstensEenDoel": "Houd minstens één doel, of weiger het voorgestelde subthema.",
     "eenOpenVoorstel": "1 voorstel",
-    "openVoorstellen": "{aantal} voorstellen"
+    "openVoorstellen": "{aantal} voorstellen",
+    "viaActiviteit": "Via activiteit {naam}"
+  },
+  "doelvoorstel": {
+    "vraag": "Zoek doelen",
+    "vraagBezig": "Doelen zoeken…",
+    "geenVoorstellen": "De AI vond geen nieuw doel voor deze activiteit.",
+    "eenVoorstel": "1 doel voorgesteld.",
+    "voorstellen": "{aantal} doelen voorgesteld.",
+    "aiMislukt": "Doelen zoeken lukte niet.",
+    "lijst": "Voorgestelde doelen",
+    "subdoelUitleg": "Een aanvaard doel wordt ook als subdoel van het subthema voorgesteld, tenzij het daar al staat, al wacht of geweigerd werd."
   },
   "themabeheer": {
     "nieuwTitel": "Nieuw thema",

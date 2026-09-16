@@ -592,6 +592,16 @@ export interface SubdoelvoorstelWeergave {
   /** Set for a goal proposed for an existing subthema; null inside a proposed new one. */
   subthemaId: string | null;
   aiMotivatie: string;
+  /** The activiteit an accepted doel came from (FB-026), while it still exists; null for the thema page's own runs. */
+  activiteitNaam?: string | null;
+}
+
+/** What asking the AI for an activiteit's doelen did (FB-026). */
+export interface ActiviteitDoelsuggestieResultaat {
+  isGeslaagd: boolean;
+  aantalVoorgesteld: number;
+  aantalOvergeslagen: number;
+  fout: string | null;
 }
 
 export interface SubthemavoorstelWeergave {

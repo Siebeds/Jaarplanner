@@ -5,11 +5,9 @@ import { Statusmerk } from "../../components/ui/Statusmerk";
 import { Invoer, Tekstvlak, Veld } from "../../components/ui/Veld";
 import { IcoonKruis, IcoonPotlood, IcoonToverstok, IcoonVink } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
-import { ApiError } from "../../lib/api";
 import { cn } from "../../lib/cn";
-import { geenToegangZin } from "../../lib/rechten";
 import type { SubdoelvoorstelWeergave, SubthemavoorstelBeslissing, SubthemavoorstelWeergave } from "../../lib/types";
-import { beslisFout, useBeslisSubthemavoorstel, useStelPlaatsingenVoor } from "./plaatsingen";
+import { aiFout, beslisFout, useBeslisSubthemavoorstel, useStelPlaatsingenVoor } from "./plaatsingen";
 
 /**
  * The subdoelplaatsing on the thema page (FB-057, ADR-0050, ADR-0051).
@@ -79,13 +77,6 @@ function resultaatZin(voorgesteld: number, nieuw: number): string {
   return nieuw === 0 ? doelen : t("plaatsing.voorstellenMetNieuw", { doelen, nieuw: telWoord(nieuw, "plaatsing.eenNieuw", "plaatsing.nieuw") });
 }
 
-function aiFout(fout: unknown): string {
-  const geweigerd = geenToegangZin(fout);
-  if (geweigerd) return geweigerd;
-  if (fout instanceof ApiError && fout.status === 422) return t("plaatsing.aiOngeldig");
-  if (fout instanceof ApiError && fout.status === 400 && fout.detail) return fout.detail;
-  return t("plaatsing.aiMislukt");
-}
 
 /**
  * The quiet decision controls (ADR-0051 D4): a check and a cross, and for a new subthema a pencil. Borderless and ink at
@@ -151,7 +142,7 @@ export function Beslisknoppen({
 }
 
 /** The wand and a word: what the ring means, said without colour (ADR-0051 decision 2). */
-function Aimerk({ label }: { label: string }) {
+export function Aimerk({ label }: { label: string }) {
   return (
     <span className="inline-flex shrink-0 items-center gap-1 text-micro font-medium text-inkt-zacht">
       <IcoonToverstok aria-hidden="true" className="h-3.5 w-3.5" />
@@ -219,6 +210,9 @@ export function Subdoelvoorstellen({
             <Voorsteldoel doel={voorstel} onToon={onToon} />
           </div>
           <p className="mt-2 border-l-2 border-suggestie-voorgesteld pl-3 text-meta text-inkt-zacht">{voorstel.aiMotivatie}</p>
+          {voorstel.activiteitNaam ? (
+            <p className="mt-1.5 text-meta text-inkt-zacht">{t("plaatsing.viaActiviteit", { naam: voorstel.activiteitNaam })}</p>
+          ) : null}
         </li>
       ))}
     </ul>

@@ -405,7 +405,8 @@ function Activiteitregel({
   onVerwijder?: () => void;
 }) {
   const kleur = activiteit.kleur as Activiteitkleur | null;
-  const codes = activiteit.doelkoppelingen.map((k) => k.leerplandoelCode);
+  // Decided doelen only: a proposal or a rejected doel is not linked (ADR-0054 D5).
+  const codes = activiteit.doelkoppelingen.filter((k) => beslist(k.status)).map((k) => k.leerplandoelCode);
 
   return (
     <div className="relative flex gap-3 px-3 py-2.5">

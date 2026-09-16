@@ -1,5 +1,6 @@
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
+using Jaarplanner.Application.Activiteitdoelen;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
@@ -13,9 +14,10 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights (E6-02, ADR-0030 §3), each against the activiteit as <see cref="Activiteitbron"/>.</b> Its content (every
 /// field but its goal links, I15, the onderzoeksvraag tag included): <c>GedeeldeActiviteitBewerken</c> (directie, HL,
-/// every leerkracht of that leeftijd; R17, R23). Its goal links: <c>DoelenKoppelen</c> (directie, HL; R19). Deleting it:
-/// <c>ActiviteitVerwijderen</c> (HL; the maker while no goal is linked; R25, R26, R33). Moving it:
-/// <c>ActiviteitVerplaatsen</c> (HL; a leerkracht of that leeftijd while no goal is linked; I19), and the domain keeps
+/// every leerkracht of that leeftijd; R17, R23). Its goal links, and asking and deciding the AI's goal proposals (FB-026):
+/// <c>DoelenKoppelen</c> (directie, HL; R19). Deleting it:
+/// <c>ActiviteitVerwijderen</c> (HL; the maker while no decided goal is linked; R25, R26, R33, ADR-0054 D5). Moving it:
+/// <c>ActiviteitVerplaatsen</c> (HL; a leerkracht of that leeftijd while no decided goal is linked; I19), and the domain keeps
 /// the move at the same leeftijd, so the destination needs no second check.
 /// </para>
 /// <para>
@@ -28,8 +30,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class ActiviteitenController : ControllerBase
 {
     private readonly ISchoolcontentBeheerService _service;
+    private readonly IActiviteitDoelsuggestieService _doelsuggesties;
 
-    public ActiviteitenController(ISchoolcontentBeheerService service) => _service = service;
+    public ActiviteitenController(ISchoolcontentBeheerService service, IActiviteitDoelsuggestieService doelsuggesties)
+    {
+        _service = service;
+        _doelsuggesties = doelsuggesties;
+    }
 
     [HttpPut("{activiteitId:guid}")]
     [RechtOp(Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken, Rechtbron.Activiteit, "activiteitId")]
@@ -67,6 +74,38 @@ public sealed class ActiviteitenController : ControllerBase
     public async Task<IActionResult> Ontkoppel(Guid activiteitId, Guid koppelingId, CancellationToken cancellationToken)
     {
         await _service.OntkoppelActiviteitDoelAsync(activiteitId, koppelingId, cancellationToken);
+        return NoContent();
+    }
+
+    /// <summary>
+    /// Asks the AI for goals of the activiteit's leeftijd (FB-026, ADR-0054), replacing its open proposals. Whoever may
+    /// link its goals may ask. An unreadable model answer is a 422 with an English diagnostic and no change (Art. IV.5).
+    /// </summary>
+    [HttpPost("{activiteitId:guid}/doelsuggesties/genereer")]
+    [RechtOp(Rechtenmatrix.Beleid.DoelenKoppelen, Rechtbron.Activiteit, "activiteitId")]
+    public async Task<ActionResult<ActiviteitDoelsuggestieResultaat>> GenereerDoelsuggesties(Guid activiteitId, CancellationToken cancellationToken)
+    {
+        var resultaat = await _doelsuggesties.StelVoorAsync(activiteitId, cancellationToken);
+        return resultaat.IsGeslaagd
+            ? Ok(resultaat)
+            : UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid AI response",
+                Detail = resultaat.Fout,
+            });
+    }
+
+    /// <summary>Accepts or rejects one proposed goal link (FB-026). Whoever may link the activiteit's goals decides.</summary>
+    [HttpPut("{activiteitId:guid}/doelkoppelingen/{koppelingId:guid}/status")]
+    [RechtOp(Rechtenmatrix.Beleid.DoelenKoppelen, Rechtbron.Activiteit, "activiteitId")]
+    public async Task<IActionResult> BeslisDoelvoorstel(
+        Guid activiteitId,
+        Guid koppelingId,
+        [FromBody] DoelvoorstelBeslissing beslissing,
+        CancellationToken cancellationToken)
+    {
+        await _doelsuggesties.BeslisAsync(activiteitId, koppelingId, beslissing.Status, cancellationToken);
         return NoContent();
     }
 

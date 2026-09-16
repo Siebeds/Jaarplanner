@@ -1,5 +1,6 @@
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
 import type { Mag } from "../../lib/rechten";
+import { beslist } from "../themas/subthemabalans";
 
 /**
  * Reading the school's own content as a list of places one leerplandoel could go.
@@ -44,7 +45,7 @@ export function subthemaHeeftDoel(subthema: SubthemaWeergave, code: string): boo
 }
 
 export function activiteitHeeftDoel(activiteit: ActiviteitWeergave, code: string): boolean {
-  return activiteit.doelkoppelingen.some((koppeling) => koppeling.leerplandoelCode === code);
+  return activiteit.doelkoppelingen.some((koppeling) => koppeling.leerplandoelCode === code && beslist(koppeling.status));
 }
 
 function bevat(tekst: string, term: string): boolean {
