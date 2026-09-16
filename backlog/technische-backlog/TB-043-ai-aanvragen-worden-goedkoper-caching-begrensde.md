@@ -5,7 +5,7 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:56
+bijgewerkt: 2026-09-16 23:02
 opgepakt-door: claude-tb043
 branch: ticket/TB-043-ai-goedkoper
 pr:
@@ -94,3 +94,4 @@ prompts.
 - 2026-09-16 22:56 · claude-tb043 · Criteria 1, 2, 4 en 5 afgevinkt op unittests (MatchingPromptBuilderTests, AnthropicClaudeClientTests, DoelMatchingServiceTests) en een integratietest (502 met Nederlandse melding, niets bewaard); criterium 3 wacht op de handmatige controle van de eigenaar met een echte sleutel
 - 2026-09-16 22:56 · claude-tb043 · Gates groen: dotnet test (1944 unit, 559 integratie tegen Postgres), dotnet format zonder wijzigingen, pnpm lint
 - 2026-09-16 22:56 · claude-tb043 · in-uitvoering → klaar: Gebouwd: VasteContext in AiRequest, doelenlijst vóór de schoolcontent en compacter, 'niet voorstellen'-regel, cache_control bij Claude, afgekapte antwoorden geweigerd met Nederlandse melding, MaxTokens 2000; gates groen. Criterium 3 (echte sleutel) blijft voor de eigenaar
+- 2026-09-16 23:02 · claude-tb043 · Antagonist: COMPLIANT. Twee MINOR-punten opgelost: een afgekapte rapportherschrijving meldt nu een onbruikbaar antwoord in plaats van 'AI antwoordde niet', en het woordweb toont de melding bij een 502. Open (MINOR): de outputgrens van 2000 is niet gemeten voor de jaarplangeneratie en de rapportherschrijving; een grens per soort vraag beslist de eigenaar.
