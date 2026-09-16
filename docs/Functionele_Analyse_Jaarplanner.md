@@ -157,7 +157,7 @@ De doelen worden niet door de school opgesteld. De school volgt het leerplan "Op
 
 - **FR-2.1** — De leerplandoelen en de decretale minimumdoelen worden ingeladen vanuit de Op.stap-API van Katholiek Onderwijs Vlaanderen, met behoud van de structuur: doelsoort, unieke code, jaar/fase, domein/subdomein/cluster en de concordantie met de minimumdoelen. Voorlopig worden enkel de gemeenschappelijke doelen (G) ingeladen. *(Bijgewerkt 2026-09-11, ADR-0032. Voorheen: vanuit de Op.stap-Excelbestanden, één bestand per discipline.)*
 - **FR-2.2** — De tool herkent de doelsoort (MD = minimumdoel, G = gemeenschappelijk, + = verdieping, P/S/A = illustratief) en kan daarop filteren, bv. om enkel de minimumdoelen of enkel de gemeenschappelijke doelen te tonen. *(Noot 2026-09-13 bij ADR-0032, lezing van de ontwikkelaar, niet door de eigenaar bevestigd: de Op.stap-API levert MD niet als doelsoort van een leerplandoel; "enkel de minimumdoelen" wordt getoond via het minimumdoelenoverzicht.)*
-- **FR-2.3** — De minimumdoelen worden via de concordantie aan de leerplandoelen gekoppeld, zodat dekking ook op minimumdoelniveau aangetoond kan worden (zie FR-9).
+- **FR-2.3** — De minimumdoelen worden via de concordantie aan de leerplandoelen gekoppeld, zodat zichtbaar is welke leerplandoelen naar een minimumdoel leiden. De dekking op minimumdoelniveau loopt via de themadoelen (zie FR-9.3).
 - **FR-2.4** — De school past de officiële inhoud van de doelen niet aan; interne ordening en labels zijn wel mogelijk.
 - **FR-2.5** — Wanneer Op.stap geactualiseerd wordt, kunnen de doelen opnieuw ingeladen worden; bestaande jaarplannen worden niet automatisch overschreven, maar de tool signaleert wat herbekeken moet worden.
 
@@ -221,9 +221,9 @@ De leerkracht kan de AI opnieuw laten werken, in zijn geheel of gericht op één
 
 Voor de directie cruciaal: aantonen dat élk doel ergens in het jaar aan bod komt — zowel op het niveau van de leerplandoelen als, via de concordantie, op het niveau van de minimumdoelen.
 
-- **FR-9.1** — De tool toont per klas welke leerplandoelen gedekt zijn en welke (nog) niet.
+- **FR-9.1** — De tool toont per klas welke leerplandoelen gedekt zijn en welke (nog) niet, in twee stappen: de **dekkingsprognose** (het doel staat op een thema of subthema) en de **dekking** (dat thema of subthema staat in de agenda van de klas). *(Verfijnd door de beslissingen van 16-09-2026, [ADR-0047](adr/0047-dekkingsprognose-en-dekking.md).)*
 - **FR-9.2** — De tool toont het dekkingspercentage en een lijst van de ontbrekende doelen; er kan gefilterd worden op doelsoort (bv. enkel de minimumdoelen).
-- **FR-9.3** — Via de concordantie toont de tool ook de dekking op minimumdoelniveau — het niveau waarop de onderwijsinspectie toetst.
+- **FR-9.3** — De tool toont ook de dekking op minimumdoelniveau, het niveau waarop de onderwijsinspectie toetst. Een minimumdoel telt via het thema waarop het als themadoel staat, niet via de concordantie. *(Verfijnd door de beslissingen van 16-09-2026, [ADR-0047](adr/0047-dekkingsprognose-en-dekking.md).)*
 - **FR-9.4** — De directie kan via de beheerpagina schoolbrede en per-klas overzichten trekken (dekking en voortgang over alle klassen/leerjaren heen — zie FR-12).
 - **FR-9.5** — Het dekkingsoverzicht is exporteerbaar als bewijs van dekking.
 

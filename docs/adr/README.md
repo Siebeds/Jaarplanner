@@ -56,6 +56,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0043](0043-eigen-woordweb-per-subthema.md) | **A leerkracht keeps her own woordweb per subthema** (the brainstorm of step 3): loose words, one web per gebruiker and subthema that follows her across schooljaren, read by everyone, edited by its owner and directie; the AI proposes at most five words with a motivation, only once the web holds a word of her own, from its own language knowledge (an Art. IV.4 exception). Answers 0030 §4 (a) for the woordweb only | Accepted |
 | [0044](0044-hoekverrijking-in-het-zijpaneel.md) | **The hoekverrijking lives in the side panel, and a hoek is no longer placed in the agenda**: each hoek's card in Hoekenfiches shows its verrijking per subthema of the agenda's week and opens a sheet to write it, for everyone who reads the agenda (a reader without fields); the subthemabalk keeps only its links; no hoek blocks, strips or placement sheets; existing placements hidden, not deleted, and taken along silently when their hoek is deleted (supersedes 0041 decision 5 and 0028 decisions 4 and 7) | Accepted |
 | [0046](0046-themadoelen-zijn-minimumdoelen.md) | **A thema's themadoelen are minimumdoelen, without a maximum**: directie and themabeheer link and unlink minimumdoelen on a thema (`thema_minimumdoelen`, no status), which bring along their concorded leerplandoelen at every leeftijd, read and never stored; no route adds a leerplandoel themadoel any more and a migration deletes the existing ones; dekking, the FR-1 import and the thema's AI stay as they are for now | Accepted |
+| [0047](0047-dekkingsprognose-en-dekking.md) | **Dekking in two steps, the dekkingsprognose and the dekking**: a minimumdoel counts only through a thema it is a themadoel of, a leerplandoel through a subthema at the klas's leeftijd (placed in the agenda, for dekking), plus doelen on activiteiten, accepted doelsuggesties and planned algemene fiches; a klas is measured against the minimumdoelen of its mijlpaal (supersedes the Art. V.1 concordance route) | Accepted |
 
 ## Compliance traceability matrix
 
@@ -104,6 +105,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0043 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 (amended); V.1 unchanged; answers 0030 §4 (a) for the woordweb only | FB-036 | FR-3.1, FR-4.2, FR-4.3; FA A.7 step 3 |
 | 0044 | Art. II.3, VI.1; V.1 and IX.3 unchanged; WCAG 2.2 AA via 0017; supersedes 0041 decision 5 and 0028 decisions 4 and 7; ends the hoekplaatsing in the agenda (2026-08-30, no ADR) | FB-038; FB-019, FB-028 | FR-3.1 |
 | 0046 | Art. IX.2, XII and IV.8 (amended); III.1, III.5, V.1 and VI.1 unchanged; reverses the FB-009 ruling of 2026-09-15 on a thema's own minimumdoelen | FB-043; FB-044, FB-045 and the import and AI tickets build on it | FR-2.3, FR-9.3 |
+| 0047 | Art. V.1, V.2, IX.3 and XII (amended); supersedes the Art. V.1 concordance route for minimumdoelen; relates to 0029 and 0046 | FB-045 | FR-9.1, FR-9.2, FR-9.3 |
 
 ## Open decisions referenced by ADRs
 
