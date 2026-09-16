@@ -30,9 +30,8 @@ public sealed record ThemaOpbouwContext
     public IReadOnlyCollection<string>? RijkeWoordenschat { get; init; }
 
     /// <summary>
-    /// The leerplandoel codes already chosen as the 2–3 overarching themadoelen (step 2 output). At
-    /// step 6 these anchor the subdoel suggestions ("build up toward the themadoelen", Art. IX.2) and
-    /// are excluded from the returned candidates so the wizard never re-proposes an anchor.
+    /// The refs of the minimumdoelen already chosen as themadoelen (step 2 output, FB-053). Step 2 does not propose them
+    /// again; step 6 writes them with their text into the prompt, so the subdoelen build up toward them (Art. IX.2).
     /// </summary>
     public IReadOnlyCollection<string>? GekozenThemadoelCodes { get; init; }
 }

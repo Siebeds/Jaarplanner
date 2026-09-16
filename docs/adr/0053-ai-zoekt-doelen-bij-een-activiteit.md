@@ -1,4 +1,4 @@
-# ADR-0052 — The AI proposes goals for an activiteit, and an accepted one is proposed as subdoel
+# ADR-0053 — The AI proposes goals for an activiteit, and an accepted one is proposed as subdoel
 
 - **Status:** Accepted
 - **Date:** 2026-09-17
@@ -42,8 +42,8 @@ among them the R25 delete rule, which the E6-02 audit left for the owner to answ
 
 ## Consequences
 
-- A proposal on a shared activiteit shows in the dekkingsprognose as undecided, as a thema's doelsuggestie does; it
-  counts for the dekking only once accepted (Art. V.1).
+- A proposal on a shared activiteit shows in the dekkingsprognose as undecided, as an undecided subdoel does; it counts
+  for the dekking only once accepted (Art. V.1).
 - A subdoel proposed from an own activiteit reaches the hoofdleerkrachten, who decide whether the subthema takes it; the
   own activiteit still never counts through its subthema.
 - The maximum is one value for the whole app. A school setting would need a screen and a column; not built.

@@ -56,7 +56,7 @@ public sealed class DoelKoppeling
 
     /// <summary>
     /// A person links by hand the goal this link proposed or that was rejected: it becomes <see cref="KoppelingStatus.Manueel"/>
-    /// and loses the AI motivation, which was never her reason (ADR-0052 D6).
+    /// and loses the AI motivation, which was never her reason (ADR-0053 D6).
     /// </summary>
     public void MaakManueel()
     {

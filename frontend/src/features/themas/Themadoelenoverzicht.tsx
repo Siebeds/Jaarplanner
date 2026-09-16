@@ -157,15 +157,13 @@ function Leerplandoelregel({
 }
 
 /**
- * Where a leerplandoel hangs, in the order a teacher reads the thema: the thema itself (a themadoel, or an accepted
- * doelsuggestie, which is never called a themadoel: Art. IX.2 keeps the two apart), then each subthema that makes it a
+ * Where a leerplandoel hangs, in the order a teacher reads the thema: the thema itself (a themadoel), then each subthema that makes it a
  * subdoel by name, then how many activiteiten carry it. Activiteiten are counted rather than named: a doel on eight of
  * them would otherwise push its own text off the row.
  */
 function waar(plaatsen: DoelPlaats[]): string {
   const delen: string[] = [];
   if (plaatsen.some((p) => p.soort === "Themadoel")) delen.push(t("thema.plaatsThemadoel"));
-  if (plaatsen.some((p) => p.soort === "Doelsuggestie")) delen.push(t("thema.plaatsDoelsuggestie"));
   for (const plaats of plaatsen) {
     if (plaats.soort === "Subdoel") delen.push(t("thema.plaatsSubdoel", { naam: plaats.naam ?? "" }));
   }

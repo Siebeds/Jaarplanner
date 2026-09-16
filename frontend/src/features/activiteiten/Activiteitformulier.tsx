@@ -198,7 +198,7 @@ export function Activiteitformulier({
   }
 
   const serverReden = fout instanceof ApiError ? fout.detail : undefined;
-  // Only decided doelen are linked; a proposal waits below and a rejected one is not shown (ADR-0052 D5).
+  // Only decided doelen are linked; a proposal waits below and a rejected one is not shown (ADR-0053 D5).
   const koppelingen = (activiteit?.doelkoppelingen ?? []).filter((k) => beslist(k.status));
 
   // ONE DIALOG FOR BOTH STATES (E6-02 slice 4, fix round 3, F8). A refusal refetches the rights, and a gebruiker who

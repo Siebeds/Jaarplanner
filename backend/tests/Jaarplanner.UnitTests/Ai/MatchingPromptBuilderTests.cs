@@ -1,3 +1,4 @@
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.AiMatching;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
@@ -5,25 +6,19 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.UnitTests.Ai;
 
 /// <summary>
-/// Pins the E2-02 prompt builder (Art. IV.4): the built prompt is grounded <b>only</b> on the
-/// school's own content and the loaded Op.stap goals, is deterministic, and is snapshot-stable.
-/// The <see cref="Bouwt_de_verwachte_grounded_prompt"/> snapshot is the "Done when" evidence.
+/// Pins the prompt of a thema's doelsuggesties (FB-053, ADR-0052, Art. IV.4/IV.5): the candidate minimumdoelen as the
+/// stable context (TB-043), the thema and the refs not to propose as the user prompt; grounded only on school and
+/// Op.stap data; deterministic and snapshot-stable.
 /// </summary>
 public sealed class MatchingPromptBuilderTests
 {
     private const string Nl = "\n";
-    private const string LeerplandoelKop = "# Beschikbare Op.stap-leerplandoelen";
 
-    // A representative thema with school-wide attributes, one themadoel anchor, one subthema with a
-    // driving question and one activiteit. All values below are the ONLY school data the prompt may
-    // contain — nothing else.
     private static Thema EenThema()
     {
         var thema = new Thema("Herfst", duurWeken: 4, invalshoeken: "natuur en seizoenen");
         thema.StelKernwoordenschatIn(["blad", "boom"]);
         thema.StelRijkeWoordenschatIn(["bladverliezende boom"]);
-        thema.VoegThemadoelToe(
-            new DoelKoppeling("NAT-K3-01", KoppelingStatus.Voorgesteld, "past bij natuurobservatie"));
 
         var subthema = thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
         subthema.VoegOnderzoeksvraagToe("Welke kleuren zien we?", "Waarom vallen bladeren?");
@@ -36,80 +31,44 @@ public sealed class MatchingPromptBuilderTests
         return thema;
     }
 
-    // Deliberately passed in reverse code order to prove the builder orders by the stable code.
-    private static IReadOnlyList<Leerplandoel> EenLeerdoelenSet() =>
+    // Deliberately out of order, to prove the list is ordered by the builder.
+    private static IReadOnlyList<Minimumdoel> Kandidaten() =>
     [
-        new Leerplandoel(
-            code: "NAT-K3-02",
-            doelsoort: Doelsoort.Gemeenschappelijk,
-            jaarFase: "K3",
-            domein: "Natuur",
-            subdomein: "Levende natuur",
-            disciplineNummer: "9",
-            tekst: "De kleuter observeert veranderingen in de natuur.",
-            woordenschat: "seizoen"),
-        new Leerplandoel(
-            code: "NAT-K3-01",
-            doelsoort: Doelsoort.Minimumdoel,
-            jaarFase: "K3",
-            domein: "Natuur",
-            subdomein: "Levende natuur",
-            disciplineNummer: "9",
-            cluster: "Planten",
-            tekst: "De kleuter herkent bomen.",
-            voorbeelden: "eik, beuk",
-            toelichting: "focus op waarneembare kenmerken",
-            minimumdoelRef: "K-12"),
-    ];
-
-    private static IReadOnlyList<Minimumdoel> EenMinimumdoelenSet() =>
-    [
-        new Minimumdoel("K-12", "K-", "12", "De leerling herkent levende wezens."),
+        new Minimumdoel("K-9.1.2", "K-", "9.1.2", "De kleuters kunnen seizoenen onderscheiden.", "Wereldoriëntatie", "Natuur"),
+        new Minimumdoel("K-1.1.1", "K-", "1.1.1", "De kleuters kunnen rijm herkennen.", "Nederlands", "Lezen", "Vlot lezen"),
     ];
 
     [Fact]
-    public void Bouwt_de_verwachte_grounded_prompt()
+    public void Bouwt_de_verwachte_prompt_met_de_lijst_als_vast_deel()
     {
-        var request = MatchingPromptBuilder.Bouw(EenThema(), EenLeerdoelenSet(), EenMinimumdoelenSet());
+        var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), ["K-9.1.2", "K-1.1.1"]);
 
-        // The system prompt is the fixed instruction scaffolding — it forbids external sources
-        // (Art. IV.4) and asks for structured JSON (Art. IV.5). Snapshot it via the public constant.
         Assert.Equal(MatchingPromptBuilder.SystemPrompt, request.SystemPrompt);
 
-        // The stable part (TB-043): the Op.stap goals only, grouped under domein > subdomein, with the doelsoort per goal
-        // because the two differ and the jaarfase once because they share it.
         var vast = string.Join(Nl,
         [
-            "# Beschikbare Op.stap-leerplandoelen",
+            "# Beschikbare minimumdoelen",
             "",
-            "Voor alle doelen hieronder: jaarfase K3.",
+            "## Mijlpaal K-",
             "",
-            "## Natuur > Levende natuur",
-            "- NAT-K3-01 (MD): De kleuter herkent bomen.",
-            "- NAT-K3-02 (G): De kleuter observeert veranderingen in de natuur.",
+            "### Nederlands > Lezen > Vlot lezen",
+            "- K-1.1.1: De kleuters kunnen rijm herkennen.",
             "",
-            "# Minimumdoelen (concordantie)",
-            "",
-            "- K-12: De leerling herkent levende wezens.",
+            "### Wereldoriëntatie > Natuur",
+            "- K-9.1.2: De kleuters kunnen seizoenen onderscheiden.",
         ]) + Nl;
-
         Assert.Equal(vast, request.VasteContext);
+        Assert.Equal(MinimumdoelPromptlijst.Bouw(Kandidaten()), request.VasteContext);
 
-        // The volatile part: the thema, then the codes it already links.
         var verwacht = string.Join(Nl,
         [
-            "# Schoolcontent",
-            "",
-            "## Thema: Herfst",
+            "# Thema: Herfst",
             "Duur (weken): 4",
             "Invalshoeken: natuur en seizoenen",
             "Kernwoordenschat: blad, boom",
             "Rijke woordenschat: bladverliezende boom",
             "",
-            "### Themadoelen (reeds gekoppelde leerplandoelen)",
-            "- NAT-K3-01 (status Voorgesteld) — past bij natuurobservatie",
-            "",
-            "### Subthema's",
+            "## Subthema's",
             "- Subthema: Bladeren (leeftijd K3, duur 2 wk)",
             "  Onderzoeksvraag: Welke kleuren zien we?",
             "  Probleemstelling: Waarom vallen bladeren?",
@@ -120,34 +79,32 @@ public sealed class MatchingPromptBuilderTests
             "",
             "# Niet voorstellen",
             "",
-            "Al gekoppeld of geweigerd: NAT-K3-01",
+            "Al themadoel, al voorgesteld of geweigerd: K-1.1.1, K-9.1.2",
         ]) + Nl;
 
         Assert.Equal(verwacht, request.UserPrompt);
     }
 
     [Fact]
-    public void Twee_themas_van_dezelfde_leeftijd_delen_het_vaste_deel_en_de_schoolcontent_staat_erna()
+    public void Twee_themas_met_dezelfde_kandidaten_delen_het_vaste_deel_en_de_schoolcontent_staat_erna()
     {
-        // TB-043: a provider's cache only matches an identical beginning. Two different thema's, with subthema's of the
-        // same leeftijd and so the same candidates, must send the same system prompt and goal list byte for byte.
+        // TB-043: a provider's cache only matches an identical beginning. Two thema's with the same candidates (the same
+        // mijlpalen) send the same system prompt and list byte for byte, whatever they exclude.
         var herfst = EenThema();
         var water = new Thema("Water", duurWeken: 6, invalshoeken: "drijven en zinken");
-        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "K3").VoegActiviteitToe("Bootjes", ActiviteitType.Waarneming);
-        water.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "past"));
+        water.VoegSubthemaToe("Plassen", duurWeken: 2, leeftijd: "K2").VoegActiviteitToe("Bootjes", ActiviteitType.Waarneming);
 
-        var a = MatchingPromptBuilder.Bouw(herfst, EenLeerdoelenSet());
-        var b = MatchingPromptBuilder.Bouw(water, EenLeerdoelenSet().Reverse().ToList());
+        var a = MatchingPromptBuilder.Bouw(herfst, Kandidaten(), []);
+        var b = MatchingPromptBuilder.Bouw(water, Kandidaten().Reverse().ToList(), ["K-1.1.1"]);
 
         Assert.Equal(a.SystemPrompt, b.SystemPrompt);
         Assert.Equal(a.VasteContext, b.VasteContext);
         Assert.NotEqual(a.UserPrompt, b.UserPrompt);
 
-        // No school content in the stable part, all of it in the volatile part.
         var gevallen = new[]
         {
-            (Request: a, Schooldata: new[] { "Herfst", "natuur en seizoenen", "Bladeren", "ontdektafel", "# Schoolcontent" }),
-            (Request: b, Schooldata: new[] { "Water", "drijven en zinken", "Plassen", "Bootjes", "Al gekoppeld of geweigerd: NAT-K3-02" }),
+            (Request: a, Schooldata: new[] { "Herfst", "natuur en seizoenen", "Bladeren", "ontdektafel" }),
+            (Request: b, Schooldata: new[] { "Water", "drijven en zinken", "Plassen", "Bootjes", "Al themadoel, al voorgesteld of geweigerd: K-1.1.1" }),
         };
         foreach (var (request, schooldata) in gevallen)
         {
@@ -157,152 +114,68 @@ public sealed class MatchingPromptBuilderTests
                 Assert.Contains(datum, request.UserPrompt, StringComparison.Ordinal);
             }
 
-            Assert.StartsWith("# Schoolcontent", request.UserPrompt, StringComparison.Ordinal);
-            Assert.DoesNotContain(LeerplandoelKop, request.UserPrompt, StringComparison.Ordinal);
-            Assert.StartsWith(LeerplandoelKop, request.VasteContext, StringComparison.Ordinal);
+            Assert.StartsWith("# Thema: ", request.UserPrompt, StringComparison.Ordinal);
+            Assert.DoesNotContain(MinimumdoelPromptlijst.Kop, request.UserPrompt, StringComparison.Ordinal);
+            Assert.StartsWith(MinimumdoelPromptlijst.Kop, request.VasteContext, StringComparison.Ordinal);
         }
     }
 
     [Fact]
-    public void Gekoppelde_en_geweigerde_doelen_staan_als_niet_voorstellen_in_het_variabele_deel()
+    public void Zonder_uit_te_sluiten_codes_is_er_geen_sectie_niet_voorstellen()
     {
-        // TB-043: the codes a thema already links or rejected are named in the volatile part; the goal list stays the
-        // same list every thema of this leeftijd gets.
-        var thema = new Thema("Herfst", duurWeken: 4);
-        thema.VoegSubthemaToe("Bladeren", duurWeken: 2, leeftijd: "K3");
-        var geweigerd = thema.VoegDoelsuggestieToe(new DoelKoppeling("NAT-K3-02", KoppelingStatus.Voorgesteld, "past"));
-        geweigerd.WijzigStatus(KoppelingStatus.Geweigerd);
-        var aanvaard = thema.VoegDoelsuggestieToe(new DoelKoppeling("REK-K3-09", KoppelingStatus.Voorgesteld, "past"));
-        aanvaard.WijzigStatus(KoppelingStatus.Aanvaard);
-        thema.VoegThemadoelToe(new DoelKoppeling("NAT-K3-01", KoppelingStatus.Manueel, null));
+        var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), []);
 
-        var zonder = MatchingPromptBuilder.Bouw(new Thema("Leeg", duurWeken: 4), EenLeerdoelenSet());
-        var met = MatchingPromptBuilder.Bouw(thema, EenLeerdoelenSet());
-
-        Assert.EndsWith(
-            $"# Niet voorstellen{Nl}{Nl}Al gekoppeld of geweigerd: NAT-K3-01, NAT-K3-02, REK-K3-09{Nl}",
-            met.UserPrompt,
-            StringComparison.Ordinal);
-        Assert.Equal(zonder.VasteContext, met.VasteContext);
-        Assert.Contains("- NAT-K3-01 (MD): ", met.VasteContext, StringComparison.Ordinal);
-        Assert.Contains("- NAT-K3-02 (G): ", met.VasteContext, StringComparison.Ordinal);
-
-        // A thema that links nothing gets no such section, and the system prompt tells the model what the section means.
-        Assert.DoesNotContain(MatchingPromptBuilder.NietVoorstellenKop, zonder.UserPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain(MatchingPromptBuilder.NietVoorstellenKop, request.UserPrompt, StringComparison.Ordinal);
         Assert.Contains("\"Niet voorstellen\"", MatchingPromptBuilder.SystemPrompt, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Systeemprompt_begrenst_het_aantal_suggesties_en_de_motivatie()
-    {
-        Assert.Contains(MatchingPromptBuilder.MaxSuggestiesRegel, MatchingPromptBuilder.SystemPrompt, StringComparison.Ordinal);
-        Assert.Contains(
-            $"hoogstens {MatchingPromptBuilder.MaxSuggesties} ", MatchingPromptBuilder.MaxSuggestiesRegel, StringComparison.Ordinal);
-        Assert.Contains("één korte zin", MatchingPromptBuilder.SystemPrompt, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void Verschillende_doelsoorten_en_jaarfasen_staan_per_doel()
-    {
-        IReadOnlyList<Leerplandoel> gemengd =
-        [
-            new Leerplandoel("REK-L1-01", Doelsoort.Gemeenschappelijk, "L1", "Wiskunde", "Getallen", "2", tekst: "telt tot 20."),
-            new Leerplandoel("NAT-K3-03", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "ziet seizoenen."),
-            new Leerplandoel("NAT-K3-01", Doelsoort.Minimumdoel, "K3", "Natuur", "Levende natuur", "9", tekst: "herkent bomen."),
-        ];
-
-        var vast = MatchingPromptBuilder.Bouw(EenThema(), gemengd).VasteContext;
-
-        Assert.Equal(
-            string.Join(Nl,
-            [
-                "# Beschikbare Op.stap-leerplandoelen",
-                "",
-                "## Natuur > Levende natuur",
-                "- NAT-K3-01 (MD, K3): herkent bomen.",
-                "- NAT-K3-03 (MD, K3): ziet seizoenen.",
-                "",
-                "## Wiskunde > Getallen",
-                "- REK-L1-01 (G, L1): telt tot 20.",
-            ]) + Nl,
-            vast);
     }
 
     [Fact]
     public void Prompt_bevat_enkel_de_aangeleverde_school_en_opstap_data()
     {
-        var request = MatchingPromptBuilder.Bouw(EenThema(), EenLeerdoelenSet(), EenMinimumdoelenSet());
+        var request = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), []);
         var volledig = request.SystemPrompt + Nl + request.VasteContext + request.UserPrompt;
 
-        // Positive: every supplied datum appears.
         foreach (var datum in new[]
         {
-            "Herfst", "natuur en seizoenen", "blad", "boom", "bladverliezende boom",
-            "Bladeren", "Welke kleuren zien we?", "Waarom vallen bladeren?", "ontdektafel",
-            "sorteren op kleur", "NAT-K3-01", "NAT-K3-02", "De kleuter herkent bomen.",
-            "K-12", "De leerling herkent levende wezens.",
+            "Herfst", "natuur en seizoenen", "blad", "boom", "bladverliezende boom", "Bladeren",
+            "Welke kleuren zien we?", "Waarom vallen bladeren?", "K-1.1.1", "De kleuters kunnen rijm herkennen.",
         })
         {
             Assert.Contains(datum, volledig, StringComparison.Ordinal);
         }
 
-        // Negative: no external/extra content leaks in. The user prompt must be byte-for-byte the
-        // data-only render, and the whole request must not mention any source outside school +
-        // Op.stap data. The system prompt explicitly rules external sources out.
         Assert.Contains("Gebruik geen externe kennis", request.SystemPrompt, StringComparison.Ordinal);
         Assert.DoesNotContain("http", volledig, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("wikipedia", volledig, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("internet als bron", volledig, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("leerplandoel", request.VasteContext + request.UserPrompt, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
-    public void Doelen_staan_compact_in_de_prompt()
+    public void Systeemprompt_vraagt_het_parsercontract_en_ten_hoogste_acht_voorstellen_het_best_passende_eerst()
     {
-        // TB-007: code, doelsoort, jaar/fase, domein, subdomein and text only. The long fields made the K3 goals of the
-        // Op.stap import alone about 54,000 tokens.
-        var request = MatchingPromptBuilder.Bouw(EenThema(), EenLeerdoelenSet());
-
-        foreach (var weggelaten in new[] { "Voorbeelden:", "eik, beuk", "Toelichting:", "  Woordenschat:", "  Minimumdoel:", "> Planten" })
-        {
-            Assert.DoesNotContain(weggelaten, request.VasteContext + request.UserPrompt, StringComparison.Ordinal);
-        }
-    }
-
-    [Fact]
-    public void Systeemprompt_vraagt_exact_het_parser_contract()
-    {
-        // E2-04 alignment: the system prompt must instruct the EXACT JSON shape the E2-03 parser
-        // accepts — the `suggesties` envelope with load-bearing field names `code`/`motivatie`
-        // (Art. IV.5). The parser is the canonical contract; the prompt is made to match it.
         var systemPrompt = MatchingPromptBuilder.SystemPrompt;
 
-        Assert.Contains("{\"suggesties\": [{\"code\": \"<leerplandoelcode>\", \"motivatie\": \"<één zin>\"}]}",
+        Assert.Contains("{\"suggesties\": [{\"code\": \"<code van het minimumdoel>\", \"motivatie\": \"<één zin>\"}]}",
             systemPrompt, StringComparison.Ordinal);
-        Assert.Contains("\"suggesties\"", systemPrompt, StringComparison.Ordinal);
-        Assert.Contains("\"code\"", systemPrompt, StringComparison.Ordinal);
-        Assert.Contains("\"motivatie\"", systemPrompt, StringComparison.Ordinal);
         Assert.Contains("{\"suggesties\": []}", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains(MatchingPromptBuilder.MaxSuggestiesRegel, systemPrompt, StringComparison.Ordinal);
+        Assert.Contains($"hoogstens {MatchingPromptBuilder.MaxSuggesties} minimumdoelen", MatchingPromptBuilder.MaxSuggestiesRegel, StringComparison.Ordinal);
+        Assert.Contains("het best passende eerst", MatchingPromptBuilder.MaxSuggestiesRegel, StringComparison.Ordinal);
+        Assert.Contains("één korte zin", systemPrompt, StringComparison.Ordinal);
+        Assert.Contains("\"Beschikbare minimumdoelen\"", systemPrompt, StringComparison.Ordinal);
+
+        // The list is no longer below the rules in one message (TB-043), so the prompt does not point at it as such.
+        Assert.DoesNotContain("hieronder", systemPrompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("in dit bericht", systemPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Is_deterministisch_ongeacht_leerdoelvolgorde()
+    public void Is_deterministisch_ongeacht_de_volgorde_van_kandidaten_en_uitgeslotenen()
     {
-        var leerdoelen = EenLeerdoelenSet();
-        var omgekeerd = leerdoelen.Reverse().ToList();
-
-        var a = MatchingPromptBuilder.Bouw(EenThema(), leerdoelen, EenMinimumdoelenSet());
-        var b = MatchingPromptBuilder.Bouw(EenThema(), omgekeerd, EenMinimumdoelenSet());
+        var a = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), ["K-9.1.2", "K-1.1.1"]);
+        var b = MatchingPromptBuilder.Bouw(EenThema(), Kandidaten().Reverse().ToList(), ["K-1.1.1", "K-9.1.2", "K-1.1.1"]);
 
         Assert.Equal(a.VasteContext, b.VasteContext);
         Assert.Equal(a.UserPrompt, b.UserPrompt);
-    }
-
-    [Fact]
-    public void Minimumdoelen_sectie_ontbreekt_wanneer_geen_minimumdoelen_meegegeven()
-    {
-        var request = MatchingPromptBuilder.Bouw(EenThema(), EenLeerdoelenSet());
-
-        Assert.DoesNotContain("# Minimumdoelen", request.VasteContext + request.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -311,16 +184,17 @@ public sealed class MatchingPromptBuilderTests
         var thema = new Thema("Water", duurWeken: 4);
         thema.VoegSubthemaToe("Drijven", duurWeken: 2, leeftijd: "K3").VoegActiviteitToe("Bootjes", activiteitType: null);
 
-        var request = MatchingPromptBuilder.Bouw(thema, EenLeerdoelenSet());
+        var request = MatchingPromptBuilder.Bouw(thema, Kandidaten(), []);
 
-        Assert.Contains($"  - Bootjes{Nl}", request.UserPrompt + Nl, StringComparison.Ordinal);
+        Assert.Contains($"  - Bootjes{Nl}", request.UserPrompt, StringComparison.Ordinal);
         Assert.DoesNotContain("Bootjes (", request.UserPrompt, StringComparison.Ordinal);
     }
 
     [Fact]
     public void Verwerpt_null_argumenten()
     {
-        Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(null!, EenLeerdoelenSet()));
-        Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(EenThema(), null!));
+        Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(null!, Kandidaten(), []));
+        Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(EenThema(), null!, []));
+        Assert.Throws<ArgumentNullException>(() => MatchingPromptBuilder.Bouw(EenThema(), Kandidaten(), null!));
     }
 }

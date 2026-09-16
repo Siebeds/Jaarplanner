@@ -111,7 +111,7 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
         var plan = SubdoelplaatsingValidator.Keur(context, antwoord);
 
         // D2: the run replaces this leeftijd's open proposals; decided ones stay, as the rejected ones must (D3). One that
-        // came from an activiteit is not this run's to replace (ADR-0052 D4), and its goal is not placed a second time.
+        // came from an activiteit is not this run's to replace (ADR-0053 D4), and its goal is not placed a second time.
         var openVoorstellen = await _context.Subdoelvoorstellen
             .Where(v => v.ThemaId == themaId && v.Leeftijd == code && v.Status == KoppelingStatus.Voorgesteld)
             .ToListAsync(cancellationToken);

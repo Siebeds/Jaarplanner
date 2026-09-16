@@ -75,6 +75,33 @@ public sealed class FakeLeerdoelCatalogus : ILeerdoelCatalogus
         return Task.FromResult<IReadOnlyList<Leerplandoel>>(query.OrderBy(d => d.Code, StringComparer.Ordinal).ToList());
     }
 
+    /// <summary>The minimumdoelen in store (FB-053). Empty unless a test sets them.</summary>
+    public IReadOnlyList<Minimumdoel> Minimumdoelen { get; set; } = [];
+
+    /// <summary>The mijlpalen most recently asked for, or null if none.</summary>
+    public IReadOnlyCollection<string>? LaatsteMijlpalen { get; private set; }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenAsync(
+        IReadOnlyCollection<string> mijlpalen,
+        CancellationToken cancellationToken = default)
+    {
+        LaatsteMijlpalen = mijlpalen;
+        return Task.FromResult<IReadOnlyList<Minimumdoel>>(Minimumdoelen
+            .Where(m => mijlpalen.Contains(m.Leeftijd, StringComparer.Ordinal) && !m.NietMeerInOpstap)
+            .OrderBy(m => m.Ref, StringComparer.Ordinal)
+            .ToList());
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<Minimumdoel>> HaalMinimumdoelenOpRefAsync(
+        IReadOnlyCollection<string> refs,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Minimumdoel>>(Minimumdoelen
+            .Where(m => refs.Contains(m.Ref, StringComparer.Ordinal))
+            .OrderBy(m => m.Ref, StringComparer.Ordinal)
+            .ToList());
+
     private static List<string> Genormaliseerd(IReadOnlyCollection<string>? waarden) =>
         (waarden ?? [])
             .Where(w => !string.IsNullOrWhiteSpace(w))

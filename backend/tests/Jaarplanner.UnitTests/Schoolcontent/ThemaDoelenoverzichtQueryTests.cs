@@ -88,32 +88,13 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Toont_een_aanvaarde_doelsuggestie_als_doelsuggestie_ook_naast_hetzelfde_themadoel()
-    {
-        var thema = new Thema("Herfst", 4);
-        thema.VoegThemadoelToe(Manueel("4.1.GK3.1"));
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("4.1.GK3.1", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("4.2.GK3.2", KoppelingStatus.Voorgesteld, "past")).WijzigStatus(KoppelingStatus.Aanvaard);
-
-        var overzicht = await OverzichtVan(thema, Doel("4.1.GK3.1", "K3"), Doel("4.2.GK3.2", "K3"));
-
-        var k3 = Assert.Single(overzicht.Leeftijden);
-        Assert.Equal(["4.1.GK3.1", "4.2.GK3.2"], k3.Leerplandoelen.Select(l => l.Code));
-        // Accepting a suggestion makes it no themadoel (Art. IX.2), so it is never shown as one.
-        Assert.Equal(
-            [new DoelPlaats(DoelPlaatsSoort.Themadoel, null), new DoelPlaats(DoelPlaatsSoort.Doelsuggestie, null)],
-            k3.Leerplandoelen[0].Plaatsen);
-        Assert.Equal([new DoelPlaats(DoelPlaatsSoort.Doelsuggestie, null)], k3.Leerplandoelen[1].Plaatsen);
-    }
-
-    [Fact]
     public async Task Laat_voorgestelde_en_geweigerde_koppelingen_weg()
     {
         var thema = new Thema("Herfst", 4);
-        thema.VoegDoelsuggestieToe(new DoelKoppeling("5.1.GK3.1", KoppelingStatus.Voorgesteld, "past"));
         var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
-        subthema.VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek)
-            .VoegDoelkoppelingToe(new DoelKoppeling("5.2.GK3.1", KoppelingStatus.Geweigerd));
+        var activiteit = subthema.VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek);
+        activiteit.VoegDoelkoppelingToe(new DoelKoppeling("5.1.GK3.1", KoppelingStatus.Voorgesteld, "past"));
+        activiteit.VoegDoelkoppelingToe(new DoelKoppeling("5.2.GK3.1", KoppelingStatus.Geweigerd));
 
         var overzicht = await OverzichtVan(thema, Doel("5.1.GK3.1", "K3"), Doel("5.2.GK3.1", "K3"));
 

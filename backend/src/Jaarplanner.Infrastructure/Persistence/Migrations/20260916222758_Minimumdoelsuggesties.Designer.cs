@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Jaarplanner.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260916224533_ActiviteitDoelsuggesties")]
-    partial class ActiviteitDoelsuggesties
+    [Migration("20260916222758_Minimumdoelsuggesties")]
+    partial class Minimumdoelsuggesties
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -886,6 +886,45 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("hoeken", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Minimumdoelsuggestie", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AiMotivatie")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("ai_motivatie");
+
+                    b.Property<string>("MinimumdoelRef")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("minimumdoel_ref");
+
+                    b.Property<int>("Rang")
+                        .HasColumnType("integer")
+                        .HasColumnName("rang");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("ThemaId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MinimumdoelRef");
+
+                    b.HasIndex("ThemaId", "MinimumdoelRef")
+                        .IsUnique();
+
+                    b.ToTable("thema_minimumdoelsuggesties", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -933,9 +972,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("ActiviteitId")
-                        .HasColumnType("uuid");
-
                     b.Property<string>("AiMotivatie")
                         .IsRequired()
                         .HasColumnType("text");
@@ -966,8 +1002,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ActiviteitId");
 
                     b.HasIndex("LeerplandoelCode");
 
@@ -1809,6 +1843,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Minimumdoelsuggestie", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Curriculum.Minimumdoel", null)
+                        .WithMany()
+                        .HasForeignKey("MinimumdoelRef")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Thema", null)
+                        .WithMany("Doelsuggesties")
+                        .HasForeignKey("ThemaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Onderzoeksvraag", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
@@ -1872,11 +1921,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel", b =>
                 {
-                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
-                        .WithMany()
-                        .HasForeignKey("ActiviteitId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
                         .WithMany()
                         .HasForeignKey("LeerplandoelCode")
@@ -1921,51 +1965,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasForeignKey("ThemaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
-                {
-                    b.OwnsMany("Jaarplanner.Domain.Schoolcontent.DoelKoppeling", "Doelsuggesties", b1 =>
-                        {
-                            b1.Property<Guid>("ThemaId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<Guid>("Id")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("AiMotivatie")
-                                .HasColumnType("text")
-                                .HasColumnName("ai_motivatie");
-
-                            b1.Property<string>("LeerplandoelCode")
-                                .IsRequired()
-                                .HasMaxLength(64)
-                                .HasColumnType("character varying(64)")
-                                .HasColumnName("leerplandoel_code");
-
-                            b1.Property<string>("Status")
-                                .IsRequired()
-                                .HasMaxLength(16)
-                                .HasColumnType("character varying(16)")
-                                .HasColumnName("status");
-
-                            b1.HasKey("ThemaId", "Id");
-
-                            b1.HasIndex("LeerplandoelCode");
-
-                            b1.ToTable("thema_doelsuggesties", (string)null);
-
-                            b1.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
-                                .WithMany()
-                                .HasForeignKey("LeerplandoelCode")
-                                .OnDelete(DeleteBehavior.Restrict)
-                                .IsRequired();
-
-                            b1.WithOwner()
-                                .HasForeignKey("ThemaId");
-                        });
-
-                    b.Navigation("Doelsuggesties");
                 });
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.ThemaMinimumdoel", b =>
@@ -2175,6 +2174,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Thema", b =>
                 {
+                    b.Navigation("Doelsuggesties");
+
                     b.Navigation("Minimumdoelen");
 
                     b.Navigation("Subthemas");

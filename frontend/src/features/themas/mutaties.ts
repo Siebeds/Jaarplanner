@@ -248,7 +248,7 @@ export function useOntkoppelActiviteitdoel(themaId: string) {
 }
 
 /**
- * Asks the AI for doelen of an activiteit's leeftijd (FB-026, ADR-0052): they land on the activiteit as `Voorgesteld`,
+ * Asks the AI for doelen of an activiteit's leeftijd (FB-026, ADR-0053): they land on the activiteit as `Voorgesteld`,
  * replacing its open proposals, and count for nothing until decided (Art. IV.1).
  */
 export function useStelActiviteitdoelenVoor(themaId: string) {

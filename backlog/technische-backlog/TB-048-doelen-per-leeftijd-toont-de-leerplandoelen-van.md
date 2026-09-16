@@ -35,8 +35,8 @@ geen rol, dus minimumdoelen koppelen of ontkoppelen verandert het overzicht en z
   koppelingen onder het thema. Frontend: `Themadoelenoverzicht.tsx`, en de invalidatie na koppelen en ontkoppelen van
   een minimumdoel in `features/themas/mutaties.ts`.
 - Tests: de query tegen Postgres en het scherm.
-- Leeft naast TB-044 (lijsten inklappen en de ontkoppelbevestiging op dezelfde pagina); wie dit oppakt, bouwt op main
-  nadat TB-044 gemerged is.
+- Leeft naast TB-051 (lijsten inklappen en de ontkoppelbevestiging op dezelfde pagina); wie dit oppakt, bouwt op main
+  nadat TB-051 gemerged is.
 
 ## Acceptatiecriteria
 

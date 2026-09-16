@@ -120,7 +120,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                     + t.Subthemas.SelectMany(s => s.Activiteiten)
                         .Where(a => a.EigenaarId == null)
                         .SelectMany(a => a.Doelkoppelingen)
-                        // Decided links only: a proposal or a rejected goal is not built on (ADR-0052 D5).
+                        // Decided links only: a proposal or a rejected goal is not built on (ADR-0053 D5).
                         .Count(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel),
             })
             .ToListAsync(cancellationToken);
@@ -800,7 +800,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentValidatieFout($"Activiteit is al gekoppeld aan leerdoel '{code}'.");
         }
 
-        // ADR-0052 D6: a goal the AI proposed, or that was rejected, becomes a manual link when linked by hand.
+        // ADR-0053 D6: a goal the AI proposed, or that was rejected, becomes a manual link when linked by hand.
         if (bestaand is not null)
         {
             bestaand.MaakManueel();

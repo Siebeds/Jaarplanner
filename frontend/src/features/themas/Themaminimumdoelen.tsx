@@ -5,18 +5,21 @@ import { Invoer } from "../../components/ui/Veld";
 import { IcoonChevron, IcoonPlus, IcoonZoek } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { useMinimumdoel, useMinimumdoelen } from "../../lib/queries";
+import { useMinimumdoel, useMinimumdoelen, useMinimumdoelTeksten } from "../../lib/queries";
 import type { GeconcordeerdLeerplandoel, ThemaMinimumdoelWeergave } from "../../lib/types";
 import { MIJLPAAL } from "../doelen/mijlpaal";
 import { Doellijst, Ontkoppel } from "./Fiche";
+import { Inklaplijst } from "./Inklaplijst";
+import { opMinimumdoelRef } from "./opCode";
 
 /**
  * The themadoelen of a thema, which are minimumdoelen (FB-043).
  *
- * **Three levels, each shut until asked for.** The owner, 2026-09-16: first which minimumdoelen the thema aims at, then,
- * per minimumdoel, the leerplandoelen that lead there. A thema runs across several leeftijden and a leerplandoel belongs
- * to one, so between the two sits one row per leeftijd with its count ("K2 · 3 leerplandoelen"). Opened, a leeftijd
- * lists its leerplandoelen and nothing else: the minimumdoel they lead to is the row above.
+ * **Four levels, each shut until asked for**: the list itself (TB-051), then the three below. The owner, 2026-09-16:
+ * first which minimumdoelen the thema aims at, then, per minimumdoel, the leerplandoelen that lead there. A thema runs
+ * across several leeftijden and a leerplandoel belongs to one, so between the two sits one row per leeftijd with its
+ * count ("K2 · 3 leerplandoelen"). Opened, a leeftijd lists its leerplandoelen and nothing else: the minimumdoel they
+ * lead to is the row above.
  *
  * **The leerplandoelen are read, never chosen.** They are the minimumdoel's concordance, from its own detail
  * (`GET /api/minimumdoelen/{ref}`, TB-010), and a leeftijd without any is left out. Unlinking the minimumdoel takes them
@@ -36,18 +39,34 @@ export function Themaminimumdoelen({
   onOntkoppel?: (koppelingId: string) => void;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
+  // The list is shut and paged (TB-051), kleuter first, then by leerjaar and ref. The search matches the ref and the
+  // decreed text, which is fetched for every row only once the search opens.
+  const [zoekOpen, setZoekOpen] = useState(false);
+  const gesorteerd = [...koppelingen].sort((a, b) => opMinimumdoelRef(a.minimumdoelRef, b.minimumdoelRef));
+  const { teksten, laadt } = useMinimumdoelTeksten(
+    gesorteerd.map((k) => k.minimumdoelRef),
+    zoekOpen,
+  );
+
   return (
-    <Doellijst>
-      {koppelingen.map((koppeling) => (
+    <Inklaplijst
+      items={gesorteerd}
+      sleutel={(koppeling) => koppeling.id}
+      aantalTekst={telWoord(gesorteerd.length, "thema.eenMinimumdoel", "thema.minimumdoelen")}
+      lijstnaam={t("thema.lijstMinimumdoelen")}
+      zoekPlaatshouder={t("thema.zoekMinimumdoel")}
+      zoektekst={(koppeling) => `${koppeling.minimumdoelRef} ${teksten.get(koppeling.minimumdoelRef) ?? ""}`}
+      zoekLaadt={laadt}
+      onZoekOpen={setZoekOpen}
+      render={(koppeling) => (
         <Minimumdoelrij
-          key={koppeling.id}
           minimumdoelRef={koppeling.minimumdoelRef}
           ontkoppelBezig={ontkoppelBezig}
           onOntkoppel={onOntkoppel ? () => onOntkoppel(koppeling.id) : undefined}
           onToonDoel={onToonDoel}
         />
-      ))}
-    </Doellijst>
+      )}
+    />
   );
 }
 

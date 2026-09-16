@@ -172,7 +172,7 @@ public sealed record Rapportklas(Guid KlasId);
 /// <param name="MakerId">Who created it, or <c>null</c> (imported, older than the rule, or its maker was removed).</param>
 /// <param name="HeeftDoelkoppelingen">
 /// Whether a decided goal is linked to it: an <c>aanvaard</c> or <c>manueel</c> link. A <c>voorgesteld</c> or
-/// <c>geweigerd</c> link does not count for R25's "while no goal is linked to it" (owner, 2026-09-17, ADR-0052 D5).
+/// <c>geweigerd</c> link does not count for R25's "while no goal is linked to it" (owner, 2026-09-17, ADR-0053 D5).
 /// </param>
 /// <param name="EigenaarId">
 /// The owner of an own activiteit (ADR-0049), or <c>null</c> for a shared one. On an own activiteit only the owner's

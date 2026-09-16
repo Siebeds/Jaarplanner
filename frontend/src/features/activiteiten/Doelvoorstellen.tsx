@@ -9,7 +9,7 @@ import { Aimerk, Beslisknoppen } from "../themas/Subdoelplaatsing";
 import { aiFout, beslisFout } from "../themas/plaatsingen";
 
 /**
- * The AI's doelen for an existing activiteit (FB-026, ADR-0052), under its linked doelen, for whoever may link them.
+ * The AI's doelen for an existing activiteit (FB-026, ADR-0053), under its linked doelen, for whoever may link them.
  *
  * **The button asks, the cards wait.** An open proposal wears the faint ring with the wand and the status mark beside it
  * (ADR-0051) and is decided with the quiet check and cross. An accepted one moves up into the linked doelen; a rejected

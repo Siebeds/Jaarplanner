@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Activiteitdoelen;
 
 /// <summary>
-/// The AI's goal proposals for one activiteit (FB-026, ADR-0052): asking for them and deciding one. Rights are the Api's
+/// The AI's goal proposals for one activiteit (FB-026, ADR-0053): asking for them and deciding one. Rights are the Api's
 /// (the <c>DoelenKoppelen</c> row on the activiteit).
 /// </summary>
 public interface IActiviteitDoelsuggestieService

@@ -11,7 +11,7 @@ using Microsoft.Extensions.Options;
 namespace Jaarplanner.Infrastructure.Activiteitdoelen;
 
 /// <summary>
-/// EF Core implementation of <see cref="IActiviteitDoelsuggestieService"/> (FB-026, ADR-0052): prompt, call, shape check
+/// EF Core implementation of <see cref="IActiviteitDoelsuggestieService"/> (FB-026, ADR-0053): prompt, call, shape check
 /// (<see cref="DoelMatchResponseParser"/>), then <see cref="ActiviteitDoelsuggestieValidator"/>. Accepting a proposal
 /// writes the same <c>aanvaard</c> link every reader of decided links already counts, and proposes the goal as subdoel.
 /// </summary>

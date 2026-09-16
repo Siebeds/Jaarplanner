@@ -214,7 +214,7 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
         services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
-        // The AI's goal proposals for an activiteit (FB-026, ADR-0052). The maximum per run is configuration; a value
+        // The AI's goal proposals for an activiteit (FB-026, ADR-0053). The maximum per run is configuration; a value
         // outside 1 to 20 stops the app at startup.
         services.AddOptions<Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieOptions>()
             .Bind(configuration.GetSection(Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieOptions.SectionName))
@@ -257,18 +257,13 @@ public static class DependencyInjection
         // is fakeable with no database in tests. EF Core implementation over AppDbContext.
         services.AddScoped<IDoelMatchOpslag, EfDoelMatchOpslag>();
 
-        // The read-only Op.stap leerplandoel query (E2-07). Shared by the authoring assist and — since
-        // E2-08 — by the matching service, which needs it to resolve the candidate set a match run may
-        // choose from and to check that an "aanpassen" substitution names a code Op.stap really carries
-        // (Art. III.1/III.5). Registered once, above both consumers.
+        // The read-only Op.stap goal query (E2-07): leerplandoelen and minimumdoelen. Shared by the authoring assist and
+        // the doelsuggesties, which read their candidates through it (Art. III.1/III.5). Registered once, above both.
         services.AddScoped<ILeerdoelCatalogus, EfLeerdoelCatalogus>();
 
-        // The AI goal-matching service (FR-4), wired end-to-end (E2-08 candidate selection → E2-02 prompt →
-        // E2-01 client → E2-03 validation → E2-04 persistence as `voorgesteld`). It depends only on
-        // IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against the
-        // fakes in tests (Art. IV.6). It is reachable through DoelsuggestiesController — POST
-        // /api/themas/{themaId}/doelsuggesties/genereer — rather than only from its own unit tests, which
-        // was the entire defect E2-08 exists to fix.
+        // A thema's doelsuggesties (FR-4, FB-053): the AI proposes minimumdoelen as themadoel, stored as `voorgesteld`.
+        // It depends only on IAiClient + IDoelMatchOpslag + ILeerdoelCatalogus, so the same registration works against
+        // the fakes in tests (Art. IV.6). Reached through DoelsuggestiesController.
         services.AddScoped<DoelMatchingService>();
 
         // Goal-first authoring assist (E2-07, Art. IV.8, Gap A.7): the wizard's step 2 (themadoel) and
