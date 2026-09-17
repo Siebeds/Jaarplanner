@@ -2,12 +2,12 @@
 id: TB-052
 titel: Generatierapport voorspelt de dekking van minimumdoelen in plaats van leerplandoelen
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 23:50
-opgepakt-door:
-branch: main
+bijgewerkt: 2026-09-17 08:29
+opgepakt-door: claude-53c162c3
+branch: ticket/TB-052-vooruitzicht-minimumdoelen
 pr:
 geblokkeerd:
 fr: []
@@ -55,3 +55,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 23:50 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-17 08:29 · claude-53c162c3 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
