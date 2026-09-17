@@ -999,6 +999,20 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
     expect(screen.getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement).toHaveTextContent("0");
   });
 
+  it("vraagt het overzicht opnieuw op na het ontkoppelen van een minimumdoel", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+    await leeftijdrij("K3");
+    openLijsten();
+    const overzichtLezingen = () =>
+      vi.mocked(fetch).mock.calls.filter(([pad, init]) => String(pad).endsWith("/doelenoverzicht") && !init?.method).length;
+    const voor = overzichtLezingen();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }) }));
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.ontkoppelBevestig") }));
+
+    await waitFor(() => expect(overzichtLezingen()).toBeGreaterThan(voor));
+  });
+
   it("opent een leerplandoel in het detailblad", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
     fireEvent.click(await leeftijdrij("K3"));

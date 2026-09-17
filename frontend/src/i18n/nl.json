@@ -196,7 +196,7 @@
     "overzichtLeerplandoelWoordMeer": "leerplandoelen",
     "overzichtEenLeerplandoel": "1 leerplandoel",
     "overzichtLeerplandoelen": "{aantal} leerplandoelen",
-    "overzichtGeenLeerplandoelen": "Geen leerplandoelen",
+    "overzichtGeenLeerplandoelen": "Geen leerplandoelen van de minimumdoelen",
     "overzichtEenBuiten": "1 gekoppeld buiten de minimumdoelen",
     "overzichtBuiten": "{aantal} gekoppeld buiten de minimumdoelen",
     "overzichtBuitenTitel": "Gekoppeld, maar bij geen minimumdoel van dit thema",

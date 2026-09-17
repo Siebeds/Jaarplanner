@@ -40,14 +40,14 @@ geen rol, dus minimumdoelen koppelen of ontkoppelen verandert het overzicht en z
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met minimumdoelen, wanneer ik de themapagina open, dan toont "Doelen per leeftijd" per leeftijd
+- [x] Gegeven een thema met minimumdoelen, wanneer ik de themapagina open, dan toont "Doelen per leeftijd" per leeftijd
   precies de leerplandoelen die bij die minimumdoelen horen, en de teller telt ze.
-- [ ] Gegeven dat ik een minimumdoel ontkoppel, wanneer de pagina bijwerkt, dan verdwijnen zijn leerplandoelen uit
+- [x] Gegeven dat ik een minimumdoel ontkoppel, wanneer de pagina bijwerkt, dan verdwijnen zijn leerplandoelen uit
   "Doelen per leeftijd" en dalen de tellers.
-- [ ] Gegeven dat ik een minimumdoel koppel, dan verschijnen zijn leerplandoelen in het overzicht.
-- [ ] Gegeven een thema zonder minimumdoelen, dan toont het blok niets of een lege melding, nooit een oude telling.
-- [ ] De dekkingsberekening verandert niet door dit ticket (zie Open vragen).
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven dat ik een minimumdoel koppel, dan verschijnen zijn leerplandoelen in het overzicht.
+- [x] Gegeven een thema zonder minimumdoelen, dan toont het blok niets of een lege melding, nooit een oude telling.
+- [x] De dekkingsberekening verandert niet door dit ticket (zie Open vragen).
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Buiten scope
 
