@@ -26,7 +26,7 @@ public sealed record ActiviteitvoorstelParseResultaat(bool IsGeldig, IReadOnlyLi
 /// Reads the model's activiteitvoorstellen answer (FB-025). <b>Shape only:</b> the answer as a whole is refused when it is
 /// blank, not JSON, not an object, or holds a <c>null</c> item; a missing array counts as empty. Whether an item's name,
 /// soort, length or codes are acceptable is <see cref="ActiviteitvoorstelValidator"/>'s question, which drops a bad item
-/// and keeps the rest (ADR-0054 D6, D7). A markdown fence is stripped, names match without regard to case, unknown
+/// and keeps the rest (ADR-0056 D6, D7). A markdown fence is stripped, names match without regard to case, unknown
 /// fields are ignored, and a blank code in <c>doelen</c> is left out.
 /// </summary>
 public static class ActiviteitvoorstelResponseParser

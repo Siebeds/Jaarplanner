@@ -64,18 +64,10 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<Schooldaguren> Schooldaguren => Set<Schooldaguren>();
 
     /// <summary>
-    /// The per-class year plans with their thema placements (Art. IX.3, E3-01). A placement stores the
-    /// planningsblok's <b>start date</b> + tier, never an ordinal (ADR-0020 §3) — and, as with the schooljaar,
-    /// there is deliberately no <c>Planningsblokken</c> set: the grid stays derived (ADR-0013).
+    /// The per-class year plans with their thema placements (Art. IX.3, E3-01). A placement stores its own first and
+    /// last day (ADR-0053).
     /// </summary>
     public DbSet<Jaarplan> Jaarplannen => Set<Jaarplan>();
-
-    /// <summary>
-    /// The pre-generation settings each class keeps between runs (E3-04, FR-5.4). Scoped by
-    /// <c>(KlasId, SchooljaarId)</c> because every value in them is a date, so a row must never be read for a
-    /// different school year than the one it was written for.
-    /// </summary>
-    public DbSet<Generatieparameters> Generatieparameters => Set<Generatieparameters>();
 
     /// <summary>The school's thema's — school-scoped autonomous content (Art. IX.2).</summary>
     public DbSet<Thema> Themas => Set<Thema>();
@@ -197,7 +189,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// <summary>The AI's proposed places for a thema's open leerplandoelen (FB-057, ADR-0050). Never read by the dekking.</summary>
     public DbSet<Subdoelvoorstel> Subdoelvoorstellen => Set<Subdoelvoorstel>();
 
-    /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0054).</summary>
+    /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0056).</summary>
     public DbSet<Activiteitvoorstel> Activiteitvoorstellen => Set<Activiteitvoorstel>();
 
     /// <summary>

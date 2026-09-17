@@ -129,7 +129,7 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; themabeheer alone does not.
   SubdoelplaatsingVragen: ["Hoofdleerkracht"],
   SubdoelplaatsingBeslissen: ["Hoofdleerkracht"],
-  // FB-025 (ADR-0054 A3): an activiteitvoorstel's asker while she teaches that leeftijd, and directie.
+  // FB-025 (ADR-0056 A3): an activiteitvoorstel's asker while she teaches that leeftijd, and directie.
   ActiviteitvoorstelBeslissen: ["AanvragerVanVoorstel"],
 };
 
@@ -256,7 +256,7 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
   }
 
   // ADR-0043 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
-  // ADR-0054 A3: the asker of an activiteitvoorstel, while she teaches its leeftijd. Only that resource matches.
+  // ADR-0056 A3: the asker of an activiteitvoorstel, while she teaches its leeftijd. Only that resource matches.
   if (
     kolommen.includes("AanvragerVanVoorstel") &&
     bron?.soort === "activiteitvoorstel" &&
@@ -419,7 +419,7 @@ export interface Mag {
   woordwebBewerken: (eigenaarId: string) => boolean;
   /** Asking the AI where the open doelen of this leeftijd go (FB-057, ADR-0050 P4). */
   subdoelplaatsingVragen: (leeftijd: string) => boolean;
-  /** Deciding this AI activiteitvoorstel: its asker while she teaches the leeftijd, and directie (ADR-0054 A3). */
+  /** Deciding this AI activiteitvoorstel: its asker while she teaches the leeftijd, and directie (ADR-0056 A3). */
   activiteitvoorstelBeslissen: (voorstel: { leeftijd: string; aanvragerId: string }) => boolean;
 }
 

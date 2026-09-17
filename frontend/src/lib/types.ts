@@ -504,7 +504,7 @@ export interface DoelPlaats {
   naam: string | null;
 }
 
-/** A leerplandoel a thema reaches at one leeftijd, once, with every place it is linked. */
+/** A leerplandoel at one leeftijd, once. `plaatsen` is filled only for one outside the list (TB-048). */
 export interface OverzichtLeerplandoel {
   code: string;
   doelsoort: Doelsoort;
@@ -514,15 +514,18 @@ export interface OverzichtLeerplandoel {
   plaatsen: DoelPlaats[];
 }
 
-/** What a thema reaches at one leeftijd: leerplandoelen only (FB-044); its minimumdoelen are its themadoelen. */
+/** One leeftijd of a thema's doelenoverzicht (TB-048). */
 export interface LeeftijdDoelen {
   leeftijd: string;
+  /** The leerplandoelen of the thema's minimumdoelen at this jaar/fase: the list, and what the counts count. */
   leerplandoelen: OverzichtLeerplandoel[];
+  /** Linked under the thema at this leeftijd, but belonging to none of its minimumdoelen. Never counted. */
+  buitenMinimumdoelen: OverzichtLeerplandoel[];
 }
 
 /**
- * What a thema reaches per leeftijd (FB-009): computed by the server from the decided links under it, never stored, and
- * never dekking (that belongs to a klas with a plan, Art. V.1).
+ * The leerplandoelen of a thema per leeftijd (FB-009, TB-048): computed by the server from its minimumdoelen and the
+ * decided links under it, never stored, and never dekking (that belongs to a klas with a plan, Art. V.1).
  */
 export interface ThemaDoelenoverzicht {
   themaId: string;
@@ -592,6 +595,16 @@ export interface SubdoelvoorstelWeergave {
   /** Set for a goal proposed for an existing subthema; null inside a proposed new one. */
   subthemaId: string | null;
   aiMotivatie: string;
+  /** The activiteit an accepted doel came from (FB-026), while it still exists; null for the thema page's own runs. */
+  activiteitNaam?: string | null;
+}
+
+/** What asking the AI for an activiteit's doelen did (FB-026). */
+export interface ActiviteitDoelsuggestieResultaat {
+  isGeslaagd: boolean;
+  aantalVoorgesteld: number;
+  aantalOvergeslagen: number;
+  fout: string | null;
 }
 
 export interface SubthemavoorstelWeergave {
@@ -634,7 +647,7 @@ export interface SubthemavoorstelBeslissing {
   leerplandoelCodes?: string[];
 }
 
-// --- Activiteitvoorstellen (FB-025, ADR-0054). Personal: only the asker is sent hers, and they count for nothing. ---
+// --- Activiteitvoorstellen (FB-025, ADR-0056). Personal: only the asker is sent hers, and they count for nothing. ---
 
 export interface ActiviteitvoorstelDoel {
   leerplandoelCode: string;
@@ -647,7 +660,7 @@ export interface ActiviteitvoorstelWeergave {
   subthemaId: string;
   aanvragerId: string;
   aanvragerNaam: string;
-  /** Whether the signed-in gebruiker asked for it; only directie is sent someone else's (ADR-0054 A3). */
+  /** Whether the signed-in gebruiker asked for it; only directie is sent someone else's (ADR-0056 A3). */
   isEigen: boolean;
   naam: string;
   activiteitType: ActiviteitType | null;
@@ -753,10 +766,17 @@ export interface Eindvoorstel {
   volgendThemaNaam: string | null;
 }
 
-export interface Dekkingsvooruitzicht {
-  aantalGedektNu: number | null;
-  aantalGedektNaAanvaarding: number | null;
-  aantalLeerplandoelen: number;
+/** Why a thema the AI proposed was not placed (ADR-0055). */
+export type NietGeplaatstReden = "OnbekendThema" | "AlGepland" | "GeenLesweek" | "GeenPlaats";
+
+/** The report of one jaarplan generation run, with the plan after it (FR-5.1, ADR-0055). */
+export interface JaarplanGeneratieResultaat {
+  isGeslaagd: boolean;
+  aantalNieuw: number;
+  aantalBehouden: number;
+  aantalVervangen: number;
+  nietGeplaatst: { themaNaam: string; reden: NietGeplaatstReden }[];
+  jaarplan: JaarplanWeergave;
 }
 
 // --- Planningsrooster: a school year's span and its vacations ---
@@ -843,7 +863,8 @@ export interface MinimumdoelDekking {
 }
 
 /**
- * The coverage figures without the goals themselves (`GET .../dekking/voortgang`).
+ * The coverage figures without the goals themselves (`GET .../dekking/voortgang`): today's leerplandoel
+ * figure, and the minimumdoelen covered today and if every proposed thema placement were accepted.
  *
  * The server computes it through the same service and the same scope rules as the full read, so the
  * two cannot drift: a bar and the screen it links to are one number rendered twice, not two numbers
@@ -856,11 +877,13 @@ export interface Dekkingsvoortgang {
   aantalBuitenBereik: number;
   isBetrouwbaar: boolean;
   aantalOnopgelosteVervallenPlaatsingen: number;
-  /** Null together with `aantalMogelijkGedekt` while a stale placement makes the figure unsound. */
+  /** Null, like every figure below, while a stale placement makes the figure unsound. */
   aantalGedekt: number | null;
-  aantalMogelijkGedekt: number | null;
   aantalLeerplandoelen: number;
-  aantalOnbereikbaar: number;
+  aantalMinimumdoelenGedekt: number | null;
+  /** A ceiling over proposals, never coverage (Art. IV.1). */
+  aantalMinimumdoelenMogelijkGedekt: number | null;
+  aantalMinimumdoelen: number;
 }
 
 export interface DekkingWeergave {

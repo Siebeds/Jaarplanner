@@ -842,6 +842,7 @@ export function ThemadetailScherm() {
             mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
           }
           leeftijd={bladActiviteit ? undefined : bladSubthema.leeftijd}
+          themaId={bladActiviteit ? id : undefined}
           onGebruik={
             bladActiviteit && mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
               ? () =>
@@ -854,6 +855,7 @@ export function ThemadetailScherm() {
           }
           gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
+          subdoelen={bladActiviteit ? undefined : bladSubthema.subdoelen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
             bladActiviteit

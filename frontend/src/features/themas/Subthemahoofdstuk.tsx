@@ -141,7 +141,7 @@ export function Subthemahoofdstuk({
   // A new activiteit is the gebruiker's own, or for a hoofdleerkracht a shared one by choice (ADR-0049 D1, D2).
   const magActiviteit = mag.activiteitMaken(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
-  // AI activiteiten (FB-025): whoever may make an own activiteit here, since an accepted one becomes hers (ADR-0054 D1).
+  // AI activiteiten (FB-025): whoever may make an own activiteit here, since an accepted one becomes hers (ADR-0056 D1).
   // The open proposals are fetched only while the chapter is open.
   const magVoorstellen = mag.eigenActiviteitMaken(leeftijd);
   const activiteitvoorstellen = useActiviteitvoorstellen(subthema.id, open && magVoorstellen);
@@ -425,7 +425,8 @@ function Activiteitregel({
   onVerwijder?: () => void;
 }) {
   const kleur = activiteit.kleur as Activiteitkleur | null;
-  const codes = activiteit.doelkoppelingen.map((k) => k.leerplandoelCode);
+  // Decided doelen only: a proposal or a rejected doel is not linked (ADR-0054 D5).
+  const codes = activiteit.doelkoppelingen.filter((k) => beslist(k.status)).map((k) => k.leerplandoelCode);
 
   return (
     <div className="relative flex gap-3 px-3 py-2.5">

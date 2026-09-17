@@ -150,6 +150,7 @@ export function Activiteitblad({
       activiteit={volledig}
       alleenLezen={!mag.activiteitInhoudBewerken({ ...volledig, leeftijd })}
       magDoelen={mag.activiteitDoelenKoppelen({ ...volledig, leeftijd })}
+      themaId={themaId}
       onderzoeksvragen={subthema?.onderzoeksvragen ?? []}
       bezig={wijzig.isPending}
       fout={wijzig.isError ? wijzig.error : undefined}

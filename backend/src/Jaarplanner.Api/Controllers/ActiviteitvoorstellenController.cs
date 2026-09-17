@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for the activiteitvoorstellen (FB-025, ADR-0054): the AI's personal proposals of
+/// Thin REST controller (Art. VIII) for the activiteitvoorstellen (FB-025, ADR-0056): the AI's personal proposals of
 /// activiteiten under a subthema. All rules live in <see cref="IActiviteitvoorstelService"/>.
 /// <para>
 /// <b>Rights (D1, A3).</b> Asking is <c>EigenActiviteitMaken</c> at the subthema's leeftijd, because an accepted

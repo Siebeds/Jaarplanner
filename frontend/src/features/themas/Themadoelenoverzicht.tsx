@@ -9,20 +9,23 @@ import type { DoelPlaats, LeeftijdDoelen, OverzichtLeerplandoel } from "../../li
 import { Blok, Doellijst, Kop } from "./Fiche";
 
 /**
- * What a thema reaches per leeftijd (FB-009): the leerplandoelen linked anywhere under it.
+ * The leerplandoelen of a thema per leeftijd (FB-009, TB-048).
  *
  * **A preview of what the thema offers, never dekking.** Dekking belongs to a klas with a plan (Art. V.1), and this block
- * knows no klas, so no word here says "gedekt". The server computes it from the decided links only; nothing is stored.
+ * knows no klas, so no word here says "gedekt". The server computes it; nothing is stored.
  *
- * **Leerplandoelen only (FB-044).** The minimumdoelen a thema aims at are its themadoelen (ADR-0046), shown above this
- * block, so it no longer repeats them; a leerplandoel's own minimumdoel is in its detail. The margin and each leeftijd
- * count leerplandoelen.
+ * **The list is the concordance of the thema's minimumdoelen (TB-048)**: every leerplandoel of a minimumdoel the thema
+ * aims at, at its own jaar/fase, whether or not anything links it yet. The margin and each leeftijd count only these.
+ * Linking or unlinking a minimumdoel refreshes the thema's key, and this query with it.
+ *
+ * **A decided link outside that list stays visible, apart and uncounted**, with where it hangs, so unlinking a
+ * minimumdoel never makes a subdoel or activiteit goal vanish from sight.
  *
  * **One row per leeftijd, shut by default**, the gesture and the default the subthema chapters have (FB-011), with a
  * count a teacher can scan without opening it. Opened, the list uses the page's own list frame, and each row opens the
  * doel's detail in the page's one sheet.
  *
- * **Nothing at all while no decided link exists**: an empty block would only announce its own emptiness.
+ * **Nothing at all while there is nothing to list**: an empty block would only announce its own emptiness.
  */
 export function Themadoelenoverzicht({
   themaId,
@@ -55,8 +58,7 @@ export function Themadoelenoverzicht({
 
   if (data.leeftijden.length === 0) return null;
 
-  // The margin counts distinct leerplandoelen for the whole thema. Rows group by the subthema's leeftijd, so a code
-  // linked from subthema's of two leeftijden shows under both, and this total can be lower than the sum of the rows.
+  // The margin counts the list only; a code sits at its own jaar/fase there, so it is counted once.
   const leerplandoelen = new Set(data.leeftijden.flatMap((l) => l.leerplandoelen.map((d) => d.code))).size;
 
   return (
@@ -81,7 +83,7 @@ function Icoon() {
   return <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />;
 }
 
-/** One leeftijd: its count on the fold button, and its leerplandoelen once opened. */
+/** One leeftijd: its counts on the fold button, and its leerplandoelen once opened. */
 function Leeftijdrij({
   groep,
   onToonDoel,
@@ -90,6 +92,14 @@ function Leeftijdrij({
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const aantal = groep.leerplandoelen.length;
+  const buiten = groep.buitenMinimumdoelen.length;
+  const tellers = [
+    aantal === 0
+      ? t("thema.overzichtGeenLeerplandoelen")
+      : telWoord(aantal, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"),
+  ];
+  if (buiten > 0) tellers.push(telWoord(buiten, "thema.overzichtEenBuiten", "thema.overzichtBuiten"));
 
   return (
     <div>
@@ -100,9 +110,7 @@ function Leeftijdrij({
         className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
       >
         <span className="w-9 shrink-0 font-display text-sectie text-inkt">{groep.leeftijd}</span>
-        <span className="min-w-0 flex-1 text-meta text-inkt-zacht">
-          {telWoord(groep.leerplandoelen.length, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen")}
-        </span>
+        <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{tellers.join(" · ")}</span>
         <IcoonChevron
           aria-hidden="true"
           className={cn(
@@ -113,25 +121,39 @@ function Leeftijdrij({
       </button>
 
       {open ? (
-        <div className="px-3 pb-3">
-          <Doellijst>
-            {groep.leerplandoelen.map((doel) => (
-              <Leerplandoelregel key={doel.code} doel={doel} onToon={onToonDoel} />
-            ))}
-          </Doellijst>
+        <div className="space-y-3 px-3 pb-3">
+          {aantal > 0 ? (
+            <Doellijst>
+              {groep.leerplandoelen.map((doel) => (
+                <Leerplandoelregel key={doel.code} doel={doel} onToon={onToonDoel} />
+              ))}
+            </Doellijst>
+          ) : null}
+          {buiten > 0 ? (
+            <div>
+              <h3 className="mb-1.5 text-meta font-medium text-inkt-zacht">{t("thema.overzichtBuitenTitel")}</h3>
+              <Doellijst>
+                {groep.buitenMinimumdoelen.map((doel) => (
+                  <Leerplandoelregel key={doel.code} doel={doel} onToon={onToonDoel} metPlaats />
+                ))}
+              </Doellijst>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>
   );
 }
 
-/** A leerplandoel: what it says, and where in the thema it hangs. The whole row opens its detail. */
+/** A leerplandoel: what it says and, outside the list, where in the thema it hangs. The whole row opens its detail. */
 function Leerplandoelregel({
   doel,
   onToon,
+  metPlaats = false,
 }: {
   doel: OverzichtLeerplandoel;
   onToon: (code: string, knop: HTMLElement) => void;
+  metPlaats?: boolean;
 }) {
   return (
     <li>
@@ -150,7 +172,7 @@ function Leerplandoelregel({
           ) : null}
         </span>
         <span className="mt-1 line-clamp-2 text-body text-inkt">{doel.tekst}</span>
-        <span className="mt-1.5 block text-meta text-inkt-zacht">{waar(doel.plaatsen)}</span>
+        {metPlaats ? <span className="mt-1.5 block text-meta text-inkt-zacht">{waar(doel.plaatsen)}</span> : null}
       </button>
     </li>
   );

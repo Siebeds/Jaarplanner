@@ -83,7 +83,14 @@ public sealed class SubdoelvoorstelConfiguration : IEntityTypeConfiguration<Subd
             .HasPrincipalKey(l => l.Code)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // ADR-0054 D4: the activiteit an accepted goal came from. The proposal outlives it; only the pointer goes.
+        builder.HasOne<Activiteit>()
+            .WithMany()
+            .HasForeignKey(v => v.ActiviteitId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasIndex(v => new { v.ThemaId, v.Leeftijd });
         builder.HasIndex(v => v.LeerplandoelCode);
+        builder.HasIndex(v => v.ActiviteitId);
     }
 }

@@ -551,27 +551,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("algemene_ficheplaatsingen", (string)null);
                 });
 
-            modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("KlasId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("SchooljaarId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SchooljaarId");
-
-                    b.HasIndex("KlasId", "SchooljaarId")
-                        .IsUnique();
-
-                    b.ToTable("generatieparameters", (string)null);
-                });
-
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekmoment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1038,6 +1017,9 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ActiviteitId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("AiMotivatie")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1068,6 +1050,8 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActiviteitId");
 
                     b.HasIndex("LeerplandoelCode");
 
@@ -1546,81 +1530,6 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Jaarplanner.Domain.Planning.Generatieparameters", b =>
-                {
-                    b.HasOne("Jaarplanner.Domain.Planning.Klas", null)
-                        .WithMany()
-                        .HasForeignKey("KlasId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Jaarplanner.Domain.Planning.Schooljaar", null)
-                        .WithMany()
-                        .HasForeignKey("SchooljaarId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.OwnsMany("Jaarplanner.Domain.Planning.BewaardStartthema", "_startthemas", b1 =>
-                        {
-                            b1.Property<Guid>("Id")
-                                .HasColumnType("uuid");
-
-                            b1.Property<DateOnly>("BlokStart")
-                                .HasColumnType("date");
-
-                            b1.Property<Guid>("GeneratieparametersId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("ThemaNaam")
-                                .IsRequired()
-                                .HasMaxLength(256)
-                                .HasColumnType("character varying(256)");
-
-                            b1.HasKey("Id");
-
-                            b1.HasIndex("GeneratieparametersId", "BlokStart")
-                                .IsUnique();
-
-                            b1.ToTable("startthemavoorkeuren", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("GeneratieparametersId");
-                        });
-
-                    b.OwnsMany("Jaarplanner.Domain.Planning.BewaardVastMoment", "_vasteMomenten", b1 =>
-                        {
-                            b1.Property<Guid>("Id")
-                                .HasColumnType("uuid");
-
-                            b1.Property<bool>("BlokkeertPlaatsing")
-                                .HasColumnType("boolean");
-
-                            b1.Property<DateOnly>("Datum")
-                                .HasColumnType("date");
-
-                            b1.Property<Guid>("GeneratieparametersId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<string>("Naam")
-                                .IsRequired()
-                                .HasMaxLength(200)
-                                .HasColumnType("character varying(200)");
-
-                            b1.HasKey("Id");
-
-                            b1.HasIndex("GeneratieparametersId", "Datum");
-
-                            b1.ToTable("vastemomenten", (string)null);
-
-                            b1.WithOwner()
-                                .HasForeignKey("GeneratieparametersId");
-                        });
-
-                    b.Navigation("_startthemas");
-
-                    b.Navigation("_vasteMomenten");
-                });
-
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekmoment", b =>
                 {
                     b.HasOne("Jaarplanner.Domain.Planning.Hoekplaatsing", null)
@@ -2012,6 +1921,11 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel", b =>
                 {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Activiteit", null)
+                        .WithMany()
+                        .HasForeignKey("ActiviteitId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("Jaarplanner.Domain.Curriculum.Leerplandoel", null)
                         .WithMany()
                         .HasForeignKey("LeerplandoelCode")

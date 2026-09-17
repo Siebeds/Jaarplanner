@@ -7,14 +7,14 @@ namespace Jaarplanner.Domain.Planning;
 /// This is what makes "what am I doing on Tuesday?" a question the plan can answer.
 /// <para>
 /// <b>It keys on a calendar <see cref="Datum"/>, not on a planningsblok — and that is the whole design.</b> The
-/// obvious alternative was a third <see cref="Planningsblokniveau"/> (<c>Week</c>, or <c>Dag</c>), and it is wrong on
+/// obvious alternative, when this was written, was a third planningsblok tier (<c>Week</c>, or <c>Dag</c>), and it is wrong on
 /// three independent grounds:
 /// </para>
 /// <para>
 /// <b>1. The grid is ratified and a week is not part of it.</b> Art. IX.3 and ADR-0013 fix the planning grid at the
 /// two-tier themaperiode/subthemaperiode pair, configurable behind the E3-05 seam. A week is a calendar unit, which is
-/// exactly the assumption <see cref="Planningsblokniveau"/> is guarded against gaining — that enum has a test whose
-/// only job is to fail when a calendar unit appears in it. Widening it to satisfy a screen would compile in an
+/// exactly the assumption the tier enum was guarded against gaining. (ADR-0053 took the grid out of the planning and
+/// ADR-0055 removed the enum.) Widening it to satisfy a screen would compile in an
 /// assumption Art. XIV still leaves open, in the one place the constitution asked us not to.
 /// </para>
 /// <para>

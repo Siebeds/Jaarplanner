@@ -42,7 +42,7 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
                     subthema.Leeftijd,
                     activiteit.MakerId,
                     activiteit.EigenaarId,
-                    HeeftDoelkoppelingen = activiteit.Doelkoppelingen.Any(),
+                    HeeftDoelkoppelingen = activiteit.Doelkoppelingen.Any(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel),
                 })
             .SingleOrDefaultAsync(cancellationToken);
 
@@ -91,7 +91,7 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
         var gekoppeld = await (
                 from activiteit in _context.Activiteiten.AsNoTracking()
                 join subthema in _context.Subthemas on activiteit.SubthemaId equals subthema.Id
-                where subthema.ThemaId == themaId && activiteit.Doelkoppelingen.Any()
+                where subthema.ThemaId == themaId && activiteit.Doelkoppelingen.Any(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
                 select new { activiteit.Id, subthema.Leeftijd })
             .ToListAsync(cancellationToken);
         var gekoppeldeLeeftijden = gekoppeld

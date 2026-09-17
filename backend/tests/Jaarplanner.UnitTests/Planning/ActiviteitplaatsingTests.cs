@@ -75,19 +75,6 @@ public sealed class ActiviteitplaatsingTests
     }
 
     /// <summary>
-    /// The counterpart of the assertion above, and the reason E9-03 refused to widen the enum: adding a week or a day
-    /// tier to <see cref="Planningsblokniveau"/> would have compiled in a calendar unit that Art. IX.3 and ADR-0013
-    /// keep out of the planning grid.
-    /// </summary>
-    [Fact]
-    public void Planningsblokniveau_kreeg_geen_week_of_dag_lid()
-    {
-        var leden = Enum.GetNames<Planningsblokniveau>();
-
-        Assert.Equal(["Themaperiode", "Subthemaperiode"], leden.OrderByDescending(n => n).ToArray());
-    }
-
-    /// <summary>
     /// <b>The aggregate accepts any activiteit now, and that is the change rather than a gap in this suite.</b>
     /// Art. IX.2 was amended on 2026-08-30: an activiteit inherits its subthema's LEEFTIJD and no longer belongs
     /// to a klas, so there is nothing here for <c>Jaarplan</c> to compare against its own <c>KlasId</c>. Deciding

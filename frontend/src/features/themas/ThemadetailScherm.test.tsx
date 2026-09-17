@@ -8,6 +8,7 @@ import type {
   DoelMatchResultaat,
   DoelMatchSuggestie,
   SubdoelplaatsingOverzicht,
+  OverzichtLeerplandoel,
   ThemaDoelenoverzicht,
   ThemaWeergave,
 } from "../../lib/types";
@@ -905,79 +906,123 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   });
 });
 
-describe("ThemadetailScherm: doelen per leeftijd, alleen leerplandoelen (FB-009, FB-044)", () => {
+describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minimumdoelen (FB-009, TB-048)", () => {
+  const leerplandoel = (code: string, tekst: string, extra: Partial<OverzichtLeerplandoel> = {}): OverzichtLeerplandoel => ({
+    code,
+    doelsoort: "Gemeenschappelijk",
+    tekst,
+    nietMeerInOpstap: false,
+    minimumdoelRef: "K-7",
+    plaatsen: [],
+    ...extra,
+  });
+
   const OVERZICHT: ThemaDoelenoverzicht = {
     themaId: "thema-1",
     leeftijden: [
       {
+        leeftijd: "K2",
+        leerplandoelen: [leerplandoel("WIS-2", "Vormen herkennen")],
+        buitenMinimumdoelen: [],
+      },
+      {
         leeftijd: "K3",
-        leerplandoelen: [
-          {
-            code: "WIS-1",
-            doelsoort: "Gemeenschappelijk",
-            tekst: "Tellen tot tien",
-            nietMeerInOpstap: false,
-            minimumdoelRef: "K-7",
+        leerplandoelen: [leerplandoel("WIS-1", "Tellen tot tien"), leerplandoel("WIS-3", "Meten met de voet")],
+        buitenMinimumdoelen: [
+          leerplandoel("NED-1", "Luisteren naar een verhaal", {
+            minimumdoelRef: "K-9",
             plaatsen: [
               { soort: "Subdoel", naam: "Bladeren" },
               { soort: "Activiteit", naam: "Eigen spel" },
               { soort: "Activiteit", naam: "Andermans spel" },
             ],
-          },
-          {
-            code: "NED-1",
-            doelsoort: "Gemeenschappelijk",
-            tekst: "Luisteren naar een verhaal",
-            nietMeerInOpstap: false,
-            minimumdoelRef: null,
-            plaatsen: [{ soort: "Themadoel", naam: null }],
-          },
+          }),
         ],
       },
     ],
   };
 
-  const leeftijdrij = () => screen.findByRole("button", { name: /^K3/, expanded: false });
-  /** The list under the K3 row, once opened. */
+  const leeftijdrij = (leeftijd: string) => screen.findByRole("button", { name: new RegExp(`^${leeftijd}`), expanded: false });
+  /** The lists under the K3 row, once opened. */
   const lijst = () => within(screen.getByRole("button", { name: /^K3/, expanded: true }).closest("li")!);
 
-  it("toont per leeftijd een ingeklapte rij die alleen leerplandoelen telt", async () => {
+  it("telt per leeftijd de leerplandoelen van de minimumdoelen, en de koppelingen erbuiten apart", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
 
-    const rij = await leeftijdrij();
-    expect(rij).toHaveTextContent(telWoord(2, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
-    expect(rij).not.toHaveTextContent(/minimumdoel/i);
+    expect(await leeftijdrij("K2")).toHaveTextContent(
+      telWoord(1, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"),
+    );
+    const k3 = await leeftijdrij("K3");
+    expect(k3).toHaveTextContent(telWoord(2, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
+    expect(k3).toHaveTextContent(telWoord(1, "thema.overzichtEenBuiten", "thema.overzichtBuiten"));
+    // The margin counts the list only: three, not four.
+    expect(screen.getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement).toHaveTextContent("3");
     expect(screen.queryByRole("button", { name: /WIS-1/ })).toBeNull();
   });
 
-  it("toont opengeklapt alleen de leerplandoelen met waar ze hangen, zonder groep minimumdoelen", async () => {
+  it("toont opengeklapt de lijst zonder plaatsen, en de koppelingen erbuiten met waar ze hangen", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
-    fireEvent.click(await leeftijdrij());
+    fireEvent.click(await leeftijdrij("K3"));
 
+    const wis1 = lijst().getByRole("button", { name: /WIS-1/ });
+    expect(wis1).not.toHaveTextContent(t("thema.overzichtVia", { lijst: "" }).trim());
+    expect(lijst().getByRole("heading", { name: t("thema.overzichtBuitenTitel") })).toBeInTheDocument();
     const plaatsen = [
       t("thema.plaatsSubdoel", { naam: "Bladeren" }),
       telWoord(2, "thema.plaatsEenActiviteit", "thema.plaatsActiviteiten"),
     ].join(", ");
-    expect(lijst().getByRole("button", { name: /WIS-1/ })).toHaveTextContent(t("thema.overzichtVia", { lijst: plaatsen }));
-    expect(lijst().getByRole("button", { name: /NED-1/ })).toHaveTextContent(
-      t("thema.overzichtVia", { lijst: t("thema.plaatsThemadoel") }),
-    );
-    // Two rows, both leerplandoelen: no minimumdoel row and no heading for one.
-    expect(lijst().getAllByRole("listitem")).toHaveLength(2);
-    expect(lijst().queryByText("K-7")).toBeNull();
-    expect(lijst().queryByRole("heading")).toBeNull();
+    expect(lijst().getByRole("button", { name: /NED-1/ })).toHaveTextContent(t("thema.overzichtVia", { lijst: plaatsen }));
+    expect(lijst().getAllByRole("listitem")).toHaveLength(3);
+  });
+
+  it("toont geen kop voor koppelingen erbuiten als er geen zijn", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+    const k2 = await leeftijdrij("K2");
+    expect(k2).not.toHaveTextContent(t("thema.overzichtBuiten", { aantal: 0 }));
+    fireEvent.click(k2);
+
+    const lijstK2 = within(screen.getByRole("button", { name: /^K2/, expanded: true }).closest("li")!);
+    expect(lijstK2.getByRole("button", { name: /WIS-2/ })).toBeInTheDocument();
+    expect(lijstK2.queryByRole("heading")).toBeNull();
+  });
+
+  it("zegt geen leerplandoelen bij een leeftijd met alleen koppelingen buiten de minimumdoelen", async () => {
+    toon(DIRECTIE, {
+      overzicht: {
+        themaId: "thema-1",
+        leeftijden: [{ ...OVERZICHT.leeftijden[1], leerplandoelen: [] }],
+      },
+    });
+
+    const k3 = await leeftijdrij("K3");
+    expect(k3).toHaveTextContent(t("thema.overzichtGeenLeerplandoelen"));
+    expect(screen.getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement).toHaveTextContent("0");
+  });
+
+  it("vraagt het overzicht opnieuw op na het ontkoppelen van een minimumdoel", async () => {
+    toon(DIRECTIE, { overzicht: OVERZICHT });
+    await leeftijdrij("K3");
+    openLijsten();
+    const overzichtLezingen = () =>
+      vi.mocked(fetch).mock.calls.filter(([pad, init]) => String(pad).endsWith("/doelenoverzicht") && !init?.method).length;
+    const voor = overzichtLezingen();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }) }));
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.ontkoppelBevestig") }));
+
+    await waitFor(() => expect(overzichtLezingen()).toBeGreaterThan(voor));
   });
 
   it("opent een leerplandoel in het detailblad", async () => {
     toon(DIRECTIE, { overzicht: OVERZICHT });
-    fireEvent.click(await leeftijdrij());
+    fireEvent.click(await leeftijdrij("K3"));
 
     fireEvent.click(lijst().getByRole("button", { name: /WIS-1/ }));
 
     expect(await screen.findByRole("dialog", { name: t("doel.titel") })).toBeInTheDocument();
   });
 
-  it("toont geen blok zolang het thema geen beslist gekoppelde doelen heeft", async () => {
+  it("toont geen blok zolang er niets te tonen is", async () => {
     toon(DIRECTIE);
     await screen.findByText("Bladeren");
 

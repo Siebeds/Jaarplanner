@@ -15,14 +15,14 @@ public sealed class JaarplanGeneratieResponseParserTests
         var resultaat = JaarplanGeneratieResponseParser.Parse(
             """
             {"plaatsingen":[
-              {"blokStart":"2026-09-01","thema":"Herfst","motivatie":"seizoen past bij september"},
-              {"blokStart":"2026-10-06","thema":"Water","motivatie":"regenperiode"}]}
+              {"startweek":"2026-09-01","thema":"Herfst","motivatie":"seizoen past bij september"},
+              {"startweek":"2026-10-06","thema":"Water","motivatie":"regenperiode"}]}
             """);
 
         Assert.True(resultaat.IsGeldig);
         Assert.Null(resultaat.Fout);
         Assert.Equal(2, resultaat.Plaatsingen.Count);
-        Assert.Equal(new DateOnly(2026, 9, 1), resultaat.Plaatsingen[0].BlokStart);
+        Assert.Equal(new DateOnly(2026, 9, 1), resultaat.Plaatsingen[0].Startweek);
         Assert.Equal("Herfst", resultaat.Plaatsingen[0].ThemaNaam);
         Assert.Equal("seizoen past bij september", resultaat.Plaatsingen[0].Motivatie);
     }
@@ -31,7 +31,7 @@ public sealed class JaarplanGeneratieResponseParserTests
     public void Een_kale_toplevel_array_wordt_ook_aanvaard()
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(
-            """[{"blokStart":"2026-09-01","thema":"Herfst","motivatie":"seizoen"}]""");
+            """[{"startweek":"2026-09-01","thema":"Herfst","motivatie":"seizoen"}]""");
 
         Assert.True(resultaat.IsGeldig);
         Assert.Single(resultaat.Plaatsingen);
@@ -41,7 +41,7 @@ public sealed class JaarplanGeneratieResponseParserTests
     public void Een_markdown_fence_wordt_afgepeld()
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(
-            "```json\n{\"plaatsingen\":[{\"blokStart\":\"2026-09-01\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}]}\n```");
+            "```json\n{\"plaatsingen\":[{\"startweek\":\"2026-09-01\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}]}\n```");
 
         Assert.True(resultaat.IsGeldig);
         Assert.Single(resultaat.Plaatsingen);
@@ -56,24 +56,18 @@ public sealed class JaarplanGeneratieResponseParserTests
         Assert.Empty(resultaat.Plaatsingen);
     }
 
-    /// <summary>
-    /// <b>The rejection that matters most</b> (ADR-0020 §3, and the binding constraint on this story). A model that
-    /// names the block by its <i>position</i> — "blok": 3, "periode": "derde themaperiode" — has not answered the
-    /// question. Accepting it would persist an ordinal, which re-points when the school edits a vakantie and would
-    /// silently relocate the teacher's thema. There is deliberately no fallback from a position to a date.
-    /// </summary>
+    /// <summary>A placement without a start week has not answered the question: it is rejected, never guessed.</summary>
     [Theory]
-    [InlineData("""{"plaatsingen":[{"blok":3,"thema":"Herfst","motivatie":"seizoen"}]}""")]
-    [InlineData("""{"plaatsingen":[{"ordinaal":3,"thema":"Herfst","motivatie":"seizoen"}]}""")]
-    [InlineData("""{"plaatsingen":[{"periode":"derde themaperiode","thema":"Herfst","motivatie":"seizoen"}]}""")]
-    [InlineData("""{"plaatsingen":[{"blokStart":"","thema":"Herfst","motivatie":"seizoen"}]}""")]
-    public void Een_antwoord_op_blokpositie_wordt_geweigerd(string json)
+    [InlineData("""{"plaatsingen":[{"week":3,"thema":"Herfst","motivatie":"seizoen"}]}""")]
+    [InlineData("""{"plaatsingen":[{"blokStart":"2026-09-07","thema":"Herfst","motivatie":"seizoen"}]}""")]
+    [InlineData("""{"plaatsingen":[{"startweek":"","thema":"Herfst","motivatie":"seizoen"}]}""")]
+    public void Een_antwoord_zonder_startweek_wordt_geweigerd(string json)
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(json);
 
         Assert.False(resultaat.IsGeldig);
         Assert.Empty(resultaat.Plaatsingen);
-        Assert.Contains("blokStart", resultaat.Fout);
+        Assert.Contains("startweek", resultaat.Fout);
     }
 
     /// <summary>
@@ -88,7 +82,7 @@ public sealed class JaarplanGeneratieResponseParserTests
     public void Een_niet_ISO_datum_wordt_geweigerd(string datum)
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(
-            $"{{\"plaatsingen\":[{{\"blokStart\":\"{datum}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}");
+            $"{{\"plaatsingen\":[{{\"startweek\":\"{datum}\",\"thema\":\"Herfst\",\"motivatie\":\"seizoen\"}}]}}");
 
         Assert.False(resultaat.IsGeldig);
         Assert.Empty(resultaat.Plaatsingen);
@@ -102,9 +96,9 @@ public sealed class JaarplanGeneratieResponseParserTests
     [InlineData("""{"iets":"anders"}""", "Unrecognised response shape")]
     [InlineData("""42""", "Unrecognised response shape")]
     [InlineData("""{"plaatsingen":[null]}""", "is null")]
-    [InlineData("""{"plaatsingen":[{"blokStart":"2026-09-01","motivatie":"x"}]}""", "'thema'")]
-    [InlineData("""{"plaatsingen":[{"blokStart":"2026-09-01","thema":"Herfst"}]}""", "'motivatie'")]
-    [InlineData("""{"plaatsingen":[{"blokStart":"2026-09-01","thema":" ","motivatie":"x"}]}""", "'thema'")]
+    [InlineData("""{"plaatsingen":[{"startweek":"2026-09-01","motivatie":"x"}]}""", "'thema'")]
+    [InlineData("""{"plaatsingen":[{"startweek":"2026-09-01","thema":"Herfst"}]}""", "'motivatie'")]
+    [InlineData("""{"plaatsingen":[{"startweek":"2026-09-01","thema":" ","motivatie":"x"}]}""", "'thema'")]
     public void Ongeldige_antwoorden_leveren_een_diagnose_en_geen_plaatsingen(string json, string verwachteFout)
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(json);
@@ -119,7 +113,7 @@ public sealed class JaarplanGeneratieResponseParserTests
     public void Andere_casing_en_extra_velden_zijn_toegestaan()
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(
-            """{"plaatsingen":[{"BlokStart":"2026-09-01","Thema":"Herfst","Motivatie":"seizoen","zekerheid":0.9}]}""");
+            """{"plaatsingen":[{"Startweek":"2026-09-01","Thema":"Herfst","Motivatie":"seizoen","zekerheid":0.9}]}""");
 
         Assert.True(resultaat.IsGeldig);
         Assert.Equal("Herfst", Assert.Single(resultaat.Plaatsingen).ThemaNaam);
@@ -132,8 +126,8 @@ public sealed class JaarplanGeneratieResponseParserTests
         var resultaat = JaarplanGeneratieResponseParser.Parse(
             """
             {"plaatsingen":[
-              {"blokStart":"2026-09-01","thema":"Herfst","motivatie":"geldig"},
-              {"blokStart":"morgen","thema":"Water","motivatie":"ongeldig"}]}
+              {"startweek":"2026-09-01","thema":"Herfst","motivatie":"geldig"},
+              {"startweek":"morgen","thema":"Water","motivatie":"ongeldig"}]}
             """);
 
         Assert.False(resultaat.IsGeldig);
@@ -145,7 +139,7 @@ public sealed class JaarplanGeneratieResponseParserTests
     {
         var resultaat = JaarplanGeneratieResponseParser.Parse(new AiCompletion
         {
-            Content = """{"plaatsingen":[{"blokStart":"2026-09-01","thema":"Herfst","motivatie":"seizoen"}]}""",
+            Content = """{"plaatsingen":[{"startweek":"2026-09-01","thema":"Herfst","motivatie":"seizoen"}]}""",
         });
 
         Assert.True(resultaat.IsGeldig);

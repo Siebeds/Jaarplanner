@@ -8,8 +8,8 @@ import { themabalans } from "./themabalans";
  * and until now finding "which activiteit still has no doel" meant scrolling the whole page.
  */
 
-function activiteit(codes: string[]) {
-  return { doelkoppelingen: codes.map((leerplandoelCode) => ({ leerplandoelCode })) };
+function activiteit(codes: string[], status = "Manueel") {
+  return { doelkoppelingen: codes.map((leerplandoelCode) => ({ leerplandoelCode, status })) };
 }
 
 function thema(vorm: unknown): ThemaWeergave {
@@ -49,6 +49,23 @@ describe("themabalans", () => {
 
     expect(balans.activiteiten).toBe(4);
     expect(balans.activiteitenZonderDoel).toBe(3);
+  });
+
+  it("telt een voorgesteld of geweigerd doel niet (FB-026)", () => {
+    const balans = themabalans(
+      thema({
+        themadoelen: [], minimumdoelen: [],
+        subthemas: [
+          {
+            subdoelen: [],
+            activiteiten: [activiteit(["A"], "Voorgesteld"), activiteit(["B"], "Geweigerd"), activiteit(["C"], "Aanvaard")],
+          },
+        ],
+      }),
+    );
+
+    expect(balans.activiteitdoelen).toBe(1);
+    expect(balans.activiteitenZonderDoel).toBe(2);
   });
 
   it("geeft nullen voor een thema waar nog niets onder hangt", () => {

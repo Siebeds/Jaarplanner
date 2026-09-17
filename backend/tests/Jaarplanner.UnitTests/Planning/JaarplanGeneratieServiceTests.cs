@@ -1,25 +1,20 @@
-using System.ComponentModel.DataAnnotations;
-using Jaarplanner.Application.Planning;
+using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Application.Schoolcontent.Beheer;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
-using Jaarplanner.Infrastructure.Planning;
+using Jaarplanner.UnitTests.Ai;
 
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// What is left of the jaarplan generation while it is switched off (ADR-0053 decision 9): the service refuses a run
-/// after checking the class, it still reads the kept pre-generation parameters, and the parked pieces the rework will
-/// build on — the prompt builder and the parameters' own rules — keep their behaviour.
+/// The jaarplan generation on dates (TB-053, ADR-0055): the model names thema's and start weeks, and the service turns
+/// them into days by the calendar rules of ADR-0053, on free days only, with no database and no network (Art. IV.6).
+/// The school year is 1 September 2026 to 30 June 2027 with the four Belgian vacations; 1 September is a Tuesday.
 /// </summary>
 public sealed class JaarplanGeneratieServiceTests
 {
-    private static readonly IPlanningsblokIndeling Indeling =
-        new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
-
-    private static IReadOnlyList<Planningsblok> Blokken(Schooljaar schooljaar) =>
-        Indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode);
+    private static DateOnly D(int maand, int dag) => new(maand >= 9 ? 2026 : 2027, maand, dag);
 
     private static Thema Herfst()
     {
@@ -31,170 +26,396 @@ public sealed class JaarplanGeneratieServiceTests
         return thema;
     }
 
-    private static Thema Water() => new("Water", duurWeken: 5);
-
-    private static (JaarplanGeneratieService Service, FakeJaarplanOpslag Opslag, Klas Klas, Schooljaar Schooljaar) Opzet()
+    private sealed class Opzet
     {
-        var schooljaar = TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
-        var opslag = new FakeJaarplanOpslag(klas, schooljaar, [Herfst(), Water()]);
-
-        return (new JaarplanGeneratieService(opslag), opslag, klas, schooljaar);
-    }
-
-    [Fact]
-    public async Task Een_generatie_wordt_geweigerd_en_verandert_niets()
-    {
-        var (service, opslag, klas, _) = Opzet();
-
-        var fout = await Assert.ThrowsAsync<GeneratieUitgeschakeldFout>(() => service.GenereerAsync(klas.Id));
-
-        Assert.Contains("tijdelijk uit", fout.Message);
-        Assert.Equal(0, opslag.AantalKeerBewaard);
-        Assert.Null(opslag.Jaarplan);
-    }
-
-    [Fact]
-    public async Task Een_onbekende_klas_geeft_nietgevonden_en_geen_weigering()
-    {
-        var (service, _, _, _) = Opzet();
-
-        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => service.GenereerAsync(Guid.NewGuid()));
-        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => service.HaalParametersAsync(Guid.NewGuid()));
-    }
-
-    [Fact]
-    public void Service_verwerpt_een_null_opslag() =>
-        Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(null!));
-
-    /// <summary>The kept settings are still readable, and "none kept" is the empty set rather than a not-found.</summary>
-    [Fact]
-    public async Task De_bewaarde_parameters_zijn_uitleesbaar_en_leeg_is_geen_fout()
-    {
-        var (service, opslag, klas, schooljaar) = Opzet();
-
-        Assert.Same(JaarplanGeneratieParameters.Geen, await service.HaalParametersAsync(klas.Id));
-
-        var bewaard = new Generatieparameters(klas.Id, schooljaar.Id);
-        bewaard.Vervang(
-            [new BewaardStartthema(new DateOnly(2026, 10, 5), "Water")],
-            [new BewaardVastMoment("Schoolfeest", new DateOnly(2026, 9, 4), true)]);
-        await opslag.ProbeerGeneratieparametersToeTeVoegenAsync(bewaard);
-
-        var gelezen = await service.HaalParametersAsync(klas.Id);
-        Assert.Equal([new Startthemakeuze(new DateOnly(2026, 10, 5), "Water")], gelezen.GewensteStartthemas);
-        Assert.Equal([new VastMoment("Schoolfeest", new DateOnly(2026, 9, 4), true)], gelezen.VasteMomenten);
-    }
-
-    /// <summary>Settings kept for another school year are never read: their dates mean nothing in this one.</summary>
-    [Fact]
-    public async Task Bewaarde_parameters_van_een_ander_schooljaar_worden_niet_gelezen()
-    {
-        var (service, opslag, klas, _) = Opzet();
-
-        var vorigJaar = new Generatieparameters(klas.Id, Guid.NewGuid());
-        vorigJaar.Vervang([new BewaardStartthema(new DateOnly(2025, 9, 1), "Water")], []);
-        await opslag.ProbeerGeneratieparametersToeTeVoegenAsync(vorigJaar);
-
-        Assert.Same(JaarplanGeneratieParameters.Geen, await service.HaalParametersAsync(klas.Id));
-    }
-
-    /// <summary>Blank start thema names are normalised away and names are trimmed.</summary>
-    [Fact]
-    public void Startthemas_worden_genormaliseerd()
-    {
-        var eerste = new DateOnly(2026, 9, 1);
-        var tweede = new DateOnly(2026, 11, 9);
-
-        var parameters = new JaarplanGeneratieParameters
+        /// <param name="antwoord">What the fake model answers.</param>
+        /// <param name="vul">Fills a plan the klas already has; without it the klas has none.</param>
+        /// <param name="begrenzing">The prompt ceiling; the default one when omitted.</param>
+        /// <param name="metThemas">False for a school without thema's.</param>
+        public Opzet(
+            string antwoord,
+            Action<Opzet, Jaarplan>? vul = null,
+            Promptbegrenzing? begrenzing = null,
+            bool metThemas = true)
         {
-            GewensteStartthemas =
-            [
-                new Startthemakeuze(tweede, "  Herfst  "),
-                new Startthemakeuze(eerste, "Water"),
-                new Startthemakeuze(eerste, "  "),
-            ],
-        };
+            Schooljaar = TestSchooljaar.MetVakanties();
+            Klas = Schooljaar.VoegKlasToe("L3 derde leerjaar", "L3");
+            Herfst = JaarplanGeneratieServiceTests.Herfst();
+            Water = new Thema("Water", duurWeken: 5);
+            Winter = new Thema("Winter", duurWeken: 3);
 
+            Jaarplan? jaarplan = null;
+            if (vul is not null)
+            {
+                jaarplan = new Jaarplan(Klas.Id);
+                vul(this, jaarplan);
+            }
+
+            Opslag = new FakeJaarplanOpslag(Klas, Schooljaar, metThemas ? [Herfst, Water, Winter] : [], jaarplan);
+            Ai = new FakeAiClient(antwoord);
+            Service = new JaarplanGeneratieService(Ai, Opslag, begrenzing ?? new Promptbegrenzing());
+        }
+
+        public Schooljaar Schooljaar { get; }
+
+        public Klas Klas { get; }
+
+        public Thema Herfst { get; }
+
+        public Thema Water { get; }
+
+        public Thema Winter { get; }
+
+        public FakeJaarplanOpslag Opslag { get; }
+
+        public FakeAiClient Ai { get; }
+
+        public JaarplanGeneratieService Service { get; }
+
+        public Task<JaarplanGeneratieResultaat> GenereerAsync() => Service.GenereerAsync(Klas.Id);
+    }
+
+    private static string Antwoord(params (string Thema, string Startweek)[] voorstellen) =>
+        "{\"plaatsingen\":[" +
+        string.Join(",", voorstellen.Select(v =>
+            $"{{\"thema\":\"{v.Thema}\",\"startweek\":\"{v.Startweek}\",\"motivatie\":\"past bij {v.Thema}\"}}")) +
+        "]}";
+
+    [Fact]
+    public async Task Een_leeg_jaarplan_krijgt_themas_met_eigen_datums_zonder_overlap_en_gesplitst_rond_een_vakantie()
+    {
+        var opzet = new Opzet(Antwoord(("Herfst", "2026-08-31"), ("Water", "2026-10-05")));
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(2, resultaat.AantalNieuw);
+        Assert.Empty(resultaat.NietGeplaatst);
+
+        var plaatsingen = opzet.Opslag.Jaarplan!.Plaatsingen;
         Assert.Equal(
-            [new Startthemakeuze(eerste, "Water"), new Startthemakeuze(tweede, "Herfst")],
-            parameters.GenormaliseerdeStartthemas());
-
-        Assert.False(parameters.IsLeeg);
-        Assert.True(new JaarplanGeneratieParameters().IsLeeg);
-        Assert.True(JaarplanGeneratieParameters.Geen.IsLeeg);
-        Assert.True(
-            new JaarplanGeneratieParameters { VasteMomenten = [new VastMoment("  ", eerste, true)] }.IsLeeg);
-    }
-
-    [Fact]
-    public void Twee_startthemas_voor_dezelfde_periode_worden_geweigerd_door_het_aggregaat()
-    {
-        var parameters = new Generatieparameters(Guid.NewGuid(), Guid.NewGuid());
-        var blok = new DateOnly(2026, 9, 1);
-
-        Assert.Throws<ArgumentException>(() => parameters.Vervang(
-            [new BewaardStartthema(blok, "Water"), new BewaardStartthema(blok, "Herfst")],
-            []));
-    }
-
-    [Fact]
-    public void Twee_startthemas_voor_dezelfde_periode_zijn_een_ongeldig_verzoek()
-    {
-        var blok = new DateOnly(2026, 9, 1);
-        var parameters = new JaarplanGeneratieParameters
-        {
-            GewensteStartthemas = [new Startthemakeuze(blok, "Water"), new Startthemakeuze(blok, "Herfst")],
-        };
-
-        var fout = Assert.Single(parameters.Validate(new ValidationContext(parameters)));
-        Assert.Contains("2026-09-01", fout.ErrorMessage);
-        Assert.Equal(2, parameters.GenormaliseerdeStartthemas().Count);
-
-        var tweePeriodes = new JaarplanGeneratieParameters
-        {
-            GewensteStartthemas =
             [
-                new Startthemakeuze(blok, "Water"),
-                new Startthemakeuze(blok.AddDays(40), "Water"),
+                (opzet.Herfst.Id, D(9, 1), D(10, 5)),
+                (opzet.Water.Id, D(10, 6), D(10, 30)),
+                (opzet.Water.Id, D(11, 9), D(11, 16)),
             ],
-        };
-        Assert.Empty(tweePeriodes.Validate(new ValidationContext(tweePeriodes)));
+            plaatsingen.Select(p => (p.ThemaId, p.Van, p.Tot)));
+        Assert.All(plaatsingen, p =>
+        {
+            Assert.Equal(KoppelingStatus.Voorgesteld, p.Status);
+            Assert.False(p.Vergrendeld);
+            Assert.StartsWith("past bij", p.AiMotivatie);
+        });
+        Assert.Equal(1, opzet.Opslag.AantalKeerBewaard);
     }
 
-    // --- The parked prompt builder (ADR-0053 decision 9): its behaviour is kept for the generation's rework. ---
-
-    private static (Klas Klas, Schooljaar Schooljaar, IReadOnlyList<Planningsblok> Blokken, IReadOnlyList<Thema> Themas)
-        PromptOpzet()
+    [Fact]
+    public async Task Een_hergeneratie_houdt_beslist_en_vergrendeld_en_vervangt_alleen_open_voorstellen()
     {
-        var schooljaar = TestSchooljaar.MetVakanties();
-        var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
+        var opzet = new Opzet(
+            Antwoord(("Herfst", "2026-09-07"), ("Water", "2026-10-05"), ("Winter", "2027-01-04")),
+            (o, plan) =>
+            {
+                plan.VoegPlaatsingToe(o.Herfst.Id, D(9, 1), D(10, 2), KoppelingStatus.Manueel);
+                plan.VoegPlaatsingToe(o.Water.Id, D(11, 9), D(11, 27), KoppelingStatus.Voorgesteld, "oud");
+                plan.VoegPlaatsingToe(o.Winter.Id, D(1, 4), D(1, 22), KoppelingStatus.Voorgesteld, "vast")
+                    .StelVergrendelingIn(true);
+            });
 
-        return (klas, schooljaar, Blokken(schooljaar), [Herfst(), Water()]);
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.True(resultaat.IsGeslaagd);
+        Assert.Equal(1, resultaat.AantalVervangen);
+        Assert.Equal(2, resultaat.AantalBehouden);
+        Assert.Equal(1, resultaat.AantalNieuw);
+        Assert.Equal(
+            [
+                new NietGeplaatstThema("Herfst", NietGeplaatstThema.AlGepland),
+                new NietGeplaatstThema("Winter", NietGeplaatstThema.AlGepland),
+            ],
+            resultaat.NietGeplaatst);
+
+        var plaatsingen = opzet.Opslag.Jaarplan!.Plaatsingen;
+        Assert.Equal(
+            [
+                (opzet.Herfst.Id, D(9, 1), D(10, 2), KoppelingStatus.Manueel),
+                (opzet.Water.Id, D(10, 5), D(10, 30), KoppelingStatus.Voorgesteld),
+                (opzet.Water.Id, D(11, 9), D(11, 13), KoppelingStatus.Voorgesteld),
+                (opzet.Winter.Id, D(1, 4), D(1, 22), KoppelingStatus.Voorgesteld),
+            ],
+            plaatsingen.Select(p => (p.ThemaId, p.Van, p.Tot, p.Status)));
+        Assert.DoesNotContain(plaatsingen, p => p.AiMotivatie == "oud");
+
+        // The model is shown what stays, and the proposal about to go is not in its way.
+        var prompt = opzet.Ai.LaatsteRequest!.UserPrompt;
+        Assert.Contains("- 2026-09-07: bezet (Herfst)", prompt);
+        Assert.Contains("- 2026-11-09: vrij", prompt);
+        Assert.Contains("- 2027-01-04: bezet (Winter)", prompt);
+        var alGepland = prompt[prompt.IndexOf("# Thema's die al in het jaarplan staan", StringComparison.Ordinal)..];
+        Assert.Contains("- Herfst", alGepland);
+        Assert.DoesNotContain("- Water", alGepland[..alGepland.IndexOf("# Thema's van de school", StringComparison.Ordinal)]);
     }
 
     /// <summary>
-    /// The prompt offers the derived blocks with their start dates and a whole-week capacity
-    /// (<c>ceil(open days / 7)</c>), the school's own thema's, and no month name.
+    /// A thema split around a vacation of which the teacher accepted one part stays whole: its open part is not
+    /// replaced, and the model is shown both parts as taken.
     /// </summary>
     [Fact]
-    public void De_prompt_biedt_de_afgeleide_blokken_aan_en_geen_kalendereenheid()
+    public async Task Een_deels_aanvaard_thema_blijft_heel()
     {
-        var (klas, schooljaar, blokken, themas) = PromptOpzet();
+        var opzet = new Opzet(
+            Antwoord(("Water", "2026-10-05")),
+            (o, plan) =>
+            {
+                plan.VoegPlaatsingToe(o.Water.Id, D(10, 5), D(10, 30), KoppelingStatus.Aanvaard);
+                plan.VoegPlaatsingToe(o.Water.Id, D(11, 9), D(11, 13), KoppelingStatus.Voorgesteld, "deel 2");
+                plan.VoegPlaatsingToe(o.Herfst.Id, D(9, 1), D(9, 25), KoppelingStatus.Voorgesteld, "open");
+            });
 
-        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas);
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.Equal(1, resultaat.AantalVervangen);
+        Assert.Equal(1, resultaat.AantalBehouden);
+        Assert.Equal([new NietGeplaatstThema("Water", NietGeplaatstThema.AlGepland)], resultaat.NietGeplaatst);
+        Assert.Equal(
+            [(D(10, 5), D(10, 30)), (D(11, 9), D(11, 13))],
+            opzet.Opslag.Jaarplan!.Plaatsingen.Select(p => (p.Van, p.Tot)));
+        Assert.Contains("- 2026-11-09: bezet (Water)", opzet.Ai.LaatsteRequest!.UserPrompt);
+    }
+
+    [Fact]
+    public async Task Een_thema_dat_tegen_een_bestaand_thema_botst_stopt_de_schooldag_ervoor()
+    {
+        var opzet = new Opzet(
+            Antwoord(("Herfst", "2026-09-21")),
+            (o, plan) => plan.VoegPlaatsingToe(o.Water.Id, D(10, 12), D(10, 30), KoppelingStatus.Manueel));
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.Equal(1, resultaat.AantalNieuw);
+        var herfst = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen, p => p.ThemaId == opzet.Herfst.Id);
+        Assert.Equal((D(9, 21), D(10, 9)), (herfst.Van, herfst.Tot));
+    }
+
+    [Fact]
+    public async Task Een_thema_begint_op_de_eerste_vrije_schooldag_in_de_gekozen_weken()
+    {
+        var opzet = new Opzet(
+            Antwoord(("Herfst", "2026-09-07")),
+            (o, plan) => plan.VoegPlaatsingToe(o.Water.Id, D(9, 1), D(9, 9), KoppelingStatus.Manueel));
+
+        await opzet.GenereerAsync();
+
+        var herfst = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen, p => p.ThemaId == opzet.Herfst.Id);
+        Assert.Equal((D(9, 10), D(10, 14)), (herfst.Van, herfst.Tot));
+    }
+
+    [Fact]
+    public async Task Weken_zonder_vrije_lesweek_zijn_geen_plaats()
+    {
+        var opzet = new Opzet(
+            Antwoord(("Herfst", "2026-09-07"), ("Winter", "2026-09-14")),
+            (o, plan) =>
+            {
+                // 7 September to 9 October is full; the stretch 17-18 September is shorter than one lesweek.
+                plan.VoegPlaatsingToe(o.Water.Id, D(9, 1), D(9, 16), KoppelingStatus.Manueel);
+                plan.VoegPlaatsingToe(o.Water.Id, D(9, 21), D(10, 16), KoppelingStatus.Aanvaard);
+            });
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.Equal(0, resultaat.AantalNieuw);
+        Assert.Equal(
+            [
+                new NietGeplaatstThema("Herfst", NietGeplaatstThema.GeenPlaats),
+                new NietGeplaatstThema("Winter", NietGeplaatstThema.GeenPlaats),
+            ],
+            resultaat.NietGeplaatst);
+        Assert.Equal(2, opzet.Opslag.Jaarplan!.Plaatsingen.Count);
+    }
+
+    [Fact]
+    public async Task Is_het_eerste_vrije_stuk_te_kort_dan_krijgt_het_thema_het_volgende()
+    {
+        var opzet = new Opzet(
+            Antwoord(("Herfst", "2026-09-14")),
+            (o, plan) =>
+            {
+                plan.VoegPlaatsingToe(o.Water.Id, D(9, 1), D(9, 16), KoppelingStatus.Manueel);
+                plan.VoegPlaatsingToe(o.Winter.Id, D(9, 21), D(9, 25), KoppelingStatus.Aanvaard);
+            });
+
+        await opzet.GenereerAsync();
+
+        var herfst = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen, p => p.ThemaId == opzet.Herfst.Id);
+        Assert.Equal((D(9, 28), D(10, 30)), (herfst.Van, herfst.Tot));
+    }
+
+    /// <summary>
+    /// At the end of the year a thema stops on the last schooldag (ADR-0053 R5); a start in the last, partial week holds
+    /// no whole lesweek and is no place.
+    /// </summary>
+    [Fact]
+    public async Task Aan_het_einde_van_het_jaar_stopt_een_thema_op_de_laatste_schooldag_of_past_het_niet()
+    {
+        var afgekapt = new Opzet(Antwoord(("Herfst", "2027-06-07")));
+        await afgekapt.GenereerAsync();
+        var herfst = Assert.Single(afgekapt.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((D(6, 7), D(6, 30)), (herfst.Van, herfst.Tot));
+
+        var opzet = new Opzet(Antwoord(("Winter", "2027-06-07"), ("Water", "2027-06-28")));
+        var resultaat = await opzet.GenereerAsync();
+        var winter = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((opzet.Winter.Id, D(6, 7), D(6, 25)), (winter.ThemaId, winter.Van, winter.Tot));
+        Assert.Equal([new NietGeplaatstThema("Water", NietGeplaatstThema.GeenPlaats)], resultaat.NietGeplaatst);
+    }
+
+    [Fact]
+    public async Task Een_onbekend_thema_een_vakantieweek_en_een_dubbel_voorstel_worden_gemeld_en_niet_geplaatst()
+    {
+        var opzet = new Opzet(Antwoord(
+            ("Ruimte", "2026-09-07"),
+            ("Water", "2026-11-02"),
+            ("herfst", "2026-09-07"),
+            ("Winter", "2027-08-02"),
+            ("Herfst", "2027-03-01")));
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.Equal(1, resultaat.AantalNieuw);
+        Assert.Equal(
+            [
+                new NietGeplaatstThema("Ruimte", NietGeplaatstThema.OnbekendThema),
+                new NietGeplaatstThema("Water", NietGeplaatstThema.GeenLesweek),
+                new NietGeplaatstThema("Herfst", NietGeplaatstThema.AlGepland),
+                new NietGeplaatstThema("Winter", NietGeplaatstThema.GeenLesweek),
+            ],
+            resultaat.NietGeplaatst);
+        var herfst = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((opzet.Herfst.Id, D(9, 7)), (herfst.ThemaId, herfst.Van));
+    }
+
+    /// <summary>A startweek on another weekday than Monday names the week it falls in.</summary>
+    [Fact]
+    public async Task Een_startdatum_midden_in_de_week_noemt_die_week()
+    {
+        var opzet = new Opzet(Antwoord(("Winter", "2027-01-06")));
+
+        await opzet.GenereerAsync();
+
+        var winter = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((D(1, 4), D(1, 22)), (winter.Van, winter.Tot));
+    }
+
+    [Fact]
+    public async Task Een_onleesbaar_antwoord_verandert_niets()
+    {
+        var opzet = new Opzet(
+            "dit is geen JSON",
+            (o, plan) => plan.VoegPlaatsingToe(o.Water.Id, D(9, 7), D(9, 25), KoppelingStatus.Voorgesteld, "blijft"));
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.False(resultaat.IsGeslaagd);
+        Assert.Contains("Malformed JSON", resultaat.Fout);
+        Assert.Equal(0, opzet.Opslag.AantalKeerBewaard);
+        Assert.Equal("blijft", Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen).AiMotivatie);
+    }
+
+    [Fact]
+    public async Task Een_onleesbaar_antwoord_maakt_geen_leeg_jaarplan_aan()
+    {
+        var opzet = new Opzet("{\"plaatsingen\":[{\"thema\":\"Herfst\",\"motivatie\":\"x\"}]}");
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.False(resultaat.IsGeslaagd);
+        Assert.Null(opzet.Opslag.Jaarplan);
+    }
+
+    [Fact]
+    public async Task Een_onbekende_klas_geeft_nietgevonden_zonder_de_AI_te_vragen()
+    {
+        var opzet = new Opzet(Antwoord());
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => opzet.Service.GenereerAsync(Guid.NewGuid()));
+        Assert.Equal(0, opzet.Ai.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Zonder_themas_wordt_de_AI_niet_gevraagd()
+    {
+        var opzet = new Opzet(Antwoord(), metThemas: false);
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(opzet.GenereerAsync);
+
+        Assert.Contains("geen thema's", fout.Message);
+        Assert.Equal(0, opzet.Ai.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Een_vol_jaarplan_wordt_niet_aan_de_AI_voorgelegd()
+    {
+        var opzet = new Opzet(
+            Antwoord(),
+            (o, plan) => plan.VoegPlaatsingToe(o.Water.Id, D(9, 1), D(6, 30), KoppelingStatus.Manueel));
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(opzet.GenereerAsync);
+
+        Assert.Contains("geen vrije lesweek", fout.Message);
+        Assert.Equal(0, opzet.Ai.AantalAanroepen);
+    }
+
+    [Fact]
+    public async Task Een_te_grote_aanvraag_wordt_niet_verstuurd()
+    {
+        var opzet = new Opzet(Antwoord(), begrenzing: new Promptbegrenzing(maxTokens: 10));
+
+        var fout = await Assert.ThrowsAsync<PromptTeGrootFout>(opzet.GenereerAsync);
+
+        Assert.Contains("3 thema's", fout.Message);
+        Assert.Equal(0, opzet.Ai.AantalAanroepen);
+        Assert.Null(opzet.Opslag.Jaarplan);
+    }
+
+    [Fact]
+    public void Service_verwerpt_null_afhankelijkheden()
+    {
+        var opzet = new Opzet(Antwoord());
+
+        Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(null!, opzet.Opslag, new Promptbegrenzing()));
+        Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(opzet.Ai, null!, new Promptbegrenzing()));
+        Assert.Throws<ArgumentNullException>(() => new JaarplanGeneratieService(opzet.Ai, opzet.Opslag, null!));
+    }
+
+    /// <summary>
+    /// The prompt offers the lesweken by their Monday with what stands in them, the vacations and the school's own
+    /// thema's with their decided goals, and no month name.
+    /// </summary>
+    [Fact]
+    public async Task De_prompt_biedt_lesweken_vakanties_en_themas_aan_en_geen_maandnaam()
+    {
+        var opzet = new Opzet(
+            Antwoord(),
+            (o, plan) => plan.VoegPlaatsingToe(o.Water.Id, D(9, 1), D(9, 9), KoppelingStatus.Manueel));
+
+        await opzet.GenereerAsync();
+        var request = opzet.Ai.LaatsteRequest!;
         var prompt = request.UserPrompt;
 
-        foreach (var blok in blokken)
-        {
-            Assert.Contains($"startdatum {blok.Start:yyyy-MM-dd}", prompt);
-            var capaciteit = (int)Math.Ceiling(schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0);
-            Assert.Contains($"({capaciteit} weken)", prompt);
-        }
+        var lesweken = new Themakalender(opzet.Schooljaar).Lesweken();
+        Assert.Contains($"Aantal lesweken: {lesweken.Count}, waarvan vrij: {lesweken.Count - 2}", prompt);
+        Assert.Contains("- 2026-08-31: bezet (Water)", prompt);
+        Assert.Contains("- 2026-09-07: deels vrij (Water staat er al)", prompt);
+        Assert.Contains("- 2026-09-14: vrij", prompt);
+        Assert.DoesNotContain("- 2026-11-02:", prompt);
+        Assert.Contains("- Herfstvakantie: 2026-11-02 t/m 2026-11-08", prompt);
 
-        Assert.DoesNotMatch(@"\d[.,]\d weken", prompt);
-        Assert.Contains("Thema: Herfst", prompt);
-        Assert.Contains("Thema: Water", prompt);
+        Assert.Contains("- Thema: Herfst (duur 5 lesweken)", prompt);
+        Assert.Contains("Gekoppelde leerplandoelen (1): NAT-K3-01", prompt);
+        Assert.DoesNotContain("NAT-K3-02", prompt);
+        Assert.Contains("Themadoelen, minimumdoelen (1): K-1.1.1", prompt);
+        Assert.Contains("Aantal thema's: 3", prompt);
 
         foreach (var maand in (string[])
                  ["januari", "februari", "maart", "april", "juni", "juli", "augustus", "oktober", "november", "december"])
@@ -203,88 +424,28 @@ public sealed class JaarplanGeneratieServiceTests
             Assert.DoesNotContain(maand, request.SystemPrompt, StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.Contains("STARTDATUM", request.SystemPrompt);
-        Assert.Contains("nooit met zijn nummer", request.SystemPrompt);
-
-        // Only teacher-backed goals are shown (aanvaard/manueel).
-        Assert.Contains("NAT-K3-01", prompt);
-        Assert.DoesNotContain("NAT-K3-02", prompt);
-
-        // The thema's minimumdoelen, its themadoelen, reach the model too (FB-053).
-        Assert.Contains("Themadoelen, minimumdoelen (1): K-1.1.1", prompt);
+        Assert.Contains("Gebruik geen externe kennis", request.SystemPrompt);
+        Assert.Contains("Twee thema's lopen nooit tegelijk", request.SystemPrompt);
+        Assert.Contains("Je hoeft niet elk thema te gebruiken", request.SystemPrompt);
+        Assert.Contains("\"startweek\"", request.SystemPrompt);
+        Assert.DoesNotContain("blok", request.SystemPrompt, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("%", request.SystemPrompt);
     }
 
     [Fact]
-    public void De_prompt_vraagt_spreiding_en_volledige_dekking_zonder_streefcijfer()
+    public void De_prompt_hangt_niet_af_van_de_volgorde_van_de_invoer()
     {
-        var (klas, schooljaar, blokken, themas) = PromptOpzet();
+        var schooljaar = TestSchooljaar.MetVakanties();
+        var klas = schooljaar.VoegKlasToe("L3", "L3");
+        Planweek[] weken = [new(D(9, 7), ["B", "A"], false), new(D(8, 31), [], false)];
+        Thema[] themas = [new("Water", 5), Herfst()];
 
-        var request = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas);
-        var systeem = request.SystemPrompt;
-        var prompt = request.UserPrompt;
+        var een = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, weken, themas, ["Water", "Herfst"]).UserPrompt;
+        var twee = JaarplanGeneratiePromptBuilder.Bouw(
+            klas, schooljaar, weken.Reverse().ToArray(), themas.Reverse().ToArray(), ["Herfst", "Water"]).UserPrompt;
 
-        Assert.Contains("zoveel mogelijk verschillende planningsblokken", systeem);
-        Assert.Contains("Gebruik geen externe kennis", systeem);
-        Assert.Contains("Gekoppelde leerplandoelen (1): NAT-K3-01", prompt);
-        Assert.Contains($"Aantal beschikbare blokken: {blokken.Count}", prompt);
-        Assert.Contains("Dekking (streef naar volledige dekking over het hele schooljaar):", systeem);
-        Assert.Contains("Je hoeft niet elk thema te gebruiken", systeem);
-        Assert.Contains($"Aantal thema's: {themas.Count}", prompt);
-        Assert.DoesNotContain("%", systeem);
-        Assert.DoesNotContain("minimumdoel", systeem, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Startthemas_staan_elk_bij_hun_eigen_blok_en_zonder_parameters_verandert_de_prompt_niet()
-    {
-        var (klas, schooljaar, blokken, themas) = PromptOpzet();
-
-        var met = JaarplanGeneratiePromptBuilder.Bouw(
-            klas,
-            schooljaar,
-            blokken,
-            themas,
-            new JaarplanGeneratieParameters
-            {
-                GewensteStartthemas =
-                [
-                    new Startthemakeuze(blokken[0].Start, "Water"),
-                    new Startthemakeuze(blokken[1].Start, "Herfst"),
-                ],
-            }).UserPrompt;
-
-        Assert.Contains("Wat de leerkracht vooraf vraagt", met);
-        Assert.Contains($"\"Water\" in het blok met startdatum {blokken[0].Start:yyyy-MM-dd}", met);
-        Assert.Contains($"\"Herfst\" in het blok met startdatum {blokken[1].Start:yyyy-MM-dd}", met);
-        Assert.DoesNotContain("vakantie", met, StringComparison.OrdinalIgnoreCase);
-
-        var zonder = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas).UserPrompt;
-        var leeg = JaarplanGeneratiePromptBuilder.Bouw(
-            klas, schooljaar, blokken, themas, new JaarplanGeneratieParameters()).UserPrompt;
-
-        Assert.DoesNotContain("Wat de leerkracht vooraf vraagt", zonder);
-        Assert.Equal(zonder, leeg);
-    }
-
-    [Fact]
-    public void De_periodeprompt_vraagt_enkel_die_periode_en_noemt_wat_blijft_staan()
-    {
-        var (klas, schooljaar, blokken, themas) = PromptOpzet();
-
-        var prompt = JaarplanGeneratiePromptBuilder.BouwVoorPeriode(
-            klas, schooljaar, blokken, themas, blokken[2], [new BestaandePlaatsing("Water", blokken[4].Start)])
-            .UserPrompt;
-
-        var datum = blokken[2].Start.ToString("yyyy-MM-dd");
-        Assert.Contains($"Vul ENKEL de periode met startdatum {datum}", prompt, StringComparison.Ordinal);
-        var alGeplaatst = prompt[prompt.IndexOf("# Wat al in het jaarplan staat", StringComparison.Ordinal)..];
-        Assert.Contains("Water", alGeplaatst, StringComparison.Ordinal);
-
-        var leeg = JaarplanGeneratiePromptBuilder.BouwVoorPeriode(klas, schooljaar, blokken, themas, blokken[2], [])
-            .UserPrompt;
-        Assert.Contains("nog geen thema dat blijft staan", leeg, StringComparison.Ordinal);
-
-        var geheel = JaarplanGeneratiePromptBuilder.Bouw(klas, schooljaar, blokken, themas).UserPrompt;
-        Assert.DoesNotContain("# Opdracht", geheel, StringComparison.Ordinal);
+        Assert.Equal(een, twee);
+        Assert.Contains("- 2026-09-07: deels vrij (A, B staat er al)", een);
     }
 }
+

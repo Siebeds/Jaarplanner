@@ -11,15 +11,14 @@ namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 /// FR-6.2/FR-7.2).
 /// <para>
 /// <b>This table has no <c>BlokStart</c> and no <c>BlokNiveau</c>, and that is the design rather than an omission.</b>
-/// A thema is keyed on a <i>derived</i> planningsblok boundary that moves when the school edits a vakantie — which is
-/// why <c>IsVervallen</c>, a persistent notice and a withheld dekkingscijfer all exist. An activiteit is keyed on a
+/// A thema placement keyed on a <i>derived</i> planningsblok boundary until ADR-0053, a boundary that moved when the school
+/// edited a vakantie. An activiteit is keyed on a
 /// real calendar <see cref="Activiteitplaatsing.Datum"/>, which does not move. The two answer different questions and
 /// only one of them can go stale. See <see cref="Activiteitplaatsing"/> for why a third
-/// <see cref="Planningsblokniveau"/> was rejected outright.
+/// planningsblok tier was rejected outright.
 /// </para>
 /// <para>
-/// <b>Still no planningsblok table either.</b> Nothing here rows, FKs or joins a block, so the grid stays derived
-/// (ADR-0013) and changing the planning grain stays a configuration edit.
+/// <b>No planningsblok table either.</b> Nothing here rows, FKs or joins a block; since ADR-0053 the planning has none.
 /// </para>
 /// </summary>
 public sealed class ActiviteitplaatsingConfiguration : IEntityTypeConfiguration<Activiteitplaatsing>

@@ -8,7 +8,7 @@ import { t } from "../../i18n";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
 
 /**
- * The AI's activiteit proposals in a subthema chapter (FB-025, ADR-0054): who gets the button, what a proposal shows,
+ * The AI's activiteit proposals in a subthema chapter (FB-025, ADR-0056): who gets the button, what a proposal shows,
  * and what accepting, changing and rejecting send.
  */
 

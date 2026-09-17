@@ -1,4 +1,5 @@
 import type { ThemaWeergave } from "../../lib/types";
+import { beslist } from "./subthemabalans";
 
 /**
  * How many doelen hang on a thema, at which of the three levels, and where the hole is.
@@ -38,8 +39,10 @@ export function themabalans(thema: ThemaWeergave): Themabalans {
     subdoelen += subthema.subdoelen.length;
     for (const activiteit of subthema.activiteiten) {
       activiteiten += 1;
-      activiteitdoelen += activiteit.doelkoppelingen.length;
-      if (activiteit.doelkoppelingen.length === 0) activiteitenZonderDoel += 1;
+      // Decided doelen only: a proposal or a rejected doel is not linked (ADR-0054 D5).
+      const gekoppeld = activiteit.doelkoppelingen.filter((k) => beslist(k.status)).length;
+      activiteitdoelen += gekoppeld;
+      if (gekoppeld === 0) activiteitenZonderDoel += 1;
     }
   }
 

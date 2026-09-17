@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
-/// An activiteit the AI proposes under one <see cref="Subthema"/> to the gebruiker who asked (FB-025, ADR-0054). It is
+/// An activiteit the AI proposes under one <see cref="Subthema"/> to the gebruiker who asked (FB-025, ADR-0056). It is
 /// hers: only she and directie see and decide it (D2, A3). It counts for nothing until accepted, and accepting it creates
 /// an ordinary own <see cref="Activiteit"/> of hers (A2), whose id this proposal then keeps.
 /// <para>

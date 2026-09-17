@@ -16,10 +16,6 @@ namespace Jaarplanner.Api.Infrastructure;
 /// or outside the school year, onto a day it already sits on, or from another class.</item>
 /// </list>
 /// <para>
-/// And one becomes <b>409</b>: <see cref="GeneratieUitgeschakeldFout"/> — a generation asked for while it is switched
-/// off (ADR-0053 decision 9). The request is well-formed; the feature is what is unavailable.
-/// </para>
-/// <para>
 /// Planning not-found deliberately reuses <c>SchoolcontentNietGevondenFout</c>, which
 /// <c>SchoolcontentExceptionHandler</c> already maps to 404. Other exceptions are left to the next handler.
 /// </para>
@@ -39,7 +35,6 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
         {
             OngeldigePlaatsingsstatusFout or OngeldigePlaatsingFout or OngeldigeDagplanningFout =>
                 StatusCodes.Status400BadRequest,
-            GeneratieUitgeschakeldFout => StatusCodes.Status409Conflict,
             _ => (int?)null,
         };
 
@@ -57,9 +52,7 @@ public sealed class PlanningExceptionHandler : IExceptionHandler
             ProblemDetails = new ProblemDetails
             {
                 Status = status.Value,
-                Title = status.Value == StatusCodes.Status409Conflict
-                    ? Probleemtitels.GeneratieUitgeschakeld
-                    : Probleemtitels.OngeldigeAanvraag,
+                Title = Probleemtitels.OngeldigeAanvraag,
                 Detail = exception.Message,
             },
         });

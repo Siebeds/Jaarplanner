@@ -1,4 +1,4 @@
-# ADR-0054 — The AI proposes activiteiten under a subthema, and an accepted one is the asker's own
+# ADR-0056 — The AI proposes activiteiten under a subthema, and an accepted one is the asker's own
 
 - **Status:** Accepted
 - **Date:** 2026-09-17

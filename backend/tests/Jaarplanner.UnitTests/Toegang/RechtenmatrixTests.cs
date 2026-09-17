@@ -81,7 +81,7 @@ public sealed class RechtenmatrixTests
         // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd and directie; themabeheer alone does not.
         [Rechtenmatrix.Beleid.SubdoelplaatsingVragen] = ["Directie", "HL"],
         [Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen] = ["Directie", "HL"],
-        // FB-025 (ADR-0054 A3): on someone else's activiteitvoorstel only directie. The asker's own is its own test below.
+        // FB-025 (ADR-0056 A3): on someone else's activiteitvoorstel only directie. The asker's own is its own test below.
         [Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen] = ["Directie"],
     };
 
@@ -665,7 +665,7 @@ public sealed class RechtenmatrixTests
             Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, new Woordwebbron(Guid.NewGuid(), Ik))));
     }
 
-    // --- An activiteitvoorstel (FB-025, ADR-0054 A3): its asker's while she teaches that leeftijd, and directie's. ---
+    // --- An activiteitvoorstel (FB-025, ADR-0056 A3): its asker's while she teaches that leeftijd, and directie's. ---
 
     [Fact]
     public void Een_activiteitvoorstel_beslist_wie_het_vroeg_zolang_ze_die_leeftijd_heeft()

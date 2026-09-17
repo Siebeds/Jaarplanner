@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// FB-025 (ADR-0054) over HTTP against PostgreSQL: the AI's activiteit proposals under a subthema, what accepting and
+/// FB-025 (ADR-0056) over HTTP against PostgreSQL: the AI's activiteit proposals under a subthema, what accepting and
 /// rejecting write, that a rejected proposal does not come back, that an unreadable or invented answer stores nothing of
 /// it, that proposals are the asker's alone, and who may ask. The AI is the factory's stub (Art. IV.6).
 /// </summary>

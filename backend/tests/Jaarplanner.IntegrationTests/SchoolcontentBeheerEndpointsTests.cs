@@ -137,7 +137,9 @@ public sealed class SchoolcontentBeheerEndpointsTests : IClassFixture<Schoolcont
         var leeftijden = overzicht.GetProperty("leeftijden").EnumerateArray().ToList();
         // FB-044: leerplandoelen only; the thema's minimumdoelen are its themadoelen.
         Assert.All(leeftijden, l => Assert.False(l.TryGetProperty("minimumdoelen", out _)));
-        var doelen = leeftijden.SelectMany(l => l.GetProperty("leerplandoelen").EnumerateArray()).ToList();
+        // TB-048: the list follows the thema's minimumdoelen, which it has none of; the legacy link stands apart.
+        Assert.All(leeftijden, l => Assert.Empty(l.GetProperty("leerplandoelen").EnumerateArray()));
+        var doelen = leeftijden.SelectMany(l => l.GetProperty("buitenMinimumdoelen").EnumerateArray()).ToList();
         var doel = Assert.Single(doelen);
         Assert.Equal("NL-001", doel.GetProperty("code").GetString());
         Assert.Equal("Themadoel", doel.GetProperty("plaatsen")[0].GetProperty("soort").GetString());

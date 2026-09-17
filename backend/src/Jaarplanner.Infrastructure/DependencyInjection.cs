@@ -138,13 +138,6 @@ public static class DependencyInjection
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
-        // Planningsblok-indeling seam (E3-05, ADR-0013). Since ADR-0053 nothing in the planning consumes it: a thema
-        // placement carries its own dates. It is kept, with its configuration, for the generation's rework, which
-        // decides whether blocks survive as a hint for the model (ADR-0053 decision 9).
-        services.Configure<PlanningsblokOptions>(
-            configuration.GetSection(PlanningsblokOptions.SectionName));
-        services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
-
         // Klas CRUD (Art. IX.3). Without a creation path a fresh deployment can hold no class-scoped
         // content at all: the school-content import drops every subthema as "onbekende klas" and
         // MaakSubthemaAsync rejects every call. E3 generates a jaarplan PER CLASS, so this is a
@@ -209,7 +202,17 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Woordwebs.IWoordwebService, Jaarplanner.Infrastructure.Woordwebs.WoordwebService>();
         services.AddScoped<Jaarplanner.Application.Subdoelplaatsing.ISubdoelplaatsingService, Jaarplanner.Infrastructure.Subdoelplaatsing.SubdoelplaatsingService>();
 
-        // The AI's activiteit proposals under a subthema (FB-025, ADR-0054), with the per-request limit of D3. A limit
+        // The AI's goal proposals for an activiteit (FB-026, ADR-0054). The maximum per run is configuration; a value
+        // outside 1 to 20 stops the app at startup.
+        services.AddOptions<Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieOptions>()
+            .Bind(configuration.GetSection(Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieOptions.SectionName))
+            .Validate(
+                o => o.MaxVoorstellen is >= 1 and <= Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieOptions.Bovengrens,
+                "ActiviteitDoelsuggesties:MaxVoorstellen must be between 1 and 20.")
+            .ValidateOnStart();
+        services.AddScoped<Jaarplanner.Application.Activiteitdoelen.IActiviteitDoelsuggestieService, Jaarplanner.Infrastructure.Activiteitdoelen.ActiviteitDoelsuggestieService>();
+
+        // The AI's activiteit proposals under a subthema (FB-025, ADR-0056), with the per-request limit of D3. A limit
         // outside 1 to 10 stops the app at startup, where a deploy sees it.
         services.AddOptions<Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties>()
             .Bind(configuration.GetSection(Jaarplanner.Application.Activiteitvoorstellen.ActiviteitvoorstelOpties.SectionName))

@@ -1,6 +1,6 @@
 # ADR-0013 — Planningsblok abstraction for an open decision
 
-- **Status:** Superseded by [ADR-0053](0053-themaplaatsing-met-eigen-datums.md) for the jaarplan
+- **Status:** Superseded by [ADR-0053](0053-themaplaatsing-met-eigen-datums.md) for the jaarplan, and by [ADR-0055](0055-ai-jaarplan-met-datums.md) for the generation, which removed the seam
 - **Date:** 2026-06-29
 - **Deciders:** Architect (Siebe De Saedeleir / team)
 

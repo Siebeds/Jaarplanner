@@ -13,9 +13,12 @@ namespace Jaarplanner.Application.Dekking;
 /// failure of the model.
 /// </para>
 /// <para>
-/// <b>So the figure this record carries is explicitly a <i>vooruitzicht</i>, never a dekking.</b>
-/// <see cref="AantalMogelijkGedekt"/> counts what acceptance would cover; <see cref="AantalGedekt"/> is the real,
-/// decided figure, computed by exactly the same rules the dekkingsoverzicht uses. The two are reported side by side
+/// <b>So <see cref="AantalMinimumdoelenMogelijkGedekt"/> is explicitly a <i>vooruitzicht</i>, never a dekking;
+/// the other figures are today's real ones.</b>
+/// <see cref="AantalMinimumdoelenMogelijkGedekt"/> counts what acceptance would cover;
+/// <see cref="AantalMinimumdoelenGedekt"/> is the real, decided figure, computed by exactly the same rules the
+/// dekkingsoverzicht uses. The forecast is over minimumdoelen, since a thema placement covers nothing else
+/// (ADR-0052). The two are reported side by side
 /// so no caller can present the potential one as proof of anything: Art. V.2 forbids claiming coverage that cannot
 /// be proven, and a proposal proves nothing until a human stands behind it.
 /// </para>
@@ -34,7 +37,7 @@ namespace Jaarplanner.Application.Dekking;
 /// </para>
 /// </summary>
 /// <param name="Bereik">
-/// Which leerplandoelen the figures are over (owner ruling 2026-08-04) — the class's own jaar/fase by default. It
+/// Which goals the figures are over (owner ruling 2026-08-04): the class's own jaar/fase and its mijlpaal by default. It
 /// reports what was <b>applied</b>, not what was asked for; see <paramref name="IsTerugvalNaarHeelCurriculum"/>.
 /// Every consumer that prints a total has to render this beside it, because the same class has two legitimate
 /// denominators.
@@ -73,43 +76,31 @@ namespace Jaarplanner.Application.Dekking;
 /// either way, so its staleness cannot change any of these numbers.
 /// </param>
 /// <param name="AantalGedekt">
-/// How many in-scope leerplandoelen are covered <b>today</b>, by the placements the teacher has already accepted or
-/// placed by hand; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>. Right after a first generation
-/// this is 0, and that is the correct answer rather than a defect.
-/// </param>
-/// <param name="AantalMogelijkGedekt">
-/// How many in-scope leerplandoelen would be covered if the teacher accepted every <b>placement</b> proposal now
-/// standing in the plan; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
+/// How many in-scope leerplandoelen are covered <b>today</b>, by the same rules as the dekkingsoverzicht; <c>null</c>
+/// when <paramref name="IsBetrouwbaar"/> is <c>false</c>. The agenda's dekkingsbalk prints it.
 /// <para>
-/// It is a ceiling, not a forecast: rejected placements are excluded (the teacher has already decided) and so are
-/// stale ones (they sit in no period). It can never be lower than <paramref name="AantalGedekt"/> at one moment,
-/// because the set it counts over contains that one. (The two figures come from two non-transactional reads, so a
-/// link deleted between them could in principle cross that; nothing guards it and nothing here promises otherwise.)
-/// </para>
-/// <para>
-/// <b>It widens the PLACEMENT status set and nothing else, and that boundary is the correction of a real defect
-/// (antagonist round 1, 2026-08-05).</b> The links a thema carries are still counted only when they are
-/// <c>aanvaard</c>/<c>manueel</c>, because <c>IDekkingOpslag</c> filters them there for every caller. So a
-/// leerplandoel attached to a placed thema through a still-<c>voorgesteld</c> doelsuggestie — the ordinary state
-/// right after FR-4 matching — does <b>not</b> count here. That is defensible (nobody has decided that link either)
-/// but it makes this a ceiling over <i>placements</i>, not over "everything the teacher could say yes to", and the
-/// first version of the copy claimed the second: it told a teacher the doel sat in no planned thema at all, which
-/// could be false. The rendered sentence now states only what this number can carry.
-/// </para>
-/// <para>
-/// <b>Nullable for the same reason as <paramref name="AantalGedekt"/>, and the type is what enforces it</b> — a
-/// boolean beside a populated number would let any caller print the number anyway, and this repo has learned that a
-/// flag which only asks to be honoured is eventually not.
+/// There is no leerplandoel figure "if the plan were accepted": no thema placement reaches a leerplandoel
+/// (ADR-0052), so it would always equal this one.
 /// </para>
 /// </param>
 /// <param name="AantalLeerplandoelen">
-/// The denominator: how many leerplandoelen are in scope. Always present, because it is a property of the loaded
-/// curriculum rather than of this plan.
+/// How many leerplandoelen are in scope. Always present, because it is a property of the loaded curriculum rather
+/// than of this plan. <b>It can legitimately be 0</b>, and a caller must not render that as "alles gedekt".
+/// </param>
+/// <param name="AantalMinimumdoelenGedekt">
+/// How many minimumdoelen of the klas's mijlpaal are covered <b>today</b>: a themadoel of a thema placed as
+/// <c>aanvaard</c> or <c>manueel</c> (Art. V.1). <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
+/// </param>
+/// <param name="AantalMinimumdoelenMogelijkGedekt">
+/// How many of them would be covered if the teacher accepted every thema placement <b>proposal</b> now standing in
+/// the plan; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>.
 /// <para>
-/// <b>It can legitimately be 0</b> — a class scoped to L3 while only kleuterdoelen are imported. A caller must not
-/// render that as "alles gedekt": 0 of 0 means "we cannot measure this class yet".
+/// It is a ceiling, not coverage (Art. IV.1): rejected and stale placements are excluded, and it is never lower than
+/// <paramref name="AantalMinimumdoelenGedekt"/>, because the placements it counts include those. A minimumdoel that
+/// two thema's carry counts once.
 /// </para>
 /// </param>
+/// <param name="AantalMinimumdoelen">How many minimumdoelen of the klas's mijlpaal are in scope.</param>
 public sealed record Dekkingsvooruitzicht(
     Dekkingsbereik Bereik,
     IReadOnlyList<string> GemetenJaarFasen,
@@ -118,37 +109,7 @@ public sealed record Dekkingsvooruitzicht(
     bool IsBetrouwbaar,
     int AantalOnopgelosteVervallenPlaatsingen,
     int? AantalGedekt,
-    int? AantalMogelijkGedekt,
-    int AantalLeerplandoelen)
-{
-    /// <summary>
-    /// How many in-scope leerplandoelen are still not covered once every standing <b>placement</b> proposal is
-    /// accepted; <c>null</c> when the figures are withheld.
-    /// <para>
-    /// This is the number FR-5.3 is really about: accepting the plan's proposals cannot reduce it. Closing it needs a
-    /// different thema, or a goal link, or the acknowledgement that the school's current content does not cover this
-    /// class's curriculum.
-    /// </para>
-    /// <para>
-    /// <b>What it is NOT, corrected after antagonist round 1:</b> it is not "no thema in this plan carries these
-    /// doelen". A placed thema may carry one through a doelsuggestie the teacher has not accepted yet, and accepting
-    /// <i>that</i> would reduce this number — so the earlier phrasing, and the sentence rendered from it, could both
-    /// be false in the ordinary state right after AI matching. The number is unchanged; what it may be said to mean
-    /// is narrower.
-    /// </para>
-    /// <para>
-    /// <b>Which</b> doelen they are is deliberately not listed here: that is the gap-analyse (E5-05) over the
-    /// dekkingsoverzicht's own per-doel list, and a second list composed on the generation panel could disagree.
-    /// </para>
-    /// </summary>
-    public int? AantalOnbereikbaar =>
-        AantalMogelijkGedekt is null ? null : AantalLeerplandoelen - AantalMogelijkGedekt;
-
-    // REMOVED: `AantalWinstBijAanvaarden` (= AantalMogelijkGedekt - AantalGedekt), antagonist round 3.
-    //
-    // It was computed here, serialised, typed on the frontend and asserted across three test layers, and no screen
-    // ever read it. The choice the audit put was "render it or drop it", and dropping is the one that does not invent
-    // a new sentence on the anchor screen inside a fix round: both operands travel on this same payload, so any
-    // consumer that wants the difference can subtract, and a figure nothing reads is a figure nothing protects.
-    // If a screen ever wants it, it comes back with the copy that justifies it.
-}
+    int AantalLeerplandoelen,
+    int? AantalMinimumdoelenGedekt,
+    int? AantalMinimumdoelenMogelijkGedekt,
+    int AantalMinimumdoelen);

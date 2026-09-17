@@ -98,7 +98,7 @@ const VERWACHT: Record<Exclude<Rij, Activiteitrij>, string[]> = {
   // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; not themabeheer alone.
   SubdoelplaatsingVragen: ["Directie", "HL"],
   SubdoelplaatsingBeslissen: ["Directie", "HL"],
-  // FB-025 (ADR-0054 A3): on someone else's proposal only directie; the asker's own is its own case below.
+  // FB-025 (ADR-0056 A3): on someone else's proposal only directie; the asker's own is its own case below.
   ActiviteitvoorstelBeslissen: ["Directie"],
 };
 
@@ -143,7 +143,7 @@ describe("de rechtenmatrix van de frontend", () => {
     expect(rijen).toHaveLength(31);
   });
 
-  it("laat wie een activiteitvoorstel vroeg het beslissen zolang ze die leeftijd heeft, en andermans alleen directie (ADR-0054)", () => {
+  it("laat wie een activiteitvoorstel vroeg het beslissen zolang ze die leeftijd heeft, en andermans alleen directie (ADR-0056)", () => {
     const eigen = { leeftijd: LEEFTIJD, aanvragerId: IK };
     expect(magVoor(RELATIES["LK leeftijd"]).activiteitvoorstelBeslissen(eigen)).toBe(true);
     expect(magVoor(RELATIES.HL).activiteitvoorstelBeslissen(eigen)).toBe(false);
