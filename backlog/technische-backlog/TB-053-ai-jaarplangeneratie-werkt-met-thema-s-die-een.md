@@ -2,12 +2,12 @@
 id: TB-053
 titel: AI-jaarplangeneratie werkt met thema's die een eigen begin- en einddatum hebben
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:51
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-17 08:30
+opgepakt-door: tb053-generatie
+branch: ticket/TB-053-ai-generatie-met-datums
 pr:
 geblokkeerd:
 fr: []
@@ -66,3 +66,4 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 ## Werklog
 
 - 2026-09-16 22:51 · fb035-datums · aangemaakt (status nieuw)
+- 2026-09-17 08:30 · tb053-generatie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
