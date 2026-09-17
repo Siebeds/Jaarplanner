@@ -24,8 +24,9 @@ Nothing on the plan screen sets startthema's or vaste momenten any more; they li
    that stay, the vacations, the thema's that stay, and the school's thema's with their duration and decided goals
    (Art. IV.4). It names no month and no planningsblok.
 2. **The calendar sets the days.** In order of start week, each proposal starts on the first free schooldag from that
-   week on that begins a free stretch of at least one whole lesweek, no later than the end the thema would have if it
-   started in that week. It ends at `Themakalender.VoorgesteldEinde`, cut before the next placement, and is split at
+   week on (owner ruling). Three rules are defaults of this ADR, not the owner's ruling, and are his to tune: the free
+   stretch must hold at least one whole lesweek; a shorter stretch is skipped for a later one; and the search stops at
+   the end the thema would have if it started in the chosen week. It ends at `Themakalender.VoorgesteldEinde`, cut before the next placement, and is split at
    every vacation, as a hand-placement is. Every part is stored `Voorgesteld` with the model's motivation.
 3. **What is not placed is reported, never stored or moved elsewhere:** a thema the school does not have
    (`OnbekendThema`), a thema already in the plan or proposed twice (`AlGepland`), a start week that is no lesweek
@@ -66,10 +67,11 @@ Nothing on the plan screen sets startthema's or vaste momenten any more; they li
 
 ## Compliance trace
 
-- **Constitution:** Art. I.1 items 4 and 6 (amended: regenerate the whole plan, on free days), Art. IX.3 (amended: the
+- **Constitution:** Art. I.1 items 4 and 6 (amended: regenerate the whole plan, on free days), Art. IV.5 (amended: the
+  plan-generation answer is thema's with a start week and a motivation), Art. II.1 (example updated), Art. IX.3 (amended: the
   generation is on; the Generatieparameters entity is gone), Art. XII (amended: *startthema*, *vast moment* and
-  *bewaarde generatieparameters* removed), Art. IV.1 to IV.5 unchanged (a proposal, a motivation, a teacher's decision,
-  grounded, validated).
+  *bewaarde generatieparameters* removed), Art. IV.1 to IV.4 unchanged (a proposal, a motivation, a teacher's decision,
+  grounded).
 - **Backlog:** TB-053.
 - **FR/NFR:** FR-5.1, FR-5.2, FR-5.3, FR-8.1, FR-8.3 (the proposals are the preview), FR-8.4 (per placement, A.10);
   FR-5.4 and FR-8.2 lapsed.

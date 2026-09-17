@@ -224,6 +224,25 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Equal((D(9, 28), D(10, 30)), (herfst.Van, herfst.Tot));
     }
 
+    /// <summary>
+    /// At the end of the year a thema stops on the last schooldag (ADR-0053 R5); a start in the last, partial week holds
+    /// no whole lesweek and is no place.
+    /// </summary>
+    [Fact]
+    public async Task Aan_het_einde_van_het_jaar_stopt_een_thema_op_de_laatste_schooldag_of_past_het_niet()
+    {
+        var afgekapt = new Opzet(Antwoord(("Herfst", "2027-06-07")));
+        await afgekapt.GenereerAsync();
+        var herfst = Assert.Single(afgekapt.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((D(6, 7), D(6, 30)), (herfst.Van, herfst.Tot));
+
+        var opzet = new Opzet(Antwoord(("Winter", "2027-06-07"), ("Water", "2027-06-28")));
+        var resultaat = await opzet.GenereerAsync();
+        var winter = Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen);
+        Assert.Equal((opzet.Winter.Id, D(6, 7), D(6, 25)), (winter.ThemaId, winter.Van, winter.Tot));
+        Assert.Equal([new NietGeplaatstThema("Water", NietGeplaatstThema.GeenPlaats)], resultaat.NietGeplaatst);
+    }
+
     [Fact]
     public async Task Een_onbekend_thema_een_vakantieweek_en_een_dubbel_voorstel_worden_gemeld_en_niet_geplaatst()
     {

@@ -123,7 +123,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0052 | Art. V.1 and IX.2 (amended); IV and VI.1 unchanged; supersedes 0047 S2 and part of D4; settles 0046 M7 | FB-053 | FR-4.1, FR-4.2, FR-4.3 |
 | 0053 | Art. IX.3, XII and IV.2 (amended); IV.1 and V.1 unchanged; supersedes 0013 and 0020 for the jaarplan; relates to 0023, 0028 | FB-035; the AI generation ticket | FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 paused |
 | 0054 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
-| 0055 | Art. I.1, IX.3 and XII (amended); IV.1–IV.5 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
+| 0055 | Art. I.1, II.1, IV.5, IX.3 and XII (amended); IV.1–IV.4 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
 
 ## Open decisions referenced by ADRs
 
