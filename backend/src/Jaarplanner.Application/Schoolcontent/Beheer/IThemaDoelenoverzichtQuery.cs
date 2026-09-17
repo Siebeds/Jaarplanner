@@ -3,21 +3,21 @@ using Jaarplanner.Domain.Curriculum;
 namespace Jaarplanner.Application.Schoolcontent.Beheer;
 
 /// <summary>
-/// The leerplandoelen a thema reaches through what hangs under it, per leeftijd (FB-009, FB-044, FR-2.3).
+/// The leerplandoelen of a thema per leeftijd (FB-009, TB-048, FR-2.3).
 /// <para>
 /// <b>A preview of what the thema offers, never dekking.</b> Dekking belongs to a klas and needs a plan (Art. V.1); this
-/// knows no klas. It is computed from the links and never stored.
+/// knows no klas. It is computed and never stored, and it counts no leerplandoel for dekking that Art. V.1 does not.
 /// </para>
 /// <para>
-/// <b>Leerplandoelen only.</b> The minimumdoelen a thema aims at are its themadoelen (ADR-0046) and stand above this block
-/// on the page, so the overview no longer repeats them (FB-044). A leerplandoel still carries its minimumdoel's ref, which
-/// its detail shows.
+/// <b>The list is the concordance of the thema's minimumdoelen</b> (TB-048): every leerplandoel whose minimumdoel is one of
+/// the thema's themadoelen (ADR-0046), at its own jaar/fase, whether or not anything under the thema links it yet.
+/// Linking or unlinking a minimumdoel changes it at once.
 /// </para>
 /// <para>
-/// <b>Only decided links count</b> (<c>Aanvaard</c>, <c>Manueel</c>), the rule Art. V uses: themadoelen, accepted
-/// doelsuggesties, each subthema's subdoelen and the goals of its activiteiten. A themadoel or a doelsuggestie hangs on the
-/// whole thema, so it is placed at its leerplandoel's own jaar/fase (the ticket's default); a subdoel and an activiteit goal
-/// at their subthema's leeftijd.
+/// <b>Beside the list, the decided links that fall outside it</b> (<c>Aanvaard</c>, <c>Manueel</c>): a leerplandoel a
+/// subdoel, a shared activiteit or a legacy leerplandoel-themadoel links, whose minimumdoel the thema does not aim at. A
+/// subdoel and an activiteit goal sit at their subthema's leeftijd, a legacy themadoel at its leerplandoel's jaar/fase.
+/// They are shown apart and never counted with the list.
 /// </para>
 /// </summary>
 public interface IThemaDoelenoverzichtQuery
@@ -41,7 +41,8 @@ public enum DoelPlaatsSoort
 /// <param name="Naam">The subthema's name for a subdoel, the activiteit's for an activiteit goal; null for a themadoel.</param>
 public sealed record DoelPlaats(DoelPlaatsSoort Soort, string? Naam);
 
-/// <summary>A leerplandoel the thema reaches at one leeftijd, once, with every place it is linked.</summary>
+/// <summary>A leerplandoel at one leeftijd, once.</summary>
+/// <param name="Plaatsen">Where the thema links it; filled only for a leerplandoel outside the list.</param>
 public sealed record OverzichtLeerplandoel(
     string Code,
     Doelsoort Doelsoort,
@@ -50,8 +51,13 @@ public sealed record OverzichtLeerplandoel(
     string? MinimumdoelRef,
     IReadOnlyList<DoelPlaats> Plaatsen);
 
-/// <summary>What the thema reaches at one leeftijd.</summary>
-public sealed record LeeftijdDoelen(string Leeftijd, IReadOnlyList<OverzichtLeerplandoel> Leerplandoelen);
+/// <summary>One leeftijd of the overview.</summary>
+/// <param name="Leerplandoelen">The leerplandoelen of the thema's minimumdoelen at this jaar/fase: the list, and what the counts count.</param>
+/// <param name="BuitenMinimumdoelen">Leerplandoelen linked under the thema at this leeftijd that belong to none of its minimumdoelen.</param>
+public sealed record LeeftijdDoelen(
+    string Leeftijd,
+    IReadOnlyList<OverzichtLeerplandoel> Leerplandoelen,
+    IReadOnlyList<OverzichtLeerplandoel> BuitenMinimumdoelen);
 
 /// <summary>The whole overview, leeftijden in jaar/fase order (JK first).</summary>
 public sealed record ThemaDoelenoverzicht(Guid ThemaId, IReadOnlyList<LeeftijdDoelen> Leeftijden);

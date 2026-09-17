@@ -65,6 +65,14 @@ minimumdoel bij de themadoelen, die al zo werkt.
   doelsuggestie of een geplande algemene fiche (Art. V.1, ADR-0047), niet via het minimumdoel van het thema. Moet dat zo
   blijven? Zo niet, dan is dat een grondwetswijziging en een eigen ticket.
 
+### Antwoorden van de eigenaar (2026-09-17)
+
+- De lijst vervangt de huidige: per leeftijd de leerplandoelen van de gekozen minimumdoelen, zonder te tonen waar ze
+  gekoppeld zijn.
+- Een leerplandoel dat in het thema gekoppeld is maar bij geen gekozen minimumdoel hoort, staat per leeftijd in een
+  aparte groep en telt niet mee.
+- De dekkingsberekening blijft ongewijzigd.
+
 ## Werklog
 
 - 2026-09-17 00:18 · lange-lijsten · aangemaakt (status nieuw)
