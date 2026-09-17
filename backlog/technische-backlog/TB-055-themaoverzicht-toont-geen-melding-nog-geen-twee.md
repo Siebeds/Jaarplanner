@@ -2,10 +2,10 @@
 id: TB-055
 titel: Themaoverzicht toont geen melding 'Nog geen twee themadoelen' meer
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 09:01
+bijgewerkt: 2026-09-17 09:04
 opgepakt-door: geen-twee-themadoelen
 branch: ticket/geen-twee-themadoelen-weg
 pr:
@@ -27,9 +27,9 @@ en de melding maakt het overzicht onrustig (eigenaar, 2026-09-17).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met nul of één minimumdoel, wanneer ik het overzicht van alle thema's open, dan staat er op
+- [x] Gegeven een thema met nul of één minimumdoel, wanneer ik het overzicht van alle thema's open, dan staat er op
   zijn kaart geen melding "Nog geen twee themadoelen".
-- [ ] Gegeven de wijziging, wanneer de frontendtests en `pnpm lint` draaien, dan slagen ze.
+- [x] Gegeven de wijziging, wanneer de frontendtests en `pnpm lint` draaien, dan slagen ze.
 
 ## Buiten scope
 
@@ -44,3 +44,4 @@ Geen.
 ## Werklog
 
 - 2026-09-17 09:01 · geen-twee-themadoelen · aangemaakt (status in-uitvoering)
+- 2026-09-17 09:04 · geen-twee-themadoelen · in-uitvoering → klaar: melding en nl.json-sleutel weg, test bewaakt het; 1190 frontendtests groen, pnpm lint groen; geen antagonist (alleen een weggehaalde melding)

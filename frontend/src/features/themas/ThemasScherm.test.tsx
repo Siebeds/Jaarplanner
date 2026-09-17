@@ -81,6 +81,39 @@ describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
     expect(kaart).not.toHaveTextContent(/klas/);
     expect(kaart).not.toHaveTextContent("460");
   });
+
+  it("toont geen melding bij een thema met minder dan twee minimumdoelen (TB-055)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify([
+            {
+              id: "t-2",
+              naam: "Lente",
+              duurWeken: 3,
+              invalshoeken: null,
+              kernwoordenschat: [],
+              rijkeWoordenschat: [],
+              heeftVoldoendeThemadoelen: false,
+              themadoelen: [],
+              minimumdoelen: [{ id: "m-0", minimumdoelRef: "K-1.1.1" }],
+              aantalAfgeleideLeeftijden: 0,
+              aantalSubthemas: 0,
+              aantalActiviteiten: 0,
+              aantalDoelkoppelingen: 0,
+            },
+          ]),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    toon("themas", LEERKRACHT);
+
+    const kaart = await screen.findByRole("link", { name: /Lente/ });
+    expect(kaart).toHaveTextContent(`1 ${t("themas.minimumdoelEen")}`);
+    expect(kaart).not.toHaveTextContent(/themadoelen/i);
+  });
 });
 
 describe("DoelenScherm", () => {
