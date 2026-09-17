@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 09:04
+bijgewerkt: 2026-09-17 09:05
 opgepakt-door: tb053-generatie
 branch: ticket/TB-053-ai-generatie-met-datums
 pr:
@@ -77,3 +77,4 @@ Beantwoord door de eigenaar op 2026-09-17:
 - 2026-09-17 08:37 · tb053-generatie · eigenaar besliste: AI kiest thema's en startweek, server plaatst op vrije dagen; alleen het hele jaar hergenereren (FR-8.2 vervalt); startthema's en vaste momenten worden opgeruimd (FR-5.4 vervalt)
 - 2026-09-17 08:59 · tb053-generatie · generatie herbouwd (startweek + kalender), parameters en planningsblokken opgeruimd met migratie, knop weer aan; ADR-0055; backend-, Postgres- en frontendtests groen
 - 2026-09-17 09:04 · tb053-generatie · antagonist ronde 1: 1 MAJOR (Art. IV.5 beschreef het oude antwoordformaat) opgelost; MINORs verwerkt (II.1-voorbeeld, standaardregels gemarkeerd in ADR-0055, jaareindetest, FA-volgorde)
+- 2026-09-17 09:05 · tb053-generatie · antagonist ronde 2: COMPLIANT
