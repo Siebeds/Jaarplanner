@@ -2,10 +2,10 @@
 id: TB-053
 titel: AI-jaarplangeneratie werkt met thema's die een eigen begin- en einddatum hebben
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 09:05
+bijgewerkt: 2026-09-17 09:12
 opgepakt-door: tb053-generatie
 branch: ticket/TB-053-ai-generatie-met-datums
 pr:
@@ -45,12 +45,12 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met een leeg jaarplan, wanneer de leerkracht een jaarplan genereert, dan staan er thema's met
+- [x] Gegeven een klas met een leeg jaarplan, wanneer de leerkracht een jaarplan genereert, dan staan er thema's met
   eigen datums als voorstel in, zonder twee thema's op dezelfde dag en gesplitst rond vakanties.
-- [ ] Gegeven een jaarplan met manuele of aanvaarde thema's, wanneer de leerkracht opnieuw genereert, dan blijven die
+- [x] Gegeven een jaarplan met manuele of aanvaarde thema's, wanneer de leerkracht opnieuw genereert, dan blijven die
   staan en komen er alleen voorstellen bij op vrije dagen.
-- [ ] Gegeven een AI-antwoord dat niet geldig is, dan wordt er niets bewaard en ziet de leerkracht een melding.
-- [ ] De knop "Genereer jaarplan" staat weer aan en het endpoint antwoordt niet meer 409.
+- [x] Gegeven een AI-antwoord dat niet geldig is, dan wordt er niets bewaard en ziet de leerkracht een melding.
+- [x] De knop "Genereer jaarplan" staat weer aan en het endpoint antwoordt niet meer 409.
 
 ## Buiten scope
 
@@ -78,3 +78,5 @@ Beantwoord door de eigenaar op 2026-09-17:
 - 2026-09-17 08:59 · tb053-generatie · generatie herbouwd (startweek + kalender), parameters en planningsblokken opgeruimd met migratie, knop weer aan; ADR-0055; backend-, Postgres- en frontendtests groen
 - 2026-09-17 09:04 · tb053-generatie · antagonist ronde 1: 1 MAJOR (Art. IV.5 beschreef het oude antwoordformaat) opgelost; MINORs verwerkt (II.1-voorbeeld, standaardregels gemarkeerd in ADR-0055, jaareindetest, FA-volgorde)
 - 2026-09-17 09:05 · tb053-generatie · antagonist ronde 2: COMPLIANT
+- 2026-09-17 09:12 · tb053-generatie · browsercontrole (Playwright, wegwerpdatabase, nep-AI): 7/7 geslaagd na fix dat een deels aanvaard thema heel blijft; criteria afgevinkt op unit-, integratie- en browsertests
+- 2026-09-17 09:12 · tb053-generatie · in-uitvoering → klaar: AI-generatie met datums gebouwd (ADR-0055), parameters en planningsblokken opgeruimd, knop aan; tests, lint, format, antagonist (COMPLIANT) en browsercontrole groen
