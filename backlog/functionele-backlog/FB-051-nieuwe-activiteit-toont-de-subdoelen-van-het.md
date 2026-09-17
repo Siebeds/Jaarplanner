@@ -2,12 +2,12 @@
 id: FB-051
 titel: Nieuwe activiteit toont de subdoelen van het subthema om aan te vinken
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 13:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-17 08:28
+opgepakt-door: fb-051
+branch: ticket/FB-051-subdoelen-bij-nieuwe-activiteit
 pr:
 geblokkeerd:
 fr: [FR-3.2]
@@ -68,3 +68,4 @@ subdoelen al heeft.
 ## Werklog
 
 - 2026-09-16 13:47 · demo-opmerkingen · aangemaakt (status nieuw)
+- 2026-09-17 08:28 · fb-051 · nieuw → in-uitvoering: opgepakt: eigenaar startte /ticket-uitvoeren FB-051
