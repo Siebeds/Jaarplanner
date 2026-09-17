@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:28
+bijgewerkt: 2026-09-17 08:40
 opgepakt-door: fb-051
 branch: ticket/FB-051-subdoelen-bij-nieuwe-activiteit
 pr:
@@ -35,13 +35,13 @@ subdoelen al heeft.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een K3-subthema met vier subdoelen, wanneer men daar een nieuwe activiteit aanmaakt, dan staan die vier
+- [x] Gegeven een K3-subthema met vier subdoelen, wanneer men daar een nieuwe activiteit aanmaakt, dan staan die vier
   subdoelen in het formulier, elk op één regel met een vinkje.
-- [ ] Gegeven twee aangevinkte subdoelen en één extra doel uit het register, wanneer men bewaart, dan draagt de activiteit
+- [x] Gegeven twee aangevinkte subdoelen en één extra doel uit het register, wanneer men bewaart, dan draagt de activiteit
   die drie doelen.
-- [ ] Gegeven een subthema zonder subdoelen, dan zegt het formulier dat, en kan men nog altijd andere doelen toevoegen.
-- [ ] Gegeven iemand die geen doelen mag koppelen aan activiteiten van die leeftijd, dan staat de lijst er niet.
-- [ ] De lijst is met het toetsenbord te bedienen, en nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven een subthema zonder subdoelen, dan zegt het formulier dat, en kan men nog altijd andere doelen toevoegen.
+- [x] Gegeven iemand die geen doelen mag koppelen aan activiteiten van die leeftijd, dan staat de lijst er niet.
+- [x] De lijst is met het toetsenbord te bedienen, en nagekeken in een echte browser op desktop en ~390px.
 
 ## Testscenario's
 
@@ -69,3 +69,6 @@ subdoelen al heeft.
 
 - 2026-09-16 13:47 · demo-opmerkingen · aangemaakt (status nieuw)
 - 2026-09-17 08:28 · fb-051 · nieuw → in-uitvoering: opgepakt: eigenaar startte /ticket-uitvoeren FB-051
+- 2026-09-17 08:33 · fb-051 · subdoelenlijst gebouwd in het formulier van een nieuwe activiteit (themapagina, agenda, paneel); Vitest 1195 groen, lint groen
+- 2026-09-17 08:39 · fb-051 · browsercontrole in mockmodus op desktop en 390px: themapagina, agenda, subthema zonder subdoelen, toetsenbord; lijst liep eerst buiten het blad, hersteld
+- 2026-09-17 08:40 · fb-051 · acceptatiecriteria afgevinkt: 1, 2, 4 met Vitest (Activiteitformulier.test.tsx), 2, 3 en 5 ook in de browser (mockmodus)
