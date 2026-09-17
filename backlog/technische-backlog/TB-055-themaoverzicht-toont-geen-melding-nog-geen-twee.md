@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 09:04
+bijgewerkt: 2026-09-17 09:06
 opgepakt-door: geen-twee-themadoelen
 branch: ticket/geen-twee-themadoelen-weg
-pr:
+pr: 141
 geblokkeerd:
 fr: []
 ---
@@ -45,3 +45,4 @@ Geen.
 
 - 2026-09-17 09:01 · geen-twee-themadoelen · aangemaakt (status in-uitvoering)
 - 2026-09-17 09:04 · geen-twee-themadoelen · in-uitvoering → klaar: melding en nl.json-sleutel weg, test bewaakt het; 1190 frontendtests groen, pnpm lint groen; geen antagonist (alleen een weggehaalde melding)
+- 2026-09-17 09:06 · geen-twee-themadoelen · PR #141
