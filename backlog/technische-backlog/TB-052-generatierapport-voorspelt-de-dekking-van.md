@@ -5,11 +5,11 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:29
+bijgewerkt: 2026-09-17 08:30
 opgepakt-door: claude-53c162c3
 branch: ticket/TB-052-vooruitzicht-minimumdoelen
 pr:
-geblokkeerd:
+geblokkeerd: Het generatierapport bestaat niet meer in de frontend; de enige lezer van het voortgang-endpoint is de Dekkingsbalk boven de agenda (leerplandoelen). Moet de balk mee naar minimumdoelen, of komen de minimumdoelcijfers naast de leerplandoelcijfers?
 fr: []
 ---
 
@@ -56,3 +56,4 @@ Geen.
 
 - 2026-09-16 23:50 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-17 08:29 · claude-53c162c3 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 08:30 · claude-53c162c3 · geblokkeerd: Het generatierapport bestaat niet meer in de frontend; de enige lezer van het voortgang-endpoint is de Dekkingsbalk boven de agenda (leerplandoelen). Moet de balk mee naar minimumdoelen, of komen de minimumdoelcijfers naast de leerplandoelcijfers?
