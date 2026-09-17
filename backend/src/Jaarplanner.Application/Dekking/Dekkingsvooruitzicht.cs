@@ -13,7 +13,8 @@ namespace Jaarplanner.Application.Dekking;
 /// failure of the model.
 /// </para>
 /// <para>
-/// <b>So the figure this record carries is explicitly a <i>vooruitzicht</i>, never a dekking.</b>
+/// <b>So <see cref="AantalMinimumdoelenMogelijkGedekt"/> is explicitly a <i>vooruitzicht</i>, never a dekking;
+/// the other figures are today's real ones.</b>
 /// <see cref="AantalMinimumdoelenMogelijkGedekt"/> counts what acceptance would cover;
 /// <see cref="AantalMinimumdoelenGedekt"/> is the real, decided figure, computed by exactly the same rules the
 /// dekkingsoverzicht uses. The forecast is over minimumdoelen, since a thema placement covers nothing else

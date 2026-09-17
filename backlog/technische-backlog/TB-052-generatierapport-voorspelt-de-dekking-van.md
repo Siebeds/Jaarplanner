@@ -2,10 +2,10 @@
 id: TB-052
 titel: Generatierapport voorspelt de dekking van minimumdoelen in plaats van leerplandoelen
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:48
+bijgewerkt: 2026-09-17 08:50
 opgepakt-door: claude-53c162c3
 branch: ticket/TB-052-vooruitzicht-minimumdoelen
 pr:
@@ -61,3 +61,5 @@ Geen.
 - 2026-09-17 08:35 · claude-53c162c3 · besluit eigenaar: naast elkaar. De balk blijft leerplandoelen tonen, het endpoint krijgt minimumdoelcijfers erbij, het leerplandoelcijfer na aanvaarding vervalt; geen rapporttekst zolang er geen rapportscherm is (criterium 3 wacht op de herwerkte generatie)
 - 2026-09-17 08:47 · claude-53c162c3 · gebouwd: het voortgang-endpoint telt de minimumdoelen nu en na aanvaarding, de balk houdt leerplandoelen; criteria 1 en 2 afgevinkt met DekkingsvooruitzichtTests en DekkingsvooruitzichtPostgresTests; unit 2104 groen, dekking-integratie 52 groen, format en lint schoon; antagonist loopt
 - 2026-09-17 08:48 · claude-53c162c3 · volledige integratiesuite groen (573 geslaagd, 1 overgeslagen); criterium 4 afgevinkt
+- 2026-09-17 08:50 · claude-53c162c3 · antagonist: COMPLIANT, geen blokkerende bevindingen; MINOR 1 (samenvatting record) en 3 (mock toont geen plafond naast een leeg cijfer) opgelost; MINOR 2 (een vervallen plaatsing is niet apart te tonen in het plafond omdat alle cijfers dan leeg zijn) blijft als notitie
+- 2026-09-17 08:50 · claude-53c162c3 · in-uitvoering → klaar: gebouwd: voortgang-endpoint met minimumdoelvooruitzicht naast het leerplandoelcijfer van de balk; unit 2104, integratie 573, vitest 1189 groen, format en lint schoon, antagonist COMPLIANT; criterium 3 wacht op besluit eigenaar tot er weer een rapportscherm is

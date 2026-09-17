@@ -956,8 +956,9 @@ export function dekkingsvoortgang(t: Toestand, klas: Toestand["klassen"][number]
     aantalLeerplandoelen: volledig.aantalLeerplandoelen,
     aantalMinimumdoelenGedekt: volledig.aantalMinimumdoelenGedekt,
     aantalMinimumdoelenMogelijkGedekt:
-      (volledig.aantalMinimumdoelenGedekt ?? 0) +
-      volledig.minimumdoelen.filter((m) => m.oorzaak === "WachtOpBeslissing").length,
+      volledig.aantalMinimumdoelenGedekt === null
+        ? null
+        : volledig.aantalMinimumdoelenGedekt + volledig.minimumdoelen.filter((m) => m.oorzaak === "WachtOpBeslissing").length,
     aantalMinimumdoelen: volledig.aantalMinimumdoelen,
   };
 }
