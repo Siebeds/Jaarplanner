@@ -260,7 +260,7 @@ public sealed class DekkingsprognoseTests
     // ── Vooruitzicht ────────────────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Het_vooruitzicht_telt_een_ingepland_subthema_in_beide_cijfers_en_een_themavoorstel_in_geen_van_beide()
+    public async Task Het_vooruitzicht_telt_een_ingepland_subthema_bij_de_leerplandoelen_en_een_themavoorstel_bij_de_minimumdoelen()
     {
         var (service, _) = Maak(
             plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
@@ -274,7 +274,9 @@ public sealed class DekkingsprognoseTests
         var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
 
         Assert.Equal(1, vooruitzicht.AantalGedekt);
-        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
+        Assert.Equal(0, vooruitzicht.AantalMinimumdoelenGedekt);
+        Assert.Equal(1, vooruitzicht.AantalMinimumdoelenMogelijkGedekt);
+        Assert.Equal(2, vooruitzicht.AantalMinimumdoelen);
     }
 
     // ── Jaarfasen.MijlpalenVoor ─────────────────────────────────────────────────────────────────────────────────

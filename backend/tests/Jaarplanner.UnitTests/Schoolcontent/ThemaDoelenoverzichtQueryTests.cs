@@ -7,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.UnitTests.Schoolcontent;
 
 /// <summary>
-/// The doelen a thema reaches per leeftijd (FB-009): where each link is placed, that only a decided link counts, and that
-/// the minimumdoelen follow from the concordance. EF Core in-memory, so it runs without Docker.
+/// The leerplandoelen of a thema per leeftijd (FB-009, TB-048): the list follows the concordance of the thema's
+/// minimumdoelen, and a decided link outside it is shown apart where it is placed. EF Core in-memory, so it runs without
+/// Docker.
 /// </summary>
 public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
 {
@@ -49,91 +50,129 @@ public sealed class ThemaDoelenoverzichtQueryTests : IDisposable
     }
 
     [Fact]
-    public async Task Plaatst_subdoel_en_activiteitdoel_bij_de_leeftijd_van_het_subthema_elk_doel_een_keer()
+    public async Task Lijst_de_leerplandoelen_van_de_minimumdoelen_van_het_thema_per_jaarfase_ook_als_niets_ze_koppelt()
     {
         var thema = new Thema("Herfst", 4);
-        var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
-        subthema.VoegSubdoelToe("K3", Manueel("3.1.GK3.1"));
-        var sorteren = subthema.VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek);
-        sorteren.VoegDoelkoppelingToe(Manueel("3.1.GK3.1"));
-        sorteren.VoegDoelkoppelingToe(Manueel("3.2.GK3.4"));
-        subthema.VoegActiviteitToe("Wegen", ActiviteitType.Onderzoek).VoegDoelkoppelingToe(Manueel("3.1.GK3.1"));
+        thema.KoppelMinimumdoel("K-7");
 
-        var overzicht = await OverzichtVan(thema, Doel("3.1.GK3.1", "K3"), Doel("3.2.GK3.4", "K3"));
+        var overzicht = await OverzichtVan(
+            thema,
+            new Minimumdoel("K-7", "K-", "7", "eindterm"),
+            new Minimumdoel("K-8", "K-", "8", "andere eindterm"),
+            Doel("3.1.GK3.2", "K3", "K-7"),
+            Doel("3.1.GK2.1", "K2", "K-7"),
+            Doel("3.1.GK3.1", "K3", "K-7"),
+            Doel("3.1.GK3.9", "K3", "K-8"),
+            Doel("3.1.GK3.5", "K3"));
+
+        Assert.Equal(["K2", "K3"], overzicht.Leeftijden.Select(l => l.Leeftijd));
+        Assert.Equal(["3.1.GK2.1"], overzicht.Leeftijden[0].Leerplandoelen.Select(l => l.Code));
+        var k3 = overzicht.Leeftijden[1];
+        Assert.Equal(["3.1.GK3.1", "3.1.GK3.2"], k3.Leerplandoelen.Select(l => l.Code));
+        Assert.All(k3.Leerplandoelen, l => Assert.Equal("K-7", l.MinimumdoelRef));
+        Assert.All(k3.Leerplandoelen, l => Assert.Empty(l.Plaatsen));
+        Assert.Empty(k3.BuitenMinimumdoelen);
+    }
+
+    [Fact]
+    public async Task Een_gekoppeld_leerplandoel_van_een_minimumdoel_van_het_thema_staat_alleen_in_de_lijst()
+    {
+        var thema = new Thema("Herfst", 4);
+        thema.KoppelMinimumdoel("K-7");
+        thema.VoegSubthemaToe("Bladeren", 2, "K3").VoegSubdoelToe("K3", Manueel("3.1.GK3.1"));
+
+        var overzicht = await OverzichtVan(
+            thema, new Minimumdoel("K-7", "K-", "7", "eindterm"), Doel("3.1.GK3.1", "K3", "K-7"));
 
         var k3 = Assert.Single(overzicht.Leeftijden);
-        Assert.Equal("K3", k3.Leeftijd);
-        Assert.Equal(["3.1.GK3.1", "3.2.GK3.4"], k3.Leerplandoelen.Select(l => l.Code));
+        Assert.Equal(["3.1.GK3.1"], k3.Leerplandoelen.Select(l => l.Code));
+        Assert.Empty(k3.BuitenMinimumdoelen);
+    }
+
+    [Fact]
+    public async Task Zet_gekoppelde_leerplandoelen_buiten_de_minimumdoelen_apart_bij_de_leeftijd_van_het_subthema()
+    {
+        var thema = new Thema("Herfst", 4);
+        thema.KoppelMinimumdoel("K-7");
+        var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
+        subthema.VoegSubdoelToe("K3", Manueel("3.1.GK3.9"));
+        var sorteren = subthema.VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek);
+        sorteren.VoegDoelkoppelingToe(Manueel("3.1.GK3.9"));
+        sorteren.VoegDoelkoppelingToe(Manueel("3.2.GK3.4"));
+        subthema.VoegActiviteitToe("Wegen", ActiviteitType.Onderzoek).VoegDoelkoppelingToe(Manueel("3.1.GK3.9"));
+
+        var overzicht = await OverzichtVan(
+            thema,
+            new Minimumdoel("K-7", "K-", "7", "eindterm"),
+            new Minimumdoel("K-8", "K-", "8", "andere eindterm"),
+            Doel("3.1.GK3.1", "K3", "K-7"),
+            Doel("3.1.GK3.9", "K3", "K-8"),
+            Doel("3.2.GK3.4", "K3"));
+
+        var k3 = Assert.Single(overzicht.Leeftijden);
+        Assert.Equal(["3.1.GK3.1"], k3.Leerplandoelen.Select(l => l.Code));
+        Assert.Equal(["3.1.GK3.9", "3.2.GK3.4"], k3.BuitenMinimumdoelen.Select(l => l.Code));
         Assert.Equal(
             [
                 new DoelPlaats(DoelPlaatsSoort.Subdoel, "Bladeren"),
                 new DoelPlaats(DoelPlaatsSoort.Activiteit, "Sorteren"),
                 new DoelPlaats(DoelPlaatsSoort.Activiteit, "Wegen"),
             ],
-            k3.Leerplandoelen[0].Plaatsen);
+            k3.BuitenMinimumdoelen[0].Plaatsen);
     }
 
     [Fact]
-    public async Task Plaatst_een_themadoel_bij_de_jaarfase_van_zijn_leerplandoel_en_ordent_de_leeftijden()
+    public async Task Een_thema_zonder_minimumdoelen_heeft_een_lege_lijst_en_toont_zijn_koppelingen_apart()
     {
         var thema = new Thema("Herfst", 4);
         thema.VoegThemadoelToe(Manueel("4.1.GK2.1"));
         thema.VoegSubthemaToe("Bladeren", 2, "K3").VoegSubdoelToe("K3", Manueel("3.1.GK3.1"));
 
-        var overzicht = await OverzichtVan(thema, Doel("4.1.GK2.1", "K2"), Doel("3.1.GK3.1", "K3"));
+        var overzicht = await OverzichtVan(
+            thema, new Minimumdoel("K-7", "K-", "7", "eindterm"), Doel("4.1.GK2.1", "K2", "K-7"), Doel("3.1.GK3.1", "K3", "K-7"));
 
         Assert.Equal(["K2", "K3"], overzicht.Leeftijden.Select(l => l.Leeftijd));
-        var themadoel = Assert.Single(overzicht.Leeftijden[0].Leerplandoelen);
+        Assert.All(overzicht.Leeftijden, l => Assert.Empty(l.Leerplandoelen));
+        var themadoel = Assert.Single(overzicht.Leeftijden[0].BuitenMinimumdoelen);
         Assert.Equal([new DoelPlaats(DoelPlaatsSoort.Themadoel, null)], themadoel.Plaatsen);
     }
 
     [Fact]
-    public async Task Laat_voorgestelde_en_geweigerde_koppelingen_weg()
+    public async Task Een_thema_zonder_minimumdoelen_en_zonder_koppelingen_is_leeg()
+    {
+        var overzicht = await OverzichtVan(new Thema("Herfst", 4), Doel("3.1.GK3.1", "K3", "K-7"));
+
+        Assert.Empty(overzicht.Leeftijden);
+    }
+
+    [Fact]
+    public async Task Laat_voorgestelde_en_geweigerde_koppelingen_en_eigen_activiteiten_weg()
     {
         var thema = new Thema("Herfst", 4);
         var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
         var activiteit = subthema.VoegActiviteitToe("Sorteren", ActiviteitType.Onderzoek);
         activiteit.VoegDoelkoppelingToe(new DoelKoppeling("5.1.GK3.1", KoppelingStatus.Voorgesteld, "past"));
         activiteit.VoegDoelkoppelingToe(new DoelKoppeling("5.2.GK3.1", KoppelingStatus.Geweigerd));
+        subthema.VoegActiviteitToe("Eigen", ActiviteitType.Onderzoek, eigenaarId: Guid.NewGuid())
+            .VoegDoelkoppelingToe(Manueel("5.3.GK3.1"));
 
-        var overzicht = await OverzichtVan(thema, Doel("5.1.GK3.1", "K3"), Doel("5.2.GK3.1", "K3"));
+        var overzicht = await OverzichtVan(thema, Doel("5.1.GK3.1", "K3"), Doel("5.2.GK3.1", "K3"), Doel("5.3.GK3.1", "K3"));
 
         Assert.Empty(overzicht.Leeftijden);
-    }
-
-    [Fact]
-    public async Task Toont_alleen_leerplandoelen_elk_met_de_ref_van_zijn_minimumdoel()
-    {
-        var thema = new Thema("Herfst", 4);
-        var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
-        subthema.VoegSubdoelToe("K3", Manueel("A.1"));
-        subthema.VoegSubdoelToe("K3", Manueel("A.2"));
-        subthema.VoegSubdoelToe("K3", Manueel("A.3"));
-
-        var overzicht = await OverzichtVan(
-            thema,
-            new Minimumdoel("K-7", "K-", "7", "eindterm"),
-            Doel("A.1", "K3", "K-7"),
-            Doel("A.2", "K3", "K-7"),
-            Doel("A.3", "K3"));
-
-        var k3 = Assert.Single(overzicht.Leeftijden);
-        // FB-044: the block lists leerplandoelen only; the minimumdoel stays reachable through each one's ref.
-        Assert.Equal(["A.1", "A.2", "A.3"], k3.Leerplandoelen.Select(l => l.Code));
-        Assert.Equal(["K-7", "K-7", null], k3.Leerplandoelen.Select(l => l.MinimumdoelRef));
     }
 
     [Fact]
     public async Task Ordent_codes_zoals_een_lezer_ze_telt()
     {
         var thema = new Thema("Herfst", 4);
-        var subthema = thema.VoegSubthemaToe("Bladeren", 2, "K3");
-        foreach (var code in new[] { "3.1.GK3.10", "3.1.GK3.9", "3.1.GK3.2" })
-        {
-            subthema.VoegSubdoelToe("K3", Manueel(code));
-        }
+        thema.KoppelMinimumdoel("K-7");
 
-        var overzicht = await OverzichtVan(thema, Doel("3.1.GK3.10", "K3"), Doel("3.1.GK3.9", "K3"), Doel("3.1.GK3.2", "K3"));
+        var overzicht = await OverzichtVan(
+            thema,
+            new Minimumdoel("K-7", "K-", "7", "eindterm"),
+            Doel("3.1.GK3.10", "K3", "K-7"),
+            Doel("3.1.GK3.9", "K3", "K-7"),
+            Doel("3.1.GK3.2", "K3", "K-7"));
 
         Assert.Equal(["3.1.GK3.2", "3.1.GK3.9", "3.1.GK3.10"], overzicht.Leeftijden[0].Leerplandoelen.Select(l => l.Code));
     }

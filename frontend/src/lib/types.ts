@@ -504,7 +504,7 @@ export interface DoelPlaats {
   naam: string | null;
 }
 
-/** A leerplandoel a thema reaches at one leeftijd, once, with every place it is linked. */
+/** A leerplandoel at one leeftijd, once. `plaatsen` is filled only for one outside the list (TB-048). */
 export interface OverzichtLeerplandoel {
   code: string;
   doelsoort: Doelsoort;
@@ -514,15 +514,18 @@ export interface OverzichtLeerplandoel {
   plaatsen: DoelPlaats[];
 }
 
-/** What a thema reaches at one leeftijd: leerplandoelen only (FB-044); its minimumdoelen are its themadoelen. */
+/** One leeftijd of a thema's doelenoverzicht (TB-048). */
 export interface LeeftijdDoelen {
   leeftijd: string;
+  /** The leerplandoelen of the thema's minimumdoelen at this jaar/fase: the list, and what the counts count. */
   leerplandoelen: OverzichtLeerplandoel[];
+  /** Linked under the thema at this leeftijd, but belonging to none of its minimumdoelen. Never counted. */
+  buitenMinimumdoelen: OverzichtLeerplandoel[];
 }
 
 /**
- * What a thema reaches per leeftijd (FB-009): computed by the server from the decided links under it, never stored, and
- * never dekking (that belongs to a klas with a plan, Art. V.1).
+ * The leerplandoelen of a thema per leeftijd (FB-009, TB-048): computed by the server from its minimumdoelen and the
+ * decided links under it, never stored, and never dekking (that belongs to a klas with a plan, Art. V.1).
  */
 export interface ThemaDoelenoverzicht {
   themaId: string;
@@ -729,12 +732,6 @@ export interface JaarplanGeneratieResultaat {
   jaarplan: JaarplanWeergave;
 }
 
-export interface Dekkingsvooruitzicht {
-  aantalGedektNu: number | null;
-  aantalGedektNaAanvaarding: number | null;
-  aantalLeerplandoelen: number;
-}
-
 // --- Planningsrooster: a school year's span and its vacations ---
 
 export interface Planningsonderbreking {
@@ -819,7 +816,8 @@ export interface MinimumdoelDekking {
 }
 
 /**
- * The coverage figures without the goals themselves (`GET .../dekking/voortgang`).
+ * The coverage figures without the goals themselves (`GET .../dekking/voortgang`): today's leerplandoel
+ * figure, and the minimumdoelen covered today and if every proposed thema placement were accepted.
  *
  * The server computes it through the same service and the same scope rules as the full read, so the
  * two cannot drift: a bar and the screen it links to are one number rendered twice, not two numbers
@@ -832,11 +830,13 @@ export interface Dekkingsvoortgang {
   aantalBuitenBereik: number;
   isBetrouwbaar: boolean;
   aantalOnopgelosteVervallenPlaatsingen: number;
-  /** Null together with `aantalMogelijkGedekt` while a stale placement makes the figure unsound. */
+  /** Null, like every figure below, while a stale placement makes the figure unsound. */
   aantalGedekt: number | null;
-  aantalMogelijkGedekt: number | null;
   aantalLeerplandoelen: number;
-  aantalOnbereikbaar: number;
+  aantalMinimumdoelenGedekt: number | null;
+  /** A ceiling over proposals, never coverage (Art. IV.1). */
+  aantalMinimumdoelenMogelijkGedekt: number | null;
+  aantalMinimumdoelen: number;
 }
 
 export interface DekkingWeergave {

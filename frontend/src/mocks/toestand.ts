@@ -30,6 +30,7 @@ import type {
   Planningsrooster,
   SubthemaBestemming,
   ThemaBibliotheekItem,
+  OverzichtLeerplandoel,
   ThemaDoelenoverzicht,
   Themaplaatsing,
   ThemaWeergave,
@@ -327,11 +328,40 @@ export function bibliotheek(t: Toestand): (ThemaBibliotheekItem & {
 }
 
 export function doelenoverzicht(thema: ThemaWeergave): ThemaDoelenoverzicht {
-  const perLeeftijd = new Map<string, Map<string, DoelPlaats[]>>();
-  const voegToe = (leeftijd: string, code: string, plaats: DoelPlaats) => {
-    const doelen = perLeeftijd.get(leeftijd) ?? new Map<string, DoelPlaats[]>();
-    perLeeftijd.set(leeftijd, doelen);
-    doelen.set(code, [...(doelen.get(code) ?? []), plaats]);
+  const regel = (code: string, plaatsen: DoelPlaats[]): OverzichtLeerplandoel => {
+    const doel = leerplandoelOpCode.get(code);
+    return {
+      code,
+      doelsoort: doel?.doelsoort ?? "Gemeenschappelijk",
+      tekst: doel?.tekst ?? code,
+      nietMeerInOpstap: false,
+      minimumdoelRef: doel?.minimumdoelRef ?? null,
+      plaatsen,
+    };
+  };
+  const leeftijd = (code: string) => {
+    const bestaand = perLeeftijd.get(code);
+    if (bestaand) return bestaand;
+    const nieuw = { lijst: new Set<string>(), buiten: new Map<string, DoelPlaats[]>() };
+    perLeeftijd.set(code, nieuw);
+    return nieuw;
+  };
+  const perLeeftijd = new Map<string, { lijst: Set<string>; buiten: Map<string, DoelPlaats[]> }>();
+
+  // The list: the concordance of the thema's minimumdoelen, as the server reads it (TB-048).
+  const refs = new Set(thema.minimumdoelen.map((m) => m.minimumdoelRef));
+  const inLijst = new Set<string>();
+  for (const doel of inhoud.LEERPLANDOELEN) {
+    if (doel.minimumdoelRef && refs.has(doel.minimumdoelRef)) {
+      leeftijd(jaarFaseVan(doel.code)).lijst.add(doel.code);
+      inLijst.add(doel.code);
+    }
+  }
+
+  const voegToe = (naam: string, code: string, plaats: DoelPlaats) => {
+    if (inLijst.has(code)) return;
+    const buiten = leeftijd(naam).buiten;
+    buiten.set(code, [...(buiten.get(code) ?? []), plaats]);
   };
   for (const sub of thema.subthemas) {
     for (const subdoel of sub.subdoelen) {
@@ -341,23 +371,15 @@ export function doelenoverzicht(thema: ThemaWeergave): ThemaDoelenoverzicht {
       for (const k of act.doelkoppelingen) voegToe(sub.leeftijd, k.leerplandoelCode, { soort: "Activiteit", naam: act.naam });
     }
   }
+
   return {
     themaId: thema.id,
-    leeftijden: [...perLeeftijd].map(([leeftijd, doelen]) => ({
-      leeftijd,
-      leerplandoelen: [...doelen]
+    leeftijden: [...perLeeftijd].map(([naam, { lijst, buiten }]) => ({
+      leeftijd: naam,
+      leerplandoelen: [...lijst].sort((a, b) => a.localeCompare(b)).map((code) => regel(code, [])),
+      buitenMinimumdoelen: [...buiten]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([code, plaatsen]) => {
-          const doel = leerplandoelOpCode.get(code);
-          return {
-            code,
-            doelsoort: doel?.doelsoort ?? "Gemeenschappelijk",
-            tekst: doel?.tekst ?? code,
-            nietMeerInOpstap: false,
-            minimumdoelRef: doel?.minimumdoelRef ?? null,
-            plaatsen,
-          };
-        }),
+        .map(([code, plaatsen]) => regel(code, plaatsen)),
     })),
   };
 }
@@ -953,8 +975,12 @@ export function dekkingsvoortgang(t: Toestand, klas: Toestand["klassen"][number]
     isBetrouwbaar: true,
     aantalOnopgelosteVervallenPlaatsingen: 0,
     aantalGedekt: volledig.aantalGedekt,
-    aantalMogelijkGedekt: (volledig.aantalGedekt ?? 0) + (volledig.aantalInPrognose ?? 0),
     aantalLeerplandoelen: volledig.aantalLeerplandoelen,
-    aantalOnbereikbaar: volledig.doelen.filter((d) => d.stap === "Geen").length,
+    aantalMinimumdoelenGedekt: volledig.aantalMinimumdoelenGedekt,
+    aantalMinimumdoelenMogelijkGedekt:
+      volledig.aantalMinimumdoelenGedekt === null
+        ? null
+        : volledig.aantalMinimumdoelenGedekt + volledig.minimumdoelen.filter((m) => m.oorzaak === "WachtOpBeslissing").length,
+    aantalMinimumdoelen: volledig.aantalMinimumdoelen,
   };
 }

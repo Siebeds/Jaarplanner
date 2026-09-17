@@ -6,10 +6,11 @@ using Microsoft.EntityFrameworkCore;
 namespace Jaarplanner.Infrastructure.Persistence;
 
 /// <summary>
-/// EF Core implementation of <see cref="IThemaDoelenoverzichtQuery"/> (FB-009).
+/// EF Core implementation of <see cref="IThemaDoelenoverzichtQuery"/> (FB-009, TB-048).
 /// <para>
-/// Two round-trips whatever the size of the thema: the thema with its subtree, and the leerplandoelen it links. The
-/// per-row detail endpoint is not used for this: it runs seven queries per code.
+/// Three round-trips at most whatever the size of the thema: the thema with its subtree, the leerplandoelen of its
+/// minimumdoelen, and the other leerplandoelen it links. The per-row detail endpoint is not used for this: it runs seven
+/// queries per code.
 /// </para>
 /// </summary>
 public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
@@ -27,6 +28,7 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
         // Subdoel koppelingen and activiteit doelkoppelingen are owned, so they load with their owner.
         var thema = await _context.Themas
             .AsNoTracking()
+            .Include(t => t.Minimumdoelen)
             .Include(t => t.Themadoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Subdoelen)
             .Include(t => t.Subthemas).ThenInclude(s => s.Activiteiten)
@@ -34,8 +36,20 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             .FirstOrDefaultAsync(t => t.Id == themaId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
 
-        // Every decided link as (leeftijd, code, place). A null leeftijd means "the leerplandoel's own jaar/fase", which is
-        // only known once the leerplandoel is read: the themadoelen hang on the whole thema.
+        // The list itself: every leerplandoel the concordance puts under one of the thema's minimumdoelen (TB-048).
+        var refs = thema.Minimumdoelen.Select(m => m.MinimumdoelRef).Distinct(StringComparer.Ordinal).ToList();
+        var vanMinimumdoelen = refs.Count == 0
+            ? []
+            : await _context.Leerplandoelen
+                .AsNoTracking()
+                .Where(l => l.MinimumdoelRef != null && refs.Contains(l.MinimumdoelRef))
+                .Select(l => new Doelregel(l.Code, l.Doelsoort, l.Tekst, l.JaarFase, l.NietMeerInOpstap, l.MinimumdoelRef))
+                .ToListAsync(cancellationToken);
+        var codesVanMinimumdoelen = vanMinimumdoelen.Select(d => d.Code).ToHashSet(StringComparer.Ordinal);
+
+        // Beside it, every decided link under the thema whose leerplandoel is not in that list, as (leeftijd, code, place).
+        // A null leeftijd means "the leerplandoel's own jaar/fase", only known once it is read: a themadoel hangs on the
+        // whole thema.
         var vondsten = new List<(string? Leeftijd, string Code, DoelPlaats Plaats)>();
         var themadoelCodes = thema.Themadoelen
             .Where(td => Beslist(td.Koppeling.Status))
@@ -64,47 +78,59 @@ public sealed class ThemaDoelenoverzichtQuery : IThemaDoelenoverzichtQuery
             }
         }
 
+        vondsten.RemoveAll(v => codesVanMinimumdoelen.Contains(v.Code));
         var codes = vondsten.Select(v => v.Code).Distinct(StringComparer.Ordinal).ToList();
-        var doelen = await _context.Leerplandoelen
-            .AsNoTracking()
-            .Where(l => codes.Contains(l.Code))
-            .Select(l => new Doelregel(l.Code, l.Doelsoort, l.Tekst, l.JaarFase, l.NietMeerInOpstap, l.MinimumdoelRef))
-            .ToDictionaryAsync(l => l.Code, StringComparer.Ordinal, cancellationToken);
+        var buitenDoelen = codes.Count == 0
+            ? []
+            : await _context.Leerplandoelen
+                .AsNoTracking()
+                .Where(l => codes.Contains(l.Code))
+                .Select(l => new Doelregel(l.Code, l.Doelsoort, l.Tekst, l.JaarFase, l.NietMeerInOpstap, l.MinimumdoelRef))
+                .ToListAsync(cancellationToken);
+        var doelen = buitenDoelen.ToDictionary(d => d.Code, StringComparer.Ordinal);
 
-        var leeftijden = vondsten
+        var lijstPerLeeftijd = vanMinimumdoelen
+            .GroupBy(d => d.JaarFase, StringComparer.Ordinal)
+            .ToDictionary(
+                g => g.Key,
+                g => g.OrderBy(d => d.Code, CodeVolgorde.Instance).Select(d => Regel(d, [])).ToList(),
+                StringComparer.Ordinal);
+        var buitenPerLeeftijd = vondsten
             // A link can only be made to a stored leerplandoel and none is ever deleted (Art. III.4), so this drops nothing
             // today; it keeps a missing row from turning the whole overview into a 500.
             .Where(v => doelen.ContainsKey(v.Code))
             .GroupBy(v => v.Leeftijd ?? doelen[v.Code].JaarFase, StringComparer.Ordinal)
-            .OrderBy(g => JaarfaseRang.GetValueOrDefault(g.Key, int.MaxValue))
-            .ThenBy(g => g.Key, StringComparer.Ordinal)
-            .Select(g => Leeftijd(g.Key, g.ToList(), doelen))
+            .ToDictionary(g => g.Key, g => Buiten(g.ToList(), doelen), StringComparer.Ordinal);
+
+        var leeftijden = lijstPerLeeftijd.Keys
+            .Union(buitenPerLeeftijd.Keys, StringComparer.Ordinal)
+            .OrderBy(l => JaarfaseRang.GetValueOrDefault(l, int.MaxValue))
+            .ThenBy(l => l, StringComparer.Ordinal)
+            .Select(l => new LeeftijdDoelen(
+                l,
+                lijstPerLeeftijd.GetValueOrDefault(l) ?? [],
+                buitenPerLeeftijd.GetValueOrDefault(l) ?? []))
             .ToList();
 
         return new ThemaDoelenoverzicht(thema.Id, leeftijden);
     }
 
-    private static LeeftijdDoelen Leeftijd(
-        string leeftijd,
+    private static List<OverzichtLeerplandoel> Buiten(
         List<(string? Leeftijd, string Code, DoelPlaats Plaats)> vondsten,
-        Dictionary<string, Doelregel> doelen)
-    {
-        var leerplandoelen = vondsten
+        Dictionary<string, Doelregel> doelen) =>
+        vondsten
             .GroupBy(v => v.Code, StringComparer.Ordinal)
-            .Select(g =>
-            {
-                var doel = doelen[g.Key];
-                var plaatsen = g.Select(v => v.Plaats)
+            .Select(g => Regel(
+                doelen[g.Key],
+                g.Select(v => v.Plaats)
                     .OrderBy(p => p.Soort)
                     .ThenBy(p => p.Naam, StringComparer.CurrentCulture)
-                    .ToList();
-                return new OverzichtLeerplandoel(doel.Code, doel.Doelsoort, doel.Tekst, doel.NietMeerInOpstap, doel.MinimumdoelRef, plaatsen);
-            })
+                    .ToList()))
             .OrderBy(l => l.Code, CodeVolgorde.Instance)
             .ToList();
 
-        return new LeeftijdDoelen(leeftijd, leerplandoelen);
-    }
+    private static OverzichtLeerplandoel Regel(Doelregel doel, IReadOnlyList<DoelPlaats> plaatsen) =>
+        new(doel.Code, doel.Doelsoort, doel.Tekst, doel.NietMeerInOpstap, doel.MinimumdoelRef, plaatsen);
 
     private static bool Beslist(KoppelingStatus status) =>
         status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel;
