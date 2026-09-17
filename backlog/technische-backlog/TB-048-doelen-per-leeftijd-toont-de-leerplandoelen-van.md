@@ -2,13 +2,13 @@
 id: TB-048
 titel: 'Doelen per leeftijd' toont de leerplandoelen van de gekozen minimumdoelen van het thema
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:18
-opgepakt-door:
-branch: main
-pr:
+bijgewerkt: 2026-09-17 09:04
+opgepakt-door: claude-tb-048
+branch: ticket/TB-048-doelen-per-leeftijd-minimumdoelen
+pr: 140
 geblokkeerd:
 fr: []
 ---
@@ -40,14 +40,14 @@ geen rol, dus minimumdoelen koppelen of ontkoppelen verandert het overzicht en z
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met minimumdoelen, wanneer ik de themapagina open, dan toont "Doelen per leeftijd" per leeftijd
+- [x] Gegeven een thema met minimumdoelen, wanneer ik de themapagina open, dan toont "Doelen per leeftijd" per leeftijd
   precies de leerplandoelen die bij die minimumdoelen horen, en de teller telt ze.
-- [ ] Gegeven dat ik een minimumdoel ontkoppel, wanneer de pagina bijwerkt, dan verdwijnen zijn leerplandoelen uit
+- [x] Gegeven dat ik een minimumdoel ontkoppel, wanneer de pagina bijwerkt, dan verdwijnen zijn leerplandoelen uit
   "Doelen per leeftijd" en dalen de tellers.
-- [ ] Gegeven dat ik een minimumdoel koppel, dan verschijnen zijn leerplandoelen in het overzicht.
-- [ ] Gegeven een thema zonder minimumdoelen, dan toont het blok niets of een lege melding, nooit een oude telling.
-- [ ] De dekkingsberekening verandert niet door dit ticket (zie Open vragen).
-- [ ] Nagekeken in een echte browser op desktop en ~390px.
+- [x] Gegeven dat ik een minimumdoel koppel, dan verschijnen zijn leerplandoelen in het overzicht.
+- [x] Gegeven een thema zonder minimumdoelen, dan toont het blok niets of een lege melding, nooit een oude telling.
+- [x] De dekkingsberekening verandert niet door dit ticket (zie Open vragen).
+- [x] Nagekeken in een echte browser op desktop en ~390px.
 
 ## Buiten scope
 
@@ -65,6 +65,19 @@ minimumdoel bij de themadoelen, die al zo werkt.
   doelsuggestie of een geplande algemene fiche (Art. V.1, ADR-0047), niet via het minimumdoel van het thema. Moet dat zo
   blijven? Zo niet, dan is dat een grondwetswijziging en een eigen ticket.
 
+### Antwoorden van de eigenaar (2026-09-17)
+
+- De lijst vervangt de huidige: per leeftijd de leerplandoelen van de gekozen minimumdoelen, zonder te tonen waar ze
+  gekoppeld zijn.
+- Een leerplandoel dat in het thema gekoppeld is maar bij geen gekozen minimumdoel hoort, staat per leeftijd in een
+  aparte groep en telt niet mee.
+- De dekkingsberekening blijft ongewijzigd.
+
 ## Werklog
 
 - 2026-09-17 00:18 · lange-lijsten · aangemaakt (status nieuw)
+- 2026-09-17 08:34 · claude-tb-048 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; besluiten: rijen tonen alleen de lijst, gekoppelde leerplandoelen buiten de gekozen minimumdoelen in een aparte groep zonder telling, dekking ongewijzigd
+- 2026-09-17 08:50 · claude-tb-048 · query, contract en scherm gebouwd; backend 2102 unit + 574 integratie (Postgres) groen, frontend 1191 groen, lint en format schoon
+- 2026-09-17 09:01 · claude-tb-048 · antagonist: COMPLIANT, drie MINOR; twee opgelost (tekst bij een leeftijd zonder lijst, test dat ontkoppelen het overzicht herlaadt), de derde was de browsercheck
+- 2026-09-17 09:01 · claude-tb-048 · in-uitvoering → klaar: gebouwd: lijst = leerplandoelen van de minimumdoelen per jaar/fase, koppelingen erbuiten apart en ongeteld, dekking ongewijzigd. Criteria afgevinkt: unit- en Postgres-tests (koppelen, ontkoppelen, leeg thema), schermtests, en in de browser (mockmodus) op 1440px en 390px, waar ontkoppelen de teller van 12 naar 10 bracht. Gates: backend 2102 + 574 groen, frontend 1192 groen, lint en format schoon
+- 2026-09-17 09:04 · claude-tb-048 · PR #140
