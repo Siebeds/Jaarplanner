@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 08:34
+bijgewerkt: 2026-09-17 08:50
 opgepakt-door: claude-tb-048
 branch: ticket/TB-048-doelen-per-leeftijd-minimumdoelen
 pr:
@@ -77,3 +77,4 @@ minimumdoel bij de themadoelen, die al zo werkt.
 
 - 2026-09-17 00:18 · lange-lijsten · aangemaakt (status nieuw)
 - 2026-09-17 08:34 · claude-tb-048 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; besluiten: rijen tonen alleen de lijst, gekoppelde leerplandoelen buiten de gekozen minimumdoelen in een aparte groep zonder telling, dekking ongewijzigd
+- 2026-09-17 08:50 · claude-tb-048 · query, contract en scherm gebouwd; backend 2102 unit + 574 integratie (Postgres) groen, frontend 1191 groen, lint en format schoon
