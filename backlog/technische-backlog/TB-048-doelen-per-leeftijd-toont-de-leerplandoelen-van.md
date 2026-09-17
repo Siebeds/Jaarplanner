@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 09:01
+bijgewerkt: 2026-09-17 09:04
 opgepakt-door: claude-tb-048
 branch: ticket/TB-048-doelen-per-leeftijd-minimumdoelen
-pr:
+pr: 140
 geblokkeerd:
 fr: []
 ---
@@ -80,3 +80,4 @@ minimumdoel bij de themadoelen, die al zo werkt.
 - 2026-09-17 08:50 · claude-tb-048 · query, contract en scherm gebouwd; backend 2102 unit + 574 integratie (Postgres) groen, frontend 1191 groen, lint en format schoon
 - 2026-09-17 09:01 · claude-tb-048 · antagonist: COMPLIANT, drie MINOR; twee opgelost (tekst bij een leeftijd zonder lijst, test dat ontkoppelen het overzicht herlaadt), de derde was de browsercheck
 - 2026-09-17 09:01 · claude-tb-048 · in-uitvoering → klaar: gebouwd: lijst = leerplandoelen van de minimumdoelen per jaar/fase, koppelingen erbuiten apart en ongeteld, dekking ongewijzigd. Criteria afgevinkt: unit- en Postgres-tests (koppelen, ontkoppelen, leeg thema), schermtests, en in de browser (mockmodus) op 1440px en 390px, waar ontkoppelen de teller van 12 naar 10 bracht. Gates: backend 2102 + 574 groen, frontend 1192 groen, lint en format schoon
+- 2026-09-17 09:04 · claude-tb-048 · PR #140
