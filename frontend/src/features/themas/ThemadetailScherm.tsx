@@ -855,6 +855,7 @@ export function ThemadetailScherm() {
           }
           gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
+          subdoelen={bladActiviteit ? undefined : bladSubthema.subdoelen}
           bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
           fout={
             bladActiviteit

@@ -91,6 +91,7 @@ export function Nieuweactiviteitblad({
             themaId: thema.id,
             themaNaam: thema.naam,
             onderzoeksvragen: sub.onderzoeksvragen,
+            subdoelen: sub.subdoelen,
           })),
       ),
     [themas, mag],
@@ -157,6 +158,7 @@ export function Nieuweactiviteitblad({
       key={actief.id}
       leeftijd={actief.leeftijd}
       onderzoeksvragen={actief.onderzoeksvragen}
+      subdoelen={actief.subdoelen}
       bezig={maak.isPending || planBezig}
       fout={maakFout}
       onBewaar={(invoer) => void bewaarEnPlan(invoer)}
