@@ -98,9 +98,9 @@ public static class JaarplanGeneratiePromptBuilder
         //
         // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
         // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only
-        // coverage it can reason about is the union of what it places. The DENOMINATOR — which leerplandoelen this
-        // class is measured against — is resolved server-side by DekkingService (owner ruling 2026-08-04) and
-        // reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
+        // coverage it can reason about is the union of what it places. The DENOMINATOR — which goals this class is
+        // measured against — is resolved server-side by DekkingService (owner ruling 2026-08-04), and the forecast
+        // is reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
         // coverage, which is the retry loop E3-02 deliberately refused to build (Art. IV.1).
         "Dekking (streef naar volledige dekking over het hele schooljaar):" + Nl +
         "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen." + Nl +

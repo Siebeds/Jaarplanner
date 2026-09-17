@@ -11,14 +11,14 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// E9-06 (FR-9.1): <c>GET …/dekking/voortgang</c> — the two coverage figures without the per-doel list, for the
-/// progress bar a teacher watches while linking doelen.
+/// E9-06 (FR-9.1): <c>GET …/dekking/voortgang</c> — the coverage figures without the per-doel list, for the
+/// progress bar a teacher watches while linking doelen. The bar reads the leerplandoel figure; the minimumdoel
+/// forecast beside it is pinned by <c>DekkingsvooruitzichtPostgresTests</c> (TB-052).
 /// <para>
 /// <b>The story these tests exist to protect is a copy problem as much as a computation.</b> A doel is covered when a
 /// link the teacher stands behind hangs off a thema that is <i>placed in the plan</i> (Art. V.1), so while a teacher
-/// links doelen to an unplaced thema the honest figure does not move. The ceiling is what makes that work visible — and
-/// it is not coverage (Art. IV.1). Both halves are asserted here, because a screen built on only one of them would
-/// either look broken or overclaim.
+/// links doelen to an unplaced thema the honest figure does not move, and a bar built on it must say what is missing
+/// rather than look broken.
 /// </para>
 /// </summary>
 public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
@@ -75,7 +75,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     [PostgresTheory]
     [InlineData(KoppelingStatus.Voorgesteld)]
     [InlineData(KoppelingStatus.Aanvaard)]
-    public async Task Een_themaplaatsing_alleen_beweegt_geen_van_beide_cijfers(KoppelingStatus status)
+    public async Task Een_themaplaatsing_alleen_beweegt_het_leerplandoelcijfer_niet(KoppelingStatus status)
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -86,14 +86,13 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         Assert.True(voortgang!.IsBetrouwbaar);
         Assert.Equal(0, voortgang.AantalGedekt);
-        Assert.Equal(0, voortgang.AantalMogelijkGedekt);
     }
 
     /// <summary>
-    /// The subthema placed in the agenda covers its subdoel in both figures.
+    /// The subthema placed in the agenda covers its subdoel.
     /// </summary>
     [PostgresFact]
-    public async Task Een_ingepland_subthema_telt_in_beide_cijfers()
+    public async Task Een_ingepland_subthema_telt_in_het_leerplandoelcijfer()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -103,7 +102,6 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
             $"/api/klassen/{opzet.KlasId}/dekking/voortgang");
 
         Assert.Equal(1, voortgang!.AantalGedekt);
-        Assert.Equal(1, voortgang.AantalMogelijkGedekt);
     }
 
     /// <summary>
@@ -112,7 +110,7 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
     /// they link doelen before generating. A bar built on this must say what is missing rather than look broken.
     /// </summary>
     [PostgresFact]
-    public async Task Een_gekoppeld_maar_ongeplaatst_thema_beweegt_geen_van_beide_cijfers()
+    public async Task Een_gekoppeld_maar_ongeplaatst_thema_beweegt_het_leerplandoelcijfer_niet()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -124,17 +122,16 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
             $"/api/klassen/{opzet.KlasId}/dekking/voortgang");
 
         Assert.Equal(0, voortgang!.AantalGedekt);
-        Assert.Equal(0, voortgang.AantalMogelijkGedekt);
         Assert.Equal(1, voortgang.AantalLeerplandoelen);
     }
 
     /// <summary>
-    /// <b>Both figures are withheld together</b> while a placement is stale (directie 2026-07-28). Withholding only one
+    /// <b>Every figure is withheld together</b> while a placement is stale (directie 2026-07-28). Withholding only one
     /// would let a screen print a ceiling beside a blank, which reads as coverage of zero — the opposite of what
     /// "we cannot tell you yet" means.
     /// </summary>
     [PostgresFact]
-    public async Task Een_vervallen_plaatsing_houdt_beide_cijfers_tegen()
+    public async Task Een_vervallen_plaatsing_houdt_alle_cijfers_tegen()
     {
         var opzet = await ZetOpAsync();
         var client = _factory.CreateClient();
@@ -158,7 +155,8 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
 
         Assert.False(voortgang!.IsBetrouwbaar);
         Assert.Null(voortgang.AantalGedekt);
-        Assert.Null(voortgang.AantalMogelijkGedekt);
+        Assert.Null(voortgang.AantalMinimumdoelenGedekt);
+        Assert.Null(voortgang.AantalMinimumdoelenMogelijkGedekt);
         Assert.True(voortgang.AantalOnopgelosteVervallenPlaatsingen > 0);
     }
 
@@ -285,9 +283,9 @@ public sealed class DekkingVoortgangEndpointTests : IAsyncLifetime
         bool IsBetrouwbaar,
         int AantalOnopgelosteVervallenPlaatsingen,
         int? AantalGedekt,
-        int? AantalMogelijkGedekt,
         int AantalLeerplandoelen,
-        int? AantalOnbereikbaar);
+        int? AantalMinimumdoelenGedekt,
+        int? AantalMinimumdoelenMogelijkGedekt);
 
     private sealed record DekkingDto(string Bereik, int? AantalGedekt, int AantalLeerplandoelen);
 }

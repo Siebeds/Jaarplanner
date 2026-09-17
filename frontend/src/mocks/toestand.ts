@@ -953,8 +953,11 @@ export function dekkingsvoortgang(t: Toestand, klas: Toestand["klassen"][number]
     isBetrouwbaar: true,
     aantalOnopgelosteVervallenPlaatsingen: 0,
     aantalGedekt: volledig.aantalGedekt,
-    aantalMogelijkGedekt: (volledig.aantalGedekt ?? 0) + (volledig.aantalInPrognose ?? 0),
     aantalLeerplandoelen: volledig.aantalLeerplandoelen,
-    aantalOnbereikbaar: volledig.doelen.filter((d) => d.stap === "Geen").length,
+    aantalMinimumdoelenGedekt: volledig.aantalMinimumdoelenGedekt,
+    aantalMinimumdoelenMogelijkGedekt:
+      (volledig.aantalMinimumdoelenGedekt ?? 0) +
+      volledig.minimumdoelen.filter((m) => m.oorzaak === "WachtOpBeslissing").length,
+    aantalMinimumdoelen: volledig.aantalMinimumdoelen,
   };
 }

@@ -32,11 +32,11 @@ public enum Lacuneoorzaak
     /// <summary>
     /// A thema that carries this goal <b>is</b> in the plan, as a proposal the teacher has not answered yet.
     /// <para>
-    /// The cheapest of the five: accepting that placement covers the goal, with nothing else to change. This set is
-    /// exactly <c>Dekkingsvooruitzicht.AantalMogelijkGedekt</c> minus <c>AantalGedekt</c> — the doelen E3-03 counts
-    /// as "would be covered if you accepted the plan" and deliberately did not list, because listing them is this
-    /// story's job. <c>DekkingsserviceTests</c> pins the two against each other, since the whole value of the figure
-    /// is that a teacher can find out which doelen it is about.
+    /// The cheapest of the five: accepting that placement covers the goal, with nothing else to change. For
+    /// minimumdoelen this set is exactly <c>Dekkingsvooruitzicht.AantalMinimumdoelenMogelijkGedekt</c> minus
+    /// <c>AantalMinimumdoelenGedekt</c>, which is how that forecast is computed; <c>DekkingsvooruitzichtTests</c>
+    /// pins the two against each other, since the whole value of the figure is that a teacher can find out which
+    /// doelen it is about.
     /// </para>
     /// </summary>
     WachtOpBeslissing = 0,
