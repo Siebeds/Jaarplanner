@@ -3,12 +3,10 @@ using System.Text;
 using System.Text.Json;
 using Azure.Core;
 using Jaarplanner.Application.Ai;
-using Jaarplanner.Application.Planning;
 using Jaarplanner.Application.Planning.Generatie;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Ai;
-using Jaarplanner.Infrastructure.Planning;
 using Jaarplanner.UnitTests.Planning;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -313,8 +311,7 @@ public sealed class AzureAiFoundryClientTests
     /// <summary>
     /// <b>The full offline seam of the story's "real AI client" criterion.</b> A grounded prompt from the real prompt
     /// builder goes through the real client, and a canned Azure envelope comes back through the real parser as a valid
-    /// placement. The generation service that stored it is switched off (ADR-0053 decision 9); the pieces it will be
-    /// rebuilt from stay covered here.
+    /// placement.
     /// </summary>
     [Fact]
     public async Task Een_azure_antwoord_levert_via_de_echte_client_een_geldige_plaatsing()
@@ -323,18 +320,16 @@ public sealed class AzureAiFoundryClientTests
         var klas = schooljaar.VoegKlasToe("L3 — derde leerjaar", "L3");
         var thema = new Thema("Herfst", duurWeken: 5, invalshoeken: "natuur");
 
-        IPlanningsblokIndeling indeling =
-            new GeconfigureerdePlanningsblokIndeling(new PlanningsblokOptions());
-        var blok = indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode)[0];
+        var week = new Themakalender(schooljaar).Lesweken()[0];
 
         var handler = new StubHandler(AzureEnvelop(
-            $"{{\"plaatsingen\":[{{\"blokStart\":\"{blok.Start:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
+            $"{{\"plaatsingen\":[{{\"startweek\":\"{week:yyyy-MM-dd}\",\"thema\":\"Herfst\"," +
             "\"motivatie\":\"seizoen past bij het begin van het schooljaar\"}]}"));
 
         // The REAL client, not a fake.
         IAiClient echteClient = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties()));
         var request = JaarplanGeneratiePromptBuilder.Bouw(
-            klas, schooljaar, indeling.Blokken(schooljaar, Planningsblokniveau.Themaperiode), [thema]);
+            klas, schooljaar, [new Planweek(week, [], IsVol: false)], [thema], []);
 
         var completion = await echteClient.CompleteAsync(request);
         var parse = Application.Planning.Generatie.Response.JaarplanGeneratieResponseParser.Parse(completion);
@@ -343,11 +338,11 @@ public sealed class AzureAiFoundryClientTests
         var plaatsing = Assert.Single(parse.Plaatsingen);
         Assert.Equal("Herfst", plaatsing.ThemaNaam);
         Assert.Equal("seizoen past bij het begin van het schooljaar", plaatsing.Motivatie);
-        Assert.Equal(blok.Start, plaatsing.BlokStart);
+        Assert.Equal(week, plaatsing.Startweek);
 
         // The grounded prompt actually travelled over the wire the client built.
         Assert.Contains("Thema: Herfst", handler.LaatsteBody);
-        Assert.Contains($"startdatum {blok.Start:yyyy-MM-dd}", handler.LaatsteBody);
+        Assert.Contains($"{week:yyyy-MM-dd}: vrij", handler.LaatsteBody);
     }
 
     /// <summary>

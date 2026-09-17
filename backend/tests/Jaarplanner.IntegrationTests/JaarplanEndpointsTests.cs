@@ -1,13 +1,11 @@
 using System.Net;
 using System.Net.Http.Json;
-using Jaarplanner.Api.Infrastructure;
 using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Planning.Beheer;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,24 +53,47 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         Assert.False(plaatsing.IsVervallen);
     }
 
-    /// <summary>The generation is switched off (ADR-0053 decision 9): 409 with the Dutch reason, and nothing changes.</summary>
+    /// <summary>
+    /// A generation over HTTP (TB-053, ADR-0055): the stub model proposes a thema with a start week, the run stores it as
+    /// a proposal with its own days, and the answer carries the report and the plan.
+    /// </summary>
     [Fact]
-    public async Task Genereren_staat_uit_en_geeft_409()
+    public async Task Genereren_zet_voorstellen_met_datums_in_het_jaarplan()
     {
         var client = _factory.CreateClient();
-        var (klasId, _) = await _factory.SeedAsync();
+        var (klasId, themaId) = await _factory.SeedAsync();
+        _factory.Ai.Antwoord =
+            """{"plaatsingen":[{"thema":"Herfst","startweek":"2026-09-07","motivatie":"past bij de herfst"}]}""";
 
         var response = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
 
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-        var probleem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Equal(Probleemtitels.GeneratieUitgeschakeld, probleem!.Title);
-        Assert.Contains("tijdelijk uit", probleem.Detail);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var resultaat = await response.Content.ReadFromJsonAsync<GeneratieDto>();
+        Assert.Equal(1, resultaat!.AantalNieuw);
+        Assert.Empty(resultaat.NietGeplaatst);
+        var plaatsing = Assert.Single(resultaat.Jaarplan!.Plaatsingen);
+        Assert.Equal((themaId, "Voorgesteld", "past bij de herfst"), (plaatsing.ThemaId, plaatsing.Status, plaatsing.AiMotivatie));
+        Assert.Equal((new DateOnly(2026, 9, 7), new DateOnly(2026, 10, 9)), (plaatsing.Van, plaatsing.Tot));
 
+        var herlaad = await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan");
+        Assert.Equal(plaatsing.Id, Assert.Single(herlaad!.Plaatsingen).Id);
+    }
+
+    /// <summary>An unreadable model answer is a 422 and changes nothing (Art. IV.5).</summary>
+    [Fact]
+    public async Task Een_onleesbaar_AI_antwoord_geeft_422_en_verandert_niets()
+    {
+        var client = _factory.CreateClient();
+        var (klasId, _) = await _factory.SeedAsync();
+        _factory.Ai.Antwoord = "geen JSON";
+
+        var response = await client.PostAsync($"/api/klassen/{klasId}/jaarplan/generatie", content: null);
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
         Assert.Empty((await client.GetFromJsonAsync<JaarplanDto>($"/api/klassen/{klasId}/jaarplan"))!.Plaatsingen);
     }
 
-    /// <summary>The removed period routes answer as routes that do not exist.</summary>
+    /// <summary>The removed period and parameter routes answer as routes that do not exist.</summary>
     [Fact]
     public async Task De_periode_routes_bestaan_niet_meer()
     {
@@ -87,22 +108,12 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             $"/api/klassen/{klasId}/jaarplan/periodes/2026-09-01/generatie", content: null);
         Assert.Contains(hergeneratie.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
 
+        var parameters = await client.GetAsync($"/api/klassen/{klasId}/jaarplan/parameters");
+        Assert.Contains(parameters.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
+
         var blok = await client.PutAsJsonAsync(
             $"/api/klassen/{klasId}/jaarplan/plaatsingen/{plaatsingId}/blok", new { blokStart = "2026-10-05" });
         Assert.Contains(blok.StatusCode, new[] { HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed });
-    }
-
-    /// <summary>A class with nothing kept reads empty generation parameters, never a 404.</summary>
-    [Fact]
-    public async Task Bewaarde_parameters_zijn_leeg_uitleesbaar()
-    {
-        var client = _factory.CreateClient();
-        var (klasId, _) = await _factory.SeedAsync();
-
-        var parameters = await client.GetFromJsonAsync<ParametersDto>($"/api/klassen/{klasId}/jaarplan/parameters");
-
-        Assert.Empty(parameters!.GewensteStartthemas);
-        Assert.Empty(parameters.VasteMomenten);
     }
 
     /// <summary>The teacher's decision and lock both persist across a reload (Art. IV.2, Art. IX.3).</summary>
@@ -259,7 +270,12 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
         bool Vergrendeld,
         List<string> Doelcodes);
 
-    private sealed record ParametersDto(IReadOnlyList<object> GewensteStartthemas, IReadOnlyList<object> VasteMomenten);
+    private sealed record GeneratieDto(
+        int AantalNieuw,
+        int AantalBehouden,
+        int AantalVervangen,
+        List<object> NietGeplaatst,
+        JaarplanDto? Jaarplan);
 
     /// <summary>
     /// WebApplicationFactory on the in-memory EF provider with a <b>stub AI client</b>. The container is otherwise
@@ -269,6 +285,9 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
     public sealed class Factory : JaarplannerApiFactory
     {
         private readonly string _dbNaam = $"e3_01_endpoints_{Guid.NewGuid():N}";
+
+        /// <summary>The stub model every test in this class talks to.</summary>
+        public StubAiClient Ai { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -290,7 +309,7 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
                 }
 
                 services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase(_dbNaam));
-                services.AddSingleton<IAiClient>(new OntploffendeAiClient());
+                services.AddSingleton<IAiClient>(Ai);
             });
         }
 
@@ -335,10 +354,13 @@ public sealed class JaarplanEndpointsTests : IClassFixture<JaarplanEndpointsTest
             return plaatsing.Id;
         }
 
-        private sealed class OntploffendeAiClient : IAiClient
+        /// <summary>Answers every request with <see cref="Antwoord"/>; no network.</summary>
+        public sealed class StubAiClient : IAiClient
         {
+            public string Antwoord { get; set; } = """{"plaatsingen":[]}""";
+
             public Task<AiCompletion> CompleteAsync(AiRequest request, CancellationToken cancellationToken = default) =>
-                throw new InvalidOperationException("No jaarplan endpoint may call the model while generation is off.");
+                Task.FromResult(new AiCompletion { Content = Antwoord });
         }
     }
 }

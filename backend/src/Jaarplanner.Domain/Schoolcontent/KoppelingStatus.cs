@@ -8,7 +8,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// (Art. V.1).
 /// <para>
 /// Used by <see cref="DoelKoppeling"/> (school content ↔ leerplandoel, Art. IX.2) and by
-/// <c>Themaplaatsing</c> (thema ↔ planningsblok, Art. IX.3). It is deliberately <b>one</b> enum: the
+/// <c>Themaplaatsing</c> (a thema placed on days, Art. IX.3). It is deliberately <b>one</b> enum: the
 /// constitution names one status vocabulary, and a second copy in the planning namespace would be four
 /// identical members waiting to drift apart. It lives here because this is where the first consumer put it;
 /// the type is domain-wide, not schoolcontent-specific.

@@ -16,9 +16,8 @@ namespace Jaarplanner.Domain.Planning;
 /// 5 days between Hemelvaart and Pinksteren became their own one-week "themaperiode" — unplannable.
 /// </para>
 /// <para>
-/// The blocks themselves are <b>not stored here.</b> They are derived on demand by the planningsblok-indeling
-/// seam, so the granularity stays a configuration concern and no persisted row commits the school to a grain
-/// (Art. XIV / ADR-0013). What this entity owns is the raw input to that derivation: the span and the closures.
+/// What this entity owns is the span and the closures; <see cref="Themakalender"/> answers the calendar questions a
+/// plan asks of them (ADR-0053).
 /// </para>
 /// </summary>
 public sealed class Schooljaar

@@ -16,8 +16,7 @@ namespace Jaarplanner.Api.Controllers;
 /// whatever its status or lock, and is also how a proposal is rejected. Every write returns the updated plan.
 /// </para>
 /// <para>
-/// <b>Generation is switched off</b> (ADR-0053 decision 9): <c>POST …/jaarplan/generatie</c> answers 409 until its
-/// rework lands. <c>GET …/jaarplan/parameters</c> still reads the class's kept pre-generation settings.
+/// <c>POST …/jaarplan/generatie</c> asks the AI for thema's on the free days of the year (ADR-0055).
 /// </para>
 /// </summary>
 [ApiController]
@@ -76,28 +75,28 @@ public sealed class JaarplanController : ControllerBase
         Ok(await _service.StelEindeVoorAsync(klasId, themaId, van, cancellationToken));
 
     /// <summary>
-    /// Always refuses: the AI generation is switched off until its rework (ADR-0053 decision 9). <b>409</b> with a Dutch
-    /// sentence for an existing class, <b>404</b> for an unknown one.
+    /// Asks the AI for thema's with their days on the free lesweken of the year (FR-5.1, FR-8.1, ADR-0055). Open,
+    /// unlocked proposals are replaced; decided and locked placements stay. Returns the run's report with the plan.
+    /// <b>422</b> when the model's answer is unreadable (nothing changed); <b>400</b> when the school has no thema's, the
+    /// plan has no free lesweek or the request is too large; <b>404</b> for an unknown class.
     /// </summary>
     [HttpPost("generatie")]
     [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
-    public async Task<IActionResult> Genereer(Guid klasId, CancellationToken cancellationToken)
+    public async Task<ActionResult<JaarplanGeneratieResultaat>> Genereer(Guid klasId, CancellationToken cancellationToken)
     {
-        await _generatie.GenereerAsync(klasId, cancellationToken);
+        var resultaat = await _generatie.GenereerAsync(klasId, cancellationToken);
+        if (!resultaat.IsGeslaagd)
+        {
+            return UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid AI response",
+                Detail = resultaat.Fout,
+            });
+        }
 
-        return NoContent();
+        return Ok(resultaat with { Jaarplan = await _service.HaalJaarplanAsync(klasId, cancellationToken) });
     }
-
-    /// <summary>
-    /// The class's <b>kept</b> pre-generation settings (E3-04, FR-5.4). A class with nothing kept answers <c>200</c> with
-    /// empty lists. Kept for the generation's rework; the settings are returned as stored.
-    /// </summary>
-    [HttpGet("parameters")]
-    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
-    public async Task<ActionResult<JaarplanGeneratieParameters>> Parameters(
-        Guid klasId,
-        CancellationToken cancellationToken) =>
-        Ok(await _generatie.HaalParametersAsync(klasId, cancellationToken));
 
     /// <summary>
     /// Places a thema by hand (FR-7.2), split at every vacation, and persists it at once. Creates the plan when the

@@ -138,13 +138,6 @@ public static class DependencyInjection
         // FR-1.3/1.4, Art. IV.2 — the school-content analogue of IOpstapImportService).
         services.AddScoped<ISchoolcontentImportService, SchoolcontentImportService>();
 
-        // Planningsblok-indeling seam (E3-05, ADR-0013). Since ADR-0053 nothing in the planning consumes it: a thema
-        // placement carries its own dates. It is kept, with its configuration, for the generation's rework, which
-        // decides whether blocks survive as a hint for the model (ADR-0053 decision 9).
-        services.Configure<PlanningsblokOptions>(
-            configuration.GetSection(PlanningsblokOptions.SectionName));
-        services.AddSingleton<IPlanningsblokIndeling, GeconfigureerdePlanningsblokIndeling>();
-
         // Klas CRUD (Art. IX.3). Without a creation path a fresh deployment can hold no class-scoped
         // content at all: the school-content import drops every subthema as "onbekende klas" and
         // MaakSubthemaAsync rejects every call. E3 generates a jaarplan PER CLASS, so this is a

@@ -10,8 +10,7 @@ namespace Jaarplanner.Domain.Planning;
 /// <para>
 /// <b>A klas belongs to exactly one <see cref="Schooljaar"/></b> (Art. IX.3: "Schooljaar — contains multiple
 /// klassen"; E3-01). The containment is required rather than optional, because everything downstream needs it:
-/// a jaarplan is planned over <i>a</i> year's planningsblokken, and those blocks are derived from that year's
-/// vakantiestructuur. A nullable <c>SchooljaarId</c> would mean "contains multiple klassen" held only when
+/// a jaarplan is planned on <i>a</i> year's schooldagen, and those follow from that year's vacations. A nullable <c>SchooljaarId</c> would mean "contains multiple klassen" held only when
 /// somebody remembered to set it, which is not containment.
 /// </para>
 /// <para>

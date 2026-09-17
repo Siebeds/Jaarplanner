@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:30
+bijgewerkt: 2026-09-17 08:59
 opgepakt-door: tb053-generatie
 branch: ticket/TB-053-ai-generatie-met-datums
 pr:
@@ -59,11 +59,20 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 
 ## Open vragen
 
-- Moet het hergenereren van een deel van het jaar (FR-8.2) terugkomen, en voor welk stuk: een datumbereik?
-- Wat doen bewaarde startthema's en vaste momenten met datums? De eigenaar besliste dat een vast moment niets
-  blokkeert en alleen een vakantie een thema onderbreekt.
+Beantwoord door de eigenaar op 2026-09-17:
+
+- **Datums:** het model kiest thema's en voor elk een startweek uit de vrije lesweken, met oog voor het seizoen. De
+  server zet het thema op de eerste vrije schooldag vanaf die week, berekent het einde met `Themakalender` en splitst
+  rond vakanties. Botst het met een thema dat al staat, dan kort de server het in tot vóór die dag. Past het niet, dan
+  meldt het rapport het als "paste niet".
+- **Deels hergenereren (FR-8.2):** komt niet terug. Opnieuw genereren vult het hele jaar, alleen op vrije dagen;
+  aanvaarde, manuele en vergrendelde thema's blijven staan.
+- **Startthema's en vaste momenten (FR-5.4):** worden opgeruimd: tabel, endpoint en code. Het jaarplan zelf is de
+  enige sturing.
 
 ## Werklog
 
 - 2026-09-16 22:51 · fb035-datums · aangemaakt (status nieuw)
 - 2026-09-17 08:30 · tb053-generatie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 08:37 · tb053-generatie · eigenaar besliste: AI kiest thema's en startweek, server plaatst op vrije dagen; alleen het hele jaar hergenereren (FR-8.2 vervalt); startthema's en vaste momenten worden opgeruimd (FR-5.4 vervalt)
+- 2026-09-17 08:59 · tb053-generatie · generatie herbouwd (startweek + kalender), parameters en planningsblokken opgeruimd met migratie, knop weer aan; ADR-0055; backend-, Postgres- en frontendtests groen

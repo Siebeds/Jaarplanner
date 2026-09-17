@@ -716,6 +716,19 @@ export interface Eindvoorstel {
   volgendThemaNaam: string | null;
 }
 
+/** Why a thema the AI proposed was not placed (ADR-0055). */
+export type NietGeplaatstReden = "OnbekendThema" | "AlGepland" | "GeenLesweek" | "GeenPlaats";
+
+/** The report of one jaarplan generation run, with the plan after it (FR-5.1, ADR-0055). */
+export interface JaarplanGeneratieResultaat {
+  isGeslaagd: boolean;
+  aantalNieuw: number;
+  aantalBehouden: number;
+  aantalVervangen: number;
+  nietGeplaatst: { themaNaam: string; reden: NietGeplaatstReden }[];
+  jaarplan: JaarplanWeergave;
+}
+
 export interface Dekkingsvooruitzicht {
   aantalGedektNu: number | null;
   aantalGedektNaAanvaarding: number | null;

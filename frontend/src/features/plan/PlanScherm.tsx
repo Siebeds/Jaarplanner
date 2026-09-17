@@ -2,17 +2,19 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Klaskiezer } from "../../app/Klaskiezer";
-import { AiKnop, Knop } from "../../components/ui/Knop";
+import { Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPlus } from "../../components/Iconen";
-import { useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
+import { useGenereerJaarplan, useJaarplan, usePlaatsingacties, usePlaatsThema, useRooster } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { ApiError } from "../../lib/api";
 import { valtBinnen, vandaag } from "../../lib/datum";
 import { t } from "../../i18n";
+import { aiFout } from "../themas/plaatsingen";
+import { Generatiebalk } from "./Generatiebalk";
 import { Jaartijdlijn } from "./Jaartijdlijn";
 import { Plaatsingkaart } from "./Plaatsingkaart";
 import { Themaplaatsingblad } from "./Themaplaatsingblad";
@@ -25,8 +27,8 @@ import { Themaplaatsingblad } from "./Themaplaatsingblad";
  * Pressing a bar opens its card below the timeline, where its days are changed; dragging a bar moves it by whole
  * weeks.
  *
- * **The generation is switched off** (ADR-0053 decision 9): its button stays, disabled, with the reason beside it, so
- * a teacher who looks for it learns why rather than wondering where it went.
+ * **The AI generation fills the free days** (ADR-0055): its proposals land on the timeline like any other placement,
+ * wearing the proposal ring, and are decided on their card.
  *
  * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15). Anyone else who may
  * read the klas (FB-013) reads its plan, with one quiet line that says so.
@@ -50,6 +52,7 @@ export function PlanScherm() {
   const { data: rooster, isPending: roosterLaadt } = useRooster(schooljaarId);
   const acties = usePlaatsingacties(klasId ?? "");
   const plaatsThema = usePlaatsThema(klasId ?? "");
+  const genereer = useGenereerJaarplan(klasId ?? "");
 
   const plaatsingen = useMemo(() => plan?.plaatsingen ?? [], [plan]);
   const gekozen = plaatsingen.find((p) => p.id === gekozenId) ?? null;
@@ -59,7 +62,7 @@ export function PlanScherm() {
   const vandaagInSchooljaar = plan ? valtBinnen(nu, plan.eersteSchooldag, plan.laatsteSchooldag) : false;
 
   const mutaties = [acties.beoordeel, acties.wijzigDatums, acties.verschuif, acties.verwijder];
-  const bezig = mutaties.some((mutatie) => mutatie.isPending);
+  const bezig = mutaties.some((mutatie) => mutatie.isPending) || genereer.isPending;
 
   // A refused change: a 403 on a stale page says the right is gone; a 400 carries the server's own sentence, which is
   // written for the teacher (a day without school, another thema on those days).
@@ -130,14 +133,17 @@ export function PlanScherm() {
             </div>
 
             {magPlannen ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                <AiKnop disabled aria-describedby="generatie-uit">
-                  {t("plan.genereer")}
-                </AiKnop>
-                <p id="generatie-uit" className="text-meta text-inkt-zacht">
-                  {t("plan.generatieUit")}
-                </p>
-              </div>
+              <Generatiebalk
+                plaatsingen={plaatsingen}
+                bezig={genereer.isPending}
+                resultaat={genereer.data ?? null}
+                fout={genereer.isError ? aiFout(genereer.error, "plan.generatieMislukt") : null}
+                onGenereer={() => {
+                  reset();
+                  setGekozenId(null);
+                  genereer.mutate();
+                }}
+              />
             ) : null}
 
             {aantalVervallen > 0 ? (

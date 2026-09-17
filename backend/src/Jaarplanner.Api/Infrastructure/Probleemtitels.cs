@@ -32,12 +32,6 @@ public static class Probleemtitels
     public const string ImportNietDoorgevoerd = "Import niet doorgevoerd";
 
     /// <summary>
-    /// The jaarplan generation is switched off (409, ADR-0053): the request is fine, the feature is unavailable until its
-    /// rework for plans with dates lands. Nothing was changed.
-    /// </summary>
-    public const string GeneratieUitgeschakeld = "Genereren staat uit";
-
-    /// <summary>
     /// KOV's Op.stap data could not be fetched (502, E1-12): the API was unreachable or too slow, or it answered something
     /// the import does not recognise. Worded to hold for all of those; "niet bereikbaar" would be false for a source that
     /// answered. Nothing was changed, and the request itself was fine.

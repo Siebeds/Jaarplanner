@@ -329,6 +329,21 @@ public sealed class Jaarplan
     public IReadOnlyList<Themaplaatsing> MenselijkBeslotenPlaatsingen =>
         _plaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
+    /// <summary>
+    /// Removes every placement a (re)generation may discard (<see cref="Themaplaatsing.IsVervangbaar"/>: an open,
+    /// unlocked proposal) and returns them. Everything a human decided or locked stays (Art. IX.3).
+    /// </summary>
+    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingen()
+    {
+        var weg = _plaatsingen.Where(p => p.IsVervangbaar).ToList();
+        foreach (var plaatsing in weg)
+        {
+            _plaatsingen.Remove(plaatsing);
+        }
+
+        return weg;
+    }
+
     /// <summary>The placement with this id, or null. Used by the review path (status / vergrendeling).</summary>
     public Themaplaatsing? VindPlaatsing(Guid plaatsingId) =>
         _plaatsingen.FirstOrDefault(p => p.Id == plaatsingId);
