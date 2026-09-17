@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:41
+bijgewerkt: 2026-09-17 09:04
 opgepakt-door: fb-051
 branch: ticket/FB-051-subdoelen-bij-nieuwe-activiteit
-pr:
+pr: 139
 geblokkeerd:
 fr: [FR-3.2]
 ---
@@ -74,3 +74,4 @@ subdoelen al heeft.
 - 2026-09-17 08:40 · fb-051 · acceptatiecriteria afgevinkt: 1, 2, 4 met Vitest (Activiteitformulier.test.tsx), 2, 3 en 5 ook in de browser (mockmodus)
 - 2026-09-17 08:41 · fb-051 · antagonist: COMPLIANT; MINOR open: geen test op de doorgifte van subdoelen in agenda en paneel (wel in de browser nagekeken voor de agenda); teller Doelen telt aangevinkte subdoelen mee
 - 2026-09-17 08:41 · fb-051 · in-uitvoering → te-testen: gebouwd: subdoelen van het subthema om aan te vinken bij een nieuwe activiteit (themapagina, agenda, paneel), andere doelen via zoeken; Vitest 1195 groen, lint groen, browser desktop en 390px, antagonist COMPLIANT
+- 2026-09-17 09:04 · fb-051 · PR #139
