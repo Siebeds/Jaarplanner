@@ -28,7 +28,8 @@ export function Subdoelvinklijst({
   onToon: (code: string, knop: HTMLElement) => void;
 }) {
   return (
-    <fieldset>
+    // `min-w-0`: a fieldset is as wide as its content by default, which would stretch the sheet instead of cutting the text.
+    <fieldset className="min-w-0">
       <legend className="text-meta font-medium text-inkt">{t("activiteit.subdoelenVanSubthema")}</legend>
       {codes.length === 0 ? (
         <p className="mt-1.5 text-meta text-inkt-zacht">{t("activiteit.geenSubdoelen")}</p>
@@ -75,14 +76,20 @@ function Subdoelregel({
           disabled={bezig}
           onChange={(e) => onWissel(e.target.checked)}
         />
-        {data ? <Doelsoortmerk soort={data.doelsoort} /> : null}
-        <span className="mono shrink-0 text-micro font-medium text-inkt-zacht">{code}</span>
-        {/* If the doel cannot be loaded the row keeps its code; the detail shows the load error. */}
-        {data ? (
-          <span className="min-w-0 flex-1 truncate text-body text-inkt">{data.tekst}</span>
-        ) : isPending ? (
-          <span aria-hidden="true" className="h-4 min-w-0 flex-1 animate-pulse rounded-veld bg-vlak-diep" />
-        ) : null}
+        {/* On a narrow sheet the text goes under the code: every goal starts "De leerlingen kunnen", so one line
+            beside the code showed the same words on every row. */}
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5 @md:flex-row @md:items-center @md:gap-2.5">
+          <span className="flex shrink-0 items-center gap-2">
+            {data ? <Doelsoortmerk soort={data.doelsoort} /> : null}
+            <span className="mono text-micro font-medium text-inkt-zacht">{code}</span>
+          </span>
+          {/* If the doel cannot be loaded the row keeps its code; the detail shows the load error. */}
+          {data ? (
+            <span className="min-w-0 flex-1 truncate text-body text-inkt">{data.tekst}</span>
+          ) : isPending ? (
+            <span aria-hidden="true" className="h-4 w-3/4 animate-pulse rounded-veld bg-vlak-diep @md:flex-1" />
+          ) : null}
+        </span>
       </label>
       <button
         type="button"
