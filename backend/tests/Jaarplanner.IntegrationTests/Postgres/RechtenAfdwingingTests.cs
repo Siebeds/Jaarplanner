@@ -423,7 +423,6 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
     [
         $"/api/klassen/{klasId}",
         $"/api/klassen/{klasId}/jaarplan",
-        $"/api/klassen/{klasId}/jaarplan/parameters",
         $"/api/klassen/{klasId}/jaarplan/weekplanning",
         $"/api/klassen/{klasId}/dekking",
         $"/api/klassen/{klasId}/dekking/voortgang",

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Schoolcontent;
 
 namespace Jaarplanner.Application.Ai;
 
@@ -77,7 +78,32 @@ public sealed class Promptbegrenzing
             kandidaten.Select(d => d.JaarFase).Distinct(StringComparer.Ordinal).Count());
     }
 
+    /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for a prompt that carries the school's thema's
+    /// (the jaarplan generation, ADR-0055). No choice on the screen makes that prompt smaller, so the advice is the
+    /// server setting.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void Bewaak(AiRequest request, IReadOnlyCollection<Thema> themas)
+    {
+        ArgumentNullException.ThrowIfNull(themas);
+        var omschrijving = themas.Count == 1 ? "1 thema" : string.Create(Nederlands, $"{themas.Count:N0} thema's");
+        Bewaak(request, omschrijving, ServerRaad);
+    }
+
+    // "Beheer" is the directie's right in this app, and the ceiling is no in-app setting, so this advice names whoever
+    // runs the server rather than sending directie to look for a setting it cannot find.
+    private const string ServerRaad =
+        "Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.";
+
     private void Bewaak(AiRequest request, int aantalDoelen, int aantalLeeftijden)
+    {
+        var doelen = aantalDoelen == 1 ? "1 doel" : string.Create(Nederlands, $"{aantalDoelen:N0} doelen");
+        Bewaak(request, doelen, aantalLeeftijden > 1 ? "Kies minder leeftijden." : ServerRaad);
+    }
+
+    // The plain clause comes first; the token figures follow in brackets for whoever does change the ceiling.
+    private void Bewaak(AiRequest request, string omschrijving, string raad)
     {
         var tokens = SchatTokens(request);
         if (tokens <= MaxTokens)
@@ -85,18 +111,10 @@ public sealed class Promptbegrenzing
             return;
         }
 
-        var doelen = aantalDoelen == 1 ? "1 doel" : string.Create(Nederlands, $"{aantalDoelen:N0} doelen");
-        // "Beheer" is the directie's right in this app, and the ceiling is no in-app setting, so the one-leeftijd advice
-        // names whoever runs the server rather than sending directie to look for a setting it cannot find. The plain
-        // clause comes first; the token figures follow in brackets for whoever does change it.
-        var raad = aantalLeeftijden > 1
-            ? "Kies minder leeftijden."
-            : "Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.";
-
         throw new PromptTeGrootFout(
             string.Create(
                 Nederlands,
-                $"Deze aanvraag is te groot voor de AI: de tekst van {doelen} is meer dan één aanvraag mag bevatten (ongeveer {tokens:N0} tokens, de grens is {MaxTokens:N0}). {raad}"),
+                $"Deze aanvraag is te groot voor de AI: de tekst van {omschrijving} is meer dan één aanvraag mag bevatten (ongeveer {tokens:N0} tokens, de grens is {MaxTokens:N0}). {raad}"),
             tokens,
             MaxTokens);
     }

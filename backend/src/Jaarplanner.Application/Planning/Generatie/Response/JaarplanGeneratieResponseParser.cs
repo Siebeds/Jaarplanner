@@ -12,30 +12,23 @@ namespace Jaarplanner.Application.Planning.Generatie.Response;
 /// <c>DoelMatchResponseParser</c>, kept deliberately in the same shape: stateless and static, no dependencies,
 /// no network, no database, trivially unit-testable.
 /// <para><b>Accepted contract.</b> Either an envelope
-/// <c>{ "plaatsingen": [ { "blokStart": "2026-09-01", "thema": "...", "motivatie": "..." }, ... ] }</c> or a bare
+/// <c>{ "plaatsingen": [ { "thema": "...", "startweek": "2026-09-07", "motivatie": "..." }, ... ] }</c> or a bare
 /// top-level array of the same items. An empty list is valid (the model proposed nothing). <b>Conservative repair
 /// only:</b> a leading/trailing markdown ```` ```json ```` fence is stripped, surrounding whitespace trimmed,
 /// property matching is case-insensitive, unknown extra fields are ignored. Nothing is ever fabricated or
 /// guessed.</para>
-/// <para><b><c>blokStart</c> must be an ISO <c>yyyy-MM-dd</c> date, and is required.</b> Two rejections matter
-/// here and both are deliberate:</para>
-/// <list type="bullet">
-/// <item>A response that identifies the block by <b>position</b> ("blok": 3, "periode": "derde") has no
-/// <c>blokStart</c> and is therefore rejected outright. The ordinal is a display position over a derived grid and
-/// shifts when the school edits a vakantie (ADR-0020 §3), so accepting it would persist a key that silently
-/// relocates a teacher's thema. There is no fallback path from an ordinal to a date, on purpose.</item>
-/// <item>A non-ISO date is rejected rather than parsed with the ambient culture. "01-09-2026" is September 1st to
-/// a Belgian reader and January 9th to an American one; a model that emits it has not answered the question, and
-/// guessing would put a thema three-quarters of a year away from where it was meant.</item>
-/// </list>
+/// <para><b><c>startweek</c> must be an ISO <c>yyyy-MM-dd</c> date, and is required.</b> It names the Monday of a
+/// lesweek (ADR-0055); whether it does is the service's check, not the parser's. A non-ISO date is rejected rather than
+/// parsed with the ambient culture: "01-09-2026" is September 1st to a Belgian reader and January 9th to an American
+/// one, and guessing would put a thema months away from where it was meant.</para>
 /// <para><b>Rejected (explicit failure).</b> Blank content, malformed JSON, a root that is neither the envelope
 /// nor an array, an envelope missing its <c>plaatsingen</c> array, a <c>null</c> item, or any item with a
-/// missing/blank <c>thema</c> or <c>motivatie</c>, or a missing/unparseable <c>blokStart</c>.</para>
+/// missing/blank <c>thema</c> or <c>motivatie</c>, or a missing/unparseable <c>startweek</c>.</para>
 /// </summary>
 public static class JaarplanGeneratieResponseParser
 {
     /// <summary>
-    /// The one date format accepted for <c>blokStart</c>. Exposed so the prompt builder demands exactly the
+    /// The one date format accepted for <c>startweek</c>. Exposed so the prompt builder demands exactly the
     /// format the parser accepts — the two drifting apart is the classic way a validated contract stops
     /// validating anything.
     /// </summary>
@@ -103,29 +96,25 @@ public static class JaarplanGeneratieResponseParser
                 return JaarplanParseResultaat.Ongeldig($"Placement at index {i} has a missing/blank 'motivatie'.");
             }
 
-            // Required and strictly ISO. A response keyed on a block *position* has no blokStart and lands here;
-            // there is deliberately no ordinal fallback (ADR-0020 §3).
-            if (string.IsNullOrWhiteSpace(item.BlokStart))
+            if (string.IsNullOrWhiteSpace(item.Startweek))
             {
-                return JaarplanParseResultaat.Ongeldig(
-                    $"Placement at index {i} has a missing/blank 'blokStart'. A placement must name the block's " +
-                    "start date; a block position/ordinal is not accepted.");
+                return JaarplanParseResultaat.Ongeldig($"Placement at index {i} has a missing/blank 'startweek'.");
             }
 
             if (!DateOnly.TryParseExact(
-                    item.BlokStart.Trim(),
+                    item.Startweek.Trim(),
                     DatumFormaat,
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.None,
-                    out var blokStart))
+                    out var startweek))
             {
                 return JaarplanParseResultaat.Ongeldig(
-                    $"Placement at index {i} has a 'blokStart' that is not an ISO {DatumFormaat} date: " +
-                    $"'{item.BlokStart}'.");
+                    $"Placement at index {i} has a 'startweek' that is not an ISO {DatumFormaat} date: " +
+                    $"'{item.Startweek}'.");
             }
 
             // The constructor re-validates and normalises — a suggestion object cannot exist invalid.
-            plaatsingen.Add(new ThemaplaatsingSuggestie(item.Thema, blokStart, item.Motivatie));
+            plaatsingen.Add(new ThemaplaatsingSuggestie(item.Thema, startweek, item.Motivatie));
         }
 
         return JaarplanParseResultaat.Geldig(plaatsingen);
@@ -176,12 +165,11 @@ public static class JaarplanGeneratieResponseParser
     }
 
     // Deserialisation-only DTO for the raw, unvalidated JSON. Never leaves this file: the validated public type is
-    // ThemaplaatsingSuggestie. Note there is no ordinal/period-number member at all — the contract has no way to
-    // express one, so a model that tries lands in the missing-'blokStart' rejection above.
+    // ThemaplaatsingSuggestie.
     private sealed record RawPlaatsing
     {
-        [JsonPropertyName("blokStart")]
-        public string? BlokStart { get; init; }
+        [JsonPropertyName("startweek")]
+        public string? Startweek { get; init; }
 
         [JsonPropertyName("thema")]
         public string? Thema { get; init; }

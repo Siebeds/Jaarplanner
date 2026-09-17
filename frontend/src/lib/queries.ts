@@ -7,6 +7,7 @@ import type {
   DoelMatchResultaat,
   DoelMatchSuggestie,
   Eindvoorstel,
+  JaarplanGeneratieResultaat,
   JaarplanWeergave,
   KlasWeergave,
   KoppelingStatus,
@@ -461,6 +462,22 @@ export function usePlaatsingacties(klasId: string) {
   });
 
   return { beoordeel, wijzigDatums, verschuif, verwijder };
+}
+
+/**
+ * Asks the AI for thema's on the free days of the year (FR-5.1, ADR-0055). The answer carries the plan after the run,
+ * which replaces the cached one at once; dekking and the agenda are refetched.
+ */
+export function useGenereerJaarplan(klasId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => post<JaarplanGeneratieResultaat>(`/api/klassen/${klasId}/jaarplan/generatie`),
+    onSuccess: (resultaat) => {
+      qc.setQueryData(jaarplanSleutels.plan(klasId), resultaat.jaarplan);
+      void qc.invalidateQueries({ queryKey: ["dekking"] });
+      void qc.invalidateQueries({ queryKey: ["weekplanning"] });
+    },
+  });
 }
 
 /**

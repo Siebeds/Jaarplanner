@@ -329,6 +329,23 @@ public sealed class Jaarplan
     public IReadOnlyList<Themaplaatsing> MenselijkBeslotenPlaatsingen =>
         _plaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
+    /// <summary>
+    /// Removes the placements with these ids that a (re)generation may discard and returns them. A placement a human
+    /// decided or locked (not <see cref="Themaplaatsing.IsVervangbaar"/>) is never removed here, whatever the caller
+    /// asks (Art. IX.3); the caller may keep more, such as the open parts of a thema the teacher accepted in part.
+    /// </summary>
+    public IReadOnlyList<Themaplaatsing> VerwijderPlaatsingen(IReadOnlySet<Guid> ids)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        var weg = _plaatsingen.Where(p => p.IsVervangbaar && ids.Contains(p.Id)).ToList();
+        foreach (var plaatsing in weg)
+        {
+            _plaatsingen.Remove(plaatsing);
+        }
+
+        return weg;
+    }
+
     /// <summary>The placement with this id, or null. Used by the review path (status / vergrendeling).</summary>
     public Themaplaatsing? VindPlaatsing(Guid plaatsingId) =>
         _plaatsingen.FirstOrDefault(p => p.Id == plaatsingId);

@@ -2,13 +2,13 @@
 id: TB-053
 titel: AI-jaarplangeneratie werkt met thema's die een eigen begin- en einddatum hebben
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:51
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-17 09:14
+opgepakt-door: tb053-generatie
+branch: ticket/TB-053-ai-generatie-met-datums
+pr: 142
 geblokkeerd:
 fr: []
 ---
@@ -45,12 +45,12 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met een leeg jaarplan, wanneer de leerkracht een jaarplan genereert, dan staan er thema's met
+- [x] Gegeven een klas met een leeg jaarplan, wanneer de leerkracht een jaarplan genereert, dan staan er thema's met
   eigen datums als voorstel in, zonder twee thema's op dezelfde dag en gesplitst rond vakanties.
-- [ ] Gegeven een jaarplan met manuele of aanvaarde thema's, wanneer de leerkracht opnieuw genereert, dan blijven die
+- [x] Gegeven een jaarplan met manuele of aanvaarde thema's, wanneer de leerkracht opnieuw genereert, dan blijven die
   staan en komen er alleen voorstellen bij op vrije dagen.
-- [ ] Gegeven een AI-antwoord dat niet geldig is, dan wordt er niets bewaard en ziet de leerkracht een melding.
-- [ ] De knop "Genereer jaarplan" staat weer aan en het endpoint antwoordt niet meer 409.
+- [x] Gegeven een AI-antwoord dat niet geldig is, dan wordt er niets bewaard en ziet de leerkracht een melding.
+- [x] De knop "Genereer jaarplan" staat weer aan en het endpoint antwoordt niet meer 409.
 
 ## Buiten scope
 
@@ -59,10 +59,25 @@ uitgeschakeld en `POST …/jaarplan/generatie` antwoordt 409.
 
 ## Open vragen
 
-- Moet het hergenereren van een deel van het jaar (FR-8.2) terugkomen, en voor welk stuk: een datumbereik?
-- Wat doen bewaarde startthema's en vaste momenten met datums? De eigenaar besliste dat een vast moment niets
-  blokkeert en alleen een vakantie een thema onderbreekt.
+Beantwoord door de eigenaar op 2026-09-17:
+
+- **Datums:** het model kiest thema's en voor elk een startweek uit de vrije lesweken, met oog voor het seizoen. De
+  server zet het thema op de eerste vrije schooldag vanaf die week, berekent het einde met `Themakalender` en splitst
+  rond vakanties. Botst het met een thema dat al staat, dan kort de server het in tot vóór die dag. Past het niet, dan
+  meldt het rapport het als "paste niet".
+- **Deels hergenereren (FR-8.2):** komt niet terug. Opnieuw genereren vult het hele jaar, alleen op vrije dagen;
+  aanvaarde, manuele en vergrendelde thema's blijven staan.
+- **Startthema's en vaste momenten (FR-5.4):** worden opgeruimd: tabel, endpoint en code. Het jaarplan zelf is de
+  enige sturing.
 
 ## Werklog
 
 - 2026-09-16 22:51 · fb035-datums · aangemaakt (status nieuw)
+- 2026-09-17 08:30 · tb053-generatie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-17 08:37 · tb053-generatie · eigenaar besliste: AI kiest thema's en startweek, server plaatst op vrije dagen; alleen het hele jaar hergenereren (FR-8.2 vervalt); startthema's en vaste momenten worden opgeruimd (FR-5.4 vervalt)
+- 2026-09-17 08:59 · tb053-generatie · generatie herbouwd (startweek + kalender), parameters en planningsblokken opgeruimd met migratie, knop weer aan; ADR-0055; backend-, Postgres- en frontendtests groen
+- 2026-09-17 09:04 · tb053-generatie · antagonist ronde 1: 1 MAJOR (Art. IV.5 beschreef het oude antwoordformaat) opgelost; MINORs verwerkt (II.1-voorbeeld, standaardregels gemarkeerd in ADR-0055, jaareindetest, FA-volgorde)
+- 2026-09-17 09:05 · tb053-generatie · antagonist ronde 2: COMPLIANT
+- 2026-09-17 09:12 · tb053-generatie · browsercontrole (Playwright, wegwerpdatabase, nep-AI): 7/7 geslaagd na fix dat een deels aanvaard thema heel blijft; criteria afgevinkt op unit-, integratie- en browsertests
+- 2026-09-17 09:12 · tb053-generatie · in-uitvoering → klaar: AI-generatie met datums gebouwd (ADR-0055), parameters en planningsblokken opgeruimd, knop aan; tests, lint, format, antagonist (COMPLIANT) en browsercontrole groen
+- 2026-09-17 09:14 · tb053-generatie · PR #142

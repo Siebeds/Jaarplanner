@@ -31,7 +31,7 @@ public sealed class SchooljaarConfiguration : IEntityTypeConfiguration<Schooljaa
             sluiting.WithOwner().HasForeignKey("SchooljaarId");
             sluiting.HasKey(s => s.Id);
 
-            // Same reason as themaplaatsingen and startthemavoorkeuren: a constructor-assigned Guid key with EF's
+            // Same reason as themaplaatsingen: a constructor-assigned Guid key with EF's
             // default `OnAdd` makes DetectChanges read "key already set" as "row already exists", so a closure added to
             // an ALREADY PERSISTED schooljaar would be tracked as Modified and SaveChanges would try to UPDATE a row
             // that does not exist. Unreachable today (a schooljaar is created with its closures in one call and E6-03

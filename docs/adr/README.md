@@ -26,14 +26,14 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0010](0010-ai-advisory-architecture.md) | AI advisory architecture (injectable client, server-side, structured+validated) | Accepted |
 | [0011](0011-authn-authz-rbac-gdpr.md) | AuthN/AuthZ, RBAC & GDPR data minimisation. **§3 superseded by 0030** (2026-09-11): the ownership rules predated content per leeftijd. **§4 narrowed by 0035** (2026-09-14): pupil data for the K3 ontwikkelingsrapport only | Accepted |
 | [0012](0012-secrets-config-management.md) | Secrets & configuration management | Accepted |
-| [0013](0013-planningsblok-abstraction.md) | Planningsblok abstraction for an open decision | Superseded by 0053 for the jaarplan ("configuration on the Schooljaar" clause superseded by 0020 before) |
+| [0013](0013-planningsblok-abstraction.md) | Planningsblok abstraction for an open decision | Superseded by 0053 for the jaarplan and by 0055 for the generation, which removed the seam ("configuration on the Schooljaar" clause superseded by 0020 before) |
 | [0014](0014-frontend-state-and-dnd.md) | Frontend state management & drag-and-drop | Accepted |
 | [0015](0015-testing-strategy.md) | Testing strategy & high-risk coverage | Accepted |
 | [0016](0016-azure-hosting-eu-residency.md) | Azure hosting & EU data residency. **The *no pupil PII* constraint narrowed by 0035** (2026-09-14): pupil data for the K3 ontwikkelingsrapport only | Accepted |
 | [0017](0017-ui-ux-design-system.md) | UI/UX approach & design system (shadcn/ui + Radix, WCAG 2.2 AA) | Accepted (decisions 1, 2, 3 and 5 superseded by 0024) |
 | [0018](0018-concordance-one-to-many-fk.md) | Concordance is a one-to-many nullable FK (M:N rejected; supersedes 0007 concordance clause) | Accepted |
 | [0019](0019-discipline-selection-config-seam.md) | Discipline-selection config seam for an open decision (Art. XIV; data-driven, not compiled in) | Accepted |
-| [0020](0020-planningsblok-derivation-rules.md) | Planningsblok derivation rules — even distribution, nested tiers, identity = (niveau, start), lengths per deployment (refines 0013) | Superseded by 0053 for the jaarplan |
+| [0020](0020-planningsblok-derivation-rules.md) | Planningsblok derivation rules — even distribution, nested tiers, identity = (niveau, start), lengths per deployment (refines 0013) | Superseded by 0053 for the jaarplan and by 0055 for the generation |
 | [0021](0021-frontend-routing-and-url-selection.md) | Frontend routing (`react-router-dom`, declarative) and the URL as the single source of truth for the klas/schooljaar selection | Accepted |
 | [0022](0022-curriculum-administration-authorisation-seam.md) | Curriculum-administration authorisation seam (one named policy `Curriculumbeheer`: a documented no-op until E6-01 made it require a session (ADR-0031, 2026-09-11), then bound by E6-02 slice 1 to the directie row of the ADR-0030 matrix on 2026-09-14) and one endpoint per import source (complements 0011). **§1 amended by 0031** (2026-09-11): the policy requires an authenticated user once a scheme exists | Accepted |
 | [0023](0023-activiteit-day-placement.md) | An activiteit is placed on a calendar **day**, never on a planningsblok; `Planningsblokniveau` gains no week/day member and a week is a rendering grouping (relates to 0013/0020, supersedes neither) | Accepted |
@@ -65,6 +65,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0052](0052-doelsuggesties-zijn-minimumdoelen.md) | **A thema's doelsuggesties propose minimumdoelen as themadoelen**: the AI at thema level (thema page and wizard step 2) proposes only minimumdoelen of the mijlpalen the thema's leeftijden meet; accepting one makes it a themadoel and a rejected one is not proposed again; the leerplandoel doelsuggesties are deleted and no longer count for dekking (supersedes 0047 S2) | Accepted |
 | [0053](0053-themaplaatsing-met-eigen-datums.md) | **A thema placement carries its own dates; the themaperiodes leave the planning**: a placement has a first and a last day, no two share a day, a vacation splits a thema into parts, the plan screen is a week timeline, existing plans are converted by one migration, and the generation is switched off until it is reworked for dates (supersedes 0013 and 0020 for the jaarplan) | Accepted |
 | [0054](0054-ai-zoekt-doelen-bij-een-activiteit.md) | **The AI proposes goals for an activiteit**, decided by whoever may link its goals; an accepted goal is proposed as subdoel, and only a decided link counts as linked (R25) | Accepted |
+| [0055](0055-ai-jaarplan-met-datums.md) | **The AI jaarplan generation proposes thema's with a start week; the calendar sets the days**: on free days only, over the whole year, open proposals replaced; the kept startthema's and vaste momenten and the planningsblok seam are removed | Accepted |
 
 ## Compliance traceability matrix
 
@@ -122,6 +123,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0052 | Art. V.1 and IX.2 (amended); IV and VI.1 unchanged; supersedes 0047 S2 and part of D4; settles 0046 M7 | FB-053 | FR-4.1, FR-4.2, FR-4.3 |
 | 0053 | Art. IX.3, XII and IV.2 (amended); IV.1 and V.1 unchanged; supersedes 0013 and 0020 for the jaarplan; relates to 0023, 0028 | FB-035; the AI generation ticket | FR-6.1, FR-6.2, FR-6.4, FR-7.2; FR-5 and FR-8 paused |
 | 0054 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
+| 0055 | Art. I.1, II.1, IV.5, IX.3 and XII (amended); IV.1–IV.4 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
 
 ## Open decisions referenced by ADRs
 

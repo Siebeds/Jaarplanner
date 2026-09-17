@@ -8,400 +8,119 @@ using Jaarplanner.Domain.Schoolcontent;
 namespace Jaarplanner.Application.Planning.Generatie;
 
 /// <summary>
-/// Builds the grounded plan-generation prompt (FR-5.1) that <see cref="JaarplanGeneratieService"/> hands to the
-/// injectable <c>IAiClient</c>. It turns one <see cref="Klas"/>, its <see cref="Schooljaar"/>'s
-/// <b>derived</b> planningsblokken and the school's own thema's into an <see cref="AiRequest"/>. Modelled on
-/// <c>MatchingPromptBuilder</c> and holding to the same two properties:
+/// One lesweek as the generation prompt shows it (ADR-0055): its Monday, the thema's that already run in it and stay,
+/// and whether any schooldag in it is still free.
+/// </summary>
+/// <param name="Maandag">The Monday of the lesweek.</param>
+/// <param name="Themas">The names of the thema's that already run in this week and stay after the run.</param>
+/// <param name="IsVol">True when no schooldag of the week is free.</param>
+public sealed record Planweek(DateOnly Maandag, IReadOnlyList<string> Themas, bool IsVol);
+
+/// <summary>
+/// Builds the grounded plan-generation prompt (FR-5.1, ADR-0055) that <see cref="JaarplanGeneratieService"/> hands to
+/// the <c>IAiClient</c>: the class, the lesweken of its school year with what already stands in them, the vacations,
+/// and the school's own thema's. The model answers with thema's and a start week for each; the service works out the
+/// days.
 /// <list type="bullet">
-/// <item><b>Grounded only on school + Op.stap data (Art. IV.4).</b> Every line of the user prompt is rendered
-/// exclusively from the arguments; the system prompt forbids external knowledge and invented thema's. No clock,
-/// no environment, no configuration, no I/O.</item>
-/// <item><b>Pure and deterministic.</b> Same klas + same blocks + same thema's ⇒ byte-for-byte the same prompt
-/// (thema's are ordered by name so caller ordering cannot leak in), which is what makes it snapshot-testable.</item>
+/// <item><b>Grounded only on school and Op.stap data (Art. IV.4).</b> Every line of the user prompt is rendered from
+/// the arguments; the system prompt forbids external knowledge and invented thema's. No clock, no environment, no
+/// I/O.</item>
+/// <item><b>Pure and deterministic.</b> The same arguments give byte-for-byte the same prompt: weeks are ordered by
+/// date and thema's by name, so caller ordering cannot leak in.</item>
+/// <item><b>No month names.</b> The weeks are dates; the model reads the season from them (Art. IX.3: never assume
+/// months).</item>
 /// </list>
 /// <para>
-/// <b>The blocks are passed in, never computed here.</b> They come from the <see cref="IPlanningsblokIndeling"/>
-/// seam, so this builder contains no calendar unit at all: no month name, no week number, no term. It lists the
-/// blocks it was handed with their start/end dates and lets the model choose among <i>those</i>. Art. IX.3's
-/// "never hard-assume months" is satisfied structurally rather than by convention.
-/// </para>
-/// <para>
-/// <b>The model is asked to answer with block <i>start dates</i>.</b> It is never shown a way to name a block by
-/// position, and the requested JSON has no field for one, because an ordinal is not a stable key (ADR-0020 §3).
-/// The ordinal <i>is</i> printed alongside each block as a human label ("periode 3"), which is the role ADR-0020
-/// assigns it, and the instructions say plainly that the answer must carry the date.
-/// </para>
-/// <para>
-/// <b>Nothing about leerjaar is asked of the model as a constraint.</b> The class's leerjaar is stated as
-/// descriptive context only; how a graadklas spanning several leerjaren is handled is an open decision
-/// (Art. XIV) and is not pre-empted by a prompt rule.
+/// <b>Nothing about leerjaar is asked of the model as a constraint.</b> The class's leerjaar is descriptive context only;
+/// how a graadklas spanning several leerjaren is handled is an open decision (Art. XIV).
 /// </para>
 /// </summary>
 public static class JaarplanGeneratiePromptBuilder
 {
-    // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI, keeping the
-    // snapshot stable across platforms.
+    // Explicit '\n' newlines everywhere so the built prompt is identical on Windows and Linux CI.
     private const string Nl = "\n";
 
     /// <summary>
-    /// The fixed instruction scaffolding (the model's role + the grounding rules of Art. IV.1/IV.3/IV.4/IV.5).
-    /// This is the <b>only</b> non-data text in the request; it carries no school, curriculum or calendar
-    /// specifics itself.
+    /// The fixed instruction scaffolding: the model's role and the grounding rules of Art. IV.1/IV.3/IV.4/IV.5. It
+    /// carries no school, curriculum or calendar specifics itself.
     /// </summary>
     public static readonly string SystemPrompt =
-        "Je bent een assistent die een leerkracht helpt om een jaarplan voor één klas voor te stellen: je " +
-        "verdeelt de thema's van de school over de planningsblokken van het schooljaar." + Nl +
+        "Je bent een assistent die een leerkracht helpt om een jaarplan voor één klas voor te stellen: je kiest " +
+        "thema's van de school en voor elk thema de lesweek waarin het begint." + Nl +
         Nl +
         "Regels:" + Nl +
-        "- Gebruik uitsluitend de gegevens in het bericht van de gebruiker: de klas, de opgegeven " +
-        "planningsblokken en de thema's van de school. Verzin geen thema's en geen planningsblokken." + Nl +
+        "- Gebruik uitsluitend de gegevens in het bericht van de gebruiker: de klas, de lesweken, de vakanties en " +
+        "de thema's van de school. Verzin geen thema's en geen weken." + Nl +
         "- Gebruik geen externe kennis, geen internet en geen andere bronnen." + Nl +
         "- Gebruik enkel thema's waarvan de naam letterlijk voorkomt in de lijst \"Thema's van de school\", en " +
-        "enkel planningsblokken waarvan de startdatum letterlijk voorkomt in de lijst \"Planningsblokken\"." + Nl +
-        "- Verwijs naar een planningsblok altijd met zijn STARTDATUM, nooit met zijn nummer of naam. Het " +
-        "nummer is enkel een label voor de leerkracht en verschuift wanneer de school haar vakanties " +
-        "aanpast." + Nl +
+        "enkel startweken waarvan de datum letterlijk voorkomt in de lijst \"Lesweken\" en die niet bezet zijn." + Nl +
         "- Geef bij elk voorstel een korte motivatie in het Nederlands (\"waarom past dit thema hier?\")." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist. Pas niets automatisch toe." + Nl +
         Nl +
-        "Spreiding (in deze volgorde belangrijk):" + Nl +
-        "- Gebruik zoveel mogelijk verschillende planningsblokken in plaats van enkele thema's samen in " +
-        "één blok te zetten. Er zijn niet meer thema's dan blokken nodig." + Nl +
-        "- Plaats een thema in een blok dat lang genoeg is: de duur van het thema in weken mag niet groter " +
-        "zijn dan het aantal weken van het blok." + Nl +
-        "- Let op een logische volgorde. Wijst de naam of wijzen de invalshoeken van een thema op een " +
-        "seizoen of een moment in het schooljaar, kies dan een blok waarvan de opgegeven datums in dat " +
-        "seizoen vallen. Leid dat af uit de themanaam en de datums die hieronder staan; zoek niets op en " +
-        "voeg geen kennis van buiten toe." + Nl +
-        "- Verdeel de gekoppelde leerplandoelen evenwichtig over het schooljaar. Zet niet alle " +
-        "doelenrijke thema's in de eerste blokken." + Nl +
+        "Planning (in deze volgorde belangrijk):" + Nl +
+        "- Twee thema's lopen nooit tegelijk. Een thema duurt het aantal lesweken dat erbij staat. Laat een thema " +
+        "pas beginnen in de week nadat het vorige gedaan is, en niet in een week waarin een thema staat dat blijft." +
         Nl +
-        // FR-5.3's asked half (E3-03). It comes AFTER the spreiding rules on purpose: those are stated as
-        // "in deze volgorde belangrijk", and a thema crammed into a period too short for it covers its goals on
-        // paper only. So coverage is what decides between placements that already fit, never a licence to overfill —
-        // which is also why it does not contradict E3-02's "er zijn niet meer thema's dan blokken nodig": that line
-        // discourages stacking, and these decide WHICH thema's to use.
-        //
-        // **It asks for selection, not for exhaustion, and that is an owner ruling (2026-08-05).** The first version
-        // said "plaats elk thema minstens één keer", which the antagonist correctly read as asserting that every
-        // school-wide thema belongs in every class's year. The owner ruled the opposite: thema's are often aligned
-        // across the classes of one leerjaar, but each class — each teacher — may have its own. So the library is an
-        // offer, and a plan that leaves a thema unused is not a worse plan.
-        //
-        // **The consequence this prompt cannot fix, filed rather than papered over:** `Thema` is school-wide
-        // (Art. IX.2) and nothing records which thema's belong to which class, so this prompt is handed the WHOLE
-        // library for every class. Wording it as an offer is the honest half; the missing half is a per-class
-        // selection, which is a data-model question. It is filed as an open decision in backlog/README.md — NOT
-        // against Art. XIV's "shared vs per-class" entry, which the constitution lists under *Resolved*: that
-        // binary settled where a thema is SCOPED, and this is the different question of which of the school's
-        // thema's a given class actually teaches.
-        //
-        // Nothing here mentions the curriculum, the class's jaar/fase or a target number, and that is deliberate.
-        // The model is given the school's thema's with their goal codes and nothing else (Art. IV.4), so the only
-        // coverage it can reason about is the union of what it places. The DENOMINATOR — which goals this class is
-        // measured against — is resolved server-side by DekkingService (owner ruling 2026-08-04), and the forecast
-        // is reported as Dekkingsvooruitzicht. Putting a target in the prompt would ask the model to judge its own
-        // coverage, which is the retry loop E3-02 deliberately refused to build (Art. IV.1).
+        "- Een vakantie telt niet mee: een thema dat erover loopt, gaat na de vakantie verder." + Nl +
+        "- Stel geen thema voor dat al in het jaarplan staat, en stel elk thema hoogstens één keer voor." + Nl +
+        "- Vul de vrije lesweken zo goed als het gaat. Een week die vrij blijft, is geen probleem; een thema dat " +
+        "niet past, laat je weg." + Nl +
+        "- Let op een logische volgorde. Wijst de naam of wijzen de invalshoeken van een thema op een seizoen of " +
+        "een moment in het schooljaar, kies dan een startweek waarvan de datum in dat seizoen valt. Leid dat af uit " +
+        "de themanaam en de datums die hieronder staan; zoek niets op en voeg geen kennis van buiten toe." + Nl +
+        "- Verdeel de gekoppelde doelen evenwichtig over het schooljaar. Zet niet alle doelenrijke thema's " +
+        "vooraan." + Nl +
+        Nl +
+        // It asks for selection, not for exhaustion (owner ruling 2026-08-05): the thema list is the school's library,
+        // and a class need not teach every thema. The denominator of coverage is the server's (DekkingService), so no
+        // target figure is given here: the model would be judging its own coverage (Art. IV.1).
         "Dekking (streef naar volledige dekking over het hele schooljaar):" + Nl +
-        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE leerplandoelen aan bod komen." + Nl +
+        "- Zorg dat samen zoveel mogelijk VERSCHILLENDE doelen aan bod komen." + Nl +
         "- Kies daarvoor de combinatie van thema's die samen het meeste dekt. Je hoeft niet elk thema te " +
         "gebruiken: de lijst is de bibliotheek van de school, niet een verplichte inhoud voor deze klas." + Nl +
-        "- Twijfel je tussen twee thema's voor hetzelfde blok, kies dan het thema met leerplandoelen die " +
-        "nog nergens anders in het jaarplan voorkomen." + Nl +
-        "- Zet hetzelfde thema niet in meerdere blokken als een ander thema doelen zou toevoegen die nog " +
-        "niet gedekt zijn." + Nl +
+        "- Twijfel je tussen twee thema's voor dezelfde weken, kies dan het thema met doelen die nog nergens anders " +
+        "in het jaarplan voorkomen." + Nl +
         Nl +
-        // Given its own heading by E3-03. These two bullets used to hang off the "Spreiding" list, where they read as
-        // spreading rules; a second topical section above them would have made that misfiling worse.
         "Antwoordvorm:" + Nl +
         "- Antwoord uitsluitend met geldige JSON in exact deze vorm, zonder extra tekst of uitleg eromheen:" + Nl +
-        "  {\"plaatsingen\": [{\"blokStart\": \"" + JaarplanGeneratieResponseParser.DatumFormaat +
-        "\", \"thema\": \"<themanaam>\", \"motivatie\": \"<één zin>\"}]}" + Nl +
-        "- Gebruik exact de veldnamen \"plaatsingen\", \"blokStart\", \"thema\" en \"motivatie\". " +
-        "\"blokStart\" is een datum in het formaat " + JaarplanGeneratieResponseParser.DatumFormaat +
-        " uit de lijst planningsblokken; \"thema\" is een themanaam uit de lijst thema's; \"motivatie\" is " +
-        "één zin." + Nl +
+        "  {\"plaatsingen\": [{\"thema\": \"<themanaam>\", \"startweek\": \"" +
+        JaarplanGeneratieResponseParser.DatumFormaat + "\", \"motivatie\": \"<één zin>\"}]}" + Nl +
+        "- Gebruik exact de veldnamen \"plaatsingen\", \"thema\", \"startweek\" en \"motivatie\". \"startweek\" is " +
+        "de maandag van een lesweek uit de lijst, in het formaat " + JaarplanGeneratieResponseParser.DatumFormaat +
+        "; \"thema\" is een themanaam uit de lijst thema's; \"motivatie\" is één zin." + Nl +
         "- Kan je geen enkel thema plaatsen, antwoord dan met een lege lijst: {\"plaatsingen\": []}.";
 
-    /// <summary>
-    /// Builds the grounded <see cref="AiRequest"/> for generating a plan proposal for one class.
-    /// </summary>
-    /// <param name="klas">
-    /// The class the plan is for: its own data only. No pupil data reaches this prompt (Art. VI.2). Pupil data does
-    /// exist since FB-003, in the K3 ontwikkelingsrapport alone (Art. VI.7), and the one prompt that carries any is the
-    /// rewrite of a rapporttekst (FB-004, <c>HerschrijfPromptBuilder</c>); nothing of it reaches the planning.
-    /// </param>
-    /// <param name="schooljaar">The school year, for its label and span.</param>
-    /// <param name="blokken">
-    /// The planningsblokken <b>already derived</b> by the <see cref="IPlanningsblokIndeling"/> seam — the only
-    /// slots the model may choose from.
-    /// </param>
-    /// <param name="themas">The school's own thema's (Art. IX.2) — the only content the model may place.</param>
-    /// <returns>The grounded request (system + user prompt), ready for the AI client seam.</returns>
-    /// <param name="parameters">
-    /// What the teacher asked for before the run (FR-5.4). Omitted from the prompt entirely when empty, so a run
-    /// without parameters produces byte-for-byte the prompt it produced before this story existed — which is what
-    /// keeps the existing snapshot test meaningful rather than merely updated.
-    /// </param>
+    /// <summary>Builds the grounded <see cref="AiRequest"/> for generating a plan proposal for one class.</summary>
+    /// <param name="klas">The class the plan is for: its own data only. No pupil data reaches this prompt (Art. VI.2).</param>
+    /// <param name="schooljaar">The school year, for its label, span and vacations.</param>
+    /// <param name="weken">Every lesweek of the year, with what stays in it after the run.</param>
+    /// <param name="themas">The school's own thema's (Art. IX.2): the only content the model may place.</param>
+    /// <param name="alGepland">The names of the thema's that stay in the plan after the run.</param>
     public static AiRequest Bouw(
         Klas klas,
         Schooljaar schooljaar,
-        IReadOnlyCollection<Planningsblok> blokken,
+        IReadOnlyCollection<Planweek> weken,
         IReadOnlyCollection<Thema> themas,
-        JaarplanGeneratieParameters? parameters = null)
+        IReadOnlyCollection<string> alGepland)
     {
         ArgumentNullException.ThrowIfNull(klas);
         ArgumentNullException.ThrowIfNull(schooljaar);
-        ArgumentNullException.ThrowIfNull(blokken);
+        ArgumentNullException.ThrowIfNull(weken);
         ArgumentNullException.ThrowIfNull(themas);
+        ArgumentNullException.ThrowIfNull(alGepland);
 
-        return new AiRequest
-        {
-            SystemPrompt = SystemPrompt,
-            UserPrompt = BouwUserPrompt(
-                klas, schooljaar, blokken, themas, parameters ?? JaarplanGeneratieParameters.Geen),
-        };
-    }
-
-    /// <summary>
-    /// Builds the grounded request for regenerating <b>one period only</b> (FR-8.2).
-    /// <para>
-    /// <b>The model is still shown every block, and that is the point.</b> Handing it only the target block would be
-    /// the smaller prompt and the worse one: the Dekking rules ask it to prefer the thema whose leerplandoelen are not
-    /// covered elsewhere, and the Spreiding rules ask for a logical order across the year, neither of which is
-    /// answerable by a model that cannot see the year. So the full grid stays, <see cref="BouwVoorPeriode"/> adds what
-    /// is already planned, and the scope is stated as an instruction at the end.
-    /// </para>
-    /// <para>
-    /// <b>The instruction is not the enforcement.</b> A placement the model returns for another period is refused by
-    /// <see cref="JaarplanGeneratieService"/> and reported, exactly as an unknown thema name is: the prompt asks so the
-    /// answer is usable in one pass, the service enforces so a model that ignores the ask cannot touch a period the
-    /// teacher did not choose. This split is the same one FR-5.4's blocking vast moment already uses.
-    /// </para>
-    /// <para>
-    /// A whole-plan run reaches <see cref="Bouw"/> and produces byte-for-byte the prompt it produced before this story
-    /// existed — none of the sections below are appended to it — which is what keeps the existing snapshot test
-    /// meaningful rather than merely re-recorded.
-    /// </para>
-    /// </summary>
-    /// <param name="doelBlok">The one block to fill. Must be one of <paramref name="blokken"/>.</param>
-    /// <param name="alGeplaatst">
-    /// What is already in the plan and will still be there after this run's discard — see
-    /// <see cref="BestaandePlaatsing"/> for why placements about to be dropped are excluded.
-    /// </param>
-    public static AiRequest BouwVoorPeriode(
-        Klas klas,
-        Schooljaar schooljaar,
-        IReadOnlyCollection<Planningsblok> blokken,
-        IReadOnlyCollection<Thema> themas,
-        Planningsblok doelBlok,
-        IReadOnlyCollection<BestaandePlaatsing> alGeplaatst,
-        JaarplanGeneratieParameters? parameters = null)
-    {
-        ArgumentNullException.ThrowIfNull(klas);
-        ArgumentNullException.ThrowIfNull(schooljaar);
-        ArgumentNullException.ThrowIfNull(blokken);
-        ArgumentNullException.ThrowIfNull(themas);
-        ArgumentNullException.ThrowIfNull(doelBlok);
-        ArgumentNullException.ThrowIfNull(alGeplaatst);
-
-        return new AiRequest
-        {
-            SystemPrompt = SystemPrompt,
-            UserPrompt = BouwUserPrompt(
-                klas,
-                schooljaar,
-                blokken,
-                themas,
-                parameters ?? JaarplanGeneratieParameters.Geen,
-                doelBlok,
-                alGeplaatst),
-        };
-    }
-
-    private static string BouwUserPrompt(
-        Klas klas,
-        Schooljaar schooljaar,
-        IReadOnlyCollection<Planningsblok> blokken,
-        IReadOnlyCollection<Thema> themas,
-        JaarplanGeneratieParameters parameters,
-        Planningsblok? doelBlok = null,
-        IReadOnlyCollection<BestaandePlaatsing>? alGeplaatst = null)
-    {
         var sb = new StringBuilder();
-
         SchrijfKlas(sb, klas, schooljaar);
         sb.Append(Nl);
-        SchrijfBlokken(sb, blokken, schooljaar);
+        SchrijfWeken(sb, weken);
+        sb.Append(Nl);
+        SchrijfVakanties(sb, schooljaar);
+        sb.Append(Nl);
+        SchrijfAlGepland(sb, alGepland);
         sb.Append(Nl);
         SchrijfThemas(sb, themas);
 
-        // Per-period only. Written before the parameters and the scope instruction, on the same reasoning that puts
-        // the parameters after the block list: a section that cites thema names and block dates comes after the
-        // lists that define them.
-        if (doelBlok is not null)
-        {
-            sb.Append(Nl);
-            SchrijfAlGeplaatst(sb, alGeplaatst ?? [], doelBlok);
-        }
-
-        // Only when there is something to say. Placed after the data it refers to so the model reads the thema
-        // names and block dates before the constraints that cite them.
-        if (!parameters.IsLeeg)
-        {
-            sb.Append(Nl);
-            SchrijfParameters(sb, parameters, blokken);
-        }
-
-        // Last of all, deliberately: it is the one instruction that overrides the reading a model would otherwise take
-        // from the system prompt, which describes distributing thema's over "de planningsblokken van het schooljaar".
-        if (doelBlok is not null)
-        {
-            sb.Append(Nl);
-            SchrijfPeriodeopdracht(sb, doelBlok);
-        }
-
-        return sb.ToString();
-    }
-
-    /// <summary>
-    /// What the plan already holds, split into the target period and the rest of the year, because the two mean
-    /// different things to the model: in the target period these are the placements it may <b>not</b> displace or
-    /// repeat, elsewhere they are the coverage and ordering context it should plan around.
-    /// </summary>
-    private static void SchrijfAlGeplaatst(
-        StringBuilder sb,
-        IReadOnlyCollection<BestaandePlaatsing> alGeplaatst,
-        Planningsblok doelBlok)
-    {
-        Line(sb, "# Wat al in het jaarplan staat");
-        Line(sb, string.Empty);
-
-        if (alGeplaatst.Count == 0)
-        {
-            // NOT "het jaarplan is nog leeg", which is what this said first and which is not the same claim. The list
-            // is already filtered: a proposal this run is about to discard is absent, and so is a placement the teacher
-            // rejected. Both leave a plan that holds rows while nothing in it has to be planned around, and a prompt
-            // that called that empty would be telling the model something false about the school's data (Art. IV.4).
-            // Found by the test for the rejected case, which is the whole reason it exists.
-            Line(sb, "- (er staat nog geen thema dat blijft staan)");
-            return;
-        }
-
-        // Ordered by the stable key first, then by name, so caller ordering cannot change the prompt — the same
-        // determinism rule the block and thema lists follow.
-        var geordend = alGeplaatst
-            .OrderBy(p => p.BlokStart)
-            .ThenBy(p => p.ThemaNaam, StringComparer.Ordinal)
-            .ToList();
-
-        var inDoelBlok = geordend.Where(p => p.BlokStart == doelBlok.Start).ToList();
-        if (inDoelBlok.Count > 0)
-        {
-            Line(
-                sb,
-                "In de periode die je nu vult staan deze thema's al, en die blijven staan. Stel ze niet opnieuw " +
-                "voor:");
-            Line(sb, string.Empty);
-            foreach (var plaatsing in inDoelBlok)
-            {
-                Line(sb, $"- {plaatsing.ThemaNaam}");
-            }
-
-            Line(sb, string.Empty);
-        }
-
-        var elders = geordend.Where(p => p.BlokStart != doelBlok.Start).ToList();
-        if (elders.Count == 0)
-        {
-            Line(sb, "In de andere periodes staat nog niets.");
-            return;
-        }
-
-        Line(
-            sb,
-            "In de andere periodes staat dit al. Verander daar niets aan, maar houd er rekening mee: kies voor de " +
-            "periode die je vult bij voorkeur een thema met leerplandoelen die hier nog niet aan bod komen.");
-        Line(sb, string.Empty);
-        foreach (var plaatsing in elders)
-        {
-            Line(sb, $"- startdatum {Datum(plaatsing.BlokStart)}: {plaatsing.ThemaNaam}");
-        }
-    }
-
-    /// <summary>
-    /// The scope instruction for a per-period run: fill exactly this block, and answer with nothing else.
-    /// <para>
-    /// It names the date rather than the label ("periode 3"), for the reason the system prompt already gives: an
-    /// ordinal shifts when the school edits its vakanties (ADR-0020 §3). The label is not printed here at all, so
-    /// there is no second way to refer to the block and therefore no way for the two to disagree.
-    /// </para>
-    /// </summary>
-    private static void SchrijfPeriodeopdracht(StringBuilder sb, Planningsblok doelBlok)
-    {
-        Line(sb, "# Opdracht");
-        Line(sb, string.Empty);
-        Line(
-            sb,
-            $"Vul ENKEL de periode met startdatum {Datum(doelBlok.Start)} (t/m {Datum(doelBlok.Eind)}). Elk " +
-            $"voorstel dat je geeft moet als \"blokStart\" exact {Datum(doelBlok.Start)} hebben. Stel niets voor " +
-            "voor een andere periode: de rest van het jaarplan blijft zoals het is.");
-        Line(
-            sb,
-            "Past er in die periode geen enkel thema, antwoord dan met een lege lijst: {\"plaatsingen\": []}.");
-    }
-
-    /// <summary>
-    /// The teacher's own pre-generation instructions (FR-5.4). Note what this section does <b>not</b> contain:
-    /// vakanties. They are already expressed in the block list above, because blocks are derived from them and never
-    /// span one (ADR-0020) — restating them as prose would invite the model to reason about holidays that the grid
-    /// has already removed from consideration.
-    /// </summary>
-    private static void SchrijfParameters(
-        StringBuilder sb,
-        JaarplanGeneratieParameters parameters,
-        IReadOnlyCollection<Planningsblok> blokken)
-    {
-        Line(sb, "# Wat de leerkracht vooraf vraagt");
-        Line(sb, string.Empty);
-
-        // One line per requested thema, each naming its OWN block by START DATE. Two earlier revisions are worth
-        // remembering: the first joined every name into a single sentence naming one block, which told the model to put
-        // several 4–6 week thema's in one themaperiode; the second made the request positional, so the target block was
-        // an ordinal in different clothing (ADR-0020 §3). The entry now carries the date itself.
-        //
-        // A requested block start that is not among the blocks handed in is SKIPPED here rather than printed: telling
-        // the model to use a date that starts no block would contradict the system prompt's own "use only these
-        // blocks" rule. It is not lost — ParameterRapport.VervallenStartthemas reports it, and the setting stays kept.
-        var blokStarts = blokken.Select(b => b.Start).ToHashSet();
-        foreach (var keuze in parameters.GenormaliseerdeStartthemas().Where(k => blokStarts.Contains(k.BlokStart)))
-        {
-            Line(
-                sb,
-                $"- Plaats het thema \"{keuze.ThemaNaam}\" in het blok met startdatum " +
-                $"{Datum(keuze.BlokStart)}.");
-        }
-
-        foreach (var moment in parameters.GenormaliseerdeVasteMomenten())
-        {
-            if (moment.BlokkeertPlaatsing)
-            {
-                // Stated as a prohibition AND enforced by the service afterwards. The prompt asks so the model can
-                // produce a usable plan in one pass; the service enforces so a model that ignores the ask cannot
-                // put a thema in a period the teacher already spent.
-                Line(
-                    sb,
-                    $"- Op {Datum(moment.Datum)} is er \"{moment.Naam}\". Plaats GEEN thema in het blok waarin " +
-                    "die datum valt: die periode is al bezet.");
-            }
-            else
-            {
-                Line(
-                    sb,
-                    $"- Op {Datum(moment.Datum)} is er \"{moment.Naam}\". Houd er rekening mee dat die periode " +
-                    "daardoor minder tijd heeft, maar je mag er wel een thema plaatsen.");
-            }
-        }
+        return new AiRequest { SystemPrompt = SystemPrompt, UserPrompt = sb.ToString() };
     }
 
     private static void SchrijfKlas(StringBuilder sb, Klas klas, Schooljaar schooljaar)
@@ -413,48 +132,64 @@ public static class JaarplanGeneratiePromptBuilder
         Line(sb, $"Schooljaar: {schooljaar.Naam} ({Datum(schooljaar.Start)} t/m {Datum(schooljaar.Eind)})");
     }
 
-    private static void SchrijfBlokken(
-        StringBuilder sb,
-        IReadOnlyCollection<Planningsblok> blokken,
-        Schooljaar schooljaar)
+    private static void SchrijfWeken(StringBuilder sb, IReadOnlyCollection<Planweek> weken)
     {
-        Line(sb, "# Planningsblokken");
+        Line(sb, "# Lesweken");
         Line(sb, string.Empty);
-        Line(sb, "Kies enkel uit deze blokken en verwijs ernaar met de startdatum.");
+        Line(sb, "Elke lesweek met de datum van haar maandag. Kies een startweek die niet bezet is.");
         Line(sb, string.Empty);
 
-        if (blokken.Count == 0)
+        if (weken.Count == 0)
         {
-            Line(sb, "- (geen planningsblokken beschikbaar)");
+            Line(sb, "- (geen lesweken)");
             return;
         }
 
-        // The count is stated explicitly rather than left to be counted from the list: FR-5.2's first property is
-        // "respect the number of available blocks", and a model that has to tally a list to know the denominator
-        // is a model that may get the denominator wrong.
-        Line(sb, $"Aantal beschikbare blokken: {blokken.Count}");
+        // Stated rather than left to be counted: a model that has to tally a list may tally it wrong.
+        Line(sb, $"Aantal lesweken: {weken.Count}, waarvan vrij: {weken.Count(w => w.Themas.Count == 0)}");
         Line(sb, string.Empty);
 
-        // Ordered by the stable key (start date) so caller ordering cannot change the prompt.
-        foreach (var blok in blokken.OrderBy(b => b.Start))
+        foreach (var week in weken.OrderBy(w => w.Maandag))
         {
-            // Weeks are printed next to days because the fit rule is expressed in weeks (a thema's DuurWeken).
-            // Making the model divide by 7 itself is an arithmetic step that buys nothing.
-            //
-            // **The weeks figure is the one the te-vol rule uses** (owner ruling, 2026-08-05, on the E3-09 antagonist's
-            // QUESTION): open days rounded up, `ceil(TelOpenDagen / 7)`. It was `AantalDagen / 7` to one decimal, so the
-            // prompt told the model a 1 sep – 1 okt period was "4,4 weken" while the flag a teacher then reads measures
-            // the same period as **5**. Pre-existing since E3-02 and lenient in the safe direction, but this is the
-            // input that decides whether the model even tries to fit a thema, so the generator was being steered by a
-            // stricter number than the verdict it would be judged against.
-            //
-            // **The days are still the calendar span, and that is deliberate**: the model is asked to reason about
-            // seasons and about "a moment in the school year", for which the real dates are the truth. Only the
-            // capacity figure follows the rule.
-            Line(
-                sb,
-                $"- startdatum {Datum(blok.Start)} | einddatum {Datum(blok.Eind)} | {blok.AantalDagen} dagen " +
-                $"({WekenCapaciteit(blok, schooljaar)} weken) | label \"{blok.Niveau} {blok.Ordinaal}\"");
+            var themas = string.Join(", ", week.Themas.Order(StringComparer.Ordinal));
+            var staat = week.Themas.Count == 0 ? "vrij"
+                : week.IsVol ? $"bezet ({themas})"
+                : $"deels vrij ({themas} staat er al)";
+            Line(sb, $"- {Datum(week.Maandag)}: {staat}");
+        }
+    }
+
+    private static void SchrijfVakanties(StringBuilder sb, Schooljaar schooljaar)
+    {
+        Line(sb, "# Vakanties");
+        Line(sb, string.Empty);
+
+        if (schooljaar.Vakanties.Count == 0)
+        {
+            Line(sb, "- (geen vakanties)");
+            return;
+        }
+
+        foreach (var vakantie in schooljaar.Vakanties.OrderBy(v => v.Start))
+        {
+            Line(sb, $"- {vakantie.Naam}: {Datum(vakantie.Start)} t/m {Datum(vakantie.Eind)}");
+        }
+    }
+
+    private static void SchrijfAlGepland(StringBuilder sb, IReadOnlyCollection<string> alGepland)
+    {
+        Line(sb, "# Thema's die al in het jaarplan staan en blijven");
+        Line(sb, string.Empty);
+
+        if (alGepland.Count == 0)
+        {
+            Line(sb, "- (geen)");
+            return;
+        }
+
+        foreach (var naam in alGepland.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        {
+            Line(sb, $"- {naam}");
         }
     }
 
@@ -469,19 +204,9 @@ public static class JaarplanGeneratiePromptBuilder
             return;
         }
 
-        // Stated for the same reason the block count is (E3-02): a model that has to tally a list to know how many
-        // there are is a model that may tally it wrong. Beside the block count it makes the shape of the choice
-        // visible at a glance — twenty thema's for seven periods is a selection problem, five for seven is not —
-        // instead of leaving it to be discovered halfway down the list.
-        //
-        // *Its justification changed with the owner's ruling of 2026-08-05 and the number did not.* It used to be
-        // here to make "place every thema" checkable; that instruction is gone, and the count earns its place on the
-        // selection reasoning instead. Recorded because a figure whose stated reason has quietly expired is the kind
-        // of thing that survives three stories and then gets defended by the wrong argument.
         Line(sb, $"Aantal thema's: {themas.Count}");
         Line(sb, string.Empty);
 
-        // Ordered by name so caller ordering cannot change the prompt.
         foreach (var thema in themas.OrderBy(t => t.Naam, StringComparer.Ordinal))
         {
             SchrijfThema(sb, thema);
@@ -490,7 +215,7 @@ public static class JaarplanGeneratiePromptBuilder
 
     private static void SchrijfThema(StringBuilder sb, Thema thema)
     {
-        Line(sb, $"- Thema: {thema.Naam} (duur {thema.DuurWeken} weken)");
+        Line(sb, $"- Thema: {thema.Naam} (duur {thema.DuurWeken} lesweken)");
         if (thema.Invalshoeken is not null)
         {
             Line(sb, $"  Invalshoeken: {thema.Invalshoeken}");
@@ -512,15 +237,11 @@ public static class JaarplanGeneratiePromptBuilder
             Line(sb, $"  Themadoelen, minimumdoelen ({minimumdoelen.Count}): {string.Join(", ", minimumdoelen)}");
         }
 
-        // Only the goals the teacher actually stands behind (aanvaard/manueel, Art. V.1) — a `voorgesteld`
-        // suggestion is not yet a goal of this thema, and a `geweigerd` one never was. Feeding the model
-        // unconfirmed links would let the AI reason about goals the teacher has rejected.
+        // Only the goals the teacher stands behind (aanvaard/manueel, Art. V.1): a voorgesteld suggestion is not yet a
+        // goal of this thema, and a geweigerd one never was.
         var doelcodes = ThemaDoelcodes(thema);
         if (doelcodes.Count > 0)
         {
-            // The count is stated as well as the codes. FR-5.2 asks for an even distribution OF THE GOALS, so the
-            // model needs the per-thema weight to balance against; deriving it by counting a comma-separated list
-            // is exactly the kind of incidental arithmetic that goes wrong quietly.
             Line(sb, $"  Gekoppelde leerplandoelen ({doelcodes.Count}): {string.Join(", ", doelcodes)}");
         }
     }
@@ -531,16 +252,10 @@ public static class JaarplanGeneratiePromptBuilder
     /// the API report the same set. A thema's minimumdoelen are written separately.
     /// <para>
     /// <b>This is not the rule dekking uses.</b> Since ADR-0047 <c>DekkingService</c> counts no themadoel that links a
-    /// leerplandoel, counts a thema's minimumdoelen through the thema's placement, and counts
-    /// subdoel and activiteit links only through their own subthema's placement, which it can because it computes for
-    /// <i>one klas</i>. This method has only a school-wide <see cref="Thema"/>. Aligning the generation's coverage goal
-    /// with ADR-0047 is a follow-up of FB-045.
-    /// </para>
-    /// <para>
-    /// The visible consequence is that a calendar card may list fewer codes than dekking credits to that thema.
-    /// Making the two identical would mean giving this method a klas, i.e. a per-class prompt and a per-class card,
-    /// which is a scope question for E4/E5 and not something to settle in a comment. Stated here so the next reader
-    /// does not "fix" the discrepancy by widening whichever side they happen to be looking at.
+    /// leerplandoel, counts a thema's minimumdoelen through the thema's placement, and counts subdoel and activiteit
+    /// links only through their own subthema's placement, which it can because it computes for <i>one klas</i>. This
+    /// method has only a school-wide <see cref="Thema"/>, so a calendar card may list fewer codes than dekking credits to
+    /// that thema. Stated here so the next reader does not "fix" the discrepancy by widening one side.
     /// </para>
     /// </summary>
     public static IReadOnlyList<string> ThemaDoelcodes(Thema thema)
@@ -555,20 +270,6 @@ public static class JaarplanGeneratiePromptBuilder
             .OrderBy(code => code, StringComparer.Ordinal)
             .ToList();
     }
-
-    /// <summary>
-    /// A block's teaching capacity in <b>whole weeks</b>, by the same arithmetic the te-vol verdict uses:
-    /// <c>ceil(TelOpenDagen / 7)</c>.
-    /// <para>
-    /// <b>Shared with <c>BlokspreidingWeergave.IsOverbelast</c> by construction, not by coincidence</b> (owner
-    /// ruling, 2026-08-05). This used to be <c>AantalDagen / 7</c> to one decimal, which was a *tenth* place where a
-    /// period's length in weeks was computed and the only one that steers the model. It is an integer, so it needs no
-    /// culture-invariant formatting: the reason the old helper carried a <see cref="CultureInfo"/> was that a Dutch
-    /// locale renders "4,4" and would have made the prompt differ per OS.
-    /// </para>
-    /// </summary>
-    private static int WekenCapaciteit(Planningsblok blok, Schooljaar schooljaar) =>
-        (int)Math.Ceiling(schooljaar.TelOpenDagen(blok.Start, blok.Eind) / 7.0);
 
     private static string Datum(DateOnly datum) =>
         datum.ToString(JaarplanGeneratieResponseParser.DatumFormaat, CultureInfo.InvariantCulture);
