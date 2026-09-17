@@ -278,6 +278,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         "woordwebId" => zaad.WoordwebId.ToString(),
         "subdoelvoorstelId" => zaad.SubdoelvoorstelId.ToString(),
         "subthemavoorstelId" => zaad.SubthemavoorstelId.ToString(),
+        "activiteitvoorstelId" => zaad.ActiviteitvoorstelId.ToString(),
         // The subdoelplaatsing's leeftijd is a route value (FB-057): a real one, so the rights check runs, not the 400.
         "leeftijd" => "K3",
         "plaatsingId" when route.StartsWith("api/hoekplaatsingen/", StringComparison.Ordinal) => zaad.HoekplaatsingId.ToString(),
@@ -334,13 +335,19 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         var woordwebId = await IdAsync(eigenaar.PostAsJsonAsync(
             $"/api/subthemas/{subthemaId}/woordwebs/eigen/woorden", new { woorden = new[] { "regen" } }));
 
-        // One open proposal of each kind (FB-057), written straight to the database: only the AI makes them.
+        // One open proposal of each kind (FB-057, FB-025), written straight to the database: only the AI makes them. The
+        // activiteitvoorstel is the seeded directeur's, so it is not the caller's either.
         var subthemavoorstel = new Jaarplanner.Domain.Schoolcontent.Subthemavoorstel(themaId, "K3", "Wind", "Waar komt wind vandaan?", 2, "Reden.");
         var subdoelvoorstel = Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel.InSubthema(themaId, "K3", Doelcode, subthemaId, "Reden.");
+        var eigenaarId = await opzet.GebruikerAsync(directie: true);
+        var activiteitvoorstel = new Jaarplanner.Domain.Schoolcontent.Activiteitvoorstel(
+            subthemaId, eigenaarId, "Plassen", null, "Stampen in plassen.", 1, null, [Doelcode], "Reden.");
         await using (var context = _db.MaakContext())
         {
             context.Subthemavoorstellen.Add(subthemavoorstel);
             context.Subdoelvoorstellen.Add(subdoelvoorstel);
+            context.Activiteitvoorstellen.Add(activiteitvoorstel);
+            context.Entry(activiteitvoorstel).Property<int>("Volgnummer").CurrentValue = 1;
             await context.SaveChangesAsync();
         }
 
@@ -369,7 +376,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             runActiviteitId,
             woordwebId,
             subdoelvoorstel.Id,
-            subthemavoorstel.Id);
+            subthemavoorstel.Id,
+            activiteitvoorstel.Id);
     }
 
     private static async Task<Guid> IdAsync(Task<HttpResponseMessage> verzoek)
@@ -396,5 +404,6 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         Guid RunActiviteitId,
         Guid WoordwebId,
         Guid SubdoelvoorstelId,
-        Guid SubthemavoorstelId);
+        Guid SubthemavoorstelId,
+        Guid ActiviteitvoorstelId);
 }

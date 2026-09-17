@@ -32,6 +32,9 @@ public interface IRechtenbronnen
     /// <summary>The leeftijd of a proposed new subthema (FB-057, ADR-0050): for deciding it.</summary>
     Task<Leeftijdsinhoud?> VoorSubthemavoorstelAsync(Guid subthemavoorstelId, CancellationToken cancellationToken = default);
 
+    /// <summary>An activiteitvoorstel with its asker and its subthema's leeftijd (FB-025, ADR-0056): for deciding it.</summary>
+    Task<Activiteitvoorstelbron?> VoorActiviteitvoorstelAsync(Guid activiteitvoorstelId, CancellationToken cancellationToken = default);
+
     /// <summary>A thema, with whether it holds content beyond its own open wizard run's items: for deleting it (I26).</summary>
     Task<Themabron?> VoorThemaAsync(Guid themaId, CancellationToken cancellationToken = default);
 
@@ -79,6 +82,16 @@ public interface IRechtenbronnen
 /// <param name="WoordwebId">The woordweb.</param>
 /// <param name="EigenaarId">Whose web it is.</param>
 public sealed record Woordwebbron(Guid WoordwebId, Guid EigenaarId);
+
+/// <summary>
+/// One AI activiteitvoorstel (FB-025, ADR-0056): the resource of the <c>ActiviteitvoorstelBeslissen</c> row, whose one
+/// column is its asker while she may still make an own activiteit at that leeftijd. A type of its own, so it opens no
+/// other row. Directie passes the row as it passes every row (R3, A3).
+/// </summary>
+/// <param name="ActiviteitvoorstelId">The proposal, or <see cref="Guid.Empty"/> when a read asks about proposals in general.</param>
+/// <param name="Leeftijd">The leeftijd of the subthema it is under.</param>
+/// <param name="AanvragerId">Who asked for it.</param>
+public sealed record Activiteitvoorstelbron(Guid ActiviteitvoorstelId, string Leeftijd, Guid AanvragerId);
 
 /// <summary>
 /// Shared content of one leeftijd (a subthema, its subdoelen, its streefwoordenschat, a new activiteit under it): the

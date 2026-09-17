@@ -81,6 +81,8 @@ public sealed class RechtenmatrixTests
         // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd and directie; themabeheer alone does not.
         [Rechtenmatrix.Beleid.SubdoelplaatsingVragen] = ["Directie", "HL"],
         [Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen] = ["Directie", "HL"],
+        // FB-025 (ADR-0056 A3): on someone else's activiteitvoorstel only directie. The asker's own is its own test below.
+        [Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen] = ["Directie"],
     };
 
     private static readonly string[] ActiviteitRijen =
@@ -663,10 +665,45 @@ public sealed class RechtenmatrixTests
             Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, new Woordwebbron(Guid.NewGuid(), Ik))));
     }
 
+    // --- An activiteitvoorstel (FB-025, ADR-0056 A3): its asker's while she teaches that leeftijd, and directie's. ---
+
+    [Fact]
+    public void Een_activiteitvoorstel_beslist_wie_het_vroeg_zolang_ze_die_leeftijd_heeft()
+    {
+        var eigen = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, Ik);
+
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["LK leeftijd"], Rechtenmatrix.ActiviteitvoorstelBeslissen, eigen));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["LK K3 lopend"], Rechtenmatrix.ActiviteitvoorstelBeslissen, eigen));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["LK andere leeftijd"], Rechtenmatrix.ActiviteitvoorstelBeslissen, eigen));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.ActiviteitvoorstelBeslissen, eigen));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], Rechtenmatrix.ActiviteitvoorstelBeslissen, eigen));
+    }
+
+    [Fact]
+    public void Een_activiteitvoorstel_opent_geen_andere_rij_en_zonder_aanvrager_alleen_de_directie()
+    {
+        var eigen = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, Ik);
+        var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
+
+        Assert.All(Rechtenmatrix.Rijen.Where(r => r.Beleid != Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen), rij =>
+            Assert.Equal(
+                Rechtenmatrix.StaatToe(Relaties["LK leeftijd"], rij, bron: null),
+                Rechtenmatrix.StaatToe(Relaties["LK leeftijd"], rij, eigen)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.ActiviteitvoorstelBeslissen, new Leeftijdsinhoud(Leeftijd)));
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, eigen));
+
+        // The read question the controller asks: a proposal of nobody.
+        var niemands = new Activiteitvoorstelbron(Guid.Empty, string.Empty, Guid.Empty);
+        Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
+    }
+
     private static object? BronVoor(Matrixrij rij) => rij.Kolommen switch
     {
         // Someone else's web: the owner's own is its own test above.
         _ when rij.Kolommen.HasFlag(Kolom.Eigenaar) => new Woordwebbron(Guid.NewGuid(), AnderePersoon),
+        // Someone else's proposal: the asker's own is its own test below.
+        _ when rij.Kolommen.HasFlag(Kolom.AanvragerVanVoorstel) => new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, AnderePersoon),
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportLezen) || rij.Kolommen.HasFlag(Kolom.LeerkrachtRapportInvullen) =>
             new Rapportklas(EigenKlas),
         _ when rij.Kolommen.HasFlag(Kolom.LeerkrachtEigenLezen) => Klasinzage.Voor(EigenKlas, Leeftijd),

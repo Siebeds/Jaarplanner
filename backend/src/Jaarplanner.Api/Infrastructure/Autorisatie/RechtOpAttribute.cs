@@ -50,6 +50,9 @@ public enum Rechtbron
 
     /// <summary>The leeftijd of a proposed new subthema (<see cref="Leeftijdsinhoud"/>, FB-057).</summary>
     Subthemavoorstel,
+
+    /// <summary>An activiteitvoorstel with its asker (<see cref="Application.Toegang.Activiteitvoorstelbron"/>, FB-025).</summary>
+    Activiteitvoorstel,
 }
 
 /// <summary>
@@ -174,6 +177,9 @@ public sealed class RechtOpAttribute : Attribute, IAsyncAuthorizationFilter
                     ?? throw new SchoolcontentNietGevondenFout("Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
             case Rechtbron.Subthemavoorstel:
                 return await bronnen.VoorSubthemavoorstelAsync(id, cancellationToken)
+                    ?? throw new SchoolcontentNietGevondenFout("Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
+            case Rechtbron.Activiteitvoorstel:
+                return await bronnen.VoorActiviteitvoorstelAsync(id, cancellationToken)
                     ?? throw new SchoolcontentNietGevondenFout("Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.");
             default:
                 throw new InvalidOperationException($"No resource resolver for {Bron}.");

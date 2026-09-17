@@ -49,7 +49,8 @@ export type Rij =
   | "RapportsetBewerken"
   | "WoordwebBewerken"
   | "SubdoelplaatsingVragen"
-  | "SubdoelplaatsingBeslissen";
+  | "SubdoelplaatsingBeslissen"
+  | "ActiviteitvoorstelBeslissen";
 
 /** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
@@ -70,7 +71,8 @@ export type Kolom =
   | "Eigenaar"
   | "JaarfaseVanEigenActiviteit"
   | "LeerkrachtVanEigenActiviteit"
-  | "EigenActiviteitEigenaar";
+  | "EigenActiviteitEigenaar"
+  | "AanvragerVanVoorstel";
 
 /** §3 as data, one entry per server row, with the same columns. */
 export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
@@ -127,6 +129,8 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; themabeheer alone does not.
   SubdoelplaatsingVragen: ["Hoofdleerkracht"],
   SubdoelplaatsingBeslissen: ["Hoofdleerkracht"],
+  // FB-025 (ADR-0056 A3): an activiteitvoorstel's asker while she teaches that leeftijd, and directie.
+  ActiviteitvoorstelBeslissen: ["AanvragerVanVoorstel"],
 };
 
 /**
@@ -163,7 +167,9 @@ export type Rechtbron =
   /** A klas as reading its planning asks about it: the server's `Klasinzage`, with the leeftijden the server mapped it to. */
   | { soort: "klasinzage"; klasId: string; leeftijden: readonly string[] }
   /** A woordweb with its owner: the server's `Woordwebbron` (FB-036). */
-  | { soort: "woordweb"; eigenaarId: string };
+  | { soort: "woordweb"; eigenaarId: string }
+  /** An AI activiteitvoorstel with its asker: the server's `Activiteitvoorstelbron` (FB-025). */
+  | { soort: "activiteitvoorstel"; leeftijd: string; aanvragerId: string };
 
 /** GUIDs from System.Text.Json are lowercase on every route, so this is equality; the fold only guards a future one. */
 function zelfdeId(a: string, b: string): boolean {
@@ -250,6 +256,16 @@ export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolea
   }
 
   // ADR-0043 W2: the owner of a woordweb, whatever else she holds. Only a woordweb resource matches this column.
+  // ADR-0056 A3: the asker of an activiteitvoorstel, while she teaches its leeftijd. Only that resource matches.
+  if (
+    kolommen.includes("AanvragerVanVoorstel") &&
+    bron?.soort === "activiteitvoorstel" &&
+    zelfdeId(bron.aanvragerId, ik.id) &&
+    ik.leerkrachtLeeftijden.includes(bron.leeftijd)
+  ) {
+    return true;
+  }
+
   if (kolommen.includes("Eigenaar") && bron?.soort === "woordweb" && zelfdeId(bron.eigenaarId, ik.id)) return true;
 
   return (
@@ -403,6 +419,8 @@ export interface Mag {
   woordwebBewerken: (eigenaarId: string) => boolean;
   /** Asking the AI where the open doelen of this leeftijd go (FB-057, ADR-0050 P4). */
   subdoelplaatsingVragen: (leeftijd: string) => boolean;
+  /** Deciding this AI activiteitvoorstel: its asker while she teaches the leeftijd, and directie (ADR-0056 A3). */
+  activiteitvoorstelBeslissen: (voorstel: { leeftijd: string; aanvragerId: string }) => boolean;
 }
 
 /** The answers for one gebruiker, or for nobody while `/api/ik` has not answered. */
@@ -488,6 +506,8 @@ export function magVoor(ik: Ik | undefined): Mag {
       hoofdleerkrachtLeeftijden.includes("K3"),
     woordwebBewerken: (eigenaarId) => rij("WoordwebBewerken", { soort: "woordweb", eigenaarId }),
     subdoelplaatsingVragen: opLeeftijd("SubdoelplaatsingVragen"),
+    activiteitvoorstelBeslissen: (voorstel) =>
+      rij("ActiviteitvoorstelBeslissen", { soort: "activiteitvoorstel", ...voorstel }),
   };
 }
 

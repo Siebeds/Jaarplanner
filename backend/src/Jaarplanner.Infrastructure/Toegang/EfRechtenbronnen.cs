@@ -181,6 +181,18 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
         return leeftijd is null ? null : new Leeftijdsinhoud(leeftijd);
     }
 
+    public async Task<Activiteitvoorstelbron?> VoorActiviteitvoorstelAsync(Guid activiteitvoorstelId, CancellationToken cancellationToken = default)
+    {
+        var gevonden = await (
+                from voorstel in _context.Activiteitvoorstellen.AsNoTracking()
+                where voorstel.Id == activiteitvoorstelId
+                join subthema in _context.Subthemas on voorstel.SubthemaId equals subthema.Id
+                select new { subthema.Leeftijd, voorstel.GebruikerId })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return gevonden is null ? null : new Activiteitvoorstelbron(activiteitvoorstelId, gevonden.Leeftijd, gevonden.GebruikerId);
+    }
+
     public async Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default)
     {
         var eigenaar = await _context.Woordwebs

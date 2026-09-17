@@ -152,11 +152,11 @@ export function Aimerk({ label }: { label: string }) {
 }
 
 /** One proposed doel: its mark, code and text, which open its detail like any doel on this page (TB-016). */
-function Voorsteldoel({
+export function Voorsteldoel({
   doel,
   onToon,
 }: {
-  doel: SubdoelvoorstelWeergave;
+  doel: Pick<SubdoelvoorstelWeergave, "leerplandoelCode" | "tekst" | "doelsoort">;
   onToon: (code: string, knop: HTMLElement) => void;
 }) {
   return (
