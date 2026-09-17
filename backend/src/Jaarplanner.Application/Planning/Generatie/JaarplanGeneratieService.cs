@@ -17,9 +17,11 @@ namespace Jaarplanner.Application.Planning.Generatie;
 /// placed. So two thema's never share a day (ADR-0053 R4) whatever the model answers.
 /// </para>
 /// <para>
-/// <b>Only open proposals are replaced</b> (Art. IX.3): a placement that is <see cref="KoppelingStatus.Voorgesteld"/>
-/// and not locked goes; everything the teacher decided or locked stays, and its days are not offered to the model. Every
-/// new placement is stored as <see cref="KoppelingStatus.Voorgesteld"/> with the model's motivation (Art. IV.1-IV.3).
+/// <b>Only open proposals are replaced</b> (Art. IX.3), <b>a whole thema at a time</b>: a run of parts goes only when
+/// every part is <see cref="KoppelingStatus.Voorgesteld"/> and not locked. A teacher who accepts one part of a thema
+/// split around a vacation keeps the thema whole. Everything that stays keeps its days, which are not offered to the
+/// model. Every new placement is stored as <see cref="KoppelingStatus.Voorgesteld"/> with the model's motivation
+/// (Art. IV.1-IV.3).
 /// </para>
 /// <para>
 /// <b>An unreadable answer changes nothing</b> (Art. IV.5): the plan is only touched after the answer parsed.
@@ -56,7 +58,8 @@ public sealed class JaarplanGeneratieService
 
         var themaPerId = themas.ToDictionary(t => t.Id);
         var bestaand = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
-        var blijvend = bestaand?.Plaatsingen.Where(p => !p.IsVervangbaar).ToList() ?? [];
+        var vervangbaar = Vervangbaar(bestaand, kalender);
+        var blijvend = bestaand?.Plaatsingen.Where(p => !vervangbaar.Contains(p.Id)).ToList() ?? [];
 
         var weken = Planweken(kalender, blijvend, themaPerId);
         if (weken.All(w => w.IsVol))
@@ -76,7 +79,7 @@ public sealed class JaarplanGeneratieService
         }
 
         var jaarplan = bestaand ?? MaakJaarplan(klasId);
-        var vervangen = jaarplan.VerwijderVervangbarePlaatsingen().Count;
+        var vervangen = Themareeks.Bepaal(jaarplan.VerwijderPlaatsingen(vervangbaar), kalender).Count;
         var behouden = Themareeks.Bepaal(jaarplan.Plaatsingen, kalender).Count;
 
         var themaPerNaam = themas
@@ -175,6 +178,18 @@ public sealed class JaarplanGeneratieService
 
         return [];
     }
+
+    /// <summary>
+    /// The placements a run replaces: the parts of every run (<see cref="Themareeks"/>) whose parts are all
+    /// <see cref="Themaplaatsing.IsVervangbaar"/>.
+    /// </summary>
+    private static IReadOnlySet<Guid> Vervangbaar(Jaarplan? jaarplan, Themakalender kalender) =>
+        jaarplan is null
+            ? new HashSet<Guid>()
+            : Themareeks.Bepaal(jaarplan.Plaatsingen, kalender)
+                .Where(reeks => reeks.Delen.All(p => p.IsVervangbaar))
+                .SelectMany(reeks => reeks.Delen.Select(p => p.Id))
+                .ToHashSet();
 
     /// <summary>Every lesweek of the year with the thema's that stay in it and whether a schooldag in it is free.</summary>
     private static IReadOnlyList<Planweek> Planweken(

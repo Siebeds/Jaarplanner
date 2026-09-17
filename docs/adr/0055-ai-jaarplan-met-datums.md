@@ -32,7 +32,9 @@ Nothing on the plan screen sets startthema's or vaste momenten any more; they li
    (`OnbekendThema`), a thema already in the plan or proposed twice (`AlGepland`), a start week that is no lesweek
    (`GeenLesweek`), and weeks with no room (`GeenPlaats`). The screen names the last two; the first two are not the
    teacher's to act on.
-4. **A run covers the whole year and replaces only open, unlocked proposals** (Art. IX.3, unchanged). The screen asks
+4. **A run covers the whole year and replaces only open, unlocked proposals** (Art. IX.3, unchanged), **a whole thema
+   at a time**: the parts of a thema split around a vacation go only when all of them are open, so a teacher who accepts
+   one part keeps the thema whole (found in the TB-053 browser pass; a default of this ADR). The screen asks
    first when there are any, counting thema's, not parts. The parts' days are not offered to the model.
 5. **An unreadable answer changes nothing** (422, Art. IV.5). A school without thema's, a plan without a free lesweek
    and a prompt over the ceiling (TB-007, advice: the server setting) are refused before the model is called.

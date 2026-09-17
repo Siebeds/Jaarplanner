@@ -330,12 +330,14 @@ public sealed class Jaarplan
         _plaatsingen.Where(p => !p.IsVervangbaar).ToList();
 
     /// <summary>
-    /// Removes every placement a (re)generation may discard (<see cref="Themaplaatsing.IsVervangbaar"/>: an open,
-    /// unlocked proposal) and returns them. Everything a human decided or locked stays (Art. IX.3).
+    /// Removes the placements with these ids that a (re)generation may discard and returns them. A placement a human
+    /// decided or locked (not <see cref="Themaplaatsing.IsVervangbaar"/>) is never removed here, whatever the caller
+    /// asks (Art. IX.3); the caller may keep more, such as the open parts of a thema the teacher accepted in part.
     /// </summary>
-    public IReadOnlyList<Themaplaatsing> VerwijderVervangbarePlaatsingen()
+    public IReadOnlyList<Themaplaatsing> VerwijderPlaatsingen(IReadOnlySet<Guid> ids)
     {
-        var weg = _plaatsingen.Where(p => p.IsVervangbaar).ToList();
+        ArgumentNullException.ThrowIfNull(ids);
+        var weg = _plaatsingen.Where(p => p.IsVervangbaar && ids.Contains(p.Id)).ToList();
         foreach (var plaatsing in weg)
         {
             _plaatsingen.Remove(plaatsing);

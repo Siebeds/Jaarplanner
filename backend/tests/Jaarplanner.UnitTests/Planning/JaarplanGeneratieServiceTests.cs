@@ -156,6 +156,33 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.DoesNotContain("- Water", alGepland[..alGepland.IndexOf("# Thema's van de school", StringComparison.Ordinal)]);
     }
 
+    /// <summary>
+    /// A thema split around a vacation of which the teacher accepted one part stays whole: its open part is not
+    /// replaced, and the model is shown both parts as taken.
+    /// </summary>
+    [Fact]
+    public async Task Een_deels_aanvaard_thema_blijft_heel()
+    {
+        var opzet = new Opzet(
+            Antwoord(("Water", "2026-10-05")),
+            (o, plan) =>
+            {
+                plan.VoegPlaatsingToe(o.Water.Id, D(10, 5), D(10, 30), KoppelingStatus.Aanvaard);
+                plan.VoegPlaatsingToe(o.Water.Id, D(11, 9), D(11, 13), KoppelingStatus.Voorgesteld, "deel 2");
+                plan.VoegPlaatsingToe(o.Herfst.Id, D(9, 1), D(9, 25), KoppelingStatus.Voorgesteld, "open");
+            });
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.Equal(1, resultaat.AantalVervangen);
+        Assert.Equal(1, resultaat.AantalBehouden);
+        Assert.Equal([new NietGeplaatstThema("Water", NietGeplaatstThema.AlGepland)], resultaat.NietGeplaatst);
+        Assert.Equal(
+            [(D(10, 5), D(10, 30)), (D(11, 9), D(11, 13))],
+            opzet.Opslag.Jaarplan!.Plaatsingen.Select(p => (p.Van, p.Tot)));
+        Assert.Contains("- 2026-11-09: bezet (Water)", opzet.Ai.LaatsteRequest!.UserPrompt);
+    }
+
     [Fact]
     public async Task Een_thema_dat_tegen_een_bestaand_thema_botst_stopt_de_schooldag_ervoor()
     {

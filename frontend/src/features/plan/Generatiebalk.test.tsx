@@ -141,4 +141,15 @@ describe("aantalOpenThemas", () => {
     expect(aantalOpenThemas([VOORSTEL, TWEEDE_DEEL, MANUEEL, VAST])).toBe(1);
     expect(aantalOpenThemas([])).toBe(0);
   });
+
+  it("telt een thema met een aanvaard deel niet mee", () => {
+    expect(aantalOpenThemas([{ ...VOORSTEL, status: "Aanvaard" }, TWEEDE_DEEL])).toBe(0);
+  });
+
+  it("toont het vorige rapport niet terwijl het opnieuw genereert", () => {
+    render(
+      <Generatiebalk plaatsingen={[]} bezig resultaat={resultaat()} fout={null} onGenereer={() => undefined} />,
+    );
+    expect(screen.queryByText(t("plan.generatieNieuw", { aantal: 2 }))).toBeNull();
+  });
 });

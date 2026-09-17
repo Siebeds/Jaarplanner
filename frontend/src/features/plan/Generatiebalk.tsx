@@ -10,7 +10,8 @@ import { aantalOpenThemas } from "./openvoorstellen";
  * replaced, and one line on what the run did.
  *
  * **It asks only when something would go.** A run replaces the open, unlocked proposals and keeps everything else, so a
- * plan without open proposals is generated at once. The question counts thema's, not the parts a vacation cut them in.
+ * plan without open proposals is generated at once. The question counts thema's, not the parts a vacation cut them in, and
+ * leaves out a thema the teacher accepted in part: the run keeps it whole.
  *
  * **The line says what the teacher can act on:** how many thema's were proposed, and which did not fit. A proposal the
  * server skipped because the thema was already planned or unknown is not the teacher's to fix, so it is not named.
@@ -49,7 +50,7 @@ export function Generatiebalk({
           {bezig ? t("plan.genereerBezig") : t("plan.genereer")}
         </AiKnop>
         <div aria-live="polite">
-          {resultaat && !fout ? (
+          {resultaat && !fout && !bezig ? (
             <p className="text-meta text-inkt-zacht">
               {resultaat.aantalNieuw === 0
                 ? t("plan.generatieGeenNieuw")

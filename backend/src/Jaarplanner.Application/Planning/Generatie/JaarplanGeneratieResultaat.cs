@@ -59,7 +59,7 @@ public sealed record JaarplanGeneratieResultaat
     /// <summary>The thema runs that stayed: decided or locked.</summary>
     public int AantalBehouden { get; }
 
-    /// <summary>The open, unlocked proposals the run removed before placing its own.</summary>
+    /// <summary>The thema runs of open, unlocked proposals the run removed before placing its own.</summary>
     public int AantalVervangen { get; }
 
     /// <summary>The proposals the run did not place, in the order it considered them.</summary>
