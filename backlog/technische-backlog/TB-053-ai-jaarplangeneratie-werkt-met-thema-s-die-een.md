@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 09:12
+bijgewerkt: 2026-09-17 09:14
 opgepakt-door: tb053-generatie
 branch: ticket/TB-053-ai-generatie-met-datums
-pr:
+pr: 142
 geblokkeerd:
 fr: []
 ---
@@ -80,3 +80,4 @@ Beantwoord door de eigenaar op 2026-09-17:
 - 2026-09-17 09:05 · tb053-generatie · antagonist ronde 2: COMPLIANT
 - 2026-09-17 09:12 · tb053-generatie · browsercontrole (Playwright, wegwerpdatabase, nep-AI): 7/7 geslaagd na fix dat een deels aanvaard thema heel blijft; criteria afgevinkt op unit-, integratie- en browsertests
 - 2026-09-17 09:12 · tb053-generatie · in-uitvoering → klaar: AI-generatie met datums gebouwd (ADR-0055), parameters en planningsblokken opgeruimd, knop aan; tests, lint, format, antagonist (COMPLIANT) en browsercontrole groen
+- 2026-09-17 09:14 · tb053-generatie · PR #142
