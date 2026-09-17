@@ -34,6 +34,7 @@ export interface Activiteitbestemming {
   themaId: string;
   leeftijd: string;
   onderzoeksvragen: SubthemaWeergave["onderzoeksvragen"];
+  subdoelen: SubthemaWeergave["subdoelen"];
 }
 
 /** The week the agenda stands in, as the activiteiten list needs it. */
@@ -244,7 +245,7 @@ function Activiteitenlijst({
   const activiteiten = subthema?.activiteiten ?? [];
   const isVanCollega = (activiteit: ActiviteitWeergave) => activiteit.eigenaarId != null && !isEigenVan(ik, activiteit);
   // Making one from here is part of planning (owner, 2026-09-15: no tile for whoever only reads the klas), and needs the
-  // content right at the subthema's leeftijd too (R17, R23), and the subthema itself for its onderzoeksvragen.
+  // content right at the subthema's leeftijd too (R17, R23), and the subthema itself for its onderzoeksvragen and subdoelen.
   const tegel =
     magPlannen && subthema && mag.activiteitMaken(bestemming.leeftijd) ? (
       <Toevoegtegel
@@ -257,6 +258,7 @@ function Activiteitenlijst({
             themaId: bestemming.themaId,
             leeftijd: bestemming.leeftijd,
             onderzoeksvragen: subthema.onderzoeksvragen,
+            subdoelen: subthema.subdoelen,
           })
         }
       />
@@ -435,6 +437,7 @@ export function Paneelactiviteitformulier({
       // The leeftijd decides "voor wie" and the goal picker of the new activiteit (ADR-0049 D1, E3; R19).
       leeftijd={bestemming.leeftijd}
       onderzoeksvragen={bestemming.onderzoeksvragen}
+      subdoelen={bestemming.subdoelen}
       bezig={maak.isPending}
       fout={maak.isError ? maak.error : undefined}
       onBewaar={(invoer) => maak.mutate({ subthemaId: bestemming.subthemaId, invoer }, { onSuccess: onSluit })}
