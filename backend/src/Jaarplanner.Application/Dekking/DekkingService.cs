@@ -146,12 +146,9 @@ public sealed class DekkingService
 
     /// <summary>
     /// The plan's coverage <b>now</b> beside what it would be if every proposed thema placement were accepted
-    /// (E4-06). Only the leerplandoel figures: this is the generation's report, and it asks what the plan could do.
-    /// <para>
-    /// Under Art. V.1 no thema placement reaches a leerplandoel any more (ADR-0052): the subthema, own activiteit and fiche
-    /// routes do not depend on it, so the two figures are equal. The shape stays, so the report keeps working; whether it should
-    /// count minimumdoelen instead is an open question for the owner.
-    /// </para>
+    /// (E4-06). The forecast counts minimumdoelen: a thema placement reaches nothing else (ADR-0052), so a
+    /// leerplandoel forecast would always equal today's figure. Today's leerplandoel figure stays, for the
+    /// dekkingsbalk.
     /// </summary>
     public async Task<Dekkingsvooruitzicht> BerekenVooruitzichtAsync(
         Guid klasId,
@@ -173,7 +170,18 @@ public sealed class DekkingService
 
         // Counted over the goals in scope, never over the links: a link to a goal outside the scope raises nothing.
         var nuGedekt = scope.Leerplandoelen.Count(l => gedekteCodes.Contains(l.Code));
-        var mogelijkGedekt = nuGedekt;
+
+        // The same per-minimumdoel computation as the dekkingsoverzicht. A minimumdoel that is not gedekt but has a
+        // proposed or decided placement among its thema's is exactly WachtOpBeslissing, so the two cannot drift.
+        var minimumdoelen = await BerekenMinimumdoelenAsync(
+            scope,
+            Themaplaatsingen(plan, TeltVoorDekking).ToHashSet(),
+            Themaplaatsingen(plan, IsVoorstelbaar).ToHashSet(),
+            Themaplaatsingen(plan, IsGeweigerd).ToHashSet(),
+            cancellationToken);
+        var minimumdoelenGedekt = minimumdoelen.Count(m => m.Stap == Dekkingsstap.Gedekt);
+        var minimumdoelenMogelijk = minimumdoelenGedekt
+            + minimumdoelen.Count(m => m.Oorzaak == Lacuneoorzaak.WachtOpBeslissing);
 
         var onopgeloste = TelOnopgelosteVervallen(plan);
         var isBetrouwbaar = onopgeloste == 0;
@@ -186,8 +194,10 @@ public sealed class DekkingService
             isBetrouwbaar,
             onopgeloste,
             AantalGedekt: isBetrouwbaar ? nuGedekt : null,
-            AantalMogelijkGedekt: isBetrouwbaar ? mogelijkGedekt : null,
-            scope.Leerplandoelen.Count);
+            scope.Leerplandoelen.Count,
+            AantalMinimumdoelenGedekt: isBetrouwbaar ? minimumdoelenGedekt : null,
+            AantalMinimumdoelenMogelijkGedekt: isBetrouwbaar ? minimumdoelenMogelijk : null,
+            minimumdoelen.Count);
     }
 
     private async Task<Bronnen> HaalBronnenAsync(Guid klasId, CancellationToken cancellationToken)

@@ -736,9 +736,9 @@ public sealed class DekkingServiceTests
     [Fact]
     public async Task Het_vooruitzicht_en_de_dekking_tellen_dezelfde_leerplandoelen()
     {
-        // THE PIN BETWEEN THE TWO STORIES. E3-03's vooruitzicht counts what accepting every standing proposal would
-        // cover. Since ADR-0052 no thema placement reaches a leerplandoel, so for leerplandoelen that ceiling is the
-        // figure itself, and no leerplandoel waits on a placement decision.
+        // THE PIN BETWEEN THE TWO STORIES. Since ADR-0052 no thema placement reaches a leerplandoel, so the
+        // vooruitzicht carries only today's leerplandoel figure (TB-052), and no leerplandoel waits on a placement
+        // decision.
         var service = Maak(
             plaatsingen:
             [
@@ -758,7 +758,6 @@ public sealed class DekkingServiceTests
 
         Assert.Equal(1, dekking.AantalGedekt);
         Assert.Equal(dekking.AantalGedekt, vooruitzicht.AantalGedekt);
-        Assert.Equal(vooruitzicht.AantalGedekt, vooruitzicht.AantalMogelijkGedekt);
         Assert.DoesNotContain(dekking.Doelen, d => d.Oorzaak is Lacuneoorzaak.WachtOpBeslissing or Lacuneoorzaak.PlaatsingGeweigerd);
     }
 
@@ -962,7 +961,6 @@ public sealed class DekkingServiceTests
         var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
 
         Assert.Equal(1, vooruitzicht.AantalGedekt);
-        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
     }
 
     [Fact]
@@ -1042,7 +1040,6 @@ public sealed class DekkingServiceTests
         var dekking = await service.BerekenAsync(KlasId);
 
         Assert.Equal(1, vooruitzicht.AantalGedekt);
-        Assert.Equal(1, vooruitzicht.AantalMogelijkGedekt);
         Assert.Equal(dekking.AantalGedekt, vooruitzicht.AantalGedekt);
     }
 }

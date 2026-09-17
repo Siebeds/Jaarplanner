@@ -23,7 +23,7 @@ export function Dekkingsbalk({ klasId }: { klasId: string | null }) {
 
   if (!klasId) return null;
 
-  // Withheld together with `aantalMogelijkGedekt` while a placement is stale, and then no fraction is
+  // Withheld with every other figure while a placement is stale, and then no fraction is
   // drawn at all: a bar is read as a proportion whatever is written beside it, so an unsound figure
   // has to be absent rather than annotated. The row itself stays, because the screen it links to is
   // where the reason for the blank is spelled out.
