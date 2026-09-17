@@ -2,12 +2,12 @@
 id: TB-048
 titel: 'Doelen per leeftijd' toont de leerplandoelen van de gekozen minimumdoelen van het thema
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 00:18
-opgepakt-door:
-branch: main
+bijgewerkt: 2026-09-17 08:34
+opgepakt-door: claude-tb-048
+branch: ticket/TB-048-doelen-per-leeftijd-minimumdoelen
 pr:
 geblokkeerd:
 fr: []
@@ -68,3 +68,4 @@ minimumdoel bij de themadoelen, die al zo werkt.
 ## Werklog
 
 - 2026-09-17 00:18 · lange-lijsten · aangemaakt (status nieuw)
+- 2026-09-17 08:34 · claude-tb-048 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; besluiten: rijen tonen alleen de lijst, gekoppelde leerplandoelen buiten de gekozen minimumdoelen in een aparte groep zonder telling, dekking ongewijzigd
