@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-17 08:50
+bijgewerkt: 2026-09-17 08:59
 opgepakt-door: claude-53c162c3
 branch: ticket/TB-052-vooruitzicht-minimumdoelen
-pr:
+pr: 138
 geblokkeerd:
 fr: []
 ---
@@ -63,3 +63,4 @@ Geen.
 - 2026-09-17 08:48 · claude-53c162c3 · volledige integratiesuite groen (573 geslaagd, 1 overgeslagen); criterium 4 afgevinkt
 - 2026-09-17 08:50 · claude-53c162c3 · antagonist: COMPLIANT, geen blokkerende bevindingen; MINOR 1 (samenvatting record) en 3 (mock toont geen plafond naast een leeg cijfer) opgelost; MINOR 2 (een vervallen plaatsing is niet apart te tonen in het plafond omdat alle cijfers dan leeg zijn) blijft als notitie
 - 2026-09-17 08:50 · claude-53c162c3 · in-uitvoering → klaar: gebouwd: voortgang-endpoint met minimumdoelvooruitzicht naast het leerplandoelcijfer van de balk; unit 2104, integratie 573, vitest 1189 groen, format en lint schoon, antagonist COMPLIANT; criterium 3 wacht op besluit eigenaar tot er weer een rapportscherm is
+- 2026-09-17 08:59 · claude-53c162c3 · PR #138
