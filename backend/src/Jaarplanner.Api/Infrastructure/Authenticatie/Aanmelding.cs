@@ -46,7 +46,10 @@ public static class Aanmelding
 
     /// <summary>
     /// The <c>Clear-Site-Data</c> value a sign-out answers with (OWASP Session Management): the browser drops the
-    /// cache, cookies and storage it kept for this site, which matters on a shared classroom computer.
+    /// cache, cookies and storage it kept for this site, which matters on a shared classroom computer. Storage includes
+    /// the per-browser light/dark choice and the remembered klas. <c>"cookies"</c> clears the whole registrable domain:
+    /// harmless on <c>*.azurewebsites.net</c> (a public suffix), but on a custom domain such as
+    /// <c>jaarplanner.school.be</c> it would sign the user out of every other <c>school.be</c> site too.
     /// </summary>
     public const string WisSitegegevens = "\"cache\", \"cookies\", \"storage\"";
 

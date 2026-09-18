@@ -5,11 +5,11 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-18 18:34
+bijgewerkt: 2026-09-18 18:38
 opgepakt-door: claude-tb032
 branch: ticket/TB-032-afgemeld-pagina
 pr:
-geblokkeerd:
+geblokkeerd: Mag https://<host>/afgemeld als redirect-URI in de app-registratie van de demo (Azure)? Nodig vóór deploy, en voor criteria 1 en 4.
 fr: []
 ---
 
@@ -57,13 +57,13 @@ door vanaf `/afgemeld`. Integratietest: het afmeldantwoord (adres en header), in
 
 - [ ] Gegeven een aangemelde gebruiker op de demo, wanneer die op *Afmelden* klikt en de afmelding bij Microsoft
   afrondt, dan landt de browser op `/afgemeld` en start er vanzelf geen nieuwe aanmelding.
-- [ ] Gegeven de pagina `/afgemeld`, wanneer ze opent, dan vraagt ze de API niets, zegt ze dat je afgemeld bent, geeft
+- [x] Gegeven de pagina `/afgemeld`, wanneer ze opent, dan vraagt ze de API niets, zegt ze dat je afgemeld bent, geeft
   ze de herinnering voor een gedeelde computer, en start *Opnieuw aanmelden* de aanmelding met terugkeer naar `/`.
-- [ ] Gegeven `POST /api/afmelden`, dan draagt het antwoord `Clear-Site-Data` en wijst `doorsturenNaar` naar
+- [x] Gegeven `POST /api/afmelden`, dan draagt het antwoord `Clear-Site-Data` en wijst `doorsturenNaar` naar
   `/afgemeld`: via Microsoft in de modus Entra, rechtstreeks in de modus Ontwikkeling (integratietest).
 - [ ] Gegeven de app-registratie van de demo en `infra/README.md`, dan staat `https://<host>/afgemeld` erin als
   redirect-URI.
-- [ ] Gegeven de pagina op desktop en op ~390px, dan staat alle tekst in `nl.json` en haalt ze WCAG 2.2 AA, gemeten in
+- [x] Gegeven de pagina op desktop en op ~390px, dan staat alle tekst in `nl.json` en haalt ze WCAG 2.2 AA, gemeten in
   een echte browser.
 
 ## Buiten scope
@@ -83,3 +83,5 @@ Geen.
 - 2026-09-15 22:14 · claude · aangemaakt (status nieuw)
 - 2026-09-18 18:16 · claude-tb032 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-18 18:34 · claude-tb032 · Gebouwd: /afgemeld-pagina, Clear-Site-Data, terugkeeradres naar /afgemeld; gates groen (Vitest 1232, lint, format, backend 2134 + 569, één flaky test die los 3/3 slaagt); browsercheck desktop en 390px, contrast AA. Antagonist loopt.
+- 2026-09-18 18:38 · claude-tb032 · Antagonist: COMPLIANT, geen blokkerende bevindingen; MINOR-punten verwerkt of aan de eigenaar voorgelegd (backlog/worklogs/TB-032/antagonist.md). Criteria 2, 3 en 5 afgevinkt: AfgemeldScherm.test, AanmeldModusTests en AanmeldEndpointsTests, browsercheck met contrastmeting.
+- 2026-09-18 18:38 · claude-tb032 · geblokkeerd: Mag https://<host>/afgemeld als redirect-URI in de app-registratie van de demo (Azure)? Nodig vóór deploy, en voor criteria 1 en 4.

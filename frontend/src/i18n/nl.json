@@ -1401,7 +1401,7 @@
     "afmeldenMislukt": "Afmelden is niet gelukt. Probeer het opnieuw.",
     "afgemeld": {
       "titel": "Je bent afgemeld",
-      "gedeeldeComputer": "Werk je op een gedeelde computer? Sluit dan alle browservensters, zodat niemand anders met je account verder kan.",
+      "gedeeldeComputer": "Werk je op een gedeelde computer? Sluit dan alle browservensters.",
       "opnieuw": "Opnieuw aanmelden"
     },
     "geenToegang": {
