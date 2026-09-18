@@ -6,7 +6,7 @@ import { useRechten } from "../../lib/rechten";
  * one K3 set of rapportdoelen and sterrenschaal. The same shape as Instellingen's parts, one list for the switch and the
  * routes.
  *
- * **Only the children are behind the report's right** (R17). The set and the scale are no pupil data, and a directie or
+ * **Only the children are behind the report's right** (R17). The set and the scale are no pupil data, and an admin or
  * a K3 hoofdleerkracht without a klas must be able to view them, also by address (FB-002 AC5), so those two parts are
  * shown to everyone who reaches the destination.
  */

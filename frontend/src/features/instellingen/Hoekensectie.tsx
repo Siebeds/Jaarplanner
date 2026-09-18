@@ -38,7 +38,7 @@ import {
  * itself, which is there in september and still there in june. Splitting them is the whole point of the
  * model, so a screen that offered both would undo it.
  *
- * **A room's corners are that klas's planning** (E6-02, ADR-0030 §3, R7): directie and its own leerkrachten add,
+ * **A room's corners are that klas's planning** (E6-02, ADR-0030 §3, R7): admin and its own leerkrachten add,
  * edit, delete and take them over. Anyone else picks any room and reads its corners, with one quiet line naming the
  * room, because the picker is what made the buttons go.
  */
@@ -139,7 +139,7 @@ export function Hoekensectie({ klassen, laadt }: { klassen: KlasWeergave[]; laad
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
       ) : klassen.length === 0 ? (
-        // No class, no room. Said here rather than left as an empty list under a dead picker. Only directie makes
+        // No class, no room. Said here rather than left as an empty list under a dead picker. Only admin makes
         // klassen, in Klassen next to this part; anyone else is told what the list means for them (FB-013).
         <p className="text-body text-inkt-zacht">{mag.beheer ? t("hoeken.geenKlassen") : geenKlassenZin}</p>
       ) : (hoeken ?? []).length === 0 ? (

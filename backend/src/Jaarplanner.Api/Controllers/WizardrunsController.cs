@@ -17,8 +17,8 @@ namespace Jaarplanner.Api.Controllers;
 /// </para>
 /// <para>
 /// <b>Rights.</b> Starting, finishing and closing a run are the row <c>ThemaOpbouw</c>; creating, editing and deleting
-/// content in it are the row <c>Wizardinhoud</c>. Both admit directie and themabeheer only. What a run then allows holds
-/// for directie as well, and the service refuses the rest with a 403 carrying a Dutch sentence:
+/// content in it are the row <c>Wizardinhoud</c>. Both admit admin and themabeheer only. What a run then allows holds
+/// for admin as well, and the service refuses the rest with a 403 carrying a Dutch sentence:
 /// <list type="bullet">
 /// <item>the run is open (I24);</item>
 /// <item>content goes under the run's own thema, and an activiteit it edits or deletes is still there (I25);</item>

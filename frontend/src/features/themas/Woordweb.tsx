@@ -31,7 +31,7 @@ const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord
  * until the web holds a word of her own (W5).
  *
  * **A colleague's web is read-only**: her name and her words, outlined rather than filled, so the two kinds of web never
- * look alike. Directie may take a word out of any web (D3); nobody else sees a control there. A colleague's open
+ * look alike. Admin may take a word out of any web (D3); nobody else sees a control there. A colleague's open
  * proposals and rejected words are hers, and are not shown.
  */
 export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: string }) {

@@ -23,9 +23,9 @@ import { Onderdeelwissel } from "./Instellingenindeling";
  * Instellingen, Schooluren: when the school day begins and ends on each weekday, and when the middagpauze runs
  * (FB-023, ADR-0038).
  *
- * **Directie sets them; everyone else reads them.** The owner ruled on 2026-09-15 that the hours are one set for the
- * school, set by directie. For anyone else the same five days are a list without a single field, which is what the
- * matrix grants (ADR-0030 §3, "beheren", directie only) and what the server enforces on the PUT.
+ * **Admin sets them; everyone else reads them.** The owner ruled on 2026-09-15 that the hours are one set for the
+ * school, set by admin. For anyone else the same five days are a list without a single field, which is what the
+ * matrix grants (ADR-0030 §3, "beheren", admin only) and what the server enforces on the PUT.
  *
  * **What they do is said once, above the days**, because it is what makes this more than a form that stores numbers:
  * the agenda opens at the start of the school day and shades the hours outside it.
@@ -60,7 +60,7 @@ export function SchoolurenScherm() {
 }
 
 /**
- * The five weekdays as directie fills them in, with one button for all of them: the server replaces the whole set, so
+ * The five weekdays as admin fills them in, with one button for all of them: the server replaces the whole set, so
  * the form saves the whole set.
  *
  * Its state starts from what the school has and is not reset by its own save: the server's answer is what was sent,

@@ -314,7 +314,7 @@ const TABEL: [Methode, string, Handler][] = [
       gebruikers: [
         {
           ...inhoud.GEBRUIKER,
-          isDirectie: true,
+          isAdmin: true,
           heeftThemabeheer: true,
           heeftLeerlingzorg: false,
           isAangemeld: true,

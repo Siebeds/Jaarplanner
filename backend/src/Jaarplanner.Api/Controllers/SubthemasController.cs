@@ -14,9 +14,9 @@ namespace Jaarplanner.Api.Controllers;
 /// Art. IV.2). Scoping and validation live in the service/domain.
 /// <para>
 /// <b>Rights (E6-02, ADR-0030 §3), each against the subthema's leeftijd.</b> The subthema itself, its fields and its
-/// onderzoeksvragen: <c>SubthemaBeheren</c> (directie, HL; R5, R21, I16). Its subdoelen: <c>SubdoelenBeheren</c>
-/// (directie, HL; R24). A new activiteit under it: <c>GedeeldeActiviteitBewerken</c> (directie, HL, every leerkracht
-/// with a klas of that leeftijd; R17, R23), plus <c>DoelenKoppelen</c> (directie, HL; R19) when the create carries goal
+/// onderzoeksvragen: <c>SubthemaBeheren</c> (admin, HL; R5, R21, I16). Its subdoelen: <c>SubdoelenBeheren</c>
+/// (admin, HL; R24). A new activiteit under it: <c>GedeeldeActiviteitBewerken</c> (admin, HL, every leerkracht
+/// with a klas of that leeftijd; R17, R23), plus <c>DoelenKoppelen</c> (admin, HL; R19) when the create carries goal
 /// codes. Themabeheer holds none of these (I22): the wizard has its own routes.
 /// </para>
 /// </summary>

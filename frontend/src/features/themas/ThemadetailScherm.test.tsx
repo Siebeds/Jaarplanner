@@ -13,7 +13,7 @@ import type {
   ThemaWeergave,
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { hoofdstuklijst, openLijsten } from "../../test/lijsten";
 import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
@@ -204,7 +204,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("toont eerst alleen 'Vraag suggesties', en die knop vraagt nog niets aan de AI", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       genereer: (body) => {
         verzonden.push(body);
         return json(resultaat());
@@ -232,7 +232,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("sluit de keuze bij annuleren zonder iets te vragen, en zet de leeftijden terug bij de volgende keer", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       genereer: (body) => {
         verzonden.push(body);
         return json(resultaat());
@@ -254,7 +254,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("vraagt na het uitvinken van een leeftijd alleen voor de overige, en sluit de keuze daarna", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       genereer: (body) => {
         verzonden.push(body);
         return json(resultaat({ jaarFasen: ["L1"] }));
@@ -272,7 +272,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("duidt de leeftijden van de subthema's aan en vraagt voor precies die leeftijden", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       genereer: (body) => {
         verzonden.push(body);
         return json(resultaat());
@@ -301,7 +301,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("stuurt een gewijzigde keuze in de volgorde van de jaarfasen, hoe er ook geklikt werd", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       genereer: (body) => {
         verzonden.push(body);
         return json(resultaat({ jaarFasen: ["K2", "K3"] }));
@@ -319,7 +319,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
 
   it("laat bij een thema zonder subthema's eerst een leeftijd kiezen, en zegt waarom de knop uit staat", async () => {
     const verzonden: unknown[] = [];
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       thema: { ...THEMA, subthemas: [] },
       genereer: (body) => {
         verzonden.push(body);
@@ -344,7 +344,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
   });
 
   it("zegt het wanneer er voor de gekozen leeftijden geen doelen geladen zijn", async () => {
-    toon(DIRECTIE, { genereer: () => json(resultaat({ bewaard: [], aantalKandidaten: 0 })) });
+    toon(ADMIN, { genereer: () => json(resultaat({ bewaard: [], aantalKandidaten: 0 })) });
 
     await leeftijden();
     vraag();
@@ -359,7 +359,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
   it("toont de Nederlandse weigering van de server", async () => {
     const weigering =
       "Deze aanvraag is te groot voor de AI: de tekst van 1.742 doelen is meer dan één aanvraag mag bevatten (ongeveer 91.000 tokens, de grens is 50.000). Kies minder leeftijden.";
-    toon(DIRECTIE, { genereer: () => json({ title: "Ongeldige aanvraag", detail: weigering }, 400) });
+    toon(ADMIN, { genereer: () => json({ title: "Ongeldige aanvraag", detail: weigering }, 400) });
 
     await leeftijden();
     vraag();
@@ -368,7 +368,7 @@ describe("ThemadetailScherm: doelsuggesties vragen voor gekozen leeftijden (TB-0
   });
 
   it("toont bij een kapot AI-antwoord de eigen zin, niet de Engelse diagnose", async () => {
-    toon(DIRECTIE, { genereer: () => json({ title: "Invalid AI response", detail: "Response is not valid JSON." }, 422) });
+    toon(ADMIN, { genereer: () => json({ title: "Invalid AI response", detail: "Response is not valid JSON." }, 422) });
 
     await leeftijden();
     vraag();
@@ -448,7 +448,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
     expect(knop(t("voorstelstapel.weigerAria", { naam: "K-9.1.1" }))).not.toBeNull();
 
-    // I26 needs a wizard run's state the frontend does not read, so the delete is directie's here.
+    // I26 needs a wizard run's state the frontend does not read, so the delete is admin's here.
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
     // Themabeheer holds nothing on the ordinary subthema and activiteit routes (I22).
     expect(knop(t("subthemabeheer.toevoegen"))).toBeNull();
@@ -456,8 +456,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("activiteit.bekijkAria", { naam: "Eigen spel" }))).not.toBeNull();
   });
 
-  it("geeft directie alles, ook het verwijderen van het thema", async () => {
-    toon(DIRECTIE);
+  it("geeft admin alles, ook het verwijderen van het thema", async () => {
+    toon(ADMIN);
     await openHoofdstukken();
 
     expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).not.toBeNull();
@@ -468,7 +468,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
   it("noemt bij een activiteit zonder soort geen soort, en begint niet met een scheiding (FB-050)", async () => {
     const zonderSoort = activiteit("a-leeg", "Zonder soort", { activiteitType: null, kleur: "Olijf" });
     const k3 = { ...THEMA.subthemas[0], activiteiten: [zonderSoort, activiteit("a-spel", "Met soort")] };
-    toon(DIRECTIE, { thema: { ...THEMA, subthemas: [k3, THEMA.subthemas[1]] } });
+    toon(ADMIN, { thema: { ...THEMA, subthemas: [k3, THEMA.subthemas[1]] } });
     await openHoofdstukken();
 
     // Exact text: the colour alone, with no soort and no leading " · ".
@@ -570,7 +570,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
 describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
   it("toont elk subthema ingeklapt, met zijn samenvatting in plaats van zijn lijsten", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
     await screen.findByText("Bladeren");
 
     const bladeren = hoofdstuk("Bladeren", false);
@@ -585,7 +585,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
   // The fold is a native button (`getByRole` above finds it with `aria-expanded`), which answers Enter and Space by
   // itself; jsdom does not turn a key press into a click, so the keyboard half is checked in the browser pass.
   it("klapt één subthema open met een klik, en bij een tweede klik weer in", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
     await screen.findByText("Bladeren");
 
     fireEvent.click(hoofdstuk("Bladeren", false));
@@ -599,7 +599,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
   });
 
   it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-051)", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
 
@@ -628,7 +628,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
   });
 
   it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-051)", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
 
@@ -665,7 +665,7 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
   const leeftijdsblok = (naam: string) => hoofdstuk(naam, false).closest("section")!;
 
   it("zet elke leeftijd één keer in de marge, met haar subthema's samen ernaast", async () => {
-    toon(DIRECTIE, { thema: DRIE });
+    toon(ADMIN, { thema: DRIE });
     await screen.findByText("Bladeren verzamelen");
 
     const blokK2 = leeftijdsblok("Bladeren verzamelen");
@@ -684,7 +684,7 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
   });
 
   it("noemt de leeftijd in de naam van elke vouwknop, voor wie van kop naar kop springt", async () => {
-    toon(DIRECTIE, { thema: DRIE });
+    toon(ADMIN, { thema: DRIE });
     await screen.findByText("Bladeren verzamelen");
 
     expect(hoofdstuk("Bladeren verzamelen", false)).toHaveAccessibleName(metLeeftijd("Bladeren verzamelen", "K2"));
@@ -693,7 +693,7 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
   });
 
   it("laat het andere subthema van dezelfde leeftijd dicht wanneer men er één openklapt", async () => {
-    toon(DIRECTIE, { thema: DRIE });
+    toon(ADMIN, { thema: DRIE });
     await screen.findByText("Bladeren herkennen");
 
     fireEvent.click(hoofdstuk("Bladeren herkennen", false));
@@ -707,7 +707,7 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
 
 describe("ThemadetailScherm: een link vanuit de agenda opent één subthema (FB-037)", () => {
   it("klapt het gevraagde subthema open, geeft zijn knop de focus en laat de andere ingeklapt", async () => {
-    toon(DIRECTIE, { pad: "/themas/thema-1?subthema=s-l1" });
+    toon(ADMIN, { pad: "/themas/thema-1?subthema=s-l1" });
     await screen.findByText("Rekenen");
 
     const rekenen = await waitFor(() => hoofdstuk("Rekenen", true));
@@ -718,7 +718,7 @@ describe("ThemadetailScherm: een link vanuit de agenda opent één subthema (FB-
   });
 
   it("opent niets voor een subthema dat niet bij dit thema hoort", async () => {
-    toon(DIRECTIE, { pad: "/themas/thema-1?subthema=elders" });
+    toon(ADMIN, { pad: "/themas/thema-1?subthema=elders" });
     await screen.findByText("Rekenen");
 
     expect(hoofdstuk("Rekenen", false)).toBeInTheDocument();
@@ -765,7 +765,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   };
 
   it("toont bij elk subdoel zijn activiteiten, en markeert een subdoel zonder activiteit met tekst", async () => {
-    toon(DIRECTIE, { thema: MET_DRAGERS });
+    toon(ADMIN, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
     openLijsten();
@@ -780,7 +780,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   });
 
   it("zet een doel van een activiteit dat geen subdoel is apart, met die activiteit", async () => {
-    toon(DIRECTIE, { thema: MET_DRAGERS });
+    toon(ADMIN, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
     openLijsten();
@@ -791,7 +791,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   });
 
   it("vat een ingeklapt subthema samen met hoeveel subdoelen al in een activiteit zitten", async () => {
-    toon(DIRECTIE, { thema: MET_DRAGERS });
+    toon(ADMIN, { thema: MET_DRAGERS });
     await screen.findByText("Bladeren");
 
     expect(
@@ -806,7 +806,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   });
 
   it("geeft een subthema zonder subdoelen de gewone telling", async () => {
-    toon(DIRECTIE, { thema: { ...THEMA, subthemas: [{ ...THEMA.subthemas[0], subdoelen: [] }] } });
+    toon(ADMIN, { thema: { ...THEMA, subthemas: [{ ...THEMA.subthemas[0], subdoelen: [] }] } });
     await screen.findByText("Bladeren");
 
     expect(
@@ -829,7 +829,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
         },
       ],
     };
-    toon(DIRECTIE, { thema: alleenSubdoelen });
+    toon(ADMIN, { thema: alleenSubdoelen });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
     openLijsten();
@@ -841,7 +841,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
 
   /** Opens the unlink confirmation of one subdoel and returns it (TB-051). */
   async function ontkoppelVraag(thema: ThemaWeergave, code: string) {
-    toon(DIRECTIE, { thema });
+    toon(ADMIN, { thema });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
     openLijsten();
@@ -896,7 +896,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
         },
       ],
     };
-    toon(DIRECTIE, { thema: voorgesteld });
+    toon(ADMIN, { thema: voorgesteld });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
     openLijsten();
@@ -947,7 +947,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   const lijst = () => within(screen.getByRole("button", { name: /^K3/, expanded: true }).closest("li")!);
 
   it("telt per leeftijd de leerplandoelen van de minimumdoelen, en de koppelingen erbuiten apart", async () => {
-    toon(DIRECTIE, { overzicht: OVERZICHT });
+    toon(ADMIN, { overzicht: OVERZICHT });
 
     expect(await leeftijdrij("K2")).toHaveTextContent(
       telWoord(1, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"),
@@ -961,7 +961,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("toont opengeklapt de lijst zonder plaatsen, en de koppelingen erbuiten met waar ze hangen", async () => {
-    toon(DIRECTIE, { overzicht: OVERZICHT });
+    toon(ADMIN, { overzicht: OVERZICHT });
     fireEvent.click(await leeftijdrij("K3"));
 
     const wis1 = lijst().getByRole("button", { name: /WIS-1/ });
@@ -976,7 +976,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("toont geen kop voor koppelingen erbuiten als er geen zijn", async () => {
-    toon(DIRECTIE, { overzicht: OVERZICHT });
+    toon(ADMIN, { overzicht: OVERZICHT });
     const k2 = await leeftijdrij("K2");
     expect(k2).not.toHaveTextContent(t("thema.overzichtBuiten", { aantal: 0 }));
     fireEvent.click(k2);
@@ -987,7 +987,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("zegt geen leerplandoelen bij een leeftijd met alleen koppelingen buiten de minimumdoelen", async () => {
-    toon(DIRECTIE, {
+    toon(ADMIN, {
       overzicht: {
         themaId: "thema-1",
         leeftijden: [{ ...OVERZICHT.leeftijden[1], leerplandoelen: [] }],
@@ -1000,7 +1000,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("vraagt het overzicht opnieuw op na het ontkoppelen van een minimumdoel", async () => {
-    toon(DIRECTIE, { overzicht: OVERZICHT });
+    toon(ADMIN, { overzicht: OVERZICHT });
     await leeftijdrij("K3");
     openLijsten();
     const overzichtLezingen = () =>
@@ -1014,7 +1014,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("opent een leerplandoel in het detailblad", async () => {
-    toon(DIRECTIE, { overzicht: OVERZICHT });
+    toon(ADMIN, { overzicht: OVERZICHT });
     fireEvent.click(await leeftijdrij("K3"));
 
     fireEvent.click(lijst().getByRole("button", { name: /WIS-1/ }));
@@ -1023,7 +1023,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
   });
 
   it("toont geen blok zolang er niets te tonen is", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
     await screen.findByText("Bladeren");
 
     // First that the overview was asked for at all, so the absence below is an answer and not a component never mounted.
@@ -1057,7 +1057,7 @@ describe("ThemadetailScherm: een activiteit toont het aantal doelen, niet hun co
   const regel = (naam: string) =>
     screen.getByRole("button", { name: t("activiteit.bekijkAria", { naam }) }).parentElement!;
 
-  async function open(ik: Ik = DIRECTIE) {
+  async function open(ik: Ik = ADMIN) {
     toon(ik, { thema: MET_DOELEN });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));

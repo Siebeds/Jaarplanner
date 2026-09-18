@@ -5,7 +5,7 @@ namespace Jaarplanner.Domain.Planning;
 /// <summary>
 /// When the school day begins and ends on one weekday, and when its middagpauze runs (FB-023, ADR-0038).
 /// <para>
-/// <b>School data, set by directie, one row per weekday, for every klas.</b> The owner ruled on 2026-09-15 that the
+/// <b>School data, set by admin, one row per weekday, for every klas.</b> The owner ruled on 2026-09-15 that the
 /// hours are set per school and not per klas or per schooljaar: a school that changes its hours changes these rows, and
 /// nothing already planned moves with them. The hours are where the agenda opens and what it shades as outside the
 /// school day; they are <b>not</b> a bell schedule, and a teacher may still plan at any time (ADR-0028 decision 5).
@@ -25,7 +25,7 @@ public sealed class Schooldaguren
     /// <summary>The hours of one weekday.</summary>
     /// <exception cref="ArgumentException">
     /// A weekend day, an end that is not after the start, a middagpauze with only one of its two times, or a middagpauze
-    /// that does not lie inside the school day. Dutch, because every one of them is a value directie typed and can
+    /// that does not lie inside the school day. Dutch, because every one of them is a value admin typed and can
     /// change (Art. II.3); each names the weekday, so a refusal of a five-day form says which row to look at.
     /// </exception>
     public Schooldaguren(

@@ -9,13 +9,13 @@ import { t } from "../../i18n";
 import { rechtPad, useRechtWijziging, type GebruikerBeheer } from "./gebruikerbeheer";
 
 /**
- * Everything one person may do, in one sheet (E6-04): the directie right and themabeheer, the
+ * Everything one person may do, in one sheet (E6-04): the admin right and themabeheer, the
  * klassen they teach in the chosen schooljaar (R15), and the jaarfasen they are hoofdleerkracht of in
  * it (R5, no klas needed: I20).
  *
  * **Every tick saves at once**, one request per tick, and the sheet says so once. A save button over
  * a dozen boxes would send a dozen requests that can half fail, and a refusal such as the last
- * directie's (ADR-0031 decision 7) belongs next to the one box that caused it. While a tick is on
+ * admin's (ADR-0031 decision 7) belongs next to the one box that caused it. While a tick is on
  * its way the box shows what was asked and every box waits; when the server refuses, the box falls
  * back to what is stored and the reason is shown above the boxes, in the server's own Dutch.
  *
@@ -24,7 +24,7 @@ import { rechtPad, useRechtWijziging, type GebruikerBeheer } from "./gebruikerbe
  * keyboard user who ticked a box with Space landed on the page body and had to find their place
  * again after every save.
  *
- * **Giving up your own directie right asks first.** It is the one tick here you cannot undo
+ * **Giving up your own admin right asks first.** It is the one tick here you cannot undo
  * yourself: the Gebruikers screen goes with it. Someone else's right, and your own themabeheer, save
  * at once like every other box.
  *
@@ -106,9 +106,9 @@ export function Rechtenblad({
 
           <Groep legende={t("gebruikers.rechten")}>
             <Vinkje
-              label={t("gebruikers.directie")}
-              uitleg={t("gebruikers.directieUitleg")}
-              aan={staat(rechtPad.directie(id), gebruiker.isDirectie)}
+              label={t("gebruikers.admin")}
+              uitleg={t("gebruikers.adminUitleg")}
+              aan={staat(rechtPad.admin(id), gebruiker.isAdmin)}
               bezig={bezig}
               onZet={(aan) => {
                 if (bezig) return;
@@ -116,7 +116,7 @@ export function Rechtenblad({
                   setAfgeven(true);
                   return;
                 }
-                zet(rechtPad.directie(id), aan);
+                zet(rechtPad.admin(id), aan);
               }}
             />
             <Vinkje
@@ -190,7 +190,7 @@ export function Rechtenblad({
         bezig={bezig}
         onSluit={() => setAfgeven(false)}
         onBevestig={() =>
-          wijzig.mutate({ pad: rechtPad.directie(id), aan: false }, { onSettled: () => setAfgeven(false) })
+          wijzig.mutate({ pad: rechtPad.admin(id), aan: false }, { onSettled: () => setAfgeven(false) })
         }
       />
     </>
@@ -208,7 +208,7 @@ function Groep({ legende, raster, children }: { legende: string; raster?: boolea
 
 /**
  * One right as a checkbox. The label holds the name only and the explanation is its description,
- * so a screen reader says "Directie, selectievakje" and then the explanation once, not the whole
+ * so a screen reader says "Admin, selectievakje" and then the explanation once, not the whole
  * paragraph as the name. The row is 44px tall, and the label is a second target for the box.
  *
  * While a save is on its way the box is `aria-disabled` and ignores input, but keeps focus (see the

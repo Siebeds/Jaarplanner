@@ -4,11 +4,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../lib/aanmelding";
 import type { KlasWeergave, SchooljaarSamenvatting } from "../lib/types";
 import { t } from "../i18n";
-import { DIRECTIE, NIEMAND, ikMet, metIk } from "../test/rechten";
+import { ADMIN, NIEMAND, ikMet, metIk } from "../test/rechten";
 import { Klaskiezer } from "./Klaskiezer";
 
 /**
- * The klaskiezer's jaarfase field writes `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Every
+ * The klaskiezer's jaarfase field writes `PUT /api/klassen/{id}`, the §3 "beheren" row: admin only (E6-02). Every
  * gebruiker still picks a schooljaar and a klas here, which is a context and not a write.
  *
  * Since FB-013 the server offers only the klassen a gebruiker may read, so an empty list is said for who is looking.
@@ -73,8 +73,8 @@ describe("Klaskiezer", () => {
     expect(within(blad).queryByRole("combobox", { name: t("context.jaarFase") })).toBeNull();
   });
 
-  it("laat directie de leeftijd instellen", () => {
-    const blad = open(DIRECTIE);
+  it("laat admin de leeftijd instellen", () => {
+    const blad = open(ADMIN);
 
     expect(within(blad).getByRole("combobox", { name: t("context.jaarFase") })).toBeInTheDocument();
   });
@@ -113,7 +113,7 @@ describe("Klaskiezer", () => {
     });
 
     it.each([
-      ["directie", DIRECTIE],
+      ["admin", ADMIN],
       ["themabeheer", ikMet({ heeftThemabeheer: true })],
     ])("zegt %s dat het schooljaar nog geen klassen heeft", (_, ik) => {
       const blad = open(ik);

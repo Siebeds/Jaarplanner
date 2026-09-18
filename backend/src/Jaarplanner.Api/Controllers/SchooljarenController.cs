@@ -76,7 +76,7 @@ public sealed class SchooljarenController : ControllerBase
     /// <c>Vakantie</c> (splits a thema, ADR-0053) or <c>VrijeDag</c> (does not) — data the school owns, never a
     /// threshold in code.
     /// </summary>
-    /// <remarks>Directie only (E6-02: the row <c>Beheer</c>, ADR-0030 R2, R3, R16).</remarks>
+    /// <remarks>Admin only (E6-02: the row <c>Beheer</c>, ADR-0030 R2, R3, R16).</remarks>
     [HttpPost]
     [Authorize(Policy = Rechtenmatrix.Beleid.Beheer)]
     public async Task<ActionResult<SchooljaarWeergave>> Maak(

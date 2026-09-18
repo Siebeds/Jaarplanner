@@ -91,7 +91,7 @@ public sealed class OpstapImportController : ControllerBase
     /// <param name="Problemen">
     /// Per-row parse problems. Their <c>reden</c> is deliberately <b>English</b> (see
     /// <see cref="OpstapRijProbleem"/>): a malformed row in the official Op.stap file is not something a
-    /// teacher or directie can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30).
+    /// teacher or admin can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30).
     /// </param>
     /// <param name="Diff">
     /// The review report (FR-2.5): what was added, changed, left unchanged, and what disappeared from

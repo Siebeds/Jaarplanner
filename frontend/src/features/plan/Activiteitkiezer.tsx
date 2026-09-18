@@ -76,7 +76,7 @@ export function Activiteitkiezer({
   // of this period, and this is the condition that makes one exist.
   //
   // "Somewhere" means a subthema this gebruiker may make an activiteit in (E6-02: R17, R23, the leerkrachten and
-  // hoofdleerkrachten of its leeftijd, and directie). The sheet then offers only those.
+  // hoofdleerkrachten of its leeftijd, and admin). The sheet then offers only those.
   const kanNieuw = themas.some((thema) => thema.subthemas.some((sub) => mag.activiteitMaken(sub.leeftijd)));
 
   return (

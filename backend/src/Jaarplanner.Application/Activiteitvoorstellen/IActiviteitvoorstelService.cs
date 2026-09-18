@@ -5,14 +5,14 @@ namespace Jaarplanner.Application.Activiteitvoorstellen;
 
 /// <summary>
 /// The activiteitvoorstellen use cases (FB-025, ADR-0056): the AI proposes activiteiten under a subthema to the gebruiker
-/// who asked, and she or directie decides them (A3). Rights are the Api's: asking is <c>EigenActiviteitMaken</c> at the
+/// who asked, and she or admin decides them (A3). Rights are the Api's: asking is <c>EigenActiviteitMaken</c> at the
 /// subthema's leeftijd, deciding <c>ActiviteitvoorstelBeslissen</c> on the proposal.
 /// </summary>
 public interface IActiviteitvoorstelService
 {
     /// <summary>
     /// The open proposals under the subthema, the caller's own first, oldest first: only hers, or with
-    /// <paramref name="vanIedereen"/> everyone's (directie, A3).
+    /// <paramref name="vanIedereen"/> everyone's (admin, A3).
     /// </summary>
     /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">The subthema does not exist.</exception>
     Task<IReadOnlyList<ActiviteitvoorstelWeergave>> HaalOpAsync(

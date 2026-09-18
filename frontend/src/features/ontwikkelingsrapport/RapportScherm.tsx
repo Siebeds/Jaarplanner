@@ -56,7 +56,7 @@ const MAX_BESLUIT = 4000;
  * **No save button.** A star is saved when chosen, a text after a pause in typing or when the field is left
  * (`useAutobewaren`), each rapportdoel on its own, so twenty reports do not hang on one forgotten button.
  *
- * **Who fills in is the server's** (`RapportInvullen`: directie, and the klas's K3 leerkrachten during its schooljaar,
+ * **Who fills in is the server's** (`RapportInvullen`: admin, and the klas's K3 leerkrachten during its schooljaar,
  * R26). Anyone else who may read it gets the same report with no fields, and the one sentence that explains that is
  * said only when the schooljaar is the reason (`mag.rapportAlleenNogLezen`). Someone who may not read it at all gets the
  * server's refusal, also when they came by the address (R17).

@@ -7,7 +7,7 @@ namespace Jaarplanner.Domain.Toegang;
 /// klastoewijzing on a klas gives its leerkracht the "LK leeftijd" right on the shared content of these leeftijden.
 /// <para>
 /// <b>Provisional, and a seam on purpose</b> (Art. XIV, graadklassen). A klas states one jaarfase, so the leerkrachten
-/// of a graadklas get that one jaarfase's rights, and a hoofdleerkracht or directie edits the other leeftijd's shared
+/// of a graadklas get that one jaarfase's rights, and a hoofdleerkracht or admin edits the other leeftijd's shared
 /// content (R22). When directie decides the graadklas question, this method is what changes, and nothing else.
 /// </para>
 /// <para>

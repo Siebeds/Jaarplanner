@@ -22,7 +22,7 @@ import { Emojikiezer } from "./Emojikiezer";
  * woordenschat, whose two lists sit side by side once the sheet is wide enough. The owner rejected a
  * live preview card beside the fields as too busy, so nothing here repeats what the fields already say.
  *
- * **Duur is a choice, not a spinner.** The ratified default is four to six weeks (directie
+ * **Duur is a choice, not a spinner.** The ratified default is four to six weeks (admin
  * 2026-07-14), so those three are buttons and anything else is one field behind "Andere". A numeric
  * stepper made the common case as much work as the rare one, and on a phone its arrows are below the
  * minimum target size.

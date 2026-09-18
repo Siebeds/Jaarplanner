@@ -10,9 +10,9 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// one of K2, a leerkracht of K3 blauw editing K3 content against editing K3 groen's planning, a maker with and without a
 /// goal link, themabeheer on the ordinary subthema route.
 /// <para>
-/// <b>Why these exist beside the ~150 older tests.</b> Those run as the default directie identity, which every row
+/// <b>Why these exist beside the ~150 older tests.</b> Those run as the default admin identity, which every row
 /// admits but one (<c>RapportsetBewerken</c>, ADR-0035 R31, pinned in <see cref="RapportsetEndpointsTests"/>), so they
-/// prove that nothing broke for directie and nothing about denial (slice 1's audit). These use seeded
+/// prove that nothing broke for admin and nothing about denial (slice 1's audit). These use seeded
 /// gebruikers holding exactly the relation under test. "Reaches the controller" is pinned by the status the service
 /// then answers (201, 200, a 400 for a missing file, a 404 for an id that names nothing), never by "not 403" alone
 /// where a precise answer exists.
@@ -35,31 +35,31 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
 
     private static Task<HttpStatusCode> StatusAsync(Task<HttpResponseMessage> verzoek) => RechtenTestOpzet.StatusAsync(verzoek);
 
-    // --- Gebruikers, klassen en schooljaren beheren (R2, R3, R16): directie only. ---
+    // --- Gebruikers, klassen en schooljaren beheren (R2, R3, R16): admin only. ---
 
     [PostgresFact]
-    public async Task Schooljaren_en_klassen_beheren_is_alleen_voor_directie()
+    public async Task Schooljaren_en_klassen_beheren_is_alleen_voor_admin()
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         // Every other relation in one gebruiker: the union rule must not add up to a right no column grants.
         using var alles = opzet.Als(await opzet.GebruikerAsync(
             school, themabeheer: true, hoofdleerkrachtVan: ["K3"], klassen: [school.K3Blauw]));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         var jaar = new { naam = TestSchooljaar.UniekeNaam("beheer"), start = "2027-09-01", eind = "2028-06-30" };
 
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(alles.PostAsJsonAsync("/api/schooljaren", jaar)));
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(alles.PostAsJsonAsync(
             $"/api/schooljaren/{school.SchooljaarId}/klassen", new { naam = $"K1-{Guid.NewGuid():N}", jaarfase = "L1" })));
-        // The klaskiezer's jaarfase field travels on this PUT, which makes it directie-only now.
+        // The klaskiezer's jaarfase field travels on this PUT, which makes it admin-only now.
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(alles.PutAsJsonAsync(
             $"/api/klassen/{school.K3Blauw}", new { naam = "K3 blauw", jaarfase = "K2" })));
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(alles.DeleteAsync($"/api/klassen/{school.K3Blauw}")));
 
-        Assert.Equal(HttpStatusCode.Created, await StatusAsync(directie.PostAsJsonAsync("/api/schooljaren", jaar)));
+        Assert.Equal(HttpStatusCode.Created, await StatusAsync(admin.PostAsJsonAsync("/api/schooljaren", jaar)));
     }
 
-    // --- Thema, themadoelen, kernwoordenschat aanpassen (R4, R18): directie, themabeheer. ---
+    // --- Thema, themadoelen, kernwoordenschat aanpassen (R4, R18): admin, themabeheer. ---
 
     [PostgresFact]
     public async Task Een_thema_en_zijn_themadoelen_zijn_van_themabeheer_niet_van_de_hoofdleerkracht()
@@ -100,16 +100,16 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.DeleteAsync($"/api/themas/{themaId}")));
     }
 
-    // --- The FR-1 import (R9, R27, R34), and its option to delete human decisions (R35): directie only. ---
+    // --- The FR-1 import (R9, R27, R34), and its option to delete human decisions (R35): admin only. ---
 
     [PostgresFact]
-    public async Task De_import_is_van_themabeheer_en_menselijke_beslissingen_verwijderen_van_directie()
+    public async Task De_import_is_van_themabeheer_en_menselijke_beslissingen_verwijderen_van_admin()
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
 
         // No file in any of these: a caller who reaches the controller is refused for that, with a 400.
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(hoofdleerkracht.PostAsync("/api/schoolcontent-import/voorbeeld", Formulier(false))));
@@ -119,11 +119,11 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         // R35, on the preview as well as on the apply.
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(themabeheer.PostAsync("/api/schoolcontent-import/voorbeeld", Formulier(true))));
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(themabeheer.PostAsync("/api/schoolcontent-import", Formulier(true))));
-        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(directie.PostAsync("/api/schoolcontent-import/voorbeeld", Formulier(true))));
-        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(directie.PostAsync("/api/schoolcontent-import", Formulier(true))));
+        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(admin.PostAsync("/api/schoolcontent-import/voorbeeld", Formulier(true))));
+        Assert.Equal(HttpStatusCode.BadRequest, await StatusAsync(admin.PostAsync("/api/schoolcontent-import", Formulier(true))));
     }
 
-    // --- Doelsuggesties (R14) and the wizard's AI assist (R29): directie, themabeheer. ---
+    // --- Doelsuggesties (R14) and the wizard's AI assist (R29): admin, themabeheer. ---
 
     [PostgresFact]
     public async Task Doelsuggesties_en_de_wizardhulp_zijn_van_themabeheer_niet_van_een_leerkracht_of_hoofdleerkracht()
@@ -151,7 +151,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(themabeheer.PutAsJsonAsync($"/api/themas/{themaId}/doelsuggesties/{suggestie}/status", status)));
     }
 
-    // --- Subthema's van een jaar (R5, R21; I13, I16): directie, the hoofdleerkracht of that leeftijd. ---
+    // --- Subthema's van een jaar (R5, R21; I13, I16): admin, the hoofdleerkracht of that leeftijd. ---
 
     [PostgresFact]
     public async Task Een_subthema_maken_mag_de_hoofdleerkracht_van_die_leeftijd_en_niemand_anders()
@@ -229,7 +229,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(hoofdleerkracht.DeleteAsync($"/api/subthemas/{subthemaId}")));
     }
 
-    // --- Subdoelen (R24): directie, the hoofdleerkracht of that leeftijd. ---
+    // --- Subdoelen (R24): admin, the hoofdleerkracht of that leeftijd. ---
 
     [PostgresFact]
     public async Task Subdoelen_zijn_van_de_hoofdleerkracht_niet_van_de_leerkracht_van_die_leeftijd()
@@ -250,7 +250,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(hoofdleerkracht.DeleteAsync($"/api/subthemas/{subthemaId}/subdoelen/{subdoelId}")));
     }
 
-    // --- Gedeelde activiteiten aanmaken en hun inhoud aanpassen (R17, R23; I15): directie, HL, LK leeftijd. ---
+    // --- Gedeelde activiteiten aanmaken en hun inhoud aanpassen (R17, R23; I15): admin, HL, LK leeftijd. ---
 
     [PostgresFact]
     public async Task Een_leerkracht_van_die_leeftijd_maakt_en_bewerkt_gedeelde_activiteiten_van_die_leeftijd()
@@ -320,7 +320,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(hoofdleerkracht.DeleteAsync($"/api/activiteiten/{met.Id}")));
     }
 
-    // --- Doelen met de hand koppelen aan gedeelde activiteiten (R19): directie, HL. ---
+    // --- Doelen met de hand koppelen aan gedeelde activiteiten (R19): admin, HL. ---
 
     [PostgresFact]
     public async Task Doelen_koppelen_aan_een_gedeelde_activiteit_is_van_de_hoofdleerkracht()
@@ -362,7 +362,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(hoofdleerkracht.PutAsJsonAsync($"/api/activiteiten/{met.Id}/subthema", naar)));
     }
 
-    // --- Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21): directie, LK eigen. ---
+    // --- Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches (R7, R15; I21): admin, LK eigen. ---
 
     [PostgresFact]
     public async Task De_leerkracht_van_K3_blauw_bewerkt_K3_inhoud_en_de_planning_van_blauw_maar_niet_die_van_groen()
@@ -388,8 +388,8 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.NotFound, await StatusAsync(blauw.DeleteAsync($"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen/{Guid.NewGuid()}")));
 
         // A route keyed on the hoek alone is checked against the hoek's own klas.
-        using var directie = opzet.Directie();
-        using var gemaakt = await directie.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", hoek);
+        using var admin = opzet.Admin();
+        using var gemaakt = await admin.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", hoek);
         var groenHoek = (await gemaakt.Content.ReadFromJsonAsync<RechtenTestOpzet.IdDto>())!.Id;
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(blauw.PutAsJsonAsync($"/api/hoeken/{groenHoek}", hoek)));
         Assert.Equal(HttpStatusCode.Forbidden, await StatusAsync(blauw.DeleteAsync($"/api/hoeken/{groenHoek}")));
@@ -498,15 +498,15 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
     }
 
     [PostgresFact]
-    public async Task Themabeheer_en_directie_lezen_elke_klas_en_wie_geen_recht_heeft_geen_enkele_Z3_Z4_Z5()
+    public async Task Themabeheer_en_admin_lezen_elke_klas_en_wie_geen_recht_heeft_geen_enkele_Z3_Z4_Z5()
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         using var niemand = opzet.Als(await opzet.GebruikerAsync());
 
-        foreach (var client in new[] { themabeheer, directie })
+        foreach (var client in new[] { themabeheer, admin })
         {
             var zichtbaar = await RechtenTestOpzet.KlasIdsAsync(client);
             Assert.Contains(school.K3Blauw, zichtbaar);
@@ -520,9 +520,9 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
             themabeheer.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "bouwhoek" })));
 
         Assert.Empty(await RechtenTestOpzet.KlasIdsAsync(niemand));
-        // Nor does the schooljaar name them to someone without a right; directie's copy still holds all three.
+        // Nor does the schooljaar name them to someone without a right; admin's copy still holds all three.
         Assert.Empty(await KlassenVanSchooljaarAsync(niemand, school.SchooljaarId));
-        Assert.Equal(3, (await KlassenVanSchooljaarAsync(directie, school.SchooljaarId)).Count);
+        Assert.Equal(3, (await KlassenVanSchooljaarAsync(admin, school.SchooljaarId)).Count);
         await RechtenTestOpzet.VerwachtAsync(
             niemand.GetAsync($"/api/klassen/{school.K3Blauw}/jaarplan"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
         // Thema's are shared content, not a klas's planning: still readable (Art. IX.2).
@@ -542,12 +542,12 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         var fiche = $"Turnen {Guid.NewGuid():N}";
-        using (var directieClient = opzet.Directie())
+        using (var adminClient = opzet.Admin())
         {
-            using var gemaakt = await directieClient.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/algemene-fiches", new { naam = fiche });
+            using var gemaakt = await adminClient.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/algemene-fiches", new { naam = fiche });
             Assert.True(gemaakt.IsSuccessStatusCode, $"Seeding the fiche failed: {(int)gemaakt.StatusCode}");
             var ficheId = (await gemaakt.Content.ReadFromJsonAsync<RechtenTestOpzet.IdDto>())!.Id;
-            using var gekoppeld = await directieClient.PostAsJsonAsync($"/api/algemene-fiches/{ficheId}/doelkoppelingen", new { leerplandoelCode = Doelcode });
+            using var gekoppeld = await adminClient.PostAsJsonAsync($"/api/algemene-fiches/{ficheId}/doelkoppelingen", new { leerplandoelCode = Doelcode });
             Assert.True(gekoppeld.IsSuccessStatusCode, $"Linking the fiche failed: {(int)gekoppeld.StatusCode}");
         }
 
@@ -555,7 +555,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         using var niemand = opzet.Als(await opzet.GebruikerAsync());
         using var hoofdleerkrachtK2 = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
 
         // A fiche is its klas's planning (ADR-0040): the register must not show K2 rood's to a K3 leerkracht or to anyone
         // without a right, and must show it to whoever reads K2 rood.
@@ -563,7 +563,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.DoesNotContain(fiche, await niemand.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
         Assert.Contains(fiche, await hoofdleerkrachtK2.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
         Assert.Contains(fiche, await themabeheer.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
-        Assert.Contains(fiche, await directie.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
+        Assert.Contains(fiche, await admin.GetStringAsync($"/api/leerplandoelen/{Doelcode}"));
     }
 
     [PostgresFact]
@@ -571,12 +571,12 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
-        using (var directie = opzet.Directie())
+        using (var admin = opzet.Admin())
         {
             Assert.Equal(HttpStatusCode.Created, await StatusAsync(
-                directie.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "zandtafel" })));
+                admin.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/hoeken", new { naam = "zandtafel" })));
             Assert.Equal(HttpStatusCode.Created, await StatusAsync(
-                directie.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", new { naam = "poppenhoek" })));
+                admin.PostAsJsonAsync($"/api/klassen/{school.K3Groen}/hoeken", new { naam = "poppenhoek" })));
         }
 
         using var leerkracht = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
@@ -587,22 +587,22 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(leerkracht.PostAsJsonAsync(overnemen, new { vanKlasId = school.K3Groen })));
     }
 
-    // --- Een thema verwijderen (R4; default I26): directie; themabeheer only while nothing in it is anyone else's. ---
+    // --- Een thema verwijderen (R4; default I26): admin; themabeheer only while nothing in it is anyone else's. ---
 
     [PostgresFact]
-    public async Task Themabeheer_verwijdert_geen_thema_met_de_inhoud_van_een_hoofdleerkracht_directie_wel_I26()
+    public async Task Themabeheer_verwijdert_geen_thema_met_de_inhoud_van_een_hoofdleerkracht_admin_wel_I26()
     {
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         var themaId = await opzet.ThemaAsync();
         Assert.Equal(HttpStatusCode.Created, await StatusAsync(hoofdleerkracht.PostAsJsonAsync(
             $"/api/themas/{themaId}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" })));
 
         await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{themaId}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
-        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{themaId}")));
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(admin.DeleteAsync($"/api/themas/{themaId}")));
     }
 
     [PostgresFact]
@@ -627,11 +627,11 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
     }
 
     [PostgresFact]
-    public async Task Na_de_wizard_is_zijn_inhoud_gewone_inhoud_en_verwijdert_alleen_directie_het_thema_I26_I23()
+    public async Task Na_de_wizard_is_zijn_inhoud_gewone_inhoud_en_verwijdert_alleen_admin_het_thema_I26_I23()
     {
         var opzet = Opzet;
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         var run = await RechtenTestOpzet.StartWizardAsync(themabeheer);
         await RechtenTestOpzet.IdAsync(
             themabeheer.PostAsJsonAsync($"{RechtenTestOpzet.Wizard}/{run.Id}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }),
@@ -639,7 +639,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         Assert.Equal(HttpStatusCode.OK, await StatusAsync(themabeheer.PostAsync($"{RechtenTestOpzet.Wizard}/{run.Id}/afronden", null)));
 
         await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{run.ThemaId}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
-        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{run.ThemaId}")));
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(admin.DeleteAsync($"/api/themas/{run.ThemaId}")));
     }
 
     [PostgresFact]
@@ -650,7 +650,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         using var themabeheer = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
         using var ookHoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3"]));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
 
         // A thema whose only content is its open run's own subthema and activiteit, but a hoofdleerkracht linked a goal
         // to that activiteit on the ordinary route.
@@ -670,7 +670,7 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
 
         var eerste = await ThemaMetGekoppeldeWizardactiviteitAsync();
         await RechtenTestOpzet.VerwachtAsync(themabeheer.DeleteAsync($"/api/themas/{eerste}"), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
-        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(directie.DeleteAsync($"/api/themas/{eerste}")));
+        Assert.Equal(HttpStatusCode.NoContent, await StatusAsync(admin.DeleteAsync($"/api/themas/{eerste}")));
 
         // Themabeheer that may also link goals at K3 may remove that link, so it may delete the thema.
         var tweede = await ThemaMetGekoppeldeWizardactiviteitAsync();
@@ -686,17 +686,17 @@ public sealed class RechtenAfdwingingTests : IClassFixture<RechtenAfdwingingTest
         var themaId = await opzet.ThemaAsync();
 
         // Empty, so themabeheer holds the right to delete it; but a klas planned it.
-        using (var directie = opzet.Directie())
+        using (var admin = opzet.Admin())
         {
-            var plan = await directie.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Blauw}/jaarplan");
-            Assert.Equal(HttpStatusCode.OK, await StatusAsync(directie.PostAsJsonAsync(
+            var plan = await admin.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Blauw}/jaarplan");
+            Assert.Equal(HttpStatusCode.OK, await StatusAsync(admin.PostAsJsonAsync(
                 $"/api/klassen/{school.K3Blauw}/jaarplan/plaatsingen", new { themaId, van = plan!.EersteSchooldag })));
         }
 
         string naam;
-        using (var directie = opzet.Directie())
+        using (var admin = opzet.Admin())
         {
-            naam = (await directie.GetFromJsonAsync<NaamDto>($"/api/themas/{themaId}"))!.Naam;
+            naam = (await admin.GetFromJsonAsync<NaamDto>($"/api/themas/{themaId}"))!.Naam;
         }
 
         // The service's own sentence, pinned by value (Art. II.3).

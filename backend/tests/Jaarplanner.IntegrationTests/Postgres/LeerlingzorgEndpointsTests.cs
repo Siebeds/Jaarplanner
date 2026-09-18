@@ -7,7 +7,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
 /// The right Leerlingzorg over the real API and PostgreSQL (FB-008, ADR-0035 R18, §3.3, §3.4; Art. VI.1, VI.7): a
-/// gebruiker directie gave it reads the children and reports of every K3 klas, also of an earlier schooljaar, writes
+/// gebruiker admin gave it reads the children and reports of every K3 klas, also of an earlier schooljaar, writes
 /// nothing, and reads no klas's planning; themabeheer reads no report; and taking the right away closes the reports on
 /// the next request. <b>Every name here is made up</b> (Art. VI.7: no real child's name in the repo).
 /// </summary>
@@ -47,12 +47,12 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     {
         var school = await _opzet.SchoolAsync();
         var vorig = await _opzet.VorigSchooljaarAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
-        var staf = await KindAsync(directie, school.K3Groen, "Staf", "Voorbeeld");
-        var roos = await KindAsync(directie, vorig.K3, "Roos", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
+        var staf = await KindAsync(admin, school.K3Groen, "Staf", "Voorbeeld");
+        var roos = await KindAsync(admin, vorig.K3, "Roos", "Proefmans");
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"{Rapport(fien, 1)}/besluit", new { tekst = "Een fijne eerste periode." })));
+            admin.PutAsJsonAsync($"{Rapport(fien, 1)}/besluit", new { tekst = "Een fijne eerste periode." })));
 
         using var zorg = _opzet.Als(await _opzet.GebruikerAsync(leerlingzorg: true));
 
@@ -89,8 +89,8 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     public async Task Leerlingzorg_wijzigt_niets_ook_niet_via_het_adres()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         var rapportenVooraf = await AantalRapportenAsync();
 
         using var zorg = _opzet.Als(await _opzet.GebruikerAsync(leerlingzorg: true));
@@ -113,8 +113,8 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     public async Task Themabeheer_leest_geen_enkel_rapport_en_krijgt_geen_rapportklas_R18()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
 
         using var tb = _opzet.Als(await _opzet.GebruikerAsync(themabeheer: true));
 
@@ -129,8 +129,8 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     public async Task Een_hoofdleerkracht_van_K3_zonder_klas_krijgt_geen_rapportklas_R17()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
 
         using var hl = _opzet.Als(await _opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
 
@@ -144,13 +144,13 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     public async Task Na_het_afnemen_van_leerlingzorg_weigert_de_app_de_rapporten_bij_het_volgende_verzoek()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         var zorgId = await _opzet.GebruikerAsync(leerlingzorg: true);
         using var zorg = _opzet.Als(zorgId);
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(zorg.GetAsync(Rapport(fien, 1))));
 
-        Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/gebruikers/{zorgId}/leerlingzorg")));
+        Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/gebruikers/{zorgId}/leerlingzorg")));
 
         await Verwacht403Async(zorg.GetAsync(Rapport(fien, 1)));
         await Verwacht403Async(zorg.GetAsync($"/api/klassen/{school.K3Blauw}/leerlingen"));
@@ -163,9 +163,9 @@ public sealed class LeerlingzorgEndpointsTests : IAsyncLifetime
     public async Task Een_leerkracht_met_leerlingzorg_vult_de_eigen_klas_in_en_leest_een_andere_zonder_te_wijzigen()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await KindAsync(directie, school.K3Blauw, "Fien", "Proefmans");
-        var staf = await KindAsync(directie, school.K3Groen, "Staf", "Voorbeeld");
+        using var admin = _opzet.Admin();
+        var fien = await KindAsync(admin, school.K3Blauw, "Fien", "Proefmans");
+        var staf = await KindAsync(admin, school.K3Groen, "Staf", "Voorbeeld");
 
         using var lk = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw], leerlingzorg: true));
 

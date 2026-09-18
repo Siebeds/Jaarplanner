@@ -8,7 +8,7 @@ import { get, post } from "./api";
 
 /**
  * The person behind the session, as `GET /api/ik` returns them, with the rights they hold today
- * (E6-02, ADR-0030 §3). These are the raw relations, not per-action answers: directie may do
+ * (E6-02, ADR-0030 §3). These are the raw relations, not per-action answers: admin may do
  * everything whatever the lists say, and a person holds the union of all of them. The frontend
  * uses them only to hide what someone cannot do; the server decides every action itself.
  */
@@ -16,8 +16,8 @@ export interface Ik {
   id: string;
   naam: string;
   email: string;
-  /** "Directie": every action (R3). */
-  isDirectie: boolean;
+  /** "Admin": every action (R3). */
+  isAdmin: boolean;
   /** "TB": thema's, the FR-1 import, the wizard and doelsuggesties (R4, R14). */
   heeftThemabeheer: boolean;
   /** "Leerlingzorg" (FB-008, ADR-0035 R18): reads every ontwikkelingsrapport, of every K3 klas, and nothing else. */
@@ -39,7 +39,7 @@ export interface Ik {
 
 /**
  * The signed-in person. Never stale while the page lives: a session does not change owner, and
- * a person directie removes gets a 401 on their next request, which sends them to the sign-in.
+ * a person admin removes gets a 401 on their next request, which sends them to the sign-in.
  * No retry: a failure here is either that 401 or a server that is down, and neither improves by
  * asking twice.
  */

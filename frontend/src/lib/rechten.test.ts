@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ApiError } from "./api";
 import type { Ik } from "./aanmelding";
-import { RECHTENMATRIX, ZONDER_DIRECTIE, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
+import { RECHTENMATRIX, ZONDER_ADMIN, geenToegangZin, magVoor, staatToe, type Rechtbron, type Rij } from "./rechten";
 import { t } from "../i18n";
 
 /**
@@ -24,7 +24,7 @@ function ik(delen: Partial<Ik>): Ik {
     id: IK,
     naam: "Test",
     email: "test@school.be",
-    isDirectie: false,
+    isAdmin: false,
     heeftThemabeheer: false,
     heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],
@@ -38,7 +38,7 @@ function ik(delen: Partial<Ik>): Ik {
 
 /** The relations of §3, each held alone. The server's `Relaties`, with the same names. */
 const RELATIES: Record<string, Ik> = {
-  Directie: ik({ isDirectie: true }),
+  Admin: ik({ isAdmin: true }),
   TB: ik({ heeftThemabeheer: true }),
   HL: ik({ hoofdleerkrachtLeeftijden: [LEEFTIJD] }),
   "HL andere leeftijd": ik({ hoofdleerkrachtLeeftijden: ["L1"] }),
@@ -48,7 +48,7 @@ const RELATIES: Record<string, Ik> = {
   // "LK eigen" for the ontwikkelingsrapport (ADR-0030 footnote ⁶): the klas grants K3, during its schooljaar or after it.
   "LK rapport": ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }),
   "LK rapport voorbij": ik({ rapportklasIds: [EIGEN_KLAS] }),
-  // FB-008 (ADR-0035 R18): the right directie gave, and nothing else.
+  // FB-008 (ADR-0035 R18): the right admin gave, and nothing else.
   Leerlingzorg: ik({ heeftLeerlingzorg: true }),
   Ander: ik({}),
 };
@@ -63,43 +63,43 @@ const ACTIVITEITRIJEN: Activiteitrij[] = [
 ];
 
 const VERWACHT: Record<Exclude<Rij, Activiteitrij>, string[]> = {
-  Curriculumbeheer: ["Directie"],
-  Beheer: ["Directie"],
-  MenselijkeBeslissingenVerwijderen: ["Directie"],
-  ThemaBewerken: ["Directie", "TB"],
-  // Without a Themabron only directie, and the frontend never has one (I26): see `RECHTENMATRIX.ThemaVerwijderen`.
-  ThemaVerwijderen: ["Directie"],
-  SchoolcontentImporteren: ["Directie", "TB"],
-  ThemaOpbouw: ["Directie", "TB"],
-  Wizardinhoud: ["Directie", "TB"],
-  DoelsuggestiesMaken: ["Directie", "TB"],
-  DoelsuggestiesBeoordelen: ["Directie", "TB"],
-  SubthemaBeheren: ["Directie", "HL"],
-  SubdoelenBeheren: ["Directie", "HL"],
-  DoelenKoppelen: ["Directie", "HL"],
-  StreefwoordenschatAanpassen: ["Directie", "HL", "LK leeftijd"],
-  GedeeldeActiviteitBewerken: ["Directie", "HL", "LK leeftijd"],
+  Curriculumbeheer: ["Admin"],
+  Beheer: ["Admin"],
+  MenselijkeBeslissingenVerwijderen: ["Admin"],
+  ThemaBewerken: ["Admin", "TB"],
+  // Without a Themabron only admin, and the frontend never has one (I26): see `RECHTENMATRIX.ThemaVerwijderen`.
+  ThemaVerwijderen: ["Admin"],
+  SchoolcontentImporteren: ["Admin", "TB"],
+  ThemaOpbouw: ["Admin", "TB"],
+  Wizardinhoud: ["Admin", "TB"],
+  DoelsuggestiesMaken: ["Admin", "TB"],
+  DoelsuggestiesBeoordelen: ["Admin", "TB"],
+  SubthemaBeheren: ["Admin", "HL"],
+  SubdoelenBeheren: ["Admin", "HL"],
+  DoelenKoppelen: ["Admin", "HL"],
+  StreefwoordenschatAanpassen: ["Admin", "HL", "LK leeftijd"],
+  GedeeldeActiviteitBewerken: ["Admin", "HL", "LK leeftijd"],
   // ADR-0049 D1, D2: a shared one is created by HL, an own one by a leerkracht of that leeftijd.
-  GedeeldeActiviteitMaken: ["Directie", "HL"],
-  EigenActiviteitMaken: ["Directie", "LK leeftijd"],
-  KlasplanningBewerken: ["Directie", "LK eigen"],
+  GedeeldeActiviteitMaken: ["Admin", "HL"],
+  EigenActiviteitMaken: ["Admin", "LK leeftijd"],
+  KlasplanningBewerken: ["Admin", "LK eigen"],
   // FB-013 (ADR-0040 Z1-Z5): a K3 klas is read by its own leerkracht, the leerkrachten and hoofdleerkrachten of K3,
-  // themabeheer and directie. Not by another leeftijd, and not by a gebruiker without a right.
-  KlasplanningBekijken: ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"],
+  // themabeheer and admin. Not by another leeftijd, and not by a gebruiker without a right.
+  KlasplanningBekijken: ["Admin", "TB", "HL", "LK leeftijd", "LK eigen"],
   // R17: "LK eigen" on a klas's planning reads no report; only the report's own relation does (footnote ⁶, R26).
   // R18: Leerlingzorg reads every klas's reports, and passes no other row.
-  OntwikkelingsrapportLezen: ["Directie", "LK rapport", "LK rapport voorbij", "Leerlingzorg"],
-  LeerlingenBeheren: ["Directie", "LK rapport"],
-  RapportInvullen: ["Directie", "LK rapport"],
-  // R31: not directie, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
+  OntwikkelingsrapportLezen: ["Admin", "LK rapport", "LK rapport voorbij", "Leerlingzorg"],
+  LeerlingenBeheren: ["Admin", "LK rapport"],
+  RapportInvullen: ["Admin", "LK rapport"],
+  // R31: not admin, the one row it does not pass. D4: a K3 leerkracht only while the schooljaar runs.
   RapportsetBewerken: ["LK rapport"],
-  // FB-036 (ADR-0043): on someone else's woordweb only directie; her own web is its own case below.
-  WoordwebBewerken: ["Directie"],
-  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; not themabeheer alone.
-  SubdoelplaatsingVragen: ["Directie", "HL"],
-  SubdoelplaatsingBeslissen: ["Directie", "HL"],
-  // FB-025 (ADR-0056 A3): on someone else's proposal only directie; the asker's own is its own case below.
-  ActiviteitvoorstelBeslissen: ["Directie"],
+  // FB-036 (ADR-0043): on someone else's woordweb only admin; her own web is its own case below.
+  WoordwebBewerken: ["Admin"],
+  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and admin; not themabeheer alone.
+  SubdoelplaatsingVragen: ["Admin", "HL"],
+  SubdoelplaatsingBeslissen: ["Admin", "HL"],
+  // FB-025 (ADR-0056 A3): on someone else's proposal only admin; the asker's own is its own case below.
+  ActiviteitvoorstelBeslissen: ["Admin"],
 };
 
 /** The resource each row is asked about, as the server's `BronVoor` builds it. */
@@ -143,24 +143,24 @@ describe("de rechtenmatrix van de frontend", () => {
     expect(rijen).toHaveLength(31);
   });
 
-  it("laat wie een activiteitvoorstel vroeg het beslissen zolang ze die leeftijd heeft, en andermans alleen directie (ADR-0056)", () => {
+  it("laat wie een activiteitvoorstel vroeg het beslissen zolang ze die leeftijd heeft, en andermans alleen admin (ADR-0056)", () => {
     const eigen = { leeftijd: LEEFTIJD, aanvragerId: IK };
     expect(magVoor(RELATIES["LK leeftijd"]).activiteitvoorstelBeslissen(eigen)).toBe(true);
     expect(magVoor(RELATIES.HL).activiteitvoorstelBeslissen(eigen)).toBe(false);
     expect(magVoor(RELATIES.Ander).activiteitvoorstelBeslissen(eigen)).toBe(false);
     expect(magVoor(RELATIES["LK leeftijd"]).activiteitvoorstelBeslissen({ ...eigen, aanvragerId: ANDERE_PERSOON })).toBe(false);
-    expect(magVoor(RELATIES.Directie).activiteitvoorstelBeslissen({ ...eigen, aanvragerId: ANDERE_PERSOON })).toBe(true);
+    expect(magVoor(RELATIES.Admin).activiteitvoorstelBeslissen({ ...eigen, aanvragerId: ANDERE_PERSOON })).toBe(true);
     expect(staatToe(RELATIES.Ander, "WoordwebBewerken", { soort: "activiteitvoorstel", leeftijd: LEEFTIJD, aanvragerId: IK })).toBe(false);
   });
 
-  it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen directie (ADR-0043)", () => {
+  it("laat de eigenaar haar eigen woordweb wijzigen welk recht ze ook heeft, en andermans alleen admin (ADR-0043)", () => {
     const eigen: Rechtbron = { soort: "woordweb", eigenaarId: IK };
     for (const relatie of Object.values(RELATIES)) expect(staatToe(relatie, "WoordwebBewerken", eigen)).toBe(true);
     // The woordweb resource opens no other row.
     expect(staatToe(RELATIES.Ander, "SubthemaBeheren", eigen)).toBe(false);
     expect(magVoor(RELATIES.Ander).woordwebBewerken(IK)).toBe(true);
     expect(magVoor(RELATIES.TB).woordwebBewerken(ANDERE_PERSOON)).toBe(false);
-    expect(magVoor(RELATIES.Directie).woordwebBewerken(ANDERE_PERSOON)).toBe(true);
+    expect(magVoor(RELATIES.Admin).woordwebBewerken(ANDERE_PERSOON)).toBe(true);
     expect(magVoor(undefined).woordwebBewerken(IK)).toBe(false);
   });
 
@@ -174,18 +174,18 @@ describe("de rechtenmatrix van de frontend", () => {
     );
   });
 
-  it("laat directie elke rij toe, met of zonder bron, behalve de K3-set (R31)", () => {
+  it("laat admin elke rij toe, met of zonder bron, behalve de K3-set (R31)", () => {
     for (const rij of Object.keys(RECHTENMATRIX) as Rij[]) {
-      if (ZONDER_DIRECTIE.has(rij)) continue;
-      expect(staatToe(RELATIES.Directie, rij)).toBe(true);
-      expect(staatToe(RELATIES.Directie, rij, activiteit(null, true))).toBe(true);
+      if (ZONDER_ADMIN.has(rij)) continue;
+      expect(staatToe(RELATIES.Admin, rij)).toBe(true);
+      expect(staatToe(RELATIES.Admin, rij, activiteit(null, true))).toBe(true);
     }
-    expect([...ZONDER_DIRECTIE]).toEqual(["RapportsetBewerken"]);
-    expect(staatToe(RELATIES.Directie, "RapportsetBewerken")).toBe(false);
-    expect(magVoor(RELATIES.Directie).rapportsetBewerken).toBe(false);
-    // Not even with a running K3 klas of its own (owner, 2026-09-15, "Nooit wie directie heeft"); the same klas makes a
-    // plain gebruiker pass, so the refusal comes from the directie right.
-    expect(staatToe(ik({ isDirectie: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(false);
+    expect([...ZONDER_ADMIN]).toEqual(["RapportsetBewerken"]);
+    expect(staatToe(RELATIES.Admin, "RapportsetBewerken")).toBe(false);
+    expect(magVoor(RELATIES.Admin).rapportsetBewerken).toBe(false);
+    // Not even with a running K3 klas of its own (owner, 2026-09-15, "Nooit wie admin heeft"); the same klas makes a
+    // plain gebruiker pass, so the refusal comes from the admin right.
+    expect(staatToe(ik({ isAdmin: true, rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(false);
     expect(staatToe(ik({ rapportklasIds: [EIGEN_KLAS], lopendeRapportklasIds: [EIGEN_KLAS] }), "RapportsetBewerken")).toBe(true);
   });
 
@@ -244,17 +244,17 @@ describe("de rechtenmatrix van de frontend", () => {
     const eigen = (eigenaar: string, metDoelen = false) => activiteit(eigenaar, metDoelen, eigenaar);
     const bewerkingen: Rij[] = ["GedeeldeActiviteitBewerken", "ActiviteitVerwijderen", "DoelenKoppelen", "ActiviteitVerplaatsen"];
 
-    it("bewerkt, koppelt, verplaatst en verwijdert alleen de eigenaar en de directie, ook met doelen", () => {
+    it("bewerkt, koppelt, verplaatst en verwijdert alleen de eigenaar en de admin, ook met doelen", () => {
       const alles = ik({ heeftThemabeheer: true, hoofdleerkrachtLeeftijden: [LEEFTIJD], leerkrachtLeeftijden: [LEEFTIJD] });
       for (const rij of bewerkingen) {
         expect(staatToe(alles, rij, eigen(ANDERE_PERSOON))).toBe(false);
-        expect(staatToe(RELATIES.Directie, rij, eigen(ANDERE_PERSOON))).toBe(true);
+        expect(staatToe(RELATIES.Admin, rij, eigen(ANDERE_PERSOON))).toBe(true);
         expect(staatToe(RELATIES.Ander, rij, eigen(IK, true))).toBe(true);
       }
     });
 
     it.each([
-      ["Directie", true],
+      ["Admin", true],
       ["HL", true],
       ["LK leeftijd", true],
       ["TB", false],
@@ -267,7 +267,7 @@ describe("de rechtenmatrix van de frontend", () => {
     });
 
     it.each([
-      ["Directie", true],
+      ["Admin", true],
       ["LK leeftijd", true],
       ["HL", false],
       ["TB", false],
@@ -323,7 +323,7 @@ describe("de rechtenmatrix van de frontend", () => {
 
 /*
   The server's I26 unit cases, as far as the frontend's resource reaches: themabeheer on a thema holding nothing
-  (`Themabron` with no one else's content and no linked leeftijd) passes, on one holding content it does not, directie
+  (`Themabron` with no one else's content and no linked leeftijd) passes, on one holding content it does not, admin
   passes both, nobody else passes either, and without a resource the column fails closed.
 */
 describe("een thema verwijderen (I26)", () => {
@@ -335,8 +335,8 @@ describe("een thema verwijderen (I26)", () => {
     expect(staatToe(RELATIES.TB, "ThemaVerwijderen", vol)).toBe(false);
   });
 
-  it("mag directie elk thema", () => {
-    expect(staatToe(RELATIES.Directie, "ThemaVerwijderen", vol)).toBe(true);
+  it("mag admin elk thema", () => {
+    expect(staatToe(RELATIES.Admin, "ThemaVerwijderen", vol)).toBe(true);
   });
 
   it.each(["HL", "HL andere leeftijd", "LK leeftijd", "LK andere leeftijd", "LK eigen", "Ander"])(
@@ -368,19 +368,19 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(een.subthemaHerschikken("K3", "K2")).toBe(false);
     expect(een.subthemaHerschikken("K2", "K3")).toBe(false);
     expect(een.subthemaHerschikken("K3", "K3")).toBe(true);
-    expect(magVoor(RELATIES.Directie).subthemaHerschikken("K3", "L6")).toBe(true);
+    expect(magVoor(RELATIES.Admin).subthemaHerschikken("K3", "L6")).toBe(true);
   });
 
-  it("biedt een subthema toevoegen aan wie op minstens één leeftijd hoofdleerkracht is, of directie", () => {
+  it("biedt een subthema toevoegen aan wie op minstens één leeftijd hoofdleerkracht is, of admin", () => {
     expect(magVoor(RELATIES.HL).subthemaToevoegen).toBe(true);
-    expect(magVoor(RELATIES.Directie).subthemaToevoegen).toBe(true);
+    expect(magVoor(RELATIES.Admin).subthemaToevoegen).toBe(true);
     expect(magVoor(RELATIES.TB).subthemaToevoegen).toBe(false);
     expect(magVoor(RELATIES["LK leeftijd"]).subthemaToevoegen).toBe(false);
   });
 
   it("biedt 'koppel dit doel' aan wie in de boom van deze leeftijden iets mag koppelen (F1)", () => {
-    // The thema level needs no leeftijd, so directie and themabeheer are offered it whatever the klas.
-    expect(magVoor(RELATIES.Directie).doelKoppelenVoor([])).toBe(true);
+    // The thema level needs no leeftijd, so admin and themabeheer are offered it whatever the klas.
+    expect(magVoor(RELATIES.Admin).doelKoppelenVoor([])).toBe(true);
     expect(magVoor(RELATIES.TB).doelKoppelenVoor(["L1"])).toBe(true);
     // A hoofdleerkracht only where the sheet lists their own leeftijd: an L1 klas shows no K3 subthema.
     expect(magVoor(RELATIES.HL).doelKoppelenVoor([LEEFTIJD])).toBe(true);
@@ -392,8 +392,8 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(magVoor(RELATIES.Ander).doelKoppelenVoor([LEEFTIJD])).toBe(false);
   });
 
-  it("laat directie een klas plannen ook zonder gekozen klas, en een leerkracht alleen de eigen", () => {
-    expect(magVoor(RELATIES.Directie).klasplanningBewerken(null)).toBe(true);
+  it("laat admin een klas plannen ook zonder gekozen klas, en een leerkracht alleen de eigen", () => {
+    expect(magVoor(RELATIES.Admin).klasplanningBewerken(null)).toBe(true);
     expect(magVoor(RELATIES["LK eigen"]).klasplanningBewerken(EIGEN_KLAS)).toBe(true);
     expect(magVoor(RELATIES["LK eigen"]).klasplanningBewerken(ANDERE_KLAS)).toBe(false);
     expect(magVoor(RELATIES["LK eigen"]).klasplanningBewerken(null)).toBe(false);
@@ -406,7 +406,7 @@ describe("de antwoorden die de schermen vragen", () => {
     expect(tb.themaBewerken).toBe(true);
     expect(tb.themaVerwijderen({ subthemas: [{}] })).toBe(false);
     expect(tb.themaVerwijderen({ subthemas: [] })).toBe(true);
-    expect(magVoor(RELATIES.Directie).themaVerwijderen({ subthemas: [{}] })).toBe(true);
+    expect(magVoor(RELATIES.Admin).themaVerwijderen({ subthemas: [{}] })).toBe(true);
     expect(tb.menselijkeBeslissingenVerwijderen).toBe(false);
     expect(tb.curriculumbeheer).toBe(false);
     expect(tb.schoolcontentImporteren).toBe(true);
@@ -416,13 +416,13 @@ describe("de antwoorden die de schermen vragen", () => {
 describe("een klas inkijken (FB-013, ADR-0040)", () => {
   const inzage = (klasId: string, leeftijden: string[]): Rechtbron => ({ soort: "klasinzage", klasId, leeftijden });
 
-  it("leest geen klas van een andere jaarfase, behalve voor themabeheer en directie", () => {
+  it("leest geen klas van een andere jaarfase, behalve voor themabeheer en admin", () => {
     const k2 = inzage(ANDERE_KLAS, ["K2"]);
     for (const relatie of ["HL", "LK leeftijd", "LK eigen", "Ander"]) {
       expect(staatToe(RELATIES[relatie], "KlasplanningBekijken", k2)).toBe(false);
     }
     expect(staatToe(RELATIES.TB, "KlasplanningBekijken", k2)).toBe(true);
-    expect(staatToe(RELATIES.Directie, "KlasplanningBekijken", k2)).toBe(true);
+    expect(staatToe(RELATIES.Admin, "KlasplanningBekijken", k2)).toBe(true);
   });
 
   it("leest de eigen klas ook als ze voor geen leeftijd staat, en een klas zonder leeftijd verder niet", () => {
@@ -438,8 +438,8 @@ describe("een klas inkijken (FB-013, ADR-0040)", () => {
     expect(staatToe(alles, "KlasplanningBekijken", { soort: "klas", klasId: EIGEN_KLAS })).toBe(false);
   });
 
-  it("zegt dat iemand alle klassen inkijkt alleen voor directie en themabeheer", () => {
-    expect(magVoor(RELATIES.Directie).alleKlassenInzien).toBe(true);
+  it("zegt dat iemand alle klassen inkijkt alleen voor admin en themabeheer", () => {
+    expect(magVoor(RELATIES.Admin).alleKlassenInzien).toBe(true);
     expect(magVoor(RELATIES.TB).alleKlassenInzien).toBe(true);
     for (const relatie of ["HL", "LK leeftijd", "LK eigen", "Ander"]) {
       expect(magVoor(RELATIES[relatie]).alleKlassenInzien).toBe(false);
@@ -448,22 +448,22 @@ describe("een klas inkijken (FB-013, ADR-0040)", () => {
 
   it("zegt dat iemand geen enkele klas inkijkt alleen zonder enige relatie, en niet voor /api/ik antwoordt", () => {
     expect(magVoor(RELATIES.Ander).geenKlasInzien).toBe(true);
-    for (const relatie of ["Directie", "TB", "HL", "LK leeftijd", "LK eigen"]) {
+    for (const relatie of ["Admin", "TB", "HL", "LK leeftijd", "LK eigen"]) {
       expect(magVoor(RELATIES[relatie]).geenKlasInzien).toBe(false);
     }
     expect(magVoor(undefined).geenKlasInzien).toBe(false);
   });
 
   it("crasht niet op een /api/ik-antwoord zonder de lijsten", () => {
-    const zonderLijsten = { id: IK, naam: "Test", email: "test@school.be", isDirectie: false } as unknown as Ik;
+    const zonderLijsten = { id: IK, naam: "Test", email: "test@school.be", isAdmin: false } as unknown as Ik;
     expect(() => magVoor(zonderLijsten)).not.toThrow();
     expect(magVoor(zonderLijsten).alleKlassenInzien).toBe(false);
   });
 });
 
 describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
-  it("biedt de bestemming aan directie en aan een leerkracht van een K3-klas, ook na het schooljaar", () => {
-    expect(magVoor(RELATIES.Directie).ontwikkelingsrapportZien).toBe(true);
+  it("biedt de bestemming aan admin en aan een leerkracht van een K3-klas, ook na het schooljaar", () => {
+    expect(magVoor(RELATIES.Admin).ontwikkelingsrapportZien).toBe(true);
     expect(magVoor(RELATIES["LK rapport"]).ontwikkelingsrapportZien).toBe(true);
     expect(magVoor(RELATIES["LK rapport voorbij"]).ontwikkelingsrapportZien).toBe(true);
   });
@@ -475,10 +475,10 @@ describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
     expect(magVoor(undefined).ontwikkelingsrapportZien).toBe(false);
   });
 
-  it("zegt 'alleen nog lezen' alleen voor de leerkracht van wie het schooljaar voorbij is, nooit voor directie", () => {
+  it("zegt 'alleen nog lezen' alleen voor de leerkracht van wie het schooljaar voorbij is, nooit voor admin", () => {
     expect(magVoor(RELATIES["LK rapport voorbij"]).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(true);
     expect(magVoor(RELATIES["LK rapport"]).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
-    expect(magVoor(RELATIES.Directie).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
+    expect(magVoor(RELATIES.Admin).rapportAlleenNogLezen(EIGEN_KLAS)).toBe(false);
     // Someone who cannot read the klas at all is not "reading only".
     expect(magVoor(RELATIES["LK rapport voorbij"]).rapportAlleenNogLezen(ANDERE_KLAS)).toBe(false);
   });
@@ -488,7 +488,7 @@ describe("het ontwikkelingsrapport (FB-001, ADR-0035 D18, R26)", () => {
     expect(magVoor(RELATIES.HL).ontwikkelingsrapportZien).toBe(false);
     expect(magVoor(RELATIES["HL andere leeftijd"]).ontwikkelingsrapportTab).toBe(false);
     expect(magVoor(RELATIES["LK rapport voorbij"]).ontwikkelingsrapportTab).toBe(true);
-    expect(magVoor(RELATIES.Directie).ontwikkelingsrapportTab).toBe(true);
+    expect(magVoor(RELATIES.Admin).ontwikkelingsrapportTab).toBe(true);
     expect(magVoor(RELATIES.TB).ontwikkelingsrapportTab).toBe(false);
     expect(magVoor(undefined).ontwikkelingsrapportTab).toBe(false);
   });
@@ -540,7 +540,7 @@ describe("Leerlingzorg (FB-008, ADR-0035 R18)", () => {
   it("geeft themabeheer geen rapport en niet de hele lijst (R18)", () => {
     expect(magVoor(RELATIES.TB).alleRapportklassenLezen).toBe(false);
     expect(magVoor(RELATIES["LK rapport"]).alleRapportklassenLezen).toBe(false);
-    expect(magVoor(RELATIES.Directie).alleRapportklassenLezen).toBe(true);
+    expect(magVoor(RELATIES.Admin).alleRapportklassenLezen).toBe(true);
   });
 
   it("faalt dicht op een /api/ik-antwoord zonder het veld", () => {

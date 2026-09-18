@@ -187,7 +187,7 @@ public sealed class MinimumdoelImportService : IMinimumdoelImportService
     }
 
     /// <summary>
-    /// The notice for refs the source no longer names. Dutch, because directie reads it (Art. II.3), and inflected by
+    /// The notice for refs the source no longer names. Dutch, because admin reads it (Art. II.3), and inflected by
     /// count, because "1 minimumdoelen staan" is the plural bug this repo has shipped before. It says only what the code
     /// guarantees: the rows stay.
     /// </summary>

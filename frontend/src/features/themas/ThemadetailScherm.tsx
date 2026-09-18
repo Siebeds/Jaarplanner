@@ -93,8 +93,8 @@ import {
  * links and the copy says "gekoppeld".
  *
  * **Each control is drawn only for whoever holds its row of the ADR-0030 §3 matrix** (E6-02 slice 4), decided in
- * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are directie's and themabeheer's. Deleting the
- * thema is directie's, and themabeheer's while the thema is empty (I26). The server also lets themabeheer delete a
+ * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are admin's and themabeheer's. Deleting the
+ * thema is admin's, and themabeheer's while the thema is empty (I26). The server also lets themabeheer delete a
  * thema holding only its own open wizard run's items, but this read does not carry a run's items, so that case waits
  * for E6-05. Each chapter asks about its own leeftijd.
  * Everyone reads the whole fiche. No sentence explains a missing control: on this screen most visitors read, and a
@@ -404,7 +404,7 @@ export function ThemadetailScherm() {
                   ) : null}
                   {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
                       legible: this does not add a themadoel, it asks the model for candidates that a
-                      teacher then has to accept one by one (Art. IV). Directie and themabeheer only (R14). */}
+                      teacher then has to accept one by one (Art. IV). Admin and themabeheer only (R14). */}
                   {/* FB-042: the heading carries only "Vraag suggesties". It asks nothing yet: it swaps itself for the
                       choice, which reads on as the same phrase, "Vraag suggesties voor K3 L1", then the send button
                       that does call the model and so is the one ring on show (ADR-0039), and a way back. */}
@@ -505,7 +505,7 @@ export function ThemadetailScherm() {
                 white surface where the rest of this screen has none, and that is the point: everything else here is a
                 fact to read, and these are the only objects on the page waiting for a decision.
 
-                Only for whoever may make that decision (R14: directie and themabeheer). For anyone
+                Only for whoever may make that decision (R14: admin and themabeheer). For anyone
                 else a card waiting on somebody else's verdict is noise, and a card without its two
                 buttons would read as a themadoel that is not one. Kept hidden by the owner's ruling
                 (owner, 2026-09-14), asked after the slice 4 audit. */}

@@ -12,7 +12,7 @@ namespace Jaarplanner.Api.Controllers;
 /// minimumdoelen as themadoel, and a person accepts or rejects each. All logic lives in <see cref="DoelMatchingService"/>.
 /// <para>
 /// Nothing is applied by the AI: a run stores each proposal as <c>voorgesteld</c> with a motivation, and only an explicit
-/// decision moves one (Art. IV.1/IV.2). Generating and deciding are directie's and themabeheer's (R14), checked here.
+/// decision moves one (Art. IV.1/IV.2). Generating and deciding are admin's and themabeheer's (R14), checked here.
 /// Not-found, an invalid decision and the two refusals of TB-007 surface through <c>AiMatchingExceptionHandler</c>.
 /// </para>
 /// </summary>

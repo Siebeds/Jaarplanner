@@ -266,7 +266,7 @@ function jaarFaseVan(code: string): string {
 export function ik(): Ik {
   return {
     ...inhoud.GEBRUIKER,
-    isDirectie: true,
+    isAdmin: true,
     heeftThemabeheer: true,
     heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],

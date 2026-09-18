@@ -17,7 +17,7 @@ namespace Jaarplanner.Api.Infrastructure.Authenticatie;
 /// <para>
 /// <b>What this does not decide is who may do what.</b> After E6-01 every invited person can do everything except the
 /// curriculum import; the ADR-0030 matrix is E6-02's, and it binds onto the principal made here, which carries nothing
-/// but the <see cref="GebruikerClaim"/>. Rights are looked up, never stored in the cookie, so a change directie makes
+/// but the <see cref="GebruikerClaim"/>. Rights are looked up, never stored in the cookie, so a change admin makes
 /// is not waiting for a session to expire.
 /// </para>
 /// </summary>
@@ -105,7 +105,7 @@ public static class Aanmelding
 
         // The Data Protection keys live in the database (Infrastructure registers that). Outside Development they must
         // also be wrapped with a Key Vault key: the cookie carries only a Gebruiker id, so unwrapped keys would let a
-        // copy of the database mint a session for anyone, directie included. Refused at startup rather than trusted to
+        // copy of the database mint a session for anyone, admin included. Refused at startup rather than trusted to
         // be remembered, like every other setting this design cannot run safely without (antagonist, E6-01 code round).
         var sleutel = builder.Configuration["DataProtection:KeyVaultSleutel"];
         if (!string.IsNullOrWhiteSpace(sleutel))
@@ -182,7 +182,7 @@ public static class Aanmelding
 
     /// <summary>
     /// Every request: does the person behind this session still exist? One primary-key read, and it is what makes a
-    /// removal by directie take effect immediately instead of when the cookie expires.
+    /// removal by admin take effect immediately instead of when the cookie expires.
     /// </summary>
     private static async Task ValideerSessieAsync(CookieValidatePrincipalContext context)
     {

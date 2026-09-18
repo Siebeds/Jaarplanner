@@ -13,7 +13,7 @@ import { Aimerk, Beslisknoppen, Voorsteldoel } from "./Subdoelplaatsing";
  *
  * **They sit under the activiteiten they would join**, in the faint ring of ADR-0051 with the wand, the status mark and
  * the quiet check, pencil and cross of the subdoelplaatsing, so a teacher meets one shape for "the AI proposes, you
- * decide". A proposal is its asker's, and directie's (A3): the server sends someone else's only to directie, which the
+ * decide". A proposal is its asker's, and admin's (A3): the server sends someone else's only to admin, which the
  * card then names.
  *
  * **Accepting makes her own activiteit.** The check takes the proposal as it is; the pencil opens its fields in place
@@ -124,7 +124,7 @@ function Voorstelkaart({
       ) : (
         <>
           <p className="mt-1.5 text-body font-medium text-inkt">{voorstel.naam}</p>
-          {/* Only directie is sent someone else's proposal (ADR-0056 A3); an acceptance makes it the asker's own. */}
+          {/* Only admin is sent someone else's proposal (ADR-0056 A3); an acceptance makes it the asker's own. */}
           {voorstel.isEigen ? null : (
             <p className="mt-0.5 text-meta text-inkt-zacht">
               {t("activiteitvoorstel.vanCollega", { naam: voorstel.aanvragerNaam })}

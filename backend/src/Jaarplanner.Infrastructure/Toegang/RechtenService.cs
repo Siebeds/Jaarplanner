@@ -10,7 +10,7 @@ namespace Jaarplanner.Infrastructure.Toegang;
 /// them to <see cref="Rechtenberekening"/> with today's date on the school's clock (<see cref="Schoolklok"/>).
 /// <para>
 /// <b>Remembered for this instance only</b>, which is one request (scoped). One request may ask several matrix rows,
-/// and each would otherwise read the same rows again; the next request reads afresh, so a right directie changes
+/// and each would otherwise read the same rows again; the next request reads afresh, so a right admin changes
 /// applies at once, as ADR-0031 wanted when it kept rights out of the cookie. A request that changes a right and then
 /// asks for it must not use this instance's earlier answer; none does today.
 /// </para>
@@ -40,7 +40,7 @@ public sealed class RechtenService : IRechtenService
         var gebruiker = await _context.Gebruikers
             .AsNoTracking()
             .Where(g => g.Id == gebruikerId)
-            .Select(g => new { g.IsDirectie, g.HeeftThemabeheer, g.HeeftLeerlingzorg })
+            .Select(g => new { g.IsAdmin, g.HeeftThemabeheer, g.HeeftLeerlingzorg })
             .SingleOrDefaultAsync(cancellationToken);
 
         if (gebruiker is null)
@@ -65,7 +65,7 @@ public sealed class RechtenService : IRechtenService
 
         var rechten = Rechtenberekening.Bereken(
             gebruikerId,
-            gebruiker.IsDirectie,
+            gebruiker.IsAdmin,
             gebruiker.HeeftThemabeheer,
             klastoewijzingen,
             aanstellingen,

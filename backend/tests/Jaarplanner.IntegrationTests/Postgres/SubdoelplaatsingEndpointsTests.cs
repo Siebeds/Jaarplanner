@@ -69,11 +69,11 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     {
         var themaId = await Opzet.ThemaAsync();
         var subthemaId = await Opzet.SubthemaAsync("K2", themaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", new { minimumdoelRef = Md })));
+            admin.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", new { minimumdoelRef = Md })));
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = Bezet })));
+            admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = Bezet })));
         return (themaId, subthemaId);
     }
 
@@ -102,9 +102,9 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     public async Task Het_open_aantal_telt_zonder_AI_alleen_de_leeftijden_met_een_subthema()
     {
         var (themaId, _) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
 
-        var leeftijd = Assert.Single((await LeesAsync(directie, themaId)).Leeftijden);
+        var leeftijd = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
 
         Assert.Equal("K2", leeftijd.Leeftijd);
         Assert.Equal(3, leeftijd.AantalOpen);
@@ -115,13 +115,13 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     public async Task De_AI_stelt_een_bestaand_en_een_nieuw_subthema_voor_en_aanvaarden_schrijft_gewone_inhoud()
     {
         var (themaId, subthemaId) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
 
-        var resultaat = await GenereerAsync(directie, themaId);
+        var resultaat = await GenereerAsync(admin, themaId);
         Assert.Equal(new Resultaat(true, 3, 1, 2, null), resultaat);
 
-        var k2 = Assert.Single((await LeesAsync(directie, themaId)).Leeftijden);
+        var k2 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
         var subdoel = Assert.Single(k2.Subdoelvoorstellen);
         Assert.Equal((Egel, subthemaId, "Dieren voor de winter."), (subdoel.LeerplandoelCode, subdoel.SubthemaId!.Value, subdoel.Tekst));
         var nieuw = Assert.Single(k2.Subthemavoorstellen);
@@ -131,9 +131,9 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         Assert.Equal(3, k2.AantalOpen);
 
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subdoelvoorstellen/{subdoel.Id}/status", new { status = "Aanvaard" })));
+            admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{subdoel.Id}/status", new { status = "Aanvaard" })));
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new
             {
                 status = "Aanvaard",
                 naam = "Regenweer",
@@ -160,9 +160,9 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         Assert.Equal(KoppelingStatus.Geweigerd, (await context.Subdoelvoorstellen.AsNoTracking().SingleAsync(v => v.LeerplandoelCode == Wind)).Status);
 
         // Only the goal left out is still open, and a decided proposal is refused.
-        Assert.Equal(1, Assert.Single((await LeesAsync(directie, themaId)).Leeftijden).AantalOpen);
+        Assert.Equal(1, Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).AantalOpen);
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/subdoelvoorstellen/{subdoel.Id}/status", new { status = "Geweigerd" }),
+            admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{subdoel.Id}/status", new { status = "Geweigerd" }),
             HttpStatusCode.BadRequest,
             "Over dit voorstel is al beslist. Vernieuw de pagina om te zien wat er nu staat.");
     }
@@ -171,26 +171,26 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     public async Task Een_geweigerde_plaatsing_en_naam_komen_niet_terug_en_een_nieuwe_vraag_vervangt_de_open_voorstellen()
     {
         var (themaId, _) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
-        await GenereerAsync(directie, themaId);
-        var k2 = Assert.Single((await LeesAsync(directie, themaId)).Leeftijden);
+        await GenereerAsync(admin, themaId);
+        var k2 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
 
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subdoelvoorstellen/{k2.Subdoelvoorstellen[0].Id}/status", new { status = "Geweigerd" })));
+            admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{k2.Subdoelvoorstellen[0].Id}/status", new { status = "Geweigerd" })));
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemavoorstellen/{k2.Subthemavoorstellen[0].Id}/beslissing", new { status = "Geweigerd" })));
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{k2.Subthemavoorstellen[0].Id}/beslissing", new { status = "Geweigerd" })));
 
         // The model repeats both: nothing of it is stored.
-        var tweede = await GenereerAsync(directie, themaId);
+        var tweede = await GenereerAsync(admin, themaId);
         Assert.Equal(0, tweede.AantalVoorgesteld);
-        Assert.Empty(Assert.Single((await LeesAsync(directie, themaId)).Leeftijden).Subthemavoorstellen);
+        Assert.Empty(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subthemavoorstellen);
 
         // A new name is accepted, and a third run replaces its open proposals rather than adding to them.
         _factory.AiAntwoord = Antwoord("Weer en wind");
-        await GenereerAsync(directie, themaId);
-        await GenereerAsync(directie, themaId);
-        var derde = Assert.Single((await LeesAsync(directie, themaId)).Leeftijden);
+        await GenereerAsync(admin, themaId);
+        await GenereerAsync(admin, themaId);
+        var derde = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
         Assert.Equal("Weer en wind", Assert.Single(derde.Subthemavoorstellen).Naam);
         Assert.Empty(derde.Subdoelvoorstellen);
 
@@ -202,27 +202,27 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     public async Task Een_onleesbaar_antwoord_bewaart_niets_en_een_leeftijd_zonder_subthema_wordt_geweigerd()
     {
         var (themaId, _) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = "geen json";
 
-        using var antwoord = await directie.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
+        using var antwoord = await admin.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
         Assert.Equal(HttpStatusCode.UnprocessableEntity, antwoord.StatusCode);
 
         await using var context = _db.MaakContext();
         Assert.False(await context.Subdoelvoorstellen.AnyAsync(v => v.ThemaId == themaId));
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K3/genereer", null),
+            admin.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K3/genereer", null),
             HttpStatusCode.BadRequest,
             "Dit thema heeft nog geen subthema voor K3. Maak er eerst een aan.");
     }
 
     [PostgresFact]
-    public async Task Alleen_de_hoofdleerkracht_van_de_leeftijd_en_directie_vragen_beslissen_en_zien_de_voorstellen()
+    public async Task Alleen_de_hoofdleerkracht_van_de_leeftijd_en_admin_vragen_beslissen_en_zien_de_voorstellen()
     {
         var school = await Opzet.SchoolAsync();
         var (themaId, _) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
 
         using var hlK2 = Opzet.Als(await Opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
@@ -248,7 +248,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
             Assert.Empty(gezien.Subthemavoorstellen);
         }
 
-        Assert.True(Assert.Single((await LeesAsync(directie, themaId)).Leeftijden).MagBeslissen);
+        Assert.True(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).MagBeslissen);
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
             hlK2.PutAsJsonAsync($"/api/subdoelvoorstellen/{voorstel.Id}/status", new { status = "Aanvaard" })));
     }
@@ -258,13 +258,13 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     {
         var school = await Opzet.SchoolAsync();
         var (themaId, subthemaId) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
-        await GenereerAsync(directie, themaId);
-        var voorstel = Assert.Single(Assert.Single((await LeesAsync(directie, themaId)).Leeftijden).Subdoelvoorstellen);
+        await GenereerAsync(admin, themaId);
+        var voorstel = Assert.Single(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subdoelvoorstellen);
 
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemas/{subthemaId}", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" })));
+            admin.PutAsJsonAsync($"/api/subthemas/{subthemaId}", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" })));
 
         // The rights check reads the subthema's leeftijd now: the K2 hoofdleerkracht is refused, and nothing is written.
         using var hlK2 = Opzet.Als(await Opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
@@ -275,7 +275,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
 
         // Whoever may act at K3 is told the proposal no longer says what it would do.
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/subdoelvoorstellen/{voorstel.Id}/status", new { status = "Aanvaard" }),
+            admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{voorstel.Id}/status", new { status = "Aanvaard" }),
             HttpStatusCode.BadRequest,
             "Regen hoort intussen bij een andere leeftijd. Vraag opnieuw voorstellen voor K3.");
 
@@ -287,35 +287,35 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     public async Task Een_nieuw_subthema_plaatst_geen_doel_dat_intussen_met_de_hand_geplaatst_is()
     {
         var (themaId, subthemaId) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
-        await GenereerAsync(directie, themaId);
-        var nieuw = Assert.Single(Assert.Single((await LeesAsync(directie, themaId)).Leeftijden).Subthemavoorstellen);
+        await GenereerAsync(admin, themaId);
+        var nieuw = Assert.Single(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subthemavoorstellen);
 
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = Regen })));
+            admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = Regen })));
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard" }),
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard" }),
             HttpStatusCode.BadRequest,
             $"{Regen} staat intussen al in een subthema van K2. Laat het weg, of weiger het voorgestelde subthema.");
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard", naam = "regen" }),
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard", naam = "regen" }),
             HttpStatusCode.BadRequest,
             "Er is al een subthema regen voor K2. Kies een andere naam.");
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard", leerplandoelCodes = new[] { Wind } })));
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard", leerplandoelCodes = new[] { Wind } })));
     }
 
     [PostgresFact]
     public async Task Een_verwijderd_subthema_neemt_zijn_voorstellen_mee()
     {
         var (themaId, subthemaId) = await ThemaAsync();
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
-        await GenereerAsync(directie, themaId);
+        await GenereerAsync(admin, themaId);
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/subthemas/{subthemaId}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/subthemas/{subthemaId}")));
 
         await using var context = _db.MaakContext();
         Assert.False(await context.Subdoelvoorstellen.AnyAsync(v => v.SubthemaId == subthemaId));

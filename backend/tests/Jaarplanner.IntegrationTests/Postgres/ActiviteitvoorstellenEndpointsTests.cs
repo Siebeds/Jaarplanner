@@ -61,15 +61,15 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
     {
         var school = await Opzet.SchoolAsync();
         var subthemaId = await Opzet.SubthemaAsync("K3");
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         foreach (var code in new[] { Drijven, Water })
         {
             Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-                directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = code })));
+                admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = code })));
         }
 
         Assert.Equal(HttpStatusCode.Created, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/onderzoeksvragen", new { vraag = "Waarom blijft een boot drijven?" })));
+            admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/onderzoeksvragen", new { vraag = "Waarom blijft een boot drijven?" })));
 
         var leerkracht = await Opzet.GebruikerAsync(school, klassen: [school.K3Blauw]);
         return (subthemaId, leerkracht, school);
@@ -220,7 +220,7 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Wie_vroeg_en_de_directie_zien_en_beslissen_een_voorstel_en_alleen_wie_een_eigen_activiteit_mag_maken_vraagt()
+    public async Task Wie_vroeg_en_de_admin_zien_en_beslissen_een_voorstel_en_alleen_wie_een_eigen_activiteit_mag_maken_vraagt()
     {
         var (subthemaId, leerkrachtId, school) = await OpzetAsync();
         using var leerkracht = Opzet.Als(leerkrachtId);
@@ -257,15 +257,15 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
                 RechtenTestOpzet.GeenToegang);
         }
 
-        // Directie sees every asker's proposals, its own first, and an acceptance makes the asker's own activiteit (A3).
-        using var directie = Opzet.Als(await Opzet.GebruikerAsync(school, directie: true));
-        Assert.Equal(1, (await GenereerAsync(directie, subthemaId)).AantalVoorgesteld);
-        var gezien = await LeesAsync(directie, subthemaId);
+        // Admin sees every asker's proposals, its own first, and an acceptance makes the asker's own activiteit (A3).
+        using var admin = Opzet.Als(await Opzet.GebruikerAsync(school, admin: true));
+        Assert.Equal(1, (await GenereerAsync(admin, subthemaId)).AantalVoorgesteld);
+        var gezien = await LeesAsync(admin, subthemaId);
         Assert.Equal([(true, "Test"), (false, "Test")], gezien.Select(v => (v.IsEigen, v.AanvragerNaam)));
         Assert.Equal(voorstel.Id, gezien[1].Id);
         Assert.Single(await LeesAsync(leerkracht, subthemaId));
 
-        var besluit = await BeslisAsync(directie, voorstel.Id, new { status = "Aanvaard" });
+        var besluit = await BeslisAsync(admin, voorstel.Id, new { status = "Aanvaard" });
         await using var context = _db.MaakContext();
         var activiteit = await context.Activiteiten.AsNoTracking().SingleAsync(a => a.Id == besluit.ActiviteitId);
         Assert.Equal((leerkrachtId, leerkrachtId), (activiteit.EigenaarId!.Value, activiteit.MakerId!.Value));
@@ -324,8 +324,8 @@ public sealed class ActiviteitvoorstellenEndpointsTests : IAsyncLifetime
         _factory.AiAntwoord = Antwoord("Drijftafel");
         await GenereerAsync(leerkracht, subthemaId);
 
-        using var directie = Opzet.Directie();
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/subthemas/{subthemaId}")));
+        using var admin = Opzet.Admin();
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/subthemas/{subthemaId}")));
 
         await using var context = _db.MaakContext();
         Assert.False(await context.Activiteitvoorstellen.AnyAsync(v => v.SubthemaId == subthemaId));

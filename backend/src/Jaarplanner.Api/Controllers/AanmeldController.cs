@@ -86,7 +86,7 @@ public sealed class AanmeldController : ControllerBase
             gebruiker.Id,
             gebruiker.Naam,
             gebruiker.Email,
-            rechten.IsDirectie,
+            rechten.IsAdmin,
             rechten.HeeftThemabeheer,
             rechten.HeeftLeerlingzorg,
             rechten.HoofdleerkrachtLeeftijden,
@@ -103,10 +103,10 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 
 /// <summary>
 /// <c>GET /api/ik</c>: who is signed in, and the relations the ADR-0030 §3 columns are made of. Raw relations, not
-/// per-action answers: directie may do everything whatever the lists say but edit the K3 rapportdoelen and scale (ADR-0035
+/// per-action answers: admin may do everything whatever the lists say but edit the K3 rapportdoelen and scale (ADR-0035
 /// R31), and a gebruiker holds the union of all of them. The frontend uses this to hide controls only; the server enforces.
 /// </summary>
-/// <param name="IsDirectie">"Directie": every action but editing the K3 rapportdoelen and the sterrenschaal (R31).</param>
+/// <param name="IsAdmin">"Admin": every action but editing the K3 rapportdoelen and the sterrenschaal (R31).</param>
 /// <param name="HeeftThemabeheer">"TB".</param>
 /// <param name="HeeftLeerlingzorg">
 /// "Leerlingzorg" (FB-008): reads every ontwikkelingsrapport and nothing else, so it also shows the Ontwikkelingsrapport
@@ -117,19 +117,19 @@ public sealed record AfmeldWeergave(string DoorsturenNaar);
 /// <param name="EigenKlasIds">"LK eigen": every klas they hold a klastoewijzing on.</param>
 /// <param name="RapportklasIds">
 /// "LK eigen" for the ontwikkelingsrapport (FB-001): the klassen of <paramref name="EigenKlasIds"/> that grant K3, whose
-/// leerlingen and reports they read, with no end date. Non-empty (or directie) is what shows the Ontwikkelingsrapport tab
+/// leerlingen and reports they read, with no end date. Non-empty (or admin) is what shows the Ontwikkelingsrapport tab
 /// (ADR-0035 D18).
 /// </param>
 /// <param name="LopendeRapportklasIds">
 /// The <paramref name="RapportklasIds"/> whose schooljaar has not ended: where they may also add, rename and delete
 /// leerlingen and fill in reports (R26). Non-empty is also exactly what lets them edit the one K3 set of rapportdoelen and
-/// the sterrenschaal (FB-002, <c>RapportsetBewerken</c>, D4), directie included; <paramref name="IsDirectie"/> alone does not.
+/// the sterrenschaal (FB-002, <c>RapportsetBewerken</c>, D4), admin included; <paramref name="IsAdmin"/> alone does not.
 /// </param>
 public sealed record IkWeergave(
     Guid Id,
     string Naam,
     string Email,
-    bool IsDirectie,
+    bool IsAdmin,
     bool HeeftThemabeheer,
     bool HeeftLeerlingzorg,
     IReadOnlyList<string> HoofdleerkrachtLeeftijden,

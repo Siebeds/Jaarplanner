@@ -13,15 +13,15 @@ namespace Jaarplanner.Api.Controllers;
 /// <c>manueel</c> for a manual link (Art. IV.2). Scoping and validation live in the service/domain.
 /// <para>
 /// <b>Rights (E6-02, ADR-0030 §3), each against the activiteit as <see cref="Activiteitbron"/>.</b> Its content (every
-/// field but its goal links, I15, the onderzoeksvraag tag included): <c>GedeeldeActiviteitBewerken</c> (directie, HL,
+/// field but its goal links, I15, the onderzoeksvraag tag included): <c>GedeeldeActiviteitBewerken</c> (admin, HL,
 /// every leerkracht of that leeftijd; R17, R23). Its goal links, and asking and deciding the AI's goal proposals (FB-026):
-/// <c>DoelenKoppelen</c> (directie, HL; R19). Deleting it:
+/// <c>DoelenKoppelen</c> (admin, HL; R19). Deleting it:
 /// <c>ActiviteitVerwijderen</c> (HL; the maker while no decided goal is linked; R25, R26, R33, ADR-0054 D5). Moving it:
 /// <c>ActiviteitVerplaatsen</c> (HL; a leerkracht of that leeftijd while no decided goal is linked; I19), and the domain keeps
 /// the move at the same leeftijd, so the destination needs no second check.
 /// </para>
 /// <para>
-/// <b>An own activiteit (ADR-0049)</b> goes through the same rows, and the resource makes only its owner (and directie)
+/// <b>An own activiteit (ADR-0049)</b> goes through the same rows, and the resource makes only its owner (and admin)
 /// pass them (D4). Using one as an own copy is <c>EigenActiviteitGebruiken</c> (D5).
 /// </para>
 /// </summary>

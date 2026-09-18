@@ -235,7 +235,7 @@ public sealed record DekkingWeergave(
 /// <param name="DekkendeFiches">
 /// The planned algemene fiches of this class that cover this goal, ordered by name (owner ruling, 2026-09-11; Art. V.1
 /// as amended). A separate list rather than names mixed into <paramref name="DekkendeThemas"/>, because a thema and a
-/// turnles are different kinds of evidence and a directie reading "gedekt door Turnen" has to be able to tell which
+/// turnles are different kinds of evidence and an admin reading "gedekt door Turnen" has to be able to tell which
 /// one it is looking at.
 /// </param>
 /// <param name="DekkendeActiviteiten">
