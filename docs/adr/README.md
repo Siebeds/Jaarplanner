@@ -67,6 +67,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0054](0054-ai-zoekt-doelen-bij-een-activiteit.md) | **The AI proposes goals for an activiteit**, decided by whoever may link its goals; an accepted goal is proposed as subdoel, and only a decided link counts as linked (R25) | Accepted |
 | [0055](0055-ai-jaarplan-met-datums.md) | **The AI jaarplan generation proposes thema's with a start week; the calendar sets the days**: on free days only, over the whole year, open proposals replaced; the kept startthema's and vaste momenten and the planningsblok seam are removed | Accepted |
 | [0056](0056-ai-stelt-activiteiten-voor.md) | **The AI proposes activiteiten under a subthema**, and an accepted one is the asker's own activiteit (a third Art. IV.4 exception) | Accepted |
+| [0061](0061-de-rol-directie-heet-admin.md) | **The directie right is called admin**: the same rights, several holders, and the code, column, API and configuration renamed with it | Accepted |
 
 ## Compliance traceability matrix
 
@@ -126,6 +127,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0054 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
 | 0055 | Art. I.1, II.1, IV.5, IX.3 and XII (amended); IV.1–IV.4 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
 | 0056 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); I.2 and V.1 unchanged; relates to 0043, 0049, 0050 and 0051 | FB-025 | FR-4.1–FR-4.3; FA A.7 step 7 |
+| 0061 | Art. II.3, IV.1, IV.8, V.5, VI.1, VI.7, IX.2, XII and XIV (amended); IV.7 unchanged; renames the directie column of 0030 §3 and the configuration key of 0031 | FB-072 | FR-12.2 |
 
 ## Open decisions referenced by ADRs
 

@@ -16,7 +16,8 @@ never rewrite). UI direction: [ADR-0024](docs/adr/0024-single-frontend-inkt-en-s
 own **thema's** and **activiteiten** onto the goals of the **Op.stap** curriculum (Katholiek Onderwijs Vlaanderen),
 generate an AI-assisted year plan per klas, adjust it by drag-and-drop, and prove coverage of every **minimumdoel**
 (the decreed attainment targets the onderwijsinspectie tests). K3 teachers also write an **ontwikkelingsrapport** per
-child. The users are leerkrachten and directie: non-technical, and the UI is Dutch.
+child. The users are leerkrachten and directie: non-technical, and the UI is Dutch. Whoever runs the beheer holds the
+admin right.
 
 ## Working agreements
 - **Antwoord de projecteigenaar altijd in het Nederlands.** Dat gaat over de communicatie, niet over de code:
@@ -25,7 +26,7 @@ child. The users are leerkrachten and directie: non-technical, and the UI is Dut
 - **Domain language is Dutch** in code (`Leerplandoel`, `Minimumdoel`, `Thema`, `Dekking`, …); generic code,
   identifiers and comments are English.
 - **User-facing strings live in `frontend/src/i18n/nl.json`**; never hard-code Dutch in a component. A message a
-  teacher or directie can act on may be composed server-side in Dutch; an operator-only message is English (Art. II.3).
+  teacher or an admin can act on may be composed server-side in Dutch; an operator-only message is English (Art. II.3).
 - **Imported Op.stap goals are read-only.** Teachers add internal labels and ordering only.
 - **AI is advisory.** Every suggestion is reviewable and accept/reject-able, stored as `voorgesteld` with a motivation,
   and final only after the person with the right decides it (Art. IV.1, VI.1). Exception: an ontwikkelingsrapport
@@ -101,14 +102,14 @@ The model is [`CONSTITUTION.md` Art. IX](CONSTITUTION.md#article-ix--core-data-m
 - `Thema`, `Themadoel` and kernwoordenschat are school-wide; `Subthema`, `Subdoel` and `Activiteit` are per **leeftijd** (jaarfase), not per klas; `AlgemeneFiche` is per klas. A klas has a required `jaarfase`.
 - `DoelKoppeling` links content to a leerplandoel with a `status` (voorgesteld/aanvaard/geweigerd/manueel) and `aiMotivatie`.
 - **Dekking is computed, never stored**, in two steps per klas, both shown: the dekkingsprognose and the dekking (Art. V.1). A minimumdoel counts only through a thema it is a themadoel of (placed, for dekking); a leerplandoel through a subthema at the klas's leeftijd (placed in the agenda, for dekking), a planned algemene fiche of the klas, or an own activiteit planned in the klas's agenda. A thema's doelsuggestie proposes a minimumdoel and counts only as the themadoel its acceptance makes.
-- An `Activiteit` is shared or **own** ([ADR-0049](docs/adr/0049-eigen-activiteit-van-de-leerkracht.md)): what a leerkracht creates is hers (`EigenaarId`), follows her across schooljaren, is read and copied by her jaarfase colleagues, is edited only by her and directie, and never counts through its subthema.
+- An `Activiteit` is shared or **own** ([ADR-0049](docs/adr/0049-eigen-activiteit-van-de-leerkracht.md)): what a leerkracht creates is hers (`EigenaarId`), follows her across schooljaren, is read and copied by her jaarfase colleagues, is edited only by her and an admin, and never counts through its subthema.
 - **A thema placement has its own first and last day** ([ADR-0053](docs/adr/0053-themaplaatsing-met-eigen-datums.md)): no two share a day, a vacation splits one into parts, and nothing moves when the vacations change. The calendar rules (schooldag, lesweek, proposed end, split) live in `Themakalender`. There are no planningsblokken in the planning; never assume months.
 - **A (re)generation discards only a placement that is `Voorgesteld` and not `vergrendeld`.** It covers the whole year: the model picks thema's and a start week, and `Themakalender` sets the days on free schooldagen ([ADR-0055](docs/adr/0055-ai-jaarplan-met-datums.md)).
-- Rights, checked server-side: directie sees and edits everything; themabeheer edits thema's, runs the FR-1 import and the wizard, and with directie alone reviews doelsuggesties; a hoofdleerkracht per (schooljaar, jaarfase) owns that jaarfase's subthema's, subdoelen and goal links; a klastoewijzing gives a klas's planning; a leerkracht and a hoofdleerkracht read the planning of the klassen of their own jaarfase, themabeheer every klas, anyone else none ([ADR-0040](docs/adr/0040-klassen-inkijken-per-jaarfase.md)); Leerlingzorg reads every ontwikkelingsrapport.
-- A subdoelplaatsing (ADR-0050) proposes where an open leerplandoel of a thema's themadoelen goes, in an existing or a new subthema of its leeftijd; a hoofdleerkracht of that jaarfase or directie asks and decides, and only an accepted one becomes a subdoel or subthema.
-- An activiteitvoorstel (ADR-0056) is personal: the AI proposes activiteiten on a subthema's subdoelen to whoever may create an own activiteit there, only she and directie see and decide them, and an accepted one becomes her own activiteit.
+- Rights, checked server-side: admin sees and edits everything, and several gebruikers may hold it ([ADR-0061](docs/adr/0061-de-rol-directie-heet-admin.md)); themabeheer edits thema's, runs the FR-1 import and the wizard, and with admin alone reviews doelsuggesties; a hoofdleerkracht per (schooljaar, jaarfase) owns that jaarfase's subthema's, subdoelen and goal links; a klastoewijzing gives a klas's planning; a leerkracht and a hoofdleerkracht read the planning of the klassen of their own jaarfase, themabeheer every klas, anyone else none ([ADR-0040](docs/adr/0040-klassen-inkijken-per-jaarfase.md)); Leerlingzorg reads every ontwikkelingsrapport.
+- A subdoelplaatsing (ADR-0050) proposes where an open leerplandoel of a thema's themadoelen goes, in an existing or a new subthema of its leeftijd; a hoofdleerkracht of that jaarfase or an admin asks and decides, and only an accepted one becomes a subdoel or subthema.
+- An activiteitvoorstel (ADR-0056) is personal: the AI proposes activiteiten on a subthema's subdoelen to whoever may create an own activiteit there, only she and an admin see and decide them, and an accepted one becomes her own activiteit.
 - The ontwikkelingsrapport (K3 only, Art. IX.4 and VI.7) holds the only pupil data and never counts for dekking.
-- A `Woordweb` (the brainstorm of step 3, [ADR-0043](docs/adr/0043-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and directie. Its AI words come from the model's own language knowledge (the Art. IV.4 exception), and it never counts for dekking.
+- A `Woordweb` (the brainstorm of step 3, [ADR-0043](docs/adr/0043-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and an admin. Its AI words come from the model's own language knowledge (the Art. IV.4 exception), and it never counts for dekking.
 
 ## Testing
 - **Backend (xUnit):** the dekking and concordance logic, the Op.stap API mapping and its HTML-to-text conversion, and the Excel import; integration tests against a Postgres test container.

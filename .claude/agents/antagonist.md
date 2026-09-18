@@ -37,7 +37,7 @@ There is no round 3. A blocking finding still open after round 2 goes to the own
 
 ## Checklist (only what the diff touches)
 
-1. **Art. II, language.** Dutch domain names in code; English infrastructure and comments. Copy the frontend authors is in `frontend/src/i18n/nl.json`, not hard-coded in a component; a server-composed Dutch message is allowed when a teacher or directie can act on it (II.3). No em dash in user-facing text (II.5).
+1. **Art. II, language.** Dutch domain names in code; English infrastructure and comments. Copy the frontend authors is in `frontend/src/i18n/nl.json`, not hard-coded in a component; a server-composed Dutch message is allowed when a teacher or an admin can act on it (II.3). No em dash in user-facing text (II.5).
 2. **Art. III, curriculum integrity.** Nothing mutates official `Leerplandoel` / `Minimumdoel` content. The import mapping lives in one place. `code` stays the identity. A re-import does not silently overwrite jaarplannen.
 3. **Art. IV, AI advisory.** Every AI output has a persisted status and a motivation, with the ontwikkelingsrapport rewrite exception (IV.2, IV.3). Structured JSON, validated before use. The client sits behind an injectable, fakeable interface. Grounding is the school's own data only.
 4. **Art. V, dekking.** Computed, never stored, by the definitions of V.1. Import and coverage logic is covered by tests.
