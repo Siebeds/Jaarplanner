@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:10
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door: bord-filters
 branch: ticket/TB-bord-filters-sorteren
-pr:
+pr: 143
 geblokkeerd:
 fr: []
 ---
@@ -66,3 +66,4 @@ Geen.
 - 2026-09-18 18:02 · bord-filters · aangemaakt (status in-uitvoering)
 - 2026-09-18 18:10 · bord-filters · gebouwd: view.js (filters, sortering) met 9 eigen tests; tabelweergave, prioriteit- en aanmaakdatumfilter, 'Sorteer op' en 'Wis filters'. Alle 103 bordtests groen. Browserpas op 1440px en 390px: filters, sortering per kolomkop (aria-sort), rij opent detail, herladen zet alles terug behalve soort. Geen antagonist: alleen het lokale bord, geen appcode.
 - 2026-09-18 18:10 · bord-filters · in-uitvoering → klaar: bord filtert op prioriteit en aanmaakdatum, sorteert, en heeft een tabelweergave; tests en browserpas groen
+- 2026-09-18 18:11 · bord-filters · PR #143
