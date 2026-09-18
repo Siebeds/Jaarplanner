@@ -17,8 +17,8 @@ param entraTenantId string = tenant().tenantId
 @description('Client id of the app registration. Empty on the first run, before the registration exists.')
 param entraClientId string = ''
 
-@description('Sign-in name (UPN) of the first directie account, created while the gebruikers table is empty (ADR-0031 decision 7).')
-param eersteDirectie string
+@description('Sign-in name (UPN) of the first admin account, created while the gebruikers table is empty (ADR-0031 decision 7).')
+param eersteAdmin string
 
 @description('PostgreSQL administrator login. The app connects with it too: a demo trade-off (ADR-0034 decision 5).')
 param postgresAdminLogin string = 'jaarplanner'
@@ -227,8 +227,8 @@ resource app 'Microsoft.Web/sites@2024-04-01' = {
           value: entraClientId
         }
         {
-          name: 'Authenticatie__EersteDirectie'
-          value: eersteDirectie
+          name: 'Authenticatie__EersteAdmin'
+          value: eersteAdmin
         }
         {
           // The key itself is the Key Vault secret Anthropic--ApiKey, never an app setting (Art. VI.4).

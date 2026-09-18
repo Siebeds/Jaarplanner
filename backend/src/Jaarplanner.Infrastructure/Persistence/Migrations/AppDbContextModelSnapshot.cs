@@ -1322,7 +1322,7 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.Property<bool>("HeeftThemabeheer")
                         .HasColumnType("boolean");
 
-                    b.Property<bool>("IsDirectie")
+                    b.Property<bool>("IsAdmin")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Naam")

@@ -43,7 +43,7 @@ Defaults of this session, which the owner may change on their own:
   the cat's `KlasId`, `ThemaplaatsingId` and a suggested `Datum`, `Begin` and `Einde`. For that source the candidate
   goals are the discipline's leerplandoelen in the klas's aanbod-gat, not the subthema's subdoelen: this replaces
   ADR-0056 D6 for it. Everything else of ADR-0056 holds (validation D7, accepting D8, lifetime D9).
-- **D2. To whom.** The proposals are addressed to the klas's leerkrachten ("LK eigen") and seen by them and directie
+- **D2. To whom.** The proposals are addressed to the klas's leerkrachten ("LK eigen") and seen by them and an admin
   (ADR-0056 A3). Whoever accepts one becomes the owner of the own activiteit it makes, and the proposal is decided for
   all of them. A vervanger does not get them.
 - **D3. What the AI is sent:** the thema, its subthema's at the klas's leeftijd with their onderzoeksvragen, the names

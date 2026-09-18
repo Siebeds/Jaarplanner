@@ -12,7 +12,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <summary>
 /// Seeding shared by the E6-02 slice 3 rights tests: a school year with K3 blauw, K3 groen and K2 rood that has not
 /// ended (so R20's relations count), gebruikers with exactly the relations a test names, and content made over HTTP as
-/// the default directie identity, so the content paths are the ones a screen uses.
+/// the default admin identity, so the content paths are the ones a screen uses.
 /// </summary>
 internal sealed class RechtenTestOpzet
 {
@@ -99,18 +99,18 @@ internal sealed class RechtenTestOpzet
         (await client.GetFromJsonAsync<List<IdDto>>("/api/klassen"))!.Select(k => k.Id).ToList();
 
     /// <summary>
-    /// A gebruiker with exactly these relations: directie, themabeheer, Leerlingzorg, hoofdleerkracht of the given leeftijden
+    /// A gebruiker with exactly these relations: admin, themabeheer, Leerlingzorg, hoofdleerkracht of the given leeftijden
     /// in the school's year, and klastoewijzingen on the given klassen. With none of them, a gebruiker who may do nothing.
     /// </summary>
     public async Task<Guid> GebruikerAsync(
         School? school = null,
-        bool directie = false,
+        bool admin = false,
         bool themabeheer = false,
         string[]? hoofdleerkrachtVan = null,
         Guid[]? klassen = null,
         bool leerlingzorg = false)
     {
-        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", "Test", isDirectie: directie);
+        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", "Test", isAdmin: admin);
         if (themabeheer)
         {
             gebruiker.GeefThemabeheer();
@@ -139,15 +139,15 @@ internal sealed class RechtenTestOpzet
         return gebruiker.Id;
     }
 
-    /// <summary>The default test identity, directie with no row: for seeding content.</summary>
-    public HttpClient Directie() => _factory.CreateClient();
+    /// <summary>The default test identity, admin with no row: for seeding content.</summary>
+    public HttpClient Admin() => _factory.CreateClient();
 
     /// <summary>A client acting as the seeded gebruiker.</summary>
     public HttpClient Als(Guid gebruikerId) => _factory.MaakClientVoor(gebruikerId);
 
     public async Task<Guid> ThemaAsync()
     {
-        using var client = Directie();
+        using var client = Admin();
         using var antwoord = await client.PostAsJsonAsync("/api/themas", new { naam = $"Thema {Guid.NewGuid():N}", duurWeken = 4 });
         Assert.Equal(HttpStatusCode.Created, antwoord.StatusCode);
         return (await antwoord.Content.ReadFromJsonAsync<IdDto>())!.Id;
@@ -156,17 +156,17 @@ internal sealed class RechtenTestOpzet
     public async Task<Guid> SubthemaAsync(string leeftijd, Guid? themaId = null)
     {
         var thema = themaId ?? await ThemaAsync();
-        using var client = Directie();
+        using var client = Admin();
         using var antwoord = await client.PostAsJsonAsync(
             $"/api/themas/{thema}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd });
         Assert.Equal(HttpStatusCode.Created, antwoord.StatusCode);
         return (await antwoord.Content.ReadFromJsonAsync<IdDto>())!.Id;
     }
 
-    /// <summary>An activiteit, made by <paramref name="client"/> (directie when none), so its maker is that caller.</summary>
+    /// <summary>An activiteit, made by <paramref name="client"/> (admin when none), so its maker is that caller.</summary>
     public async Task<ActiviteitDto> ActiviteitAsync(Guid subthemaId, HttpClient? client = null)
     {
-        using var eigen = client is null ? Directie() : null;
+        using var eigen = client is null ? Admin() : null;
         using var antwoord = await (client ?? eigen!).PostAsJsonAsync(
             $"/api/subthemas/{subthemaId}/activiteiten",
             new { naam = $"Proef {Guid.NewGuid():N}", activiteitType = "Experiment" });
@@ -189,10 +189,10 @@ internal sealed class RechtenTestOpzet
         return new ActiviteitDto(activiteit.Id, makerId);
     }
 
-    /// <summary>Links a goal to an activiteit, as directie. Returns the link's id.</summary>
+    /// <summary>Links a goal to an activiteit, as admin. Returns the link's id.</summary>
     public async Task<Guid> KoppelAsync(Guid activiteitId, string code)
     {
-        using var client = Directie();
+        using var client = Admin();
         using var antwoord = await client.PostAsJsonAsync($"/api/activiteiten/{activiteitId}/doelkoppelingen", new { leerplandoelCode = code });
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
         return (await antwoord.Content.ReadFromJsonAsync<IdDto>())!.Id;

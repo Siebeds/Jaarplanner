@@ -4,14 +4,14 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import type { KlasWeergave, SchooljaarSamenvatting } from "../../lib/types";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { t } from "../../i18n";
 import type { Leerling } from "./leerlingen";
 import { OntwikkelingsrapportScherm } from "./OntwikkelingsrapportScherm";
 
 /**
  * The children of a K3 klas (FB-001), as each person meets them: a K3 leerkracht during and after the schooljaar,
- * directie, and someone who may read no report. Every name here is invented (Art. VI.7: no real child's name in the
+ * admin, and someone who may read no report. Every name here is invented (Art. VI.7: no real child's name in the
  * repo).
  */
 
@@ -248,8 +248,8 @@ describe("OntwikkelingsrapportScherm, wie wat mag", () => {
     expect(screen.queryByRole("button", { name: t("ontwikkelingsrapport.verwijderKind", { naam: "Fien Proefmans" }) })).not.toBeInTheDocument();
   });
 
-  it("laat directie elke klas beheren die kinderen kan hebben, en zegt niet dat het schooljaar voorbij is", async () => {
-    toon(DIRECTIE);
+  it("laat admin elke klas beheren die kinderen kan hebben, en zegt niet dat het schooljaar voorbij is", async () => {
+    toon(ADMIN);
 
     expect(await screen.findByText(kind("Fien Proefmans"))).toBeInTheDocument();
     expect(voornaam()).toBeInTheDocument();
@@ -272,7 +272,7 @@ describe("OntwikkelingsrapportScherm, wie wat mag", () => {
       schooljaren: [],
       klassen: [],
     };
-    toon(DIRECTIE, []);
+    toon(ADMIN, []);
 
     expect(await screen.findByText(t("ontwikkelingsrapport.geenSchooljaar"))).toBeInTheDocument();
   });
@@ -286,7 +286,7 @@ describe("OntwikkelingsrapportScherm, wie wat mag", () => {
       klassen: [],
       fout: true,
     };
-    toon(DIRECTIE, []);
+    toon(ADMIN, []);
 
     expect(await screen.findByText(t("ontwikkelingsrapport.selectieLaadFout"))).toBeInTheDocument();
     expect(screen.queryByText(t("ontwikkelingsrapport.geenSchooljaar"))).not.toBeInTheDocument();

@@ -57,7 +57,7 @@ Defaults of this session, which the owner may change on their own:
   subthema is unplanned when its thema's placement in the klas ends within five schooldagen and the subthema, at the
   klas's leeftijd, is not in the agenda. *Later* postpones a signal to the next schooldag.
 - **D5. Who sees it:** the cat lives in the app of every gebruiker. A signal about a klas is addressed to its
-  leerkrachten; directie can look at every klas's signals but is not addressed by them. A vervanger is addressed only
+  leerkrachten; an admin can look at every klas's signals but is not addressed by them. A vervanger is addressed only
   by what concerns her vervanging (the briefing, the lesvoorbereidingen ready), never by a dekking signal.
 - **D6. The chat stores nothing.** No conversation is kept, and no chat content is logged. The window says in visible
   text that no name or information about a child belongs in it. A chat answer changes nothing: what it proposes goes

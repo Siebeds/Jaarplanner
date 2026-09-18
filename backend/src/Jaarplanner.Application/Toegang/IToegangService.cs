@@ -33,11 +33,11 @@ public interface IToegangService
     Task<IReadOnlyList<GebruikerWeergave>> HaalGebruikersOpAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Creates the first directie account for <paramref name="email"/>, but <b>only while nobody exists at all</b>
-    /// (ADR-0031 decision 7). Returns whether it created one. Removing the last directie later therefore does not
+    /// Creates the first admin account for <paramref name="email"/>, but <b>only while nobody exists at all</b>
+    /// (ADR-0031 decision 7). Returns whether it created one. Removing the last admin later therefore does not
     /// reopen this door.
     /// </summary>
-    Task<bool> ZorgVoorEersteDirectieAsync(string email, CancellationToken cancellationToken = default);
+    Task<bool> ZorgVoorEersteAdminAsync(string email, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What the Api read from Entra's ID token, before anything has been decided about it.</summary>
@@ -73,4 +73,4 @@ public sealed record Aanmeldresultaat(GebruikerWeergave? Gebruiker, Aanmeldweige
 }
 
 /// <summary>A person who may log in, as the API shows them (<c>GET /api/ik</c>).</summary>
-public sealed record GebruikerWeergave(Guid Id, string Naam, string Email, bool IsDirectie);
+public sealed record GebruikerWeergave(Guid Id, string Naam, string Email, bool IsAdmin);

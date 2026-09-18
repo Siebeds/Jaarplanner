@@ -78,13 +78,13 @@ export interface ActiviteitInvoer {
  * linking is offered only on an activiteit that already exists.
  *
  * **Two rights meet here, and each branch shows only what its reader holds** (E6-02, ADR-0030 §3). The fields are the
- * activiteit's content (R17, R23; I15); the goals are R19's, which only directie and that leeftijd's hoofdleerkrachten
+ * activiteit's content (R17, R23; I15); the goals are R19's, which only admin and that leeftijd's hoofdleerkrachten
  * hold, also when a new activiteit carries codes on its create. So `magDoelen` gates the goal section in both branches,
  * and `alleenLezen` replaces the form with the facts for a gebruiker who may not change the content. A reader opening
  * an activiteit gets what it is, not a form whose Bewaren the server would refuse.
  *
  * **A new activiteit is the creator's own** (ADR-0049 E1). A gebruiker who may also create a shared one (a
- * hoofdleerkracht, directie) chooses "voor wie"; one who may only create a shared one gets that without a choice. Goals
+ * hoofdleerkracht, admin) chooses "voor wie"; one who may only create a shared one gets that without a choice. Goals
  * on a new own activiteit are the creator's to link (E3), so the picker shows for it whatever `magDoelen` says; on a
  * new shared one it follows the R19 row. Both need the subthema's `leeftijd`, which every create passes.
  *

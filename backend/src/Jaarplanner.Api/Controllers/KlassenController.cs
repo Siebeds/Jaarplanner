@@ -15,8 +15,8 @@ namespace Jaarplanner.Api.Controllers;
 /// generation had nothing to generate for.
 /// </para>
 /// <para>
-/// <b>Rights (E6-02):</b> creating, changing and deleting a klas is the row <c>Beheer</c>, directie only (ADR-0030 R2,
-/// R3, R16). That includes the klas's jaarfase, which the klaskiezer lets a teacher set: since slice 3 only directie
+/// <b>Rights (E6-02):</b> creating, changing and deleting a klas is the row <c>Beheer</c>, admin only (ADR-0030 R2,
+/// R3, R16). That includes the klas's jaarfase, which the klaskiezer lets a teacher set: since slice 3 only admin
 /// may send it, and the frontend has to hide the field for anyone else (slice 4).
 /// </para>
 /// <para>

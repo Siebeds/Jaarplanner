@@ -29,8 +29,8 @@ export const ONDERBREKINGEN = [
 
 export const GEBRUIKER = {
   id: vastId(2),
-  naam: "Directie (mockmodus)",
-  email: "directie@mock.local",
+  naam: "Admin (mockmodus)",
+  email: "admin@mock.local",
 };
 
 export const KLAS = {

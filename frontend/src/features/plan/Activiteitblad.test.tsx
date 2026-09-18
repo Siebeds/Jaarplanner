@@ -155,7 +155,7 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     const dialoog = screen.getByRole("dialog");
     const melding = within(dialoog).getByRole("alert");
 
-    // Directie removed her klastoewijzing: the refetched rights hold neither the planning nor the content right.
+    // Admin removed her klastoewijzing: the refetched rights hold neither the planning nor the content right.
     // Awaited for one task: TanStack Query hands `setQueryData` to its observers on the next one.
     await act(async () => {
       qc.setQueryData(["ik"], NIEMAND);

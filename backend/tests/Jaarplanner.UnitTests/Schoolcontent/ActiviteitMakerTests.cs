@@ -42,7 +42,7 @@ public sealed class ActiviteitMakerTests : IDisposable
     [Fact]
     public async Task Een_maker_die_niet_bestaat_wordt_geen_maker()
     {
-        // As a removed maker leaves it (I17): no maker, so only a hoofdleerkracht or directie deletes it.
+        // As a removed maker leaves it (I17): no maker, so only a hoofdleerkracht or admin deletes it.
         var subthemaId = await MaakSubthemaAsync();
 
         var weergave = await NieuweService().MaakActiviteitAsync(
@@ -64,7 +64,7 @@ public sealed class ActiviteitMakerTests : IDisposable
 
     private async Task<Gebruiker> BewaarGebruikerAsync()
     {
-        var an = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var an = new Gebruiker("an@school.be", "An", isAdmin: false);
         await using var context = new AppDbContext(_options);
         context.Gebruikers.Add(an);
         await context.SaveChangesAsync();

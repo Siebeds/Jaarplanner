@@ -50,10 +50,10 @@ public sealed class WeekplanningService : IWeekplanningService
         var inhoud = await _opslag.LaadActiviteitinhoudAsync(activiteitId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Activiteit {activiteitId} is niet gevonden.");
 
-        // ADR-0049 D6: an own activiteit is planned by its owner or by directie only; a colleague uses it first and plans
+        // ADR-0049 D6: an own activiteit is planned by its owner or by admin only; a colleague uses it first and plans
         // her copy. Without a planner it fails closed.
         if (inhoud.EigenaarId is { } eigenaarId
-            && !(planner is not null && (planner.IsDirectie || planner.GebruikerId == eigenaarId)))
+            && !(planner is not null && (planner.IsAdmin || planner.GebruikerId == eigenaarId)))
         {
             throw OngeldigeDagplanningFout.EigenActiviteitVanEenAnder();
         }

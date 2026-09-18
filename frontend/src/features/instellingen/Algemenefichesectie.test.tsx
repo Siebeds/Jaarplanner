@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { KlasWeergave } from "../../lib/types";
 import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import type { AlgemeneFicheWeergave } from "../algemene-fiches/gegevens";
 import { Algemenefichesectie } from "./Algemenefichesectie";
 
@@ -40,8 +40,8 @@ function antwoord(body: unknown) {
   return new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } });
 }
 
-/** A directie by default: the tests below are about what a planner sees, and one at the end about a reader. */
-function toon(fiches: AlgemeneFicheWeergave[], ik: Ik = DIRECTIE) {
+/** An admin by default: the tests below are about what a planner sees, and one at the end about a reader. */
+function toon(fiches: AlgemeneFicheWeergave[], ik: Ik = ADMIN) {
   fetchMock = vi.fn((_pad: string, init?: RequestInit) =>
     Promise.resolve(antwoord(init?.method && init.method !== "GET" ? fiches[0] : fiches)),
   );

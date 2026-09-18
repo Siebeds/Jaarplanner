@@ -111,7 +111,7 @@ const hhmm = (tijd: string | null) => (tijd ?? "").slice(0, 5);
 
 /**
  * The form's starting values: what the school has, and for a weekday without hours two empty fields with the pause
- * ticked, because most days have one and a Wednesday is the exception directie unticks.
+ * ticked, because most days have one and a Wednesday is the exception admin unticks.
  */
 export function beginVelden(uren: readonly Schooldaguren[]): Record<number, Dagvelden> {
   return Object.fromEntries(

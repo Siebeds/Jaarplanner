@@ -587,7 +587,7 @@ public class ClosedXmlDekkingExportTests
         // Two reasons, and the second is the binding one. A cause is a REMEDY — go accept this, go plan that — while
         // this document is evidence under Art. V.4: a proof of coverage states what is taught and through what, and
         // what a school still has to do about the rest is not evidence of anything. And Art. XIV reserves export
-        // LAYOUT for directie; E5-06 obtained a ruling on the format precisely so it would not ratify a layout by
+        // LAYOUT for admin; E5-06 obtained a ruling on the format precisely so it would not ratify a layout by
         // implication, so adding two columns on this story's own judgement would undo that.
         //
         // The candidate thema's are the sharper half: they are thema names in the same document as the covering thema

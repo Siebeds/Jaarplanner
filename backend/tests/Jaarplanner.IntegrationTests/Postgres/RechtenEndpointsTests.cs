@@ -76,7 +76,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
         Assert.Equal(
             [
-                "eigenKlasIds", "email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isDirectie",
+                "eigenKlasIds", "email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtLeeftijden", "id", "isAdmin",
                 "leerkrachtLeeftijden", "lopendeRapportklasIds", "naam", "rapportklasIds",
             ],
             json.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
@@ -88,7 +88,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
 
         var ik = json.RootElement.Deserialize<IkDto>(new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
         Assert.Equal(an.Id, ik.Id);
-        Assert.False(ik.IsDirectie);
+        Assert.False(ik.IsAdmin);
         Assert.True(ik.HeeftThemabeheer);
         Assert.Equal(["L2"], ik.HoofdleerkrachtLeeftijden);
         Assert.Equal(["K3"], ik.LeerkrachtLeeftijden);
@@ -98,23 +98,23 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Ik_van_een_directie_zegt_directie()
+    public async Task Ik_van_een_admin_zegt_admin()
     {
-        var directie = await BewaarGebruikerAsync(directie: true);
+        var admin = await BewaarGebruikerAsync(admin: true);
 
-        using var client = _factory.MaakClientVoor(directie.Id);
+        using var client = _factory.MaakClientVoor(admin.Id);
         var ik = await client.GetFromJsonAsync<IkDto>("/api/ik");
 
-        Assert.True(ik!.IsDirectie);
+        Assert.True(ik!.IsAdmin);
         Assert.Empty(ik.EigenKlasIds);
     }
 
-    // --- Curriculumbeheer: directie only (ADR-0030 §3, Op.stap row). ---
+    // --- Curriculumbeheer: admin only (ADR-0030 §3, Op.stap row). ---
 
     [PostgresFact]
     public async Task Het_curriculumbeheer_weigert_themabeheer_hoofdleerkracht_en_leerkracht()
     {
-        // Everything except directie, in one gebruiker: the union rule must not add up to a right no column grants.
+        // Everything except admin, in one gebruiker: the union rule must not add up to a right no column grants.
         var an = await BewaarGebruikerAsync(themabeheer: true);
         var lopend = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
         await WijsToeAsync(an.Id, lopend.Klassen.Single().Id);
@@ -130,11 +130,11 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Het_curriculumbeheer_laat_een_directie_uit_de_database_door()
+    public async Task Het_curriculumbeheer_laat_een_admin_uit_de_database_door()
     {
-        var directie = await BewaarGebruikerAsync(directie: true);
+        var admin = await BewaarGebruikerAsync(admin: true);
 
-        using var client = _factory.MaakClientVoor(directie.Id);
+        using var client = _factory.MaakClientVoor(admin.Id);
         using var inhoud = ImportAanvraag();
         using var import = await client.PostAsync("/api/opstap-import", inhoud);
 
@@ -327,7 +327,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
 
         var rechten = await RechtenOpAsync(niemand, DateTimeOffset.UtcNow);
 
-        Assert.False(rechten.IsDirectie);
+        Assert.False(rechten.IsAdmin);
         Assert.Empty(rechten.EigenKlasIds);
         Assert.Equal(niemand, rechten.GebruikerId);
     }
@@ -366,9 +366,9 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
             .HaalRechtenOpAsync(gebruikerId);
     }
 
-    private async Task<Gebruiker> BewaarGebruikerAsync(bool directie = false, bool themabeheer = false)
+    private async Task<Gebruiker> BewaarGebruikerAsync(bool admin = false, bool themabeheer = false)
     {
-        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", "Test", isDirectie: directie);
+        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", "Test", isAdmin: admin);
         if (themabeheer)
         {
             gebruiker.GeefThemabeheer();
@@ -458,7 +458,7 @@ public sealed class RechtenEndpointsTests : IAsyncLifetime
         Guid Id,
         string Naam,
         string Email,
-        bool IsDirectie,
+        bool IsAdmin,
         bool HeeftThemabeheer,
         string[] HoofdleerkrachtLeeftijden,
         string[] LeerkrachtLeeftijden,

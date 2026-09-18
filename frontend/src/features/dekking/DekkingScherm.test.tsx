@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DekkingWeergave, LeerplandoelDekking, MinimumdoelDekking } from "../../lib/types";
 import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
-import { DIRECTIE, NIEMAND, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, NIEMAND, ikMet, metIk } from "../../test/rechten";
 import { DekkingScherm } from "./DekkingScherm";
 
 vi.mock("../../lib/selectie", () => ({
@@ -130,7 +130,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function toon(ik: Ik = DIRECTIE) {
+async function toon(ik: Ik = ADMIN) {
   const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), ik);
   const gevolg = render(
     <QueryClientProvider client={client}>
@@ -144,7 +144,7 @@ async function toon(ik: Ik = DIRECTIE) {
 }
 
 /** The leerplandoel level, where the TB-022 cases below live. */
-async function toonLeerplandoelen(ik: Ik = DIRECTIE) {
+async function toonLeerplandoelen(ik: Ik = ADMIN) {
   const gevolg = await toon(ik);
   fireEvent.click(screen.getByRole("radio", { name: t("dekking.leerplandoelen") }));
   return gevolg;
@@ -185,7 +185,7 @@ describe("DekkingScherm: dekkingsprognose en dekking (FB-045)", () => {
   });
 
   it("stuurt een minimumdoel dat op een thema wacht naar de periodes, en telt de minimumdoelen zonder thema", async () => {
-    await toon(DIRECTIE);
+    await toon(ADMIN);
 
     const link = within(actielijst()).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Winter" }) });
     expect(link).toHaveAttribute("href", "/agenda/periodes");
@@ -193,7 +193,7 @@ describe("DekkingScherm: dekkingsprognose en dekking (FB-045)", () => {
   });
 
   it("stuurt een leerplandoel dat op een subthema wacht naar de agenda", async () => {
-    await toonLeerplandoelen(DIRECTIE);
+    await toonLeerplandoelen(ADMIN);
 
     const link = within(actielijst()).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Sneeuw (Winter)" }) });
     expect(link).toHaveAttribute("href", "/agenda");
@@ -235,8 +235,8 @@ describe("DekkingScherm (TB-022)", () => {
     expect(screen.queryByText("Tekst van W1")).toBeNull();
   });
 
-  it("zet de acties per thema bovenaan, met links naar de kalender en naar Thema's voor directie", async () => {
-    await toonLeerplandoelen(DIRECTIE);
+  it("zet de acties per thema bovenaan, met links naar de kalender en naar Thema's voor admin", async () => {
+    await toonLeerplandoelen(ADMIN);
 
     const link = within(actielijst()).getByRole("link", { name: t("dekking.actieInplannen", { thema: "Sneeuw (Winter)" }) });
     expect(link).toHaveAttribute("href", "/agenda");

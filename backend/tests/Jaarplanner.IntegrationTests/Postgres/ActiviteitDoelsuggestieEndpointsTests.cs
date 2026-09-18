@@ -87,10 +87,10 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     {
         var subthemaId = await Opzet.SubthemaAsync("K2");
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord([K3Doel, "VERZONNEN-1", .. K2Doelen]);
 
-        var resultaat = await GenereerAsync(directie, activiteit.Id);
+        var resultaat = await GenereerAsync(admin, activiteit.Id);
 
         Assert.Equal(new Resultaat(true, 5, 4, null), resultaat);
         var koppelingen = await KoppelingenAsync(activiteit.Id);
@@ -110,9 +110,9 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
         var school = await Opzet.SchoolAsync();
         var themaId = await Opzet.ThemaAsync();
         var subthemaId = await Opzet.SubthemaAsync("K2", themaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = K2Doelen[2] })));
+            admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = K2Doelen[2] })));
 
         using var hlK2 = Opzet.Als(await Opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K2"]));
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
@@ -152,16 +152,16 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     {
         var subthemaId = await Opzet.SubthemaAsync("K2");
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord(K2Doelen[0], K2Doelen[1], K2Doelen[2]);
-        await GenereerAsync(directie, activiteit.Id);
-        await BeslisAsync(directie, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Aanvaard");
-        await BeslisAsync(directie, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[1]), "Geweigerd");
+        await GenereerAsync(admin, activiteit.Id);
+        await BeslisAsync(admin, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Aanvaard");
+        await BeslisAsync(admin, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[1]), "Geweigerd");
 
         // The model repeats the accepted and the rejected goal: only the new one is kept, and the open one it no longer
         // names is replaced.
         _factory.AiAntwoord = Antwoord(K2Doelen[0], K2Doelen[1], K2Doelen[4]);
-        var tweede = await GenereerAsync(directie, activiteit.Id);
+        var tweede = await GenereerAsync(admin, activiteit.Id);
 
         Assert.Equal(new Resultaat(true, 1, 2, null), tweede);
         var koppelingen = await KoppelingenAsync(activiteit.Id);
@@ -176,12 +176,12 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     {
         var subthemaId = await Opzet.SubthemaAsync("K2");
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord(K2Doelen[0]);
-        await GenereerAsync(directie, activiteit.Id);
+        await GenereerAsync(admin, activiteit.Id);
         _factory.AiAntwoord = "geen json";
 
-        using var antwoord = await directie.PostAsync($"/api/activiteiten/{activiteit.Id}/doelsuggesties/genereer", null);
+        using var antwoord = await admin.PostAsync($"/api/activiteiten/{activiteit.Id}/doelsuggesties/genereer", null);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, antwoord.StatusCode);
         Assert.Equal(K2Doelen[0], Assert.Single(await KoppelingenAsync(activiteit.Id)).LeerplandoelCode);
@@ -193,9 +193,9 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
         var school = await Opzet.SchoolAsync();
         var subthemaId = await Opzet.SubthemaAsync("K2");
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord(K2Doelen[0]);
-        await GenereerAsync(directie, activiteit.Id);
+        await GenereerAsync(admin, activiteit.Id);
         var koppelingId = await KoppelingIdAsync(activiteit.Id, K2Doelen[0]);
 
         using var leerkracht = Opzet.Als(await Opzet.GebruikerAsync(school, klassen: [school.K2Rood]));
@@ -260,8 +260,8 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
         }
 
         // The library counts the one accepted link, not the proposal or the rejected goal.
-        using var directie = Opzet.Directie();
-        var bibliotheek = await directie.GetFromJsonAsync<List<BibliotheekDto>>("/api/themas/bibliotheek");
+        using var admin = Opzet.Admin();
+        var bibliotheek = await admin.GetFromJsonAsync<List<BibliotheekDto>>("/api/themas/bibliotheek");
         Assert.Equal(1, bibliotheek!.Single(t => t.Id == themaId).AantalDoelkoppelingen);
 
         // I19: a leerkracht of the leeftijd moves an activiteit while no decided goal is linked.
@@ -282,17 +282,17 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     {
         var subthemaId = await Opzet.SubthemaAsync("K2");
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord(K2Doelen[0]);
-        await GenereerAsync(directie, activiteit.Id);
-        await BeslisAsync(directie, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Geweigerd");
+        await GenereerAsync(admin, activiteit.Id);
+        await BeslisAsync(admin, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Geweigerd");
 
         await Opzet.KoppelAsync(activiteit.Id, K2Doelen[0]);
 
         var koppeling = Assert.Single(await KoppelingenAsync(activiteit.Id));
         Assert.Equal((KoppelingStatus.Manueel, (string?)null), (koppeling.Status, koppeling.AiMotivatie));
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PostAsJsonAsync($"/api/activiteiten/{activiteit.Id}/doelkoppelingen", new { leerplandoelCode = K2Doelen[0] }),
+            admin.PostAsJsonAsync($"/api/activiteiten/{activiteit.Id}/doelkoppelingen", new { leerplandoelCode = K2Doelen[0] }),
             HttpStatusCode.BadRequest,
             $"Activiteit is al gekoppeld aan leerdoel '{K2Doelen[0]}'.");
     }
@@ -302,13 +302,13 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
     {
         var themaId = await Opzet.ThemaAsync();
         var subthemaId = await Opzet.SubthemaAsync("K2", themaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", new { minimumdoelRef = Md })));
+            admin.PostAsJsonAsync($"/api/themas/{themaId}/minimumdoelen", new { minimumdoelRef = Md })));
         var activiteit = await Opzet.ActiviteitAsync(subthemaId);
         _factory.AiAntwoord = Antwoord(K2Doelen[0]);
-        await GenereerAsync(directie, activiteit.Id);
-        await BeslisAsync(directie, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Aanvaard");
+        await GenereerAsync(admin, activiteit.Id);
+        await BeslisAsync(admin, activiteit.Id, await KoppelingIdAsync(activiteit.Id, K2Doelen[0]), "Aanvaard");
 
         // An FB-057 run proposes the same goal in the same subthema, and another one.
         _factory.AiAntwoord =
@@ -318,12 +318,12 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
                {"code": "{{K2Doelen[1]}}", "subthema": "S1", "motivatie": "Ook."}],
              "nieuweSubthemas": []}
             """;
-        using var antwoord = await directie.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
+        using var antwoord = await admin.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
-        using var nogmaals = await directie.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
+        using var nogmaals = await admin.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K2/genereer", null);
         Assert.Equal(HttpStatusCode.OK, nogmaals.StatusCode);
 
-        var overzicht = (await directie.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
+        var overzicht = (await admin.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
         var voorstellen = Assert.Single(overzicht.Leeftijden).Subdoelvoorstellen.OrderBy(v => v.LeerplandoelCode, StringComparer.Ordinal).ToList();
         Assert.Equal(
             [(K2Doelen[0], activiteit.Naam), (K2Doelen[1], (string?)null)],

@@ -36,7 +36,7 @@ The owner's rulings:
 
 Defaults of this session, which the owner may change on their own:
 
-- **D1. Who asks and decides:** whoever may edit the klas's agenda: its leerkrachten ("LK eigen") and directie. Who
+- **D1. Who asks and decides:** whoever may edit the klas's agenda: its leerkrachten ("LK eigen") and an admin. Who
   reads the klas's planning (ADR-0040) reads a decided lesvoorbereiding; the vervanger reads open ones too, since the
   cat prepares them for her.
 - **D2. Status** as Art. IV.2: `voorgesteld`, `aanvaard` (unchanged), `manueel` (edited before accepting) or
@@ -87,7 +87,7 @@ lesvoorbereiding for one plaatsing is not reusable next year (a later "bewaar bi
 | Claim | Where it is enforced |
 | --- | --- |
 | Only the activiteit's decided goals (D3, L6) | the validator; its unit tests |
-| Only the klas's leerkrachten and directie ask and decide (D1) | a matrix row on the klas; endpoint tests |
+| Only the klas's leerkrachten and an admin ask and decide (D1) | a matrix row on the klas; endpoint tests |
 | The vervanger reads, never decides (L5) | the Vervanger relation of ADR-0057 is on no deciding row |
 | Nothing about a child is sent (D4, Art. VI.2) | the prompt builder takes no free field about a child; a unit test on the prompt |
 | The AI is faked in tests (Art. IV.6) | unit and integration tests |

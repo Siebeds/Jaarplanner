@@ -9,7 +9,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// and this is it: a thema is new while the run that created it is open (I23).
 /// </para>
 /// <para>
-/// <b>When a run is open (I24).</b> Until themabeheer or directie finishes or closes it, and at most
+/// <b>When a run is open (I24).</b> Until themabeheer or admin finishes or closes it, and at most
 /// <see cref="MaximaleStilte"/> after its last write action. No background job ends it: the time is compared on every
 /// request, so a run that nobody touched for fourteen days is closed the moment someone asks.
 /// </para>
@@ -58,10 +58,10 @@ public sealed class Wizardrun
     /// <summary>When the run last wrote something: the start, or its latest create, edit or delete.</summary>
     public DateTimeOffset LaatsteSchrijfactieOp { get; private set; }
 
-    /// <summary>When themabeheer or directie finished the run, or <c>null</c>.</summary>
+    /// <summary>When themabeheer or admin finished the run, or <c>null</c>.</summary>
     public DateTimeOffset? AfgerondOp { get; private set; }
 
-    /// <summary>When themabeheer or directie closed the run without finishing it, or <c>null</c>.</summary>
+    /// <summary>When themabeheer or admin closed the run without finishing it, or <c>null</c>.</summary>
     public DateTimeOffset? GeslotenOp { get; private set; }
 
     /// <summary>The subthema's, subdoelen and activiteiten this run created and that still exist as far as it knows.</summary>

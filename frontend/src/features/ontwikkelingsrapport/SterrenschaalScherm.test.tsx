@@ -3,14 +3,14 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { t } from "../../i18n";
 import type { Gradatie } from "./rapportset";
 import { SterrenschaalScherm } from "./SterrenschaalScherm";
 
 /**
  * The one K3 sterrenschaal (FB-002), as each person meets it: a K3 leerkracht in a running schooljaar changes it;
- * directie, a K3 hoofdleerkracht without a klas and a K3 leerkracht after the schooljaar view it (R6, R31, D4).
+ * admin, a K3 hoofdleerkracht without a klas and a K3 leerkracht after the schooljaar view it (R6, R31, D4).
  */
 
 const K3_LEERKRACHT = ikMet({
@@ -162,7 +162,7 @@ describe("SterrenschaalScherm, voor een K3-leerkracht", () => {
 
 describe("SterrenschaalScherm, voor wie ze alleen bekijkt", () => {
   it.each([
-    ["directie (R31)", DIRECTIE],
+    ["admin (R31)", ADMIN],
     ["een hoofdleerkracht van K3 zonder klas (D4)", HOOFDLEERKRACHT_K3],
     ["een K3-leerkracht na het schooljaar (D4)", K3_NA_HET_SCHOOLJAAR],
   ])("toont %s de schaal zonder één knop om ze aan te passen", async (_, ik) => {

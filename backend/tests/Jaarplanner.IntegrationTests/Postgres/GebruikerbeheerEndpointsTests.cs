@@ -16,19 +16,19 @@ using Microsoft.Extensions.Options;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// Directie's beheer of gebruikers and rights (E6-04, FA FR-12.2, Art. VI.1, ADR-0030 §3 row "Gebruikers … beheren",
-/// directie only) against real PostgreSQL: who may call it, what the overview shows, the invitation, the rights,
-/// klastoewijzingen and appointments, removal with its cascades, and the last-directie guard (ADR-0031 decision 7),
-/// including the lock that stops two directieleden demoting or removing each other at once.
+/// Admin's beheer of gebruikers and rights (E6-04, FA FR-12.2, Art. VI.1, ADR-0030 §3 row "Gebruikers … beheren",
+/// admin only) against real PostgreSQL: who may call it, what the overview shows, the invitation, the rights,
+/// klastoewijzingen and appointments, removal with its cascades, and the last-admin guard (ADR-0031 decision 7),
+/// including the lock that stops two admins demoting or removing each other at once.
 /// <para>
 /// On Postgres because the guard's lock, the cascades, SET NULL on the maker, the unique indexes and the foreign keys are
-/// database behaviour the in-memory provider does not have. The default test identity is directie without a row (see
-/// <see cref="TestAuthenticatie"/>), so it never counts as one of the directieleden the guard counts.
+/// database behaviour the in-memory provider does not have. The default test identity is admin without a row (see
+/// <see cref="TestAuthenticatie"/>), so it never counts as one of the admins the guard counts.
 /// </para>
 /// <para>
-/// <b>Every request here runs the production rule</b> (<see cref="GebruikerbeheerOpties"/>: only a bound directie can
+/// <b>Every request here runs the production rule</b> (<see cref="GebruikerbeheerOpties"/>: only a bound admin can
 /// sign in). The test host starts in Development with the development sign-in, where the Api switches the rule to
-/// "every directie can sign in"; <see cref="_productie"/> switches it back, and the one test of the development rule
+/// "every admin can sign in"; <see cref="_productie"/> switches it back, and the one test of the development rule
 /// uses <see cref="_factory"/> on purpose.
 /// </para>
 /// </summary>
@@ -50,7 +50,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         _db = await PostgresTestDatabase.MaakAsync("gebruikerbeheer");
         _factory = new PostgresApiFactory(_db.ConnectionString);
         _productie = _factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
-            services.PostConfigure<GebruikerbeheerOpties>(o => o.OngekoppeldeDirectieKanAanmelden = false)));
+            services.PostConfigure<GebruikerbeheerOpties>(o => o.OngekoppeldeAdminKanAanmelden = false)));
     }
 
     public async Task DisposeAsync()
@@ -74,30 +74,30 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     // A margin of weeks on either side, so the school's clock (Brussels) and this UTC date never straddle a boundary.
     private static DateOnly Vandaag => DateOnly.FromDateTime(DateTime.UtcNow);
 
-    // --- Who may: directie only (ADR-0030 §3). ---
+    // --- Who may: admin only (ADR-0030 §3). ---
 
     [PostgresTheory]
     [InlineData("themabeheer")]
     [InlineData("hoofdleerkracht")]
     [InlineData("leerkracht")]
-    [InlineData("alles behalve directie")]
+    [InlineData("alles behalve admin")]
     [InlineData("geen recht")]
-    public async Task Wie_geen_directie_is_krijgt_403_op_elke_route_en_verandert_niets(string soort)
+    public async Task Wie_geen_admin_is_krijgt_403_op_elke_route_en_verandert_niets(string soort)
     {
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
         var klasId = jaar.Klassen.Single().Id;
-        var beller = await BewaarGebruikerAsync(themabeheer: soort is "themabeheer" or "alles behalve directie");
-        if (soort is "hoofdleerkracht" or "alles behalve directie")
+        var beller = await BewaarGebruikerAsync(themabeheer: soort is "themabeheer" or "alles behalve admin");
+        if (soort is "hoofdleerkracht" or "alles behalve admin")
         {
             await StelAanAsync(beller.Id, jaar.Id, "K3");
         }
 
-        if (soort is "leerkracht" or "alles behalve directie")
+        if (soort is "leerkracht" or "alles behalve admin")
         {
             await WijsToeAsync(beller.Id, klasId);
         }
 
-        var doel = await BewaarGebruikerAsync(directie: true);
+        var doel = await BewaarGebruikerAsync(admin: true);
         using var client = ClientVoor(beller.Id);
 
         foreach (var (methode, url, inhoud) in Routes(doel.Id, klasId, jaar.Id))
@@ -109,7 +109,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         await using var context = _db.MaakContext();
         var bewaard = await context.Gebruikers.SingleAsync(g => g.Id == doel.Id);
-        Assert.True(bewaard.IsDirectie);
+        Assert.True(bewaard.IsAdmin);
         Assert.False(bewaard.HeeftThemabeheer);
         Assert.Equal(2, await context.Gebruikers.CountAsync());
         Assert.False(await context.Klastoewijzingen.AnyAsync(t => t.GebruikerId == doel.Id));
@@ -120,7 +120,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     public async Task Zonder_sessie_krijgt_elke_route_401()
     {
         var jaar = await BewaarSchooljaarAsync(Vandaag.AddDays(-30), Vandaag.AddDays(200), "K3");
-        var doel = await BewaarGebruikerAsync(directie: true);
+        var doel = await BewaarGebruikerAsync(admin: true);
         using var client = AnoniemeClient();
 
         foreach (var (methode, url, inhoud) in Routes(doel.Id, jaar.Klassen.Single().Id, jaar.Id))
@@ -132,10 +132,10 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_directie_uit_de_database_mag_het_beheer()
+    public async Task Een_admin_uit_de_database_mag_het_beheer()
     {
-        var directie = await BewaarGebruikerAsync(directie: true);
-        using var client = ClientVoor(directie.Id);
+        var admin = await BewaarGebruikerAsync(admin: true);
+        using var client = ClientVoor(admin.Id);
 
         using var antwoord = await client.GetAsync("/api/gebruikers");
 
@@ -167,7 +167,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         await StelAanAsync(an.Id, lopend.Id, "K2");
         await StelAanAsync(an.Id, voorbij.Id, "L6");
         await StelAanAsync(an.Id, volgend.Id, "K3");
-        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
+        var bert = await BewaarGebruikerAsync(naam: "Bert", admin: true);
 
         using var client = Client();
         using var antwoord = await client.GetAsync("/api/gebruikers");
@@ -178,7 +178,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
             ["gebruikers", "voorbijeSchooljaarIds"],
             document.RootElement.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
         Assert.Equal(
-            ["email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtaanstellingen", "id", "isAangemeld", "isDirectie", "klastoewijzingen", "naam"],
+            ["email", "heeftLeerlingzorg", "heeftThemabeheer", "hoofdleerkrachtaanstellingen", "id", "isAangemeld", "isAdmin", "klastoewijzingen", "naam"],
             document.RootElement.GetProperty("gebruikers")[0].EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal));
 
         var overzicht = document.RootElement.Deserialize<OverzichtDto>(Json)!;
@@ -186,7 +186,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(["An", "Bert"], overzicht.Gebruikers.Select(g => g.Naam));
 
         var anWeergave = overzicht.Gebruikers[0];
-        Assert.False(anWeergave.IsDirectie);
+        Assert.False(anWeergave.IsAdmin);
         Assert.True(anWeergave.HeeftThemabeheer);
         Assert.False(anWeergave.IsAangemeld);
 
@@ -204,7 +204,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         var bertWeergave = overzicht.Gebruikers[1];
         Assert.Equal(bert.Id, bertWeergave.Id);
-        Assert.True(bertWeergave.IsDirectie);
+        Assert.True(bertWeergave.IsAdmin);
         Assert.True(bertWeergave.IsAangemeld);
         Assert.Empty(bertWeergave.Klastoewijzingen);
     }
@@ -226,7 +226,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal("Carla Maes", weergave.Naam);
         Assert.True(weergave.HeeftThemabeheer);
         Assert.True(weergave.HeeftLeerlingzorg);
-        Assert.False(weergave.IsDirectie);
+        Assert.False(weergave.IsAdmin);
         Assert.False(weergave.IsAangemeld);
         Assert.EndsWith($"/api/gebruikers/{weergave.Id}", antwoord.Headers.Location!.ToString(), StringComparison.OrdinalIgnoreCase);
     }
@@ -307,57 +307,57 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.True(bewaard.HeeftThemabeheer);
     }
 
-    // --- Themabeheer and the directie right (R4, R16). ---
+    // --- Themabeheer and the admin right (R4, R16). ---
 
     [PostgresFact]
-    public async Task Themabeheer_en_het_directierecht_geven_en_afnemen()
+    public async Task Themabeheer_en_het_adminrecht_geven_en_afnemen()
     {
-        var eerste = await BewaarGebruikerAsync(directie: true);
+        var eerste = await BewaarGebruikerAsync(admin: true);
         var an = await BewaarGebruikerAsync();
         using var client = Client();
 
         var metThemabeheer = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/themabeheer");
         var opnieuw = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/themabeheer");
-        var metDirectie = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/directierecht");
+        var metAdmin = await SchrijfAsync(client, HttpMethod.Put, $"/api/gebruikers/{an.Id}/adminrecht");
         var zonderThemabeheer = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{an.Id}/themabeheer");
 
         Assert.True(metThemabeheer.HeeftThemabeheer);
         Assert.True(opnieuw.HeeftThemabeheer);
-        Assert.True(metDirectie.IsDirectie);
+        Assert.True(metAdmin.IsAdmin);
         Assert.False(zonderThemabeheer.HeeftThemabeheer);
 
-        // Two bound directieleden now, so either may lose it; the one who is left may not.
-        var eersteZonder = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eerste.Id}/directierecht");
-        Assert.False(eersteZonder.IsDirectie);
-        using var geweigerd = await client.DeleteAsync($"/api/gebruikers/{an.Id}/directierecht");
+        // Two bound admins now, so either may lose it; the one who is left may not.
+        var eersteZonder = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eerste.Id}/adminrecht");
+        Assert.False(eersteZonder.IsAdmin);
+        using var geweigerd = await client.DeleteAsync($"/api/gebruikers/{an.Id}/adminrecht");
         Assert.Equal(HttpStatusCode.Conflict, geweigerd.StatusCode);
 
         // Taking it from someone who does not hold it is a no-op, not a refusal.
-        var nogSteeds = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eerste.Id}/directierecht");
-        Assert.False(nogSteeds.IsDirectie);
+        var nogSteeds = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eerste.Id}/adminrecht");
+        Assert.False(nogSteeds.IsAdmin);
     }
 
     [PostgresFact]
-    public async Task De_laatste_directie_kan_het_directierecht_niet_verliezen_en_hoort_waarom_in_het_Nederlands()
+    public async Task De_laatste_admin_kan_het_adminrecht_niet_verliezen_en_hoort_waarom_in_het_Nederlands()
     {
-        var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
         using var client = ClientVoor(enige.Id);
 
-        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{enige.Id}/directierecht");
+        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{enige.Id}/adminrecht");
 
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         // The guard on the server-composed Dutch (Art. II.3): the value, read, not merely that some detail exists.
         var detail = await DetailAsync(antwoord);
-        Assert.Equal("Dirk Janssens is de enige met het directierecht. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.", detail);
+        Assert.Equal("Dirk Janssens is de enige met het adminrecht. Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld.", detail);
         Assert.DoesNotContain("—", detail);
         await using var context = _db.MaakContext();
-        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == enige.Id)).IsDirectie);
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == enige.Id)).IsAdmin);
     }
 
     [PostgresFact]
-    public async Task De_laatste_directie_kan_niet_verwijderd_worden_en_hoort_waarom_in_het_Nederlands()
+    public async Task De_laatste_admin_kan_niet_verwijderd_worden_en_hoort_waarom_in_het_Nederlands()
     {
-        var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
+        var enige = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
         using var client = Client();
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{enige.Id}");
@@ -365,7 +365,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         var detail = await DetailAsync(antwoord);
         Assert.Equal(
-            "Dirk Janssens is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.",
+            "Dirk Janssens is de enige met het adminrecht en kan niet verwijderd worden. Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld.",
             detail);
         Assert.DoesNotContain("—", detail);
         await using var context = _db.MaakContext();
@@ -373,55 +373,55 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// MAJOR 1 of the slice 2 audit: an unbound directie invitation is not a directie who can sign in (a mistyped UPN,
+    /// MAJOR 1 of the slice 2 audit: an unbound admin invitation is not an admin who can sign in (a mistyped UPN,
     /// someone who never comes), so it cannot be what lets the last bound one go. The refusal says why.
     /// </summary>
     [PostgresFact]
-    public async Task Een_directie_die_zich_nog_niet_aanmeldde_telt_niet_mee_voor_de_laatste_directie()
+    public async Task Een_admin_die_zich_nog_niet_aanmeldde_telt_niet_mee_voor_de_laatste_admin()
     {
-        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
+        await BewaarGebruikerAsync(naam: "Eva Peeters", admin: true, gekoppeld: false);
         using var client = ClientVoor(dirk.Id);
 
-        using var afgeven = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht");
+        using var afgeven = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/adminrecht");
         using var verwijderen = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}");
 
         Assert.Equal(HttpStatusCode.Conflict, afgeven.StatusCode);
         Assert.Equal(
-            "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld. "
-            + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, dus het directierecht kan nog niet weg.",
+            "Dirk Janssens is de enige met het adminrecht die zich al heeft aangemeld. "
+            + "Wie verder het adminrecht heeft, heeft zich nog niet aangemeld, dus het adminrecht kan nog niet weg.",
             await DetailAsync(afgeven));
         Assert.Equal(HttpStatusCode.Conflict, verwijderen.StatusCode);
         Assert.Equal(
-            "Dirk Janssens is de enige met het directierecht die zich al heeft aangemeld, en kan niet verwijderd worden. "
-            + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld.",
+            "Dirk Janssens is de enige met het adminrecht die zich al heeft aangemeld, en kan niet verwijderd worden. "
+            + "Wie verder het adminrecht heeft, heeft zich nog niet aangemeld.",
             await DetailAsync(verwijderen));
         await using var context = _db.MaakContext();
-        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == dirk.Id)).IsDirectie);
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == dirk.Id)).IsAdmin);
     }
 
     [PostgresFact]
-    public async Task Zodra_een_tweede_directie_zich_aanmeldde_mag_het_directierecht_weg()
+    public async Task Zodra_een_tweede_admin_zich_aanmeldde_mag_het_adminrecht_weg()
     {
-        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", admin: true, gekoppeld: false);
         using var client = ClientVoor(dirk.Id);
-        using (var voorAanmelding = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht"))
+        using (var voorAanmelding = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/adminrecht"))
         {
             Assert.Equal(HttpStatusCode.Conflict, voorAanmelding.StatusCode);
         }
 
         await BindAsync(eva.Id);
 
-        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{dirk.Id}/directierecht");
-        Assert.False(afgegeven.IsDirectie);
+        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{dirk.Id}/adminrecht");
+        Assert.False(afgegeven.IsAdmin);
     }
 
     [PostgresFact]
-    public async Task Zodra_een_tweede_directie_zich_aanmeldde_mag_de_eerste_verwijderd_worden()
+    public async Task Zodra_een_tweede_admin_zich_aanmeldde_mag_de_eerste_verwijderd_worden()
     {
-        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", admin: true, gekoppeld: false);
         using var client = ClientVoor(dirk.Id);
         using (var voorAanmelding = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}"))
         {
@@ -438,38 +438,38 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_directie_die_zich_nog_niet_aanmeldde_mag_zelf_weg_zolang_er_een_aangemelde_blijft()
+    public async Task Een_admin_die_zich_nog_niet_aanmeldde_mag_zelf_weg_zolang_er_een_aangemelde_blijft()
     {
-        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true);
-        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true);
+        var eva = await BewaarGebruikerAsync(naam: "Eva Peeters", admin: true, gekoppeld: false);
         using var client = ClientVoor(dirk.Id);
 
-        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eva.Id}/directierecht");
+        var afgegeven = await SchrijfAsync(client, HttpMethod.Delete, $"/api/gebruikers/{eva.Id}/adminrecht");
         using var verwijderd = await client.DeleteAsync($"/api/gebruikers/{eva.Id}");
 
-        Assert.False(afgegeven.IsDirectie);
+        Assert.False(afgegeven.IsAdmin);
         Assert.Equal(HttpStatusCode.NoContent, verwijderd.StatusCode);
     }
 
     /// <summary>
     /// The one place the rule differs, and it is explicit: under the development sign-in nobody is ever bound and every
-    /// directie can sign in by being picked, so there an unbound directie counts. This host is the Development one with
+    /// admin can sign in by being picked, so there an unbound admin counts. This host is the Development one with
     /// that sign-in, as a developer's machine runs it.
     /// </summary>
     [PostgresFact]
-    public async Task Onder_de_ontwikkelaanmelding_telt_een_directie_die_niet_gekoppeld_is_wel_mee()
+    public async Task Onder_de_ontwikkelaanmelding_telt_een_admin_die_niet_gekoppeld_is_wel_mee()
     {
-        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", directie: true, gekoppeld: false);
-        await BewaarGebruikerAsync(naam: "Eva Peeters", directie: true, gekoppeld: false);
+        var dirk = await BewaarGebruikerAsync(naam: "Dirk Janssens", admin: true, gekoppeld: false);
+        await BewaarGebruikerAsync(naam: "Eva Peeters", admin: true, gekoppeld: false);
         using var client = _factory.MaakClientVoor(dirk.Id);
 
-        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/directierecht");
+        using var antwoord = await client.DeleteAsync($"/api/gebruikers/{dirk.Id}/adminrecht");
 
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
     }
 
     [Fact]
-    public void Alleen_de_ontwikkelaanmelding_laat_een_directie_die_niet_gekoppeld_is_meetellen()
+    public void Alleen_de_ontwikkelaanmelding_laat_een_admin_die_niet_gekoppeld_is_meetellen()
     {
         using var entra = new JaarplannerApiFactory().WithWebHostBuilder(builder =>
         {
@@ -481,16 +481,16 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         using var ontwikkeling = new JaarplannerApiFactory().WithWebHostBuilder(builder =>
             builder.UseSetting("Authenticatie:Modus", "Ontwikkeling"));
 
-        Assert.False(new GebruikerbeheerOpties().OngekoppeldeDirectieKanAanmelden);
-        Assert.False(entra.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeDirectieKanAanmelden);
-        Assert.True(ontwikkeling.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeDirectieKanAanmelden);
+        Assert.False(new GebruikerbeheerOpties().OngekoppeldeAdminKanAanmelden);
+        Assert.False(entra.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeAdminKanAanmelden);
+        Assert.True(ontwikkeling.Services.GetRequiredService<IOptions<GebruikerbeheerOpties>>().Value.OngekoppeldeAdminKanAanmelden);
     }
 
     [PostgresFact]
-    public async Task Een_directie_mag_zichzelf_verwijderen_zolang_er_een_andere_directie_blijft()
+    public async Task Een_admin_mag_zichzelf_verwijderen_zolang_er_een_andere_admin_blijft()
     {
-        var ik = await BewaarGebruikerAsync(directie: true);
-        var ander = await BewaarGebruikerAsync(directie: true);
+        var ik = await BewaarGebruikerAsync(admin: true);
+        var ander = await BewaarGebruikerAsync(admin: true);
         using var client = ClientVoor(ik.Id);
 
         using var antwoord = await client.DeleteAsync($"/api/gebruikers/{ik.Id}");
@@ -498,23 +498,23 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NoContent, antwoord.StatusCode);
         await using var context = _db.MaakContext();
         Assert.False(await context.Gebruikers.AnyAsync(g => g.Id == ik.Id));
-        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == ander.Id)).IsDirectie);
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == ander.Id)).IsAdmin);
     }
 
     /// <summary>
-    /// The transaction boundary of the guard. Another directie tab is frozen halfway through demoting Bert: it holds
-    /// the lock the service takes and has written, but not committed. A plain count would still see Bert as directie
+    /// The transaction boundary of the guard. Another admin tab is frozen halfway through demoting Bert: it holds
+    /// the lock the service takes and has written, but not committed. A plain count would still see Bert as admin
     /// and let An go too, leaving nobody. The service must wait for that commit, count again, and refuse.
     /// </summary>
     [PostgresFact]
-    public async Task Twee_directieleden_die_elkaar_tegelijk_afzetten_laten_er_een_over()
+    public async Task Twee_admins_die_elkaar_tegelijk_afzetten_laten_er_een_over()
     {
-        var an = await BewaarGebruikerAsync(naam: "An", directie: true);
-        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
-        await using var ander = await HoudDirectieVastEnZetAfAsync(bert.Id);
+        var an = await BewaarGebruikerAsync(naam: "An", admin: true);
+        var bert = await BewaarGebruikerAsync(naam: "Bert", admin: true);
+        await using var ander = await HoudAdminVastEnZetAfAsync(bert.Id);
 
         using var client = Client();
-        var afzetting = client.DeleteAsync($"/api/gebruikers/{an.Id}/directierecht");
+        var afzetting = client.DeleteAsync($"/api/gebruikers/{an.Id}/adminrecht");
 
         var eerst = await Task.WhenAny(afzetting, Task.Delay(TimeSpan.FromSeconds(1)));
         Assert.NotSame(afzetting, eerst);
@@ -524,17 +524,17 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         await using var context = _db.MaakContext();
-        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == an.Id)).IsDirectie);
-        Assert.Equal(1, await context.Gebruikers.CountAsync(g => g.IsDirectie));
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == an.Id)).IsAdmin);
+        Assert.Equal(1, await context.Gebruikers.CountAsync(g => g.IsAdmin));
     }
 
-    /// <summary>The same boundary on the other write that can remove a directie: removing An while Bert is being demoted.</summary>
+    /// <summary>The same boundary on the other write that can remove an admin: removing An while Bert is being demoted.</summary>
     [PostgresFact]
-    public async Task Een_directie_verwijderen_terwijl_een_andere_wordt_afgezet_laat_er_een_over()
+    public async Task Een_admin_verwijderen_terwijl_een_andere_wordt_afgezet_laat_er_een_over()
     {
-        var an = await BewaarGebruikerAsync(naam: "An", directie: true);
-        var bert = await BewaarGebruikerAsync(naam: "Bert", directie: true);
-        await using var ander = await HoudDirectieVastEnZetAfAsync(bert.Id);
+        var an = await BewaarGebruikerAsync(naam: "An", admin: true);
+        var bert = await BewaarGebruikerAsync(naam: "Bert", admin: true);
+        await using var ander = await HoudAdminVastEnZetAfAsync(bert.Id);
 
         using var client = Client();
         var verwijdering = client.DeleteAsync($"/api/gebruikers/{an.Id}");
@@ -547,8 +547,8 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.Conflict, antwoord.StatusCode);
         await using var context = _db.MaakContext();
-        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == an.Id)).IsDirectie);
-        Assert.Equal(1, await context.Gebruikers.CountAsync(g => g.IsDirectie));
+        Assert.True((await context.Gebruikers.SingleAsync(g => g.Id == an.Id)).IsAdmin);
+        Assert.Equal(1, await context.Gebruikers.CountAsync(g => g.IsAdmin));
     }
 
     // --- Klastoewijzingen (R15). ---
@@ -638,7 +638,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     /// </summary>
     [PostgresTheory]
     [InlineData("PUT", "/themabeheer")]
-    [InlineData("PUT", "/directierecht")]
+    [InlineData("PUT", "/adminrecht")]
     [InlineData("DELETE", "")]
     public async Task Een_schrijfactie_op_een_gebruiker_die_intussen_verwijderd_wordt_is_404_en_geen_500(string methode, string achtervoegsel)
     {
@@ -662,17 +662,17 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// The fourth toggle, and removal, on a <b>directie</b> removed in between (test-runner, round 3). These two take the
-    /// directie lock first, so they wait there rather than on the save; once the delete commits the row is gone, and the
+    /// The fourth toggle, and removal, on a <b>admin</b> removed in between (test-runner, round 3). These two take the
+    /// admin lock first, so they wait there rather than on the save; once the delete commits the row is gone, and the
     /// answer is the same "intussen verwijderd" 404 as the other writes, not a sentence with a raw id.
     /// </summary>
     [PostgresTheory]
-    [InlineData("/directierecht")]
+    [InlineData("/adminrecht")]
     [InlineData("")]
-    public async Task Een_directie_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500(string achtervoegsel)
+    public async Task Een_admin_afzetten_of_verwijderen_die_intussen_verwijderd_wordt_is_404_en_geen_500(string achtervoegsel)
     {
-        var an = await BewaarGebruikerAsync(naam: "An", directie: true);
-        await BewaarGebruikerAsync(naam: "Bert", directie: true);
+        var an = await BewaarGebruikerAsync(naam: "An", admin: true);
+        await BewaarGebruikerAsync(naam: "Bert", admin: true);
 
         await using var ander = _db.MaakContext();
         await ander.Database.BeginTransactionAsync();
@@ -814,13 +814,13 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         var an = await BewaarGebruikerAsync();
         await WijsToeAsync(an.Id, jaar.Klassen.Single().Id);
         await StelAanAsync(an.Id, jaar.Id, "K3");
-        using var directie = Client();
-        var subthemaId = await MaakSubthemaAsync(directie, "K3");
+        using var admin = Client();
+        var subthemaId = await MaakSubthemaAsync(admin, "K3");
         // Made by An, who is hoofdleerkracht and leerkracht of K3, so the maker is An whatever route rights apply.
         using var alsAn = ClientVoor(an.Id);
         var activiteitId = await MaakActiviteitAsync(alsAn, subthemaId);
 
-        using var antwoord = await directie.DeleteAsync($"/api/gebruikers/{an.Id}");
+        using var antwoord = await admin.DeleteAsync($"/api/gebruikers/{an.Id}");
 
         Assert.Equal(HttpStatusCode.NoContent, antwoord.StatusCode);
         await using var context = _db.MaakContext();
@@ -831,11 +831,11 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Assert.False(await context.Hoofdleerkrachtaanstellingen.AnyAsync(a => a.GebruikerId == an.Id));
         Assert.True(await context.Klassen.AnyAsync(k => k.Id == jaar.Klassen.Single().Id));
 
-        using var weg = await directie.GetAsync($"/api/gebruikers/{an.Id}");
+        using var weg = await admin.GetAsync($"/api/gebruikers/{an.Id}");
         Assert.Equal(HttpStatusCode.NotFound, weg.StatusCode);
         // A second tab after the removal: Dutch, and no raw id (round 3).
         Assert.Equal("Deze gebruiker bestaat niet (meer).", await DetailAsync(weg));
-        using var tweedeTab = await directie.PutAsync($"/api/gebruikers/{an.Id}/themabeheer", null);
+        using var tweedeTab = await admin.PutAsync($"/api/gebruikers/{an.Id}/themabeheer", null);
         Assert.Equal(HttpStatusCode.NotFound, tweedeTab.StatusCode);
         Assert.Equal("Deze gebruiker bestaat niet (meer).", await DetailAsync(tweedeTab));
     }
@@ -869,16 +869,16 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A second directie tab frozen halfway: a transaction that holds the lock the service takes and has demoted
+    /// A second admin tab frozen halfway: a transaction that holds the lock the service takes and has demoted
     /// <paramref name="gebruikerId"/>, uncommitted. The caller commits it.
     /// </summary>
-    private async Task<AppDbContext> HoudDirectieVastEnZetAfAsync(Guid gebruikerId)
+    private async Task<AppDbContext> HoudAdminVastEnZetAfAsync(Guid gebruikerId)
     {
         var ander = _db.MaakContext();
         await ander.Database.BeginTransactionAsync();
-        await ander.Database.ExecuteSqlRawAsync("""SELECT "Id" FROM gebruikers WHERE "IsDirectie" ORDER BY "Id" FOR UPDATE""");
+        await ander.Database.ExecuteSqlRawAsync("""SELECT "Id" FROM gebruikers WHERE "IsAdmin" ORDER BY "Id" FOR UPDATE""");
         await ander.Gebruikers.Where(g => g.Id == gebruikerId)
-            .ExecuteUpdateAsync(zet => zet.SetProperty(g => g.IsDirectie, false));
+            .ExecuteUpdateAsync(zet => zet.SetProperty(g => g.IsAdmin, false));
         return ander;
     }
 
@@ -886,10 +886,10 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     [
         (HttpMethod.Get, "/api/gebruikers", null),
         (HttpMethod.Get, $"/api/gebruikers/{doel}", null),
-        (HttpMethod.Post, "/api/gebruikers", JsonContent.Create(new { email = "nieuw@school.be", naam = "Nieuw", isDirectie = true })),
+        (HttpMethod.Post, "/api/gebruikers", JsonContent.Create(new { email = "nieuw@school.be", naam = "Nieuw", isAdmin = true })),
         (HttpMethod.Delete, $"/api/gebruikers/{doel}", null),
-        (HttpMethod.Put, $"/api/gebruikers/{doel}/directierecht", null),
-        (HttpMethod.Delete, $"/api/gebruikers/{doel}/directierecht", null),
+        (HttpMethod.Put, $"/api/gebruikers/{doel}/adminrecht", null),
+        (HttpMethod.Delete, $"/api/gebruikers/{doel}/adminrecht", null),
         (HttpMethod.Put, $"/api/gebruikers/{doel}/themabeheer", null),
         (HttpMethod.Delete, $"/api/gebruikers/{doel}/themabeheer", null),
         (HttpMethod.Put, $"/api/gebruikers/{doel}/leerlingzorg", null),
@@ -914,16 +914,16 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// A seeded gebruiker. <paramref name="gekoppeld"/> defaults to true: a signed-in directie is bound, and the
-    /// last-directie guard counts only bound ones (MAJOR 1). Tests about the unbound state say so.
+    /// A seeded gebruiker. <paramref name="gekoppeld"/> defaults to true: a signed-in admin is bound, and the
+    /// last-admin guard counts only bound ones (MAJOR 1). Tests about the unbound state say so.
     /// </summary>
     private async Task<Gebruiker> BewaarGebruikerAsync(
         string naam = "Test",
-        bool directie = false,
+        bool admin = false,
         bool themabeheer = false,
         bool gekoppeld = true)
     {
-        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isDirectie: directie);
+        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isAdmin: admin);
         if (themabeheer)
         {
             gebruiker.GeefThemabeheer();
@@ -1006,7 +1006,7 @@ public sealed class GebruikerbeheerEndpointsTests : IAsyncLifetime
         Guid Id,
         string Naam,
         string Email,
-        bool IsDirectie,
+        bool IsAdmin,
         bool HeeftThemabeheer,
         bool HeeftLeerlingzorg,
         bool IsAangemeld,

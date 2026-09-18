@@ -101,7 +101,7 @@ type Rasterblok = Blokje & {
  * carries the current time as text in the hour gutter, so it is never colour alone.
  *
  * **The four gestures are the klas's planning, and only whoever may plan it gets them** (E6-02, ADR-0030 §3, R7,
- * R15): directie and the leerkrachten of this klas. Anyone else reads the grid, every block still opens, and nothing
+ * R15): admin and the leerkrachten of this klas. Anyone else reads the grid, every block still opens, and nothing
  * drags, stretches, lights up a quarter or invites a click into empty space.
  */
 export function Tijdraster({

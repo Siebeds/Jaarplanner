@@ -27,7 +27,7 @@ public sealed class KlastoewijzingConfiguration : IEntityTypeConfiguration<Klast
             .HasForeignKey(t => t.KlasId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // One link per pair, in the database, so two directie tabs linking the same leerkracht cannot make two.
+        // One link per pair, in the database, so two admin tabs linking the same leerkracht cannot make two.
         builder.HasIndex(t => new { t.GebruikerId, t.KlasId }).IsUnique();
     }
 }

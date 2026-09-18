@@ -14,7 +14,7 @@
 ## Context
 
 When a leerkracht falls ill, a vervanger arrives who does not know the klas. The app has no notion of a vervanging:
-a klastoewijzing has no dates (ADR-0030 I21), so directie can only add the vervanger as a leerkracht by hand, which
+a klastoewijzing has no dates (ADR-0030 I21), so an admin can only add the vervanger as a leerkracht by hand, which
 gives her every right on the planning, and remove her later. What a vervanger needs on the first morning is spread
 over the app (thema, subthema, agenda, goals), and the most useful part, how the klas runs, is not in it at all.
 
@@ -22,13 +22,13 @@ over the app (thema, subthema, agenda, goals), and the most useful part, how the
 
 The owner's rulings:
 
-- **V1. Directie records a vervanging:** the absent leerkracht, the klas (one or more of her klassen), a first day, a
-  last day or none (open until directie ends it), and the vervanger, a gebruiker directie already added.
+- **V1. An admin records a vervanging:** the absent leerkracht, the klas (one or more of her klassen), a first day, a
+  last day or none (open until an admin ends it), and the vervanger, a gebruiker an admin already added.
 - **V2. The vervanger only reads.** From the first day through the last she reads the klas's planning (jaarplan,
   agenda, dekking), its klasfiche, its lesvoorbereidingen and her briefing. She edits and decides nothing: not the
   agenda, not a lesvoorbereiding, not the klasfiche.
 - **V3. The agenda is the truth, and the klasleerkracht keeps it so.** What the agenda held on a past day, happened.
-  The absent leerkracht keeps her rights during the vervanging, and she corrects the agenda afterwards (directie can
+  The absent leerkracht keeps her rights during the vervanging, and she corrects the agenda afterwards (an admin can
   too): what did not happen, she removes.
 - **V4. A vervanger is an ordinary gebruiker** of the school's Entra tenant (Art. VI.1 unchanged). A guest account is
   out of scope.
@@ -54,7 +54,7 @@ Defaults of this session, which the owner may change on their own:
   today (the Brussels date, both ends inclusive). It is a column in the matrix of ADR-0030 §3 for the rows below, and
   "–" in every other row:
 
-  | Actie | Directie | LK eigen | Vervanger | Others |
+  | Actie | Admin | LK eigen | Vervanger | Others |
   | --- | --- | --- | --- | --- |
   | Een vervanging vastleggen, wijzigen, beëindigen of verwijderen (V1) | ✓ | – | – | – |
   | Jaarplan, agenda en dekking bekijken (V2) | ✓ | ✓ | lezen | as ADR-0040 |
@@ -67,7 +67,7 @@ Defaults of this session, which the owner may change on their own:
 - **D3. Own activiteiten.** The vervanger reads an own activiteit of the absent leerkracht as far as the klas's agenda
   holds it (its name, soort, expected outcomes and goals, as the agenda shows them), and no other own activiteit of
   hers. Since the vervanger creates nothing (V2), ADR-0049 needs no rule on what she leaves behind.
-- **D4. The window.** Directie may change the last day, end a running vervanging today, and delete one that has not
+- **D4. The window.** An admin may change the last day, end a running vervanging today, and delete one that has not
   started. A last day before the first is refused. Two vervangingen of one klas may overlap (two vervangers).
 - **D5. The briefing's reach:** two weeks back and five schooldagen ahead. A subdoel is open when no activiteit planned
   in the klas's agenda since the running subthema's placement started is linked to it (`aanvaard` or `manueel`).
@@ -100,7 +100,7 @@ leerkracht wrote. FB-063 to FB-066 were written before V2 and are revised with t
 
 | Claim | Where it is enforced |
 | --- | --- |
-| Only directie records a vervanging (V1) | the matrix row; endpoint tests |
+| Only an admin records a vervanging (V1) | the matrix row; endpoint tests |
 | The vervanger reads, and edits nothing (V2, D1, D2) | the Vervanger relation, a column of reading rows only; `RechtenmatrixTests` and a route sweep that finds no write route admitting it |
 | No child's information in a klasfiche or briefing (V6, V8, Art. VI.2) | visible text on both screens; nothing about a child is a field |
 | Briefing and terugkeerbriefing are not stored (D8) | no table for them |

@@ -12,18 +12,18 @@ namespace Jaarplanner.Infrastructure.Toegang;
 /// <summary>
 /// EF Core implementation of <see cref="IGebruikerBeheerService"/> (E6-04).
 /// <para>
-/// <b>The last-directie guard reads its count under a row lock.</b> <c>Gebruiker.NeemDirectierechtAf</c> and
-/// <c>BevestigVerwijderbaar</c> take the number of <i>other</i> directieleden and refuse at zero (ADR-0031 decision 7),
-/// but a count read with a plain <c>SELECT</c> is stale the moment it is read: two directieleden demoting each other
-/// at once would each see one other and both succeed. So both writes first lock every directie row
+/// <b>The last-admin guard reads its count under a row lock.</b> <c>Gebruiker.NeemAdminrechtAf</c> and
+/// <c>BevestigVerwijderbaar</c> take the number of <i>other</i> admins and refuse at zero (ADR-0031 decision 7),
+/// but a count read with a plain <c>SELECT</c> is stale the moment it is read: two admins demoting each other
+/// at once would each see one other and both succeed. So both writes first lock every admin row
 /// (<c>SELECT … FOR UPDATE</c>, in id order so two callers never lock in opposite orders), inside the transaction
 /// that writes. The second caller then waits for the first to commit, and PostgreSQL re-reads the locked set after
-/// that commit, so it counts what is true then. <see cref="LeesAndereDirectieOnderSlotAsync"/> is the one place
+/// that commit, so it counts what is true then. <see cref="LeesAndereAdminOnderSlotAsync"/> is the one place
 /// that does it.
 /// </para>
 /// <para>
-/// <b>It counts only another directie who can sign in</b> (<see cref="GebruikerbeheerOpties"/>): a bound one under Entra.
-/// An unbound directie invitation may never be used, so it cannot be what keeps the school administrable (antagonist,
+/// <b>It counts only another admin who can sign in</b> (<see cref="GebruikerbeheerOpties"/>): a bound one under Entra.
+/// An unbound admin invitation may never be used, so it cannot be what keeps the school administrable (antagonist,
 /// E6-04 slice 2 round 1, MAJOR). The refusal then says why: the others have not signed in yet.
 /// </para>
 /// <para>
@@ -98,7 +98,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
             throw BestaatAl(email);
         }
 
-        var gebruiker = new Gebruiker(email, naam, uitnodiging.IsDirectie);
+        var gebruiker = new Gebruiker(email, naam, uitnodiging.IsAdmin);
         if (uitnodiging.HeeftThemabeheer)
         {
             gebruiker.GeefThemabeheer();
@@ -116,7 +116,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         }
         catch (DbUpdateException fout) when (IsUniekeIndexSchending(fout))
         {
-            // Two directie tabs inviting the same address: the unique index settles it, and the loser hears the same
+            // Two admin tabs inviting the same address: the unique index settles it, and the loser hears the same
             // sentence the pre-check gives.
             throw BestaatAl(email);
         }
@@ -124,15 +124,15 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         return await HaalGebruikerOpAsync(gebruiker.Id, cancellationToken);
     }
 
-    public async Task<GebruikerBeheerWeergave> GeefDirectierechtAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
+    public async Task<GebruikerBeheerWeergave> GeefAdminrechtAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
     {
         var gebruiker = await VindAsync(gebruikerId, cancellationToken);
-        gebruiker.GeefDirectierecht();
+        gebruiker.GeefAdminrecht();
         await BewaarWijzigingAsync(cancellationToken);
         return await HaalGebruikerOpAsync(gebruikerId, cancellationToken);
     }
 
-    public async Task<GebruikerBeheerWeergave> NeemDirectierechtAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
+    public async Task<GebruikerBeheerWeergave> NeemAdminrechtAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default)
     {
         // Checked before the lock, so an id that never existed gets the plain not-found and only a row that vanished
         // while this request waited for the lock gets "intussen verwijderd" (below).
@@ -140,21 +140,21 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
 
         await using (var transactie = await _context.Database.BeginTransactionAsync(cancellationToken))
         {
-            var anderen = await LeesAndereDirectieOnderSlotAsync(gebruikerId, cancellationToken);
+            var anderen = await LeesAndereAdminOnderSlotAsync(gebruikerId, cancellationToken);
 
             // Read after the lock, so a concurrent change that committed while this one waited is what is seen.
             var gebruiker = await VindNaSlotAsync(gebruikerId, cancellationToken);
-            if (gebruiker.IsDirectie && anderen.Aanmeldbaar < 1)
+            if (gebruiker.IsAdmin && anderen.Aanmeldbaar < 1)
             {
-                throw new LaatsteDirectieFout(anderen.Totaal == 0
-                    ? $"{gebruiker.Naam} is de enige met het directierecht. "
-                      + "Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld."
-                    : $"{gebruiker.Naam} is de enige met het directierecht die zich al heeft aangemeld. "
-                      + "Wie verder het directierecht heeft, heeft zich nog niet aangemeld, dus het directierecht kan nog niet weg.");
+                throw new LaatsteAdminFout(anderen.Totaal == 0
+                    ? $"{gebruiker.Naam} is de enige met het adminrecht. "
+                      + "Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld."
+                    : $"{gebruiker.Naam} is de enige met het adminrecht die zich al heeft aangemeld. "
+                      + "Wie verder het adminrecht heeft, heeft zich nog niet aangemeld, dus het adminrecht kan nog niet weg.");
             }
 
             // The domain's own guard, with the same locked count: a backstop, never the only check.
-            gebruiker.NeemDirectierechtAf(anderen.Aanmeldbaar);
+            gebruiker.NeemAdminrechtAf(anderen.Aanmeldbaar);
             await BewaarWijzigingAsync(cancellationToken);
             await transactie.CommitAsync(cancellationToken);
         }
@@ -201,15 +201,15 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
 
         await using var transactie = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-        var anderen = await LeesAndereDirectieOnderSlotAsync(gebruikerId, cancellationToken);
+        var anderen = await LeesAndereAdminOnderSlotAsync(gebruikerId, cancellationToken);
         var gebruiker = await VindNaSlotAsync(gebruikerId, cancellationToken);
-        if (gebruiker.IsDirectie && anderen.Aanmeldbaar < 1)
+        if (gebruiker.IsAdmin && anderen.Aanmeldbaar < 1)
         {
-            throw new LaatsteDirectieFout(anderen.Totaal == 0
-                ? $"{gebruiker.Naam} is de enige met het directierecht en kan niet verwijderd worden. "
-                  + "Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld."
-                : $"{gebruiker.Naam} is de enige met het directierecht die zich al heeft aangemeld, en kan niet verwijderd "
-                  + "worden. Wie verder het directierecht heeft, heeft zich nog niet aangemeld.");
+            throw new LaatsteAdminFout(anderen.Totaal == 0
+                ? $"{gebruiker.Naam} is de enige met het adminrecht en kan niet verwijderd worden. "
+                  + "Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld."
+                : $"{gebruiker.Naam} is de enige met het adminrecht die zich al heeft aangemeld, en kan niet verwijderd "
+                  + "worden. Wie verder het adminrecht heeft, heeft zich nog niet aangemeld.");
         }
 
         gebruiker.BevestigVerwijderbaar(anderen.Aanmeldbaar);
@@ -289,29 +289,29 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
     }
 
     /// <summary>
-    /// Locks every directie row and answers how many of them are someone other than <paramref name="gebruikerId"/>, and
+    /// Locks every admin row and answers how many of them are someone other than <paramref name="gebruikerId"/>, and
     /// how many of those can sign in (<see cref="GebruikerbeheerOpties"/>). Must run inside the transaction that writes;
-    /// the lock is held until it commits or rolls back. Every directie row is locked, bound or not, so a first login
+    /// the lock is held until it commits or rolls back. Every admin row is locked, bound or not, so a first login
     /// binding one of them waits for this transaction too.
     /// </summary>
-    private async Task<AndereDirectie> LeesAndereDirectieOnderSlotAsync(Guid gebruikerId, CancellationToken cancellationToken)
+    private async Task<AndereAdmin> LeesAndereAdminOnderSlotAsync(Guid gebruikerId, CancellationToken cancellationToken)
     {
-        var directie = await _context.Database
-            .SqlQuery<Directierij>(
-                $"""SELECT "Id", "EntraObjectId" IS NOT NULL AS "IsGekoppeld" FROM gebruikers WHERE "IsDirectie" ORDER BY "Id" FOR UPDATE""")
+        var admin = await _context.Database
+            .SqlQuery<Adminrij>(
+                $"""SELECT "Id", "EntraObjectId" IS NOT NULL AS "IsGekoppeld" FROM gebruikers WHERE "IsAdmin" ORDER BY "Id" FOR UPDATE""")
             .ToListAsync(cancellationToken);
 
-        var anderen = directie.Where(rij => rij.Id != gebruikerId).ToList();
-        return new AndereDirectie(
+        var anderen = admin.Where(rij => rij.Id != gebruikerId).ToList();
+        return new AndereAdmin(
             anderen.Count,
-            anderen.Count(rij => rij.IsGekoppeld || _opties.OngekoppeldeDirectieKanAanmelden));
+            anderen.Count(rij => rij.IsGekoppeld || _opties.OngekoppeldeAdminKanAanmelden));
     }
 
-    /// <summary>The other directieleden: all of them, and those who can sign in.</summary>
-    private readonly record struct AndereDirectie(int Totaal, int Aanmeldbaar);
+    /// <summary>The other admins: all of them, and those who can sign in.</summary>
+    private readonly record struct AndereAdmin(int Totaal, int Aanmeldbaar);
 
-    /// <summary>One locked directie row, as the raw query reads it.</summary>
-    private sealed class Directierij
+    /// <summary>One locked admin row, as the raw query reads it.</summary>
+    private sealed class Adminrij
     {
         public Guid Id { get; set; }
 
@@ -366,7 +366,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
                 g.Id,
                 g.Naam,
                 g.Email,
-                g.IsDirectie,
+                g.IsAdmin,
                 g.HeeftThemabeheer,
                 g.HeeftLeerlingzorg,
                 g.IsGekoppeld,
@@ -403,7 +403,7 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         await _context.Gebruikers.SingleOrDefaultAsync(g => g.Id == gebruikerId, cancellationToken)
         ?? throw NietGevonden();
 
-    /// <summary>The gebruiker, read after the directie lock. Gone now means removed while this request waited.</summary>
+    /// <summary>The gebruiker, read after the admin lock. Gone now means removed while this request waited.</summary>
     private async Task<Gebruiker> VindNaSlotAsync(Guid gebruikerId, CancellationToken cancellationToken) =>
         await _context.Gebruikers.SingleOrDefaultAsync(g => g.Id == gebruikerId, cancellationToken)
         ?? throw IntussenVerwijderd();
@@ -490,14 +490,14 @@ public sealed class GebruikerBeheerService : IGebruikerBeheerService
         ?? throw new GebruikerbeheerValidatieFout(Jaarfasen.WatIsErMisMet(jaarfase)!);
 
     /// <summary>
-    /// No gebruiker with that id. Worded for directie, who meets it after someone else removed the person (a second
+    /// No gebruiker with that id. Worded for admin, who meets it after someone else removed the person (a second
     /// tab, a colleague), and without the raw id, which means nothing to them (antagonist, slice 2 round 3). "(meer)"
     /// because this branch cannot tell a removed gebruiker from an id that never existed, so it says both.
     /// </summary>
     private static GebruikerbeheerNietGevondenFout NietGevonden() => new("Deze gebruiker bestaat niet (meer).");
 
     /// <summary>
-    /// The gebruiker existed when this request began and was removed while it waited (for the directie lock or for the
+    /// The gebruiker existed when this request began and was removed while it waited (for the admin lock or for the
     /// row itself). Only then is "intussen" true, so only those branches say it.
     /// </summary>
     private static GebruikerbeheerNietGevondenFout IntussenVerwijderd() => new("Deze gebruiker is intussen verwijderd.");

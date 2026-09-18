@@ -59,7 +59,7 @@ public sealed class Activiteit
     /// <para>
     /// Set once, at creation, and by nothing else. The database sets it to <c>null</c> when that gebruiker is removed,
     /// which makes the activiteit shared (D8). An own activiteit is read by its leeftijd's leerkrachten and
-    /// hoofdleerkrachten, edited only by its owner and directie, and counts for dekking only where it is planned
+    /// hoofdleerkrachten, edited only by its owner and admin, and counts for dekking only where it is planned
     /// (Art. V.1, VI.1). Who may do what is the rights matrix's; this type holds no rights logic.
     /// </para>
     /// </summary>

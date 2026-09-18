@@ -91,8 +91,8 @@ public sealed class Promptbegrenzing
         Bewaak(request, omschrijving, ServerRaad);
     }
 
-    // "Beheer" is the directie's right in this app, and the ceiling is no in-app setting, so this advice names whoever
-    // runs the server rather than sending directie to look for a setting it cannot find.
+    // "Beheer" is the admin's right in this app, and the ceiling is no in-app setting, so this advice names whoever
+    // runs the server rather than sending admin to look for a setting it cannot find.
     private const string ServerRaad =
         "Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.";
 

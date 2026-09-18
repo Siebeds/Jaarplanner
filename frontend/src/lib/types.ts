@@ -660,7 +660,7 @@ export interface ActiviteitvoorstelWeergave {
   subthemaId: string;
   aanvragerId: string;
   aanvragerNaam: string;
-  /** Whether the signed-in gebruiker asked for it; only directie is sent someone else's (ADR-0056 A3). */
+  /** Whether the signed-in gebruiker asked for it; only admin is sent someone else's (ADR-0056 A3). */
   isEigen: boolean;
   naam: string;
   activiteitType: ActiviteitType | null;

@@ -23,8 +23,8 @@ export type Aanmeldfout = "geweigerd" | "mislukt";
  *
  * **The refusal's sentences hold for every reason a login is refused**: a token without the account's
  * identifiers, another tenant's account, a guest in the school's tenant, an app registration that does
- * not say "member", or simply nobody having invited this person. So it does not say that directie
- * forgot anyone, because in four of those five cases directie did nothing wrong.
+ * not say "member", or simply nobody having invited this person. So it does not say that admin
+ * forgot anyone, because in four of those five cases admin did nothing wrong.
  *
  * Trying again is the primary action (one of the accent's five uses). Choosing another account steps
  * back to `stil`, and is only offered on a refusal, where the wrong account is a likely cause.

@@ -40,7 +40,7 @@ public interface ISchoolcontentBeheerService
     /// <summary>
     /// Lists the <b>shared thema-bibliotheek</b>: every school-wide thema with its themadoelen +
     /// kernwoordenschat/rijke woordenschat, <b>without any class's subthema's</b> (no cross-class bleed,
-    /// Art. IX.2 / Gap A.5). This is the directie/team view of the shared library; the school-wide content
+    /// Art. IX.2 / Gap A.5). This is the admin/team view of the shared library; the school-wide content
     /// is edited only via the thema-level operations above, never as a side effect of class-level work.
     /// </summary>
     Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default);

@@ -19,7 +19,7 @@ namespace Jaarplanner.Api.Controllers;
 /// of the matching flow — running the assist succeeded even when the model's output was unusable.
 /// </para>
 /// <para>
-/// <b>Rights (E6-02):</b> both hooks are the row <c>ThemaOpbouw</c>, directie and themabeheer (ADR-0030 R29, which
+/// <b>Rights (E6-02):</b> both hooks are the row <c>ThemaOpbouw</c>, admin and themabeheer (ADR-0030 R29, which
 /// ruled the wizard's AI assist with the rest of the wizard). The wizard's own write actions are in
 /// <see cref="WizardrunsController"/>. The step-6 body's leeftijd only reaches the prompt and is never stored.
 /// </para>

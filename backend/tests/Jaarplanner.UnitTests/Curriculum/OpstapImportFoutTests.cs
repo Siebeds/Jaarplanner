@@ -10,7 +10,7 @@ namespace Jaarplanner.UnitTests.Curriculum;
 /// knows which refs or codes offended, and the <c>SaveChanges</c> translator, which only knows the constraint
 /// that broke. The second is unreachable without a concurrent writer, so <b>no behavioural test can compare
 /// the two</b>: the first version of this code let each site write its own sentence and the drift would have
-/// been invisible until a directie member met the stale copy during a real race. These tests compare the two
+/// been invisible until an admin member met the stale copy during a real race. These tests compare the two
 /// renderings of each factory directly, which is the only level at which the divergence is observable.
 /// </para>
 /// <para>
@@ -100,7 +100,7 @@ public sealed class OpstapImportFoutTests
     }
 
     /// <summary>
-    /// The Excel route after an API import (E1-21 rounds 1 and 2). Addressed to directie, and it says only what the trigger
+    /// The Excel route after an API import (E1-21 rounds 1 and 2). Addressed to admin, and it says only what the trigger
     /// proves: no claim that the file would overwrite goals, and none about where every leerplandoel comes from.
     /// </summary>
     [Fact]

@@ -11,10 +11,10 @@ namespace Jaarplanner.Api.Controllers;
 /// <see cref="IRapportsetService"/>; <see cref="RapportdoelenController"/> is its sibling for the set.
 /// <para>
 /// <b>Rights (ADR-0030 §3 footnote ⁶, ADR-0035 §3.3).</b> Every write is <c>RapportsetBewerken</c>: a K3 leerkracht, a
-/// gebruiker with a klastoewijzing on a K3 klas in a running schooljaar (R6, D4), and <b>not directie</b>, the one row
-/// directie does not pass (R31). The row needs no resource, since the scale is one for all of K3.
+/// gebruiker with a klastoewijzing on a K3 klas in a running schooljaar (R6, D4), and <b>not admin</b>, the one row
+/// admin does not pass (R31). The row needs no resource, since the scale is one for all of K3.
 /// <b>The reads are open to every signed-in gebruiker</b> through the fallback policy: the scale is not pupil data, and
-/// directie and a hoofdleerkracht of K3 view it (FB-002 AC5).
+/// admin and a hoofdleerkracht of K3 view it (FB-002 AC5).
 /// </para>
 /// </summary>
 [ApiController]

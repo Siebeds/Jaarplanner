@@ -17,7 +17,7 @@ namespace Jaarplanner.Infrastructure.Ontwikkelingsrapport;
 /// </summary>
 public sealed class LeerlingBeheerService : ILeerlingBeheerService
 {
-    /// <summary>D9's refusal, for directie: a leerkracht of a klas that grants no K3 is refused by the matrix first.</summary>
+    /// <summary>D9's refusal, for admin: a leerkracht of a klas that grants no K3 is refused by the matrix first.</summary>
     internal const string GeenK3Klas = "Alleen een klas van de derde kleuter kan kinderen hebben.";
 
     /// <summary>
@@ -65,7 +65,7 @@ public sealed class LeerlingBeheerService : ILeerlingBeheerService
     {
         var klas = await VindKlasAsync(klasId, cancellationToken);
 
-        // D9, for everyone: directie passes the matrix row for any klas, so this is where a K2 klas is refused. Asked of the
+        // D9, for everyone: admin passes the matrix row for any klas, so this is where a K2 klas is refused. Asked of the
         // one klas→leeftijden mapping, so the graadklas decision (Art. XIV) moves this with it.
         if (!Leerling.KlasKanLeerlingenHebben(klas.Jaarfase))
         {

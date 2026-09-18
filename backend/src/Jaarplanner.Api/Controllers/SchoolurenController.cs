@@ -10,7 +10,7 @@ namespace Jaarplanner.Api.Controllers;
 /// <see cref="ISchoolurenService"/>; a refusal surfaces as a Dutch 400 through the shared exception handler.
 /// <para>
 /// <b>Rights:</b> reading is open to every session, because every agenda draws the hours. Replacing them is the row
-/// <c>Beheer</c>, directie only: the owner ruled on 2026-09-15 that directie sets them, and they are school
+/// <c>Beheer</c>, admin only: the owner ruled on 2026-09-15 that admin sets them, and they are school
 /// organisation of the same kind as the schooljaren that row already covers (ADR-0030 R2, R3, R16).
 /// </para>
 /// </summary>

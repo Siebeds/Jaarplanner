@@ -14,8 +14,9 @@ namespace Jaarplanner.IntegrationTests;
 /// <item>it authenticates through <see cref="TestAuthenticatie"/> instead of a cookie, unless
 /// <see cref="GebruikTestAuthenticatie"/> is off, which is how the tests of the real sign-in run;</item>
 /// <item>every client it creates sends the anti-forgery header, as the frontend's <c>apiFetch</c> does;</item>
-/// <item>it blanks <c>Authenticatie:EersteDirectie</c>, which <c>appsettings.Development.json</c> sets for a developer's
-/// machine, so no test run writes a directie row at startup (the Demo:Seed lesson in that file);</item>
+/// <item>it blanks <c>Authenticatie:EersteAdmin</c>, which <c>appsettings.Development.json</c> sets for a developer's
+/// machine, and its old name <c>Authenticatie:EersteDirectie</c>, which user-secrets may still hold, so no test run
+/// writes an admin row at startup (the Demo:Seed lesson in that file);</item>
 /// <item>it keeps the session cookie's Data Protection keys in memory, unless
 /// <see cref="SessiesleutelsInDatabase"/> is on.</item>
 /// </list>
@@ -43,7 +44,8 @@ public class JaarplannerApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseSetting(EersteDirectieBootstrap.ConfiguratieSleutel, string.Empty);
+        builder.UseSetting(EersteAdminBootstrap.ConfiguratieSleutel, string.Empty);
+        builder.UseSetting(EersteAdminBootstrap.VorigeConfiguratieSleutel, string.Empty);
 
         if (GebruikTestAuthenticatie)
         {

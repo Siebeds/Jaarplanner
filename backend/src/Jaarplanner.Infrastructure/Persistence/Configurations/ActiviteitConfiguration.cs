@@ -57,7 +57,7 @@ public sealed class ActiviteitConfiguration : IEntityTypeConfiguration<Activitei
             .OnDelete(DeleteBehavior.SetNull);
 
         // The maker (E6-02, ADR-0030 R26). SetNull, never Cascade: removing a gebruiker must not remove what they made.
-        // Their activiteiten become purely shared, deletable only by a hoofdleerkracht or directie (I17).
+        // Their activiteiten become purely shared, deletable only by a hoofdleerkracht or admin (I17).
         builder.Property(a => a.MakerId);
         builder.HasOne<Jaarplanner.Domain.Toegang.Gebruiker>()
             .WithMany()

@@ -21,7 +21,7 @@
     "geenKlassen": "Dit schooljaar heeft nog geen klassen",
     "geenKlassenInzage": "Dit schooljaar heeft geen klas die je mag inkijken.",
     "geenInzageTitel": "Geen klas om in te kijken",
-    "geenInzage": "Je hebt geen klas en geen recht om klassen in te kijken. Vraag het aan de directie.",
+    "geenInzage": "Je hebt geen klas en geen recht om klassen in te kijken. Vraag het aan een admin.",
     "klassenLaden": "De klassen worden geladen.",
     "klassenLaadFout": "De klassen konden niet geladen worden. Herlaad de pagina.",
     "jaarFase": "Leeftijd",
@@ -933,9 +933,9 @@
     "naam": "Naam",
     "naamVoorbeeld": "An Peeters",
     "naamVerplicht": "Vul de naam in.",
-    "directie": "Directie",
+    "admin": "Admin",
     "themabeheer": "Themabeheer",
-    "directieUitleg": "Ziet en bewerkt alles, en beheert gebruikers en rechten.",
+    "adminUitleg": "Ziet en bewerkt alles, en beheert gebruikers en rechten.",
     "themabeheerUitleg": "Past thema's aan en laadt thema's en activiteiten in.",
     "leerlingzorg": "Leerlingzorg",
     "leerlingzorgUitleg": "Leest elk ontwikkelingsrapport van de derde kleuter, maar wijzigt er niets aan.",
@@ -953,7 +953,7 @@
     "hoofdleerkrachten": "Hoofdleerkrachten",
     "geenHoofdleerkracht": "Geen hoofdleerkracht",
     "niemandDitJaar": "Niemand in dit schooljaar",
-    "zonderHoofdleerkracht": "Bij een leeftijd zonder hoofdleerkracht doet de directie wat een hoofdleerkracht zou doen.",
+    "zonderHoofdleerkracht": "Bij een leeftijd zonder hoofdleerkracht doet een admin wat een hoofdleerkracht zou doen.",
     "jaarVoorbij": "Dit schooljaar is voorbij. Klassen en aanstellingen van dit jaar geven geen rechten meer op gedeelde subthema's en activiteiten.",
     "wijzigenMislukt": "Die wijziging is niet bewaard.",
     "klaar": "Klaar",
@@ -963,9 +963,9 @@
     "verwijderZelfGevolg": "Je wordt meteen afgemeld en kunt je daarna niet meer aanmelden. Je klassen en aanstellingen vervallen. De activiteiten die je maakte blijven bestaan, als gedeelde activiteiten.",
     "verwijderMislukt": "De gebruiker is niet verwijderd.",
     "verdwenen": "{naam} is intussen verwijderd en staat niet meer in de lijst.",
-    "afgevenTitel": "Je eigen directierecht afgeven?",
-    "afgevenGevolg": "Je ziet het scherm Gebruikers dan niet meer, en je kunt het directierecht niet zelf terugzetten.",
-    "afgevenBevestig": "Directierecht afgeven"
+    "afgevenTitel": "Je eigen adminrecht afgeven?",
+    "afgevenGevolg": "Je ziet het scherm Gebruikers dan niet meer, en je kunt het adminrecht niet zelf terugzetten.",
+    "afgevenBevestig": "Adminrecht afgeven"
   },
   "importeren": {
     "titel": "Inladen",
@@ -1402,19 +1402,19 @@
     "geenToegang": {
       "titel": "Geen toegang met dit account",
       "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Jaarplanner niet gebruiken.",
-      "watNu": "Meld je aan met je schoolaccount. Lukt dat niet, vraag dan aan de directie om je toe te voegen.",
+      "watNu": "Meld je aan met je schoolaccount. Lukt dat niet, vraag dan een admin om je toe te voegen.",
       "opnieuw": "Opnieuw proberen",
       "anderAccount": "Met een ander account aanmelden"
     },
     "mislukt": {
       "titel": "Aanmelden is niet gelukt",
-      "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie."
+      "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan een admin."
     },
     "tussenpagina": {
       "openen": "Jaarplanner wordt geopend.",
       "doorsturen": "Je wordt doorgestuurd naar de aanmelding.",
       "fout": "Jaarplanner kan nu niet openen.",
-      "foutUitleg": "Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan de directie.",
+      "foutUitleg": "Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan een admin.",
       "opnieuw": "Opnieuw proberen"
     }
   },

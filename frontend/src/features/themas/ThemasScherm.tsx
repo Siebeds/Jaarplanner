@@ -24,7 +24,7 @@ import { Themaicoon } from "./Emojikiezer";
  * are per class. The count of classes that derive from it is on the card instead, which is the honest
  * version of the same information.
  *
- * **Making a thema is directie's and themabeheer's** (ADR-0030 §3, R4; E6-02), and Inladen is for whoever can use a
+ * **Making a thema is admin's and themabeheer's** (ADR-0030 §3, R4; E6-02), and Inladen is for whoever can use a
  * section of it. Everyone else reads the library: no header controls, and an empty library says only that it is
  * empty.
  */

@@ -161,7 +161,7 @@ export function Schoolcontentimport() {
                 {/* The opt-in itself, and only where the count is on screen. Unchecked by default,
                     and re-checking it after a change is deliberate: it is consent to this list.
 
-                    Directie only (R35, E6-02): the server refuses the option to anyone else, on the
+                    Admin only (R35, E6-02): the server refuses the option to anyone else, on the
                     preview and on the import. Themabeheer gets the one sentence its branch guarantees
                     instead: without the option the import keeps these links (Art. IV.2). */}
                 {!getoond.toegepast && !mag.menselijkeBeslissingenVerwijderen ? (

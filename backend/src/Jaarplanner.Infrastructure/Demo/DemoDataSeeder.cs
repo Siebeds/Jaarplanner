@@ -11,7 +11,7 @@ namespace Jaarplanner.Infrastructure.Demo;
 
 /// <summary>
 /// Seeds one realistic school year, class and jaarplan so the kalender (E3-06) shows something honest when
-/// it is clicked through at the directie/teacher review.
+/// it is clicked through at the admin/teacher review.
 /// <para>
 /// <b>Why this exists.</b> E3-06's output is a review artifact: teachers assess it by using it. An empty
 /// screen assesses nothing, and the alternative — asking a reviewer to configure Azure AI and run a

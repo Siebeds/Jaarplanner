@@ -278,10 +278,10 @@ public sealed class ThemaplaatsingEndpointsTests : IAsyncLifetime
 
         Guid plaatsingId;
         DateOnly eerste;
-        using (var directie = opzet.Directie())
+        using (var admin = opzet.Admin())
         {
-            eerste = (await directie.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Groen}/jaarplan"))!.EersteSchooldag;
-            using var geplaatst = await directie.PostAsJsonAsync(
+            eerste = (await admin.GetFromJsonAsync<PlanDto>($"/api/klassen/{school.K3Groen}/jaarplan"))!.EersteSchooldag;
+            using var geplaatst = await admin.PostAsJsonAsync(
                 $"/api/klassen/{school.K3Groen}/jaarplan/plaatsingen", new { themaId, van = eerste, tot = eerste });
             Assert.Equal(HttpStatusCode.OK, geplaatst.StatusCode);
             plaatsingId = (await geplaatst.Content.ReadFromJsonAsync<PlanDto>())!.Plaatsingen[0].Id;

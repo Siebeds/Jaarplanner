@@ -12,7 +12,7 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights.</b> Reading every web on a subthema needs a session only (W2). Adding words to <b>one's own</b> web needs
 /// a session only too (D2): that route takes the web from the caller's identity and never from the body, so it cannot
-/// reach anyone else's. Every action on a web by its id is the <c>WoordwebBewerken</c> row: its owner, and directie (D3).
+/// reach anyone else's. Every action on a web by its id is the <c>WoordwebBewerken</c> row: its owner, and admin (D3).
 /// </para>
 /// <para>
 /// <b>The AI request answers 422 on a model answer outside the contract</b>, with an English diagnostic and no change
@@ -44,7 +44,7 @@ public sealed class WoordwebsController : ControllerBase
             ? Ok(await _service.VoegEigenWoordenToeAsync(subthemaId, gebruikerId, invoer.Woorden ?? [], cancellationToken))
             : Forbid();
 
-    /// <summary>Adds typed words to a web by its id: its owner, or directie.</summary>
+    /// <summary>Adds typed words to a web by its id: its owner, or admin.</summary>
     [HttpPost("api/woordwebs/{woordwebId:guid}/woorden")]
     [RechtOp(Rechtenmatrix.Beleid.WoordwebBewerken, Rechtbron.Woordweb, "woordwebId")]
     public async Task<ActionResult<WoordwebWeergave>> VoegWoordenToe(

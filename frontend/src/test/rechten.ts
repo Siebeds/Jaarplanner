@@ -12,7 +12,7 @@ export const NIEMAND: Ik = {
   id: "ik-1",
   naam: "Test Gebruiker",
   email: "test@school.be",
-  isDirectie: false,
+  isAdmin: false,
   heeftThemabeheer: false,
   heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: [],
@@ -26,7 +26,7 @@ export function ikMet(delen: Partial<Ik> = {}): Ik {
   return { ...NIEMAND, ...delen };
 }
 
-export const DIRECTIE = ikMet({ isDirectie: true });
+export const ADMIN = ikMet({ isAdmin: true });
 
 export function metIk(client: QueryClient, ik: Ik): QueryClient {
   client.setQueryData(["ik"], ik);

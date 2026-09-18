@@ -70,7 +70,7 @@ pnpm. Run the commands from the repo root.
    $pw = 'Jp7' + (-join ($bytes | ForEach-Object { $chars[$_ % $chars.Length] }))
    az deployment group create --resource-group rg-jaarplanner-demo --template-file infra/main.bicep `
        --parameters deployerObjectId=$(az ad signed-in-user show --query id -o tsv) `
-                    eersteDirectie=<upn of the first directie> "postgresAdminPassword=$pw"
+                    eersteAdmin=<upn of the first admin> "postgresAdminPassword=$pw"
    ```
 
 4. **The Entra app registration**, once, in the tenant whose members may sign in (ADR-0031, deployment prerequisites):
@@ -97,7 +97,7 @@ pnpm. Run the commands from the repo root.
    $pw = (($conn -split ';') | Where-Object { $_ -like 'Password=*' }) -replace '^Password=', ''
    az deployment group create --resource-group rg-jaarplanner-demo --template-file infra/main.bicep `
        --parameters deployerObjectId=$(az ad signed-in-user show --query id -o tsv) `
-                    eersteDirectie=<upn> entraClientId=<appId> "postgresAdminPassword=$pw"
+                    eersteAdmin=<upn> entraClientId=<appId> "postgresAdminPassword=$pw"
    ```
 
 7. **The database schema.**
@@ -139,7 +139,7 @@ the tools above and a clean working tree (or `-AllowDirty`), and it runs from th
 ./infra/seed-demo.ps1 -ServerName pg-jaarplanner-demo-<suffix> -VaultName kv-jpdemo-<suffix> -AppName jaarplanner-demo-<suffix>
 ```
 
-- It builds the API from the checkout, starts it on your machine and signs in as the demo's directie with the
+- It builds the API from the checkout, starts it on your machine and signs in as the demo's admin with the
   development sign-in. All content goes through the API. The one direct database write is the safeguard below.
 - The session keys (ADR-0031 decision 5). The local API gets the demo's `DataProtection__KeyVaultSleutel`, so any key
   it creates is wrapped or not written. The script gives you *Key Vault Crypto User* on that key for the run if you

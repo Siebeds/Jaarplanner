@@ -33,7 +33,7 @@ public sealed class SchoolurenService : ISchoolurenService
         ArgumentNullException.ThrowIfNull(invoer);
 
         // These three are English on purpose (Art. II.3): the form always sends a list, weekdays 1 to 5, each once, so
-        // only a malformed request reaches them, and only a developer can act on one. The refusals directie can meet
+        // only a malformed request reaches them, and only a developer can act on one. The refusals admin can meet
         // are the domain's Dutch sentences below.
         //
         // An absent list is refused rather than read as "no hours": a body that lost its field would otherwise wipe

@@ -25,10 +25,36 @@
         </label>
       </div>
     </header>
+    <div class="toolbar">
+      <div class="segmented" role="group" aria-label="Weergave">
+        <button type="button" data-view="bord" aria-pressed="true">Bord</button>
+        <button type="button" data-view="tabel" aria-pressed="false">Tabel</button>
+      </div>
+      <label class="pick">
+        <span>Prioriteit</span>
+        <select id="prio">
+          <option value="alle">Alle</option>
+          <option value="hoog">Hoog</option>
+          <option value="middel">Middel</option>
+          <option value="laag">Laag</option>
+        </select>
+      </label>
+      <label class="pick">
+        <span>Aangemaakt</span>
+        <select id="created"></select>
+      </label>
+      <label class="pick">
+        <span>Sorteer op</span>
+        <select id="sort"></select>
+      </label>
+      <button type="button" id="reset" class="reset" hidden>Wis filters</button>
+      <p id="result" class="result" aria-live="polite"></p>
+    </div>
     <main>
       <p id="error" class="load-error" role="alert" hidden></p>
       <section id="invalid" class="invalid" hidden></section>
       <div id="board" class="board"></div>
+      <div id="table" class="table-wrap" hidden></div>
     </main>
     <dialog id="detail" aria-labelledby="detail-title">
       <div id="drawer" class="drawer"></div>

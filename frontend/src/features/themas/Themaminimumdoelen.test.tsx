@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
 import type { LeerplandoelDetail, MinimumdoelDetail, MinimumdoelenPagina, ThemaWeergave } from "../../lib/types";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { LIJSTKNOP } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
@@ -131,7 +131,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function toon(ik: Ik = DIRECTIE) {
+function toon(ik: Ik = ADMIN) {
   const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), ik);
   render(
     <QueryClientProvider client={client}>

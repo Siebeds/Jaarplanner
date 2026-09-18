@@ -19,7 +19,7 @@ namespace Jaarplanner.Application.Dekking;
 /// entitled to take. A PDF rides on E5-07's ruling.
 /// </para>
 /// <para>
-/// <b>What this document may never do</b>, because the whole point of it is that a directie can hand it over:
+/// <b>What this document may never do</b>, because the whole point of it is that the directie can hand it over:
 /// print a figure the screen withholds. <see cref="DekkingWeergave.AantalGedekt"/> is <c>null</c> while a stale
 /// placement is unresolved (directie 2026-07-28), and the implementation writes a sentence in that slot rather than a
 /// number. The nullable type is what makes that enforceable rather than merely intended.

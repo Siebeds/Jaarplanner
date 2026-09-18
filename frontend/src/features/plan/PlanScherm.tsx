@@ -30,7 +30,7 @@ import { Themaplaatsingblad } from "./Themaplaatsingblad";
  * **The AI generation fills the free days** (ADR-0055): its proposals land on the timeline like any other placement,
  * wearing the proposal ring, and are decided on their card.
  *
- * **Changing the plan is directie's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15). Anyone else who may
+ * **Changing the plan is admin's and this klas's leerkrachten'** (E6-02, ADR-0030 §3, R7, R15). Anyone else who may
  * read the klas (FB-013) reads its plan, with one quiet line that says so.
  */
 export function PlanScherm() {

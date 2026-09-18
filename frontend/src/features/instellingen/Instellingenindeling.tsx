@@ -34,7 +34,7 @@ import { padVan, useZichtbareOnderdelen } from "./onderdelen";
  * Before the page in the DOM, so a keyboard user who skipped to the content reaches the other parts
  * in two presses rather than after every control on the page.
  *
- * **It lists only the parts this person may see** (E6-04): Gebruikers is directie only, so for
+ * **It lists only the parts this person may see** (E6-04): Gebruikers is admin only, so for
  * anyone else it is not in the column and not in the phone switch. Both read
  * `useZichtbareOnderdelen`, so they cannot disagree.
  */
@@ -144,7 +144,7 @@ export function Instellingenindeling() {
  * Hidden from `lg` with `lg:hidden`, which is `display: none`, so the column and this row are never
  * in the accessibility tree together although both carry the same name.
  *
- * **It says when there is more** (E6-04 fix round 1). With Gebruikers, directie has five parts, and
+ * **It says when there is more** (E6-04 fix round 1). With Gebruikers, admin has five parts, and
  * at 390px the last one starts past the right edge: it scrolled, but nothing said so. So the edge
  * where parts are hidden fades into the row's own background, the paper-and-ink way of saying
  * "more this way" without a hue, and the part you are on is scrolled into view when the row

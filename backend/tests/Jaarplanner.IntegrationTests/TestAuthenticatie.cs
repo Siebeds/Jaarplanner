@@ -40,7 +40,7 @@ public static class TestAuthenticatie
 
     /// <summary>
     /// Registers the scheme and makes it the default for everything the cookie was the default for. Also makes
-    /// <see cref="StandaardGebruikerId"/> directie (see <see cref="StandaardIsDirectie"/>).
+    /// <see cref="StandaardGebruikerId"/> admin (see <see cref="StandaardIsAdmin"/>).
     /// </summary>
     public static void Registreer(IServiceCollection services)
     {
@@ -55,25 +55,25 @@ public static class TestAuthenticatie
 
         services.RemoveAll<IRechtenService>();
         services.AddScoped<RechtenService>();
-        services.AddScoped<IRechtenService>(sp => new StandaardIsDirectie(sp.GetRequiredService<RechtenService>()));
+        services.AddScoped<IRechtenService>(sp => new StandaardIsAdmin(sp.GetRequiredService<RechtenService>()));
     }
 
     /// <summary>
-    /// <b>The default identity is directie</b> (E6-02), as this stand-in's principal has always said. The 152 call sites
-    /// that send no header test something other than rights, and a directie is the one gebruiker every matrix row
+    /// <b>The default identity is admin</b> (E6-02), as this stand-in's principal has always said. The 152 call sites
+    /// that send no header test something other than rights, and an admin is the one gebruiker every matrix row
     /// admits, so they keep testing what they tested. No row exists for it, so this answers without the database,
     /// which the in-memory hosts do not have. Every other id, sent through <see cref="GebruikerHeader"/>, goes to the
     /// real <see cref="RechtenService"/>: the rights tests seed gebruikers and use those.
     /// </summary>
-    private sealed class StandaardIsDirectie : IRechtenService
+    private sealed class StandaardIsAdmin : IRechtenService
     {
         private readonly IRechtenService _echt;
 
-        public StandaardIsDirectie(IRechtenService echt) => _echt = echt;
+        public StandaardIsAdmin(IRechtenService echt) => _echt = echt;
 
         public Task<Rechten> HaalRechtenOpAsync(Guid gebruikerId, CancellationToken cancellationToken = default) =>
             gebruikerId == StandaardGebruikerId
-                ? Task.FromResult(new Rechten(gebruikerId, isDirectie: true, heeftThemabeheer: false, [], [], []))
+                ? Task.FromResult(new Rechten(gebruikerId, isAdmin: true, heeftThemabeheer: false, [], [], []))
                 : _echt.HaalRechtenOpAsync(gebruikerId, cancellationToken);
     }
 
@@ -96,7 +96,7 @@ public static class TestAuthenticatie
                 : StandaardGebruikerId;
 
             var principal = Aanmelding.MaakPrincipal(
-                new GebruikerWeergave(gebruikerId, "Test", "test@jaarplanner.local", IsDirectie: true),
+                new GebruikerWeergave(gebruikerId, "Test", "test@jaarplanner.local", IsAdmin: true),
                 Schema);
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(principal, Schema)));
         }

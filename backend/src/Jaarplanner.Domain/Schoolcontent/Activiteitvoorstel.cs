@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
 /// An activiteit the AI proposes under one <see cref="Subthema"/> to the gebruiker who asked (FB-025, ADR-0056). It is
-/// hers: only she and directie see and decide it (D2, A3). It counts for nothing until accepted, and accepting it creates
+/// hers: only she and admin see and decide it (D2, A3). It counts for nothing until accepted, and accepting it creates
 /// an ordinary own <see cref="Activiteit"/> of hers (A2), whose id this proposal then keeps.
 /// <para>
 /// Deliberately not an <see cref="Activiteit"/> row with a status: the agenda, the dekking and the thema's counts read
@@ -74,7 +74,7 @@ public sealed class Activiteitvoorstel
     /// <summary>The subthema it is proposed under.</summary>
     public Guid SubthemaId { get; private set; }
 
-    /// <summary>Who asked: she, and directie, see and decide it (D2, A3); an accepted one becomes her own activiteit.</summary>
+    /// <summary>Who asked: she, and admin, see and decide it (D2, A3); an accepted one becomes her own activiteit.</summary>
     public Guid GebruikerId { get; private set; }
 
     /// <summary>The proposed name; after an accepted change, the name the activiteit got.</summary>

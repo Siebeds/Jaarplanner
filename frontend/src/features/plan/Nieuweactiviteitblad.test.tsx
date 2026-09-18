@@ -136,7 +136,7 @@ describe("Nieuweactiviteitblad na een weigering", () => {
         }),
     );
     vi.stubGlobal("fetch", aanvraag);
-    // A leerkracht whose only klas at K3 is this one: directie removes her klastoewijzing before she saves.
+    // A leerkracht whose only klas at K3 is this one: admin removes her klastoewijzing before she saves.
     const qc = client(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
     const plan = vi.fn();
     render(<Agenda qc={qc} open fout={null} onPlan={plan} />);

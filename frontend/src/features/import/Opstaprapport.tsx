@@ -23,7 +23,7 @@ import type {
  * are a number; only what a person should look at is listed, and every list is capped with an honest tail (`Beperkt`).
  *
  * **What is never shown:** `problemen[].reden`. It is English and for the operator (E1-21 antagonist round 1, QUESTION 3).
- * Directie gets the count and who to tell; the Dutch consequence for a stored goal comes from the server in `opmerkingen`.
+ * Admin gets the count and who to tell; the Dutch consequence for a stored goal comes from the server in `opmerkingen`.
  *
  * **Server Dutch is rendered as given** (`opmerkingen`, Art. II.3 as ratified 2026-07-30): it names the discipline or the
  * count itself, and a paraphrase here would drift from it.
@@ -218,7 +218,7 @@ function Tellingen({ items }: { items: { label: string; aantal: number; stil?: b
 
 /**
  * One row per discipline, four numbers each: the data this report exists for, set as a real table because it is one.
- * The discipline number leads in the mono face so a directie reader can find "9.2" without reading thirteen names.
+ * The discipline number leads in the mono face so an admin reader can find "9.2" without reading thirteen names.
  *
  * Capped in width. At 1440 a full-width table put the last column 1,100 pixels from the name it belongs to, and a row
  * that long is read by guessing which line the eye is on (seen in the browser pass, not by any test).
@@ -365,7 +365,7 @@ function Doelsets({ doelsets }: { doelsets: DoelsetTelling[] }) {
 }
 
 /**
- * How many source goals were not imported, and who can do something about it. Decide-and-record (a): directie gets this
+ * How many source goals were not imported, and who can do something about it. Decide-and-record (a): admin gets this
  * Dutch count on top of the server's `nietIngelezen` notice, because "N doelen konden niet ingelezen worden" is something
  * they can act on (tell the operator) even when no stored goal is affected. The English reasons stay with the operator.
  */
