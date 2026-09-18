@@ -2,12 +2,12 @@
 id: TB-032
 titel: Na afmelden op een eigen afgemeld-pagina landen, niet meteen opnieuw aangemeld worden
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 22:14
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-18 18:16
+opgepakt-door: claude-tb032
+branch: ticket/TB-032-afgemeld-pagina
 pr:
 geblokkeerd:
 fr: []
@@ -81,3 +81,4 @@ Geen.
 ## Werklog
 
 - 2026-09-15 22:14 · claude · aangemaakt (status nieuw)
+- 2026-09-18 18:16 · claude-tb032 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
