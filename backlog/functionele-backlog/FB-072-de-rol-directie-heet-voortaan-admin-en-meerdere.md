@@ -2,10 +2,10 @@
 id: FB-072
 titel: De rol directie heet voortaan admin, en meerdere gebruikers kunnen admin zijn
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:20
+bijgewerkt: 2026-09-18 18:42
 opgepakt-door: fb-072-sessie
 branch: ticket/FB-072-rol-admin
 pr:
@@ -35,11 +35,11 @@ De eigenaar besliste (2026-09-18): er is **één beheerrol, admin**. Daarnaast b
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een gebruiker die vandaag directierecht heeft, wanneer die na de wijziging aanmeldt, dan is die admin en kan die alles wat die voordien kon.
-- [ ] Gegeven het scherm Gebruikers, wanneer een admin het opent, dan staat er nergens meer "directie" voor de rol, alleen "admin".
-- [ ] Gegeven een admin, wanneer die een andere gebruiker het adminrecht geeft, dan kan die gebruiker na herladen alles wat een admin kan.
-- [ ] Gegeven de enige admin, wanneer die het eigen adminrecht wil afgeven, dan weigert de app met een uitleg.
-- [ ] Gegeven een gebruiker met alleen themabeheer, hoofdleerkracht of een klastoewijzing, wanneer die de app gebruikt, dan heeft die dezelfde rechten als vóór de wijziging.
+- [x] Gegeven een gebruiker die vandaag directierecht heeft, wanneer die na de wijziging aanmeldt, dan is die admin en kan die alles wat die voordien kon.
+- [x] Gegeven het scherm Gebruikers, wanneer een admin het opent, dan staat er nergens meer "directie" voor de rol, alleen "admin".
+- [x] Gegeven een admin, wanneer die een andere gebruiker het adminrecht geeft, dan kan die gebruiker na herladen alles wat een admin kan.
+- [x] Gegeven de enige admin, wanneer die het eigen adminrecht wil afgeven, dan weigert de app met een uitleg.
+- [x] Gegeven een gebruiker met alleen themabeheer, hoofdleerkracht of een klastoewijzing, wanneer die de app gebruikt, dan heeft die dezelfde rechten als vóór de wijziging.
 
 ## Testscenario's
 
@@ -66,3 +66,7 @@ Geen. De bouwsessie schrijft de ADR en past Art. VI.1 en Art. XII van de constit
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-18 18:20 · fb-072-sessie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; keuze eigenaar: alles hernoemen (code, kolom, API, configsleutel)
+- 2026-09-18 18:33 · fb-072-sessie · hernoeming gebouwd: code, kolom (migratie GebruikerIsAdmin), API-route, configsleutel met terugval, teksten; ADR-0061 en grondwet bijgewerkt; unit-, integratie- (Postgres) en frontendtests groen
+- 2026-09-18 18:41 · fb-072-sessie · browserpas op kopie jp_fb072 (desktop en 390px): directierecht na migratie admin, scherm Gebruikers toont Admin, adminrecht geven/afnemen werkt na herladen, laatste admin geweigerd met uitleg, agenda/doelen/dekking/thema's zonder 'directie'; criterium 5 gedekt door de ongewijzigde rechtentests
+- 2026-09-18 18:41 · fb-072-sessie · antagonist: ronde 1 één MAJOR (Art. IV.1, IX.2 en FA nog 'directie' voor het recht), opgelost in cc7f606d; ronde 2 COMPLIANT. MINOR's opgelost in eac3807f
+- 2026-09-18 18:42 · fb-072-sessie · in-uitvoering → te-testen: gebouwd: rol directie heet admin in app, code, kolom (migratie GebruikerIsAdmin), API-route en configsleutel (oude sleutel blijft als terugval); ADR-0061, grondwet, CLAUDE.md en FA bijgewerkt; unit 2138, integratie 569, frontend 1228 groen, lint en format schoon, antagonist COMPLIANT
