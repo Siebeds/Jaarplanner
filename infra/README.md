@@ -74,7 +74,8 @@ pnpm. Run the commands from the repo root.
    ```
 
 4. **The Entra app registration**, once, in the tenant whose members may sign in (ADR-0031, deployment prerequisites):
-   - single tenant, with the redirect URIs `https://<host>/api/signin-oidc` and `https://<host>/`;
+   - single tenant, with the redirect URIs `https://<host>/api/signin-oidc` and `https://<host>/afgemeld` (where a
+     sign-out returns, TB-032);
    - the `acct` optional claim in the ID token (`az ad app update --optional-claims`);
    - the delegated `openid` and `profile` permissions, with admin consent (`az ad app permission add`, then
      `az ad app permission admin-consent`);

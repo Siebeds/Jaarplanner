@@ -48,7 +48,7 @@ describe("apiFetch en de sessie", () => {
     The decision itself, not only that a 401 asks for it. A fresh copy of the module per test, because the
     once-per-page flag lives in module state and a test that navigated would leave it set for the next one.
   */
-  it.each(["/geen-toegang", "/aanmelden-mislukt"])("stuurt nooit door vanaf %s, waar dat een lus zou geven", async (pad) => {
+  it.each(["/geen-toegang", "/aanmelden-mislukt", "/afgemeld"])("stuurt nooit door vanaf %s, waar dat een lus of een nieuwe aanmelding zou geven", async (pad) => {
     vi.resetModules();
     const { aanmeldOmleiding: omleiding } = await import("./api");
     const navigeer = vi.spyOn(omleiding, "navigeer").mockImplementation(() => {});

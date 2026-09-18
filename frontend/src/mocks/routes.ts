@@ -298,7 +298,7 @@ type Methode = "GET" | "POST" | "PUT" | "DELETE";
 const TABEL: [Methode, string, Handler][] = [
   // Session and reference data
   ["GET", "/api/ik", () => t.ik()],
-  ["POST", "/api/afmelden", () => ({ doorsturenNaar: "/" })],
+  ["POST", "/api/afmelden", () => ({ doorsturenNaar: "/afgemeld" })],
   ["GET", "/api/jaarfasen", () => inhoud.JAARFASEN],
   [
     "GET",

@@ -15,6 +15,7 @@ import { RapportdoelenScherm } from "./features/ontwikkelingsrapport/Rapportdoel
 import { RapportScherm } from "./features/ontwikkelingsrapport/RapportScherm";
 import { SterrenschaalScherm } from "./features/ontwikkelingsrapport/SterrenschaalScherm";
 import { Rapportstart } from "./features/ontwikkelingsrapport/Rapportwissel";
+import { AfgemeldScherm } from "./features/aanmelding/AfgemeldScherm";
 import { GeenToegangScherm } from "./features/aanmelding/GeenToegangScherm";
 import { Instellingenindeling } from "./features/instellingen/Instellingenindeling";
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
@@ -51,6 +52,8 @@ export default function App() {
               would answer 401 and loop through the sign-in: see GeenToegangScherm. */}
           <Route path="geen-toegang" element={<GeenToegangScherm />} />
           <Route path="aanmelden-mislukt" element={<GeenToegangScherm soort="mislukt" />} />
+          {/* Where a sign-out lands (TB-032), outside the shell for the same reason. */}
+          <Route path="afgemeld" element={<AfgemeldScherm />} />
           {/* The shell only once it is known who is signed in (TB-026): until then the tussenpagina, so a
               browser on its way to the sign-in never shows a glimpse of the app. */}
           <Route

@@ -41,6 +41,18 @@ public static class Aanmelding
     /// <summary>The frontend page a sign-in that did not complete lands on.</summary>
     public const string AanmeldenMisluktPad = "/aanmelden-mislukt";
 
+    /// <summary>The frontend page a sign-out lands on. It asks the API nothing, so it never starts a sign-in by itself.</summary>
+    public const string AfgemeldPad = "/afgemeld";
+
+    /// <summary>
+    /// The <c>Clear-Site-Data</c> value a sign-out answers with (OWASP Session Management): the browser drops the
+    /// cache, cookies and storage it kept for this site, which matters on a shared classroom computer. Storage includes
+    /// the per-browser light/dark choice and the remembered klas. <c>"cookies"</c> clears the whole registrable domain:
+    /// harmless on <c>*.azurewebsites.net</c> (a public suffix), but on a custom domain such as
+    /// <c>jaarplanner.school.be</c> it would sign the user out of every other <c>school.be</c> site too.
+    /// </summary>
+    public const string WisSitegegevens = "\"cache\", \"cookies\", \"storage\"";
+
     /// <summary>The one claim a session carries: the id of the <c>Gebruiker</c>.</summary>
     public const string GebruikerClaim = "jaarplanner:gebruiker";
 
@@ -142,13 +154,13 @@ public static class Aanmelding
         || pad.Equals(AfmeldTerugkeerPad, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// The Entra sign-out address, returning to the app's root. The browser has to go there itself: a sign-out that
-    /// only ends the cookie leaves the Entra session alive, and on a shared classroom computer the next teacher would
-    /// be signed in silently as this one.
+    /// The Entra sign-out address, returning to <see cref="AfgemeldPad"/>. The browser has to go there itself: a
+    /// sign-out that only ends the cookie leaves the Entra session alive, and on a shared classroom computer the next
+    /// teacher would be signed in silently as this one. Returning to the root instead would start a new sign-in at once.
     /// </summary>
     public static string EntraAfmeldAdres(EntraOpties entra, HttpRequest verzoek) =>
         $"{entra.Instance.TrimEnd('/')}/{entra.TenantId}/oauth2/v2.0/logout"
-        + $"?post_logout_redirect_uri={Uri.EscapeDataString($"{verzoek.Scheme}://{verzoek.Host}/")}";
+        + $"?post_logout_redirect_uri={Uri.EscapeDataString($"{verzoek.Scheme}://{verzoek.Host}{AfgemeldPad}")}";
 
     private static void ConfigureerCookie(CookieAuthenticationOptions o, IWebHostEnvironment omgeving, AuthenticatieOpties opties)
     {

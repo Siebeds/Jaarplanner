@@ -1,7 +1,12 @@
 # ADR-0031 — Personal login as a session held by the API (Entra ID over OpenID Connect, no token in the browser)
 
 - **Status:** Accepted. The owner gave the go on 2026-09-11 (ADR-0030 statement 10). One detail changed during the
-  build and is marked below: the library.
+  build and is marked below: the library. **Decision 4's sign-out amended by TB-032 on 2026-09-18:** the browser
+  returns to `/afgemeld`, an anonymous page outside the shell that asks the API nothing, and not to the root: the
+  Entra `post_logout_redirect_uri` is `https://<host>/afgemeld`, and in development `POST /api/afmelden` answers
+  `/afgemeld`. On the root a 401 sent the browser straight back to Microsoft, which signs a known account in again
+  without a password, so the sign-out seemed to do nothing. The answer also carries `Clear-Site-Data: "cache",
+  "cookies", "storage"` (OWASP Session Management). The text below is left as written.
 - **Date:** 2026-09-11
 - **Deciders:** Session `E6-01` (technical design), within the owner's rulings of
   [ADR-0030](0030-rollen-en-rechten-in-de-app.md).

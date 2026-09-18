@@ -59,7 +59,8 @@ export function aanmeldAdres(terugNaar = "/"): string {
 
 /**
  * Signs out, then sends the browser where the API says: the Microsoft sign-out, so the Microsoft
- * session ends too and the next teacher at a shared computer is not signed in as this one.
+ * session ends too and the next teacher at a shared computer is not signed in as this one. Microsoft
+ * then returns the browser to `/afgemeld` (TB-032); in development the API sends it there directly.
  *
  * The cache is cleared first, so nothing of this person's data is left in memory for the moment
  * before the page goes.
