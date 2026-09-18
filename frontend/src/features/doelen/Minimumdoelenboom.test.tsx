@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { t, telWoord } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
 import type { MinimumdoelFacetten, MinimumdoelRegel } from "../../lib/types";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { Minimumdoelenboom } from "./Minimumdoelenboom";
 
 /**
@@ -93,7 +93,7 @@ function toon(opties: {
   gekozenRef?: string | null;
   onKies?: (ref: string) => void;
   onWisFilters?: () => void;
-  /** Who is looking; directie unless a test says otherwise (E6-02: the Laadlink is directie's). */
+  /** Who is looking; admin unless a test says otherwise (E6-02: the Laadlink is admin's). */
   ik?: Ik;
 }) {
   paden = [];
@@ -120,7 +120,7 @@ function toon(opties: {
     }),
   );
 
-  const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), opties.ik ?? DIRECTIE);
+  const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false } } }), opties.ik ?? ADMIN);
   return render(
     <MemoryRouter>
       <QueryClientProvider client={client}>
@@ -237,9 +237,9 @@ describe("Minimumdoelenboom", () => {
     expect(screen.getByRole("link", { name: t("doelen.laadIn") })).toHaveAttribute("href", "/inladen?bron=opstap");
   });
 
-  // The E1-22 carry-forward closed by E6-02: loading Op.stap is directie's (R3), so for anyone else "Laad ze in bij
+  // The E1-22 carry-forward closed by E6-02: loading Op.stap is admin's (R3), so for anyone else "Laad ze in bij
   // Inladen" would point at something they cannot do. Themabeheer loads thema's, not goals.
-  it("wijst alleen directie naar Inladen: themabeheer ziet de lege lijst zonder link", async () => {
+  it("wijst alleen admin naar Inladen: themabeheer ziet de lege lijst zonder link", async () => {
     toon({
       facetten: facetten({ totaalAantalMinimumdoelen: 0, aantalTreffers: 0, aantalZonderOrdening: 0, leergebieden: [] }),
       ik: ikMet({ heeftThemabeheer: true }),

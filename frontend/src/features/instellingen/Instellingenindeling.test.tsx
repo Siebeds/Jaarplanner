@@ -63,7 +63,7 @@ function AnderDeel() {
 
 const renderMetTweeSchermen = (ingang: string | { pathname: string; state: unknown }) =>
   render(
-    // The switch reads who is signed in (E6-04: Gebruikers is directie only), so it needs a client.
+    // The switch reads who is signed in (E6-04: Gebruikers is admin only), so it needs a client.
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <MemoryRouter initialEntries={[ingang]}>
         <Routes>
@@ -80,7 +80,7 @@ const IK: Ik = {
   id: "ik-1",
   naam: "An Peeters",
   email: "an@school.be",
-  isDirectie: false,
+  isAdmin: false,
   heeftThemabeheer: true,
   heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: ["K3"],
@@ -91,13 +91,13 @@ const IK: Ik = {
 };
 
 /** `/api/ik` answers as this person; every other request never settles. */
-function stubIk(isDirectie: boolean, delen: Partial<Ik> = {}) {
+function stubIk(isAdmin: boolean, delen: Partial<Ik> = {}) {
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) =>
       url.endsWith("/api/ik")
         ? Promise.resolve(
-            new Response(JSON.stringify({ ...IK, isDirectie, ...delen }), {
+            new Response(JSON.stringify({ ...IK, isAdmin, ...delen }), {
               status: 200,
               headers: { "Content-Type": "application/json" },
             }),
@@ -158,7 +158,7 @@ describe("Instellingenindeling", () => {
 });
 
 describe("het onderdeel Gebruikers (E6-04)", () => {
-  it("staat nergens voor wie geen directie is, ook niet met themabeheer, klas en hoofdleerkracht", async () => {
+  it("staat nergens voor wie geen admin is, ook niet met themabeheer, klas en hoofdleerkracht", async () => {
     stubIk(false);
     rendermetPad("/instellingen/klassen");
 
@@ -168,7 +168,7 @@ describe("het onderdeel Gebruikers (E6-04)", () => {
     expect(screen.getAllByRole("link", { name: t("instellingen.klassen") })).toHaveLength(2);
   });
 
-  it("staat voor directie in de kolom en in de wisselaar", async () => {
+  it("staat voor admin in de kolom en in de wisselaar", async () => {
     stubIk(true);
     rendermetPad("/instellingen/klassen");
 
@@ -201,7 +201,7 @@ describe("het onderdeel Gebruikers (E6-04)", () => {
       </QueryClientProvider>,
     );
 
-  it("stuurt wie geen directie is bij een rechtstreeks bezoek naar het eerste onderdeel dat die mag zien", async () => {
+  it("stuurt wie geen admin is bij een rechtstreeks bezoek naar het eerste onderdeel dat die mag zien", async () => {
     stubIk(false);
     renderPoort();
 
@@ -209,7 +209,7 @@ describe("het onderdeel Gebruikers (E6-04)", () => {
     expect(screen.queryByText("gebruikers-scherm")).not.toBeInTheDocument();
   });
 
-  it("laat directie op het adres staan", async () => {
+  it("laat admin op het adres staan", async () => {
     stubIk(true);
     renderPoort();
 
@@ -234,7 +234,7 @@ describe("het ontwikkelingsrapport bovenaan Instellingen (FB-001)", () => {
     );
   });
 
-  it("staat er voor directie", async () => {
+  it("staat er voor admin", async () => {
     stubIk(true);
     rendermetPad("/instellingen/klassen");
 
@@ -284,7 +284,7 @@ describe("de wisselaar als het lettertype laat binnenkomt (round 3)", () => {
   it("brengt het onderdeel met de toetsenbordfocus in beeld, niet het actieve", async () => {
     stubIk(true);
     renderMetTweeSchermen("/instellingen/klassen");
-    // Wait for the fifth part (directie only, so it appears once `ik` has answered): the row that can overflow.
+    // Wait for the fifth part (admin only, so it appears once `ik` has answered): the row that can overflow.
     await screen.findByRole("link", { name: t("instellingen.gebruikers") });
     const ander = screen.getByRole("link", { name: t("weergave.titel") });
     const actief = screen.getByRole("link", { name: t("instellingen.klassen") });

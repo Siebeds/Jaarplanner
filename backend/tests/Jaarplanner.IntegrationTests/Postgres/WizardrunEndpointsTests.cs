@@ -12,7 +12,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// reachable.
 /// <para>
 /// What they pin: themabeheer builds a thema from scratch through them and through nothing else (I22); a run ends when
-/// finished, closed or fourteen days silent, for directie too (I24), and only its own routes move that window (I28);
+/// finished, closed or fourteen days silent, for admin too (I24), and only its own routes move that window (I28);
 /// within a run, an edit or delete reaches only what that run created and what is still under its thema (I25); it
 /// carries off nobody else's work, goal links included (I27 and the owner's Q4 ruling); afterwards the thema follows the
 /// ordinary rights (I23); the maker of a wizard activiteit is the caller (I18).
@@ -146,11 +146,11 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
     }
 
     [PostgresFact]
-    public async Task Veertien_dagen_na_de_laatste_schrijfactie_is_de_wizard_afgelopen_ook_voor_directie_I24()
+    public async Task Veertien_dagen_na_de_laatste_schrijfactie_is_de_wizard_afgelopen_ook_voor_admin_I24()
     {
         var opzet = Opzet;
         using var client = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         var run = await StartWizardAsync(client);
 
         // Thirteen days of silence: still open, and the write moves the window.
@@ -161,7 +161,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         // A minute past fourteen: ended, for everyone.
         await ZetLaatsteSchrijfactieAsync(run.Id, DateTimeOffset.UtcNow - Wizardrun.MaximaleStilte - TimeSpan.FromMinutes(1));
         await VerwachtAsync(client.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Forbidden, Afgelopen);
-        await VerwachtAsync(directie.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Forbidden, Afgelopen);
+        await VerwachtAsync(admin.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Forbidden, Afgelopen);
         Assert.False((await HaalOpAsync(client, run.Id)).IsOpen);
     }
 
@@ -326,11 +326,11 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         var activiteitId = await IdAsync(
             client.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}/activiteiten", Activiteit), HttpStatusCode.Created);
 
-        // Directie moves it, on the ordinary route, to a K3 subthema of another thema.
+        // Admin moves it, on the ordinary route, to a K3 subthema of another thema.
         var elders = await opzet.SubthemaAsync("K3");
-        using (var directie = opzet.Directie())
+        using (var admin = opzet.Admin())
         {
-            Assert.Equal(HttpStatusCode.OK, await StatusAsync(directie.PutAsJsonAsync(
+            Assert.Equal(HttpStatusCode.OK, await StatusAsync(admin.PutAsJsonAsync(
                 $"/api/activiteiten/{activiteitId}/subthema", new { doelSubthemaId = elders })));
         }
 
@@ -347,7 +347,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         var opzet = Opzet;
         var school = await opzet.SchoolAsync();
         using var client = opzet.Als(await opzet.GebruikerAsync(themabeheer: true));
-        using var directie = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var admin = opzet.Als(await opzet.GebruikerAsync(admin: true));
         using var hoofdleerkracht = opzet.Als(await opzet.GebruikerAsync(school, hoofdleerkrachtVan: ["K3"]));
         var run = await StartWizardAsync(client);
         var subthemaId = await IdAsync(client.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Created);
@@ -356,7 +356,7 @@ public sealed class WizardrunEndpointsTests : IClassFixture<WizardrunEndpointsTe
         Assert.Equal(HttpStatusCode.OK, afgerond.StatusCode);
         Assert.False((await afgerond.Content.ReadFromJsonAsync<RunDto>())!.IsOpen);
 
-        await VerwachtAsync(directie.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Forbidden, Afgelopen);
+        await VerwachtAsync(admin.PostAsJsonAsync($"{Wizard}/{run.Id}/subthemas", Subthema("K3")), HttpStatusCode.Forbidden, Afgelopen);
         await VerwachtAsync(client.PostAsync($"{Wizard}/{run.Id}/sluiten", null), HttpStatusCode.Forbidden, Afgelopen);
         await VerwachtAsync(client.PutAsJsonAsync($"{Wizard}/{run.Id}/subthemas/{subthemaId}", Subthema("K3", "Wind")), HttpStatusCode.Forbidden, Afgelopen);
 

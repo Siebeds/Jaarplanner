@@ -4,14 +4,14 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import { t } from "../../i18n";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { ImportScherm } from "./ImportScherm";
 import { Schoolcontentimport } from "./Schoolcontentimport";
 import type { SchoolcontentImportAntwoord } from "./types";
 
 /**
- * Inladen gates its sections, not its route (E6-02; the 2026-08-03 ruling): the school's thema's for directie and
- * themabeheer (R9), Op.stap for directie (R3). And the FR-1 import's option to delete human decisions is directie's
+ * Inladen gates its sections, not its route (E6-02; the 2026-08-03 ruling): the school's thema's for admin and
+ * themabeheer (R9), Op.stap for admin (R3). And the FR-1 import's option to delete human decisions is admin's
  * alone (R35), shown only where a preview has counted what it would delete.
  */
 
@@ -68,8 +68,8 @@ describe("ImportScherm: de secties per recht", () => {
     expect(screen.queryByText(t("importeren.school.titel"))).toBeNull();
   });
 
-  it("geeft directie beide secties en de schakelaar, en opent Op.stap waar het adres dat vraagt", () => {
-    toonScherm(DIRECTIE, "/inladen?bron=opstap");
+  it("geeft admin beide secties en de schakelaar, en opent Op.stap waar het adres dat vraagt", () => {
+    toonScherm(ADMIN, "/inladen?bron=opstap");
 
     expect(screen.getByText(t("importeren.kov.titel"))).toBeInTheDocument();
     expect(screen.getByText(t("importeren.opstap.kort"))).toBeInTheDocument();
@@ -121,8 +121,8 @@ describe("Schoolcontentimport: menselijke beslissingen verwijderen (R35)", () =>
     expect(screen.getByText(t("importeren.school.blijvenStaan"))).toBeInTheDocument();
   });
 
-  it("biedt directie het vinkje aan", async () => {
-    await toonVoorbeeld(DIRECTIE);
+  it("biedt admin het vinkje aan", async () => {
+    await toonVoorbeeld(ADMIN);
 
     expect(screen.getByRole("checkbox", { name: t("importeren.school.opruimen") })).toBeInTheDocument();
     expect(screen.queryByText(t("importeren.school.blijvenStaan"))).toBeNull();

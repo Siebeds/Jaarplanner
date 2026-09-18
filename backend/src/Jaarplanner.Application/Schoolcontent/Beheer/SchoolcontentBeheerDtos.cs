@@ -201,7 +201,7 @@ public sealed record ThemaWeergave(
 /// the two-tier woordenschat and the 2–3 themadoelen — and <b>deliberately omits all subthema's</b>: those
 /// are age-scoped derivations whose content must never leak into the school-wide library view (Gap A.5).
 /// <see cref="AantalAfgeleideLeeftijden"/> is a derived count (how many distinct ages have a subthema under this
-/// thema) so the directie can see uptake without exposing any of that content.
+/// thema) so the admin can see uptake without exposing any of that content.
 /// <para>
 /// It counted distinct KLASSEN until the 2026-08-30 amendment to Art. IX.2. A subthema no longer names a klas,
 /// so that number has nothing to count; ages are what this thema can honestly report, and they answer the more

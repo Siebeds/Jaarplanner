@@ -5,10 +5,10 @@ namespace Jaarplanner.Application.Toegang;
 /// <summary>
 /// The relations one gebruiker holds <b>today</b>, as the columns of ADR-0030 §3 need them (Art. VI.1). Computed on
 /// every request by <see cref="IRechtenService"/> from the gebruiker row, their klastoewijzingen and their
-/// hoofdleerkrachtaanstellingen; never stored and never put in the session cookie, so a change directie makes
+/// hoofdleerkrachtaanstellingen; never stored and never put in the session cookie, so a change admin makes
 /// applies on the next request.
 /// <para>
-/// <b>These are the raw relations, not the answers.</b> A directie holds every right whatever these lists say (R3),
+/// <b>These are the raw relations, not the answers.</b> An admin holds every right whatever these lists say (R3),
 /// except editing the one K3 set of rapportdoelen and the scale, which only these lists can grant (ADR-0035 R31), and
 /// <see cref="Rechtenmatrix.StaatToe"/> is the one place that turns relations into "may do this". A gebruiker
 /// holds the union of every relation that applies (§3's union rule), which is why they are separate fields rather
@@ -28,7 +28,7 @@ public sealed class Rechten
     /// <param name="heeftLeerlingzorg">Leerlingzorg (FB-008). Optional for the same reason; left out, it is not held.</param>
     public Rechten(
         Guid gebruikerId,
-        bool isDirectie,
+        bool isAdmin,
         bool heeftThemabeheer,
         IEnumerable<string> hoofdleerkrachtLeeftijden,
         IEnumerable<string> leerkrachtLeeftijden,
@@ -42,7 +42,7 @@ public sealed class Rechten
         ArgumentNullException.ThrowIfNull(eigenKlasIds);
 
         GebruikerId = gebruikerId;
-        IsDirectie = isDirectie;
+        IsAdmin = isAdmin;
         HeeftThemabeheer = heeftThemabeheer;
         HeeftLeerlingzorg = heeftLeerlingzorg;
         HoofdleerkrachtLeeftijden = Geordend(hoofdleerkrachtLeeftijden);
@@ -56,17 +56,17 @@ public sealed class Rechten
     public Guid GebruikerId { get; }
 
     /// <summary>
-    /// "Directie" (R3, R16): passes every row of the matrix but <see cref="Rechtenmatrix.RapportsetBewerken"/> (ADR-0035
+    /// "Admin" (R3, R16): passes every row of the matrix but <see cref="Rechtenmatrix.RapportsetBewerken"/> (ADR-0035
     /// R31).
     /// </summary>
-    public bool IsDirectie { get; }
+    public bool IsAdmin { get; }
 
     /// <summary>"TB": holds themabeheer (R4).</summary>
     public bool HeeftThemabeheer { get; }
 
     /// <summary>
     /// "Leerlingzorg" (ADR-0035 R18, FB-008): reads every ontwikkelingsrapport, of every schooljaar, and does nothing
-    /// else. Needs no schooljaar and no klas: directie gave it, and it holds until directie takes it away.
+    /// else. Needs no schooljaar and no klas: admin gave it, and it holds until admin takes it away.
     /// </summary>
     public bool HeeftLeerlingzorg { get; }
 
@@ -99,25 +99,25 @@ public sealed class Rechten
     /// </summary>
     public IReadOnlyList<Guid> LopendeRapportklasIds { get; }
 
-    /// <summary>Whether this gebruiker is a hoofdleerkracht of <paramref name="leeftijd"/> today. Not directie-aware.</summary>
+    /// <summary>Whether this gebruiker is a hoofdleerkracht of <paramref name="leeftijd"/> today. Not admin-aware.</summary>
     public bool IsHoofdleerkrachtVan(string leeftijd) => HoofdleerkrachtLeeftijden.Contains(leeftijd, StringComparer.Ordinal);
 
-    /// <summary>Whether this gebruiker is a leerkracht with a klas of <paramref name="leeftijd"/> today. Not directie-aware.</summary>
+    /// <summary>Whether this gebruiker is a leerkracht with a klas of <paramref name="leeftijd"/> today. Not admin-aware.</summary>
     public bool IsLeerkrachtVanLeeftijd(string leeftijd) => LeerkrachtLeeftijden.Contains(leeftijd, StringComparer.Ordinal);
 
-    /// <summary>Whether this gebruiker holds a klastoewijzing on <paramref name="klasId"/>. Not directie-aware.</summary>
+    /// <summary>Whether this gebruiker holds a klastoewijzing on <paramref name="klasId"/>. Not admin-aware.</summary>
     public bool IsLeerkrachtVanKlas(Guid klasId) => EigenKlasIds.Contains(klasId);
 
-    /// <summary>Whether this gebruiker reads the reports and leerlingen of K3 klas <paramref name="klasId"/>. Not directie-aware.</summary>
+    /// <summary>Whether this gebruiker reads the reports and leerlingen of K3 klas <paramref name="klasId"/>. Not admin-aware.</summary>
     public bool IsRapportleerkrachtVan(Guid klasId) => RapportklasIds.Contains(klasId);
 
     /// <summary>
     /// Whether this gebruiker fills in the reports and keeps the leerlingen of K3 klas <paramref name="klasId"/> today:
-    /// its schooljaar has not ended. Not directie-aware.
+    /// its schooljaar has not ended. Not admin-aware.
     /// </summary>
     public bool VultRapportIn(Guid klasId) => LopendeRapportklasIds.Contains(klasId);
 
-    /// <summary>No right at all: a gebruiker who does not exist, or one directie has given nothing.</summary>
+    /// <summary>No right at all: a gebruiker who does not exist, or one admin has given nothing.</summary>
     public static Rechten Geen(Guid gebruikerId) => new(gebruikerId, false, false, [], [], [], [], []);
 
     /// <summary>

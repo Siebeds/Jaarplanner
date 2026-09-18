@@ -96,7 +96,7 @@ public static class DependencyInjection
         // Discipline-selection seam (E1-06, Art. XIV "Disciplines first"): which disciplines the
         // Op.stap import path may process is DATA-DRIVEN, never compiled in. The in-scope set is bound
         // from the `Opstap:DisciplineSelectie` configuration section (appsettings / env / user-secrets
-        // / Key Vault), so the directie can switch between "all" and a starter selection WITHOUT a code
+        // / Key Vault), so the admin can switch between "all" and a starter selection WITHOUT a code
         // change. Absent config resolves to the documented placeholder default (Modus = Alle) pending
         // the Art. XIV directie decision — itself overridable purely by adding the config section.
         services.Configure<DisciplineSelectieOptions>(
@@ -185,7 +185,7 @@ public static class DependencyInjection
         services.AddScoped<ISchooljaarBeheerService, SchooljaarBeheerService>();
 
         // The school's hours per weekday (FB-023, ADR-0038). Beside the schooljaar because it is the same kind of fact,
-        // school organisation that directie sets, and apart from it because it belongs to the school and not to a year.
+        // school organisation that admin sets, and apart from it because it belongs to the school and not to a year.
         services.AddScoped<ISchoolurenService, SchoolurenService>();
 
         // The school year's frame as a read model: its span and its vacations, which the timeline and the agenda are
@@ -331,20 +331,22 @@ public static class DependencyInjection
             .SetApplicationName("Jaarplanner")
             .PersistKeysToDbContext<AppDbContext>();
 
-        // The first directie account, created while nobody exists yet (ADR-0031 decision 7). Registered only when the
+        // The first admin account, created while nobody exists yet (ADR-0031 decision 7). Registered only when the
         // address is configured, so an environment that does not ask for it never writes a row at startup.
-        if (configuration[EersteDirectieBootstrap.ConfiguratieSleutel] is { } eersteDirectie
-            && !string.IsNullOrWhiteSpace(eersteDirectie))
+        var eersteAdmin = configuration[EersteAdminBootstrap.ConfiguratieSleutel];
+        if (string.IsNullOrWhiteSpace(eersteAdmin))
+            eersteAdmin = configuration[EersteAdminBootstrap.VorigeConfiguratieSleutel];
+        if (!string.IsNullOrWhiteSpace(eersteAdmin))
         {
-            services.AddHostedService(sp => new EersteDirectieBootstrap(
+            services.AddHostedService(sp => new EersteAdminBootstrap(
                 sp.GetRequiredService<IServiceScopeFactory>(),
-                eersteDirectie.Trim(),
-                sp.GetRequiredService<ILogger<EersteDirectieBootstrap>>()));
+                eersteAdmin.Trim(),
+                sp.GetRequiredService<ILogger<EersteAdminBootstrap>>()));
         }
 
-        // --- E6-04: directie's beheer of gebruikers and their rights (ADR-0030 §3, directie only). ---
-        // Invite, themabeheer and the directie right, klastoewijzingen, hoofdleerkracht appointments, removal. The Api
-        // puts the Beheer policy on every route over it; the service holds the last-directie rule (ADR-0031 decision 7).
+        // --- E6-04: admin's beheer of gebruikers and their rights (ADR-0030 §3, admin only). ---
+        // Invite, themabeheer and the admin right, klastoewijzingen, hoofdleerkracht appointments, removal. The Api
+        // puts the Beheer policy on every route over it; the service holds the last-admin rule (ADR-0031 decision 7).
         services.AddScoped<IGebruikerBeheerService, GebruikerBeheerService>();
 
         // Demo data for the E3-06 review session, OPT-IN ONLY. The flag is checked HERE rather than only

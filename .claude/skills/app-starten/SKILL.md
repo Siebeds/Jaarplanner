@@ -26,7 +26,7 @@ one K3 klas "K3 De Uilen" in 2026-2027 with two planned thema's of 4 weeks (16 n
 14 to 18 december plus 4 to 22 january around the kerstvakantie, TB-047), each with minimumdoelen and subthema's
 whose weeks add up to the thema's, with leerplandoelen and varied activiteiten, and a full agenda for 16 to 27
 november 2026 (8u30 to 15u30, lunch 12u to 13u free, wednesday only until 12u). The goals are invented and do not exist in Op.stap. The user is
-directie, without a sign-in page, and the app opens on the week of 16 november.
+admin, without a sign-in page, and the app opens on the week of 16 november.
 
 ```bash
 cd $REPO/frontend && corepack pnpm dev:mock > $LOGS/vite-mock.log 2>&1   # in the background
@@ -244,7 +244,7 @@ and the proxy work. It does not show the app itself.
 
 - **`signin` answers 500, or the page lists no users** → the database lacks the E6-01 migration
   (`20260911150216_GebruikersEnSessiesleutels`). Run `dotnet ef database update` against it, then **restart the
-  API**. On its next start the API creates `directie@jaarplanner.local` from `appsettings.Development.json`, and
+  API**. On its next start the API creates `admin@jaarplanner.local` from `appsettings.Development.json`, and
   only then is there someone to pick.
 - **Telling the owner:** say that the first page is a sign-in on which they pick a person. Nothing in the app is
   reachable before that.

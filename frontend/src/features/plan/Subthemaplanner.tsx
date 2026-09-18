@@ -358,7 +358,7 @@ export function Subthemaplanner({
  * A period holding no thema at all is a third state, and it says so rather than being folded into the
  * second: there is no thema to make a subthema under, so the way out is a different screen.
  *
- * **The way out is only drawn for whoever can take it** (E6-02): making a subthema is directie's and that leeftijd's
+ * **The way out is only drawn for whoever can take it** (E6-02): making a subthema is admin's and that leeftijd's
  * hoofdleerkrachten' (R5, R21). A leerkracht is told the klas has none and nothing more, since "Maak er een" would ask
  * her for something the server refuses. That is the "say less" branch: the sentence about why is dropped with it,
  * because it ends in the same instruction.

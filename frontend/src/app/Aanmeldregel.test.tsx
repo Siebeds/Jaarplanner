@@ -14,7 +14,7 @@ const IK: Ik = {
   id: "7e57a000-0000-4000-8000-000000000001",
   naam: "An Peeters",
   email: "an@school.be",
-  isDirectie: false,
+  isAdmin: false,
   heeftThemabeheer: false,
   heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: [],

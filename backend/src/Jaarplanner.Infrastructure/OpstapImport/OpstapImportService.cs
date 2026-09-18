@@ -104,7 +104,7 @@ public sealed class OpstapImportService : IOpstapImportService
     /// teacher content, should it be <b>removed</b> from the database? The conservative, non-destructive
     /// default is <c>false</c> — keep the stale row and flag it (<c>NietMeerInOpstap = true</c>) so the
     /// disappearance is visible without losing data. Referenced goals are always kept regardless. Set
-    /// <c>true</c> only for an explicit directie "purge unused, disappeared goals" opt-in; nothing else
+    /// <c>true</c> only for an explicit admin "purge unused, disappeared goals" opt-in; nothing else
     /// changes. This is the registered default; an opt-in deployment can pass <c>true</c> to the ctor.
     /// </summary>
     public const bool VerwijderVerweesdeNietGekoppeldeStandaard = false;
@@ -126,7 +126,7 @@ public sealed class OpstapImportService : IOpstapImportService
     /// <summary>
     /// Constructs the import service with an explicit disappeared-unreferenced-goal purge policy. The
     /// DI default uses <see cref="VerwijderVerweesdeNietGekoppeldeStandaard"/> (false — flag-and-keep);
-    /// the opt-in directie purge passes <c>true</c>. The discipline-selection seam is injected
+    /// the opt-in admin purge passes <c>true</c>. The discipline-selection seam is injected
     /// (Art. XIV); use this overload to combine an explicit selection with an explicit purge policy.
     /// </summary>
     public OpstapImportService(
@@ -164,7 +164,7 @@ public sealed class OpstapImportService : IOpstapImportService
         // Discipline-selection seam (E1-06, Art. XIV). The in-scope set is resolved from runtime
         // configuration/data — no discipline list is compiled in here. An out-of-scope discipline is
         // skipped before any data is touched: nothing is inserted, flagged, or deleted, and the diff
-        // carries a review notice. This mirrors the empty-file guard: a discipline the directie has
+        // carries a review notice. This mirrors the empty-file guard: a discipline the admin has
         // not (yet) opted to import is not a curriculum change.
         if (!_disciplineSelectie.IsInScope(disciplineNummer))
         {
@@ -385,7 +385,7 @@ public sealed class OpstapImportService : IOpstapImportService
                     verdwenen.Add(code);
                     if (toepassen && _verwijderVerweesdeNietGekoppelde)
                     {
-                        // Opt-in directie purge only: remove the truly unused, disappeared row.
+                        // Opt-in admin purge only: remove the truly unused, disappeared row.
                         _context.Leerplandoelen.Remove(oud);
                     }
                     else if (toepassen)

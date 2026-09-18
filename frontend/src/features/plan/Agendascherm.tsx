@@ -111,7 +111,7 @@ function leegteDag(datum: string) {
  * browser and is shared with nobody, which for a plan a school is inspected on is worse than not
  * having it.
  *
- * **Every write here is the klas's planning, which is directie's and the klas's own leerkrachten'** (E6-02,
+ * **Every write here is the klas's planning, which is admin's and the klas's own leerkrachten'** (E6-02,
  * ADR-0030 §3, R7, R15). Whoever else may read the klas (FB-013) sees its agenda: the same calendar with nothing that adds, drags,
  * stretches or plans, and one quiet line that says so, because a teacher who switched to a colleague's klas would
  * otherwise meet her own agenda with its controls gone and no reason. An activiteit's content is a different right

@@ -7,7 +7,7 @@ namespace Jaarplanner.Application.Curriculum.Import;
 /// <para>
 /// <b>Why this is a seam, not a decision.</b> Whether the school imports <i>all</i> Op.stap
 /// disciplines or only a <i>starter selection</i> is an explicit Art. XIV open decision reserved for
-/// the directie. This abstraction lets the import path (E1-05) ask which disciplines it may process
+/// the admin. This abstraction lets the import path (E1-05) ask which disciplines it may process
 /// while the actual answer is supplied at runtime by configuration/data — so "all" and "a subset"
 /// are two <b>configured outcomes of the same code</b>, switchable without a recompile. No
 /// implementation may hard-code a discipline list to drive behaviour (the violation this seam

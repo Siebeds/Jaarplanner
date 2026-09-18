@@ -64,7 +64,7 @@ public sealed class OpstapHerimportDiff
     /// Codes in the database (for this discipline) that are <b>absent</b> from the new file, <b>not referenced</b> by any
     /// teacher content and <b>not flagged yet</b>. Whether the import removes them is policy (see the
     /// import service) — the <b>conservative default is flag-and-keep</b> (mark
-    /// <c>NietMeerInOpstap = true</c>, never delete); an actual purge is an explicit directie opt-in, under which an
+    /// <c>NietMeerInOpstap = true</c>, never delete); an actual purge is an explicit admin opt-in, under which an
     /// already flagged code is listed here too, because the purge removes it.
     /// </summary>
     public IReadOnlyList<string> Verdwenen { get; }
@@ -100,7 +100,7 @@ public sealed class OpstapHerimportDiff
     public bool Overgeslagen { get; }
 
     /// <summary>
-    /// Human-readable notices about this (re-)import (Dutch — surfaced to the teacher/directie). Used
+    /// Human-readable notices about this (re-)import (Dutch — surfaced to the teacher/admin). Used
     /// for the empty/implausible-file guard ("geen geldige rijen ingelezen — niets toegepast") so the
     /// reason a file did nothing is never silent.
     /// </summary>

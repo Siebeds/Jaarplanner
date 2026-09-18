@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { get, put } from "../../lib/api";
 
 /**
- * The school's hours per weekday (FB-023, ADR-0038), read by the agenda and by Instellingen, written by directie.
+ * The school's hours per weekday (FB-023, ADR-0038), read by the agenda and by Instellingen, written by admin.
  *
  * **A feature module of its own**, like `hoeken/gegevens.ts`, because two screens depend on it and neither owns it:
  * Instellingen sets the hours, the agenda draws them.

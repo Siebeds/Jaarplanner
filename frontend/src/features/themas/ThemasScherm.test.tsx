@@ -10,7 +10,7 @@ import { ThemasScherm } from "./ThemasScherm";
 
 /**
  * The two headers that lead to Inladen, and the one that makes a thema (E6-02; the E1-22 carry-forward). Each link is
- * only for whoever can use a section of Inladen, and a new thema only for directie and themabeheer (R4).
+ * only for whoever can use a section of Inladen, and a new thema only for admin and themabeheer (R4).
  */
 
 function toon(scherm: "themas" | "doelen", ik: Ik) {

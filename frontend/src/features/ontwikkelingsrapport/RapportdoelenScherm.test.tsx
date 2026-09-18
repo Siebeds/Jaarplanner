@@ -3,14 +3,14 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { t } from "../../i18n";
 import type { Rapportdoel, Rapportsubdoel } from "./rapportset";
 import { RapportdoelenScherm } from "./RapportdoelenScherm";
 
 /**
  * The one K3 set of rapportdoelen (FB-002): a titel and the decided K3 subdoelen it bundles, changed by a K3 leerkracht
- * in a running schooljaar and viewed by directie (R3, R4, R6, R31). The server filters which subdoelen may be bundled
+ * in a running schooljaar and viewed by admin (R3, R4, R6, R31). The server filters which subdoelen may be bundled
  * (D11, D12), so the picker here shows what the server offers and nothing else.
  */
 
@@ -204,9 +204,9 @@ describe("RapportdoelenScherm, voor een K3-leerkracht", () => {
   });
 });
 
-describe("RapportdoelenScherm, voor directie (R31)", () => {
+describe("RapportdoelenScherm, voor admin (R31)", () => {
   it("toont de set zonder één knop om ze aan te passen", async () => {
-    toon(DIRECTIE);
+    toon(ADMIN);
 
     expect(await screen.findByText("Luisteren en spreken")).toBeInTheDocument();
     expect(screen.getByText(t("ontwikkelingsrapport.setAlleenBekijken"))).toBeInTheDocument();

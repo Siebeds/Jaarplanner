@@ -62,7 +62,7 @@ import { Woordweb } from "./Woordweb";
  *
  * **Every control asks `mag` about THIS chapter's leeftijd** (E6-02, ADR-0030 §3). A thema holds chapters of several
  * leeftijden, and a hoofdleerkracht of K3 edits the K3 one and reads the L1 one on the same page. The subthema itself,
- * its subdoelen and the goal links are directie's and that leeftijd's hoofdleerkrachten'; a new activiteit and its
+ * its subdoelen and the goal links are admin's and that leeftijd's hoofdleerkrachten'; a new activiteit and its
  * content are every leerkracht's of that leeftijd too; the delete is the hoofdleerkracht's, or the maker's while no goal
  * is linked. What nobody here may change is simply not drawn, and an activiteit row still opens, as its facts.
  */

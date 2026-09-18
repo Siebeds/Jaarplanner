@@ -9,7 +9,7 @@ import type { GebruikersOverzicht } from "./gebruikerbeheer";
 import { KlassenScherm } from "./KlassenScherm";
 
 /**
- * Instellingen, Klassen, as E6-04 changed it: directie defines the klassen and sees who teaches
+ * Instellingen, Klassen, as E6-04 changed it: admin defines the klassen and sees who teaches
  * them; anyone else reads the list without a single control the server would refuse (the E3-06
  * rule), and a klas without a leeftijd says, in its one callout, that it grants no rights (I12).
  */
@@ -42,7 +42,7 @@ const IK: Ik = {
   id: "ik-1",
   naam: "Bert Claes",
   email: "bert@school.be",
-  isDirectie: false,
+  isAdmin: false,
   heeftThemabeheer: true,
   heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: ["K3"],
@@ -59,7 +59,7 @@ const OVERZICHT: GebruikersOverzicht = {
       id: "g-1",
       naam: "An Peeters",
       email: "an@school.be",
-      isDirectie: false,
+      isAdmin: false,
       heeftThemabeheer: false,
       heeftLeerlingzorg: false,
       isAangemeld: true,
@@ -73,11 +73,11 @@ function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
 }
 
-function toon(isDirectie: boolean) {
+function toon(isAdmin: boolean) {
   const fetchMock = vi.fn(async (pad: string) => {
-    if (pad.endsWith("/api/ik")) return json({ ...IK, isDirectie });
+    if (pad.endsWith("/api/ik")) return json({ ...IK, isAdmin });
     if (pad.endsWith("/api/jaarfasen")) return json(["JK", "K2", "K3"]);
-    if (pad.endsWith("/api/gebruikers")) return isDirectie ? json(OVERZICHT) : json({}, 403);
+    if (pad.endsWith("/api/gebruikers")) return isAdmin ? json(OVERZICHT) : json({}, 403);
     return json({}, 404);
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -96,7 +96,7 @@ afterEach(() => {
 });
 
 describe("KlassenScherm", () => {
-  it("is voor wie geen directie is alleen te lezen, en vraagt de gebruikers niet op", async () => {
+  it("is voor wie geen admin is alleen te lezen, en vraagt de gebruikers niet op", async () => {
     const fetchMock = toon(false);
 
     expect(await screen.findByText(K3.naam)).toBeInTheDocument();
@@ -120,7 +120,7 @@ describe("KlassenScherm", () => {
     expect(screen.getAllByText(t("klasbeheer.geenLeeftijdsrechten"))).toHaveLength(1);
   });
 
-  it("toont directie de knoppen en wie elke klas geeft", async () => {
+  it("toont admin de knoppen en wie elke klas geeft", async () => {
     toon(true);
 
     expect(await screen.findByText(t("klasbeheer.eenLeerkracht", { namen: "An Peeters" }))).toBeInTheDocument();

@@ -7,7 +7,7 @@ namespace Jaarplanner.Api.Infrastructure;
 /// <summary>
 /// Maps a <see cref="WizardrunWeigering"/> to a 403 (E6-02 slice 3, ADR-0030 I23–I25): the wizard run has ended, the
 /// content is not under its thema, or the item is not one it created. A 403 rather than a 409, because what is refused
-/// is the wizard's right to do it, not the request's timing: directie, who may do the same on the ordinary routes, is
+/// is the wizard's right to do it, not the request's timing: admin, who may do the same on the ordinary routes, is
 /// answered the same way here. The detail is the Dutch sentence the service wrote (Art. II.3).
 /// </summary>
 public sealed class WizardrunExceptionHandler : IExceptionHandler

@@ -164,14 +164,14 @@ public sealed class AlgemeneFicheEndpointsTests : IAsyncLifetime
     {
         var opzet = new RechtenTestOpzet(_db, _factory);
         var school = await opzet.SchoolAsync();
-        var directie = opzet.Directie();
+        var admin = opzet.Admin();
         var vandaag = DateOnly.FromDateTime(DateTime.UtcNow);
         var (van, tot) = (vandaag.ToString("yyyy-MM-dd"), vandaag.AddDays(6).ToString("yyyy-MM-dd"));
 
-        var fiche = (await (await directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-fiches", new { naam = "Wero" }))
+        var fiche = (await (await admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-fiches", new { naam = "Wero" }))
             .Content.ReadFromJsonAsync<FicheDto>())!;
         async Task<PlaatsingDto> PlanAsync(string begin, string einde) =>
-            (await (await directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-ficheplaatsingen", new
+            (await (await admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-ficheplaatsingen", new
             {
                 algemeneFicheId = fiche.Id,
                 van,

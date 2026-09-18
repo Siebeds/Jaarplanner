@@ -19,7 +19,7 @@ namespace Jaarplanner.Api.Controllers;
 /// a 400 and <c>SchoolcontentNietGevondenFout</c> a 404, both through the exception handlers.
 /// </para>
 /// <para>
-/// <b>Rights (E6-02 slice 3):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (directie and the
+/// <b>Rights (E6-02 slice 3):</b> every write is the klas's planning, <c>KlasplanningBewerken</c> (admin and the
 /// klas's own leerkrachten; ADR-0030 R7, R15, I21), against the klas in the route. The service finds a plaatsing only
 /// inside that klas's plan, so a route cannot reach another klas's week. The read is <c>KlasplanningBekijken</c> (FB-013).
 /// <i>Until slice 3 this paragraph said the controller was unauthenticated, like the other thirteen; E6-01 gave every
@@ -66,7 +66,7 @@ public sealed class WeekplanningController : ControllerBase
     /// review (Art. IV.2).
     /// </para>
     /// <para>
-    /// Someone else's own activiteit is a 400 unless the caller holds directie (ADR-0049 D6), so the planner's rights go
+    /// Someone else's own activiteit is a 400 unless the caller holds admin (ADR-0049 D6), so the planner's rights go
     /// along.
     /// </para>
     /// </summary>

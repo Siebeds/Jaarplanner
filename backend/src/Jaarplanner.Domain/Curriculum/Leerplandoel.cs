@@ -126,7 +126,7 @@ public sealed class Leerplandoel
     /// Op.stap import but is <b>absent</b> from the most recent re-import of its discipline, yet is
     /// still referenced by teacher content (a <c>DoelKoppeling</c>) so it cannot be hard-deleted
     /// (the FK is <c>Restrict</c>, Art. III.4 / IV.2). It is <b>not</b> decreed Op.stap content —
-    /// it is the tool's own non-destructive flag telling a teacher/directie to review a goal that
+    /// it is the tool's own non-destructive flag telling a teacher/admin to review a goal that
     /// has disappeared from the curriculum while still in use. The only writer is the sanctioned
     /// re-import path (the import service in Infrastructure); normal app code never sets it, which
     /// keeps the official content immutable (Art. III.1). A later import that re-introduces the

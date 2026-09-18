@@ -152,7 +152,7 @@ public readonly record struct DoelsetTelling(string Doelset, int Aantal);
 
 /// <summary>
 /// A G goal that was not imported. Its <see cref="Reden"/> is <b>English</b>: a goal KOV's data cannot deliver faithfully
-/// is nothing a teacher or directie can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30).
+/// is nothing a teacher or admin can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30).
 /// </summary>
 /// <param name="Code">
 /// The goal's code, always present: a goal without one makes the whole read fail with <see cref="OpstapBronFout"/>, so the

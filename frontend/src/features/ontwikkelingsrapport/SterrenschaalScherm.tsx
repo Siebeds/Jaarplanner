@@ -31,7 +31,7 @@ import { Verschuifknop } from "./Verschuifknop";
  * **One scale for all of K3, with no schooljaar** (R5, R7). The sentence under the title says so once, with its cost:
  * a change also reaches reports already written. It is unconditional, because it is true of every change here.
  *
- * **Only a K3 leerkracht in a running schooljaar changes it; directie views it** (R6, R31, D4). For anyone else the
+ * **Only a K3 leerkracht in a running schooljaar changes it; admin views it** (R6, R31, D4). For anyone else the
  * screen is the list alone, and one sentence says it may be viewed and not changed, which is all its condition proves.
  *
  * **The scale starts with the owner's example** (owner, 2026-09-15): "Volledig bereikt" in green and "Nog niet volledig"

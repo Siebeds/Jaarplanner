@@ -79,12 +79,12 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         Assert.True(voorAn[0].IsEigen);
         Assert.Equal("Leerkracht Bo", (await LeesAsync(bo, subthemaId))[0].EigenaarNaam);
 
-        // The owner edits her web by its id, and directie edits any web (D3).
+        // The owner edits her web by its id, and admin edits any web (D3).
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(an.DeleteAsync($"/api/woordwebs/{web.Id}/woorden/{woordId}")));
-        using var directie = Opzet.Als(await PersoonAsync("Directeur", directie: true));
-        var naDirectie = await WebAsync(directie.PostAsJsonAsync($"/api/woordwebs/{web.Id}/woorden", new { woorden = new[] { "zon" } }));
-        Assert.Equal(["Regen", "zon"], naDirectie.Woorden.Select(w => w.Woord));
-        Assert.False(naDirectie.IsEigen);
+        using var admin = Opzet.Als(await PersoonAsync("Directeur", admin: true));
+        var naAdmin = await WebAsync(admin.PostAsJsonAsync($"/api/woordwebs/{web.Id}/woorden", new { woorden = new[] { "zon" } }));
+        Assert.Equal(["Regen", "zon"], naAdmin.Woorden.Select(w => w.Woord));
+        Assert.False(naAdmin.IsEigen);
     }
 
     [PostgresFact]
@@ -169,9 +169,9 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         var school = await Opzet.SchoolAsync();
         var themaId = await Opzet.ThemaAsync();
         var subthemaId = await Opzet.SubthemaAsync("K3", themaId);
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
         await Opzet.LeerplandoelThemadoelAsync(themaId, Doelcode);
-        var voor = await directie.GetStringAsync($"/api/klassen/{school.K3Blauw}/dekking");
+        var voor = await admin.GetStringAsync($"/api/klassen/{school.K3Blauw}/dekking");
 
         using var an = Opzet.Als(await PersoonAsync("Leerkracht An", klassen: [school.K3Blauw]));
         var web = await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "wind", "regen" } }));
@@ -179,7 +179,7 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         var voorstel = (await VoorstelAsync(an, web.Id)).Woordweb!.Woorden.Single(w => w.Status == "Voorgesteld");
         await WebAsync(an.PutAsJsonAsync($"/api/woordwebs/{web.Id}/woorden/{voorstel.Id}/status", new { status = "Aanvaard" }));
 
-        Assert.Equal(voor, await directie.GetStringAsync($"/api/klassen/{school.K3Blauw}/dekking"));
+        Assert.Equal(voor, await admin.GetStringAsync($"/api/klassen/{school.K3Blauw}/dekking"));
     }
 
     [PostgresFact]
@@ -188,9 +188,9 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
         var subthemaId = await Opzet.SubthemaAsync("K3");
         using var an = Opzet.Als(await PersoonAsync("Leerkracht An"));
         var web = await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "wind", "regen" } }));
-        using var directie = Opzet.Directie();
+        using var admin = Opzet.Admin();
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/subthemas/{subthemaId}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/subthemas/{subthemaId}")));
 
         await using var context = _db.MaakContext();
         Assert.False(await context.Woordwebs.AnyAsync(w => w.Id == web.Id));
@@ -247,9 +247,9 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
             "Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
 
-    private async Task<Guid> PersoonAsync(string naam, bool directie = false, Guid[]? klassen = null)
+    private async Task<Guid> PersoonAsync(string naam, bool admin = false, Guid[]? klassen = null)
     {
-        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isDirectie: directie);
+        var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isAdmin: admin);
         await using var context = _db.MaakContext();
         context.Gebruikers.Add(gebruiker);
         await context.SaveChangesAsync();

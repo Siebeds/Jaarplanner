@@ -328,7 +328,7 @@ function samenvatting(regel: MinimumdoelRegel): string {
  * Where the curriculum is loaded: the Op.stap tab of Inladen. A link, not a button, because it navigates. Shared with the
  * leerplandoelen register's empty state, whose old text ("Importeer eerst de Op.stap-bestanden") E1-21 made false.
  *
- * **Only for whoever may load Op.stap** (E6-02, closing the E1-22 carry-forward): `mag.curriculumbeheer`, directie. Its
+ * **Only for whoever may load Op.stap** (E6-02, closing the E1-22 carry-forward): `mag.curriculumbeheer`, admin. Its
  * words say "load them", and themabeheer loads the school's thema's, not the goals, so for anyone else it would be a
  * link to something they cannot do (the E3-06 rule). Each caller asks; this component does not, so a caller that
  * forgets shows a link rather than a silent hole in its layout. It opens the Op.stap section, not the first one.

@@ -10,7 +10,7 @@ public sealed class GebruikerTests
     [Fact]
     public void Het_adres_wordt_genormaliseerd_bewaard()
     {
-        var gebruiker = new Gebruiker("  An.Peeters@School.BE ", "An", isDirectie: false);
+        var gebruiker = new Gebruiker("  An.Peeters@School.BE ", "An", isAdmin: false);
 
         Assert.Equal("an.peeters@school.be", gebruiker.Email);
     }
@@ -18,10 +18,10 @@ public sealed class GebruikerTests
     [Fact]
     public void Zonder_naam_toont_een_uitnodiging_het_adres()
     {
-        var gebruiker = new Gebruiker("directie@school.be", "  ", isDirectie: true);
+        var gebruiker = new Gebruiker("admin@school.be", "  ", isAdmin: true);
 
-        Assert.Equal("directie@school.be", gebruiker.Naam);
-        Assert.True(gebruiker.IsDirectie);
+        Assert.Equal("admin@school.be", gebruiker.Naam);
+        Assert.True(gebruiker.IsAdmin);
     }
 
     [Theory]
@@ -32,12 +32,12 @@ public sealed class GebruikerTests
     [InlineData("an@b@school.be")]
     [InlineData("an peeters@school.be")]
     public void Een_ongeldig_adres_wordt_geweigerd(string adres) =>
-        Assert.Throws<ArgumentException>(() => new Gebruiker(adres, "An", isDirectie: false));
+        Assert.Throws<ArgumentException>(() => new Gebruiker(adres, "An", isAdmin: false));
 
     [Fact]
     public void Een_uitnodiging_is_niet_gekoppeld_tot_de_eerste_aanmelding()
     {
-        var gebruiker = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var gebruiker = new Gebruiker("an@school.be", "An", isAdmin: false);
 
         Assert.False(gebruiker.IsGekoppeld);
         Assert.Null(gebruiker.EntraObjectId);
@@ -46,7 +46,7 @@ public sealed class GebruikerTests
     [Fact]
     public void De_eerste_aanmelding_koppelt_en_neemt_de_naam_uit_Entra()
     {
-        var gebruiker = new Gebruiker("an@school.be", "an@school.be", isDirectie: false);
+        var gebruiker = new Gebruiker("an@school.be", "an@school.be", isAdmin: false);
         var objectId = Guid.NewGuid();
 
         gebruiker.KoppelAanEntra(Tenant, objectId, "An Peeters");
@@ -60,7 +60,7 @@ public sealed class GebruikerTests
     [Fact]
     public void Een_koppeling_is_definitief()
     {
-        var gebruiker = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var gebruiker = new Gebruiker("an@school.be", "An", isAdmin: false);
         gebruiker.KoppelAanEntra(Tenant, Guid.NewGuid(), naam: null);
 
         Assert.Throws<InvalidOperationException>(() => gebruiker.KoppelAanEntra(Tenant, Guid.NewGuid(), naam: null));
@@ -69,7 +69,7 @@ public sealed class GebruikerTests
     [Fact]
     public void Een_koppeling_zonder_tenant_of_object_wordt_geweigerd()
     {
-        var gebruiker = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var gebruiker = new Gebruiker("an@school.be", "An", isAdmin: false);
 
         Assert.Throws<ArgumentException>(() => gebruiker.KoppelAanEntra(Guid.Empty, Guid.NewGuid(), naam: null));
         Assert.Throws<ArgumentException>(() => gebruiker.KoppelAanEntra(Tenant, Guid.Empty, naam: null));
@@ -81,13 +81,13 @@ public sealed class GebruikerTests
     [Fact]
     public void Een_nieuwe_gebruiker_heeft_geen_themabeheer()
     {
-        Assert.False(new Gebruiker("an@school.be", "An", isDirectie: false).HeeftThemabeheer);
+        Assert.False(new Gebruiker("an@school.be", "An", isAdmin: false).HeeftThemabeheer);
     }
 
     [Fact]
     public void Themabeheer_wordt_gegeven_en_afgenomen()
     {
-        var gebruiker = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var gebruiker = new Gebruiker("an@school.be", "An", isAdmin: false);
 
         gebruiker.GeefThemabeheer();
         gebruiker.GeefThemabeheer();
@@ -101,7 +101,7 @@ public sealed class GebruikerTests
     public void Leerlingzorg_wordt_gegeven_en_afgenomen_los_van_themabeheer()
     {
         // ADR-0035 R18: a right of its own, not a part of themabeheer.
-        var gebruiker = new Gebruiker("zorg@school.be", "Zorg", isDirectie: false);
+        var gebruiker = new Gebruiker("zorg@school.be", "Zorg", isAdmin: false);
         Assert.False(gebruiker.HeeftLeerlingzorg);
 
         gebruiker.GeefLeerlingzorg();
@@ -116,52 +116,52 @@ public sealed class GebruikerTests
     }
 
     [Fact]
-    public void Directie_kan_het_directierecht_aan_iemand_anders_geven()
+    public void Admin_kan_het_adminrecht_aan_iemand_anders_geven()
     {
-        var ict = new Gebruiker("ict@school.be", "ICT", isDirectie: false);
+        var ict = new Gebruiker("ict@school.be", "ICT", isAdmin: false);
 
-        ict.GeefDirectierecht();
+        ict.GeefAdminrecht();
 
-        Assert.True(ict.IsDirectie);
+        Assert.True(ict.IsAdmin);
     }
 
     [Fact]
-    public void De_laatste_directie_verliest_het_directierecht_niet()
+    public void De_laatste_admin_verliest_het_adminrecht_niet()
     {
-        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+        var admin = new Gebruiker("admin@school.be", "Admin", isAdmin: true);
 
-        Assert.Throws<InvalidOperationException>(() => directie.NeemDirectierechtAf(aantalAndereDirectieleden: 0));
-        Assert.True(directie.IsDirectie);
+        Assert.Throws<InvalidOperationException>(() => admin.NeemAdminrechtAf(aantalAndereAdmins: 0));
+        Assert.True(admin.IsAdmin);
     }
 
     [Fact]
-    public void Met_een_andere_directie_kan_het_directierecht_afgenomen_worden()
+    public void Met_een_andere_admin_kan_het_adminrecht_afgenomen_worden()
     {
-        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+        var admin = new Gebruiker("admin@school.be", "Admin", isAdmin: true);
 
-        directie.NeemDirectierechtAf(aantalAndereDirectieleden: 1);
+        admin.NeemAdminrechtAf(aantalAndereAdmins: 1);
 
-        Assert.False(directie.IsDirectie);
+        Assert.False(admin.IsAdmin);
     }
 
     [Fact]
-    public void Afnemen_bij_wie_geen_directie_is_verandert_niets()
+    public void Afnemen_bij_wie_geen_admin_is_verandert_niets()
     {
-        var an = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var an = new Gebruiker("an@school.be", "An", isAdmin: false);
 
-        an.NeemDirectierechtAf(aantalAndereDirectieleden: 0);
+        an.NeemAdminrechtAf(aantalAndereAdmins: 0);
 
-        Assert.False(an.IsDirectie);
+        Assert.False(an.IsAdmin);
     }
 
     [Fact]
-    public void De_laatste_directie_is_niet_verwijderbaar_een_leerkracht_wel()
+    public void De_laatste_admin_is_niet_verwijderbaar_een_leerkracht_wel()
     {
-        var directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
-        var an = new Gebruiker("an@school.be", "An", isDirectie: false);
+        var admin = new Gebruiker("admin@school.be", "Admin", isAdmin: true);
+        var an = new Gebruiker("an@school.be", "An", isAdmin: false);
 
-        Assert.Throws<InvalidOperationException>(() => directie.BevestigVerwijderbaar(aantalAndereDirectieleden: 0));
-        directie.BevestigVerwijderbaar(aantalAndereDirectieleden: 1);
-        an.BevestigVerwijderbaar(aantalAndereDirectieleden: 0);
+        Assert.Throws<InvalidOperationException>(() => admin.BevestigVerwijderbaar(aantalAndereAdmins: 0));
+        admin.BevestigVerwijderbaar(aantalAndereAdmins: 1);
+        an.BevestigVerwijderbaar(aantalAndereAdmins: 0);
     }
 }

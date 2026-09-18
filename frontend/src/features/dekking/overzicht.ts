@@ -6,7 +6,7 @@ import type { Dekkingsstap, Lacuneoorzaak, LeerplandoelDekking, MinimumdoelDekki
  *
  * The top level is the discipline (Art. VII.0), which the owner asked for in the words "per leergebied" (2026-09-15).
  * The code says discipline because leergebied names something else in Art. XII: a grouping over disciplines. Should
- * directie decide one (the Wereldoriëntatie question, Art. XIV), `groepeerPerDiscipline` is the one place it lands.
+ * admin decide one (the Wereldoriëntatie question, Art. XIV), `groepeerPerDiscipline` is the one place it lands.
  *
  * **Neither function knows whether the figure may be shown**, and that is deliberate. While a stale placement withholds
  * the total (directie 2026-07-28), every count here is a piece of that total: the tallies add up to it and the action

@@ -8,7 +8,7 @@ namespace Jaarplanner.Application.Ontwikkelingsrapport;
 /// is pupil data, and neither has a schooljaar (R4, R5, R7).
 /// <para>
 /// <b>Who may write is the matrix's</b> (<c>RapportsetBewerken</c>: every K3 leerkracht during a running schooljaar, and
-/// not directie, R31), applied on the routes. Reading is open to every signed-in gebruiker. What this service adds holds
+/// not admin, R31), applied on the routes. Reading is open to every signed-in gebruiker. What this service adds holds
 /// for everyone: a rapportdoel bundles only decided subdoelen of a K3 subthema (D11, D12), checked on every write and
 /// filtered on every read.
 /// </para>

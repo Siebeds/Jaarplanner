@@ -11,7 +11,7 @@ namespace Jaarplanner.Api.Controllers;
 /// the route for reads and creates, and everything after that keys on the fiche alone.
 /// <para>
 /// <b>Rights (E6-02):</b> every write, the goal links included, is the klas's planning, <c>KlasplanningBewerken</c>
-/// (directie and the klas's own leerkrachten; ADR-0030 §3 names "algemene fiches" in that row; R7, R15, I21). A fiche
+/// (admin and the klas's own leerkrachten; ADR-0030 §3 names "algemene fiches" in that row; R7, R15, I21). A fiche
 /// belongs to one klas and its links count for that klas's dekking only, so R19, which is about the goal links on
 /// <i>shared</i> activiteiten, does not reach them.
 /// </para>

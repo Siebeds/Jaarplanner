@@ -4,12 +4,12 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import type { Schooldaguren, Schooluren } from "../schooluren/gegevens";
 import { SchoolurenScherm } from "./SchoolurenScherm";
 
 /**
- * Instellingen, Schooluren (FB-023): directie fills in the week and saves it whole; everyone else reads it.
+ * Instellingen, Schooluren (FB-023): admin fills in the week and saves it whole; everyone else reads it.
  */
 function json(inhoud: unknown, status = 200) {
   return new Response(JSON.stringify(inhoud), { status, headers: { "Content-Type": "application/json" } });
@@ -57,8 +57,8 @@ const vul = (label: string, waarde: string) => fireEvent.change(screen.getByLabe
 afterEach(() => vi.unstubAllGlobals());
 
 describe("SchoolurenScherm", () => {
-  it("toont directie de uren van de school en bewaart de hele week in een keer", async () => {
-    const fetchMock = toon(DIRECTIE, { dagen: [MAANDAG] });
+  it("toont admin de uren van de school en bewaart de hele week in een keer", async () => {
+    const fetchMock = toon(ADMIN, { dagen: [MAANDAG] });
 
     // Every field is named by its day, its group and its edge, so five rows are not five fields called "van".
     expect(await screen.findByLabelText("Maandag Schooldag van")).toHaveValue("08:30");
@@ -90,7 +90,7 @@ describe("SchoolurenScherm", () => {
   });
 
   it("weigert een halve dag zelf, met de dag erbij, en stuurt niets", async () => {
-    const fetchMock = toon(DIRECTIE, { dagen: [] });
+    const fetchMock = toon(ADMIN, { dagen: [] });
 
     await screen.findByLabelText("Dinsdag Schooldag van");
     vul("Dinsdag Schooldag van", "08:30");
@@ -102,7 +102,7 @@ describe("SchoolurenScherm", () => {
 
   it("toont de Nederlandse zin van de server wanneer die de uren weigert", async () => {
     const zin = "Op maandag moet de middagpauze binnen de schooldag vallen, tussen 8:30 en 15:30.";
-    toon(DIRECTIE, { dagen: [MAANDAG] }, () => json({ title: "Ongeldige aanvraag", status: 400, detail: zin }, 400));
+    toon(ADMIN, { dagen: [MAANDAG] }, () => json({ title: "Ongeldige aanvraag", status: 400, detail: zin }, 400));
 
     await screen.findByLabelText("Maandag Schooldag van");
     fireEvent.click(screen.getByRole("button", { name: t("schooluren.bewaar") }));
@@ -112,7 +112,7 @@ describe("SchoolurenScherm", () => {
     expect(screen.queryByText(t("schooluren.bewaard"))).not.toBeInTheDocument();
   });
 
-  it("laat wie geen directie is de uren lezen, zonder veld of knop", async () => {
+  it("laat wie geen admin is de uren lezen, zonder veld of knop", async () => {
     toon(ikMet({ eigenKlasIds: ["k1"], leerkrachtLeeftijden: ["K3"] }), { dagen: [MAANDAG] });
 
     expect(await screen.findByText("8:30 - 15:30")).toBeInTheDocument();

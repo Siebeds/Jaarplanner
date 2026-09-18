@@ -25,7 +25,7 @@ public static class Rechtenberekening
 {
     public static Rechten Bereken(
         Guid gebruikerId,
-        bool isDirectie,
+        bool isAdmin,
         bool heeftThemabeheer,
         IEnumerable<KlastoewijzingFeit> klastoewijzingen,
         IEnumerable<AanstellingFeit> aanstellingen,
@@ -52,7 +52,7 @@ public static class Rechtenberekening
 
         return new Rechten(
             gebruikerId,
-            isDirectie,
+            isAdmin,
             heeftThemabeheer,
             hoofdleerkracht,
             leerkrachtLeeftijden,

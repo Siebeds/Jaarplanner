@@ -9,7 +9,7 @@ export function getal(aantal: number): string {
 
 /**
  * The Dutch name of a changed field. The server reports the model's identifier (`nameof(...)`: `MinimumdoelRef`,
- * `JaarFase`), which is not a word directie reads (E1-22, antagonist round 1 MINOR). An identifier this map does not know
+ * `JaarFase`), which is not a word admin reads (E1-22, antagonist round 1 MINOR). An identifier this map does not know
  * is shown as the server sent it rather than guessed at.
  */
 const VELD: Record<string, Vertaalsleutel> = {

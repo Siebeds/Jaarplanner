@@ -233,7 +233,7 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
                 $"{weg} is intussen geen subdoel meer van {subthema.Naam}. Laat het weg, of vraag nieuwe voorstellen.");
         }
 
-        // A2, A3: the activiteit is the asker's own, also when directie decides.
+        // A2, A3: the activiteit is the asker's own, also when admin decides.
         var aanvrager = voorstel.GebruikerId;
         var activiteit = subthema.VoegActiviteitToe(naam.Trim(), soort, hoek: null, uitkomsten.Trim(), aanvrager, aanvrager);
         activiteit.StelLengteIn(lesuren);

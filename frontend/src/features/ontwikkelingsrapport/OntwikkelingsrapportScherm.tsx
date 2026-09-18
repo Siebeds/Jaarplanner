@@ -31,7 +31,7 @@ import { Rapportwissel } from "./Rapportwissel";
  *
  * **Only a klas that can hold children, and only one this gebruiker may read.** The klas choice here lists exactly
  * those: a klas the server says can hold children (`kanLeerlingenHebben`, from its one klas→leeftijden mapping, D9),
- * that the gebruiker teaches or, for directie and Leerlingzorg, any. The screen never compares a jaarfase to "K3"
+ * that the gebruiker teaches or, for admin and Leerlingzorg, any. The screen never compares a jaarfase to "K3"
  * itself: that would be a second mapping, and directie's graadklas decision (Art. XIV) would then have to change this
  * file as well (antagonist round 1). The klassen come from the report's own list (`GET /api/rapportklassen`, FB-008),
  * not the planning's that the header's Klaskiezer shows: a colleague's klas there would be a klas whose children this
@@ -45,7 +45,7 @@ import { Rapportwissel } from "./Rapportwissel";
  * **Nothing about a child but the two names** (Art. VI.7): no other field, and the fields ask the browser not to
  * remember what was typed in them.
  *
- * **After the schooljaar the klas's leerkrachten only read** (R26); directie still does everything. The one sentence
+ * **After the schooljaar the klas's leerkrachten only read** (R26); admin still does everything. The one sentence
  * that explains it is shown only when that is the reason (`mag.rapportAlleenNogLezen`).
  */
 export function OntwikkelingsrapportScherm() {
@@ -120,7 +120,7 @@ export function OntwikkelingsrapportScherm() {
           // No schooljaar at all: "dit schooljaar" below would refer to nothing (antagonist round 1).
           <Leegte titel={t("ontwikkelingsrapport.geenSchooljaar")} />
         ) : klas === null ? (
-          // Directie and Leerlingzorg read every klas that can hold children, so for them an empty list means the year
+          // Admin and Leerlingzorg read every klas that can hold children, so for them an empty list means the year
           // has none. Anyone else reads only their own, so for them it means they teach none this year.
           <Leegte
             titel={

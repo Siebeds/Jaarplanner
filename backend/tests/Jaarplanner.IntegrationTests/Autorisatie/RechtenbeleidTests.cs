@@ -46,12 +46,12 @@ public sealed class RechtenbeleidTests : IClassFixture<JaarplannerApiFactory>
         Assert.Equal(Kolom.Geen, Rechtenmatrix.Curriculumbeheer.Kolommen);
     }
 
-    // --- The handler: who the principal is, which resource it passes, and directie passing every row. ---
+    // --- The handler: who the principal is, which resource it passes, and admin passing every row. ---
 
     [Fact]
-    public async Task Zonder_gebruiker_in_de_aanmelding_mag_niets_ook_niet_als_directie()
+    public async Task Zonder_gebruiker_in_de_aanmelding_mag_niets_ook_niet_als_admin()
     {
-        var handler = new MatrixHandler(new VasteRechten(Directie()));
+        var handler = new MatrixHandler(new VasteRechten(Admin()));
 
         var context = await BeoordeelAsync(handler, Rechtenmatrix.ThemaBewerken, new ClaimsPrincipal(new ClaimsIdentity()), bron: null);
 
@@ -59,17 +59,17 @@ public sealed class RechtenbeleidTests : IClassFixture<JaarplannerApiFactory>
     }
 
     [Fact]
-    public async Task Directie_mag_elke_rij_behalve_de_rapportset_ook_via_een_attribuut()
+    public async Task Admin_mag_elke_rij_behalve_de_rapportset_ook_via_een_attribuut()
     {
-        var handler = new MatrixHandler(new VasteRechten(Directie()));
+        var handler = new MatrixHandler(new VasteRechten(Admin()));
 
         foreach (var rij in Rechtenmatrix.Rijen)
         {
             var context = await BeoordeelAsync(handler, rij, Principal(), new DefaultHttpContext());
-            Assert.True(context.HasSucceeded == !rij.ZonderDirectie, rij.Beleid);
+            Assert.True(context.HasSucceeded == !rij.ZonderAdmin, rij.Beleid);
         }
 
-        // ADR-0035 R31, asserted by name: directie views the K3 set and does not edit it.
+        // ADR-0035 R31, asserted by name: admin views the K3 set and does not edit it.
         var rapportset = await BeoordeelAsync(handler, Rechtenmatrix.RapportsetBewerken, Principal(), new DefaultHttpContext());
         Assert.False(rapportset.HasSucceeded);
     }
@@ -137,22 +137,22 @@ public sealed class RechtenbeleidTests : IClassFixture<JaarplannerApiFactory>
     public async Task MagAsync_beantwoordt_een_bronrij_via_de_geregistreerde_beleiden()
     {
         // Through the real IAuthorizationService, so the name resolves to the registered policy. The default test
-        // identity is directie, so the answer is yes, for any row and any resource.
+        // identity is admin, so the answer is yes, for any row and any resource.
         await using var scope = _factory.Services.CreateAsyncScope();
         var autorisatie = scope.ServiceProvider.GetRequiredService<IAuthorizationService>();
-        var directie = Aanmelding.MaakPrincipal(
-            new GebruikerWeergave(TestAuthenticatie.StandaardGebruikerId, "Test", "test@jaarplanner.local", IsDirectie: true),
+        var admin = Aanmelding.MaakPrincipal(
+            new GebruikerWeergave(TestAuthenticatie.StandaardGebruikerId, "Test", "test@jaarplanner.local", IsAdmin: true),
             TestAuthenticatie.Schema);
 
-        Assert.True(await autorisatie.MagAsync(directie, new Leeftijdsinhoud("L6"), Rechtenmatrix.Beleid.SubthemaBeheren));
+        Assert.True(await autorisatie.MagAsync(admin, new Leeftijdsinhoud("L6"), Rechtenmatrix.Beleid.SubthemaBeheren));
         Assert.False(await autorisatie.MagAsync(
             new ClaimsPrincipal(new ClaimsIdentity()), new Leeftijdsinhoud("L6"), Rechtenmatrix.Beleid.SubthemaBeheren));
     }
 
-    private static Rechten Directie() => new(An, isDirectie: true, heeftThemabeheer: false, [], [], []);
+    private static Rechten Admin() => new(An, isAdmin: true, heeftThemabeheer: false, [], [], []);
 
     private static ClaimsPrincipal Principal() =>
-        Aanmelding.MaakPrincipal(new GebruikerWeergave(An, "An", "an@school.be", IsDirectie: false), "Test");
+        Aanmelding.MaakPrincipal(new GebruikerWeergave(An, "An", "an@school.be", IsAdmin: false), "Test");
 
     private static async Task<AuthorizationHandlerContext> BeoordeelAsync(
         MatrixHandler handler, Matrixrij rij, ClaimsPrincipal principal, object? bron)

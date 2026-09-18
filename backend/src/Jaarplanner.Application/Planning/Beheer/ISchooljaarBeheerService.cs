@@ -44,7 +44,7 @@ public interface ISchooljaarBeheerService
 /// <param name="Eind">Last school day, inclusive (typically end of June).</param>
 /// <param name="Sluitingen">
 /// The closures. A <see cref="Sluitingssoort.Vakantie"/> cuts the year into teaching stretches; a
-/// <see cref="Sluitingssoort.VrijeDag"/> is a day off inside a stretch and does not break a period (directie
+/// <see cref="Sluitingssoort.VrijeDag"/> is a day off inside a stretch and does not break a period (admin
 /// 2026-07-28, ADR-0020 §5). The classification is data the school owns, never a threshold in code.
 /// </param>
 public sealed record SchooljaarCreatie(

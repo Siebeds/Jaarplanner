@@ -133,7 +133,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
 
         // A klas with children in the ontwikkelingsrapport stays one that grants K3 (FB-001, D9). Otherwise the children
         // would stay in the table and fall out of every route: the matrix gives a leerkracht no rapportklas that is not
-        // K3, so nobody but directie could see, rename or delete them, and nothing on screen would say they exist. The
+        // K3, so nobody but admin could see, rename or delete them, and nothing on screen would say they exist. The
         // name is the klas's, which is no pupil data; the count is all that is said about the children.
         if (!Leerling.KlasKanLeerlingenHebben(wijziging.Jaarfase))
         {
@@ -273,7 +273,7 @@ public sealed class KlasBeheerService : IKlasBeheerService
         // The children in the klas's ontwikkelingsrapport (FB-001). `leerlingen` holds the klas by a Restrict FK
         // (LeerlingConfiguration), so without this guard the delete fails as a raw 23503. Refused rather than cascaded,
         // because a child takes their reports along (from FB-003), and deleting those is a deliberate act of its own: a
-        // leerling at a time on the report screen (D8), or a whole schooljaar by directie (D7). The remediation is real:
+        // leerling at a time on the report screen (D8), or a whole schooljaar by admin (D7). The remediation is real:
         // DELETE /api/leerlingen/{leerlingId} removes one. The count only: the klas name is no pupil data, a child's is.
         var kinderen = await _context.Leerlingen.CountAsync(l => l.KlasId == klasId, cancellationToken);
         if (kinderen > 0)

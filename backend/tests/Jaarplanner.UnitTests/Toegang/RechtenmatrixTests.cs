@@ -6,7 +6,7 @@ namespace Jaarplanner.UnitTests.Toegang;
 /// <summary>
 /// The ADR-0030 §3 matrix as <see cref="Rechtenmatrix"/> declares it, row by row and column by column (E6-02, Art.
 /// VI.1): each row allows exactly the relations §3 gives it, on a resource of that row's kind, and nothing else.
-/// Directie passes every row (R3) except <c>RapportsetBewerken</c> (ADR-0035 R31); a missing or foreign resource fails
+/// Admin passes every row (R3) except <c>RapportsetBewerken</c> (ADR-0035 R31); a missing or foreign resource fails
 /// closed. Four of the six ontwikkelingsrapport rows of §3 (footnote ⁶) are declared and tested here, two since FB-001,
 /// one since FB-002 and one since FB-003; the other two get their tests with their policies (FB-006, FB-007).
 /// </summary>
@@ -21,8 +21,8 @@ public sealed class RechtenmatrixTests
     /// <summary>The relations of §3, each held alone, towards content of <see cref="Leeftijd"/> and <see cref="EigenKlas"/>.</summary>
     private static readonly Dictionary<string, Rechten> Relaties = new()
     {
-        ["Directie"] = new Rechten(Ik, isDirectie: true, heeftThemabeheer: false, [], [], []),
-        ["TB"] = new Rechten(Ik, isDirectie: false, heeftThemabeheer: true, [], [], []),
+        ["Admin"] = new Rechten(Ik, isAdmin: true, heeftThemabeheer: false, [], [], []),
+        ["TB"] = new Rechten(Ik, isAdmin: false, heeftThemabeheer: true, [], [], []),
         ["HL"] = new Rechten(Ik, false, false, [Leeftijd], [], []),
         ["HL andere leeftijd"] = new Rechten(Ik, false, false, ["L1"], [], []),
         ["LK leeftijd"] = new Rechten(Ik, false, false, [], [Leeftijd], []),
@@ -31,7 +31,7 @@ public sealed class RechtenmatrixTests
         // FB-001: one klastoewijzing on a K3 klas, as Rechtenberekening builds it, in a running and in an ended schooljaar.
         ["LK K3 lopend"] = new Rechten(Ik, false, false, [], [Leeftijd], [EigenKlas], [EigenKlas], [EigenKlas]),
         ["LK K3 afgelopen"] = new Rechten(Ik, false, false, [], [], [EigenKlas], [EigenKlas], []),
-        // FB-008 (ADR-0035 R18): the right directie gave, and nothing else.
+        // FB-008 (ADR-0035 R18): the right admin gave, and nothing else.
         ["Leerlingzorg"] = new Rechten(Ik, false, false, [], [], [], heeftLeerlingzorg: true),
         ["Ander"] = Rechten.Geen(Ik),
     };
@@ -42,47 +42,47 @@ public sealed class RechtenmatrixTests
     /// </summary>
     private static readonly Dictionary<string, string[]> Verwacht = new()
     {
-        [Rechtenmatrix.Beleid.Curriculumbeheer] = ["Directie"],
-        [Rechtenmatrix.Beleid.Beheer] = ["Directie"],
-        [Rechtenmatrix.Beleid.MenselijkeBeslissingenVerwijderen] = ["Directie"],
-        [Rechtenmatrix.Beleid.ThemaBewerken] = ["Directie", "TB"],
-        // Without a Themabron only directie; themabeheer on an empty thema is its own test below (I26).
-        [Rechtenmatrix.Beleid.ThemaVerwijderen] = ["Directie"],
-        [Rechtenmatrix.Beleid.SchoolcontentImporteren] = ["Directie", "TB"],
-        [Rechtenmatrix.Beleid.ThemaOpbouw] = ["Directie", "TB"],
-        [Rechtenmatrix.Beleid.Wizardinhoud] = ["Directie", "TB"],
-        [Rechtenmatrix.Beleid.DoelsuggestiesMaken] = ["Directie", "TB"],
-        [Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen] = ["Directie", "TB"],
-        [Rechtenmatrix.Beleid.SubthemaBeheren] = ["Directie", "HL"],
-        [Rechtenmatrix.Beleid.SubdoelenBeheren] = ["Directie", "HL"],
-        [Rechtenmatrix.Beleid.DoelenKoppelen] = ["Directie", "HL"],
-        [Rechtenmatrix.Beleid.StreefwoordenschatAanpassen] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
-        [Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken] = ["Directie", "HL", "LK leeftijd", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.Curriculumbeheer] = ["Admin"],
+        [Rechtenmatrix.Beleid.Beheer] = ["Admin"],
+        [Rechtenmatrix.Beleid.MenselijkeBeslissingenVerwijderen] = ["Admin"],
+        [Rechtenmatrix.Beleid.ThemaBewerken] = ["Admin", "TB"],
+        // Without a Themabron only admin; themabeheer on an empty thema is its own test below (I26).
+        [Rechtenmatrix.Beleid.ThemaVerwijderen] = ["Admin"],
+        [Rechtenmatrix.Beleid.SchoolcontentImporteren] = ["Admin", "TB"],
+        [Rechtenmatrix.Beleid.ThemaOpbouw] = ["Admin", "TB"],
+        [Rechtenmatrix.Beleid.Wizardinhoud] = ["Admin", "TB"],
+        [Rechtenmatrix.Beleid.DoelsuggestiesMaken] = ["Admin", "TB"],
+        [Rechtenmatrix.Beleid.DoelsuggestiesBeoordelen] = ["Admin", "TB"],
+        [Rechtenmatrix.Beleid.SubthemaBeheren] = ["Admin", "HL"],
+        [Rechtenmatrix.Beleid.SubdoelenBeheren] = ["Admin", "HL"],
+        [Rechtenmatrix.Beleid.DoelenKoppelen] = ["Admin", "HL"],
+        [Rechtenmatrix.Beleid.StreefwoordenschatAanpassen] = ["Admin", "HL", "LK leeftijd", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.GedeeldeActiviteitBewerken] = ["Admin", "HL", "LK leeftijd", "LK K3 lopend"],
         // ADR-0049 D1, D2: a shared one is created by HL, an own one by a leerkracht of that leeftijd.
-        [Rechtenmatrix.Beleid.GedeeldeActiviteitMaken] = ["Directie", "HL"],
-        [Rechtenmatrix.Beleid.EigenActiviteitMaken] = ["Directie", "LK leeftijd", "LK K3 lopend"],
-        [Rechtenmatrix.Beleid.KlasplanningBewerken] = ["Directie", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
+        [Rechtenmatrix.Beleid.GedeeldeActiviteitMaken] = ["Admin", "HL"],
+        [Rechtenmatrix.Beleid.EigenActiviteitMaken] = ["Admin", "LK leeftijd", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.KlasplanningBewerken] = ["Admin", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
         // FB-013 (ADR-0040 Z1-Z5): reading a K3 klas is for its own leerkracht, every leerkracht and hoofdleerkracht of
-        // K3, themabeheer and directie. Not for another leeftijd, and not for a gebruiker without a right (Z4).
+        // K3, themabeheer and admin. Not for another leeftijd, and not for a gebruiker without a right (Z4).
         [Rechtenmatrix.Beleid.KlasplanningBekijken] =
-            ["Directie", "TB", "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
+            ["Admin", "TB", "HL", "LK leeftijd", "LK eigen", "LK K3 lopend", "LK K3 afgelopen"],
         // Footnote ⁶ (ADR-0035 R16, R17, R26): the klas's K3 leerkracht reads with no end date and keeps the leerlingen
-        // only during the schooljaar. Nobody else but directie and Leerlingzorg (R18), not HL, TB or "LK leeftijd" (R17).
-        [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Directie", "LK K3 lopend", "LK K3 afgelopen", "Leerlingzorg"],
-        [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Directie", "LK K3 lopend"],
-        [Rechtenmatrix.Beleid.RapportInvullen] = ["Directie", "LK K3 lopend"],
-        // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even directie.
+        // only during the schooljaar. Nobody else but admin and Leerlingzorg (R18), not HL, TB or "LK leeftijd" (R17).
+        [Rechtenmatrix.Beleid.OntwikkelingsrapportLezen] = ["Admin", "LK K3 lopend", "LK K3 afgelopen", "Leerlingzorg"],
+        [Rechtenmatrix.Beleid.LeerlingenBeheren] = ["Admin", "LK K3 lopend"],
+        [Rechtenmatrix.Beleid.RapportInvullen] = ["Admin", "LK K3 lopend"],
+        // FB-002 (ADR-0035 R6, R31, D4): a K3 leerkracht during a running schooljaar, and nobody else, not even admin.
         // Not "LK leeftijd" as this list builds it, with K3 among its leeftijden and no rapportklas: the column reads the
         // running rapportklassen (the D9 function), not the stated jaarfase.
         [Rechtenmatrix.Beleid.RapportsetBewerken] = ["LK K3 lopend"],
-        // FB-036 (ADR-0043 W2, D3): on someone else's woordweb, only directie. Every relation on her own web is the test
+        // FB-036 (ADR-0043 W2, D3): on someone else's woordweb, only admin. Every relation on her own web is the test
         // Een_woordweb_is_van_zijn_eigenaar below.
-        [Rechtenmatrix.Beleid.WoordwebBewerken] = ["Directie"],
-        // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd and directie; themabeheer alone does not.
-        [Rechtenmatrix.Beleid.SubdoelplaatsingVragen] = ["Directie", "HL"],
-        [Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen] = ["Directie", "HL"],
-        // FB-025 (ADR-0056 A3): on someone else's activiteitvoorstel only directie. The asker's own is its own test below.
-        [Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen] = ["Directie"],
+        [Rechtenmatrix.Beleid.WoordwebBewerken] = ["Admin"],
+        // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd and admin; themabeheer alone does not.
+        [Rechtenmatrix.Beleid.SubdoelplaatsingVragen] = ["Admin", "HL"],
+        [Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen] = ["Admin", "HL"],
+        // FB-025 (ADR-0056 A3): on someone else's activiteitvoorstel only admin. The asker's own is its own test below.
+        [Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen] = ["Admin"],
     };
 
     private static readonly string[] ActiviteitRijen =
@@ -143,9 +143,9 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Directie_mag_elke_rij_behalve_de_rapportset_met_of_zonder_bron()
+    public void Admin_mag_elke_rij_behalve_de_rapportset_met_of_zonder_bron()
     {
-        var directie = Relaties["Directie"];
+        var admin = Relaties["Admin"];
         object?[] bronnen =
         [
             null,
@@ -158,14 +158,14 @@ public sealed class RechtenmatrixTests
             new Activiteitbron(Guid.NewGuid(), "L6", MakerId: null, HeeftDoelkoppelingen: true),
         ];
 
-        Assert.All(Rechtenmatrix.Rijen.Where(rij => !rij.ZonderDirectie), rij =>
-            Assert.All(bronnen, bron => Assert.True(Rechtenmatrix.StaatToe(directie, rij, bron))));
+        Assert.All(Rechtenmatrix.Rijen.Where(rij => !rij.ZonderAdmin), rij =>
+            Assert.All(bronnen, bron => Assert.True(Rechtenmatrix.StaatToe(admin, rij, bron))));
 
-        // R31: exactly one row is closed to directie as such, and it is the K3 set. With any resource.
+        // R31: exactly one row is closed to admin as such, and it is the K3 set. With any resource.
         Assert.Equal(
             [Rechtenmatrix.Beleid.RapportsetBewerken],
-            Rechtenmatrix.Rijen.Where(rij => rij.ZonderDirectie).Select(rij => rij.Beleid));
-        Assert.All(bronnen, bron => Assert.False(Rechtenmatrix.StaatToe(directie, Rechtenmatrix.RapportsetBewerken, bron)));
+            Rechtenmatrix.Rijen.Where(rij => rij.ZonderAdmin).Select(rij => rij.Beleid));
+        Assert.All(bronnen, bron => Assert.False(Rechtenmatrix.StaatToe(admin, Rechtenmatrix.RapportsetBewerken, bron)));
     }
 
     // --- Resources that are missing or of the wrong kind fail closed. ---
@@ -196,7 +196,7 @@ public sealed class RechtenmatrixTests
     // --- Reading a klas's planning (FB-013, ADR-0040): the klas's jaarfase decides, through the one mapping. ---
 
     [Fact]
-    public void Een_klas_van_een_andere_jaarfase_leest_alleen_themabeheer_en_directie_Z1_Z2_Z3()
+    public void Een_klas_van_een_andere_jaarfase_leest_alleen_themabeheer_en_admin_Z1_Z2_Z3()
     {
         var k2 = Klasinzage.Voor(AndereKlas, "K2");
 
@@ -206,7 +206,7 @@ public sealed class RechtenmatrixTests
         }
 
         Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.KlasplanningBekijken, k2));
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.KlasplanningBekijken, k2));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.KlasplanningBekijken, k2));
         // A leerkracht with a klas in each jaarfase reads both.
         var beide = new Rechten(Ik, false, false, [], ["K2", Leeftijd], [EigenKlas]);
         Assert.True(Rechtenmatrix.StaatToe(beide, Rechtenmatrix.KlasplanningBekijken, k2));
@@ -254,7 +254,7 @@ public sealed class RechtenmatrixTests
         Assert.False(Rechtenmatrix.StaatToe(samen, Rechtenmatrix.Curriculumbeheer, bron: null));
     }
 
-    // --- Deleting a thema (I26): directie always; themabeheer only while it holds nothing but its own open run's items. ---
+    // --- Deleting a thema (I26): admin always; themabeheer only while it holds nothing but its own open run's items. ---
 
     [Fact]
     public void Themabeheer_verwijdert_een_thema_alleen_zonder_andermans_inhoud()
@@ -264,7 +264,7 @@ public sealed class RechtenmatrixTests
 
         Assert.True(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, zonder));
         Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ThemaVerwijderen, met));
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ThemaVerwijderen, met));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.ThemaVerwijderen, met));
         foreach (var relatie in new[] { "HL", "LK leeftijd", "LK eigen", "Ander" })
         {
             Assert.False(Rechtenmatrix.StaatToe(Relaties[relatie], Rechtenmatrix.ThemaVerwijderen, zonder));
@@ -277,7 +277,7 @@ public sealed class RechtenmatrixTests
         Assert.True(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
         Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, ["L1"], [], []), Rechtenmatrix.ThemaVerwijderen, gekoppeld));
         Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.ThemaVerwijderen, gekoppeld));
         var tweeLeeftijden = new Themabron(Guid.NewGuid(), HeeftAndermansInhoud: false, GekoppeldeLeeftijden: [Leeftijd, "L1"]);
         Assert.False(Rechtenmatrix.StaatToe(new Rechten(Ik, false, true, [Leeftijd], [], []), Rechtenmatrix.ThemaVerwijderen, tweeLeeftijden));
 
@@ -318,7 +318,7 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Niemand_behalve_directie_en_hoofdleerkracht_verwijdert_een_activiteit_zonder_maker()
+    public void Niemand_behalve_admin_en_hoofdleerkracht_verwijdert_een_activiteit_zonder_maker()
     {
         foreach (var relatie in new[] { "TB", "LK leeftijd", "LK eigen", "Ander" })
         {
@@ -394,8 +394,8 @@ public sealed class RechtenmatrixTests
         Assert.True(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.OntwikkelingsrapportLezen, new Rapportklas(EigenKlas)));
         Assert.False(Rechtenmatrix.StaatToe(rechten, Rechtenmatrix.LeerlingenBeheren, new Rapportklas(EigenKlas)));
 
-        // Directie still does (R3, and R26's "Directie kan nog alles").
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.LeerlingenBeheren, new Rapportklas(EigenKlas)));
+        // Admin still does (R3, and R26's "Admin kan nog alles").
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.LeerlingenBeheren, new Rapportklas(EigenKlas)));
     }
 
     [Fact]
@@ -524,9 +524,9 @@ public sealed class RechtenmatrixTests
     [Fact]
     public void Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_rapportset_toch_niet()
     {
-        // R31 as the owner read it on 2026-09-15 ("Nooit wie directie heeft"): the union rule does not reach this row for
-        // directie. The same klastoewijzing makes a plain gebruiker a K3 leerkracht who passes, which the second assert
-        // pins, so the refusal comes from the directie right and not from the klas.
+        // R31 as the owner read it on 2026-09-15 ("Nooit wie admin heeft"): the union rule does not reach this row for
+        // admin. The same klastoewijzing makes a plain gebruiker a K3 leerkracht who passes, which the second assert
+        // pins, so the refusal comes from the admin right and not from the klas.
         var vandaag = new DateOnly(2026, 9, 15);
         var toewijzing = new KlastoewijzingFeit(EigenKlas, "K3", new DateOnly(2027, 6, 30));
         var directeur = Rechtenberekening.Bereken(Ik, true, false, [toewijzing], [], vandaag);
@@ -548,7 +548,7 @@ public sealed class RechtenmatrixTests
     private static Matrixrij Rij(string beleid) => Rechtenmatrix.Rijen.Single(r => r.Beleid == beleid);
 
     /// <summary>The resource a controller would pass for this row: none for resource-free rows.</summary>
-    // --- A woordweb (FB-036, ADR-0043): personal content, its owner's and directie's. ---
+    // --- A woordweb (FB-036, ADR-0043): personal content, its owner's and admin's. ---
 
     [Fact]
     public void Een_woordweb_is_van_zijn_eigenaar_welk_ander_recht_ze_ook_heeft()
@@ -560,13 +560,13 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Andermans_woordweb_wijzigt_alleen_de_directie()
+    public void Andermans_woordweb_wijzigt_alleen_de_admin()
     {
         var andermans = new Woordwebbron(Guid.NewGuid(), AnderePersoon);
         var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
 
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, andermans));
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.WoordwebBewerken, andermans));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.WoordwebBewerken, andermans));
     }
 
     [Fact]
@@ -595,7 +595,7 @@ public sealed class RechtenmatrixTests
         new(Guid.NewGuid(), Leeftijd, eigenaar, metKoppelingen, eigenaar);
 
     [Fact]
-    public void Een_eigen_activiteit_bewerkt_alleen_haar_eigenaar_en_de_directie()
+    public void Een_eigen_activiteit_bewerkt_alleen_haar_eigenaar_en_de_admin()
     {
         // D4: HL, "LK leeftijd" and even the maker column do not reach someone else's own activiteit.
         var andermans = EigenActiviteit(AnderePersoon, metKoppelingen: false);
@@ -604,7 +604,7 @@ public sealed class RechtenmatrixTests
         Assert.All(Activiteitbewerkingen, rij =>
         {
             Assert.False(Rechtenmatrix.StaatToe(alles, rij, andermans));
-            Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], rij, andermans));
+            Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], rij, andermans));
         });
     }
 
@@ -619,7 +619,7 @@ public sealed class RechtenmatrixTests
     }
 
     [Theory]
-    [InlineData("Directie", true)]
+    [InlineData("Admin", true)]
     [InlineData("HL", true)]
     [InlineData("LK leeftijd", true)]
     [InlineData("LK K3 lopend", true)]
@@ -638,7 +638,7 @@ public sealed class RechtenmatrixTests
     }
 
     [Theory]
-    [InlineData("Directie", true)]
+    [InlineData("Admin", true)]
     [InlineData("LK leeftijd", true)]
     [InlineData("LK K3 lopend", true)]
     [InlineData("HL", false)]
@@ -665,7 +665,7 @@ public sealed class RechtenmatrixTests
             Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], rij, new Woordwebbron(Guid.NewGuid(), Ik))));
     }
 
-    // --- An activiteitvoorstel (FB-025, ADR-0056 A3): its asker's while she teaches that leeftijd, and directie's. ---
+    // --- An activiteitvoorstel (FB-025, ADR-0056 A3): its asker's while she teaches that leeftijd, and admin's. ---
 
     [Fact]
     public void Een_activiteitvoorstel_beslist_wie_het_vroeg_zolang_ze_die_leeftijd_heeft()
@@ -680,7 +680,7 @@ public sealed class RechtenmatrixTests
     }
 
     [Fact]
-    public void Een_activiteitvoorstel_opent_geen_andere_rij_en_zonder_aanvrager_alleen_de_directie()
+    public void Een_activiteitvoorstel_opent_geen_andere_rij_en_zonder_aanvrager_alleen_de_admin()
     {
         var eigen = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, Ik);
         var alles = new Rechten(Ik, false, true, [Leeftijd], [Leeftijd], [EigenKlas]);
@@ -695,7 +695,7 @@ public sealed class RechtenmatrixTests
         // The read question the controller asks: a proposal of nobody.
         var niemands = new Activiteitvoorstelbron(Guid.Empty, string.Empty, Guid.Empty);
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
-        Assert.True(Rechtenmatrix.StaatToe(Relaties["Directie"], Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
     }
 
     private static object? BronVoor(Matrixrij rij) => rij.Kolommen switch

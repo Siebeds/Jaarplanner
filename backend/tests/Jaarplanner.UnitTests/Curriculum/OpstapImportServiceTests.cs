@@ -150,7 +150,7 @@ public sealed class OpstapImportServiceTests : IDisposable
     [Fact]
     public async Task Disappeared_unreferenced_leerplandoel_is_purged_only_with_the_opt_in_policy()
     {
-        // Explicit directie opt-in: the purge seam removes truly unused, disappeared goals.
+        // Explicit admin opt-in: the purge seam removes truly unused, disappeared goals.
         var purgeService = new OpstapImportService(_context, AlleInScope, verwijderVerweesdeNietGekoppelde: true);
         await purgeService.ImporteerAsync(Parse(Doel("LP-1"), Doel("LP-2")), toepassen: true);
 

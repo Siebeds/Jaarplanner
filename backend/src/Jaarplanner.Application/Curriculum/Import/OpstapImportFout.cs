@@ -51,7 +51,7 @@ public readonly record struct DoelInAndereDiscipline(string Code, string Discipl
 /// The Op.stap (re-)import cannot be carried out: a typed fault raised by the import path so the (thin)
 /// Api maps a status code without knowing anything about EF Core or PostgreSQL (Art. VIII). Its
 /// <see cref="Exception.Message"/> is Dutch and addressed to whoever runs the import, which for
-/// reference-data administration is directie (Art. II.3 as amended 2026-07-30, Art. VI.1); the
+/// reference-data administration is admin (Art. II.3 as amended 2026-07-30, Art. VI.1); the
 /// <see cref="Soort"/> is what the handler switches on.
 /// <para>
 /// <b>It is raised on the preview path too, deliberately.</b> All three cases are decided <i>before</i>

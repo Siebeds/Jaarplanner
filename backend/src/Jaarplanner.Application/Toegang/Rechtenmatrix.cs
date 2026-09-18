@@ -6,7 +6,7 @@ namespace Jaarplanner.Application.Toegang;
 /// every <see cref="Rijen"/> entry under its <see cref="Matrixrij.Beleid"/> name, and <see cref="StaatToe"/> is the
 /// only code that decides whether a gebruiker's <see cref="Rechten"/> satisfy a row.
 /// <para>
-/// <b>How a row is applied.</b> A row whose columns need no resource (directie, the plain TB column, the K3 set's
+/// <b>How a row is applied.</b> A row whose columns need no resource (admin, the plain TB column, the K3 set's
 /// <see cref="Kolom.Rapportsetleerkracht"/>) goes on a route as
 /// <c>[Authorize(Policy = Rechtenmatrix.Beleid.X)]</c>. A row with any column that needs a resource is resource-based:
 /// HL, "LK leeftijd", "LK eigen", the maker, and themabeheer on a thema that holds no one else's content (I26). The Api
@@ -14,7 +14,7 @@ namespace Jaarplanner.Application.Toegang;
 /// <see cref="Themabron"/>, via <see cref="IRechtenbronnen"/>) and asks
 /// <c>IAuthorizationService.AuthorizeAsync(User, bron, Rechtenmatrix.Beleid.X)</c>: through the <c>[RechtOp]</c> filter,
 /// or in the action when the resource comes from the body. Put such a row in an attribute by mistake and it fails
-/// closed: the resource is then the <c>HttpContext</c>, which matches no resource column, so only directie (and TB where
+/// closed: the resource is then the <c>HttpContext</c>, which matches no resource column, so only admin (and TB where
 /// the row has the plain TB column) passes.
 /// </para>
 /// <para>
@@ -31,13 +31,13 @@ namespace Jaarplanner.Application.Toegang;
 /// and two of the six ontwikkelingsrapport rows of ADR-0030 §3 (footnote ⁶, ADR-0035), downloading a report and
 /// wiping a schooljaar, which get their policies with FB-006 and FB-007, since no route serves them before. The other
 /// four have one: <see cref="OntwikkelingsrapportLezen"/> and <see cref="LeerlingenBeheren"/> (FB-001),
-/// <see cref="RapportsetBewerken"/>, the one row directie does not pass (R31, FB-002), and <see cref="RapportInvullen"/>
+/// <see cref="RapportsetBewerken"/>, the one row admin does not pass (R31, FB-002), and <see cref="RapportInvullen"/>
 /// (FB-003).
 /// </para>
 /// <para>
 /// <b>The wizard's own write actions (§3 row 7) are split in two.</b> Who may call them is the row
-/// <see cref="Wizardinhoud"/> here: directie and themabeheer. What a run allows is <c>IWizardrunService</c>'s, and it
-/// holds for directie too. Most of it is state: the run is open, the content is under its own thema, an edit or delete
+/// <see cref="Wizardinhoud"/> here: admin and themabeheer. What a run allows is <c>IWizardrunService</c>'s, and it
+/// holds for admin too. Most of it is state: the run is open, the content is under its own thema, an edit or delete
 /// reaches only what it created (I23–I25). One part is a relation (I27, with the owner's Q4 ruling of 2026-09-14): a
 /// wizard action that would remove a goal link needs <see cref="DoelenKoppelen"/> at that leeftijd, and one that changes
 /// the leeftijd of a subthema whose activiteiten carry a goal link needs it "at both the old and the new leeftijd" (I27
@@ -87,16 +87,16 @@ public static class Rechtenmatrix
         public const string ActiviteitvoorstelBeslissen = "ActiviteitvoorstelBeslissen";
     }
 
-    // --- Resource-free rows: directie, and themabeheer where the row has it. ---
+    // --- Resource-free rows: admin, and themabeheer where the row has it. ---
 
-    /// <summary>§3 "Op.stap-doelen inladen/vernieuwen" (R3; ADR-0022). Directie only.</summary>
+    /// <summary>§3 "Op.stap-doelen inladen/vernieuwen" (R3; ADR-0022). Admin only.</summary>
     public static readonly Matrixrij Curriculumbeheer = new(
         Beleid.Curriculumbeheer, "Op.stap-doelen inladen/vernieuwen (R3; ADR-0022)", Kolom.Geen);
 
-    /// <summary>§3 "Gebruikers, klassen en schooljaren beheren …" (R2, R3, R16; FA FR-12.2). Directie only.</summary>
+    /// <summary>§3 "Gebruikers, klassen en schooljaren beheren …" (R2, R3, R16; FA FR-12.2). Admin only.</summary>
     public static readonly Matrixrij Beheer = new(
         Beleid.Beheer,
-        "Gebruikers, klassen en schooljaren beheren, leerkrachten aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het directierecht toekennen (R2, R3, R16)",
+        "Gebruikers, klassen en schooljaren beheren, leerkrachten aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het adminrecht toekennen (R2, R3, R16)",
         Kolom.Geen);
 
     /// <summary>§3 "Thema, themadoelen, kernwoordenschat aanpassen" (R4, R18).</summary>
@@ -104,10 +104,10 @@ public static class Rechtenmatrix
         Beleid.ThemaBewerken, "Thema, themadoelen, kernwoordenschat aanpassen (R4, R18)", Kolom.Themabeheer);
 
     /// <summary>
-    /// Deleting a thema with everything under it (R3; I26; §3 has no delete row of its own). The directie column rests
+    /// Deleting a thema with everything under it (R3; I26; §3 has no delete row of its own). The admin column rests
     /// on R3. <b>The themabeheer column is a default</b> (I26, chosen by the owner on 2026-09-14 and followed under R37,
     /// not ratified): themabeheer only while the thema holds no subthema, subdoel or activiteit other than what its own
-    /// open wizard run created, because anything else was made by hand, and deleting it by hand is directie's and the
+    /// open wizard run created, because anything else was made by hand, and deleting it by hand is admin's and the
     /// hoofdleerkrachten's (R21, R24, R25). Under the owner's Q4 ruling a run's own activiteit that carries a goal link
     /// counts as someone else's too, unless the caller may also link goals at its leeftijd (R19). The service refuses a
     /// planned or scheduled thema for everyone. Resource: <see cref="Themabron"/>.
@@ -124,7 +124,7 @@ public static class Rechtenmatrix
         "Thema's en activiteiten importeren (FR-1), met de doelkoppelingen op themadoelen en subdoelen (R9, R27, R34)",
         Kolom.Themabeheer);
 
-    /// <summary>§3 "Bij die import 'menselijke beslissingen verwijderen' aanvinken" (R35). Directie only.</summary>
+    /// <summary>§3 "Bij die import 'menselijke beslissingen verwijderen' aanvinken" (R35). Admin only.</summary>
     public static readonly Matrixrij MenselijkeBeslissingenVerwijderen = new(
         Beleid.MenselijkeBeslissingenVerwijderen,
         "Bij de FR-1-import 'menselijke beslissingen verwijderen' aanvinken, voor themadoelen en subdoelen samen (R35)",
@@ -137,7 +137,7 @@ public static class Rechtenmatrix
     /// <summary>
     /// §3 "In de wizard subthema's, subdoelen en activiteiten aanmaken, voor een thema dat de wizard van nul opbouwt"
     /// (R29, R32; I18, I22–I25, I27; I26 is the thema delete, not wizard content). Who may call the wizard's own write
-    /// actions: directie and themabeheer. What the run allows is <c>IWizardrunService</c>'s, for everyone: state (open,
+    /// actions: admin and themabeheer. What the run allows is <c>IWizardrunService</c>'s, for everyone: state (open,
     /// its own thema, its own items: I23–I25), narrowed by I27, under which an action that would remove a goal link also
     /// needs <see cref="DoelenKoppelen"/> at that leeftijd, and a leeftijd change of a subthema whose activiteiten carry a
     /// goal link needs it "at both the old and the new leeftijd" (the owner's Q5 answer of 2026-09-14).
@@ -183,7 +183,7 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// §3 "Gedeelde activiteiten aanmaken" (R17, R23), narrowed by ADR-0049 D1: what a leerkracht creates is her own, so
-    /// a shared one is created by a hoofdleerkracht of that leeftijd, and directie. Resource: the subthema's
+    /// a shared one is created by a hoofdleerkracht of that leeftijd, and admin. Resource: the subthema's
     /// <see cref="Leeftijdsinhoud"/>. The wizard's own write actions are <see cref="Wizardinhoud"/>.
     /// </summary>
     public static readonly Matrixrij GedeeldeActiviteitMaken = new(
@@ -193,7 +193,7 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// "Eigen activiteiten onder een subthema plaatsen" (R6; ADR-0049 E1, D2): a leerkracht with a klas at the subthema's
-    /// leeftijd, and directie. Resource: the subthema's <see cref="Leeftijdsinhoud"/>. The owner is always the caller,
+    /// leeftijd, and admin. Resource: the subthema's <see cref="Leeftijdsinhoud"/>. The owner is always the caller,
     /// never an id from the body.
     /// </summary>
     public static readonly Matrixrij EigenActiviteitMaken = new(
@@ -203,7 +203,7 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// Reading an own activiteit (ADR-0049 E2, D3): its owner, the leerkrachten and hoofdleerkrachten of its leeftijd, and
-    /// directie. Resource: the <see cref="Activiteitbron"/>. A shared activiteit needs no row to be read.
+    /// admin. Resource: the <see cref="Activiteitbron"/>. A shared activiteit needs no row to be read.
     /// </summary>
     public static readonly Matrixrij EigenActiviteitLezen = new(
         Beleid.EigenActiviteitLezen,
@@ -266,7 +266,7 @@ public static class Rechtenmatrix
     /// §3's two read rows as one policy, because they are the same question on the same resource: "Jaarplan, agenda en
     /// dekking bekijken" and "Exporteren" (R3, R7; ADR-0040 Z1 to Z5, default Z6). Resource: <see cref="Klasinzage"/>.
     /// <list type="bullet">
-    /// <item>Themabeheer and directie read every klas (Z3, Z5).</item>
+    /// <item>Themabeheer and admin read every klas (Z3, Z5).</item>
     /// <item>A hoofdleerkracht reads every klas of a jaarfase they are appointed for (Z2), and a leerkracht every klas
     /// of the jaarfase of a klas they teach (Z1). Both relations count while their schooljaar has not ended (R20), as
     /// they do for the shared content. The klas read may be of any schooljaar (default Z6).</item>
@@ -297,8 +297,8 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// §3 "Leerlingen van een K3-klas toevoegen, wijzigen, verwijderen" (ADR-0035 R14, R15, R26; D8, D9). Resource:
-    /// <see cref="Rapportklas"/>. The klas's leerkrachten only during its schooljaar (R26); directie always (R3). That the
-    /// klas grants K3 at all (D9) is also the service's check, because directie passes this row for any klas.
+    /// <see cref="Rapportklas"/>. The klas's leerkrachten only during its schooljaar (R26); admin always (R3). That the
+    /// klas grants K3 at all (D9) is also the service's check, because admin passes this row for any klas.
     /// </summary>
     public static readonly Matrixrij LeerlingenBeheren = new(
         Beleid.LeerlingenBeheren,
@@ -308,7 +308,7 @@ public static class Rechtenmatrix
     /// <summary>
     /// §3 "Een ontwikkelingsrapport invullen (gradatie, tekst, besluit, tekening) en een AI-herwerking vragen" (ADR-0035
     /// R16, R26). Resource: <see cref="Rapportklas"/>. The klas's K3 leerkrachten only during its schooljaar (R26), and
-    /// afterwards they read (<see cref="OntwikkelingsrapportLezen"/>); directie always (R3). FB-003 applies it to the star,
+    /// afterwards they read (<see cref="OntwikkelingsrapportLezen"/>); admin always (R3). FB-003 applies it to the star,
     /// the text and the besluit; the drawing (FB-005) and the rewrite (FB-004) take the same row.
     /// </summary>
     public static readonly Matrixrij RapportInvullen = new(
@@ -316,25 +316,25 @@ public static class Rechtenmatrix
         "Een ontwikkelingsrapport invullen (gradatie, tekst, besluit, tekening) en een AI-herwerking vragen (ADR-0035 R16, R26)",
         Kolom.LeerkrachtRapportInvullen);
 
-    // --- Resource-free row without directie: the one K3 set (footnote ⁶, ADR-0035 §3.3; FB-002). ---
+    // --- Resource-free row without admin: the one K3 set (footnote ⁶, ADR-0035 §3.3; FB-002). ---
 
     /// <summary>
     /// §3 "De K3-rapportdoelen en de sterrenschaal aanpassen" (ADR-0035 R4, R5, R6, R31; D4). Column
     /// <see cref="Kolom.Rapportsetleerkracht"/>: every K3 leerkracht, on the one set and scale of all of K3, so no resource.
-    /// <b>The one row directie does not pass</b> (<see cref="Matrixrij.ZonderDirectie"/>): the owner ruled that only the K3
-    /// leerkrachten edit the set, and directie views it (R31). Reading the set is every signed-in gebruiker's, like every
+    /// <b>The one row admin does not pass</b> (<see cref="Matrixrij.ZonderAdmin"/>): the owner ruled that only the K3
+    /// leerkrachten edit the set, and admin views it (R31). Reading the set is every signed-in gebruiker's, like every
     /// read that is not pupil data.
     /// </summary>
     public static readonly Matrixrij RapportsetBewerken = new(
         Beleid.RapportsetBewerken,
         "De K3-rapportdoelen en de sterrenschaal aanpassen (ADR-0035 R4, R5, R6, R31; D4)",
         Kolom.Rapportsetleerkracht,
-        ZonderDirectie: true);
+        ZonderAdmin: true);
 
     // --- Resource-based row: personal content (FB-036). ---
 
     /// <summary>
-    /// "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen" (ADR-0043 W2; D3). Its owner, and directie
+    /// "Een eigen woordweb aanpassen en er AI-woorden bij laten voorstellen" (ADR-0043 W2; D3). Its owner, and admin
     /// (R3). Resource: <see cref="Woordwebbron"/>. Keeping a woordweb at all needs no row (D2): the route that adds the
     /// first word creates the caller's own web, never another's, and reading every web needs only a session.
     /// </summary>
@@ -363,12 +363,12 @@ public static class Rechtenmatrix
 
     /// <summary>
     /// "Een AI-activiteitvoorstel zien en beslissen" (FB-025, ADR-0056 A3): its asker, while she may still make an own
-    /// activiteit at that leeftijd, and directie, who sees and decides every leerkracht's proposals (R3). Resource:
+    /// activiteit at that leeftijd, and admin, who sees and decides every leerkracht's proposals (R3). Resource:
     /// <see cref="Activiteitvoorstelbron"/>. Asking is <see cref="EigenActiviteitMaken"/>.
     /// </summary>
     public static readonly Matrixrij ActiviteitvoorstelBeslissen = new(
         Beleid.ActiviteitvoorstelBeslissen,
-        "Een AI-activiteitvoorstel zien en beslissen: wie het vroeg, en de directie (ADR-0056 A3)",
+        "Een AI-activiteitvoorstel zien en beslissen: wie het vroeg, en een admin (ADR-0056 A3)",
         Kolom.AanvragerVanVoorstel);
 
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
@@ -410,10 +410,10 @@ public static class Rechtenmatrix
     /// <summary>
     /// Whether <paramref name="rechten"/> may do what <paramref name="rij"/> describes, on <paramref name="bron"/>.
     /// <list type="number">
-    /// <item><b>Directie passes every row but one</b>, with or without a resource (R3). The exception is a row marked
-    /// <see cref="Matrixrij.ZonderDirectie"/>, <see cref="RapportsetBewerken"/> only (ADR-0035 R31), which <b>no one
-    /// holding directie passes, not even as a leerkracht of a K3 klas</b> (owner, 2026-09-15, "Nooit wie directie heeft").
-    /// Directie maintains the klastoewijzingen, so letting the union rule apply here would make R31 a switch directie
+    /// <item><b>Admin passes every row but one</b>, with or without a resource (R3). The exception is a row marked
+    /// <see cref="Matrixrij.ZonderAdmin"/>, <see cref="RapportsetBewerken"/> only (ADR-0035 R31), which <b>no one
+    /// holding admin passes, not even as a leerkracht of a K3 klas</b> (owner, 2026-09-15, "Nooit wie admin heeft").
+    /// Admin maintains the klastoewijzingen, so letting the union rule apply here would make R31 a switch admin
     /// could flip for itself. <i>The first version applied the union rule; the owner ruled it out.</i></item>
     /// <item>Otherwise the gebruiker holds the union of every column that applies (§3): any one column that matches is
     /// enough, and a column that does not match never takes away what another grants.</item>
@@ -426,10 +426,10 @@ public static class Rechtenmatrix
         ArgumentNullException.ThrowIfNull(rechten);
         ArgumentNullException.ThrowIfNull(rij);
 
-        if (rechten.IsDirectie)
+        if (rechten.IsAdmin)
         {
-            // R31, as the owner read it: a ZonderDirectie row is closed to directie outright, whatever else it holds.
-            return !rij.ZonderDirectie;
+            // R31, as the owner read it: a ZonderAdmin row is closed to admin outright, whatever else it holds.
+            return !rij.ZonderAdmin;
         }
 
         var kolommen = rij.Kolommen;
@@ -574,23 +574,23 @@ public static class Rechtenmatrix
 }
 
 /// <summary>
-/// One row of the ADR-0030 §3 matrix: its policy name, the action as §3 words it, and the columns (besides directie,
+/// One row of the ADR-0030 §3 matrix: its policy name, the action as §3 words it, and the columns (besides admin,
 /// which every row but one grants) that allow it.
 /// </summary>
-/// <param name="ZonderDirectie">
-/// True for the one row whose "Directie" cell is "–" (ADR-0030 §3 footnote ⁶, ADR-0035 R31): directie then passes only
-/// through the row's own columns. False everywhere else, where directie passes whatever the columns say (R3).
+/// <param name="ZonderAdmin">
+/// True for the one row whose "Admin" cell is "–" (ADR-0030 §3 footnote ⁶, ADR-0035 R31): admin then passes only
+/// through the row's own columns. False everywhere else, where admin passes whatever the columns say (R3).
 /// </param>
-public sealed record Matrixrij(string Beleid, string Actie, Kolom Kolommen, bool ZonderDirectie = false);
+public sealed record Matrixrij(string Beleid, string Actie, Kolom Kolommen, bool ZonderAdmin = false);
 
 /// <summary>
-/// The columns of ADR-0030 §3 other than "Directie", which every row but <see cref="Rechtenmatrix.RapportsetBewerken"/>
+/// The columns of ADR-0030 §3 other than "Admin", which every row but <see cref="Rechtenmatrix.RapportsetBewerken"/>
 /// grants (R3, R31), and "Ander", which grants no row that is enforced today.
 /// </summary>
 [Flags]
 public enum Kolom
 {
-    /// <summary>Directie only.</summary>
+    /// <summary>Admin only.</summary>
     Geen = 0,
 
     /// <summary>"TB": holds themabeheer. Needs no resource.</summary>
@@ -652,7 +652,7 @@ public enum Kolom
     LeerkrachtEigenLezen = 4096,
 
     /// <summary>
-    /// "Leerlingzorg" (ADR-0035 R18, §3.3, §3.4; FB-008): the right directie gave, on any <see cref="Rapportklas"/>, in
+    /// "Leerlingzorg" (ADR-0035 R18, §3.3, §3.4; FB-008): the right admin gave, on any <see cref="Rapportklas"/>, in
     /// every schooljaar. On the report's read row only.
     /// </summary>
     Leerlingzorg = 8192,

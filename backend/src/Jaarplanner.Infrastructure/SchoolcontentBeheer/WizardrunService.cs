@@ -184,7 +184,7 @@ public sealed class WizardrunService : IWizardrunService
 
         // The delete takes the subthema's subdoelen and activiteiten along (SubthemaConfiguration). I25 lets the wizard
         // delete what its run created "and nothing else", so one that someone else put under it, on the ordinary routes,
-        // stops the delete. Directie or a hoofdleerkracht of that leeftijd can still delete it there.
+        // stops the delete. Admin or a hoofdleerkracht of that leeftijd can still delete it there.
         var onder = await OnderliggendAsync(subthemaId, cancellationToken);
         if (HeeftAndermansInhoud(run, onder))
         {
@@ -391,7 +391,7 @@ public sealed class WizardrunService : IWizardrunService
         }
     }
 
-    /// <summary>Whether the caller holds R19's goal-link right at <paramref name="leeftijd"/>: directie or its hoofdleerkracht.</summary>
+    /// <summary>Whether the caller holds R19's goal-link right at <paramref name="leeftijd"/>: admin or its hoofdleerkracht.</summary>
     private async Task<bool> MagDoelenKoppelenAsync(Guid? gebruikerId, string leeftijd, CancellationToken cancellationToken)
     {
         var rechten = gebruikerId is { } id

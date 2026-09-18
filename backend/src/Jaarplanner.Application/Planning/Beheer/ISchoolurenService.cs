@@ -1,7 +1,7 @@
 namespace Jaarplanner.Application.Planning.Beheer;
 
 /// <summary>
-/// The school's hours per weekday (FB-023, ADR-0038): read by everyone who plans, replaced by directie.
+/// The school's hours per weekday (FB-023, ADR-0038): read by everyone who plans, replaced by admin.
 /// <para>
 /// <b>One set for the school</b> (owner, 2026-09-15): not per klas and not per schooljaar, so there is no id in the
 /// route and no scope in the body.
@@ -33,7 +33,7 @@ public sealed record SchooldagurenInvoer(
     TimeOnly? MiddagpauzeBegin = null,
     TimeOnly? MiddagpauzeEinde = null);
 
-/// <summary>What directie sends: every weekday that should have hours.</summary>
+/// <summary>What admin sends: every weekday that should have hours.</summary>
 public sealed record SchoolurenInvoer(IReadOnlyList<SchooldagurenInvoer>? Dagen);
 
 /// <summary>The hours of one weekday as the screens read them.</summary>

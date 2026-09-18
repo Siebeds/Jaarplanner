@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Builds the API from this checkout, starts it on the operator's machine against the demo database, signs in as the
-    demo's directie with the development sign-in, and creates what seed-demo.data.json describes: klassen, thema's with
+    demo's admin with the development sign-in, and creates what seed-demo.data.json describes: klassen, thema's with
     their themadoelen and subthema's, the subthema's activiteiten, and per klas algemene fiches and hoeken. All content
     goes through the API, so every domain rule applies. The only direct database write is the safeguard's delete
     described below.
@@ -61,7 +61,7 @@ $keyRoles = @('Key Vault Crypto User', 'Key Vault Crypto Officer', 'Key Vault Ad
 
 $pgNames = @('PGHOST', 'PGUSER', 'PGPASSWORD', 'PGDATABASE', 'PGSSLMODE', 'PGSSLROOTCERT')
 $apiEnvNames = @('ASPNETCORE_ENVIRONMENT', 'ASPNETCORE_URLS', 'ConnectionStrings__Postgres',
-    'DataProtection__KeyVaultSleutel', 'Authenticatie__Modus', 'Authenticatie__EersteDirectie', 'Demo__Seed',
+    'DataProtection__KeyVaultSleutel', 'Authenticatie__Modus', 'Authenticatie__EersteAdmin', 'Demo__Seed',
     'AZURE_TOKEN_CREDENTIALS')
 $previousEnv = @{}
 foreach ($name in ($pgNames + $apiEnvNames)) { $previousEnv[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
@@ -214,10 +214,15 @@ $apiDll = Get-ChildItem (Join-Path $apiProject 'bin/Debug') -Recurse -Filter 'Ja
 # No '|' in these queries: az is a .cmd file, and cmd.exe would read a pipe in an argument as its own.
 $keyUri = Invoke-Az webapp config appsettings list --resource-group $ResourceGroup --name $AppName `
     --query "[?name=='DataProtection__KeyVaultSleutel'].value" -o tsv
-$directieEmail = Invoke-Az webapp config appsettings list --resource-group $ResourceGroup --name $AppName `
-    --query "[?name=='Authenticatie__EersteDirectie'].value" -o tsv
-if ([string]::IsNullOrWhiteSpace($keyUri) -or [string]::IsNullOrWhiteSpace($directieEmail)) {
-    throw "The web app $AppName has no DataProtection__KeyVaultSleutel or Authenticatie__EersteDirectie setting."
+$adminEmail = Invoke-Az webapp config appsettings list --resource-group $ResourceGroup --name $AppName `
+    --query "[?name=='Authenticatie__EersteAdmin'].value" -o tsv
+if ([string]::IsNullOrWhiteSpace($adminEmail)) {
+    # The setting's name before the role was called admin (FB-072), on a web app not redeployed since.
+    $adminEmail = Invoke-Az webapp config appsettings list --resource-group $ResourceGroup --name $AppName `
+        --query "[?name=='Authenticatie__EersteDirectie'].value" -o tsv
+}
+if ([string]::IsNullOrWhiteSpace($keyUri) -or [string]::IsNullOrWhiteSpace($adminEmail)) {
+    throw "The web app $AppName has no DataProtection__KeyVaultSleutel or Authenticatie__EersteAdmin setting."
 }
 $keyScope = (Invoke-Az keyvault show --name $VaultName --query id -o tsv) + '/keys/' + ($keyUri.TrimEnd('/') -split '/')[-1]
 $operator = Invoke-Az ad signed-in-user show --query id -o tsv
@@ -259,12 +264,12 @@ try {
         throw "The demo database holds migration(s) $($unknown -join ', ') that this checkout does not. Seed from the commit that is deployed."
     }
 
-    $escapedEmail = $directieEmail.Trim().ToLowerInvariant().Replace("'", "''")
+    $escapedEmail = $adminEmail.Trim().ToLowerInvariant().Replace("'", "''")
     # @(): PowerShell unrolls a one-element array returned from a function, and [0] of the string that is left would
     # be its first character.
-    $directieIds = @(Invoke-Psql "select ""Id"" from gebruikers where ""Email"" = '$escapedEmail' and ""IsDirectie"";")
-    if ($directieIds.Count -ne 1) { throw "Expected one directie $directieEmail in the demo database, found $($directieIds.Count)." }
-    $directieId = $directieIds[0]
+    $adminIds = @(Invoke-Psql "select ""Id"" from gebruikers where ""Email"" = '$escapedEmail' and ""IsAdmin"";")
+    if ($adminIds.Count -ne 1) { throw "Expected one admin $adminEmail in the demo database, found $($adminIds.Count)." }
+    $adminId = $adminIds[0]
 
     $keysBefore = @(Get-KeyRows)
     Write-Host "Data Protection keys before the run: $($keysBefore.Count)."
@@ -297,8 +302,8 @@ try {
     $env:AZURE_TOKEN_CREDENTIALS = 'AzureCliCredential'
     $env:Authenticatie__Modus = 'Ontwikkeling'
     # The bootstrap writes only into an empty gebruikers table, which the check above rules out; pinning the demo's
-    # own address means that even then it could only create the demo's directie.
-    $env:Authenticatie__EersteDirectie = $directieEmail
+    # own address means that even then it could only create the demo's admin.
+    $env:Authenticatie__EersteAdmin = $adminEmail
     $env:Demo__Seed = 'false'
     try {
         $api = Start-Process dotnet -ArgumentList "`"$($apiDll.FullName)`"" -WorkingDirectory $apiProject -PassThru `
@@ -321,11 +326,11 @@ try {
     }
     Write-Host "API ready on $baseUrl."
 
-    # Signs in as the existing directie and lands on /health; the cookie stays in the session.
-    Invoke-WebRequest ("$baseUrl/api/aanmelden/ontwikkeling/$directieId" + '?terugNaar=%2Fhealth') `
+    # Signs in as the existing admin and lands on /health; the cookie stays in the session.
+    Invoke-WebRequest ("$baseUrl/api/aanmelden/ontwikkeling/$adminId" + '?terugNaar=%2Fhealth') `
         -WebSession $script:session -UseBasicParsing | Out-Null
     $ik = Invoke-Api GET '/api/ik'
-    if (-not $ik.isDirectie) { throw "Signed in as $($ik.email), who is not directie." }
+    if (-not $ik.isAdmin) { throw "Signed in as $($ik.email), who is not admin." }
     Write-Host "Signed in as $($ik.naam)."
 
     # --- Seed ---------------------------------------------------------------------------------------------------------

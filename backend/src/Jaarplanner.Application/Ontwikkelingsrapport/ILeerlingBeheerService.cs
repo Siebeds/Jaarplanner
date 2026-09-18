@@ -5,7 +5,7 @@ namespace Jaarplanner.Application.Ontwikkelingsrapport;
 /// (Art. VI.7): a voornaam and an achternaam, typed by hand one child at a time (R14, R15), and nothing else.
 /// <para>
 /// <b>Who may call what is the matrix's</b> (<c>OntwikkelingsrapportLezen</c>, <c>LeerlingenBeheren</c>), applied on the
-/// routes. What this service adds is the rule that holds for directie too: only a klas that grants K3 can have
+/// routes. What this service adds is the rule that holds for admin too: only a klas that grants K3 can have
 /// leerlingen (default D9).
 /// </para>
 /// <para>

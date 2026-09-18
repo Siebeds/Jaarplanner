@@ -260,7 +260,7 @@ export interface MinimumdoelImportDiff {
   /** True when applying writes anything. Server-computed, so there is one definition (E1-22). */
   schrijftIets: boolean;
   overgeslagen: boolean;
-  /** Dutch, for directie: rendered as given (Art. II.3 as ratified 2026-07-30). */
+  /** Dutch, for admin: rendered as given (Art. II.3 as ratified 2026-07-30). */
   opmerkingen: string[];
   isLeeg: boolean;
   vereistReview: boolean;

@@ -7,8 +7,8 @@ namespace Jaarplanner.Api.Infrastructure;
 /// ADR-0011 §2, ADR-0022). Every Op.stap import endpoint names <see cref="Beleid"/> in one
 /// <c>[Authorize(Policy = …)]</c> attribute, so the question "who may (re-)import the curriculum?" has one answer.
 /// <para>
-/// <b>Since E6-02 the answer is directie, and only directie</b> (ADR-0030 §3, Op.stap row, R3; the <c>Beheerder</c>
-/// ADR-0022 expected is the directie right since R16). The policy is no longer registered here: it is the
+/// <b>Since E6-02 the answer is admin, and only admin</b> (ADR-0030 §3, Op.stap row, R3; the <c>Beheerder</c>
+/// ADR-0022 expected is the admin right since R16). The policy is no longer registered here: it is the
 /// <see cref="Rechtenmatrix.Curriculumbeheer"/> row of the matrix, declared with every other row in
 /// <see cref="Rechtenmatrix"/> and registered by <c>Autorisatie.Rechtenbeleid</c>, which also makes it require a
 /// signed-in person. This constant stays because it is the name the endpoints and their tests already use.

@@ -1,15 +1,15 @@
 namespace Jaarplanner.Application.Toegang;
 
 /// <summary>
-/// Directie's beheer of gebruikers and their rights (E6-04, FA FR-12.2, Art. VI.1, ADR-0030 §3 row "Gebruikers,
-/// klassen en schooljaren beheren …", which is directie only). It invites a gebruiker by their Microsoft sign-in name
-/// (ADR-0031 decision 3), gives and takes themabeheer and the directie right (R4, R16), links leerkrachten to klassen
+/// Admin's beheer of gebruikers and their rights (E6-04, FA FR-12.2, Art. VI.1, ADR-0030 §3 row "Gebruikers,
+/// klassen en schooljaren beheren …", which is admin only). It invites a gebruiker by their Microsoft sign-in name
+/// (ADR-0031 decision 3), gives and takes themabeheer and the admin right (R4, R16), links leerkrachten to klassen
 /// (R15), appoints hoofdleerkrachten per (schooljaar, jaarfase) (R5, I20) and removes a gebruiker (I17).
 /// <para>
 /// <b>Who may call it is the Api's business</b>: every route over this service carries the <c>Beheer</c> policy. The
-/// service itself enforces the one rule that is about the data rather than the caller: <b>the last directie who can
+/// service itself enforces the one rule that is about the data rather than the caller: <b>the last admin who can
 /// sign in cannot be demoted or removed</b> (ADR-0031 decision 7, <see cref="GebruikerbeheerOpties"/>), with the count
-/// of the others read under a lock on the directie rows, so two directieleden demoting each other at the same moment
+/// of the others read under a lock on the admin rows, so two admins demoting each other at the same moment
 /// cannot both succeed.
 /// </para>
 /// <para>
@@ -33,12 +33,12 @@ public interface IGebruikerBeheerService
     /// <exception cref="GebruikerBestaatAlFout">A gebruiker with this sign-in name exists already.</exception>
     Task<GebruikerBeheerWeergave> NodigUitAsync(GebruikerUitnodiging uitnodiging, CancellationToken cancellationToken = default);
 
-    /// <summary>Gives the directie right (R16). Idempotent.</summary>
-    Task<GebruikerBeheerWeergave> GeefDirectierechtAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+    /// <summary>Gives the admin right (R16). Idempotent.</summary>
+    Task<GebruikerBeheerWeergave> GeefAdminrechtAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
 
-    /// <summary>Takes the directie right away (R16). Idempotent for someone who does not hold it.</summary>
-    /// <exception cref="LaatsteDirectieFout">This is the last gebruiker with the directie right.</exception>
-    Task<GebruikerBeheerWeergave> NeemDirectierechtAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
+    /// <summary>Takes the admin right away (R16). Idempotent for someone who does not hold it.</summary>
+    /// <exception cref="LaatsteAdminFout">This is the last gebruiker with the admin right.</exception>
+    Task<GebruikerBeheerWeergave> NeemAdminrechtAfAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>Gives themabeheer (R4). Idempotent.</summary>
     Task<GebruikerBeheerWeergave> GeefThemabeheerAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
@@ -54,10 +54,10 @@ public interface IGebruikerBeheerService
 
     /// <summary>
     /// Removes a gebruiker. Their klastoewijzingen and appointments go with them (cascade); the activiteiten they made
-    /// stay, with no maker, and so become purely shared (ADR-0030 I17). A directie may remove themselves while another
-    /// directie remains.
+    /// stay, with no maker, and so become purely shared (ADR-0030 I17). An admin may remove themselves while another
+    /// admin remains.
     /// </summary>
-    /// <exception cref="LaatsteDirectieFout">This is the last gebruiker with the directie right.</exception>
+    /// <exception cref="LaatsteAdminFout">This is the last gebruiker with the admin right.</exception>
     Task VerwijderAsync(Guid gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>Makes the gebruiker a leerkracht of the klas (R15). Idempotent: a pair exists at most once.</summary>
@@ -93,11 +93,11 @@ public sealed record GebruikersOverzicht(
     IReadOnlyList<GebruikerBeheerWeergave> Gebruikers,
     IReadOnlyList<Guid> VoorbijeSchooljaarIds);
 
-/// <summary>One gebruiker, with what directie needs to see to maintain their rights.</summary>
+/// <summary>One gebruiker, with what admin needs to see to maintain their rights.</summary>
 /// <param name="Id">The gebruiker.</param>
 /// <param name="Naam">The name shown in the app.</param>
 /// <param name="Email">The Microsoft sign-in name (UPN) they were invited under, normalised.</param>
-/// <param name="IsDirectie">Holds the directie right.</param>
+/// <param name="IsAdmin">Holds the admin right.</param>
 /// <param name="HeeftThemabeheer">Holds themabeheer.</param>
 /// <param name="HeeftLeerlingzorg">Holds Leerlingzorg (FB-008).</param>
 /// <param name="IsAangemeld">
@@ -110,7 +110,7 @@ public sealed record GebruikerBeheerWeergave(
     Guid Id,
     string Naam,
     string Email,
-    bool IsDirectie,
+    bool IsAdmin,
     bool HeeftThemabeheer,
     bool HeeftLeerlingzorg,
     bool IsAangemeld,
@@ -141,36 +141,36 @@ public sealed record KlastoewijzingBeheerWeergave(
 public sealed record AanstellingBeheerWeergave(Guid SchooljaarId, string Jaarfase, bool TeltVoorGedeeldeInhoud);
 
 /// <summary>
-/// How the last-directie guard (ADR-0031 decision 7) decides who else can still administer the school.
+/// How the last-admin guard (ADR-0031 decision 7) decides who else can still administer the school.
 /// <para>
-/// <b>The guard counts only another directie who can sign in.</b> Under Entra that is an invitation a first login has
+/// <b>The guard counts only another admin who can sign in.</b> Under Entra that is an invitation a first login has
 /// bound: an unbound one may never be used (a mistyped sign-in name, someone who never comes), and a school whose only
-/// other directie is such an invitation could lose its last working account. So <see cref="OngekoppeldeDirectieKanAanmelden"/>
+/// other admin is such an invitation could lose its last working account. So <see cref="OngekoppeldeAdminKanAanmelden"/>
 /// is <c>false</c> by default, and that default is the production rule.
 /// </para>
 /// <para>
 /// <b>The one exception is the development sign-in</b> (<c>Authenticatie:Modus = Ontwikkeling</c>, which the Api refuses
 /// to start with outside Development). It signs a developer in by picking any gebruiker and binds nobody, so there every
-/// directie can sign in and none is ever bound; counting only bound ones would make every directie undemotable. The Api
+/// admin can sign in and none is ever bound; counting only bound ones would make every admin undemotable. The Api
 /// sets this flag from the mode, and nothing else sets it.
 /// </para>
 /// </summary>
 public sealed class GebruikerbeheerOpties
 {
-    /// <summary>Whether an unbound directie invitation counts as a directie who can sign in. Development sign-in only.</summary>
-    public bool OngekoppeldeDirectieKanAanmelden { get; set; }
+    /// <summary>Whether an unbound admin invitation counts as an admin who can sign in. Development sign-in only.</summary>
+    public bool OngekoppeldeAdminKanAanmelden { get; set; }
 }
 
 /// <summary><c>POST /api/gebruikers</c>: who to invite.</summary>
 /// <param name="Email">Their Microsoft sign-in name (UPN). Often not their mailbox address (ADR-0031 decision 3).</param>
 /// <param name="Naam">The name to show until their first login supplies one; blank falls back to the sign-in name.</param>
-/// <param name="IsDirectie">Give the directie right straight away.</param>
+/// <param name="IsAdmin">Give the admin right straight away.</param>
 /// <param name="HeeftThemabeheer">Give themabeheer straight away.</param>
 /// <param name="HeeftLeerlingzorg">Give Leerlingzorg straight away (FB-008).</param>
 public sealed record GebruikerUitnodiging(
     string? Email,
     string? Naam,
-    bool IsDirectie = false,
+    bool IsAdmin = false,
     bool HeeftThemabeheer = false,
     bool HeeftLeerlingzorg = false);
 
@@ -183,7 +183,7 @@ public sealed class GebruikerbeheerNietGevondenFout : Exception
     }
 }
 
-/// <summary>The request itself is wrong (400). The message is Dutch, for directie (Art. II.3).</summary>
+/// <summary>The request itself is wrong (400). The message is Dutch, for admin (Art. II.3).</summary>
 public sealed class GebruikerbeheerValidatieFout : Exception
 {
     public GebruikerbeheerValidatieFout(string message)
@@ -193,7 +193,7 @@ public sealed class GebruikerbeheerValidatieFout : Exception
 }
 
 /// <summary>
-/// The request is well-formed but the current state refuses it (409). The message is Dutch, for directie, who can act
+/// The request is well-formed but the current state refuses it (409). The message is Dutch, for admin, who can act
 /// on it (Art. II.3 as amended 2026-07-30). Nothing was changed.
 /// </summary>
 public abstract class GebruikerbeheerConflictFout : Exception
@@ -213,10 +213,10 @@ public sealed class GebruikerBestaatAlFout : GebruikerbeheerConflictFout
     }
 }
 
-/// <summary>The change would leave the school without anyone holding the directie right (ADR-0031 decision 7).</summary>
-public sealed class LaatsteDirectieFout : GebruikerbeheerConflictFout
+/// <summary>The change would leave the school without anyone holding the admin right (ADR-0031 decision 7).</summary>
+public sealed class LaatsteAdminFout : GebruikerbeheerConflictFout
 {
-    public LaatsteDirectieFout(string message)
+    public LaatsteAdminFout(string message)
         : base(message)
     {
     }

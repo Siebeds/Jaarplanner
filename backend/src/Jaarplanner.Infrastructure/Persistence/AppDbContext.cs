@@ -157,7 +157,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     public DbSet<AlgemeneFichemoment> AlgemeneFichemomenten => Set<AlgemeneFichemoment>();
 
     /// <summary>
-    /// The staff who may log in (E6-01, ADR-0030 R2): invited by directie, bound to an Entra account on first login.
+    /// The staff who may log in (E6-01, ADR-0030 R2): invited by admin, bound to an Entra account on first login.
     /// Staff data only (Art. VI.2), with its register entry owed by E7-06.
     /// </summary>
     public DbSet<Gebruiker> Gebruikers => Set<Gebruiker>();
@@ -176,7 +176,7 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>
     /// Every gebruiker's own woordweb per subthema, the brainstorm of step 3 (FB-036, ADR-0043): personal content, read by
-    /// everyone, edited by its owner and directie. Never read by the dekking.
+    /// everyone, edited by its owner and admin. Never read by the dekking.
     /// </summary>
     public DbSet<Woordweb> Woordwebs => Set<Woordweb>();
 

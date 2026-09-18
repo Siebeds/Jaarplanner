@@ -3,7 +3,7 @@ using Jaarplanner.Domain.Planning;
 namespace Jaarplanner.UnitTests.Planning;
 
 /// <summary>
-/// The rules about one weekday's school hours (FB-023, ADR-0038). Every refusal is a sentence directie reads, so each
+/// The rules about one weekday's school hours (FB-023, ADR-0038). Every refusal is a sentence admin reads, so each
 /// one is checked by its value and must name the weekday: the form holds five days and has to say which is wrong.
 /// </summary>
 public sealed class SchooldagurenTests

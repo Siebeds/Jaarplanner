@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { t } from "../../i18n";
 import type { Rapport, Rapportregel } from "./rapporten";
 import type { Gradatie } from "./rapportset";
@@ -11,7 +11,7 @@ import { RapportScherm } from "./RapportScherm";
 
 /**
  * One child's ontwikkelingsrapport per moment (FB-003), as each person meets it: the klas's K3 leerkracht during and
- * after the schooljaar, directie, and a leerkracht of another klas who came by the address. Every name here is
+ * after the schooljaar, admin, and a leerkracht of another klas who came by the address. Every name here is
  * invented (Art. VI.7: no real child's name in the repo).
  */
 
@@ -297,8 +297,8 @@ describe("RapportScherm, de tekening van het kind", () => {
     expect(vak.queryByText(t("ontwikkelingsrapport.tekeningUitleg", { mb: 20 }))).not.toBeInTheDocument();
   });
 
-  it("directie wijzigt een tekening ook na het schooljaar", async () => {
-    toon(DIRECTIE, { begin: MET_TEKENING });
+  it("admin wijzigt een tekening ook na het schooljaar", async () => {
+    toon(ADMIN, { begin: MET_TEKENING });
 
     const vak = within(await screen.findByRole("region", { name: t("ontwikkelingsrapport.tekening") }));
     expect(vak.getByLabelText(t("ontwikkelingsrapport.tekeningVervangen"))).toBeInTheDocument();
@@ -439,8 +439,8 @@ describe("RapportScherm, het ontwikkelingsrapport van een kind", () => {
     expect(verzoeken.every((verzoek) => verzoek.methode === "GET")).toBe(true);
   });
 
-  it("laat de directie invullen, zonder de zin over een voorbij schooljaar", async () => {
-    toon(DIRECTIE);
+  it("laat de admin invullen, zonder de zin over een voorbij schooljaar", async () => {
+    toon(ADMIN);
     await screen.findByRole("heading", { name: LUISTEREN.titel });
 
     expect(within(sterren(LUISTEREN.titel)).getAllByRole("radio")).toHaveLength(3);
@@ -650,8 +650,8 @@ describe("RapportScherm, een tekst laten herwerken door AI", () => {
     expect(screen.queryByRole("button", { name: /herwerken/i })).not.toBeInTheDocument();
   });
 
-  it("directie mag een tekst laten herwerken", async () => {
-    toon(DIRECTIE, { begin: MET_TEKST });
+  it("admin mag een tekst laten herwerken", async () => {
+    toon(ADMIN, { begin: MET_TEKST });
     await screen.findByRole("heading", { name: LUISTEREN.titel });
 
     expect(herschrijfknop(LUISTEREN.titel)).toBeInTheDocument();

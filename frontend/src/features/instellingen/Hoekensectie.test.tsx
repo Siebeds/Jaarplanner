@@ -9,7 +9,7 @@ import type { HoekWeergave } from "../hoeken/gegevens";
 import { Hoekensectie } from "./Hoekensectie";
 
 /**
- * A room's corners are that klas's planning (E6-02, ADR-0030 §3, R7): its own leerkrachten and directie change them,
+ * A room's corners are that klas's planning (E6-02, ADR-0030 §3, R7): its own leerkrachten and admin change them,
  * anyone else reads them. The picker picks the first klas, so these tests are about K3 groen.
  */
 
@@ -46,7 +46,7 @@ describe("Hoekensectie", () => {
   });
 
   // Fix round 1, F3: a failed /api/ik proves nothing about rights. No control (fail closed), and no sentence saying the
-  // gebruiker may only read: that would be told to a directie too.
+  // gebruiker may only read: that would be told to an admin too.
   it("zegt niets over rechten als /api/ik niet antwoordt, en toont geen knoppen", async () => {
     vi.stubGlobal(
       "fetch",

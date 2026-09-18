@@ -206,14 +206,14 @@ public sealed class KindtekeningEndpointsTests : IAsyncLifetime
         using var anoniem = _factory.MaakAnoniemeClient();
         Assert.Equal(HttpStatusCode.Unauthorized, await RechtenTestOpzet.StatusAsync(anoniem.GetAsync(Tekening(o.Kind, 1))));
 
-        // Still the leerkracht's own drawing, and directie sees and replaces it.
-        using var directie = _opzet.Directie();
-        using (var gezien = await directie.GetAsync(Tekening(o.Kind, 1)))
+        // Still the leerkracht's own drawing, and admin sees and replaces it.
+        using var admin = _opzet.Admin();
+        using (var gezien = await admin.GetAsync(Tekening(o.Kind, 1)))
         {
             Assert.Equal("image/jpeg", gezien.Content.Headers.ContentType?.MediaType);
         }
 
-        await BewaarAsync(directie, o.Kind, 1, Testbeelden.Png(), "directie.png", "image/png");
+        await BewaarAsync(admin, o.Kind, 1, Testbeelden.Png(), "admin.png", "image/png");
         using var nu = await lk.GetAsync(Tekening(o.Kind, 1));
         Assert.Equal("image/png", nu.Content.Headers.ContentType?.MediaType);
     }
@@ -249,10 +249,10 @@ public sealed class KindtekeningEndpointsTests : IAsyncLifetime
             await context.SaveChangesAsync();
         }
 
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var staf = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Staf", achternaam = "Voorbeeld" }), HttpStatusCode.Created);
-        await BewaarAsync(directie, staf, 2, Testbeelden.Jpeg(), "tekening.jpg", "image/jpeg");
+            admin.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Staf", achternaam = "Voorbeeld" }), HttpStatusCode.Created);
+        await BewaarAsync(admin, staf, 2, Testbeelden.Jpeg(), "tekening.jpg", "image/jpeg");
 
         using var lk = _opzet.Als(await _opzet.GebruikerAsync(klassen: [klas.Id]));
         using (var gezien = await lk.GetAsync(Tekening(staf, 2)))
@@ -264,7 +264,7 @@ public sealed class KindtekeningEndpointsTests : IAsyncLifetime
         await Verwacht403Async(Upload(lk, staf, 2, Testbeelden.Png(), "nieuw.png", "image/png"));
         await Verwacht403Async(lk.DeleteAsync(Tekening(staf, 2)));
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync(Tekening(staf, 2))));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync(Tekening(staf, 2))));
         Assert.Null((await LeesRapportAsync(lk, staf, 2)).Tekening);
     }
 
@@ -321,9 +321,9 @@ public sealed class KindtekeningEndpointsTests : IAsyncLifetime
         var school = await _opzet.SchoolAsync();
         var leerkrachtId = await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw]);
 
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var kind = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.Created);
+            admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.Created);
 
         return new Opzet(school, leerkrachtId, kind);
     }

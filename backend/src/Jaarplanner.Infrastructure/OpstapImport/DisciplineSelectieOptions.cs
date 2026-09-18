@@ -16,7 +16,7 @@ public enum DisciplineSelectieModus
 /// <summary>
 /// Options that make the imported discipline set <b>data-driven</b> (Art. XIV / VIII): bound from the
 /// configuration section <c>Opstap:DisciplineSelectie</c> (appsettings, environment, user-secrets,
-/// Key Vault — any standard .NET config source), so the directie can change which disciplines are in
+/// Key Vault — any standard .NET config source), so the admin can change which disciplines are in
 /// scope <b>without a code change</b>.
 /// <para>
 /// <b>Default is an overridable placeholder, not a baked-in decision.</b> When the section is absent,

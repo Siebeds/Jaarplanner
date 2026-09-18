@@ -178,29 +178,29 @@ public sealed class ToegangServiceTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task De_eerste_directie_komt_er_alleen_in_een_lege_tabel()
+    public async Task De_eerste_admin_komt_er_alleen_in_een_lege_tabel()
     {
-        var eerste = await Dienst().ZorgVoorEersteDirectieAsync("directie@school.be");
-        var tweede = await Dienst().ZorgVoorEersteDirectieAsync("iemand.anders@school.be");
+        var eerste = await Dienst().ZorgVoorEersteAdminAsync("admin@school.be");
+        var tweede = await Dienst().ZorgVoorEersteAdminAsync("iemand.anders@school.be");
 
         Assert.True(eerste);
         Assert.False(tweede);
         var gebruikers = await Dienst().HaalGebruikersOpAsync();
-        var directie = Assert.Single(gebruikers);
-        Assert.True(directie.IsDirectie);
-        Assert.Equal("directie@school.be", directie.Email);
+        var admin = Assert.Single(gebruikers);
+        Assert.True(admin.IsAdmin);
+        Assert.Equal("admin@school.be", admin.Email);
     }
 
     [PostgresFact]
-    public async Task Zonder_directie_maar_met_andere_gebruikers_gaat_de_opstartdeur_niet_opnieuw_open()
+    public async Task Zonder_admin_maar_met_andere_gebruikers_gaat_de_opstartdeur_niet_opnieuw_open()
     {
-        // The last directie was removed and only a leerkracht remains: configuration must not mint a new directie.
+        // The last admin was removed and only a leerkracht remains: configuration must not mint a new admin.
         await NodigUitAsync("leerkracht@school.be");
 
-        var aangemaakt = await Dienst().ZorgVoorEersteDirectieAsync("directie@school.be");
+        var aangemaakt = await Dienst().ZorgVoorEersteAdminAsync("admin@school.be");
 
         Assert.False(aangemaakt);
-        Assert.DoesNotContain(await Dienst().HaalGebruikersOpAsync(), g => g.IsDirectie);
+        Assert.DoesNotContain(await Dienst().HaalGebruikersOpAsync(), g => g.IsAdmin);
     }
 
     private ToegangService Dienst() => new(_db.MaakContext());
@@ -260,7 +260,7 @@ public sealed class ToegangServiceTests : IAsyncLifetime
     private async Task<Gebruiker> NodigUitAsync(string email)
     {
         await using var context = _db.MaakContext();
-        var gebruiker = new Gebruiker(email, naam: string.Empty, isDirectie: false);
+        var gebruiker = new Gebruiker(email, naam: string.Empty, isAdmin: false);
         context.Gebruikers.Add(gebruiker);
         await context.SaveChangesAsync();
         return gebruiker;
