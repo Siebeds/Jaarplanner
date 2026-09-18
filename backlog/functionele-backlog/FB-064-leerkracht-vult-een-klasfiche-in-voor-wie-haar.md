@@ -28,8 +28,8 @@ fase 1.
 
 ## Gewenst gedrag
 
-- Elke klas heeft per schooljaar een klasfiche met rubrieken: dagritme, klasafspraken en rituelen, materiaal (waar staat
-  wat), praktisch (turnen, speelplaatsbeurt, vaste momenten), en een vrije rubriek.
+- Elke klas heeft een klasfiche (een klas hoort al bij één schooljaar) met rubrieken: dagritme, klasafspraken en
+  rituelen, materiaal (waar staat wat), praktisch (turnen, speelplaatsbeurt, vaste momenten), en een vrije rubriek.
 - De leerkrachten van de klas en directie bewerken ze. Een vervanger leest ze tijdens de vervanging, maar wijzigt niets
   (FB-063, ADR-0057).
 - Wie de klas mag inkijken (ADR-0040), leest ze.
@@ -61,10 +61,10 @@ fase 1.
 ## Open vragen
 
 - Vrije tekst per rubriek, of een dagritme als uurschema naast de schooluren (FB-023)?
-- Neemt een nieuw schooljaar de fiche van vorig jaar over als vertrekpunt?
+- Neemt een nieuwe klas de fiche van dezelfde klas van vorig jaar over als vertrekpunt?
 - Een graadklas: één fiche, ook met twee jaarfasen?
-- Hangt af van TB-056 (Art. IX.2 en ADR-0057: een klasfiche per klas en schooljaar, elke rubriek hoogstens 2000
-  tekens, een nieuw schooljaar begint leeg; dat zijn standaardkeuzes).
+- Hangt af van TB-056 (Art. IX.2 en ADR-0057: een klasfiche per klas, elke rubriek hoogstens 2000
+  tekens, een nieuwe klas begint leeg; dat zijn standaardkeuzes).
 
 ## Werklog
 

@@ -74,8 +74,8 @@ Defaults of this session, which the owner may change on their own:
 - **D6. The terugkeerbriefing** shows itself once, on the absent leerkracht's first opening of the klas after the last
   day, and stays reachable from the klas until the end of the schooljaar. It needs no record of who changed what,
   because the vervanger changes nothing (V2).
-- **D7. The klasfiche** is one per `(Klas, Schooljaar)`, each rubric free text of at most 2000 characters. A new
-  schooljaar starts empty. The screen states that no name or information about a child belongs in it.
+- **D7. The klasfiche** is one per `Klas` (a klas already belongs to one schooljaar), each rubric free text of at most 2000 characters. A new
+  klas starts empty. The screen states that no name or information about a child belongs in it.
 - **D8. Computed, never stored.** The briefing and the terugkeerbriefing are read models over the planning, like the
   dekking (Art. V.1). Only the vervanging and the klasfiche are stored.
 

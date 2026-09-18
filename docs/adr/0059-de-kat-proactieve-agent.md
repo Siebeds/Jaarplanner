@@ -10,7 +10,7 @@
   [ADR-0058](0058-lesvoorbereiding-per-plaatsing.md) and [ADR-0060](0060-activiteitvoorstellen-op-een-aanbod-gat.md)
   (what it brings).
 - **Realises:** TB-056, TB-057; FB-068 to FB-071, FB-031, FB-032; FR-14.7, FR-14.9 to FR-14.11. **Constitution:** Art. I.1,
-  IV.1, IV.5, IV.8, VI.2, IX.3 and XII (amended).
+  IV.1, IV.2, IV.3, IV.5, IV.8, VI.2, VIII, IX.3 and XII (amended).
 
 ## Context
 
@@ -46,7 +46,9 @@ Defaults of this session, which the owner may change on their own:
   lease row in Postgres. It is idempotent: a tick over an unchanged state writes nothing.
 - **D2. The signal layer** (`Application`) derives per klas, without AI, what the cat noticed. A `Signaal` is stored
   (`Soort`, `KlasId`, `OntvangerId`, a `Sleutel` that makes it unique, `Aangemaakt`, `GezienOp?`, `UitgesteldTot?`) so
-  it can be seen and postponed; a signal whose reason is gone is removed at the next tick. It never counts for dekking.
+  it can be seen and postponed; a signal whose reason is gone is removed at the next tick, and its reason is checked
+  again when it is shown, so the cat never asserts a state of the dekking the computation no longer supports. It never
+  counts for dekking.
 - **D3. The job acts for no one.** It writes proposals and signals addressed to a recipient, and reads for each only
   what that recipient may read (Art. VI.1). An AI call it makes is sent what the feature's ADR allows and counts
   against the school's AI budget once FB-055 exists.

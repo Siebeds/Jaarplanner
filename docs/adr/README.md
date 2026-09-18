@@ -131,8 +131,8 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0055 | Art. I.1, II.1, IV.5, IX.3 and XII (amended); IV.1–IV.4 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
 | 0056 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); I.2 and V.1 unchanged; relates to 0043, 0049, 0050 and 0051 | FB-025 | FR-4.1–FR-4.3; FA A.7 step 7 |
 | 0057 | Art. I.1, VI.1, VI.2, IX.2, IX.3 and XII (amended); adds a Vervanger relation to the 0030 §3 matrix; relates to 0040, 0049 | TB-056; FB-063–FB-066 | FR-14.1–FR-14.5 |
-| 0058 | Art. I.2, IV.1, IV.2, IV.4, IV.5 and IX.3 (amended); IV.4 folds the 0043, 0050 and 0056 exceptions into one rule | TB-056; FB-067, FB-068 | FR-14.6 |
-| 0059 | Art. I.1, IV.1, IV.3, IV.5, IV.8, VI.2, VIII, IX.3 and XII (amended); relates to 0039, 0047, 0051 | TB-056, TB-057; FB-068–FB-071, FB-031, FB-032 | FR-14.7, FR-14.9–FR-14.11 |
+| 0058 | Art. I.2, IV.1, IV.4, IV.5, VI.1 and IX.3 (amended); IV.4 folds the 0043, 0050 and 0056 exceptions into one rule | TB-056; FB-067, FB-068 | FR-14.6 |
+| 0059 | Art. I.1, IV.1, IV.2, IV.3, IV.5, IV.8, VI.2, VIII, IX.3 and XII (amended); relates to 0039, 0047, 0051 | TB-056, TB-057; FB-068–FB-071, FB-031, FB-032 | FR-14.7, FR-14.9–FR-14.11 |
 | 0060 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; supersedes 0056 D6 in part | TB-056; FB-070 | FR-14.8 |
 
 ## Open decisions referenced by ADRs

@@ -29,7 +29,8 @@ child. The users are leerkrachten and directie: non-technical, and the UI is Dut
 - **Imported Op.stap goals are read-only.** Teachers add internal labels and ordering only.
 - **AI is advisory.** Every suggestion is reviewable and accept/reject-able, stored as `voorgesteld` with a motivation,
   and final only after the person with the right decides it (Art. IV.1, VI.1). Exception: an ontwikkelingsrapport
-  rewrite stores no proposal and no motivation, only the decision. The cat may prepare unasked, never decide (Art. IV.8).
+  rewrite stores no proposal and no motivation, only the decision; a chat answer of the cat decides and changes
+  nothing and is not kept (Art. IV.2). The cat may prepare unasked, never decide (Art. IV.8).
 - **No secrets in the repo** (user-secrets locally, Key Vault in Azure; AI keys server-side only). Only throw-away
   local/CI test-database credentials may be committed (Art. VI.4).
 - **No pupil data outside the K3 ontwikkelingsrapport**, and inside it only what Art. VI.7 allows; no pupil content in
@@ -109,10 +110,10 @@ The model is [`CONSTITUTION.md` Art. IX](CONSTITUTION.md#article-ix--core-data-m
 - A subdoelplaatsing (ADR-0050) proposes where an open leerplandoel of a thema's themadoelen goes, in an existing or a new subthema of its leeftijd; a hoofdleerkracht of that jaarfase or directie asks and decides, and only an accepted one becomes a subdoel or subthema.
 - An activiteitvoorstel (ADR-0056) is personal: the AI proposes activiteiten on a subthema's subdoelen to whoever may create an own activiteit there, only she and directie see and decide them, and an accepted one becomes her own activiteit.
 - A **vervanging** ([ADR-0057](docs/adr/0057-vervanging-briefing-en-klasfiche.md)) is not a klastoewijzing: while it runs, the vervanger **reads** the klas (planning, klasfiche, lesvoorbereidingen, briefing) and edits nothing; the absent leerkracht corrects the agenda afterwards. The briefing and terugkeerbriefing are computed, never stored.
-- A **lesvoorbereiding** hangs on an `Activiteitplaatsing` ([ADR-0058](docs/adr/0058-lesvoorbereiding-per-plaatsing.md)); a **klasfiche** is per (klas, schooljaar) and holds nothing about a child. Neither counts for dekking.
+- A **lesvoorbereiding** hangs on an `Activiteitplaatsing` ([ADR-0058](docs/adr/0058-lesvoorbereiding-per-plaatsing.md)); a **klasfiche** is one per klas and holds nothing about a child. Neither counts for dekking.
 - An activiteitvoorstel the cat brings on an **aanbod-gat** ([ADR-0060](docs/adr/0060-activiteitvoorstellen-op-een-aanbod-gat.md)) links leerplandoelen that are in no dekkingsprognose of the klas, not the subthema's subdoelen; accepted, it is an own activiteit planned on its suggested moment.
 - The ontwikkelingsrapport (K3 only, Art. IX.4 and VI.7) holds the only pupil data and never counts for dekking.
-- A `Woordweb` (the brainstorm of step 3, [ADR-0043](docs/adr/0043-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and directie. Its AI words come from the model's own language knowledge (the Art. IV.4 exception), and it never counts for dekking.
+- A `Woordweb` (the brainstorm of step 3, [ADR-0043](docs/adr/0043-eigen-woordweb-per-subthema.md)) is personal: one per (gebruiker, subthema), read by everyone, edited by its owner and directie. Its AI words come from the model's own language knowledge (Art. IV.4), and it never counts for dekking.
 
 ## Testing
 - **Backend (xUnit):** the dekking and concordance logic, the Op.stap API mapping and its HTML-to-text conversion, and the Excel import; integration tests against a Postgres test container.

@@ -32,7 +32,7 @@ agenda, dan verandert de briefing. Ze toont, in deze volgorde:
 
 - de klasfiche (FB-064);
 - waar de klas staat: het thema en het subthema van vandaag, met de onderzoeksvragen, de kern- en streefwoordenschat en
-  het woordweb van de afwezige leerkracht bij dat subthema;
+  de woordwebs van de leerkrachten van de klas bij dat subthema;
 - wat de voorbije twee weken in de agenda stond;
 - de komende schooldagen: activiteiten, hoeken, algemene fiches en schooluren, met de lege momenten aangewezen;
 - de subdoelen van het lopende subthema waaraan nog geen activiteit in de agenda van de klas werkte.

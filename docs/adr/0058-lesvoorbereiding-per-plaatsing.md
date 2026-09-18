@@ -9,7 +9,7 @@
   three Art. IV.4 exceptions this rule replaces), [ADR-0057](0057-vervanging-briefing-en-klasfiche.md) (the vervanger,
   who reads a lesvoorbereiding), [ADR-0059](0059-de-kat-proactieve-agent.md) (the cat that prepares them during a
   vervanging).
-- **Realises:** TB-056; FB-067, FB-068; FR-14.6. **Constitution:** Art. I.2, IV.1, IV.2, IV.4, IV.5 and
+- **Realises:** TB-056; FB-067, FB-068; FR-14.6. **Constitution:** Art. I.2, IV.1, IV.4, IV.5, VI.1 and
   IX.3 (amended).
 
 ## Context
@@ -29,7 +29,7 @@ The owner's rulings:
 - **L3. It hangs on the plaatsing:** that activiteit, on that day, in that klas. It moves with the plaatsing.
 - **L4. When:** for the vaste leerkracht **on request only**; during a vervanging the cat prepares them unasked,
   rolling (ADR-0059).
-- **L5. The vervanger reads** a lesvoorbereiding, open or decided, and decides none (ADR-0057 V2).
+- **L5. The vervanger reads** the klas's lesvoorbereidingen and decides none (ADR-0057 V2).
 - **L6. Art. IV.4 becomes one rule** instead of a list of exceptions: the AI may make up **content** from its own
   knowledge; every **goal** it names or links is a loaded Op.stap goal it was sent; what it is sent is the school's
   own data and those goals. The rewrite of an ontwikkelingsrapport text keeps its narrower rule.

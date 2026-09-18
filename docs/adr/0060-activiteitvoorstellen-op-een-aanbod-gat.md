@@ -7,7 +7,7 @@
 - **Supersedes in part:** [ADR-0056](0056-ai-stelt-activiteiten-voor.md) D6, for the proposals the cat brings only.
 - **Relates to:** [ADR-0047](0047-dekkingsprognose-en-dekking.md) (the dekkingsprognose), [ADR-0049](0049-eigen-activiteit-van-de-leerkracht.md)
   (the own activiteit an accepted proposal becomes), [ADR-0059](0059-de-kat-proactieve-agent.md) (the cat).
-- **Realises:** TB-056; FB-070; FR-14.8. **Constitution:** Art. IV.1, IV.4, IV.5, IV.8, IX.2 and XII (amended); V.1
+- **Realises:** TB-056; FB-070; FR-14.8. **Constitution:** Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1
   unchanged.
 
 ## Context
@@ -30,7 +30,7 @@ The owner's rulings:
   by the share of its leerplandoelen in the aanbod-gat. A goal that is in the prognose but not planned is a
   *gepland-gat*, which the cat answers with "plaats subthema …" (ADR-0059), not with activiteiten.
 - **G3. The moment:** five schooldagen before a thema placement starts in the klas's agenda, once per placement. The
-  cat takes the discipline with the largest aanbod-gat and brings two or three proposals.
+  cat takes the discipline with the largest share in its aanbod-gat and brings two or three proposals.
 - **G4. It may say nothing fits.** The motivation says why the goal fits *this* thema; when none fits, the cat brings
   nothing.
 - **G5. With a suggested day**, a free moment in the thema's period within the schooluren: an activiteit that is not
