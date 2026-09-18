@@ -2,12 +2,12 @@
 id: FB-072
 titel: De rol directie heet voortaan admin, en meerdere gebruikers kunnen admin zijn
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-18 18:20
+opgepakt-door: fb-072-sessie
+branch: ticket/FB-072-rol-admin
 pr:
 geblokkeerd:
 fr: [FR-12.2]
@@ -65,3 +65,4 @@ Geen. De bouwsessie schrijft de ADR en past Art. VI.1 en Art. XII van de constit
 ## Werklog
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
+- 2026-09-18 18:20 · fb-072-sessie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; keuze eigenaar: alles hernoemen (code, kolom, API, configsleutel)
