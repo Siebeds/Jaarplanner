@@ -23,7 +23,7 @@ import { Nieuweactiviteitregel } from "./Nieuweactiviteitregel";
  * than no button. The word "Gekoppeld" carries it, with the tick as reinforcement rather than as the
  * signal (Art. XII, WCAG 2.2 AA 1.4.1).
  *
- * **Each level is offered to whoever may link there** (E6-02, ADR-0030 §3): a subthema and its activiteiten to directie and that leeftijd's hoofdleerkrachten (R24, R19), and a new
+ * **Each level is offered to whoever may link there** (E6-02, ADR-0030 §3): a subthema and its activiteiten to admin and that leeftijd's hoofdleerkrachten (R24, R19), and a new
  * activiteit made with this doel on it likewise, since its create carries a goal code (R19). A level the gebruiker may
  * not link to still shows where the doel already sits; it just offers nothing to press.
  */

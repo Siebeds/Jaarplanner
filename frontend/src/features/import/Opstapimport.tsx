@@ -29,7 +29,7 @@ import type { LeerplandoelImportAntwoord, MinimumdoelImportAntwoord } from "./ty
  * a first run the screen previews the minimumdoelen alone and says why the leerplandoelen wait; once those are through,
  * it fetches the leerplandoelen preview by itself and offers *Doorvoeren* again. Whether the minimumdoelen are in comes
  * from `GET /api/opstap-import/stand`, which reads our database: asking the leerplandoelen preview would cost a 13 MB
- * read of KOV and a 409 dressed as an error on exactly the path a first-time directie takes.
+ * read of KOV and a 409 dressed as an error on exactly the path a first-time admin takes.
  *
  * **The apply's own report replaces the preview's** (decide-and-record (b)). Preview and apply are two reads of KOV. For
  * the leerplandoelen the apply sends back the version the preview named, so it writes that snapshot; the minimumdoelen
@@ -42,7 +42,7 @@ import type { LeerplandoelImportAntwoord, MinimumdoelImportAntwoord } from "./ty
  *
  * **The Excel upload** (`Opstapbestand`) is offered only while no leerplandoelen snapshot has been applied. After one,
  * the server refuses every file (Art. VII.2), so offering it would be a control that can only be refused (the E3-06
- * rule); one line says why it is gone instead, since a directie who used it will look for it.
+ * rule); one line says why it is gone instead, since an admin who used it will look for it.
  */
 export function Opstapimport() {
   const queryClient = useQueryClient();

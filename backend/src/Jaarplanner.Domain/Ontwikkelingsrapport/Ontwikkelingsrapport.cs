@@ -7,7 +7,7 @@ namespace Jaarplanner.Domain.Ontwikkelingsrapport;
 /// <para>
 /// <b>Made on the first write, never before.</b> Opening an empty report stores nothing, so a report exists only once a
 /// teacher wrote something in it. It goes with its leerling (a database cascade, D8), and with the schooljaar when
-/// directie wipes one (D7, FB-007).
+/// admin wipes one (D7, FB-007).
 /// </para>
 /// <para>
 /// <b>No text in an exception message.</b> A fault can reach a log (ADR-0035 §3.8), so validation names the field and

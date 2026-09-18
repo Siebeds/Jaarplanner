@@ -28,7 +28,7 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
 
     private PostgresTestDatabase _db = null!;
     private WebApplicationFactory<Program> _factory = null!;
-    private Gebruiker _directie = null!;
+    private Gebruiker _admin = null!;
 
     public async Task InitializeAsync()
     {
@@ -38,10 +38,10 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
         }
 
         _db = await PostgresTestDatabase.MaakAsync("aanmelden");
-        _directie = new Gebruiker("directie@school.be", "Directie", isDirectie: true);
+        _admin = new Gebruiker("admin@school.be", "Admin", isAdmin: true);
         await using (var context = _db.MaakContext())
         {
-            context.Gebruikers.Add(_directie);
+            context.Gebruikers.Add(_admin);
             await context.SaveChangesAsync();
         }
 
@@ -88,16 +88,16 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
         using var client = Client();
 
         var pagina = await client.GetStringAsync($"{OntwikkelAanmelding.Pad}?terugNaar=/agenda");
-        Assert.Contains("Directie", pagina, StringComparison.Ordinal);
-        Assert.Contains($"{OntwikkelAanmelding.Pad}/{_directie.Id}", pagina, StringComparison.Ordinal);
+        Assert.Contains("Admin", pagina, StringComparison.Ordinal);
+        Assert.Contains($"{OntwikkelAanmelding.Pad}/{_admin.Id}", pagina, StringComparison.Ordinal);
 
-        using var aanmelding = await client.GetAsync($"{OntwikkelAanmelding.Pad}/{_directie.Id}?terugNaar=/agenda");
+        using var aanmelding = await client.GetAsync($"{OntwikkelAanmelding.Pad}/{_admin.Id}?terugNaar=/agenda");
         Assert.Equal(HttpStatusCode.Redirect, aanmelding.StatusCode);
         Assert.Equal("/agenda", aanmelding.Headers.Location!.OriginalString);
 
         var ik = await client.GetFromJsonAsync<GebruikerWeergave>("/api/ik");
-        Assert.Equal(_directie.Id, ik!.Id);
-        Assert.True(ik.IsDirectie);
+        Assert.Equal(_admin.Id, ik!.Id);
+        Assert.True(ik.IsAdmin);
     }
 
     [PostgresFact]
@@ -112,7 +112,7 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
 
         await using (var context = _db.MaakContext())
         {
-            await context.Gebruikers.Where(g => g.Id == _directie.Id).ExecuteDeleteAsync();
+            await context.Gebruikers.Where(g => g.Id == _admin.Id).ExecuteDeleteAsync();
         }
 
         // Not /api/ik: that endpoint answers 401 by itself for a Gebruiker that no longer exists, so a test asking it
@@ -218,14 +218,14 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
 
     private async Task MeldAanAsync(HttpClient client)
     {
-        using var aanmelding = await client.GetAsync($"{OntwikkelAanmelding.Pad}/{_directie.Id}?terugNaar=/");
+        using var aanmelding = await client.GetAsync($"{OntwikkelAanmelding.Pad}/{_admin.Id}?terugNaar=/");
         Assert.Equal(HttpStatusCode.Redirect, aanmelding.StatusCode);
     }
 
     private async Task NodigUitAsync(string email)
     {
         await using var context = _db.MaakContext();
-        context.Gebruikers.Add(new Gebruiker(email, naam: string.Empty, isDirectie: false));
+        context.Gebruikers.Add(new Gebruiker(email, naam: string.Empty, isAdmin: false));
         await context.SaveChangesAsync();
     }
 

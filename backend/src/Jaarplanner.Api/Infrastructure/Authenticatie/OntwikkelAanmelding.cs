@@ -100,7 +100,7 @@ public static class OntwikkelAanmelding
 
         if (gebruikers.Count == 0)
         {
-            pagina.Append("<p>No users exist yet. Apply the migrations, then set <code>Authenticatie:EersteDirectie</code> and restart the API.</p>");
+            pagina.Append("<p>No users exist yet. Apply the migrations, then set <code>Authenticatie:EersteAdmin</code> and restart the API.</p>");
         }
         else
         {
@@ -111,7 +111,7 @@ public static class OntwikkelAanmelding
                 pagina.Append("<li><a href=\"").Append(html.Encode(link)).Append("\">")
                     .Append(html.Encode(gebruiker.Naam)).Append("</a> (")
                     .Append(html.Encode(gebruiker.Email)).Append(')')
-                    .Append(gebruiker.IsDirectie ? ", directie" : string.Empty)
+                    .Append(gebruiker.IsAdmin ? ", admin" : string.Empty)
                     .Append("</li>");
             }
 

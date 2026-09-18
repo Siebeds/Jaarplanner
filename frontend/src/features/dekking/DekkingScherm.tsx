@@ -60,7 +60,7 @@ export function DekkingScherm() {
 
   const { data, isPending, isError } = useDekking(klasId, bereik);
 
-  // THE GATE, and the only one. While a stale placement is unresolved the server withholds every figure (directie
+  // THE GATE, and the only one. While a stale placement is unresolved the server withholds every figure (admin
   // 2026-07-28), and every count on this screen is a piece of one: the tallies add up to it and the action counts
   // partition its gaps. So none of them renders then. The rows keep their own step, which is a per-goal fact.
   const metCijfers = data !== undefined && data.aantalGedekt !== null && data.isBetrouwbaar;

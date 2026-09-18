@@ -225,7 +225,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         $"{sleutel} answered {(int)status} \"{detail}\" to a gebruiker who holds no right at all; every write route must answer"
         + $" 403 \"{RechtenTestOpzet.GeenToegang}\" here." + Environment.NewLine
         + "Decide its row in ADR-0030 §3 (docs/adr/0030-rollen-en-rechten-in-de-app.md) and declare it on the action:" + Environment.NewLine
-        + "  - a row that needs no resource (directie, themabeheer): [Authorize(Policy = Rechtenmatrix.Beleid.<Row>)];" + Environment.NewLine
+        + "  - a row that needs no resource (admin, themabeheer): [Authorize(Policy = Rechtenmatrix.Beleid.<Row>)];" + Environment.NewLine
         + "  - a row about a resource: [RechtOp(Rechtenmatrix.Beleid.<Row>, Rechtbron.<Kind>, \"<route id>\")]." + Environment.NewLine
         + "  A write on one klas's planning (jaarplan, agenda, weekplanning, hoeken, algemene fiches and their placements) is the row"
         + " 'Jaarplan bewerken, (her)genereren, agenda, hoeken, algemene fiches': KlasplanningBewerken on Rechtbron.Klas, or on the"
@@ -289,7 +289,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         _ => "x",
     };
 
-    /// <summary>One of everything a write route's id can name, made as the default directie identity.</summary>
+    /// <summary>One of everything a write route's id can name, made as the default admin identity.</summary>
     private async Task<Zaad> ZaaiAsync()
     {
         var schooljaar = TestSchooljaar.Maak(TestSchooljaar.UniekeNaam("sweep"));
@@ -305,7 +305,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         var subthemaId = await opzet.SubthemaAsync("K3", themaId);
         var activiteit = await opzet.ActiviteitAsync(subthemaId);
 
-        using var client = opzet.Directie();
+        using var client = opzet.Admin();
         var hoekId = await IdAsync(client.PostAsJsonAsync($"/api/klassen/{klas.Id}/hoeken", new { naam = "bouwhoek" }));
         var hoekplaatsingId = await IdAsync(client.PostAsJsonAsync($"/api/klassen/{klas.Id}/hoekplaatsingen", new
         {
@@ -331,7 +331,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 
         // A seeded directeur's own woordweb (FB-036), so the woordweb routes are sent one that exists and is not the
         // caller's. A seeded one, because a woordweb's owner is a row in gebruikers.
-        using var eigenaar = opzet.Als(await opzet.GebruikerAsync(directie: true));
+        using var eigenaar = opzet.Als(await opzet.GebruikerAsync(admin: true));
         var woordwebId = await IdAsync(eigenaar.PostAsJsonAsync(
             $"/api/subthemas/{subthemaId}/woordwebs/eigen/woorden", new { woorden = new[] { "regen" } }));
 
@@ -339,7 +339,7 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
         // activiteitvoorstel is the seeded directeur's, so it is not the caller's either.
         var subthemavoorstel = new Jaarplanner.Domain.Schoolcontent.Subthemavoorstel(themaId, "K3", "Wind", "Waar komt wind vandaan?", 2, "Reden.");
         var subdoelvoorstel = Jaarplanner.Domain.Schoolcontent.Subdoelvoorstel.InSubthema(themaId, "K3", Doelcode, subthemaId, "Reden.");
-        var eigenaarId = await opzet.GebruikerAsync(directie: true);
+        var eigenaarId = await opzet.GebruikerAsync(admin: true);
         var activiteitvoorstel = new Jaarplanner.Domain.Schoolcontent.Activiteitvoorstel(
             subthemaId, eigenaarId, "Plassen", null, "Stampen in plassen.", 1, null, [Doelcode], "Reden.");
         await using (var context = _db.MaakContext())

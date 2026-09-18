@@ -11,7 +11,7 @@ namespace Jaarplanner.IntegrationTests;
 /// <summary>
 /// Pins the <b>single authorisation seam</b> for curriculum reference-data administration (E1-15, Art. VI.1,
 /// ADR-0011 §2): the named policy exists, the import endpoints are behind <b>it</b> and not behind an ad-hoc check,
-/// since E6-01 it requires a session, and since E6-02 it admits directie only (ADR-0030 §3, Op.stap row).
+/// since E6-01 it requires a session, and since E6-02 it admits admin only (ADR-0030 §3, Op.stap row).
 /// <para>
 /// <b>The two flips ADR-0022 predicted.</b> Until E6-01 the policy authorised everyone. ADR-0031 amended ADR-0022 §1: a
 /// policy of its own is not reached by the fallback, so it requires a signed-in person itself, and an anonymous request
@@ -116,13 +116,13 @@ public sealed class CurriculumbeheerAutorisatieTests : IClassFixture<Jaarplanner
     }
 
     /// <summary>
-    /// Directie reaches the controller, which answers on the request's <i>content</i> (no file, so 400). The default
-    /// test identity is directie (<see cref="TestAuthenticatie"/>). That everyone else gets 403 since E6-02, including a
+    /// Admin reaches the controller, which answers on the request's <i>content</i> (no file, so 400). The default
+    /// test identity is admin (<see cref="TestAuthenticatie"/>). That everyone else gets 403 since E6-02, including a
     /// gebruiker with themabeheer, a hoofdleerkracht and a leerkracht, is pinned against PostgreSQL in
     /// <c>RechtenEndpointsTests</c>, because those rights live in the database.
     /// </summary>
     [Fact]
-    public async Task Directie_komt_door_het_beleid_tot_bij_de_controller()
+    public async Task Admin_komt_door_het_beleid_tot_bij_de_controller()
     {
         using var inhoud = new MultipartFormDataContent();
         inhoud.Add(new StringContent("2"), "disciplineNummer");

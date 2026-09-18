@@ -42,7 +42,7 @@ public sealed class MinimumdoelBronResultaat
 
 /// <summary>
 /// A source row that was not imported. Its <see cref="Reden"/> is <b>English</b>: a malformed or expired row in KOV's
-/// data is nothing a teacher or directie can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30),
+/// data is nothing a teacher or admin can fix, so it is an operator diagnostic (Art. II.3 as amended 2026-07-30),
 /// the same choice <c>OpstapRijProbleem</c> made for the Excel path.
 /// </summary>
 /// <param name="Sleutel">

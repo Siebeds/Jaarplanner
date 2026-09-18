@@ -9,7 +9,7 @@ namespace Jaarplanner.Application.Schoolcontent.Wizard;
 /// the ordinary routes give it no such right (I22).
 /// <para>
 /// <b>Who may call them is the Api's question</b> (the matrix rows <c>ThemaOpbouw</c> and <c>Wizardinhoud</c>:
-/// directie and themabeheer). <b>What a run allows is this service's</b>, and it holds for everyone, directie included:
+/// admin and themabeheer). <b>What a run allows is this service's</b>, and it holds for everyone, admin included:
 /// <list type="bullet">
 /// <item>the run must be open (I24);</item>
 /// <item>content goes only under the run's own thema, and an edit or delete reaches an activiteit only while it is still
@@ -111,7 +111,7 @@ public sealed record WizardrunitemWeergave(Wizarditemsoort Soort, Guid Id);
 /// <summary>
 /// A wizard action the run does not allow: it has ended, the content is not under its thema, the item is not one it
 /// created, or it would carry off someone else's work, or remove a goal link or carry one to another leeftijd without the
-/// caller's goal-link right there (I23–I25, I27). The Api answers 403, for directie as well: directie does the same on
+/// caller's goal-link right there (I23–I25, I27). The Api answers 403, for admin as well: admin does the same on
 /// the ordinary routes. The message is Dutch and a screen may show it (Art. II.3).
 /// </summary>
 public sealed class WizardrunWeigering : Exception

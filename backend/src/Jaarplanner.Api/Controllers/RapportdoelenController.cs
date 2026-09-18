@@ -10,8 +10,8 @@ namespace Jaarplanner.Api.Controllers;
 /// logic lives in <see cref="IRapportsetService"/>, including which subdoelen a rapportdoel may bundle (D11, D12).
 /// <para>
 /// <b>Rights</b> as on <see cref="GradatiesController"/>: every write is <c>RapportsetBewerken</c> (the K3 leerkrachten
-/// during a running schooljaar, not directie, R31), and the reads are open to every signed-in gebruiker, because the set
-/// is not pupil data and directie and a hoofdleerkracht of K3 view it (FB-002 AC5).
+/// during a running schooljaar, not admin, R31), and the reads are open to every signed-in gebruiker, because the set
+/// is not pupil data and admin and a hoofdleerkracht of K3 view it (FB-002 AC5).
 /// </para>
 /// </summary>
 [ApiController]

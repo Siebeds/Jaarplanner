@@ -3,8 +3,8 @@ import { ApiError, del, get, post, put } from "../../lib/api";
 import type { Ik } from "../../lib/aanmelding";
 
 /**
- * Directie's beheer of gebruikers and their rights (E6-04, ADR-0030 §3: directie only), as
- * `/api/gebruikers` serves it. Only a directie screen may ask for it: the server answers 403 to
+ * Admin's beheer of gebruikers and their rights (E6-04, ADR-0030 §3: admin only), as
+ * `/api/gebruikers` serves it. Only an admin screen may ask for it: the server answers 403 to
  * anyone else, which is why every query here takes whether it is allowed to run.
  *
  * Every write answers the gebruiker as they are afterwards, and that answer goes straight into the
@@ -36,7 +36,7 @@ export interface GebruikerBeheer {
   naam: string;
   /** The Microsoft sign-in name they were invited under (ADR-0031 decision 3). */
   email: string;
-  isDirectie: boolean;
+  isAdmin: boolean;
   heeftThemabeheer: boolean;
   /** Reads every ontwikkelingsrapport and nothing else (FB-008, ADR-0035 R18). */
   heeftLeerlingzorg: boolean;
@@ -54,7 +54,7 @@ export interface GebruikersOverzicht {
 
 const SLEUTEL = ["gebruikersbeheer"] as const;
 
-/** The overview. `ingeschakeld` is false for anyone who is not directie: they would only get a 403. */
+/** The overview. `ingeschakeld` is false for anyone who is not admin: they would only get a 403. */
 export function useGebruikersOverzicht(ingeschakeld: boolean) {
   return useQuery({
     queryKey: SLEUTEL,
@@ -65,7 +65,7 @@ export function useGebruikersOverzicht(ingeschakeld: boolean) {
 
 /** The addresses of the rights, one resource each: `PUT` gives, `DELETE` takes away. */
 export const rechtPad = {
-  directie: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/directierecht`,
+  admin: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/adminrecht`,
   themabeheer: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/themabeheer`,
   leerlingzorg: (gebruikerId: string) => `/api/gebruikers/${gebruikerId}/leerlingzorg`,
   klas: (gebruikerId: string, klasId: string) => `/api/gebruikers/${gebruikerId}/klassen/${klasId}`,
@@ -87,7 +87,7 @@ function zetInCache(qc: QueryClient, gebruiker: GebruikerBeheer) {
 }
 
 /**
- * Refetches what a rights change can move: the overview, and `ik`, because directie may be
+ * Refetches what a rights change can move: the overview, and `ik`, because admin may be
  * changing their own rights. `ik` never goes stale by itself (`useIk`), so it is told to here.
  */
 function ververs(qc: QueryClient) {
@@ -96,7 +96,7 @@ function ververs(qc: QueryClient) {
 }
 
 /**
- * After directie changed their OWN standing: they gave up the directie right or removed
+ * After admin changed their OWN standing: they gave up the admin right or removed
  * themselves. The overview is not refetched, because the server now answers it with 403 (or 401),
  * and a refetch would flash "could not be loaded" in the moment before the screen goes. Only `ik`
  * is refetched: that moves the person off this part (`Onderdeelpoort`), or to the sign-in.
@@ -115,8 +115,8 @@ function bijNietGevonden(qc: QueryClient, fout: unknown) {
   void qc.invalidateQueries({ queryKey: ["schooljaren"] });
 }
 
-function isEigenAfgang(qc: QueryClient, gebruikerId: string, blijftDirectie: boolean): boolean {
-  return qc.getQueryData<Ik>(["ik"])?.id === gebruikerId && !blijftDirectie;
+function isEigenAfgang(qc: QueryClient, gebruikerId: string, blijftAdmin: boolean): boolean {
+  return qc.getQueryData<Ik>(["ik"])?.id === gebruikerId && !blijftAdmin;
 }
 
 export interface Uitnodiging {
@@ -135,7 +135,7 @@ export function useNodigUit() {
   });
 }
 
-/** One right, given (`aan`) or taken away. The server refuses taking the last directie's right (409). */
+/** One right, given (`aan`) or taken away. The server refuses taking the last admin's right (409). */
 export interface RechtWijziging {
   pad: string;
   aan: boolean;
@@ -147,7 +147,7 @@ export function useRechtWijziging() {
     mutationFn: ({ pad, aan }: RechtWijziging) => (aan ? put<GebruikerBeheer>(pad) : del<GebruikerBeheer>(pad)),
     onSuccess: (gebruiker) => {
       zetInCache(qc, gebruiker);
-      if (isEigenAfgang(qc, gebruiker.id, gebruiker.isDirectie)) {
+      if (isEigenAfgang(qc, gebruiker.id, gebruiker.isAdmin)) {
         void qc.invalidateQueries({ queryKey: ["ik"] });
         return;
       }
@@ -157,7 +157,7 @@ export function useRechtWijziging() {
   });
 }
 
-/** Removes a gebruiker. The server refuses the last directie (409) and says why. */
+/** Removes a gebruiker. The server refuses the last admin (409) and says why. */
 export function useVerwijderGebruiker() {
   const qc = useQueryClient();
   return useMutation({

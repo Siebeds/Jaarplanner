@@ -517,7 +517,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         // A maker who does not exist is stored as none rather than refused: the session check has already passed, so
         // this is a gebruiker removed a moment ago (or a test identity with no row), and none is what their removal
         // leaves on every other activiteit they made (I17). The direction is safe: no maker means only a hoofdleerkracht
-        // or directie may delete it.
+        // or admin may delete it.
         var maker = makerId is { } id && await _context.Gebruikers.AnyAsync(g => g.Id == id, cancellationToken)
             ? makerId
             : null;

@@ -2,7 +2,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
 /// A school's own kennisrijk thema (Art. IX.2) — <b>school-scoped: shared school-wide</b> and
-/// owned by the team/directie via the shared thema-bibliotheek. It carries the school-wide
+/// owned by the team/admin via the shared thema-bibliotheek. It carries the school-wide
 /// attributes: <see cref="Invalshoeken"/>, a <see cref="DuurWeken"/> (≈ 4–6 wk, the themaperiode)
 /// and the two-tier vocabulary — <see cref="Kernwoordenschat"/> (basiswoorden) and
 /// <see cref="RijkeWoordenschat"/> (rijke themawoorden) — both of which are deliberately the same

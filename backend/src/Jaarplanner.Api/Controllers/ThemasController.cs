@@ -15,9 +15,9 @@ namespace Jaarplanner.Api.Controllers;
 /// exception handler in Program.cs.
 /// <para>
 /// <b>Rights (E6-02, ADR-0030 §3).</b> Creating and changing the thema, its themadoelen and its kernwoordenschat is the
-/// row <c>ThemaBewerken</c> (directie, themabeheer; R4, R18). Deleting it is <c>ThemaVerwijderen</c> (default I26):
+/// row <c>ThemaBewerken</c> (admin, themabeheer; R4, R18). Deleting it is <c>ThemaVerwijderen</c> (default I26):
 /// themabeheer only while the thema holds nothing but what its own open wizard run created. Creating a subthema under
-/// it is the subthema row at the leeftijd in the body (<c>SubthemaBeheren</c>: directie and that leeftijd's
+/// it is the subthema row at the leeftijd in the body (<c>SubthemaBeheren</c>: admin and that leeftijd's
 /// hoofdleerkrachten; R5, R21), so themabeheer gets no right there (I22) and the wizard has its own route for it. Reads
 /// stay open to every signed-in gebruiker: a thema and its subthema's are shared content, not a klas's planning, and
 /// <c>voor-klas</c> only narrows them to that klas's leeftijden (FB-013, ADR-0040). The own activiteiten in a thema are
@@ -90,8 +90,8 @@ public sealed class ThemasController : ControllerBase
     /// <summary>
     /// Deletes a thema with its themadoelen, subthema's, subdoelen and activiteiten, at every leeftijd.
     /// <para>
-    /// <b>Directie may; themabeheer only while the thema holds nothing but what its own open wizard run created</b>
-    /// (default I26, owner 2026-09-14). Anything else under it was made by hand, and deleting it by hand is directie's and
+    /// <b>Admin may; themabeheer only while the thema holds nothing but what its own open wizard run created</b>
+    /// (default I26, owner 2026-09-14). Anything else under it was made by hand, and deleting it by hand is admin's and
     /// the hoofdleerkrachten's (R21, R24, R25). A thema that any klas planned or scheduled is refused by the service, for
     /// everyone.
     /// </para>

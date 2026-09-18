@@ -46,7 +46,7 @@ import type { OnderzoeksvraagInvoer, SubthemaInvoer } from "./mutaties";
  * only exists after a save would be a control that lies about when it took effect.
  *
  * **Only the leeftijden this gebruiker may use are offered** (E6-02, ADR-0030 §3 and I13). A subthema at a leeftijd
- * is directie's and that leeftijd's hoofdleerkrachten', and moving one needs the right at the old and the new leeftijd,
+ * is admin's and that leeftijd's hoofdleerkrachten', and moving one needs the right at the old and the new leeftijd,
  * so the caller passes `magLeeftijd` and the list is filtered by it. When one leeftijd is left it is stated rather than
  * offered: a select with a single option is a control that does nothing.
  */

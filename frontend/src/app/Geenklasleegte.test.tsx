@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../lib/aanmelding";
 import { t } from "../i18n";
-import { DIRECTIE, NIEMAND, ikMet, metIk } from "../test/rechten";
+import { ADMIN, NIEMAND, ikMet, metIk } from "../test/rechten";
 import { Geenklasleegte } from "./Geenklasleegte";
 
 /**
@@ -38,7 +38,7 @@ describe("Geenklasleegte", () => {
   });
 
   it("toont iedereen met een recht de eigen zin van het scherm", () => {
-    for (const ik of [DIRECTIE, ikMet({ heeftThemabeheer: true }), ikMet({ hoofdleerkrachtLeeftijden: ["K2"] }), ikMet({ eigenKlasIds: ["k"] })]) {
+    for (const ik of [ADMIN, ikMet({ heeftThemabeheer: true }), ikMet({ hoofdleerkrachtLeeftijden: ["K2"] }), ikMet({ eigenKlasIds: ["k"] })]) {
       const { unmount } = render(
         <QueryClientProvider client={metIk(new QueryClient(), ik)}>
           <Geenklasleegte titel="Kies eerst een klas" />

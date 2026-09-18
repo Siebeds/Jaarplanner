@@ -67,11 +67,11 @@ public sealed class EigenActiviteitTests : IDisposable
         var collegaK3 = new Rechten(Guid.NewGuid(), false, false, [], ["K3"], []);
         var collegaK2 = new Rechten(Guid.NewGuid(), false, false, [], ["K2"], []);
         var themabeheer = new Rechten(Guid.NewGuid(), false, true, [], [], []);
-        var directie = new Rechten(Guid.NewGuid(), true, false, [], [], []);
+        var admin = new Rechten(Guid.NewGuid(), true, false, [], [], []);
         var zelf = Rechten.Geen(an.Id);
 
         Assert.Equal(["Eigen", "Gedeeld"], await NamenAsync(themaId, collegaK3));
-        Assert.Equal(["Eigen", "Gedeeld"], await NamenAsync(themaId, directie));
+        Assert.Equal(["Eigen", "Gedeeld"], await NamenAsync(themaId, admin));
         Assert.Equal(["Eigen", "Gedeeld"], await NamenAsync(themaId, zelf));
         Assert.Equal(["Gedeeld"], await NamenAsync(themaId, collegaK2));
         Assert.Equal(["Gedeeld"], await NamenAsync(themaId, themabeheer));
@@ -162,7 +162,7 @@ public sealed class EigenActiviteitTests : IDisposable
 
     private async Task<Gebruiker> BewaarGebruikerAsync(string naam)
     {
-        var gebruiker = new Gebruiker($"{naam.ToLowerInvariant()}@school.be", naam, isDirectie: false);
+        var gebruiker = new Gebruiker($"{naam.ToLowerInvariant()}@school.be", naam, isAdmin: false);
         await using var context = new AppDbContext(_options);
         context.Gebruikers.Add(gebruiker);
         await context.SaveChangesAsync();

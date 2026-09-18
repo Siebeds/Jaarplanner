@@ -19,17 +19,17 @@ import { useGebruikersOverzicht, useVerwijderGebruiker, type GebruikerBeheer } f
 
 /**
  * Instellingen, Gebruikers (E6-04, FA FR-12.2): who may log in, and what each person may do.
- * Directie only (ADR-0030 §3); the part is hidden for anyone else and the server refuses them.
+ * Admin only (ADR-0030 §3); the part is hidden for anyone else and the server refuses them.
  *
  * **Person-centric.** One row per gebruiker, name first, then the facts as quiet meta text: the
  * rights as words (never a colour), their klassen and hoofdleerkracht jaarfasen in the chosen
  * schooljaar, and "nog niet aangemeld" for an invitation no login has bound yet. That last state is
  * the residual risk of ADR-0031 decision 3 (a sign-in name reassigned before the first login binds to
- * whoever holds it then), and this text is the only place directie can see it. One button per row
+ * whoever holds it then), and this text is the only place admin can see it. One button per row
  * opens one sheet where everything about that person is changed.
  *
  * **Once above the list**, never per row: the schooljaar, the one primary action, the hoofdleerkracht
- * of each jaarfase (ADR-0030 (c): a jaarfase without one leaves its subthema's to directie), and, for
+ * of each jaarfase (ADR-0030 (c): a jaarfase without one leaves its subthema's to admin), and, for
  * a year that has ended, that its klassen and appointments no longer count (R20).
  */
 export function GebruikersScherm() {
@@ -95,7 +95,7 @@ export function GebruikersScherm() {
           </div>
 
           {/* The failure branch only without data. A refetch that fails while a list is on screen keeps the
-              list: it happens in the moment after directie gives up their own right, just before the gate
+              list: it happens in the moment after admin gives up their own right, just before the gate
               moves them off this part, and "could not be loaded" would be false then. */}
           {overzicht.isPending ? (
             <Laadlijst rijen={3} />
@@ -141,7 +141,7 @@ export function GebruikersScherm() {
           )}
 
           {/* The removal the server refused, with its reason. Under the list because the dialog is closed by
-              then. Two refusals end here: a 409 for the last directie (ADR-0031 decision 7), after which the row it
+              then. Two refusals end here: a 409 for the last admin (ADR-0031 decision 7), after which the row it
               is about is still on screen, and a 404 for a person someone else removed first, after which the refetch
               (`bijNietGevonden`) has dropped the row and this sentence is what is left to say so. */}
           {verwijder.isError ? (
@@ -205,7 +205,7 @@ export function GebruikersScherm() {
 
 /**
  * One gebruiker: the name, the sign-in name, and what they hold in the chosen schooljaar. The
- * directie and themabeheer rights hold in every year, so they are shown whatever year is chosen.
+ * admin and themabeheer rights hold in every year, so they are shown whatever year is chosen.
  */
 function Gebruikerrij({
   gebruiker,
@@ -217,7 +217,7 @@ function Gebruikerrij({
   onRechten: () => void;
 }) {
   const feiten: string[] = [];
-  if (gebruiker.isDirectie) feiten.push(t("gebruikers.directie"));
+  if (gebruiker.isAdmin) feiten.push(t("gebruikers.admin"));
   if (gebruiker.heeftThemabeheer) feiten.push(t("gebruikers.themabeheer"));
   if (gebruiker.heeftLeerlingzorg) feiten.push(t("gebruikers.leerlingzorg"));
 

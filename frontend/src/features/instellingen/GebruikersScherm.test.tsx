@@ -10,7 +10,7 @@ import { GebruikersScherm } from "./GebruikersScherm";
 
 /**
  * Instellingen, Gebruikers (E6-04). What is pinned here is what a browser pass reads least
- * reliably: which request a tick sends, that the server's refusal of the last directie reaches the
+ * reliably: which request a tick sends, that the server's refusal of the last admin reaches the
  * sheet in its own words, that an unbound invitation says so, and which sentence a jaarfase without
  * a hoofdleerkracht earns (the E5-03 rule). How it looks is the browser pass.
  */
@@ -48,10 +48,10 @@ vi.mock("../../lib/selectie", () => ({
 }));
 
 const IK: Ik = {
-  id: "directie-1",
+  id: "admin-1",
   naam: "Dirk Janssens",
   email: "dirk@school.be",
-  isDirectie: true,
+  isAdmin: true,
   heeftThemabeheer: false,
   heeftLeerlingzorg: false,
   hoofdleerkrachtLeeftijden: [],
@@ -66,7 +66,7 @@ function gebruiker(overrides: Partial<GebruikerBeheer> = {}): GebruikerBeheer {
     id: "g-1",
     naam: "An Peeters",
     email: "an.peeters@school.be",
-    isDirectie: false,
+    isAdmin: false,
     heeftThemabeheer: false,
     heeftLeerlingzorg: false,
     isAangemeld: true,
@@ -92,7 +92,7 @@ type Antwoord = (pad: string, methode: string) => Schrijfantwoord | Promise<Schr
 function toon(
   overzicht: GebruikersOverzicht,
   schrijf: Antwoord = () => undefined,
-  /** The status the list answers once a write succeeded: 403 after directie gave up their own right. */
+  /** The status the list answers once a write succeeded: 403 after admin gave up their own right. */
   opties: { lijstNaSchrijven?: number; lijstNaFout?: GebruikersOverzicht } = {},
 ) {
   let huidig = overzicht;
@@ -156,7 +156,7 @@ describe("GebruikersScherm", () => {
     toon({
       gebruikers: [
         gebruiker({
-          isDirectie: true,
+          isAdmin: true,
           heeftThemabeheer: true,
           klastoewijzingen: [
             { klasId: K3.id, klasNaam: K3.naam, jaarfase: "K3", schooljaarId: JAAR.id, teltVoorGedeeldeInhoud: true },
@@ -172,7 +172,7 @@ describe("GebruikersScherm", () => {
     const rij = (await screen.findByRole("button", { name: t("gebruikers.rechtenVan", { naam: "An Peeters" }) })).closest("li")!;
     expect(rij).toHaveTextContent(
       [
-        t("gebruikers.directie"),
+        t("gebruikers.admin"),
         t("gebruikers.themabeheer"),
         t("gebruikers.eenKlas", { namen: "K3 groen" }),
         t("gebruikers.hoofdleerkrachtVan", { fasen: "K3" }),
@@ -254,27 +254,27 @@ describe("GebruikersScherm", () => {
     expect(fetchMock.mock.calls.some(([pad, init]) => pad === `/api/gebruikers/${an.id}/hoofdleerkracht/${JAAR.id}/L1` && init?.method === "PUT")).toBe(true);
   });
 
-  it("toont de weigering van de server als de laatste directie haar recht zou verliezen, en laat het vakje staan", async () => {
-    const reden = "An Peeters is de enige met het directierecht. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.";
-    const an = gebruiker({ isDirectie: true });
+  it("toont de weigering van de server als de laatste admin haar recht zou verliezen, en laat het vakje staan", async () => {
+    const reden = "An Peeters is de enige met het adminrecht. Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld.";
+    const an = gebruiker({ isAdmin: true });
     toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, (pad, methode) =>
-      methode === "DELETE" && pad.endsWith(`/api/gebruikers/${an.id}/directierecht`)
+      methode === "DELETE" && pad.endsWith(`/api/gebruikers/${an.id}/adminrecht`)
         ? { status: 409, body: { status: 409, title: "Niet doorgevoerd", detail: reden } }
         : undefined,
     );
 
     const blad = await openRechten(an.naam);
-    const vakje = within(blad).getByRole("checkbox", { name: t("gebruikers.directie") });
+    const vakje = within(blad).getByRole("checkbox", { name: t("gebruikers.admin") });
     expect(vakje).toBeChecked();
     fireEvent.click(vakje);
 
     expect(await within(blad).findByRole("alert")).toHaveTextContent(reden);
-    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") })).toBeChecked();
+    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.admin") })).toBeChecked();
   });
 
-  it("toont de weigering ook als de laatste directie verwijderd zou worden", async () => {
-    const reden = "An Peeters is de enige met het directierecht en kan niet verwijderd worden. Geef het directierecht eerst aan iemand anders die zich al heeft aangemeld.";
-    const an = gebruiker({ isDirectie: true });
+  it("toont de weigering ook als de laatste admin verwijderd zou worden", async () => {
+    const reden = "An Peeters is de enige met het adminrecht en kan niet verwijderd worden. Geef het adminrecht eerst aan iemand anders die zich al heeft aangemeld.";
+    const an = gebruiker({ isAdmin: true });
     toon({ gebruikers: [an], voorbijeSchooljaarIds: [] }, (pad, methode) =>
       methode === "DELETE" && pad.endsWith(`/api/gebruikers/${an.id}`) ? { status: 409, body: { status: 409, detail: reden } } : undefined,
     );
@@ -328,23 +328,23 @@ describe("GebruikersScherm", () => {
     expect(fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== "GET")).toHaveLength(1);
   });
 
-  it("vraagt bevestiging voor wie het eigen directierecht afgeeft, en toont daarna geen laadfout", async () => {
+  it("vraagt bevestiging voor wie het eigen adminrecht afgeeft, en toont daarna geen laadfout", async () => {
     // Fix round 1, QUESTION 7: the one tick you cannot undo yourself asks first, and the moment after it (the list now
     // answers 403, the gate has not moved you yet) must not flash "could not be loaded".
-    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isDirectie: true });
-    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isDirectie: true });
+    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isAdmin: true });
+    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isAdmin: true });
     const fetchMock = toon(
       { gebruikers: [ander, ikZelf], voorbijeSchooljaarIds: [] },
       (pad, methode) =>
-        methode === "DELETE" && pad.endsWith(`/api/gebruikers/${IK.id}/directierecht`)
-          ? { status: 200, body: { ...ikZelf, isDirectie: false } }
+        methode === "DELETE" && pad.endsWith(`/api/gebruikers/${IK.id}/adminrecht`)
+          ? { status: 200, body: { ...ikZelf, isAdmin: false } }
           : undefined,
       { lijstNaSchrijven: 403 },
     );
     const schrijven = () => fetchMock.mock.calls.filter(([, init]) => init?.method && init.method !== "GET");
 
     const blad = await openRechten(IK.naam);
-    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.admin") }));
     const vraag = await screen.findByRole("dialog", { name: t("gebruikers.afgevenTitel") });
     expect(vraag).toHaveTextContent(t("gebruikers.afgevenGevolg"));
     expect(schrijven()).toHaveLength(0);
@@ -352,9 +352,9 @@ describe("GebruikersScherm", () => {
     fireEvent.click(within(vraag).getByRole("button", { name: t("themabeheer.annuleer") }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: t("gebruikers.afgevenTitel") })).not.toBeInTheDocument());
     expect(schrijven()).toHaveLength(0);
-    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") })).toBeChecked();
+    expect(within(blad).getByRole("checkbox", { name: t("gebruikers.admin") })).toBeChecked();
 
-    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.admin") }));
     fireEvent.click(
       within(await screen.findByRole("dialog", { name: t("gebruikers.afgevenTitel") })).getByRole("button", {
         name: t("gebruikers.afgevenBevestig"),
@@ -368,23 +368,23 @@ describe("GebruikersScherm", () => {
     expect(fetchMock.mock.calls.filter(([pad]) => String(pad).endsWith("/api/gebruikers"))).toHaveLength(1);
   });
 
-  it("geeft het directierecht van iemand anders meteen af, zonder te vragen", async () => {
-    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isDirectie: true });
+  it("geeft het adminrecht van iemand anders meteen af, zonder te vragen", async () => {
+    const ander = gebruiker({ id: "g-2", naam: "Bert Claes", isAdmin: true });
     const fetchMock = toon({ gebruikers: [ander], voorbijeSchooljaarIds: [] }, (pad, methode) =>
-      methode === "DELETE" && pad.endsWith(`/api/gebruikers/${ander.id}/directierecht`)
-        ? { status: 200, body: { ...ander, isDirectie: false } }
+      methode === "DELETE" && pad.endsWith(`/api/gebruikers/${ander.id}/adminrecht`)
+        ? { status: 200, body: { ...ander, isAdmin: false } }
         : undefined,
     );
 
     const blad = await openRechten(ander.naam);
-    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.directie") }));
+    fireEvent.click(within(blad).getByRole("checkbox", { name: t("gebruikers.admin") }));
 
     await waitFor(() => expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true));
     expect(screen.queryByRole("dialog", { name: t("gebruikers.afgevenTitel") })).not.toBeInTheDocument();
   });
 
   it("zegt wie zichzelf verwijdert dat die meteen afgemeld wordt", async () => {
-    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isDirectie: true });
+    const ikZelf = gebruiker({ id: IK.id, naam: IK.naam, isAdmin: true });
     toon({ gebruikers: [ikZelf], voorbijeSchooljaarIds: [] });
 
     const blad = await openRechten(IK.naam);
@@ -464,7 +464,7 @@ describe("GebruikersScherm", () => {
     expect(blok).toHaveTextContent(t("gebruikers.zonderHoofdleerkracht"));
   });
 
-  it("zegt de zin over de directie niet als elke jaarfase een hoofdleerkracht heeft", async () => {
+  it("zegt de zin over de admin niet als elke jaarfase een hoofdleerkracht heeft", async () => {
     toon({
       gebruikers: [
         gebruiker({

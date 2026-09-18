@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Directie's beheer of gebruikers and their rights (E6-04, FA FR-12.2). Thin (Art. VIII): the rules live in
+/// Admin's beheer of gebruikers and their rights (E6-04, FA FR-12.2). Thin (Art. VIII): the rules live in
 /// <see cref="IGebruikerBeheerService"/>, and its faults become ProblemDetails in <c>GebruikerbeheerExceptionHandler</c>.
 /// <para>
-/// <b>Every route is directie only</b>: the ADR-0030 §3 row "Gebruikers, klassen en schooljaren beheren, leerkrachten
-/// aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het directierecht toekennen" (R2, R3, R16), the
-/// <see cref="Rechtenmatrix.Beleid.Beheer"/> policy, which also requires a session. A gebruiker without the directie
+/// <b>Every route is admin only</b>: the ADR-0030 §3 row "Gebruikers, klassen en schooljaren beheren, leerkrachten
+/// aan klassen koppelen, hoofdleerkrachten aanstellen, themabeheer en het adminrecht toekennen" (R2, R3, R16), the
+/// <see cref="Rechtenmatrix.Beleid.Beheer"/> policy, which also requires a session. A gebruiker without the admin
 /// right gets 403, a request without a session 401.
 /// </para>
 /// <para>
@@ -46,7 +46,7 @@ public sealed class GebruikersController : ControllerBase
         return CreatedAtAction(nameof(Detail), new { gebruikerId = gebruiker.Id }, gebruiker);
     }
 
-    /// <summary>Removes a gebruiker (I17). 409 for the last directie (ADR-0031 decision 7).</summary>
+    /// <summary>Removes a gebruiker (I17). 409 for the last admin (ADR-0031 decision 7).</summary>
     [HttpDelete("{gebruikerId:guid}")]
     public async Task<IActionResult> Verwijder(Guid gebruikerId, CancellationToken cancellationToken)
     {
@@ -54,14 +54,14 @@ public sealed class GebruikersController : ControllerBase
         return NoContent();
     }
 
-    [HttpPut("{gebruikerId:guid}/directierecht")]
-    public async Task<ActionResult<GebruikerBeheerWeergave>> GeefDirectierecht(Guid gebruikerId, CancellationToken cancellationToken) =>
-        Ok(await _service.GeefDirectierechtAsync(gebruikerId, cancellationToken));
+    [HttpPut("{gebruikerId:guid}/adminrecht")]
+    public async Task<ActionResult<GebruikerBeheerWeergave>> GeefAdminrecht(Guid gebruikerId, CancellationToken cancellationToken) =>
+        Ok(await _service.GeefAdminrechtAsync(gebruikerId, cancellationToken));
 
-    /// <summary>409 for the last directie (ADR-0031 decision 7).</summary>
-    [HttpDelete("{gebruikerId:guid}/directierecht")]
-    public async Task<ActionResult<GebruikerBeheerWeergave>> NeemDirectierechtAf(Guid gebruikerId, CancellationToken cancellationToken) =>
-        Ok(await _service.NeemDirectierechtAfAsync(gebruikerId, cancellationToken));
+    /// <summary>409 for the last admin (ADR-0031 decision 7).</summary>
+    [HttpDelete("{gebruikerId:guid}/adminrecht")]
+    public async Task<ActionResult<GebruikerBeheerWeergave>> NeemAdminrechtAf(Guid gebruikerId, CancellationToken cancellationToken) =>
+        Ok(await _service.NeemAdminrechtAfAsync(gebruikerId, cancellationToken));
 
     [HttpPut("{gebruikerId:guid}/themabeheer")]
     public async Task<ActionResult<GebruikerBeheerWeergave>> GeefThemabeheer(Guid gebruikerId, CancellationToken cancellationToken) =>

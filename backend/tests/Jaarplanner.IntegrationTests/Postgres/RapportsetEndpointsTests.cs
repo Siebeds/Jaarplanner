@@ -14,7 +14,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <list type="bullet">
 /// <item>the scale starts with the owner's example (two stars) and the palette is the six fixed colours;</item>
 /// <item>every K3 leerkracht in a running schooljaar edits both, and every other K3 leerkracht sees the change (R4-R7);</item>
-/// <item>directie, a hoofdleerkracht of K3 without a K3 klastoewijzing, a K2 leerkracht, themabeheer and a K3 leerkracht
+/// <item>admin, a hoofdleerkracht of K3 without a K3 klastoewijzing, a K2 leerkracht, themabeheer and a K3 leerkracht
 /// after the schooljaar view them and change nothing, also by URL (R31, D4);</item>
 /// <item>only decided K3 subdoelen are bundled, and one that is refused, deleted or re-scoped leaves every rapportdoel,
 /// which keeps its titel (D3, D11, D12).</item>
@@ -84,9 +84,9 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task De_sterrenschaal_begint_met_het_voorbeeld_van_de_eigenaar_en_de_kleurenlijst_is_vast()
     {
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
 
-        using (var antwoord = await directie.GetAsync(Gradaties))
+        using (var antwoord = await admin.GetAsync(Gradaties))
         {
             Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
             using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
@@ -98,11 +98,11 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
 
         Assert.Equal(
             [(VolledigBereikt, "Volledig bereikt", "Groen", 1), (NogNietVolledig, "Nog niet volledig", "Oranje", 2)],
-            (await GradatiesAsync(directie)).Select(g => (g.Id, g.Label, g.Kleur, g.Volgorde)));
+            (await GradatiesAsync(admin)).Select(g => (g.Id, g.Label, g.Kleur, g.Volgorde)));
 
         Assert.Equal(
             ["Groen", "Lichtgroen", "Geel", "Oranje", "Rood", "Blauw"],
-            (await directie.GetFromJsonAsync<List<string>>($"{Gradaties}/kleuren"))!);
+            (await admin.GetFromJsonAsync<List<string>>($"{Gradaties}/kleuren"))!);
     }
 
     [PostgresFact]
@@ -265,20 +265,20 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
         var school = await _opzet.SchoolAsync();
         var inhoud = await InhoudAsync();
         using var blauw = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var luisteren = await MaakRapportdoelAsync(blauw, "Luisteren en spreken", inhoud.Luisteren, inhoud.Vertellen, inhoud.Tellen);
 
-        // A hoofdleerkracht's (here directie's) subdoel delete, on its own route.
+        // A hoofdleerkracht's (here admin's) subdoel delete, on its own route.
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
-            directie.DeleteAsync($"/api/subthemas/{inhoud.Regen}/subdoelen/{inhoud.Luisteren}")));
+            admin.DeleteAsync($"/api/subthemas/{inhoud.Regen}/subdoelen/{inhoud.Luisteren}")));
         Assert.Equal([inhoud.Tellen, inhoud.Vertellen], (await RapportdoelenAsync(blauw)).Single().Subdoelen.Select(s => s.Id));
 
         // A subthema delete takes its subdoelen with it.
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/subthemas/{inhoud.Bladeren}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/subthemas/{inhoud.Bladeren}")));
         Assert.Equal([inhoud.Vertellen], (await RapportdoelenAsync(blauw)).Single().Subdoelen.Select(s => s.Id));
 
         // And a thema delete, two cascades away.
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/themas/{inhoud.Water}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/themas/{inhoud.Water}")));
         var over = (await RapportdoelenAsync(blauw)).Single();
         Assert.Equal(("Luisteren en spreken", 0), (over.Titel, over.Subdoelen.Count));
 
@@ -294,24 +294,24 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
         var school = await _opzet.SchoolAsync();
         var inhoud = await InhoudAsync();
         using var blauw = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var luisteren = await MaakRapportdoelAsync(blauw, "Luisteren en spreken", inhoud.Luisteren, inhoud.Vertellen, inhoud.Tellen);
 
         // An edit that stays in K3 changes nothing about membership; the new name shows.
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K3" })));
+            admin.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K3" })));
         var ongewijzigd = (await RapportdoelenAsync(blauw)).Single();
         Assert.Equal([inhoud.Tellen, inhoud.Luisteren, inhoud.Vertellen], ongewijzigd.Subdoelen.Select(s => s.Id));
         Assert.Equal("Regenbui", ongewijzigd.Subdoelen[1].SubthemaNaam);
 
         // D12: re-scoped to K2, its two subdoelen leave.
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K2" })));
+            admin.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K2" })));
         Assert.Equal([inhoud.Tellen], (await RapportdoelenAsync(blauw)).Single().Subdoelen.Select(s => s.Id));
 
         // Back to K3: they are candidates again, and not back in the rapportdoel unasked.
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K3" })));
+            admin.PutAsJsonAsync($"/api/subthemas/{inhoud.Regen}", new { naam = "Regenbui", duurWeken = 2, leeftijd = "K3" })));
         var terug = (await RapportdoelenAsync(blauw)).Single();
         Assert.Equal("Luisteren en spreken", terug.Titel);
         Assert.Equal([inhoud.Tellen], terug.Subdoelen.Select(s => s.Id));
@@ -324,7 +324,7 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
     // --- Who (R6, R31, D4): view for everyone signed in, edit for the K3 leerkrachten of a running schooljaar. ---
 
     [PostgresFact]
-    public async Task Directie_hoofdleerkracht_K2_leerkracht_en_themabeheer_bekijken_de_set_maar_wijzigen_niets()
+    public async Task Admin_hoofdleerkracht_K2_leerkracht_en_themabeheer_bekijken_de_set_maar_wijzigen_niets()
     {
         var school = await _opzet.SchoolAsync();
         var inhoud = await InhoudAsync();
@@ -333,8 +333,8 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
 
         var kijkers = new List<HttpClient>
         {
-            _opzet.Directie(),
-            _opzet.Als(await _opzet.GebruikerAsync(directie: true)),
+            _opzet.Admin(),
+            _opzet.Als(await _opzet.GebruikerAsync(admin: true)),
             // D4: a hoofdleerkracht of K3 without a K3 klastoewijzing, also holding themabeheer.
             _opzet.Als(await _opzet.GebruikerAsync(school, themabeheer: true, hoofdleerkrachtVan: ["K3"])),
             _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K2Rood])),
@@ -388,9 +388,9 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Een_directeur_die_zelf_een_K3_klas_heeft_wijzigt_de_set_toch_niet()
     {
-        // R31 as the owner read it on 2026-09-15 ("Nooit wie directie heeft"): not even with a running K3 klastoewijzing.
+        // R31 as the owner read it on 2026-09-15 ("Nooit wie admin heeft"): not even with a running K3 klastoewijzing.
         var school = await _opzet.SchoolAsync();
-        using var directeurMetKlas = _opzet.Als(await _opzet.GebruikerAsync(school, directie: true, klassen: [school.K3Blauw]));
+        using var directeurMetKlas = _opzet.Als(await _opzet.GebruikerAsync(school, admin: true, klassen: [school.K3Blauw]));
 
         await RechtenTestOpzet.VerwachtAsync(
             directeurMetKlas.PostAsJsonAsync(Gradaties, new { label = "Bijna", kleur = "Geel" }), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
@@ -474,23 +474,23 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
         RechtenTestOpzet.VerwachtAsync(verzoek, HttpStatusCode.BadRequest, zin);
 
     /// <summary>
-    /// K3 content made the way a screen makes it, as directie: Water › Regen (K3) with RS-01 and RS-02, Herfst › Bladeren
+    /// K3 content made the way a screen makes it, as admin: Water › Regen (K3) with RS-01 and RS-02, Herfst › Bladeren
     /// (K3) with RS-03, Water › Plassen (K2) with RS-04, all <c>Manueel</c>; and an undecided RS-04 under Regen, seeded
     /// directly because no route creates one.
     /// </summary>
     private async Task<Inhoud> InhoudAsync()
     {
-        using var directie = _opzet.Directie();
-        var water = await RechtenTestOpzet.IdAsync(directie.PostAsJsonAsync("/api/themas", new { naam = "Water", duurWeken = 4 }), HttpStatusCode.Created);
-        var herfst = await RechtenTestOpzet.IdAsync(directie.PostAsJsonAsync("/api/themas", new { naam = "Herfst", duurWeken = 4 }), HttpStatusCode.Created);
-        var regen = await SubthemaAsync(directie, water, "Regen", "K3");
-        var plassen = await SubthemaAsync(directie, water, "Plassen", "K2");
-        var bladeren = await SubthemaAsync(directie, herfst, "Bladeren", "K3");
+        using var admin = _opzet.Admin();
+        var water = await RechtenTestOpzet.IdAsync(admin.PostAsJsonAsync("/api/themas", new { naam = "Water", duurWeken = 4 }), HttpStatusCode.Created);
+        var herfst = await RechtenTestOpzet.IdAsync(admin.PostAsJsonAsync("/api/themas", new { naam = "Herfst", duurWeken = 4 }), HttpStatusCode.Created);
+        var regen = await SubthemaAsync(admin, water, "Regen", "K3");
+        var plassen = await SubthemaAsync(admin, water, "Plassen", "K2");
+        var bladeren = await SubthemaAsync(admin, herfst, "Bladeren", "K3");
 
-        var luisteren = await SubdoelAsync(directie, regen, "RS-01");
-        var vertellen = await SubdoelAsync(directie, regen, "RS-02");
-        var tellen = await SubdoelAsync(directie, bladeren, "RS-03");
-        var k2 = await SubdoelAsync(directie, plassen, "RS-04");
+        var luisteren = await SubdoelAsync(admin, regen, "RS-01");
+        var vertellen = await SubdoelAsync(admin, regen, "RS-02");
+        var tellen = await SubdoelAsync(admin, bladeren, "RS-03");
+        var k2 = await SubdoelAsync(admin, plassen, "RS-04");
 
         await using var context = _db.MaakContext();
         var subthema = await context.Subthemas.Include(s => s.Subdoelen).SingleAsync(s => s.Id == regen);
@@ -501,13 +501,13 @@ public sealed class RapportsetEndpointsTests : IAsyncLifetime
         return new Inhoud(water, regen, bladeren, luisteren, vertellen, tellen, k2, voorgesteld.Id);
     }
 
-    private static Task<Guid> SubthemaAsync(HttpClient directie, Guid themaId, string naam, string leeftijd) =>
+    private static Task<Guid> SubthemaAsync(HttpClient admin, Guid themaId, string naam, string leeftijd) =>
         RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/themas/{themaId}/subthemas", new { naam, duurWeken = 2, leeftijd }), HttpStatusCode.Created);
+            admin.PostAsJsonAsync($"/api/themas/{themaId}/subthemas", new { naam, duurWeken = 2, leeftijd }), HttpStatusCode.Created);
 
-    private static Task<Guid> SubdoelAsync(HttpClient directie, Guid subthemaId, string code) =>
+    private static Task<Guid> SubdoelAsync(HttpClient admin, Guid subthemaId, string code) =>
         RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = code }), HttpStatusCode.OK);
+            admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = code }), HttpStatusCode.OK);
 
     private async Task ZetStatusAsync(Guid subdoelId, KoppelingStatus status)
     {

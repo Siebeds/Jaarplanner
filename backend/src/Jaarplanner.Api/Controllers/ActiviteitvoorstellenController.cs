@@ -13,8 +13,8 @@ namespace Jaarplanner.Api.Controllers;
 /// <para>
 /// <b>Rights (D1, A3).</b> Asking is <c>EigenActiviteitMaken</c> at the subthema's leeftijd, because an accepted
 /// proposal is an own activiteit made there; the asker is the session's gebruiker, never an id from the body. Deciding is
-/// <c>ActiviteitvoorstelBeslissen</c> on the proposal: its asker, and directie. Reading needs a session: each caller is
-/// sent her own open proposals, and whoever passes that row for any asker (directie) is sent everyone's.
+/// <c>ActiviteitvoorstelBeslissen</c> on the proposal: its asker, and admin. Reading needs a session: each caller is
+/// sent her own open proposals, and whoever passes that row for any asker (admin) is sent everyone's.
 /// </para>
 /// <para>
 /// <b>An unreadable model answer is a 422</b> with an English diagnostic and no change (Art. IV.5), as the other AI
@@ -42,7 +42,7 @@ public sealed class ActiviteitvoorstellenController : ControllerBase
             return Forbid();
         }
 
-        // Asked about a proposal of nobody in particular, so the asker's column cannot pass: only directie does.
+        // Asked about a proposal of nobody in particular, so the asker's column cannot pass: only admin does.
         var vanIedereen = await _autorisatie.MagAsync(
             User, new Activiteitvoorstelbron(Guid.Empty, string.Empty, Guid.Empty), Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen);
         return Ok(await _service.HaalOpAsync(subthemaId, gebruikerId, vanIedereen, cancellationToken));

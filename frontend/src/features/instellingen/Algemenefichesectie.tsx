@@ -47,7 +47,7 @@ import {
  * does not know.
  *
  * **A klas's fiches, their goals and their placements are that klas's planning** (E6-02, ADR-0030 §3, R7; the fiche
- * goal links are one klas's, so R19 does not reach them, see the slice 3 worklog). Directie and the klas's own
+ * goal links are one klas's, so R19 does not reach them, see the slice 3 worklog). Admin and the klas's own
  * leerkrachten change them; anyone else reads them, with one quiet line naming the klas.
  */
 export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[]; laadt: boolean }) {
@@ -128,7 +128,7 @@ export function Algemenefichesectie({ klassen, laadt }: { klassen: KlasWeergave[
       {laadt || (klasId !== null && isPending) ? (
         <Laadlijst rijen={2} />
       ) : klassen.length === 0 ? (
-        // Only directie makes klassen; anyone else is told what the list means for them (FB-013).
+        // Only admin makes klassen; anyone else is told what the list means for them (FB-013).
         <p className="text-body text-inkt-zacht">{mag.beheer ? t("algemeneFiches.geenKlassen") : geenKlassenZin}</p>
       ) : (fiches ?? []).length === 0 ? (
         <p className="text-body text-inkt-zacht">{t("algemeneFiches.geenFiches")}</p>

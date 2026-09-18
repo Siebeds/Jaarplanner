@@ -19,7 +19,7 @@ function ik(delen: Partial<Ik> = {}): Ik {
     id: IK,
     naam: "Leerkracht An",
     email: "an@school.be",
-    isDirectie: false,
+    isAdmin: false,
     heeftThemabeheer: false,
     heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],
@@ -150,8 +150,8 @@ describe("Woordweb", () => {
     expect(within(collega).queryByRole("button")).toBeNull();
   });
 
-  it("laat directie een woord uit het web van een collega halen (D3)", async () => {
-    const oproepen = toon([VAN_COLLEGA], ik({ isDirectie: true }));
+  it("laat admin een woord uit het web van een collega halen (D3)", async () => {
+    const oproepen = toon([VAN_COLLEGA], ik({ isAdmin: true }));
 
     const collega = await screen.findByRole("listitem", { name: t("woordweb.vanCollega", { naam: "Leerkracht Bo" }) });
     fireEvent.click(within(collega).getByRole("button", { name: t("woordweb.haalWeg", { woord: "paraplu" }) }));

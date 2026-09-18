@@ -52,7 +52,7 @@ export type Rij =
   | "SubdoelplaatsingBeslissen"
   | "ActiviteitvoorstelBeslissen";
 
-/** The §3 columns other than "Directie" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
+/** The §3 columns other than "Admin" (every row) and "Ander" (no enforced row), as the server's `Kolom` names them. */
 export type Kolom =
   | "Themabeheer"
   | "Hoofdleerkracht"
@@ -85,7 +85,7 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // which the server's resolver reports no one else's content and no linked leeftijd. That is the `thema` resource
   // below. A thema holding only its open run's items is the server's too, but no read here carries a run's items, so
   // that case stays closed until E6-05 reads the run. *Until fix round 1 this said the frontend could know no case at
-  // all, and offered the delete to directie only.*
+  // all, and offered the delete to admin only.*
   ThemaVerwijderen: ["ThemabeheerZonderAndermansInhoud"],
   SchoolcontentImporteren: ["Themabeheer"],
   MenselijkeBeslissingenVerwijderen: [],
@@ -121,24 +121,24 @@ export const RECHTENMATRIX: Record<Rij, readonly Kolom[]> = {
   // FB-003: the star, the text and the besluit of a report, by the same column as the children.
   RapportInvullen: ["LeerkrachtRapportInvullen"],
   // FB-002 (R6, D4): a klastoewijzing on a klas that can hold children, in a running schooljaar, which is exactly
-  // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so directie's
-  // graadklas decision moves this row with it. Directie does NOT pass it: see `ZONDER_DIRECTIE`.
+  // `lopendeRapportklasIds` being non-empty. That list comes from the one klas→leeftijden mapping, so admin's
+  // graadklas decision moves this row with it. Admin does NOT pass it: see `ZONDER_ADMIN`.
   RapportsetBewerken: ["Rapportsetleerkracht"],
-  // FB-036 (ADR-0043 W2, D3): a woordweb is its owner's; directie passes every row. Keeping one needs no row (D2).
+  // FB-036 (ADR-0043 W2, D3): a woordweb is its owner's; admin passes every row. Keeping one needs no row (D2).
   WoordwebBewerken: ["Eigenaar"],
-  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and directie; themabeheer alone does not.
+  // FB-057 (ADR-0050 P4): the hoofdleerkracht of the leeftijd, and admin; themabeheer alone does not.
   SubdoelplaatsingVragen: ["Hoofdleerkracht"],
   SubdoelplaatsingBeslissen: ["Hoofdleerkracht"],
-  // FB-025 (ADR-0056 A3): an activiteitvoorstel's asker while she teaches that leeftijd, and directie.
+  // FB-025 (ADR-0056 A3): an activiteitvoorstel's asker while she teaches that leeftijd, and admin.
   ActiviteitvoorstelBeslissen: ["AanvragerVanVoorstel"],
 };
 
 /**
- * The rows directie does not pass (the server's `Matrixrij.ZonderDirectie`). One today: the K3 set of rapportdoelen and
- * the sterrenschaal, which only the K3 leerkrachten change while directie views them (ADR-0035 R31, the one exception to
- * R3 "directie sees and edits everything").
+ * The rows admin does not pass (the server's `Matrixrij.ZonderAdmin`). One today: the K3 set of rapportdoelen and
+ * the sterrenschaal, which only the K3 leerkrachten change while admin views them (ADR-0035 R31, the one exception to
+ * R3 "admin sees and edits everything").
  */
-export const ZONDER_DIRECTIE: ReadonlySet<Rij> = new Set<Rij>(["RapportsetBewerken"]);
+export const ZONDER_ADMIN: ReadonlySet<Rij> = new Set<Rij>(["RapportsetBewerken"]);
 
 /**
  * The resource a row is asked about: the server's `Leeftijdsinhoud`, `Activiteitbron` and `Klasplanning`.
@@ -178,14 +178,14 @@ function zelfdeId(a: string, b: string): boolean {
 
 /**
  * Whether `ik` may do what `rij` describes, on `bron`. The server's `StaatToe`, clause for clause:
- * directie passes every row but those in `ZONDER_DIRECTIE` (R31); otherwise any one matching column is enough (the
+ * admin passes every row but those in `ZONDER_ADMIN` (R31); otherwise any one matching column is enough (the
  * union rule); a column that needs a resource matches only a resource of its own kind, so a missing one fails closed.
  */
 export function staatToe(ik: Ik | undefined, rij: Rij, bron?: Rechtbron): boolean {
   if (!ik) return false;
-  // R31 as the owner read it (2026-09-15, "Nooit wie directie heeft"): a ZONDER_DIRECTIE row is closed to directie
-  // outright, even with a K3 klas of its own, because directie assigns klassen and could otherwise open it for itself.
-  if (ik.isDirectie) return !ZONDER_DIRECTIE.has(rij);
+  // R31 as the owner read it (2026-09-15, "Nooit wie admin heeft"): a ZONDER_ADMIN row is closed to admin
+  // outright, even with a K3 klas of its own, because admin assigns klassen and could otherwise open it for itself.
+  if (ik.isAdmin) return !ZONDER_ADMIN.has(rij);
 
   const kolommen = RECHTENMATRIX[rij];
 
@@ -306,20 +306,20 @@ export function isEigenVan(ik: Ik | undefined, activiteit: { eigenaarId?: string
  * Named after the action, so a call site reads as the rule it applies.
  */
 export interface Mag {
-  /** Gebruikers, klassen, schooljaren and rights (R2, R3, R16): directie. Includes the klaskiezer's jaarfase. */
+  /** Gebruikers, klassen, schooljaren and rights (R2, R3, R16): admin. Includes the klaskiezer's jaarfase. */
   beheer: boolean;
-  /** The Op.stap import (R3; ADR-0022): directie. */
+  /** The Op.stap import (R3; ADR-0022): admin. */
   curriculumbeheer: boolean;
   /** Thema, themadoelen, kernwoordenschat (R4, R18). */
   themaBewerken: boolean;
   /**
-   * Deleting this thema (R3; I26): directie always, themabeheer on an empty thema. A thema holding only its own open
+   * Deleting this thema (R3; I26): admin always, themabeheer on an empty thema. A thema holding only its own open
    * wizard run's items waits for E6-05 (see `RECHTENMATRIX.ThemaVerwijderen`).
    */
   themaVerwijderen: (thema: { subthemas: readonly unknown[] }) => boolean;
   /** The FR-1 import (R9, R27, R34). */
   schoolcontentImporteren: boolean;
-  /** The import's "menselijke beslissingen verwijderen" option (R35): directie. */
+  /** The import's "menselijke beslissingen verwijderen" option (R35): admin. */
   menselijkeBeslissingenVerwijderen: boolean;
   /** The thema-opbouw wizard and its AI assist (R29). No screen calls it yet (E6-05). */
   themaOpbouw: boolean;
@@ -327,7 +327,7 @@ export interface Mag {
   doelsuggestiesMaken: boolean;
   /** Accepting, rejecting or adjusting them (R14). */
   doelsuggestiesBeoordelen: boolean;
-  /** Making a subthema at SOME leeftijd: directie, or a hoofdleerkracht of at least one. The form then offers only those. */
+  /** Making a subthema at SOME leeftijd: admin, or a hoofdleerkracht of at least one. The form then offers only those. */
   subthemaToevoegen: boolean;
   /** A subthema at this leeftijd: create, edit, delete, its onderzoeksvragen (R5, R21; I16). */
   subthemaBeheren: (leeftijd: string) => boolean;
@@ -337,12 +337,12 @@ export interface Mag {
   streefwoordenschatAanpassen: (leeftijd: string) => boolean;
   /**
    * Creating an activiteit under a subthema at this leeftijd, own or shared (ADR-0049 D1, D2): a leerkracht of that
-   * leeftijd creates her own, a hoofdleerkracht and directie also a shared one.
+   * leeftijd creates her own, a hoofdleerkracht and admin also a shared one.
    */
   activiteitMaken: (leeftijd: string) => boolean;
   /** Creating an own activiteit at this leeftijd (ADR-0049 D2). */
   eigenActiviteitMaken: (leeftijd: string) => boolean;
-  /** Creating a shared activiteit at this leeftijd (ADR-0049 D1): hoofdleerkracht and directie. */
+  /** Creating a shared activiteit at this leeftijd (ADR-0049 D1): hoofdleerkracht and admin. */
   gedeeldeActiviteitMaken: (leeftijd: string) => boolean;
   /** Changing this activiteit's content: a shared one HL and "LK leeftijd", an own one its owner (R17, R23; D4). */
   activiteitInhoudBewerken: (activiteit: Activiteitfeiten) => boolean;
@@ -368,45 +368,45 @@ export interface Mag {
   /** Everything that writes a klas's planning: jaarplan, agenda, hoeken, algemene fiches (R7, R15; I21). */
   klasplanningBewerken: (klasId: string | null) => boolean;
   /**
-   * Whether this gebruiker reads every klas: directie or themabeheer, the part of `KlasplanningBekijken` that needs no
+   * Whether this gebruiker reads every klas: admin or themabeheer, the part of `KlasplanningBekijken` that needs no
    * klas (FB-013). Only then does an empty klassen list mean the schooljaar has none; for anyone else the server offers
    * only the klassen they may read.
    */
   alleKlassenInzien: boolean;
   /**
-   * Whether this gebruiker holds no relation that opens any klas: no directie, no themabeheer, no hoofdleerkracht
+   * Whether this gebruiker holds no relation that opens any klas: no admin, no themabeheer, no hoofdleerkracht
    * appointment, no klastoewijzing (FB-013, ADR-0040 Z4). False until `/api/ik` has answered with a gebruiker, so a
    * screen never says "you have no right" on a failed answer.
    */
   geenKlasInzien: boolean;
   /**
-   * Whether this gebruiker reads reports at all (ADR-0035 D18): directie, a leerkracht of a klas that grants K3, or
+   * Whether this gebruiker reads reports at all (ADR-0035 D18): admin, a leerkracht of a klas that grants K3, or
    * Leerlingzorg (FB-008). Anyone else would find a list of children with nothing they may see.
    */
   ontwikkelingsrapportZien: boolean;
   /**
-   * Whether this gebruiker reads the reports of every klas that can hold children: directie or Leerlingzorg (FB-008).
+   * Whether this gebruiker reads the reports of every klas that can hold children: admin or Leerlingzorg (FB-008).
    * Only then does an empty list of such klassen mean the schooljaar has none; anyone else reads only their own.
    */
   alleRapportklassenLezen: boolean;
   /**
-   * Reading this klas's children and reports: directie, the klas's own K3 leerkrachten, also after its year (R26), and
+   * Reading this klas's children and reports: admin, the klas's own K3 leerkrachten, also after its year (R26), and
    * Leerlingzorg, on every klas (R18, FB-008).
    */
   ontwikkelingsrapportLezen: (klasId: string) => boolean;
-  /** Adding, renaming and deleting this klas's children: directie, and its K3 leerkrachten during its year (R26, D8). */
+  /** Adding, renaming and deleting this klas's children: admin, and its K3 leerkrachten during its year (R26, D8). */
   leerlingenBeheren: (klasId: string) => boolean;
-  /** Filling in a report of this klas (star, text, besluit): directie, and its K3 leerkrachten during its year (R26). */
+  /** Filling in a report of this klas (star, text, besluit): admin, and its K3 leerkrachten during its year (R26). */
   rapportInvullen: (klasId: string) => boolean;
   /**
    * Whether this gebruiker reads this klas's children only because they taught it in a schooljaar that has ended:
-   * a K3 leerkracht of the klas, not directie, and no longer allowed to write (R26). Exactly the case a screen may
+   * a K3 leerkracht of the klas, not admin, and no longer allowed to write (R26). Exactly the case a screen may
    * explain with "dit schooljaar is voorbij" (the E5-03 rule): reading without writing for any other reason
    * (Leerlingzorg, FB-008) is not this.
    */
   rapportAlleenNogLezen: (klasId: string) => boolean;
   /** Changing the one K3 set of rapportdoelen and the sterrenschaal: a K3 leerkracht in a running schooljaar, never
-   * directie (R6, R31, D4). */
+   * admin (R6, R31, D4). */
   rapportsetBewerken: boolean;
   /**
    * Whether the Ontwikkelingsrapport destination is offered in the navigation (ADR-0035 D18, widened by the owner on
@@ -415,11 +415,11 @@ export interface Mag {
    * open the set and the scale by address (FB-002 AC5); the tab is not offered to them.
    */
   ontwikkelingsrapportTab: boolean;
-  /** Changing this woordweb and asking the AI for words: its owner, and directie (ADR-0043 W2, D3). */
+  /** Changing this woordweb and asking the AI for words: its owner, and admin (ADR-0043 W2, D3). */
   woordwebBewerken: (eigenaarId: string) => boolean;
   /** Asking the AI where the open doelen of this leeftijd go (FB-057, ADR-0050 P4). */
   subdoelplaatsingVragen: (leeftijd: string) => boolean;
-  /** Deciding this AI activiteitvoorstel: its asker while she teaches the leeftijd, and directie (ADR-0056 A3). */
+  /** Deciding this AI activiteitvoorstel: its asker while she teaches the leeftijd, and admin (ADR-0056 A3). */
   activiteitvoorstelBeslissen: (voorstel: { leeftijd: string; aanvragerId: string }) => boolean;
 }
 
@@ -439,9 +439,9 @@ export function magVoor(ik: Ik | undefined): Mag {
     themaOpbouw: rij("ThemaOpbouw"),
     doelsuggestiesMaken: rij("DoelsuggestiesMaken"),
     doelsuggestiesBeoordelen: rij("DoelsuggestiesBeoordelen"),
-    // Directie passes without a leeftijd; anyone else needs one where the row holds.
+    // Admin passes without a leeftijd; anyone else needs one where the row holds.
     subthemaToevoegen:
-      ik?.isDirectie === true ||
+      ik?.isAdmin === true ||
       hoofdleerkrachtLeeftijden.some((leeftijd) => rij("SubthemaBeheren", { soort: "leeftijd", leeftijd })),
     subthemaBeheren: opLeeftijd("SubthemaBeheren"),
     subthemaHerschikken: (van, naar) =>
@@ -471,8 +471,8 @@ export function magVoor(ik: Ik | undefined): Mag {
           rij("DoelenKoppelen", { soort: "leeftijd", leeftijd }),
       ),
     klasplanningBewerken: (klasId) =>
-      ik?.isDirectie === true || (klasId !== null && rij("KlasplanningBewerken", { soort: "klas", klasId })),
-    // Without a klas the row passes only on its resource-free columns: directie and themabeheer.
+      ik?.isAdmin === true || (klasId !== null && rij("KlasplanningBewerken", { soort: "klas", klasId })),
+    // Without a klas the row passes only on its resource-free columns: admin and themabeheer.
     alleKlassenInzien: rij("KlasplanningBekijken"),
     // `?? []`: an answer without the lists (an older API, a test that stubs every request alike) must not crash every
     // screen that asks for rights. It then reads as "no relation", which only a known gebruiker turns into a sentence.
@@ -483,8 +483,8 @@ export function magVoor(ik: Ik | undefined): Mag {
       (ik.leerkrachtLeeftijden ?? []).length === 0 &&
       (ik.eigenKlasIds ?? []).length === 0,
     ontwikkelingsrapportZien:
-      ik?.isDirectie === true || ik?.heeftLeerlingzorg === true || (ik?.rapportklasIds ?? []).length > 0,
-    alleRapportklassenLezen: ik?.isDirectie === true || ik?.heeftLeerlingzorg === true,
+      ik?.isAdmin === true || ik?.heeftLeerlingzorg === true || (ik?.rapportklasIds ?? []).length > 0,
+    alleRapportklassenLezen: ik?.isAdmin === true || ik?.heeftLeerlingzorg === true,
     ontwikkelingsrapportLezen: (klasId) => rij("OntwikkelingsrapportLezen", { soort: "rapportklas", klasId }),
     leerlingenBeheren: (klasId) => rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
     rapportInvullen: (klasId) => rij("RapportInvullen", { soort: "rapportklas", klasId }),
@@ -492,13 +492,13 @@ export function magVoor(ik: Ik | undefined): Mag {
     // and for them "dit schooljaar is voorbij" would be a reason that is not theirs.
     rapportAlleenNogLezen: (klasId) =>
       ik !== undefined &&
-      !ik.isDirectie &&
+      !ik.isAdmin &&
       (ik.rapportklasIds ?? []).some((id) => zelfdeId(id, klasId)) &&
       !rij("LeerlingenBeheren", { soort: "rapportklas", klasId }),
-    // Deliberately no `isDirectie` short-circuit here, unlike some answers above: this is the row directie does not pass.
+    // Deliberately no `isAdmin` short-circuit here, unlike some answers above: this is the row admin does not pass.
     rapportsetBewerken: rij("RapportsetBewerken"),
     ontwikkelingsrapportTab:
-      ik?.isDirectie === true ||
+      ik?.isAdmin === true ||
       ik?.heeftLeerlingzorg === true ||
       (ik?.rapportklasIds ?? []).length > 0 ||
       // "K3" is the leeftijd of a hoofdleerkracht's appointment, not a klas's jaarfase, so this is no klas→leeftijden
@@ -518,7 +518,7 @@ export function magVoor(ik: Ik | undefined): Mag {
  * - `bekend` is true only once it answered WITH a gebruiker. Only then does an absent right mean the gebruiker lacks
  *   it. A failed `/api/ik` leaves `laadt` false and `bekend` false: `mag` holds nothing, so no write control is
  *   offered, and a sentence that says the gebruiker lacks a right must wait for `bekend`. Otherwise it would tell a
- *   directie whose `/api/ik` failed that they may only read (fix round 1, F3, the E5-03 rule).
+ *   admin whose `/api/ik` failed that they may only read (fix round 1, F3, the E5-03 rule).
  *
  * Until then `mag` holds nothing, so a screen renders as a reader until it knows better and never has to take a
  * control away.
@@ -533,7 +533,7 @@ export function useRechten(): { mag: Mag; laadt: boolean; bekend: boolean } {
  * What an empty klassen list means for the signed-in gebruiker, as one sentence (FB-013, ADR-0040). The server offers
  * only the klassen a gebruiker may read, so "this schooljaar has no klassen" is true only for whoever reads them all:
  * - no relation that opens any klas (known from `/api/ik`): that, in plain words;
- * - directie or themabeheer: `alleKlassenZin`, the screen's own sentence;
+ * - admin or themabeheer: `alleKlassenZin`, the screen's own sentence;
  * - anyone else, and anyone while `/api/ik` has not answered: no klas they may read, which the server's list guarantees.
  */
 export function useGeenKlassenZin(alleKlassenZin: string): string {

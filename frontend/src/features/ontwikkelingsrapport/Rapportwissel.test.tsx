@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, ikMet, metIk } from "../../test/rechten";
 import { t } from "../../i18n";
 import { Rapportstart, Rapportwissel } from "./Rapportwissel";
 
@@ -63,13 +63,13 @@ describe("Rapportwissel", () => {
 });
 
 describe("Rapportstart", () => {
-  it("stuurt een K3-leerkracht en directie naar de kinderen", () => {
+  it("stuurt een K3-leerkracht en admin naar de kinderen", () => {
     toon(K3_LEERKRACHT);
     expect(screen.getByText("kinderen-scherm")).toBeInTheDocument();
   });
 
-  it("stuurt directie ook naar de kinderen", () => {
-    toon(DIRECTIE);
+  it("stuurt admin ook naar de kinderen", () => {
+    toon(ADMIN);
     expect(screen.getByText("kinderen-scherm")).toBeInTheDocument();
   });
 

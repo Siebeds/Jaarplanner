@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import type { KlasWeergave, LeerplandoelDetail, ThemaBibliotheekItem, ThemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
-import { DIRECTIE, NIEMAND, ikMet, metIk } from "../../test/rechten";
+import { ADMIN, NIEMAND, ikMet, metIk } from "../../test/rechten";
 import { Bestemmingsblad } from "./Bestemmingsblad";
 
 /**
@@ -140,8 +140,8 @@ describe("Bestemmingsblad", () => {
   });
 
   // FB-043: a thema itself takes no leerplandoel any more, so an empty thema offers nothing, to anyone.
-  it("toont ook directie het lege thema niet, en zegt themabeheer alleen dat er niets te koppelen is", () => {
-    const { blad } = toon(DIRECTIE, [HERFST, LEEG]);
+  it("toont ook admin het lege thema niet, en zegt themabeheer alleen dat er niets te koppelen is", () => {
+    const { blad } = toon(ADMIN, [HERFST, LEEG]);
     expect(within(blad).getByText("Herfst")).toBeInTheDocument();
     expect(within(blad).queryByText("Leeg thema")).toBeNull();
     cleanup();

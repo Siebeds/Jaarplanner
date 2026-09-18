@@ -6,7 +6,7 @@ import { Navigatie } from "./Navigatie";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { t } from "../i18n";
 import type { Ik } from "../lib/aanmelding";
-import { DIRECTIE, ikMet, metIk } from "../test/rechten";
+import { ADMIN, ikMet, metIk } from "../test/rechten";
 
 /**
  * What the navigation does that is behaviour rather than style.
@@ -27,7 +27,7 @@ import { DIRECTIE, ikMet, metIk } from "../test/rechten";
   below sees the navigation exactly as it was before the row existed.
 
   The switches wait for the rights (E6-02 slice 4, ADR-0030 §3, R7), and the algemene fiches' is a planning right, so
-  the tests that expect them put a directie in the cache first; directie plans every klas, with or without one chosen.
+  the tests that expect them put an admin in the cache first; admin plans every klas, with or without one chosen.
 */
 const rendermetPad = (pad: string, ik?: Ik) => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -74,22 +74,22 @@ describe("Navigatie, aangemeld", () => {
 
 describe("Navigatie", () => {
   it("biedt de hoekenschakelaar aan op de agenda", () => {
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
     expect(schakelaar()).toBeInTheDocument();
   });
 
   it("biedt hem ook aan op een losse dag van de agenda", () => {
-    rendermetPad("/agenda/dag/2026-09-01", DIRECTIE);
+    rendermetPad("/agenda/dag/2026-09-01", ADMIN);
     expect(schakelaar()).toBeInTheDocument();
   });
 
   it("biedt hem niet aan op een ander scherm", () => {
-    rendermetPad("/doelen", DIRECTIE);
+    rendermetPad("/doelen", ADMIN);
     expect(schakelaar()).not.toBeInTheDocument();
   });
 
   it("biedt hem niet aan bij thema's per periode, want daar staat geen paneel", () => {
-    rendermetPad("/agenda/periodes", DIRECTIE);
+    rendermetPad("/agenda/periodes", ADMIN);
     expect(schakelaar()).not.toBeInTheDocument();
   });
 
@@ -129,7 +129,7 @@ describe("Navigatie", () => {
   });
 
   it("opent het paneel en zegt dat het open staat", () => {
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
     const knop = schakelaar();
     expect(knop).toHaveAttribute("aria-pressed", "false");
 
@@ -144,7 +144,7 @@ describe("Navigatie", () => {
     switch swaps the list without closing the column first; pressing the one that is on closes it.
   */
   it("heeft een eigen schakelaar voor de algemene fiches, die de lijst wisselt en niet eerst sluit", () => {
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
     const algemeen = () => screen.getByRole("button", { name: t("hoekenpaneel.algemeenTitel") });
 
     fireEvent.click(algemeen());
@@ -162,7 +162,7 @@ describe("Navigatie", () => {
   });
 
   it("heeft een derde schakelaar voor de activiteiten, in dezelfde kolom (FB-017)", () => {
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
     const activiteiten = () => screen.getByRole("button", { name: t("hoekenpaneel.activiteitenTitel") });
 
     fireEvent.click(activiteiten());
@@ -175,7 +175,7 @@ describe("Navigatie", () => {
   });
 
   it("zet de schakelaars in de volgorde activiteiten, algemene fiches, hoekenfiches (TB-024)", () => {
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
     const namen = [
       t("hoekenpaneel.activiteitenTitel"),
       t("hoekenpaneel.algemeenTitel"),
@@ -190,7 +190,7 @@ describe("Navigatie", () => {
 
   it("sluit het paneel wanneer de leerkracht naar een ander scherm gaat", () => {
     useHoekenpaneel.setState({ open: true });
-    rendermetPad("/agenda", DIRECTIE);
+    rendermetPad("/agenda", ADMIN);
 
     fireEvent.click(screen.getByRole("link", { name: t("navigatie.doelen") }));
 
@@ -231,8 +231,8 @@ describe("de bestemming Ontwikkelingsrapport (FB-001)", () => {
     expect(rapport()).toBeInTheDocument();
   });
 
-  it("staat er voor directie", () => {
-    rendermetPad("/doelen", DIRECTIE);
+  it("staat er voor admin", () => {
+    rendermetPad("/doelen", ADMIN);
     expect(rapport()).toBeInTheDocument();
   });
 

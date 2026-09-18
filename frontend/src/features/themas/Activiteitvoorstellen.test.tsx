@@ -17,7 +17,7 @@ function ik(delen: Partial<Ik> = {}): Ik {
     id: "a0000000-0000-4000-8000-000000000001",
     naam: "Leerkracht An",
     email: "an@school.be",
-    isDirectie: false,
+    isAdmin: false,
     heeftThemabeheer: false,
     heeftLeerlingzorg: false,
     hoofdleerkrachtLeeftijden: [],
@@ -116,8 +116,8 @@ describe("Activiteitvoorstellen", () => {
     expect(within(kaart).queryByText(/Gevraagd door/)).not.toBeInTheDocument();
   });
 
-  it("noemt bij de directie wie een voorstel van een collega vroeg", async () => {
-    toon(ik({ isDirectie: true, leerkrachtLeeftijden: [] }), [
+  it("noemt bij de admin wie een voorstel van een collega vroeg", async () => {
+    toon(ik({ isAdmin: true, leerkrachtLeeftijden: [] }), [
       { ...VOORSTEL, isEigen: false, aanvragerId: "b0000000-0000-4000-8000-000000000002", aanvragerNaam: "Leerkracht Bo" },
     ]);
 

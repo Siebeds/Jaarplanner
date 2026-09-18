@@ -11,8 +11,8 @@ namespace Jaarplanner.Api.Controllers;
 /// child's, and the moment in the route held to 1..3, so any other number is a 404 before anything runs.
 /// <para>
 /// <b>Rights (ADR-0030 §3 footnote ⁶, ADR-0035 §3.3), both on the child's klas.</b> Reading is
-/// <c>OntwikkelingsrapportLezen</c>: directie, and the klas's own K3 leerkrachten, also after its schooljaar (R26); no
-/// leerkracht of another klas (R17). Every write is <c>RapportInvullen</c>: directie always, and those leerkrachten only
+/// <c>OntwikkelingsrapportLezen</c>: admin, and the klas's own K3 leerkrachten, also after its schooljaar (R26); no
+/// leerkracht of another klas (R17). Every write is <c>RapportInvullen</c>: admin always, and those leerkrachten only
 /// during the schooljaar. The leerling is resolved before the check, so an unknown child is a 404 first.
 /// </para>
 /// <para>

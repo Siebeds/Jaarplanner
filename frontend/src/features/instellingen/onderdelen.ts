@@ -18,11 +18,11 @@ import { useRechten } from "../../lib/rechten";
 export const ONDERDELEN = [
   { deel: "klassen", labelSleutel: "instellingen.klassen" },
   // Beside the klassen because it answers the other half of the same question: which classes the
-  // school has, and who teaches them (E6-04). Directie only (ADR-0030 §3): nobody else sees the
+  // school has, and who teaches them (E6-04). Admin only (ADR-0030 §3): nobody else sees the
   // link, and a direct visit lands on the first part they can use (`Onderdeelpoort`).
-  { deel: "gebruikers", labelSleutel: "instellingen.gebruikers", alleenDirectie: true },
-  // The school's hours (FB-023): school organisation like the two above, so it stands with them. Not directie only:
-  // every agenda draws these hours, so everyone may read them, and the screen offers the fields to directie alone.
+  { deel: "gebruikers", labelSleutel: "instellingen.gebruikers", alleenAdmin: true },
+  // The school's hours (FB-023): school organisation like the two above, so it stands with them. Not admin only:
+  // every agenda draws these hours, so everyone may read them, and the screen offers the fields to admin alone.
   { deel: "schooluren", labelSleutel: "instellingen.schooluren" },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
   { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
@@ -36,29 +36,29 @@ export const ONDERDELEN = [
   // page title, and the `aria-label` of the light/dark radiogroup. Shortening it for the navigation
   // renames the control for a screen reader too.
   { deel: "weergave", labelSleutel: "weergave.titel" },
-] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel; alleenDirectie?: boolean }[];
+] as const satisfies readonly { deel: string; labelSleutel: Vertaalsleutel; alleenAdmin?: boolean }[];
 
 export type Onderdeel = (typeof ONDERDELEN)[number];
 export type Deel = Onderdeel["deel"];
 
 /**
- * Whether only directie may see this part: the §3 "beheren" row (`mag.beheer`), which is directie only. The link is
+ * Whether only admin may see this part: the §3 "beheren" row (`mag.beheer`), which is admin only. The link is
  * hidden, and the server refuses the data.
  */
-export function isAlleenDirectie(onderdeel: Onderdeel): boolean {
-  return "alleenDirectie" in onderdeel && onderdeel.alleenDirectie;
+export function isAlleenAdmin(onderdeel: Onderdeel): boolean {
+  return "alleenAdmin" in onderdeel && onderdeel.alleenAdmin;
 }
 
 /**
  * The parts this person may see, in `ONDERDELEN` order. Until `/api/ik` has answered, a
- * directie-only part counts as hidden: a link that appears a moment later is better than one that
+ * admin-only part counts as hidden: a link that appears a moment later is better than one that
  * is offered and then taken away. The column, the phone switch and the route gate all read this,
  * so they cannot disagree about which parts exist. The answer comes from `lib/rechten.ts` (E6-02
  * slice 4), the one place the frontend decides what a gebruiker may do.
  */
 export function useZichtbareOnderdelen(): readonly Onderdeel[] {
   const { mag } = useRechten();
-  return ONDERDELEN.filter((onderdeel) => mag.beheer || !isAlleenDirectie(onderdeel));
+  return ONDERDELEN.filter((onderdeel) => mag.beheer || !isAlleenAdmin(onderdeel));
 }
 
 /** The address of a part. */

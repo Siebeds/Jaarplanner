@@ -118,7 +118,7 @@ public sealed class SchoolcontentImportController : ControllerBase
         bool toepassen,
         CancellationToken cancellationToken)
     {
-        // R35 (E6-02): only directie may switch on deleting human decisions, on the preview as well as on the apply, so
+        // R35 (E6-02): only admin may switch on deleting human decisions, on the preview as well as on the apply, so
         // a themabeheer holder cannot run it either way. Asked before the file is read, because the answer does not
         // depend on the file. The route's own row (SchoolcontentImporteren) was already asked by the attribute.
         if (invoer.MenselijkeBeslissingenVerwijderen

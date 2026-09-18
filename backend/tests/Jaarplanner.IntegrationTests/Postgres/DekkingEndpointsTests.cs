@@ -99,7 +99,7 @@ public sealed class DekkingEndpointsTests : IAsyncLifetime
     [PostgresFact]
     public async Task Het_hele_curriculum_is_over_HTTP_een_expliciete_keuze()
     {
-        // The escape hatch a directie needs: what the SCHOOL loaded, not what this class is measured against.
+        // The escape hatch an admin needs: what the SCHOOL loaded, not what this class is measured against.
         var klasId = await ZetKlasOpAsync();
 
         var response = await _factory.CreateClient()

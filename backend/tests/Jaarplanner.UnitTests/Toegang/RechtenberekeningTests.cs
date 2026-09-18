@@ -22,13 +22,13 @@ public sealed class RechtenberekeningTests
         IEnumerable<KlastoewijzingFeit>? toewijzingen = null,
         IEnumerable<AanstellingFeit>? aanstellingen = null,
         DateOnly? vandaag = null,
-        bool isDirectie = false,
+        bool isAdmin = false,
         bool themabeheer = false,
         bool leerlingzorg = false) =>
         Rechtenberekening.Bereken(
-            An, isDirectie, themabeheer, toewijzingen ?? [], aanstellingen ?? [], vandaag ?? Vandaag, leerlingzorg);
+            An, isAdmin, themabeheer, toewijzingen ?? [], aanstellingen ?? [], vandaag ?? Vandaag, leerlingzorg);
 
-    // --- Leerlingzorg: the right directie gave, with no schooljaar and no klas (ADR-0035 R18, FB-008). ---
+    // --- Leerlingzorg: the right admin gave, with no schooljaar and no klas (ADR-0035 R18, FB-008). ---
 
     [Fact]
     public void Leerlingzorg_komt_van_de_gebruiker_en_hangt_van_geen_klas_of_schooljaar_af()
@@ -197,7 +197,7 @@ public sealed class RechtenberekeningTests
             ],
             themabeheer: true);
 
-        Assert.False(rechten.IsDirectie);
+        Assert.False(rechten.IsAdmin);
         Assert.True(rechten.HeeftThemabeheer);
         Assert.Equal(["K3", "L2"], rechten.HoofdleerkrachtLeeftijden);
         Assert.Equal(["K3"], rechten.LeerkrachtLeeftijden);
@@ -214,10 +214,10 @@ public sealed class RechtenberekeningTests
     }
 
     [Fact]
-    public void Directie_wordt_doorgegeven_zoals_het_is()
+    public void Admin_wordt_doorgegeven_zoals_het_is()
     {
-        Assert.True(Bereken(isDirectie: true).IsDirectie);
-        Assert.False(Bereken().IsDirectie);
+        Assert.True(Bereken(isAdmin: true).IsAdmin);
+        Assert.False(Bereken().IsAdmin);
     }
 
     [Fact]
@@ -226,7 +226,7 @@ public sealed class RechtenberekeningTests
         var geen = Rechten.Geen(An);
 
         Assert.Equal(An, geen.GebruikerId);
-        Assert.False(geen.IsDirectie);
+        Assert.False(geen.IsAdmin);
         Assert.False(geen.HeeftThemabeheer);
         Assert.False(geen.HeeftLeerlingzorg);
         Assert.Empty(geen.HoofdleerkrachtLeeftijden);

@@ -6,7 +6,7 @@ namespace Jaarplanner.Domain.Schoolcontent;
 /// <para>
 /// <b>Personal content, not the leeftijd's shared content.</b> It belongs to <see cref="EigenaarId"/> and follows her
 /// across schooljaren (W4): one web per gebruiker and subthema, and nothing about it depends on a klas or a schooljaar.
-/// Everyone reads it; only its owner and directie change it (W2, D3), which the rights matrix decides, not this class.
+/// Everyone reads it; only its owner and admin change it (W2, D3), which the rights matrix decides, not this class.
 /// </para>
 /// <para>
 /// <b>Every word carries an Art. IV.2 status.</b> A word the teacher typed is <see cref="KoppelingStatus.Manueel"/>; a

@@ -10,7 +10,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// <summary>
 /// The children of a K3 klas over the real API and PostgreSQL (FB-001, FR-13.1, Art. VI.7, ADR-0030 §3 footnote ⁶,
 /// ADR-0035 §3.3, §3.9): the klas's own K3 leerkracht adds, renames and deletes them during the schooljaar and only reads
-/// them afterwards; directie always; nobody else, not even to read (R17); only a K3 klas has children (D9); and a klas
+/// them afterwards; admin always; nobody else, not even to read (R17); only a K3 klas has children (D9); and a klas
 /// with children is neither deleted nor made non-K3. On Postgres because the Restrict FK and the rights read from the
 /// database are what is under test. <b>Every name here is made up</b> (Art. VI.7: no real child's name in the repo).
 /// </summary>
@@ -102,8 +102,8 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     public async Task Een_leerkracht_van_een_andere_K3_klas_krijgt_403_op_elke_route_en_verandert_niets()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await MaakAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await MaakAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         using var groen = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
 
         await Verwacht403Async(groen.GetAsync($"/api/klassen/{school.K3Blauw}/leerlingen"));
@@ -140,20 +140,20 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
         await Verwacht403Async(hlEnTb.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }));
     }
 
-    // --- Only a K3 klas has children (D9), directie included. ---
+    // --- Only a K3 klas has children (D9), admin included. ---
 
     [PostgresFact]
-    public async Task Niemand_voegt_een_kind_toe_aan_een_klas_die_geen_K3_geeft_ook_de_directie_niet()
+    public async Task Niemand_voegt_een_kind_toe_aan_een_klas_die_geen_K3_geeft_ook_de_admin_niet()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }),
+            admin.PostAsJsonAsync($"/api/klassen/{school.K2Rood}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }),
             HttpStatusCode.BadRequest,
             GeenK3);
 
-        Assert.Empty(await LijstAsync(directie, school.K2Rood));
+        Assert.Empty(await LijstAsync(admin, school.K2Rood));
     }
 
     /// <summary>
@@ -164,9 +164,9 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     public async Task De_klassenlijst_zegt_welke_klas_kinderen_kan_hebben()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
 
-        var klassen = (await directie.GetFromJsonAsync<List<KlasKort>>("/api/klassen"))!;
+        var klassen = (await admin.GetFromJsonAsync<List<KlasKort>>("/api/klassen"))!;
 
         Assert.True(klassen.Single(k => k.Id == school.K3Blauw).KanLeerlingenHebben);
         Assert.True(klassen.Single(k => k.Id == school.K3Groen).KanLeerlingenHebben);
@@ -175,7 +175,7 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
 
     private sealed record KlasKort(Guid Id, bool KanLeerlingenHebben);
 
-    // --- After the schooljaar: the leerkracht reads, directie still does everything (R26). ---
+    // --- After the schooljaar: the leerkracht reads, admin still does everything (R26). ---
 
     [PostgresFact]
     public async Task Na_het_schooljaar_leest_de_leerkracht_de_kinderen_nog_maar_verandert_ze_niets_meer()
@@ -188,8 +188,8 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
             await context.SaveChangesAsync();
         }
 
-        using var directie = _opzet.Directie();
-        var fien = await MaakAsync(directie, klas.Id, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await MaakAsync(admin, klas.Id, "Fien", "Proefmans");
         var lkId = await _opzet.GebruikerAsync(klassen: [klas.Id]);
         using var lk = _opzet.Als(lkId);
 
@@ -203,12 +203,12 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
         Assert.Equal([klas.Id], ik.RapportklasIds);
         Assert.Empty(ik.LopendeRapportklasIds);
 
-        using (var hernoem = await directie.PutAsJsonAsync($"/api/leerlingen/{fien.Id}", new { voornaam = "Fiene", achternaam = "Proefmans" }))
+        using (var hernoem = await admin.PutAsJsonAsync($"/api/leerlingen/{fien.Id}", new { voornaam = "Fiene", achternaam = "Proefmans" }))
         {
             Assert.Equal(HttpStatusCode.OK, hernoem.StatusCode);
         }
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/leerlingen/{fien.Id}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/leerlingen/{fien.Id}")));
         Assert.Empty(await LijstAsync(lk, klas.Id));
     }
 
@@ -218,8 +218,8 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     public async Task Zonder_sessie_antwoordt_elke_leerlingroute_401()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await MaakAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await MaakAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         using var anoniem = _factory.CreateClient();
         anoniem.DefaultRequestHeaders.Add(TestAuthenticatie.AnoniemHeader, "1");
 
@@ -235,19 +235,19 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     public async Task Een_onbekende_klas_of_een_verdwenen_kind_is_een_404_ook_voor_wie_er_geen_recht_op_zou_hebben()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         using var groen = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
         var onbekend = Guid.NewGuid();
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.GetAsync($"/api/klassen/{onbekend}/leerlingen"), HttpStatusCode.NotFound, $"Klas {onbekend} is niet gevonden.");
+            admin.GetAsync($"/api/klassen/{onbekend}/leerlingen"), HttpStatusCode.NotFound, $"Klas {onbekend} is niet gevonden.");
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{onbekend}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }),
+            admin.PostAsJsonAsync($"/api/klassen/{onbekend}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }),
             HttpStatusCode.NotFound,
             $"Klas {onbekend} is niet gevonden.");
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/leerlingen/{onbekend}", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.NotFound, KindWeg);
-        await RechtenTestOpzet.VerwachtAsync(directie.DeleteAsync($"/api/leerlingen/{onbekend}"), HttpStatusCode.NotFound, KindWeg);
+            admin.PutAsJsonAsync($"/api/leerlingen/{onbekend}", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.NotFound, KindWeg);
+        await RechtenTestOpzet.VerwachtAsync(admin.DeleteAsync($"/api/leerlingen/{onbekend}"), HttpStatusCode.NotFound, KindWeg);
 
         // Lookup before authorisation, as for every resource row: an id that names nothing is a 404 for anyone.
         await RechtenTestOpzet.VerwachtAsync(groen.DeleteAsync($"/api/leerlingen/{onbekend}"), HttpStatusCode.NotFound, KindWeg);
@@ -284,30 +284,30 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
     public async Task Een_klas_met_kinderen_wordt_pas_verwijderd_als_de_kinderen_weg_zijn()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await MaakAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await MaakAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         var naam = await KlasnaamAsync(school.K3Blauw);
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.DeleteAsync($"/api/klassen/{school.K3Blauw}"),
+            admin.DeleteAsync($"/api/klassen/{school.K3Blauw}"),
             HttpStatusCode.BadRequest,
             $"Klas '{naam}' heeft nog 1 kind(eren) in het ontwikkelingsrapport en kan niet verwijderd worden. "
             + "Verwijder die kinderen eerst bij Ontwikkelingsrapport.");
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/leerlingen/{fien.Id}")));
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/klassen/{school.K3Blauw}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/leerlingen/{fien.Id}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/klassen/{school.K3Blauw}")));
     }
 
     [PostgresFact]
     public async Task Een_klas_met_kinderen_blijft_een_klas_van_de_derde_kleuter()
     {
         var school = await _opzet.SchoolAsync();
-        using var directie = _opzet.Directie();
-        var fien = await MaakAsync(directie, school.K3Blauw, "Fien", "Proefmans");
+        using var admin = _opzet.Admin();
+        var fien = await MaakAsync(admin, school.K3Blauw, "Fien", "Proefmans");
         var naam = await KlasnaamAsync(school.K3Blauw);
 
         await RechtenTestOpzet.VerwachtAsync(
-            directie.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam, jaarfase = "K2" }),
+            admin.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam, jaarfase = "K2" }),
             HttpStatusCode.BadRequest,
             $"Klas '{naam}' heeft nog 1 kind(eren) in het ontwikkelingsrapport. Een klas met kinderen blijft een klas van "
             + "de derde kleuter. Verwijder die kinderen eerst bij Ontwikkelingsrapport.");
@@ -315,11 +315,11 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
         // A rename that keeps it K3 goes through.
         var nieuweNaam = $"K3b2-{Guid.NewGuid():N}";
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam = nieuweNaam, jaarfase = "K3" })));
+            admin.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam = nieuweNaam, jaarfase = "K3" })));
 
-        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(directie.DeleteAsync($"/api/leerlingen/{fien.Id}")));
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(admin.DeleteAsync($"/api/leerlingen/{fien.Id}")));
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
-            directie.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam = nieuweNaam, jaarfase = "K2" })));
+            admin.PutAsJsonAsync($"/api/klassen/{school.K3Blauw}", new { naam = nieuweNaam, jaarfase = "K2" })));
     }
 
     // --- GET /api/ik carries the two lists the frontend hides the tab and the buttons with (D18). ---
@@ -330,7 +330,7 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
         var school = await _opzet.SchoolAsync();
         using var blauw = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw, school.K2Rood]));
         using var rood = _opzet.Als(await _opzet.GebruikerAsync(school, klassen: [school.K2Rood]));
-        using var directie = _opzet.Als(await _opzet.GebruikerAsync(directie: true));
+        using var admin = _opzet.Als(await _opzet.GebruikerAsync(admin: true));
 
         var ikBlauw = await IkAsync(blauw);
         Assert.Equal([school.K3Blauw], ikBlauw.RapportklasIds);
@@ -340,10 +340,10 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
         Assert.Empty(ikRood.RapportklasIds);
         Assert.Empty(ikRood.LopendeRapportklasIds);
 
-        // Directie sees the tab through IsDirectie, not through these lists.
-        var ikDirectie = await IkAsync(directie);
-        Assert.True(ikDirectie.IsDirectie);
-        Assert.Empty(ikDirectie.RapportklasIds);
+        // Admin sees the tab through IsAdmin, not through these lists.
+        var ikAdmin = await IkAsync(admin);
+        Assert.True(ikAdmin.IsAdmin);
+        Assert.Empty(ikAdmin.RapportklasIds);
     }
 
     private static async Task<List<LeerlingDto>> LijstAsync(HttpClient client, Guid klasId)
@@ -376,5 +376,5 @@ public sealed class LeerlingEndpointsTests : IAsyncLifetime
 
     private sealed record LeerlingDto(Guid Id, Guid KlasId, string Voornaam, string Achternaam);
 
-    private sealed record IkDto(bool IsDirectie, List<Guid> RapportklasIds, List<Guid> LopendeRapportklasIds);
+    private sealed record IkDto(bool IsAdmin, List<Guid> RapportklasIds, List<Guid> LopendeRapportklasIds);
 }

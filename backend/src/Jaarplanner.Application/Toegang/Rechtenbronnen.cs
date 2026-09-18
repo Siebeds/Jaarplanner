@@ -86,7 +86,7 @@ public sealed record Woordwebbron(Guid WoordwebId, Guid EigenaarId);
 /// <summary>
 /// One AI activiteitvoorstel (FB-025, ADR-0056): the resource of the <c>ActiviteitvoorstelBeslissen</c> row, whose one
 /// column is its asker while she may still make an own activiteit at that leeftijd. A type of its own, so it opens no
-/// other row. Directie passes the row as it passes every row (R3, A3).
+/// other row. Admin passes the row as it passes every row (R3, A3).
 /// </summary>
 /// <param name="ActiviteitvoorstelId">The proposal, or <see cref="Guid.Empty"/> when a read asks about proposals in general.</param>
 /// <param name="Leeftijd">The leeftijd of the subthema it is under.</param>
@@ -140,7 +140,7 @@ public sealed record Klasplanning(Guid KlasId);
 /// <b>Built only through <see cref="Voor"/></b>, which takes the klas's <b>stated</b> jaarfase and maps it with
 /// <see cref="Domain.Toegang.Leeftijdsrechten.VoorKlas"/>, the one klas→leeftijden mapping of Art. VI.1. So a graadklas
 /// decision (Art. XIV) moves this rule with the leeftijd rights, and a klas without a stated jaarfase stands for no
-/// leeftijd: only its own leerkrachten, themabeheer and directie read it (fail closed, as ADR-0030 I12).
+/// leeftijd: only its own leerkrachten, themabeheer and admin read it (fail closed, as ADR-0030 I12).
 /// </para>
 /// </summary>
 public sealed record Klasinzage
@@ -170,7 +170,7 @@ public sealed record Klasinzage
 /// schooljaar (R26). A planning resource can therefore never pass a report row, nor a report resource a planning row.
 /// <para>
 /// It is built for any klas that exists, K3 or not. Whether that klas can have leerlingen at all (D9) is the matrix's
-/// question for a leerkracht and the service's for directie and Leerlingzorg (FB-008), who pass the read row on any klas.
+/// question for a leerkracht and the service's for admin and Leerlingzorg (FB-008), who pass the read row on any klas.
 /// </para>
 /// </summary>
 /// <param name="KlasId">The klas.</param>

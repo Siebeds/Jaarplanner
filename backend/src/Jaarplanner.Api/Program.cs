@@ -52,13 +52,13 @@ builder.Services.AddExceptionHandler<PlanningExceptionHandler>();
 builder.Services.AddExceptionHandler<WizardrunExceptionHandler>();
 
 // Gebruikerbeheer exception handler (E6-04): no such gebruiker/klas/schooljaar → 404, a bad sign-in name or jaarfase
-// → 400, and the two 409s: a sign-in name that exists already, and the last directie (ADR-0031 decision 7).
+// → 400, and the two 409s: a sign-in name that exists already, and the last admin (ADR-0031 decision 7).
 builder.Services.AddExceptionHandler<GebruikerbeheerExceptionHandler>();
 
 // The rights matrix (E6-02, Art. VI.1, ADR-0030 §3, ADR-0011 §2): every row of Rechtenmatrix becomes a named policy
 // that requires a signed-in person plus the row's own rights, decided by one handler over the per-request rights
 // service. Curriculumbeheer, the seam the Op.stap import routes already name (ADR-0022), is one of those rows and is
-// bound to directie. Since slice 3 every write route names its row: [Authorize(Policy = …)] for a resource-free row,
+// bound to admin. Since slice 3 every write route names its row: [Authorize(Policy = …)] for a resource-free row,
 // [RechtOp(…)] for a resource row, and ElkeWijzigendeRouteVraagtEenRechtTests fails on a write route that names none.
 // *Until slice 3 this said the other rows were applied "in the next slice", which is this one.*
 builder.Services.AddRechtenbeleid();
@@ -68,11 +68,11 @@ builder.Services.AddRechtenbeleid();
 // Who may do what once signed in is E6-02's; this only establishes who someone is.
 var authenticatie = builder.AddJaarplannerAuthenticatie();
 
-// The last-directie guard counts only another directie who can sign in (E6-04, ADR-0031 decision 7). Under Entra that
+// The last-admin guard counts only another admin who can sign in (E6-04, ADR-0031 decision 7). Under Entra that
 // is a bound invitation. The development sign-in binds nobody and is refused outside Development, so only there does
-// an unbound directie count; this line is the one place that says so.
+// an unbound admin count; this line is the one place that says so.
 builder.Services.Configure<GebruikerbeheerOpties>(opties =>
-    opties.OngekoppeldeDirectieKanAanmelden = authenticatie.Modus == AuthenticatieModus.Ontwikkeling);
+    opties.OngekoppeldeAdminKanAanmelden = authenticatie.Modus == AuthenticatieModus.Ontwikkeling);
 
 // Data access + database health check live in Infrastructure (Art. VIII — keep Api thin).
 // This registers AppDbContext (UseNpgsql, connection string from configuration) and a

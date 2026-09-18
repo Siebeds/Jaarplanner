@@ -36,11 +36,11 @@ import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties
  * **A klas states its leeftijd and nothing else about its level.** The leerjaar is derived from it
  * server-side, so it appears nowhere on this screen: printing both would be one fact twice.
  *
- * **Directie defines the klassen; everyone else reads them** (E6-04, ADR-0030 §3 "Gebruikers,
- * klassen en schooljaren beheren", directie only). For anyone else there is no add, edit or delete:
- * the matrix gives those to directie alone, and the server refuses them on the klas routes (E6-02
+ * **Admin defines the klassen; everyone else reads them** (E6-04, ADR-0030 §3 "Gebruikers,
+ * klassen en schooljaren beheren", admin only). For anyone else there is no add, edit or delete:
+ * the matrix gives those to admin alone, and the server refuses them on the klas routes (E6-02
  * slice 3). A button the matrix does not grant would be a control that does nothing (the E3-06
- * rule). Directie also sees who teaches each klas, read from the beheer data, which only directie
+ * rule). Admin also sees who teaches each klas, read from the beheer data, which only admin
  * may read. The answer is `mag.beheer` from `lib/rechten.ts` (slice 4). *Until slice 3 this said the
  * routes still admitted any session; that clause is struck because it stopped being true.*
  */
@@ -52,8 +52,8 @@ export function KlassenScherm() {
   const { mag } = useRechten();
   // The list holds only the klassen this gebruiker may read (FB-013), so "no klassen" is said for them.
   const geenKlassenZin = useGeenKlassenZin(t("klasbeheer.geenKlassen"));
-  const isDirectie = mag.beheer;
-  const beheer = useGebruikersOverzicht(isDirectie);
+  const isAdmin = mag.beheer;
+  const beheer = useGebruikersOverzicht(isAdmin);
   const leerkrachten = leerkrachtenPerKlas(beheer.data?.gebruikers);
 
   const { data: jaarfasen } = useJaarfasen();
@@ -91,7 +91,7 @@ export function KlassenScherm() {
               </Keuze>
             </label>
 
-            {isDirectie ? (
+            {isAdmin ? (
               <Knop
                 rang="rustig"
                 className="h-9 min-h-9 px-3 text-meta"
@@ -119,7 +119,7 @@ export function KlassenScherm() {
                     klas={klas}
                     leerkrachten={leerkrachten ? (leerkrachten.get(klas.id) ?? []) : undefined}
                     onBewerk={
-                      isDirectie
+                      isAdmin
                         ? () => {
                             wijzig.reset();
                             setFormulier({ klas });
@@ -127,7 +127,7 @@ export function KlassenScherm() {
                         : undefined
                     }
                     onVerwijder={
-                      isDirectie
+                      isAdmin
                         ? () => {
                             verwijder.reset();
                             setTeVerwijderen(klas);
@@ -214,9 +214,9 @@ function Klasrij({
   onVerwijder,
 }: {
   klas: KlasWeergave;
-  /** Who teaches it, by name; undefined when this person may not see that (not directie). */
+  /** Who teaches it, by name; undefined when this person may not see that (not admin). */
   leerkrachten?: string[];
-  /** Absent for anyone but directie: the row is then read-only. */
+  /** Absent for anyone but admin: the row is then read-only. */
   onBewerk?: () => void;
   onVerwijder?: () => void;
 }) {
@@ -286,7 +286,7 @@ function Klasrij({
 
 /**
  * Who teaches each klas, by name, in the order the server sorts gebruikers (by name). `undefined`
- * when the beheer data is not there, which for anyone but directie is always: the row then says
+ * when the beheer data is not there, which for anyone but admin is always: the row then says
  * nothing about leerkrachten rather than "nog geen leerkracht", which would be false.
  */
 function leerkrachtenPerKlas(gebruikers: GebruikerBeheer[] | undefined): Map<string, string[]> | undefined {

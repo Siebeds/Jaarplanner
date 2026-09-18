@@ -38,7 +38,7 @@ import {
  * would erase four fields on the first save.
  *
  * **Two rights, two halves** (E6-02, ADR-0030 §3). The activiteit is shared content of its subthema's leeftijd: its
- * form for whoever may change that (R17, R23), its facts for anyone else, and its goal picker for directie and that
+ * form for whoever may change that (R17, R23), its facts for anyone else, and its goal picker for admin and that
  * leeftijd's hoofdleerkrachten (R19). The day is this klas's planning: the day section only for whoever may plan the
  * klas (R7, R15). A teacher reading a colleague's agenda gets the facts and no day controls.
  */

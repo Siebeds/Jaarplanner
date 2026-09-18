@@ -22,7 +22,7 @@ import { t } from "../i18n";
 export function Klaskiezer() {
   const [open, setOpen] = useState(false);
   const { klas, schooljaar, schooljaren, klassen, laadt, fout, kiesSchooljaar, kiesKlas } = useActieveSelectie();
-  // The jaarfase travels over `PUT /api/klassen/{id}`, the §3 "beheren" row: directie only (E6-02). Everyone else
+  // The jaarfase travels over `PUT /api/klassen/{id}`, the §3 "beheren" row: admin only (E6-02). Everyone else
   // still picks a schooljaar and a klas here; those are a context, not a write.
   const { mag } = useRechten();
   // The server offers only the klassen this gebruiker may read (FB-013), so an empty list is said for them.

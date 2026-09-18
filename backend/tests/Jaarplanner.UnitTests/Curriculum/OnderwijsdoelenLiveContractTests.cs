@@ -8,7 +8,7 @@ namespace Jaarplanner.UnitTests.Curriculum;
 /// <summary>
 /// A contract test against KOV's <b>live</b> API (ADR-0032). Skipped unless <c>JAARPLANNER_LIVE_OPSTAP=1</c>, because a
 /// unit run must not depend on a third party's uptime. Its job is the one no fixture can do: notice that KOV changed the
-/// shape of its response before a directie presses the import button. Run it by hand, or on a nightly schedule (E1-23).
+/// shape of its response before an admin presses the import button. Run it by hand, or on a nightly schedule (E1-23).
 /// </summary>
 public sealed partial class OnderwijsdoelenLiveContractTests
 {

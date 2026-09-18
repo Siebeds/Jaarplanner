@@ -198,7 +198,7 @@ public sealed class LeerplandoelImportService : ILeerplandoelImportService
 
     /// <summary>
     /// The notice for a discipline KOV publishes that the seeded taxonomy (Art. VII.0) does not hold. Dutch, because
-    /// directie reads it; it says only what holds: the source has it, the application does not, nothing was read.
+    /// admin reads it; it says only what holds: the source has it, the application does not, nothing was read.
     /// </summary>
     public static string OnbekendeDisciplineMelding(string naam, string nummer) =>
         $"Discipline {nummer} ({naam}) staat in de Op.stap-bron maar niet in de toepassing. " +

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActiviteitWeergave, SubthemaWeergave, ThemaWeergave } from "../../lib/types";
 import { magVoor } from "../../lib/rechten";
-import { DIRECTIE, NIEMAND, ikMet } from "../../test/rechten";
+import { ADMIN, NIEMAND, ikMet } from "../../test/rechten";
 import { filterBestemmingen, telBestemmingen, themasMetKoppelactie } from "./bestemmingen";
 
 /**
@@ -156,8 +156,8 @@ describe("themasMetKoppelactie", () => {
     expect(namen(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }))).toEqual(["Herfst en bladeren"]);
   });
 
-  it("laat ook directie en themabeheer het lege thema niet zien: op het thema zelf koppelt niemand nog een doel", () => {
-    expect(namen(DIRECTIE)).toEqual(["Herfst en bladeren"]);
+  it("laat ook admin en themabeheer het lege thema niet zien: op het thema zelf koppelt niemand nog een doel", () => {
+    expect(namen(ADMIN)).toEqual(["Herfst en bladeren"]);
     // Themabeheer alone holds no subdoel or activiteit right, so nothing here takes the doel from them.
     expect(namen(ikMet({ heeftThemabeheer: true }))).toEqual([]);
   });

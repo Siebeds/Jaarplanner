@@ -55,7 +55,7 @@ public static class Probleemtitels
 
     /// <summary>
     /// A gebruikerbeheer change was refused by the current state (409, E6-04): the sign-in name exists already, or the
-    /// change would leave the school without a directie. The request was fine and nothing was changed.
+    /// change would leave the school without an admin. The request was fine and nothing was changed.
     /// </summary>
     public const string NietDoorgevoerd = "Niet doorgevoerd";
 }

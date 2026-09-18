@@ -20,14 +20,14 @@ namespace Jaarplanner.Api.Controllers;
 /// that sentence is now history rather than a caveat.</i> What the surface still buys is that the figure can be
 /// verified against a real database by anyone, including a story's own gates. <b>FR-9 remains unsatisfied on two
 /// counts:</b> minimumdoel level (E5-04) is blocked on E1-12 and E1-21, and that is the level Art. V.2 names; and FR-9.4's
-/// school-wide and per-class overviews for directie (E6-06, Art. V.5) are unbuilt. <i>This sentence read "for one
+/// school-wide and per-class overviews for admin (E6-06, Art. V.5) are unbuilt. <i>This sentence read "for one
 /// reason only" until antagonist ronde 1 named the second (2026-08-19) — in the same commit that swept six other
 /// comments for describing E5-05 as unbuilt, which is the lesson: a list of absences is a checkable claim, and
 /// correcting one of them is when you are least likely to check the next.</i>
 /// </para>
 /// <para>
 /// <b>Who may read it.</b> Every route here is the row <c>KlasplanningBekijken</c> (FB-013, ADR-0040): the klas's own
-/// leerkrachten, the leerkrachten and hoofdleerkrachten of its jaarfase, themabeheer and directie. That row is the E6-09
+/// leerkrachten, the leerkrachten and hoofdleerkrachten of its jaarfase, themabeheer and admin. That row is the E6-09
 /// seam, so a different answer from directie changes it there and nowhere here.
 /// </para>
 /// <para>

@@ -115,21 +115,21 @@ public sealed class ToegangService : IToegangService
     public async Task<IReadOnlyList<GebruikerWeergave>> HaalGebruikersOpAsync(CancellationToken cancellationToken = default)
     {
         var gebruikers = await _context.Gebruikers.AsNoTracking()
-            .OrderByDescending(g => g.IsDirectie)
+            .OrderByDescending(g => g.IsAdmin)
             .ThenBy(g => g.Naam)
             .ToListAsync(cancellationToken);
         return gebruikers.Select(Weergave).ToList();
     }
 
-    public async Task<bool> ZorgVoorEersteDirectieAsync(string email, CancellationToken cancellationToken = default)
+    public async Task<bool> ZorgVoorEersteAdminAsync(string email, CancellationToken cancellationToken = default)
     {
         if (await _context.Gebruikers.AnyAsync(cancellationToken))
         {
             return false;
         }
 
-        var directie = new Gebruiker(email, naam: string.Empty, isDirectie: true);
-        _context.Gebruikers.Add(directie);
+        var admin = new Gebruiker(email, naam: string.Empty, isAdmin: true);
+        _context.Gebruikers.Add(admin);
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -143,5 +143,5 @@ public sealed class ToegangService : IToegangService
         (fout as PostgresException ?? fout.InnerException as PostgresException)?.SqlState == PostgresErrorCodes.UniqueViolation;
 
     private static GebruikerWeergave Weergave(Gebruiker gebruiker) =>
-        new(gebruiker.Id, gebruiker.Naam, gebruiker.Email, gebruiker.IsDirectie);
+        new(gebruiker.Id, gebruiker.Naam, gebruiker.Email, gebruiker.IsAdmin);
 }

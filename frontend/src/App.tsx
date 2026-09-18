@@ -87,7 +87,7 @@ export default function App() {
                 opens the first part, so the navigation item and every old link still land somewhere. */}
             <Route path="instellingen" element={<Instellingenindeling />}>
               <Route index element={<Navigate to={ONDERDELEN[0].deel} replace />} />
-              {/* Every part goes through the gate; only a directie-only one is ever turned away. */}
+              {/* Every part goes through the gate; only an admin-only one is ever turned away. */}
               {ONDERDELEN.map(({ deel }) => {
                 const Scherm = INSTELLINGEN[deel];
                 return (

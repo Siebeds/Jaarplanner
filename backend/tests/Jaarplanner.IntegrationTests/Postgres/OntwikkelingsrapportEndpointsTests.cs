@@ -12,7 +12,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// Art. IX.4, ADR-0030 §3 footnote ⁶, ADR-0035 §3.1 to §3.3):
 /// <list type="bullet">
 /// <item>every rapportdoel of the set is on every report, with its subdoelen, and the three moments are apart (R8, D2);</item>
-/// <item>the klas's own K3 leerkracht fills in during the schooljaar and only reads afterwards (R26); directie always;
+/// <item>the klas's own K3 leerkracht fills in during the schooljaar and only reads afterwards (R26); admin always;
 /// nobody else reads, also not by the address (R17);</item>
 /// <item>a gradatie or rapportdoel a report uses is not deleted, and a rename shows on the report (D1, R7);</item>
 /// <item>a report never changes the dekking (FR-13.9), and goes with its child (D8).</item>
@@ -214,7 +214,7 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
     // --- Who (AC3, AC4; R16, R17, R26). ---
 
     [PostgresFact]
-    public async Task Niemand_buiten_de_klas_leest_of_vult_in_ook_niet_via_het_adres_en_de_directie_wel()
+    public async Task Niemand_buiten_de_klas_leest_of_vult_in_ook_niet_via_het_adres_en_de_admin_wel()
     {
         var o = await OpzetAsync();
         using var groen = _opzet.Als(await _opzet.GebruikerAsync(o.School, klassen: [o.School.K3Groen]));
@@ -231,13 +231,13 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
 
         Assert.Equal(0, await AantalRapportenAsync());
 
-        using var directie = _opzet.Directie();
-        await BewaarAsync(directie, o.Kind, 1, o.Luisteren, o.VolledigBereikt, "Door de directie.");
-        Assert.Equal("Door de directie.", (await LeesAsync(directie, o.Kind, 1)).Rapportdoelen[0].Tekst);
+        using var admin = _opzet.Admin();
+        await BewaarAsync(admin, o.Kind, 1, o.Luisteren, o.VolledigBereikt, "Door de admin.");
+        Assert.Equal("Door de admin.", (await LeesAsync(admin, o.Kind, 1)).Rapportdoelen[0].Tekst);
     }
 
     [PostgresFact]
-    public async Task Na_het_schooljaar_leest_de_leerkracht_het_rapport_nog_maar_wijzigt_niets_en_de_directie_wel()
+    public async Task Na_het_schooljaar_leest_de_leerkracht_het_rapport_nog_maar_wijzigt_niets_en_de_admin_wel()
     {
         var o = await OpzetAsync();
         var voorbij = new Schooljaar(TestSchooljaar.UniekeNaam("voorbij"), Vandaag.AddDays(-400), Vandaag.AddDays(-35));
@@ -248,10 +248,10 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
             await context.SaveChangesAsync();
         }
 
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var staf = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Staf", achternaam = "Voorbeeld" }), HttpStatusCode.Created);
-        await BewaarAsync(directie, staf, 2, o.Luisteren, o.VolledigBereikt, "Een verzonnen tekst.");
+            admin.PostAsJsonAsync($"/api/klassen/{klas.Id}/leerlingen", new { voornaam = "Staf", achternaam = "Voorbeeld" }), HttpStatusCode.Created);
+        await BewaarAsync(admin, staf, 2, o.Luisteren, o.VolledigBereikt, "Een verzonnen tekst.");
 
         using var lk = _opzet.Als(await _opzet.GebruikerAsync(klassen: [klas.Id]));
         var rapport = await LeesAsync(lk, staf, 2);
@@ -261,8 +261,8 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
         await Verwacht403Async(lk.PutAsJsonAsync(Beoordeling(staf, 2, o.Luisteren), new { gradatieId = o.NogNietVolledig, tekst = "Gewijzigd." }));
         await Verwacht403Async(lk.PutAsJsonAsync(Besluit(staf, 2), new { tekst = "Gewijzigd." }));
 
-        await BewaarAsync(directie, staf, 2, o.Luisteren, o.NogNietVolledig, "Na het schooljaar door de directie.");
-        Assert.Equal("Na het schooljaar door de directie.", (await LeesAsync(lk, staf, 2)).Rapportdoelen[0].Tekst);
+        await BewaarAsync(admin, staf, 2, o.Luisteren, o.NogNietVolledig, "Na het schooljaar door de admin.");
+        Assert.Equal("Na het schooljaar door de admin.", (await LeesAsync(lk, staf, 2)).Rapportdoelen[0].Tekst);
     }
 
     // --- The K3 set once reports use it (AC5; D1, R7). ---
@@ -310,15 +310,15 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
     public async Task Het_dekkingsoverzicht_is_hetzelfde_voor_en_na_het_invullen()
     {
         var o = await OpzetAsync();
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var dekking = $"/api/klassen/{o.School.K3Blauw}/dekking";
-        var voor = await directie.GetStringAsync(dekking);
+        var voor = await admin.GetStringAsync(dekking);
 
         using var lk = _opzet.Als(o.LeerkrachtId);
         await BewaarAsync(lk, o.Kind, 1, o.Luisteren, o.VolledigBereikt, "Luistert goed.");
         await BewaarAsync(lk, o.Kind, 2, o.Tellen, o.NogNietVolledig, "Telt tot vijf.");
 
-        Assert.Equal(voor, await directie.GetStringAsync(dekking));
+        Assert.Equal(voor, await admin.GetStringAsync(dekking));
     }
 
     [PostgresFact]
@@ -387,22 +387,22 @@ public sealed class OntwikkelingsrapportEndpointsTests : IAsyncLifetime
         var school = await _opzet.SchoolAsync();
         var leerkrachtId = await _opzet.GebruikerAsync(school, klassen: [school.K3Blauw]);
 
-        using var directie = _opzet.Directie();
+        using var admin = _opzet.Admin();
         var thema = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync("/api/themas", new { naam = $"Water {Guid.NewGuid():N}", duurWeken = 4 }), HttpStatusCode.Created);
+            admin.PostAsJsonAsync("/api/themas", new { naam = $"Water {Guid.NewGuid():N}", duurWeken = 4 }), HttpStatusCode.Created);
         var subthema = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/themas/{thema}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }), HttpStatusCode.Created);
+            admin.PostAsJsonAsync($"/api/themas/{thema}/subthemas", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" }), HttpStatusCode.Created);
         var luisterenSubdoel = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthema}/doelkoppelingen", new { leerplandoelCode = "OR-01" }), HttpStatusCode.OK);
+            admin.PostAsJsonAsync($"/api/subthemas/{subthema}/doelkoppelingen", new { leerplandoelCode = "OR-01" }), HttpStatusCode.OK);
         var tellenSubdoel = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/subthemas/{subthema}/doelkoppelingen", new { leerplandoelCode = "OR-02" }), HttpStatusCode.OK);
+            admin.PostAsJsonAsync($"/api/subthemas/{subthema}/doelkoppelingen", new { leerplandoelCode = "OR-02" }), HttpStatusCode.OK);
 
         using var lk = _opzet.Als(leerkrachtId);
         var luisteren = await MaakRapportdoelAsync(lk, "Luisteren en spreken", luisterenSubdoel);
         var tellen = await MaakRapportdoelAsync(lk, "Tellen en meten", tellenSubdoel);
 
         var kind = await RechtenTestOpzet.IdAsync(
-            directie.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.Created);
+            admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/leerlingen", new { voornaam = "Fien", achternaam = "Proefmans" }), HttpStatusCode.Created);
 
         var gradaties = (await lk.GetFromJsonAsync<List<GradatieDto>>("/api/gradaties"))!;
         return new Opzet(

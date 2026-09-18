@@ -25,7 +25,7 @@ import { toegestaneSecties, type Bron } from "./secties";
  *
  * **Each section is shown to whoever holds its right, and the route to everyone** (E6-02; the section,
  * not the route, per the 2026-08-03 ruling). The sections and their rights are `INLAADSECTIES`: the
- * school's thema's for directie and themabeheer, Op.stap for directie. The switch appears only when two
+ * school's thema's for admin and themabeheer, Op.stap for admin. The switch appears only when two
  * sections remain, since a switch with one option is a control that does nothing. `?bron=opstap` asks for
  * the Op.stap section, which is what the Doelen register's links mean; a section the gebruiker may not use
  * is never shown, whatever the address asks.
