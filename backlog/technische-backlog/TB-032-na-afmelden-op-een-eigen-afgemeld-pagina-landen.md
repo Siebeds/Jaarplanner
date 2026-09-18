@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-18 19:18
+bijgewerkt: 2026-09-18 19:20
 opgepakt-door: claude-tb032
 branch: ticket/TB-032-afgemeld-pagina
-pr:
+pr: 145
 geblokkeerd:
 fr: []
 ---
@@ -88,3 +88,4 @@ Geen.
 - 2026-09-18 19:16 · claude-tb032 · niet langer geblokkeerd
 - 2026-09-18 19:18 · claude-tb032 · Eigenaar gaf akkoord: https://jaarplanner-demo-ertren.azurewebsites.net/afgemeld toegevoegd aan de app-registratie 'Jaarplanner demo' (az ad app update). De root blijft staan tot deze code op de demo draait. Criterium 4 afgevinkt.
 - 2026-09-18 19:18 · claude-tb032 · in-uitvoering → klaar: Gebouwd: /afgemeld-pagina buiten de shell, afmelden keert terug naar /afgemeld met Clear-Site-Data, ADR-0031-amendement, redirect-URI in de demo. Gates groen, antagonist COMPLIANT. Criterium 1 (afmelden op de live demo) wordt gecontroleerd na merge en deploy.
+- 2026-09-18 19:20 · claude-tb032 · PR #145
