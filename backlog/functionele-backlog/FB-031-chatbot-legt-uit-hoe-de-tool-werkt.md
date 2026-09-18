@@ -3,9 +3,9 @@ id: FB-031
 titel: Chatbot legt de tool uit en beantwoordt opzoekvragen over doelen, thema's en activiteiten
 soort: functioneel
 status: nieuw
-prioriteit: laag
+prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-16 22:46
+bijgewerkt: 2026-09-18 17:56
 opgepakt-door:
 branch:
 pr:
@@ -21,11 +21,15 @@ De eigenaar zette op 2026-09-15 *"Chatbot"* op zijn lijst met nieuwe features.
 eerste deel: uitleg over hoe de tool werkt, en (sinds 2026-09-16) opzoekvragen over de eigen inhoud. Het tweede deel
 is FB-032.
 
+**Aangevuld door de eigenaar, 2026-09-18:** de chatbot is de kat (FB-071). Hij slaapt rechtsboven in een mandje;
+wie op hem klikt, opent zijn venster, met bovenaan wat hij meebracht en daaronder deze chat. Dit ticket hoort bij fase 1
+van de kat (FB-063 tot en met FB-071).
+
 De gebruikers zijn leerkrachten en een directie zonder technische achtergrond. Er is vandaag geen handleiding in de tool.
 
 ## Gewenst gedrag
 
-- Op elk scherm opent een gebruiker een chatvenster.
+- Op elk scherm opent een gebruiker het chatvenster door op de kat te klikken (FB-071).
 - Ze stelt in gewone taal een vraag over hoe de tool werkt ("hoe plan ik een algemene fiche?", "waarom is dit doel niet
   gedekt?") en krijgt een kort Nederlands antwoord.
 - De chatbot antwoordt alleen op basis van een Nederlandse handleiding van de tool (Art. IV.4: geen externe bronnen). Weet
@@ -109,3 +113,4 @@ Regels:
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-16 22:46 · claude · opzoekvragen over de eigen inhoud toegevoegd op vraag van de eigenaar (zit doel x in thema y, zit activiteit a in subthema z, waar wordt doel x gebruikt)
+- 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)

@@ -3,9 +3,9 @@ id: FB-032
 titel: Chatbot doet voorstellen die de gebruiker aanvaardt of weigert
 soort: functioneel
 status: nieuw
-prioriteit: laag
+prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
+bijgewerkt: 2026-09-18 17:56
 opgepakt-door:
 branch:
 pr:
@@ -17,9 +17,13 @@ fr: []
 
 De eigenaar besliste op 2026-09-15 dat de chatbot ook **voorstellen doet**. Dit is het tweede deel, na FB-031.
 
+**Aangevuld door de eigenaar, 2026-09-18:** de chatbot is de kat (FB-071). Hij slaapt rechtsboven in een mandje;
+wie op hem klikt, opent zijn venster, met bovenaan wat hij meebracht en daaronder deze chat. Dit ticket hoort bij fase 1
+van de kat (FB-063 tot en met FB-071).
+
 ## Gewenst gedrag
 
-- In het chatvenster vraagt een gebruiker iets te doen, bv. "stel activiteiten voor bij het subthema Bladeren" of "stel
+- In het chatvenster van de kat (FB-071) vraagt een gebruiker iets te doen, bv. "stel activiteiten voor bij het subthema Bladeren" of "stel
   mijn week voor".
 - De chatbot doet dat via de bestaande voorstelflows (FB-025, FB-026, FB-027, FB-028) en toont de voorstellen, die de
   gebruiker aanvaardt of weigert, net zoals op het scherm zelf.
@@ -54,3 +58,4 @@ De eigenaar besliste op 2026-09-15 dat de chatbot ook **voorstellen doet**. Dit 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)
