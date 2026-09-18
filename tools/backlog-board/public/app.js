@@ -2,6 +2,7 @@
 // every ticket, and this file only draws what it is sent and keeps the filters.
 
 import { esc, renderMarkdown } from './markdown.js';
+import { CREATED, DEFAULT_DIR, SORTS, matchesFilters, nextSort, sortTickets } from './view.js';
 
 const KIND = { FB: 'Functioneel', TB: 'Technisch' };
 const STATUS = {
@@ -31,11 +32,19 @@ const el = {
   dialog: $('#detail'),
   drawer: $('#drawer'),
   q: $('#q'),
+  table: $('#table'),
+  prio: $('#prio'),
+  created: $('#created'),
+  sort: $('#sort'),
+  reset: $('#reset'),
+  result: $('#result'),
 };
 
-// The kind filter and the Klaar toggle persist; the search does not, because a remembered search
-// would silently hide cards on the next visit.
-const prefs = { kind: 'alle', allDone: false, ...loadPrefs(), q: '' };
+// The kind filter and the Klaar toggle persist; the search, the view, the other filters and the
+// sort do not (owner ruling, TB-058), because a remembered filter would silently hide cards on the
+// next visit.
+const FRESH = { q: '', view: 'bord', prio: 'alle', created: 'alles', sort: 'standaard', dir: 'asc' };
+const prefs = { kind: 'alle', allDone: false, ...loadPrefs(), ...FRESH };
 let data = null;
 let live = false;
 let openKey = null;
@@ -75,12 +84,16 @@ function formatWhen(stamp) {
   return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}${d.getFullYear() !== today.getFullYear() ? ` ${m[1]}` : ''}`;
 }
 
-function matches(t) {
-  if (prefs.kind !== 'alle' && t.prefix !== prefs.kind) return false;
-  const q = prefs.q.trim().toLowerCase();
-  if (!q) return true;
-  return [t.id, t.file, t.fields.titel, t.fields['opgepakt-door'], t.fields.branch].some((v) => (v ?? '').toLowerCase().includes(q));
+function formatDay(date) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date ?? '');
+  if (!m) return '';
+  const sameYear = Number(m[1]) === new Date().getFullYear();
+  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]}${sameYear ? '' : ` ${m[1]}`}`;
 }
+
+const matches = (t) => matchesFilters(t, prefs);
+const filtersActive = () =>
+  prefs.kind !== 'alle' || Object.entries(FRESH).some(([k, v]) => k !== 'view' && k !== 'dir' && prefs[k] !== v);
 
 function prLink(pr) {
   if (!pr) return 'geen';
@@ -116,7 +129,7 @@ function card(t) {
 }
 
 function column(col) {
-  const cards = col.cards.filter(matches);
+  const cards = sortTickets(col.cards.filter(matches), prefs.sort, prefs.dir);
   const limited = col.id === 'klaar' && !prefs.allDone && cards.length > DONE_LIMIT;
   const shown = limited ? cards.slice(0, DONE_LIMIT) : cards;
   let more = '';
@@ -132,6 +145,53 @@ function column(col) {
     ${shown.length ? `<ol class="cards">${shown.map(card).join('')}</ol>` : '<p class="empty">Geen tickets</p>'}
     ${more}
   </section>`;
+}
+
+// The table's sortable headers; Kolom sorts by the board's own order.
+const HEADERS = [
+  ['Nummer', 'nummer'],
+  ['Soort', null],
+  ['Titel', null],
+  ['Kolom', 'standaard'],
+  ['Prioriteit', 'prioriteit'],
+  ['Opgepakt door', null],
+  ['Aangemaakt', 'aangemaakt'],
+  ['Bijgewerkt', 'bijgewerkt'],
+];
+
+function headerCell([label, key]) {
+  if (!key) return `<th scope="col">${label}</th>`;
+  const active = prefs.sort === key;
+  const sortAttr = active ? ` aria-sort="${prefs.dir === 'asc' ? 'ascending' : 'descending'}"` : '';
+  const arrow = active ? (prefs.dir === 'asc' ? '▲' : '▼') : '';
+  return `<th scope="col"${sortAttr}><button type="button" class="th-sort${active ? ' on' : ''}" data-sortkey="${key}">${label}<span class="arrow" aria-hidden="true">${arrow}</span></button></th>`;
+}
+
+function row(t) {
+  const f = t.fields;
+  const k = kindClass(t);
+  const flags = [];
+  if (f.geblokkeerd) flags.push('<span class="mini blocked"><span aria-hidden="true">■ </span>Geblokkeerd</span>');
+  if (t.column === 'in-review') flags.push('<span class="mini">wacht op merge</span>');
+  else if (!t.onMain) flags.push('<span class="mini">nog niet op main</span>');
+  return `<tr class="${k}" data-key="${esc(t.key)}">
+    <td class="id">${esc(t.id)}</td>
+    <td><span class="tag ${k}">${KIND[t.prefix]}</span></td>
+    <td class="t-title"><button type="button" class="link" data-key="${esc(t.key)}">${esc(f.titel)}</button></td>
+    <td class="t-col">${esc(columnTitle(t.column))}${flags.join('')}</td>
+    <td><span class="prio p-${esc(f.prioriteit)}">${f.prioriteit === 'hoog' ? '▲ ' : ''}${esc(cap(f.prioriteit))}</span></td>
+    <td>${f['opgepakt-door'] ? `<span class="who"><span class="dot" aria-hidden="true"></span>${esc(f['opgepakt-door'])}</span>` : ''}</td>
+    <td class="t-date">${esc(formatDay(f.aangemaakt))}</td>
+    <td class="t-date">${esc(formatWhen(f.bijgewerkt))}</td>
+  </tr>`;
+}
+
+function renderTable(tickets) {
+  el.table.innerHTML = `<table class="tickets">
+    <caption class="sr">Alle tickets die aan de filters voldoen</caption>
+    <thead><tr>${HEADERS.map(headerCell).join('')}</tr></thead>
+    <tbody>${tickets.length ? tickets.map(row).join('') : '<tr><td colspan="8" class="empty">Geen tickets</td></tr>'}</tbody>
+  </table>`;
 }
 
 function renderInvalid() {
@@ -172,10 +232,30 @@ function renderBoard() {
     el.invalid.hidden = true;
     return;
   }
-  const focused = document.activeElement?.closest?.('#board [data-key], #invalid [data-key]')?.dataset.key;
-  el.board.innerHTML = data.columns.map(column).join('');
+  const focused = document.activeElement?.closest?.('#board [data-key], #table [data-key], #invalid [data-key]');
+  const focusedKey = focused?.dataset.key;
+  const focusedSort = document.activeElement?.dataset?.sortkey;
+  const onBoard = data.columns.flatMap((c) => c.cards);
+  const shown = onBoard.filter(matches);
+  const table = prefs.view === 'tabel';
+  el.board.hidden = table;
+  el.table.hidden = !table;
+  if (table) {
+    el.board.innerHTML = '';
+    renderTable(sortTickets(shown, prefs.sort, prefs.dir));
+  } else {
+    el.table.innerHTML = '';
+    el.board.innerHTML = data.columns.map(column).join('');
+  }
   renderInvalid();
-  if (focused) document.querySelector(`[data-key="${CSS.escape(focused)}"]`)?.focus();
+  el.result.textContent = shown.length
+    ? filtersActive()
+      ? `${shown.length} van ${onBoard.length} tickets`
+      : `${onBoard.length} tickets`
+    : 'Geen enkel ticket voldoet aan de filters.';
+  el.reset.hidden = !filtersActive();
+  if (focusedSort) document.querySelector(`[data-sortkey="${CSS.escape(focusedSort)}"]`)?.focus();
+  else if (focusedKey) document.querySelector(`button[data-key="${CSS.escape(focusedKey)}"]`)?.focus();
 }
 
 // ---- detail -----------------------------------------------------------------------------------
@@ -275,10 +355,34 @@ function renderAll() {
   openFromHash();
 }
 
+const options = (map) => Object.entries(map).map(([v, label]) => `<option value="${v}">${label}</option>`).join('');
+el.created.innerHTML = options(CREATED);
+el.sort.innerHTML = options(SORTS);
+
 function syncControls() {
   for (const b of document.querySelectorAll('[data-kind]')) b.setAttribute('aria-pressed', String(b.dataset.kind === prefs.kind));
+  for (const b of document.querySelectorAll('[data-view]')) b.setAttribute('aria-pressed', String(b.dataset.view === prefs.view));
   el.q.value = prefs.q;
+  el.prio.value = prefs.prio;
+  el.created.value = prefs.created;
+  el.sort.value = prefs.sort;
 }
+
+function update(changes) {
+  Object.assign(prefs, changes);
+  syncControls();
+  renderBoard();
+}
+
+el.prio.addEventListener('change', () => update({ prio: el.prio.value }));
+el.created.addEventListener('change', () => update({ created: el.created.value }));
+el.sort.addEventListener('change', () => update({ sort: el.sort.value, dir: DEFAULT_DIR[el.sort.value] }));
+el.reset.addEventListener('click', () => {
+  prefs.kind = 'alle';
+  savePrefs();
+  update({ ...FRESH, view: prefs.view });
+  el.q.focus();
+});
 
 document.addEventListener('click', (e) => {
   const kind = e.target.closest('[data-kind]');
@@ -287,6 +391,16 @@ document.addEventListener('click', (e) => {
     savePrefs();
     syncControls();
     renderBoard();
+    return;
+  }
+  const view = e.target.closest('[data-view]');
+  if (view) {
+    update({ view: view.dataset.view });
+    return;
+  }
+  const sortKey = e.target.closest('[data-sortkey]');
+  if (sortKey) {
+    update(nextSort(prefs, sortKey.dataset.sortkey));
     return;
   }
   if (e.target.closest('[data-more]')) {
@@ -299,7 +413,7 @@ document.addEventListener('click', (e) => {
     el.dialog.close();
     return;
   }
-  const hit = e.target.closest('#board [data-key], #invalid [data-key]');
+  const hit = e.target.closest('#board [data-key], #table [data-key], #invalid [data-key]');
   if (hit) open(hit.dataset.key);
 });
 
