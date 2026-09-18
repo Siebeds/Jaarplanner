@@ -96,7 +96,7 @@ public static class DependencyInjection
         // Discipline-selection seam (E1-06, Art. XIV "Disciplines first"): which disciplines the
         // Op.stap import path may process is DATA-DRIVEN, never compiled in. The in-scope set is bound
         // from the `Opstap:DisciplineSelectie` configuration section (appsettings / env / user-secrets
-        // / Key Vault), so the admin can switch between "all" and a starter selection WITHOUT a code
+        // / Key Vault), so the directie can switch between "all" and a starter selection WITHOUT a code
         // change. Absent config resolves to the documented placeholder default (Modus = Alle) pending
         // the Art. XIV directie decision — itself overridable purely by adding the config section.
         services.Configure<DisciplineSelectieOptions>(
@@ -333,14 +333,11 @@ public static class DependencyInjection
 
         // The first admin account, created while nobody exists yet (ADR-0031 decision 7). Registered only when the
         // address is configured, so an environment that does not ask for it never writes a row at startup.
-        var eersteAdmin = configuration[EersteAdminBootstrap.ConfiguratieSleutel];
-        if (string.IsNullOrWhiteSpace(eersteAdmin))
-            eersteAdmin = configuration[EersteAdminBootstrap.VorigeConfiguratieSleutel];
-        if (!string.IsNullOrWhiteSpace(eersteAdmin))
+        if (EersteAdminBootstrap.LeesAdres(configuration) is { } eersteAdmin)
         {
             services.AddHostedService(sp => new EersteAdminBootstrap(
                 sp.GetRequiredService<IServiceScopeFactory>(),
-                eersteAdmin.Trim(),
+                eersteAdmin,
                 sp.GetRequiredService<ILogger<EersteAdminBootstrap>>()));
         }
 

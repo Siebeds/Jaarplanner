@@ -164,7 +164,7 @@ public sealed class OpstapImportService : IOpstapImportService
         // Discipline-selection seam (E1-06, Art. XIV). The in-scope set is resolved from runtime
         // configuration/data — no discipline list is compiled in here. An out-of-scope discipline is
         // skipped before any data is touched: nothing is inserted, flagged, or deleted, and the diff
-        // carries a review notice. This mirrors the empty-file guard: a discipline the admin has
+        // carries a review notice. This mirrors the empty-file guard: a discipline the directie has
         // not (yet) opted to import is not a curriculum change.
         if (!_disciplineSelectie.IsInScope(disciplineNummer))
         {

@@ -117,7 +117,7 @@ public sealed class OpstapImportDisciplineSelectieTests : IDisposable
     {
         // An absent `Opstap:DisciplineSelectie` section binds to the type's defaults; the documented
         // placeholder (Modus = Alle) is what an unconfigured deployment resolves to — not a list
-        // baked into logic. This is the Art. XIV placeholder pending the admin decision.
+        // baked into logic. This is the Art. XIV placeholder pending the directie decision.
         var bound = new DisciplineSelectieOptions();
         var selectie = new GeconfigureerdeDisciplineSelectie(bound);
 
@@ -126,7 +126,7 @@ public sealed class OpstapImportDisciplineSelectieTests : IDisposable
     }
 
     [Fact]
-    public void Options_bind_from_configuration_so_the_admin_sets_scope_without_a_code_change()
+    public void Options_bind_from_configuration_so_the_directie_sets_scope_without_a_code_change()
     {
         // Build the selection from raw configuration key/values (as appsettings / env / Key Vault
         // would supply), proving the choice travels purely as data through the standard options path.

@@ -344,7 +344,7 @@ public sealed class ClosedXmlDekkingExport : IDekkingExport
             rij++;
         }
 
-        // Freeze everything above the first data row, so the kopblok and the column names stay put while an admin
+        // Freeze everything above the first data row, so the kopblok and the column names stay put while the directie
         // scrolls a few hundred goals, and give the table a filter. Both are ordinary spreadsheet affordances; they
         // are the reason a spreadsheet is a reasonable answer to "prove this" in the first place.
         sheet.SheetView.FreezeRows(kopregel);

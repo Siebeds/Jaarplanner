@@ -6,7 +6,7 @@ namespace Jaarplanner.Infrastructure.OpstapImport;
 /// <summary>
 /// Configuration-driven <see cref="IDisciplineSelectie"/> (Art. XIV seam, Art. VIII no-over-engineer):
 /// it derives "is this discipline in scope?" entirely from <see cref="DisciplineSelectieOptions"/>,
-/// which is bound from the <c>Opstap:DisciplineSelectie</c> configuration section. The admin sets
+/// which is bound from the <c>Opstap:DisciplineSelectie</c> configuration section. The directie sets
 /// the scope in config; this class contains <b>no</b> compiled-in discipline list.
 /// <para>
 /// Behaviour is a pure function of configuration:

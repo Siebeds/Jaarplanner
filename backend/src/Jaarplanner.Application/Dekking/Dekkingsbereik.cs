@@ -17,7 +17,7 @@ namespace Jaarplanner.Application.Dekking;
 /// </para>
 /// <para>
 /// Shaped as a caller's choice rather than a configuration value, deliberately. Both answers are legitimate at
-/// different moments: a teacher planning L3 wants L3, and an admin proving coverage to the onderwijsinspectie
+/// different moments: a teacher planning L3 wants L3, and the directie proving coverage to the onderwijsinspectie
 /// wants to see what the school loaded. A setting would make one of them wrong for somebody.
 /// </para>
 /// </summary>

@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Toegang;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -27,6 +28,18 @@ public sealed class EersteAdminBootstrap : IHostedService
     /// is absent, so an environment still configured under the old name keeps its bootstrap.
     /// </summary>
     public const string VorigeConfiguratieSleutel = "Authenticatie:EersteDirectie";
+
+    /// <summary>
+    /// The first admin's address, trimmed: <see cref="ConfiguratieSleutel"/>, else <see cref="VorigeConfiguratieSleutel"/>,
+    /// else <c>null</c> when neither holds one.
+    /// </summary>
+    public static string? LeesAdres(IConfiguration configuration)
+    {
+        var adres = configuration[ConfiguratieSleutel];
+        if (string.IsNullOrWhiteSpace(adres))
+            adres = configuration[VorigeConfiguratieSleutel];
+        return string.IsNullOrWhiteSpace(adres) ? null : adres.Trim();
+    }
 
     private readonly IServiceScopeFactory _scopes;
     private readonly string _email;
