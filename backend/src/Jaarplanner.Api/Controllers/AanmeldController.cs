@@ -46,18 +46,20 @@ public sealed class AanmeldController : ControllerBase
 
     /// <summary>
     /// Ends the session and says where the browser should go next: the Entra sign-out, so the Entra session ends too,
-    /// or the root in development. Anonymous, so a sign-out never fails on a session that already expired.
+    /// or straight to the signed-out page in development. Anonymous, so a sign-out never fails on a session that
+    /// already expired.
     /// </summary>
     [HttpPost("afmelden")]
     [AllowAnonymous]
     public async Task<ActionResult<AfmeldWeergave>> Afmelden()
     {
         await HttpContext.SignOutAsync(Aanmelding.CookieSchema);
+        Response.Headers["Clear-Site-Data"] = Aanmelding.WisSitegegevens;
 
         var opties = _opties.Value;
         var volgende = opties.Modus == AuthenticatieModus.Entra
             ? Aanmelding.EntraAfmeldAdres(opties.Entra, Request)
-            : "/";
+            : Aanmelding.AfgemeldPad;
         return Ok(new AfmeldWeergave(volgende));
     }
 

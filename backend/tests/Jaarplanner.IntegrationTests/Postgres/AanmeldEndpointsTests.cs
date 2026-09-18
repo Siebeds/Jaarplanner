@@ -156,7 +156,7 @@ public sealed class AanmeldEndpointsTests : IAsyncLifetime
         var weergave = await afmelding.Content.ReadFromJsonAsync<AfmeldDto>();
 
         Assert.Equal(HttpStatusCode.OK, afmelding.StatusCode);
-        Assert.Equal("/", weergave!.DoorsturenNaar);
+        Assert.Equal("/afgemeld", weergave!.DoorsturenNaar);
         using var ik = await client.GetAsync("/api/ik");
         Assert.Equal(HttpStatusCode.Unauthorized, ik.StatusCode);
     }

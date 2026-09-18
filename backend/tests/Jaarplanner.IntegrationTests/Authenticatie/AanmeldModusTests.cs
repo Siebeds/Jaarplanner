@@ -123,7 +123,7 @@ public sealed class AanmeldModusTests
     }
 
     [Fact]
-    public async Task Afmelden_met_Entra_stuurt_ook_door_naar_de_Entra_afmelding()
+    public async Task Afmelden_met_Entra_stuurt_door_naar_de_Entra_afmelding_met_terugkeer_naar_de_afgemeld_pagina()
     {
         using var factory = new Fabriek(Environments.Development, EntraInstellingen());
         using var client = factory.CreateClient();
@@ -132,7 +132,24 @@ public sealed class AanmeldModusTests
         var weergave = await antwoord.Content.ReadFromJsonAsync<AfmeldDto>();
 
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
-        Assert.StartsWith($"https://login.microsoftonline.com/{Tenant}/oauth2/v2.0/logout?post_logout_redirect_uri=", weergave!.DoorsturenNaar, StringComparison.Ordinal);
+        var doel = new Uri(weergave!.DoorsturenNaar);
+        Assert.Equal($"https://login.microsoftonline.com/{Tenant}/oauth2/v2.0/logout", doel.GetLeftPart(UriPartial.Path));
+        Assert.Equal($"http://localhost{Aanmelding.AfgemeldPad}", HttpUtility.ParseQueryString(doel.Query)["post_logout_redirect_uri"]);
+        Assert.Equal(Aanmelding.WisSitegegevens, string.Join(", ", antwoord.Headers.GetValues("Clear-Site-Data")));
+    }
+
+    [Fact]
+    public async Task Afmelden_in_de_ontwikkelmodus_stuurt_rechtstreeks_naar_de_afgemeld_pagina()
+    {
+        using var factory = new Fabriek(Environments.Development, new() { ["Authenticatie:Modus"] = "Ontwikkeling" });
+        using var client = factory.CreateClient();
+
+        using var antwoord = await client.PostAsync("/api/afmelden", content: null);
+        var weergave = await antwoord.Content.ReadFromJsonAsync<AfmeldDto>();
+
+        Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
+        Assert.Equal("/afgemeld", weergave!.DoorsturenNaar);
+        Assert.Equal("\"cache\", \"cookies\", \"storage\"", string.Join(", ", antwoord.Headers.GetValues("Clear-Site-Data")));
     }
 
     private static Dictionary<string, string?> EntraInstellingen(string? clientSecret = "test-only-not-a-secret") => new()

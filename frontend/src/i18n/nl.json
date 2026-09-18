@@ -1399,6 +1399,11 @@
     "afmelden": "Afmelden",
     "afmeldenAls": "Afmelden ({naam})",
     "afmeldenMislukt": "Afmelden is niet gelukt. Probeer het opnieuw.",
+    "afgemeld": {
+      "titel": "Je bent afgemeld",
+      "gedeeldeComputer": "Werk je op een gedeelde computer? Sluit dan alle browservensters, zodat niemand anders met je account verder kan.",
+      "opnieuw": "Opnieuw aanmelden"
+    },
     "geenToegang": {
       "titel": "Geen toegang met dit account",
       "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Jaarplanner niet gebruiken.",

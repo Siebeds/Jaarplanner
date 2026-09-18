@@ -22,8 +22,14 @@ export const GEEN_TOEGANG_PAD = "/geen-toegang";
 /** The page a sign-in lands on when it did not complete. */
 export const AANMELDEN_MISLUKT_PAD = "/aanmelden-mislukt";
 
-/** The pages a 401 must never navigate away from: each would loop through Microsoft's silent sign-in. */
-const ZONDER_OMLEIDING = new Set([GEEN_TOEGANG_PAD, AANMELDEN_MISLUKT_PAD]);
+/** The page a sign-out lands on (TB-032). */
+export const AFGEMELD_PAD = "/afgemeld";
+
+/**
+ * The pages a 401 must never navigate away from: on the first two it would loop through Microsoft's silent sign-in,
+ * and on the third it would undo the sign-out that just happened.
+ */
+const ZONDER_OMLEIDING = new Set([GEEN_TOEGANG_PAD, AANMELDEN_MISLUKT_PAD, AFGEMELD_PAD]);
 
 let omleidingBezig = false;
 
@@ -34,9 +40,9 @@ let omleidingBezig = false;
  * only a top-level page can follow. Once per page: several queries fail at the same moment on an
  * expired session, and each would otherwise start its own navigation.
  *
- * *Never from the refusal page or the failed-sign-in page.* Someone whose account the app refused
- * would otherwise be signed in again by Microsoft without a click, refused again, and sent back
- * here, in a loop.
+ * *Never from the refusal page, the failed-sign-in page or the signed-out page.* Someone whose
+ * account the app refused would otherwise be signed in again by Microsoft without a click, refused
+ * again, and sent back here, in a loop; someone who just signed out would be signed in again.
  *
  * An object with a method rather than a bare function so a test can replace it: jsdom cannot
  * navigate.

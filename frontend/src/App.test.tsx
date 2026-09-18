@@ -71,11 +71,13 @@ describe("App", () => {
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 
-  // The two pages a sign-in can end on stand outside the aanmeldpoort (TB-026). Inside it they would wait
-  // on the tussenpagina for an answer that, for someone refused, only ever loops through the sign-in.
+  // The two pages a sign-in can end on, and the one a sign-out ends on (TB-032), stand outside the aanmeldpoort
+  // (TB-026). Inside it they would wait on the tussenpagina for an answer that, for someone refused, only ever
+  // loops through the sign-in, and after a sign-out would start a new one.
   it.each([
     ["/geen-toegang", "aanmelding.geenToegang.titel"],
     ["/aanmelden-mislukt", "aanmelding.mislukt.titel"],
+    ["/afgemeld", "aanmelding.afgemeld.titel"],
   ] as const)("toont %s buiten de aanmeldpoort, zonder de API te vragen", async (pad, titel) => {
     aangemeld.bekend = false;
     openOp(pad);
