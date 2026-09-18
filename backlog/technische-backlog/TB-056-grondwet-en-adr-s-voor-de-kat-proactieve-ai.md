@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:19
+bijgewerkt: 2026-09-18 19:21
 opgepakt-door: claude-tb056
 branch: ticket/TB-056-grondwet-kat
-pr:
+pr: 146
 geblokkeerd:
 fr: []
 ---
@@ -92,3 +92,4 @@ Code. Die komt in TB-057 en FB-063 tot en met FB-071.
 - 2026-09-18 18:18 · claude-tb056 · antagonist ronde 1: VIOLATIONS FOUND, 2 MAJOR (IV.2 zonder uitzondering voor het chatantwoord; 'zonder recht leest geen klas' naast de vervanger) en MINOR; alle MAJOR en de MINOR hersteld, behalve de vraag over een namenfilter in de chat (aan de eigenaar)
 - 2026-09-18 18:19 · claude-tb056 · antagonist ronde 2: COMPLIANT, beide MAJOR gesloten; criteria afgevinkt (commits 2278f161 en f33bc17d, ADR-index en log nagekeken)
 - 2026-09-18 18:19 · claude-tb056 · in-uitvoering → klaar: amendement op de grondwet (Art. I.1, I.2, IV.1-IV.5, IV.8, VI.1, VI.2, VIII, IX.2, IX.3, XII, XIV), ADR-0057 tot ADR-0060, CLAUDE.md, FA (FR-14) en log; FB-063 tot FB-070 bijgewerkt voor de vervanger die alleen leest; antagonist COMPLIANT na ronde 2; geen code, dus geen tests of lint
+- 2026-09-18 19:21 · claude-tb056 · PR #146
