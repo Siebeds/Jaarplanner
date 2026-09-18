@@ -2,10 +2,10 @@
 id: TB-056
 titel: Grondwet en ADR's voor de kat: proactieve AI, vervanging, lesvoorbereiding
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:18
+bijgewerkt: 2026-09-18 18:19
 opgepakt-door: claude-tb056
 branch: ticket/TB-056-grondwet-kat
 pr:
@@ -63,14 +63,14 @@ in dezelfde wijziging):
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven het amendement, dan staat het in een eigen commit met een rij in `docs/constitutie-log.md`, en zeggen
+- [x] Gegeven het amendement, dan staat het in een eigen commit met een rij in `docs/constitutie-log.md`, en zeggen
   CLAUDE.md en de functionele analyse hetzelfde.
-- [ ] Gegeven Art. I.2, dan noemt het lesmateriaal niet meer als non-goal, en Art. VI.2 en VI.7 zijn ongewijzigd.
-- [ ] Gegeven Art. IV.4, dan is het één regel, en vallen woordweb, subthemavoorstel, activiteitvoorstel en herschrijven
+- [x] Gegeven Art. I.2, dan noemt het lesmateriaal niet meer als non-goal, en Art. VI.2 en VI.7 zijn ongewijzigd.
+- [x] Gegeven Art. IV.4, dan is het één regel, en vallen woordweb, subthemavoorstel, activiteitvoorstel en herschrijven
   eronder zonder dat hun betekenis verandert.
-- [ ] Gegeven `docs/adr/`, dan staan de vier ADR's erin en in de index; ADR-0056 is niet herschreven, alleen gemarkeerd
+- [x] Gegeven `docs/adr/`, dan staan de vier ADR's erin en in de index; ADR-0056 is niet herschreven, alleen gemarkeerd
   als gedeeltelijk vervangen.
-- [ ] De antagonist heeft het amendement en de ADR's beoordeeld: geen CRITICAL of MAJOR open.
+- [x] De antagonist heeft het amendement en de ADR's beoordeeld: geen CRITICAL of MAJOR open.
 
 ## Buiten scope
 
@@ -90,3 +90,5 @@ Code. Die komt in TB-057 en FB-063 tot en met FB-071.
 - 2026-09-18 18:04 · claude-tb056 · eigenaar beslist: de vervanger leest alleen (agenda, klasfiche, voorbereidingen, briefing) en beslist niets; de vaste klasleerkracht zet de agenda achteraf recht; geen AI-samenvatting in de briefing in fase 1; een vervanger blijft een gebruiker van de Entra-tenant
 - 2026-09-18 18:12 · claude-tb056 · amendement (Art. I.1, I.2, IV.1, IV.3, IV.4, IV.5, IV.8, VI.1, VI.2, VIII, IX.2, IX.3, XII), ADR-0057 tot ADR-0060, CLAUDE.md, FA (FR-14) en log geschreven; FB-063 tot FB-070 bijgewerkt; antagonist ronde 1 loopt
 - 2026-09-18 18:18 · claude-tb056 · antagonist ronde 1: VIOLATIONS FOUND, 2 MAJOR (IV.2 zonder uitzondering voor het chatantwoord; 'zonder recht leest geen klas' naast de vervanger) en MINOR; alle MAJOR en de MINOR hersteld, behalve de vraag over een namenfilter in de chat (aan de eigenaar)
+- 2026-09-18 18:19 · claude-tb056 · antagonist ronde 2: COMPLIANT, beide MAJOR gesloten; criteria afgevinkt (commits 2278f161 en f33bc17d, ADR-index en log nagekeken)
+- 2026-09-18 18:19 · claude-tb056 · in-uitvoering → klaar: amendement op de grondwet (Art. I.1, I.2, IV.1-IV.5, IV.8, VI.1, VI.2, VIII, IX.2, IX.3, XII, XIV), ADR-0057 tot ADR-0060, CLAUDE.md, FA (FR-14) en log; FB-063 tot FB-070 bijgewerkt voor de vervanger die alleen leest; antagonist COMPLIANT na ronde 2; geen code, dus geen tests of lint
