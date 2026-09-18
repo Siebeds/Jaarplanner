@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:42
+bijgewerkt: 2026-09-18 19:15
 opgepakt-door: fb-072-sessie
 branch: ticket/FB-072-rol-admin
-pr:
+pr: 144
 geblokkeerd:
 fr: [FR-12.2]
 ---
@@ -70,3 +70,4 @@ Geen. De bouwsessie schrijft de ADR en past Art. VI.1 en Art. XII van de constit
 - 2026-09-18 18:41 · fb-072-sessie · browserpas op kopie jp_fb072 (desktop en 390px): directierecht na migratie admin, scherm Gebruikers toont Admin, adminrecht geven/afnemen werkt na herladen, laatste admin geweigerd met uitleg, agenda/doelen/dekking/thema's zonder 'directie'; criterium 5 gedekt door de ongewijzigde rechtentests
 - 2026-09-18 18:41 · fb-072-sessie · antagonist: ronde 1 één MAJOR (Art. IV.1, IX.2 en FA nog 'directie' voor het recht), opgelost in cc7f606d; ronde 2 COMPLIANT. MINOR's opgelost in eac3807f
 - 2026-09-18 18:42 · fb-072-sessie · in-uitvoering → te-testen: gebouwd: rol directie heet admin in app, code, kolom (migratie GebruikerIsAdmin), API-route en configsleutel (oude sleutel blijft als terugval); ADR-0061, grondwet, CLAUDE.md en FA bijgewerkt; unit 2138, integratie 569, frontend 1228 groen, lint en format schoon, antagonist COMPLIANT
+- 2026-09-18 19:15 · fb-072-sessie · PR #144
