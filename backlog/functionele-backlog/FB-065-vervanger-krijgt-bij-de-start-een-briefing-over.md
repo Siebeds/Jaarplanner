@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door:
 branch:
 pr:
@@ -58,7 +58,8 @@ De afwezige leerkracht en directie kunnen de briefing ook lezen.
 1. Leg als directie een vervanging vast voor een K3-klas met een lopend thema en subthema en een gevulde agenda.
 2. Meld aan als de vervanger en open de klas. De briefing staat voor je, met bovenaan de klasfiche.
 3. Controleer het thema, het subthema, de woordenschat, de voorbije twee weken en de komende dagen tegen de agenda.
-4. Haal als vervanger een activiteit van morgen uit de agenda. De briefing toont ze niet meer bij de komende dagen.
+4. Haal als vaste leerkracht een activiteit van morgen uit de agenda. Meld aan als de vervanger: de briefing toont ze
+   niet meer bij de komende dagen.
 5. Bekijk de briefing op telefoonbreedte (ongeveer 390px): alles is leesbaar zonder zijwaarts te scrollen.
 
 ## Buiten scope
@@ -69,11 +70,12 @@ De afwezige leerkracht en directie kunnen de briefing ook lezen.
 
 ## Open vragen
 
-- Een korte samenvatting door de AI bovenaan (drie zinnen): mag dat, en hoe valt ze onder Art. IV (voorstel en
-  beslissing)? Te beslissen in TB-056; tot dan zonder AI.
-- Hoe ver kijkt de briefing terug en vooruit? Standaard twee weken terug en vijf schooldagen vooruit.
-- Hangt af van FB-063 en FB-064.
+- Geen AI-samenvatting in fase 1 (eigenaar, TB-056, ADR-0057 V6).
+- Hoe ver kijkt de briefing terug en vooruit? Standaard twee weken terug en vijf schooldagen vooruit (ADR-0057 D5).
+- Hangt af van FB-063 en FB-064. De vervanger leest alleen (ADR-0057 V2): de briefing heeft geen knoppen die iets
+  wijzigen.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 18:11 · claude-tb056 · tekst bijgewerkt na TB-056: de vervanger leest alleen en beslist niets (ADR-0057)

@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door:
 branch:
 pr:
@@ -29,8 +29,9 @@ afsluiting, materiaal, woordenschat, differentiatie, duur.
 
 ## Gewenst gedrag
 
-- Bij een activiteit in de agenda van haar klas vraagt een leerkracht, een vervanger tijdens de vervanging, of directie
-  "maak een lesvoorbereiding".
+- Bij een activiteit in de agenda van haar klas vraagt een leerkracht van de klas, of directie, "maak een
+  lesvoorbereiding". Een vervanger vraagt en beslist niets: zij leest de voorbereidingen, ook de open voorstellen
+  (ADR-0057 V2, ADR-0058 L5 en D1).
 - De AI krijgt: de activiteit (naam, soort, verwachte uitkomsten, lengte) met de tekst van haar gekoppelde doelen, het
   subthema (onderzoeksvragen, woordenschat, de woorden van het woordweb), het thema, de dag en de uren van de plaatsing,
   en de klasfiche (FB-064). Nooit gegevens over kinderen.
@@ -52,8 +53,8 @@ afsluiting, materiaal, woordenschat, differentiatie, duur.
   doel niet getoond en niet bewaard.
 - [ ] Gegeven een voorstel, wanneer ze het aanpast en aanvaardt, dan staat de aangepaste versie bij die plaatsing; wanneer
   ze het weigert, verdwijnt het.
-- [ ] Gegeven een gebruiker die de agenda van de klas niet mag bewerken, dan kan ze geen voorbereiding vragen of
-  beslissen, ook niet rechtstreeks via de API.
+- [ ] Gegeven een gebruiker die de agenda van de klas niet mag bewerken, ook een vervanger, dan kan ze geen
+  voorbereiding vragen of beslissen, ook niet rechtstreeks via de API; een vervanger leest ze wel.
 - [ ] Gegeven wat naar het model gaat, dan staat er geen informatie over kinderen in.
 - [ ] De logica is getest met een nep-AI-client; het scherm is bekeken op desktop en op ongeveer 390px.
 
@@ -75,8 +76,9 @@ afsluiting, materiaal, woordenschat, differentiatie, duur.
 
 - Werkt de school met een eigen sjabloon? Tot dan de vorm hierboven.
 - Wat kost een voorbereiding, en telt ze voor het AI-budget van de school (FB-055)?
-- Hangt af van TB-056 (Art. I.2, IV.4, IV.5 en de ADR over de lesvoorbereiding).
+- Hangt af van TB-056 (Art. I.2, IV.4, IV.5 en ADR-0058; de standaardkeuzes staan in ADR-0058 D1 tot D7).
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 18:11 · claude-tb056 · tekst bijgewerkt na TB-056: de vervanger leest alleen en beslist niets (ADR-0057)

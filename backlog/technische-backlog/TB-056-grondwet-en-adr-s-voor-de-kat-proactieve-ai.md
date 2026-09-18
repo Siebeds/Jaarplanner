@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:59
+bijgewerkt: 2026-09-18 18:04
 opgepakt-door: claude-tb056
 branch: ticket/TB-056-grondwet-kat
 pr:
@@ -89,3 +89,4 @@ Code. Die komt in TB-057 en FB-063 tot en met FB-071.
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-18 17:59 · claude-tb056 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-18 18:04 · claude-tb056 · eigenaar beslist: de vervanger leest alleen (agenda, klasfiche, voorbereidingen, briefing) en beslist niets; de vaste klasleerkracht zet de agenda achteraf recht; geen AI-samenvatting in de briefing in fase 1; een vervanger blijft een gebruiker van de Entra-tenant
