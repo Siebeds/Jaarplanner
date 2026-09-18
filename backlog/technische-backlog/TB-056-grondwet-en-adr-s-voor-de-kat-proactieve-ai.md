@@ -2,12 +2,12 @@
 id: TB-056
 titel: Grondwet en ADR's voor de kat: proactieve AI, vervanging, lesvoorbereiding
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-18 17:59
+opgepakt-door: claude-tb056
+branch: ticket/TB-056-grondwet-kat
 pr:
 geblokkeerd:
 fr: []
@@ -88,3 +88,4 @@ Code. Die komt in TB-057 en FB-063 tot en met FB-071.
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 17:59 · claude-tb056 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
