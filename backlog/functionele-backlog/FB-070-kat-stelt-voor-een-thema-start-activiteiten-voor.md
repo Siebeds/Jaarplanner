@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door:
 branch:
 pr:
@@ -78,11 +78,13 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
 ## Open vragen
 
 - Een klas met twee vaste leerkrachten (duobaan): wie krijgt de voorstellen, want een eigen activiteit is van één
-  persoon?
+  persoon? Standaard: alle leerkrachten van de klas krijgen ze, en wie aanvaardt wordt eigenaar (ADR-0060 D2).
 - Zegt de AI dat er niets past, probeert de kat dan de volgende discipline, of wacht hij tot het volgende thema?
+  Standaard wacht hij (ADR-0060 D6).
 - Het inpassen op een vrij moment kan de code van FB-027 hergebruiken.
 - Hangt af van TB-056 (Art. IV.8 en de ADR die ADR-0056 D6 gedeeltelijk vervangt) en TB-057.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)

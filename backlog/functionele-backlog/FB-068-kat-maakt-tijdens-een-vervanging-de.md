@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door:
 branch:
 pr:
@@ -36,7 +36,8 @@ proactief, alleen op vraag (FB-067).
 - Een voorstel bij een plaatsing die uit de agenda verdwijnt, verdwijnt mee.
 - Na de einddatum van de vervanging maakt hij voor die klas niets meer.
 - De vervanger ziet dat er voorbereidingen klaarliggen (de kat, FB-071; tot die er is, een zichtbare vermelding in de
-  briefing).
+  briefing) en leest ze. Ze beslist er niet over: dat doen de leerkrachten van de klas of directie, als ze dat willen
+  (ADR-0057 V2, ADR-0058 L5).
 
 ## Acceptatiecriteria
 
@@ -52,7 +53,8 @@ proactief, alleen op vraag (FB-067).
 
 1. Leg als directie een vervanging vast voor een K3-klas die morgen start, met een gevulde agenda.
 2. Meld aan als de vervanger. Bij de activiteiten van morgen en overmorgen liggen voorstellen van voorbereiding klaar.
-3. Aanvaard er een, weiger er een.
+   Je leest ze; er is geen knop om ze te aanvaarden of te weigeren.
+3. Meld aan als directie en weiger een van de voorstellen.
 4. De volgende ochtend liggen ook de voorstellen van de dag daarna klaar; de geweigerde is niet terug.
 5. Meld aan als leerkracht van een andere klas zonder vervanging: er liggen geen voorbereidingen klaar die je niet vroeg.
 
@@ -64,10 +66,11 @@ proactief, alleen op vraag (FB-067).
 
 ## Open vragen
 
-- Om hoe laat draait de avondronde?
+- Om hoe laat draait de avondronde? Standaard 19:00 (ADR-0059 D1).
 - Wat als het AI-budget van de school op is (FB-055): zegt de kat dat, en in welke woorden?
 - Hangt af van TB-056, TB-057, FB-063 en FB-067.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 18:11 · claude-tb056 · tekst bijgewerkt na TB-056: de vervanger leest alleen en beslist niets (ADR-0057)

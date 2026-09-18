@@ -1,6 +1,6 @@
 # ADR-0056 — The AI proposes activiteiten under a subthema, and an accepted one is the asker's own
 
-- **Status:** Accepted
+- **Status:** Accepted; D6 superseded in part by [ADR-0060](0060-activiteitvoorstellen-op-een-aanbod-gat.md) for the proposals the cat brings
 - **Date:** 2026-09-17
 - **Deciders:** Project owner: A1 on 2026-09-17, given in session when FB-025 was picked up ("de grondwet mag
   genegeerd/aangepast worden"); A2 on 2026-09-15 (FB-025, and ADR-0049 E4); A3 on 2026-09-17, answering the audit of

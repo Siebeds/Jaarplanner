@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
+bijgewerkt: 2026-09-18 18:11
 opgepakt-door:
 branch:
 pr:
@@ -67,9 +67,11 @@ verdwijnt vanzelf zodra haar reden weg is. Een vervanger krijgt deze meldingen n
 ## Open vragen
 
 - "Vijf schooldagen" voor een subthema dat niet gepland is: juist, of instelbaar?
-- Kan de leerkracht een melding uitstellen ("Later"), en voor hoe lang?
+- Kan de leerkracht een melding uitstellen ("Later"), en voor hoe lang? Standaard tot de volgende schooldag
+  (ADR-0059 D4).
 - Hangt af van TB-056 en TB-057.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)

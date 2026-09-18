@@ -66,7 +66,11 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0053](0053-themaplaatsing-met-eigen-datums.md) | **A thema placement carries its own dates; the themaperiodes leave the planning**: a placement has a first and a last day, no two share a day, a vacation splits a thema into parts, the plan screen is a week timeline, existing plans are converted by one migration, and the generation is switched off until it is reworked for dates (supersedes 0013 and 0020 for the jaarplan) | Accepted |
 | [0054](0054-ai-zoekt-doelen-bij-een-activiteit.md) | **The AI proposes goals for an activiteit**, decided by whoever may link its goals; an accepted goal is proposed as subdoel, and only a decided link counts as linked (R25) | Accepted |
 | [0055](0055-ai-jaarplan-met-datums.md) | **The AI jaarplan generation proposes thema's with a start week; the calendar sets the days**: on free days only, over the whole year, open proposals replaced; the kept startthema's and vaste momenten and the planningsblok seam are removed | Accepted |
-| [0056](0056-ai-stelt-activiteiten-voor.md) | **The AI proposes activiteiten under a subthema**, and an accepted one is the asker's own activiteit (a third Art. IV.4 exception) | Accepted |
+| [0056](0056-ai-stelt-activiteiten-voor.md) | **The AI proposes activiteiten under a subthema**, and an accepted one is the asker's own activiteit (a third Art. IV.4 exception) | Accepted (D6 superseded in part by 0060) |
+| [0057](0057-vervanging-briefing-en-klasfiche.md) | **A vervanging gives a read-only look at a klas**, with a briefing for the vervanger, a terugkeerbriefing for the absent leerkracht and a klasfiche | Accepted |
+| [0058](0058-lesvoorbereiding-per-plaatsing.md) | **The AI writes a lesvoorbereiding per plaatsing**, lesson material leaves the non-goals, and Art. IV.4 becomes one rule instead of three exceptions | Accepted |
+| [0059](0059-de-kat-proactieve-agent.md) | **The cat: a proactive agent** that notices without AI (a background job and signals) and prepares with it; its basket, its window and its chat | Accepted |
+| [0060](0060-activiteitvoorstellen-op-een-aanbod-gat.md) | **Before a thema starts, the cat proposes own activiteiten on the klas's aanbod-gat** (supersedes 0056 D6 in part) | Accepted |
 | [0061](0061-de-rol-directie-heet-admin.md) | **The directie right is called admin**: the same rights, several holders, and the code, column, API and configuration renamed with it | Accepted |
 
 ## Compliance traceability matrix
@@ -127,6 +131,10 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0054 | Art. IV.1 and VI.1 (amended); IV.2–IV.5, V.1, IX.2; builds on 0049, 0050, 0051 | FB-026 | FR-4.1–FR-4.3 |
 | 0055 | Art. I.1, II.1, IV.5, IX.3 and XII (amended); IV.1–IV.4 unchanged; builds on 0053; fully supersedes 0013 and 0020 | TB-053 | FR-5.1–FR-5.3, FR-8.1, FR-8.3, FR-8.4; FR-5.4 and FR-8.2 lapsed |
 | 0056 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); I.2 and V.1 unchanged; relates to 0043, 0049, 0050 and 0051 | FB-025 | FR-4.1–FR-4.3; FA A.7 step 7 |
+| 0057 | Art. I.1, VI.1, VI.2, IX.2, IX.3 and XII (amended); adds a Vervanger relation to the 0030 §3 matrix; relates to 0040, 0049 | TB-056; FB-063–FB-066 | FR-14.1–FR-14.5 |
+| 0058 | Art. I.2, IV.1, IV.4, IV.5, VI.1 and IX.3 (amended); IV.4 folds the 0043, 0050 and 0056 exceptions into one rule | TB-056; FB-067, FB-068 | FR-14.6 |
+| 0059 | Art. I.1, IV.1, IV.2, IV.3, IV.5, IV.8, VI.2, VIII, IX.3 and XII (amended); relates to 0039, 0047, 0051 | TB-056, TB-057; FB-068–FB-071, FB-031, FB-032 | FR-14.7, FR-14.9–FR-14.11 |
+| 0060 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; supersedes 0056 D6 in part | TB-056; FB-070 | FR-14.8 |
 | 0061 | Art. II.3, IV.1, IV.8, V.5, VI.1, VI.7, IX.2, XII and XIV (amended); IV.7 unchanged; renames the directie column of 0030 §3 and the configuration key of 0031 | FB-072 | FR-12.2 |
 
 ## Open decisions referenced by ADRs

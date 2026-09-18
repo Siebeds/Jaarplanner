@@ -37,6 +37,7 @@ Dit document is een levend document. Wijzigingen worden bijgehouden in onderstaa
 | 0.13 | 17-09-2026 | (projecteigenaar) | A.6 bijgewerkt: het genereren staat weer aan voor thema's met datums; de AI kiest een startweek en de tool zet het thema op vrije dagen ([ADR-0055](adr/0055-ai-jaarplan-met-datums.md), TB-053). FR-8.2 en FR-5.4 vervallen. De directie is het niet gevraagd. | Concept, ter validatie |
 | 0.14 | 17-09-2026 | (projecteigenaar) | A.7 bijgewerkt: onder een subthema stelt de AI activiteiten voor die aan de subdoelen werken; alleen wie vroeg en de directie zien en beslissen ze, en een aanvaard voorstel wordt de eigen activiteit van wie vroeg ([ADR-0056](adr/0056-ai-stelt-activiteiten-voor.md), FB-025). De directie is het niet gevraagd. | Concept, ter validatie |
 | 0.15 | 18-09-2026 | (projecteigenaar) | A.5, A.7 en A.11 bijgewerkt: het recht dat alles ziet en bewerkt, heet **admin** in plaats van directie. Het laat hetzelfde toe, meerdere gebruikers kunnen het hebben, en een admin geeft het aan een ander en neemt het af ([ADR-0061](adr/0061-de-rol-directie-heet-admin.md), FB-072). Waar het de schoolleiding bedoelt, blijft het directie. De directie is het niet gevraagd. | Concept, ter validatie |
+| 0.16 | 18-09-2026 | (projecteigenaar) | **FR-14** toegevoegd: de kat, een AI-agent die uit zichzelf opmerkt wat aandacht vraagt in een klas en voorstellen, een briefing en lesvoorbereidingen brengt; een vervanger kijkt tijdelijk mee in een klas zonder iets te wijzigen ([ADR-0057](adr/0057-vervanging-briefing-en-klasfiche.md) tot [ADR-0060](adr/0060-activiteitvoorstellen-op-een-aanbod-gat.md), TB-056). §2.3: het genereren van lesmateriaal is niet langer buiten scope. §7 bijgewerkt. De directie is het niet gevraagd. | Concept, ter validatie |
 
 Te valideren door: de directie van de school.
 
@@ -76,13 +77,13 @@ De Jaarplanner (werktitel) is een webtoepassing die:
 - (Her)generatie, dekkingsoverzicht, samenwerking en export.
 - Gebruikersbeheer met rollen en rechten.
 - Een ontwikkelingsrapport per kind voor de derde kleuter (FR-13, toegevoegd op 14-09-2026).
+- De kat: een AI-agent die uit zichzelf opmerkt wat aandacht vraagt in een klas, een vervanger briefingt en lesvoorbereidingen maakt (FR-14, toegevoegd op 18-09-2026).
 
 #### Buiten scope (mogelijk latere fase)
 
 - Opvolging en rapportering op leerlingniveau, **behalve het ontwikkelingsrapport van de derde kleuter** (FR-13, toegevoegd op 14-09-2026, [ADR-0035](adr/0035-ontwikkelingsrapport-derde-kleuter.md)). Daarbuiten blijft het buiten scope: niets volgt een kind van het ene schooljaar of de ene klas naar de volgende.
 - Integratie met bestaande schooladministratie- of leerlingvolgsystemen (bv. Smartschool, Informat).
 - Toegang voor ouders of leerlingen.
-- Automatisch genereren van het concrete lesmateriaal zelf.
 - Evaluatie en puntenbeheer, behalve de sterren van het ontwikkelingsrapport (FR-13). Een ster is een label, geen punt: er komen geen totalen, gemiddelden of vergelijkingen tussen kinderen of klassen.
 
 ### 2.4 Definities en begrippen
@@ -238,7 +239,7 @@ Voor de directie cruciaal: aantonen dat élk doel ergens in het jaar aan bod kom
 Leerkrachten moeten op elkaar kunnen afstemmen, maar wel binnen duidelijke toegangsgrenzen.
 
 - **FR-10.1** — Leerkrachten kunnen de jaarplannen van collega's bekijken (volgens hun rechten) om op elkaar af te stemmen.
-- **FR-10.2** — De zichtbaarheid is instelbaar (bv. enkel binnen dezelfde graad, of schoolbreed) — ter beslissing. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten). De projecteigenaar besliste op 11-09-2026 dat een leerkracht andere klassen kan inkijken en dat de directie (nu: admin) alles ziet, en op 15-09-2026 welke: een leerkracht kijkt de klassen van de eigen jaarfase in, een hoofdleerkracht die van de jaarfase waarvoor ze aangesteld is, wie themabeheer heeft alle klassen, en wie geen recht heeft geen enkele ([ADR-0040](adr/0040-klassen-inkijken-per-jaarfase.md)). Enkel lezen. Dat wordt op één plaats beslist, zodat een andere keuze van de directie maar één plek raakt. De bevestiging blijft aan de directie: vraag 4 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md).)*
+- **FR-10.2** — De zichtbaarheid is instelbaar (bv. enkel binnen dezelfde graad, of schoolbreed) — ter beslissing. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten). De projecteigenaar besliste op 11-09-2026 dat een leerkracht andere klassen kan inkijken en dat de directie (nu: admin) alles ziet, en op 15-09-2026 welke: een leerkracht kijkt de klassen van de eigen jaarfase in, een hoofdleerkracht die van de jaarfase waarvoor ze aangesteld is, wie themabeheer heeft alle klassen, en wie geen recht heeft geen enkele, behalve de klas van een lopende vervanging (FR-14.2, [ADR-0040](adr/0040-klassen-inkijken-per-jaarfase.md)). Enkel lezen. Dat wordt op één plaats beslist, zodat een andere keuze van de directie maar één plek raakt. De bevestiging blijft aan de directie: vraag 4 in [`besluiten-gevraagd.md`](besluiten-gevraagd.md).)*
 - **FR-10.3** — (Optioneel) Mogelijkheid om opmerkingen achter te laten of thema's te delen tussen klassen.
 
 ### FR-11 — Export en rapportering
@@ -281,6 +282,24 @@ Drie keer per schooljaar schrijven de leerkrachten van de derde kleuter een ontw
 - **FR-13.9**: Een ontwikkelingsrapport telt nooit mee voor de dekking.
 - **FR-13.10**: Het ontwikkelingsrapport krijgt een eigen tab in de linkerzijbalk: onderaan, in een nieuwe sectie, ver onder de fiches *(toegevoegd op 14-09-2026, op beslissing van de projecteigenaar, ADR-0035 R32)*. Alleen wie rapporten mag zien, ziet die tab *(een standaardkeuze, ADR-0035 D18)*.
 
+### FR-14: De kat
+
+*Toegevoegd op 18-09-2026, op beslissing van de projecteigenaar ([ADR-0057](adr/0057-vervanging-briefing-en-klasfiche.md) tot en met [ADR-0060](adr/0060-activiteitvoorstellen-op-een-aanbod-gat.md)). De bindende regels staan in [`CONSTITUTION.md` Art. IV.8 en VI.1](../CONSTITUTION.md#article-iv--ai-is-advisory-human-in-the-loop). De directie heeft dit niet bevestigd.*
+
+De kat is een AI-agent die op de agenda van de kleuterleerkracht leeft en planlast vermindert. Hij merkt zonder AI op wat aandacht vraagt in een klas, en brengt wat helpt. Hij bereidt voor, maar beslist nooit: wat hij brengt, is een voorstel waarover een mens beslist.
+
+- **FR-14.1**: Een admin legt een vervanging vast: de afwezige leerkracht, de klas, een begindatum, een einddatum (die mag openblijven) en de vervanger, een gebruiker van de school.
+- **FR-14.2**: Tijdens de vervanging leest de vervanger de planning van die klas (jaarplan, agenda, dekking), de klasfiche, de lesvoorbereidingen en haar briefing. Ze wijzigt en beslist niets. De afwezige leerkracht behoudt haar rechten en zet de agenda achteraf recht: wat voorbij is en in de agenda staat, is gebeurd.
+- **FR-14.3**: De vervanger ziet bij het openen van de klas eerst een briefing: de klasfiche, waar de klas staat (thema, subthema, onderzoeksvragen, woordenschat, woordweb), wat de voorbije dagen in de agenda stond, de komende schooldagen met hun lege momenten, en de subdoelen die nog niet aan bod kwamen. Informatie over een kind krijgt ze van de zorgcoördinator of de directie, en dat staat er zichtbaar bij.
+- **FR-14.4**: Na de vervanging ziet de afwezige leerkracht eerst een terugkeerbriefing: wie haar verving, wat er in de agenda stond, welke lesvoorbereidingen er klaarlagen, en de vraag om weg te halen wat niet doorging.
+- **FR-14.5**: De leerkrachten van een klas vullen een klasfiche in: dagritme, klasafspraken en rituelen, materiaal, praktische zaken. Er staat niets over een kind in.
+- **FR-14.6**: Bij een geplande activiteit vraagt een leerkracht van de klas of een admin een lesvoorbereiding: doelen, instap, kern, afsluiting, materiaal, woordenschat, differentiatie en duur. Tijdens een vervanging maakt de kat ze uit zichzelf klaar: bij het vastleggen de eerste twee schooldagen, daarna elke avond de volgende.
+- **FR-14.7**: De kat waarschuwt de leerkrachten van een klas wanneer een minimumdoel niet meer in de resterende lesweken past, en wanneer een thema afloopt terwijl een subthema ervan nog niet in de agenda staat.
+- **FR-14.8**: Vijf schooldagen voor een thema start, stelt de kat twee à drie eigen activiteiten voor in de discipline waarvan het grootste deel van de leerplandoelen nergens in het aanbod van de klas zit (het aanbod-gat), elk met een voorgesteld moment. Past er niets in het thema, dan brengt hij niets.
+- **FR-14.9**: De kat slaapt rechtsboven in een mandje. Zijn houding toont of er iets klaarligt, altijd met een label. Wie op hem klikt, opent zijn venster: bovenaan wat hij meebracht, daaronder een chat over de tool (FR-14.10). Hij meldt zich alleen in de app, hooguit enkele keren per dag.
+- **FR-14.10**: In de chat legt de kat uit hoe de tool werkt, beantwoordt hij opzoekvragen over de eigen inhoud en doet hij voorstellen via de gewone voorstelflows. Hij wijzigt zelf niets en bewaart geen gesprek.
+- **FR-14.11**: De kat is charmant in wat hij doet en volwassen in wat hij zegt, nooit in babytaal. Hij staat niet in een export of in een ontwikkelingsrapport.
+
 ## 6. Niet-functionele requirements
 
 Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete functies.
@@ -295,15 +314,16 @@ Dit zijn de kwaliteitseisen waaraan de tool moet voldoen, los van de concrete fu
   - De teksten zijn vrije tekst en kunnen ook zorg- of gezondheidsinformatie bevatten (bijzondere gegevens, AVG art. 9).
   - Het verwerkingsregister en een concrete bewaartermijn moeten ook die gegevens dekken.
   - De projecteigenaar besliste dat echte gegevens mogen worden ingevoerd voordat het register en een effectbeoordeling (DPIA) er zijn. De school draagt die verantwoordelijkheid.
+  - De klasfiche en de chat met de kat (FR-14) zijn vrije tekst over de klas en de tool. Beide zeggen zichtbaar dat er geen naam of informatie over een kind in hoort, en een chatgesprek wordt niet bewaard. *(Toegevoegd op 18-09-2026, [ADR-0059](adr/0059-de-kat-proactieve-agent.md).)*
 - **NFR-7** — Browserondersteuning: recente versies van de courante browsers (Edge, Chrome, Firefox, Safari).
 - **NFR-8** — Schaalbaarheid: ontworpen voor één school met meerdere klassen; uitbreidbaar naar meerdere scholen in een latere fase.
 - **NFR-9** — Back-up & herstel: regelmatige back-ups van de gegevens.
 
 ## 7. AI-werking en kwaliteitsbewaking
 
-- **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij de doelsuggesties van een thema beslist een admin of wie themabeheer heeft.)*
+- **Mens in de lus** — de AI stelt voor, de leerkracht beslist. Niets wordt zonder validatie als definitief beschouwd. *(Verfijnd door de beslissingen van 13-09-2026, zie [A.11](#a11-rollen-en-rechten): bij de doelsuggesties van een thema beslist een admin of wie themabeheer heeft.)* *(Bijgewerkt op 18-09-2026, FR-14: de kat bereidt ook uit zichzelf voor, zonder dat iemand erom vraagt, maar beslist nooit. Een antwoord in zijn chat verandert niets.)*
 - **Transparantie** — elke AI-suggestie gaat gepaard met een korte motivatie. *(Behalve de herwerking van een tekst in het ontwikkelingsrapport, FR-13.4: daar ziet de leerkracht de oude en de nieuwe tekst naast elkaar, zonder motivatie. Bijgewerkt op 14-09-2026.)*
-- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen. *(Bij de herwerking van een tekst in het ontwikkelingsrapport krijgt de AI alleen die tekst, zonder de namen van de kinderen van de klas. Bijgewerkt op 14-09-2026.)*
+- **Brongegevens** — de AI werkt op basis van de door de school ingevoerde thema's en activiteiten en de leerdoelen van de overheid — niet op basis van externe, onbekende bronnen. *(Bij de herwerking van een tekst in het ontwikkelingsrapport krijgt de AI alleen die tekst, zonder de namen van de kinderen van de klas. Bijgewerkt op 14-09-2026.)* *(Bijgewerkt op 18-09-2026, [ADR-0058](adr/0058-lesvoorbereiding-per-plaatsing.md): inhoud zoals woorden, namen van thema's, activiteiten en lesvoorbereidingen mag de AI uit eigen kennis halen; elk doel dat hij noemt of koppelt, is een ingeladen Op.stap-doel.)*
 - **Beperkingen** — AI-suggesties kunnen fouten of hiaten bevatten. De eindverantwoordelijkheid voor de correcte dekking ligt bij de leerkracht en de directie. De tool ondersteunt, maar vervangt geen pedagogische beoordeling.
 - **Aandachtspunt** — verwerking van schoolgegevens door een AI-dienst gebeurt bij voorkeur binnen een Europese, AVG-conforme omgeving (bv. Azure AI Foundry met EU-datazone) — te bevestigen. *(Bijgewerkt 2026-09-16, ADR-0048, beslissing van de projecteigenaar: een omgeving met de Claude API is niet aan de EU gebonden.)*
 
@@ -462,7 +482,7 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 
 **Graadklassen, voorlopig, tot de directie over graadklassen beslist (§11).** Een klas heeft één jaar/fase. De leerkrachten van een graadklas bewerken dus de gedeelde inhoud van die ene leeftijd, en de andere leeftijd doet een hoofdleerkracht of een admin. In de tool staat op één plaats welke leeftijden een klas rechten geeft, zodat een beslissing van de directie over graadklassen enkel die plaats verandert.
 
-**Wie geen van de vijf rechten heeft**, bijvoorbeeld een zorgcoördinator zonder themabeheer en zonder Leerlingzorg, kan aanmelden, maar kijkt geen enkele klas in (15-09-2026, [ADR-0040](adr/0040-klassen-inkijken-per-jaarfase.md)). Voorlopig kan hij verder niets, behalve een activiteit verwijderen die hij zelf aanmaakte en een eigen woordweb bijhouden (hieronder). Een eigen activiteit maakt hij niet; of hij eigen subdoelen mag toevoegen, wordt beslist met E6-10.
+**Wie geen van de vijf rechten heeft**, bijvoorbeeld een zorgcoördinator zonder themabeheer en zonder Leerlingzorg, kan aanmelden, maar kijkt geen enkele klas in, behalve de klas van een lopende vervanging (FR-14.2; 15-09-2026, [ADR-0040](adr/0040-klassen-inkijken-per-jaarfase.md)). Voorlopig kan hij verder niets, behalve een activiteit verwijderen die hij zelf aanmaakte en een eigen woordweb bijhouden (hieronder). Een eigen activiteit maakt hij niet; of hij eigen subdoelen mag toevoegen, wordt beslist met E6-10.
 
 **Een eigen woordweb** *(15-09-2026, [ADR-0043](adr/0043-eigen-woordweb-per-subthema.md))*. Elke gebruiker houdt per subthema een eigen woordweb bij, de brainstorm van stap 3 (A.7). Het hoort bij die persoon en volgt haar over de schooljaren heen. Iedereen die aanmeldt, kan voorlopig de woorden van elk woordweb inkijken, maar niet de open voorstellen en geweigerde woorden van een ander; alleen wie het maakte en een admin wijzigen het. Wie een subthema verwijdert, verwijdert ook de woordwebs erbij, behalve in de wizard: die verwijdert geen subthema waarop iemand een woordweb bijhoudt. Een woordweb telt nooit mee voor de dekking.
 
@@ -493,7 +513,7 @@ FR-7.3 laat de precieze regel voor **behoud/overschrijven** bij een (her)generat
 - *I27, de wizard en werk van anderen*: voorlopig verwijdert de wizard geen activiteit met een doelkoppeling, en geen subthema waarvan een activiteit er een heeft, tenzij wie hem gebruikt ook doelen mag koppelen op die leeftijd. Hij zet ook geen subthema naar een andere leeftijd zolang er iets onder staat dat de wizard niet zelf aanmaakte. Een activiteit van de wizard waar een doel aan gekoppeld is, telt daarbij, en bij I26, als werk van iemand anders, tenzij wie het doet ook doelen mag koppelen op die leeftijd. Zet de wizard een subthema naar een andere leeftijd, dan moet dat koppelen op beide leeftijden mogen.
 - *I28, de 14 dagen van de wizard*: voorlopig houden enkel de eigen acties van de wizard hem open. Het thema of zijn themadoelen aanpassen via de gewone knoppen telt niet.
 - *(c), een jaar zonder hoofdleerkracht*: voorlopig doet enkel een admin, met de hand, wat de hoofdleerkracht zou doen.
-- *(e), een zorgcoördinator, of wie geen van de vijf rechten heeft*: voorlopig niets meer dan themabeheer en Leerlingzorg (als een admin ze toekent), behalve een activiteit verwijderen die hij zelf aanmaakte en een eigen woordweb bijhouden (ADR-0043). Zonder recht kijkt hij geen klas in.
+- *(e), een zorgcoördinator, of wie geen van de vijf rechten heeft*: voorlopig niets meer dan themabeheer en Leerlingzorg (als een admin ze toekent), behalve een activiteit verwijderen die hij zelf aanmaakte en een eigen woordweb bijhouden (ADR-0043). Zonder recht kijkt hij geen klas in, behalve de klas van een lopende vervanging (FR-14.2).
 
 **Nieuwe begrippen:** gebruiker, adminrecht, themabeheer, hoofdleerkracht, klastoewijzing en maker van een activiteit. Definities: zie [`CONSTITUTION.md` Art. XII](../CONSTITUTION.md#article-xii--glossary-nl--en).
 
