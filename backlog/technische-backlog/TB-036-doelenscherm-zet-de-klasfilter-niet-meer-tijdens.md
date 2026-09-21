@@ -5,7 +5,7 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-22 00:39
+bijgewerkt: 2026-09-22 00:45
 opgepakt-door: claude-tb-036
 branch: ticket/TB-036-klasfilter-zonder-renderwaarschuwing
 pr: 149
@@ -51,3 +51,4 @@ Geen.
 - 2026-09-21 22:14 · claude-tb-036 · klasfase wordt nu afgeleid tijdens het renderen en in een effect weggeschreven; nieuwe tests reproduceren de React-waarschuwing op de oude code
 - 2026-09-21 22:18 · claude-tb-036 · in-uitvoering → klaar: antagonist COMPLIANT, geen CRITICAL of MAJOR; twee MINOR opgelost (test voor laadt=true, console.error-spy in afterEach hersteld), de derde is louter hookvolgorde. pnpm test 1235 groen, pnpm lint groen; bewijs voor criterium 1 is de Vitest-test die op de oude code exact de React-waarschuwing uitlokt, niet een browsercontrole
 - 2026-09-22 00:39 · claude-tb-036 · PR #149
+- 2026-09-22 00:45 · claude-tb-036 · main gemerged (TB-037, TB-039); conflict in DoelenScherm.test.tsx: beide testblokken behouden, poorten opnieuw groen

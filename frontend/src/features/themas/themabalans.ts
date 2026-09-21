@@ -11,17 +11,30 @@ import { beslist } from "./subthemabalans";
  * is the only claim this data supports on its own: an activiteit with zero doelen can never
  * contribute to coverage whatever else happens to it.
  *
+ * **Every figure counts links, not distinct leerplandoelen** (TB-039). The same leerplandoel may hang
+ * under two subthema's, or on two activiteiten, and is then counted twice: nothing in the model
+ * forbids that, and `totaal` is the figure the delete confirmation quotes as "gekoppelde doelen",
+ * which is a count of links. The copy carries the difference instead: the summary is labelled
+ * "Doelkoppelingen", so a teacher who opens the subthema's and counts fewer doelen than the figure
+ * shows has the word she needs to explain it.
+ *
  * Summed from the thema the screen already holds rather than fetched. A second endpoint would be a
  * second thing that can disagree with the list rendered next to it.
  */
 export interface Themabalans {
   /** The thema's own themadoelen: the minimumdoelen it aims at (Art. IX.2, FB-043). */
   themadoelen: number;
-  /** Links on a subthema, one age's derivation of the thema. */
+  /**
+   * Links on a subthema, one age's derivation of the thema. One per subdoel, so a leerplandoel that
+   * hangs under two subthema's of this thema counts twice.
+   */
   subdoelen: number;
-  /** Links on an individual activiteit. */
+  /** Links on an individual activiteit, again one per link rather than per distinct leerplandoel. */
   activiteitdoelen: number;
-  /** The three above, added up. What a delete of this thema would take with it. */
+  /**
+   * The three above, added up, and what the delete confirmation quotes. Close to what a delete takes
+   * with it, not equal to it: an undecided activiteit link is left out here and still deleted.
+   */
   totaal: number;
   activiteiten: number;
   /** Activiteiten carrying no doel at all. The gap a teacher is scanning for. */

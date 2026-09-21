@@ -68,6 +68,24 @@ describe("themabalans", () => {
     expect(balans.activiteitenZonderDoel).toBe(2);
   });
 
+  it("telt hetzelfde leerplandoel onder twee subthema's twee keer (TB-039)", () => {
+    // Two subthema's, one leerplandoel: two koppelingen. The figure stays 2 on purpose, because
+    // `totaal` is what a delete of this thema removes, and that is two rows. The copy carries the
+    // difference instead: the fiche labels this block "Doelkoppelingen".
+    const balans = themabalans(
+      thema({
+        themadoelen: [], minimumdoelen: [],
+        subthemas: [
+          { subdoelen: [{ koppeling: { leerplandoelCode: "WIS-1" } }], activiteiten: [] },
+          { subdoelen: [{ koppeling: { leerplandoelCode: "WIS-1" } }], activiteiten: [] },
+        ],
+      }),
+    );
+
+    expect(balans.subdoelen).toBe(2);
+    expect(balans.totaal).toBe(2);
+  });
+
   it("geeft nullen voor een thema waar nog niets onder hangt", () => {
     const balans = themabalans(thema({ themadoelen: [], minimumdoelen: [], subthemas: [] }));
 

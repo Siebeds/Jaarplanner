@@ -460,6 +460,15 @@
   );
 }
 
+/* A search field that draws its own clear button hides the one Chrome, Edge and Safari add to `type="search"`,
+   so there stands one cross and not two. Only for such a field: on a search field without its own button that
+   native cross is the only way to clear with the mouse. */
+@utility eigen-wisknop {
+  &::-webkit-search-cancel-button {
+    display: none;
+  }
+}
+
 @utility waas-in {
   animation: waas-in 160ms ease-out;
 }

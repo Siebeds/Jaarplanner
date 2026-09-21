@@ -147,7 +147,7 @@ export function Bestemmingsblad({
             onChange={(e) => setZoek(e.target.value)}
             placeholder={t("koppelen.zoek")}
             aria-label={t("koppelen.zoek")}
-            className="pl-10 pr-10"
+            className="pl-10 pr-10 eigen-wisknop"
           />
           {zoek.length > 0 ? (
             <button
