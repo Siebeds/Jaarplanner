@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-21 22:32
+bijgewerkt: 2026-09-21 23:23
 opgepakt-door: zoekveld-wisknop
 branch: ticket/TB-037-zoekveld-wisknop
-pr:
+pr: 147
 geblokkeerd:
 fr: []
 ---
@@ -51,3 +51,4 @@ Geen.
 - 2026-09-21 22:26 · zoekveld-wisknop · browsercontrole geslaagd op 1280x800 en 390x844: native kruisje gemeten in de shadow DOM (display none, geen boxmodel), met controleproef zonder de klasse; Edge niet apart geopend, zelfde Chromium-engine en zelfde pseudo-element
 - 2026-09-21 22:32 · zoekveld-wisknop · antagonist COMPLIANT, drie MINOR opgelost: werklog in het Engels, Edge apart gemeten (153, zelfde uitkomst), en een vitesttest per veld die de klasse bewaakt (faalt zonder de klasse)
 - 2026-09-21 22:32 · zoekveld-wisknop · in-uitvoering → klaar
+- 2026-09-21 23:23 · zoekveld-wisknop · PR #147
