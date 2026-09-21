@@ -5,7 +5,7 @@ soort: technisch
 status: nieuw
 prioriteit: middel
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:58
+bijgewerkt: 2026-09-22 00:52
 opgepakt-door:
 branch:
 pr:
@@ -44,3 +44,5 @@ Geen.
 ## Werklog
 
 - 2026-09-16 15:58 · claude-fb-reeks · aangemaakt (status nieuw)
+- 2026-09-21 23:50 · claude-tb038-controle · Nagekeken in Chrome op 390px en 1440px (main 228cee29, dev-database jaarplanner): de activiteitenlijst onder een opengeklapt subthema loopt nu van x=46 tot x=344 op een 390px-scherm, volle breedte van het hoofdstuk, gelijke marge links en rechts, geen horizontaal scrollen. De aanleiding is vervallen: TB-044/TB-051 hebben het hoofdstuk herbouwd rond Inklaplijst en de activiteitregel kreeg basis-full onder sm, waardoor de naam de hele regel krijgt. Het derde acceptatiecriterium klopt ook niet meer: de koppelknop van FB-046 is in TB-044 uit de rij gehaald. Voorstel: afvoeren.
+- 2026-09-22 00:52 · claude-tb038-controle · Main is intussen c2eca075 (TB-037, TB-039). Die raken het subthemahoofdstuk niet: alleen themabalans.ts, DoelenScherm, Bestemmingsblad, nl.json en een regel in index.css die de eigen wisknop van de browser in zoekvelden verbergt. De meting hierboven blijft dus gelden.
