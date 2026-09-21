@@ -2,12 +2,12 @@
 id: TB-037
 titel: Zoekveld van het doelenregister toont één wisknop, ook op de telefoon
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:58
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-21 22:05
+opgepakt-door: zoekveld-wisknop
+branch: ticket/TB-037-zoekveld-wisknop
 pr:
 geblokkeerd:
 fr: []
@@ -46,3 +46,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 15:58 · claude-fb-reeks · aangemaakt (status nieuw)
+- 2026-09-21 22:05 · zoekveld-wisknop · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, fout geverifieerd in de browser
