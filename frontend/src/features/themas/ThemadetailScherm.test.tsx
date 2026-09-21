@@ -1255,3 +1255,44 @@ describe("ThemadetailScherm: de AI plaatst de leerplandoelen van de themadoelen 
     expect(screen.queryByRole("list", { name: t("plaatsing.voorgesteldeSubdoelen") })).toBeNull();
   });
 });
+
+/**
+ * The summary in the fiche's margin, and the one thing about it a teacher can trip over (TB-039).
+ *
+ * It adds up koppelingen at three depths, not distinct leerplandoelen, because `totaal` doubles as what a delete of
+ * this thema removes. So a leerplandoel hanging under two subthema's is counted twice, and the label says
+ * "Doelkoppelingen" to make that readable instead of making it look like a miscount.
+ */
+describe("ThemadetailScherm: de samenvatting telt koppelingen (TB-039)", () => {
+  /** The K3 and the L1 subthema each link WIS-1: two koppelingen, one leerplandoel. */
+  const DUBBEL: ThemaWeergave = {
+    ...THEMA,
+    subthemas: [
+      THEMA.subthemas[0],
+      { ...THEMA.subthemas[1], subdoelen: [{ id: "sd-2", leeftijd: "L1", koppeling: koppeling("WIS-1") }] },
+    ],
+  };
+
+  const samenvatting = async () => (await screen.findByText(t("thema.doelenLabel"))).parentElement as HTMLElement;
+
+  it("noemt het koppelingen, en telt er twee waar één leerplandoel onder twee subthema's hangt", async () => {
+    toon(ADMIN, { thema: DUBBEL });
+
+    // The label has to name the koppeling, because that word is the whole explanation of the figure below it.
+    expect(t("thema.doelenLabel").toLowerCase()).toContain("koppeling");
+    // "2 op subthema's" while the two chapters together show WIS-1 and nothing else.
+    expect(await samenvatting()).toHaveTextContent(`2 ${t("thema.doelenOpSubthemas")}`);
+    await openHoofdstukken();
+    expect(screen.getAllByText("WIS-1")).toHaveLength(2);
+    expect(screen.queryByText("REK-1")).toBeNull();
+  });
+
+  it("laat de telling van een thema zonder dubbele koppeling ongemoeid", async () => {
+    toon(ADMIN);
+
+    const regel = await samenvatting();
+    expect(regel).toHaveTextContent(`1 ${t("thema.doelenOpThema")}`);
+    expect(regel).toHaveTextContent(`2 ${t("thema.doelenOpSubthemas")}`);
+    expect(regel).toHaveTextContent(`1 ${t("thema.doelenOpActiviteiten")}`);
+  });
+});
