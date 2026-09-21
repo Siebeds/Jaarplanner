@@ -46,7 +46,7 @@ export function DoelenScherm() {
   // Filter, search and view live in a store rather than in this component, because this component
   // unmounts on every navigation and the teacher's narrowing should not. See `state/doelenfilter.ts`.
   const {
-    filter,
+    filter: bewaardFilter,
     zoek,
     bron,
     mijlpaal,
@@ -78,9 +78,22 @@ export function DoelenScherm() {
   // klassen query lands, so a `useState` initialiser would run before there is a class to read. Held off entirely
   // while that query is in flight, because a pending klassen list also reads as "no class": acting on it would clear
   // a jaar/fase the teacher chose themselves and then replace it with the class's own, one render later.
-  if (!selectieLaadt && eigenFase !== faseVanKlas) {
-    volgKlasFase(eigenFase);
-  }
+  //
+  // Derived while rendering, written in the effect below (TB-036). The store is shared with other components, so
+  // writing to it during a render is the cross-component update React warns about. Rendering from the derived value
+  // instead of waiting for the effect is what keeps a class switch clean: the first render that knows the new class
+  // already shows its jaar/fase, rather than one frame of the previous one's.
+  const volgtNieuweKlas = !selectieLaadt && eigenFase !== faseVanKlas;
+  const filter = useMemo(
+    () => (volgtNieuweKlas ? { ...bewaardFilter, jaarFase: eigenFase ?? undefined } : bewaardFilter),
+    [volgtNieuweKlas, bewaardFilter, eigenFase],
+  );
+
+  useEffect(() => {
+    if (volgtNieuweKlas) {
+      volgKlasFase(eigenFase);
+    }
+  }, [volgtNieuweKlas, eigenFase, volgKlasFase]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [gekozen, setGekozen] = useState<Keuze | null>(null);
   const gekozenCode = gekozen?.soort === "leerplandoel" ? gekozen.code : null;

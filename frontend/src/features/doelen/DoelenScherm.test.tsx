@@ -19,7 +19,9 @@ import { DoelenScherm } from "./DoelenScherm";
  * way in is: open the branch by hand, the minimumdoel's row, then the code in its detail.
  */
 
-const selectie = vi.hoisted(() => ({ klas: null as unknown }));
+// `laadt` is settable because the klasfilter has a rule that only holds while the klassen query is in flight: a
+// pending list reads as "no klas", and acting on it would wipe a jaar/fase the teacher chose herself (TB-036).
+const selectie = vi.hoisted(() => ({ klas: null as unknown, laadt: false }));
 vi.mock("../../lib/selectie", () => ({
   useActieveSelectie: () => {
     const klas = selectie.klas as KlasWeergave;
@@ -30,7 +32,7 @@ vi.mock("../../lib/selectie", () => ({
       schooljaar: null,
       schooljaren: [],
       klassen: [klas],
-      laadt: false,
+      laadt: selectie.laadt,
       kiesSchooljaar: () => {},
       kiesKlas: () => {},
     };
@@ -147,12 +149,18 @@ function antwoord(pad: string): unknown {
   }
 }
 
+/** Every URL the screen asked for, in order, so a test can look at what it fetched *after* a given moment. */
+let opgevraagd: string[] = [];
+
 beforeEach(() => {
   zetSchermbreedte(true);
+  opgevraagd = [];
+  selectie.laadt = false;
   useDoelenfilter.setState({ bron: "minimumdoelen", filter: {}, zoek: "", faseVanKlas: null });
   vi.stubGlobal(
     "fetch",
     vi.fn(async (pad: string) => {
+      opgevraagd.push(String(pad));
       const inhoud = antwoord(String(pad));
       return inhoud === null
         ? new Response("{}", { status: 404 })
@@ -164,6 +172,9 @@ beforeEach(() => {
 afterEach(() => {
   zetSchermbreedte(false);
   vi.unstubAllGlobals();
+  // A test below silences console.error to read what React wrote to it. Restoring here rather than in that test keeps
+  // a failing assertion from leaving the console muted for whatever runs next.
+  vi.restoreAllMocks();
 });
 
 function toonScherm() {
@@ -171,13 +182,17 @@ function toonScherm() {
     new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }),
   );
-  render(
+  // A fresh element per render: handing `rerender` the same element object makes React bail out, and the klas switch
+  // below is exactly a re-render with another klas in the (module-level) selectie mock.
+  const boom = () => (
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <DoelenScherm />
       </MemoryRouter>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
+  const { rerender } = render(boom());
+  return { hertoon: () => rerender(boom()) };
 }
 
 async function openDoel(klasJaarfase: string) {
@@ -238,6 +253,66 @@ describe("DoelenScherm: alles ingeklapt", () => {
     act(() => useDoelenfilter.setState({ zoek: "tel" }));
     expect(await screen.findByRole("button", { name: /^Wiskunde/, expanded: false })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Getallen/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * TB-036: the register opens on the klas's jaar/fase, and it gets there without writing to the filter store while
+ * rendering. That store is what the screen renders from, so a write during its own render is the update React warns
+ * about in the console, and a warning nobody acts on is a warning that hides the next one.
+ */
+describe("DoelenScherm: klasfilter", () => {
+  const facettenVragen = (vanaf = 0) =>
+    opgevraagd.slice(vanaf).filter((pad) => pad.startsWith("/api/minimumdoelen/facetten"));
+
+  it("opent op de jaar/fase van de klas", async () => {
+    selectie.klas = klasVan("K3");
+    toonScherm();
+    await screen.findByRole("button", { name: /^Wiskunde/ });
+
+    expect(useDoelenfilter.getState().filter.jaarFase).toBe("K3");
+    expect(useDoelenfilter.getState().faseVanKlas).toBe("K3");
+    expect(facettenVragen().every((pad) => pad.includes("jaarFase=K3"))).toBe(true);
+  });
+
+  /**
+   * The switch is where both halves show. The class arrives after the first render here, as it does in the browser
+   * once the klassen query lands, so this is the render in which the old code wrote to a store it was already
+   * subscribed to. And the screen must not fetch the previous class's jaar/fase once more on the way: an effect that
+   * writes first and renders after would do exactly that.
+   */
+  it("volgt een andere klas zonder waarschuwing, en zonder de vorige jaar/fase nog eens te bevragen", async () => {
+    const fouten = vi.spyOn(console, "error").mockImplementation(() => {});
+    selectie.klas = klasVan("K3");
+    const { hertoon } = toonScherm();
+    await screen.findByRole("button", { name: /^Wiskunde/ });
+
+    const tot = opgevraagd.length;
+    selectie.klas = klasVan("L1");
+    await act(async () => {
+      hertoon();
+    });
+
+    expect(useDoelenfilter.getState().filter.jaarFase).toBe("L1");
+    expect(facettenVragen(tot).length).toBeGreaterThan(0);
+    expect(facettenVragen(tot).every((pad) => pad.includes("jaarFase=L1"))).toBe(true);
+    expect(fouten.mock.calls.map((oproep) => oproep.map(String).join(" ")).join("\n")).not.toMatch(
+      /Cannot update a component/,
+    );
+  });
+
+  // The other half of the guard: while the klassen query is still running there is no klas to follow, and a teacher
+  // who narrowed the register herself must not have that narrowing wiped by a list that has not arrived yet.
+  it("laat een zelf gekozen jaar/fase staan zolang de klassen laden", async () => {
+    selectie.klas = klasVan("K3");
+    selectie.laadt = true;
+    useDoelenfilter.setState({ filter: { jaarFase: "L5" } });
+    toonScherm();
+    await screen.findByRole("button", { name: /^Wiskunde/ });
+
+    expect(useDoelenfilter.getState().filter.jaarFase).toBe("L5");
+    expect(useDoelenfilter.getState().faseVanKlas).toBeNull();
+    expect(facettenVragen().every((pad) => pad.includes("jaarFase=L5"))).toBe(true);
   });
 });
 
