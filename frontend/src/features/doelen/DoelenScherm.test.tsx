@@ -19,7 +19,9 @@ import { DoelenScherm } from "./DoelenScherm";
  * way in is: open the branch by hand, the minimumdoel's row, then the code in its detail.
  */
 
-const selectie = vi.hoisted(() => ({ klas: null as unknown }));
+// `laadt` is settable because the klasfilter has a rule that only holds while the klassen query is in flight: a
+// pending list reads as "no klas", and acting on it would wipe a jaar/fase the teacher chose herself (TB-036).
+const selectie = vi.hoisted(() => ({ klas: null as unknown, laadt: false }));
 vi.mock("../../lib/selectie", () => ({
   useActieveSelectie: () => {
     const klas = selectie.klas as KlasWeergave;
@@ -30,7 +32,7 @@ vi.mock("../../lib/selectie", () => ({
       schooljaar: null,
       schooljaren: [],
       klassen: [klas],
-      laadt: false,
+      laadt: selectie.laadt,
       kiesSchooljaar: () => {},
       kiesKlas: () => {},
     };
@@ -153,6 +155,7 @@ let opgevraagd: string[] = [];
 beforeEach(() => {
   zetSchermbreedte(true);
   opgevraagd = [];
+  selectie.laadt = false;
   useDoelenfilter.setState({ bron: "minimumdoelen", filter: {}, zoek: "", faseVanKlas: null });
   vi.stubGlobal(
     "fetch",
@@ -169,6 +172,9 @@ beforeEach(() => {
 afterEach(() => {
   zetSchermbreedte(false);
   vi.unstubAllGlobals();
+  // A test below silences console.error to read what React wrote to it. Restoring here rather than in that test keeps
+  // a failing assertion from leaving the console muted for whatever runs next.
+  vi.restoreAllMocks();
 });
 
 function toonScherm() {
@@ -293,6 +299,19 @@ describe("DoelenScherm: klasfilter", () => {
     expect(fouten.mock.calls.map((oproep) => oproep.map(String).join(" ")).join("\n")).not.toMatch(
       /Cannot update a component/,
     );
-    fouten.mockRestore();
+  });
+
+  // The other half of the guard: while the klassen query is still running there is no klas to follow, and a teacher
+  // who narrowed the register herself must not have that narrowing wiped by a list that has not arrived yet.
+  it("laat een zelf gekozen jaar/fase staan zolang de klassen laden", async () => {
+    selectie.klas = klasVan("K3");
+    selectie.laadt = true;
+    useDoelenfilter.setState({ filter: { jaarFase: "L5" } });
+    toonScherm();
+    await screen.findByRole("button", { name: /^Wiskunde/ });
+
+    expect(useDoelenfilter.getState().filter.jaarFase).toBe("L5");
+    expect(useDoelenfilter.getState().faseVanKlas).toBeNull();
+    expect(facettenVragen().every((pad) => pad.includes("jaarFase=L5"))).toBe(true);
   });
 });
