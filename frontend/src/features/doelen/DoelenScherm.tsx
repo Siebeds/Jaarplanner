@@ -195,7 +195,7 @@ export function DoelenScherm() {
                 onChange={(e) => setZoekInvoer(e.target.value)}
                 placeholder={t("doelen.zoeken")}
                 aria-label={t("doelen.zoeken")}
-                className="pl-10 pr-10"
+                className="pl-10 pr-10 eigen-wisknop"
               />
               {zoekInvoer.length > 0 ? (
                 <button

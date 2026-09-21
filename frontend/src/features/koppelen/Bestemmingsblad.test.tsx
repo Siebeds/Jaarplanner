@@ -226,3 +226,16 @@ describe("Bestemmingsblad", () => {
     expect(within(blad).queryByLabelText(t("koppelen.activiteitNaam"))).toBeNull();
   });
 });
+
+/**
+ * TB-037: this search field draws its own clear button, so `eigen-wisknop` hides the browser's own cross. jsdom
+ * cannot evaluate `::-webkit-search-cancel-button`; the class is what guards against a rewritten `className`
+ * bringing the second cross back. Measured in a real browser: `backlog/worklogs/TB-037/browsercontrole.md`.
+ */
+describe("Bestemmingsblad: één wisknop in het zoekveld", () => {
+  it("verbergt het eigen kruisje van de browser op het zoekveld", () => {
+    const { blad } = toon(ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }), [HERFST]);
+
+    expect(within(blad).getByLabelText(t("koppelen.zoek"))).toHaveClass("eigen-wisknop");
+  });
+});
