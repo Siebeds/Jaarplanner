@@ -5,10 +5,10 @@ soort: technisch
 status: nieuw
 prioriteit: laag
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 00:03
+bijgewerkt: 2026-09-22 00:48
 opgepakt-door:
 branch:
-pr:
+pr: 150
 geblokkeerd:
 fr: []
 ---
@@ -67,3 +67,4 @@ gekozen minimumdoelen, gekoppeld of niet, en staat los van deze telling. De dekk
 ## Werklog
 
 - 2026-09-22 00:03 · claude-tb-039 · aangemaakt (status nieuw)
+- 2026-09-22 00:48 · claude-tb-039 · PR #150
