@@ -2,10 +2,10 @@
 id: TB-037
 titel: Zoekveld van het doelenregister toont één wisknop, ook op de telefoon
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-21 22:26
+bijgewerkt: 2026-09-21 22:32
 opgepakt-door: zoekveld-wisknop
 branch: ticket/TB-037-zoekveld-wisknop
 pr:
@@ -49,3 +49,5 @@ Geen.
 - 2026-09-21 22:05 · zoekveld-wisknop · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, fout geverifieerd in de browser
 - 2026-09-21 22:10 · zoekveld-wisknop · utility eigen-wisknop in index.css, op het doelenregister en het bestemmingsblad; lint, 1232 tests en build groen; browsercontrole loopt
 - 2026-09-21 22:26 · zoekveld-wisknop · browsercontrole geslaagd op 1280x800 en 390x844: native kruisje gemeten in de shadow DOM (display none, geen boxmodel), met controleproef zonder de klasse; Edge niet apart geopend, zelfde Chromium-engine en zelfde pseudo-element
+- 2026-09-21 22:32 · zoekveld-wisknop · antagonist COMPLIANT, drie MINOR opgelost: werklog in het Engels, Edge apart gemeten (153, zelfde uitkomst), en een vitesttest per veld die de klasse bewaakt (faalt zonder de klasse)
+- 2026-09-21 22:32 · zoekveld-wisknop · in-uitvoering → klaar

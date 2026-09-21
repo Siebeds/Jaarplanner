@@ -240,3 +240,31 @@ describe("DoelenScherm: alles ingeklapt", () => {
     expect(screen.queryByRole("button", { name: /^Getallen/ })).not.toBeInTheDocument();
   });
 });
+
+/**
+ * TB-037: the field draws its own clear button, so `eigen-wisknop` hides the one Chrome, Edge and Safari add to
+ * `type="search"`. jsdom cannot evaluate `::-webkit-search-cancel-button`, so the class on the input is all a unit
+ * test can hold on to: it catches a rewritten `className` bringing the second cross back, not the effect itself.
+ * The effect was measured in a real browser (`backlog/worklogs/TB-037/browsercontrole.md`).
+ */
+describe("DoelenScherm: één wisknop in het zoekveld", () => {
+  it("verbergt het eigen kruisje van de browser op het zoekveld", async () => {
+    selectie.klas = klasVan("K3");
+    toonScherm();
+
+    const zoekveld = await screen.findByRole("searchbox", { name: t("doelen.zoeken") });
+    expect(zoekveld).toHaveClass("eigen-wisknop");
+  });
+
+  it("wist de zoekterm met de eigen knop", async () => {
+    selectie.klas = klasVan("K3");
+    toonScherm();
+
+    const zoekveld = await screen.findByRole("searchbox", { name: t("doelen.zoeken") });
+    fireEvent.change(zoekveld, { target: { value: "tellen" } });
+    fireEvent.click(await screen.findByRole("button", { name: t("doelen.zoekWissen") }));
+
+    expect(zoekveld).toHaveValue("");
+    expect(screen.queryByRole("button", { name: t("doelen.zoekWissen") })).toBeNull();
+  });
+});
