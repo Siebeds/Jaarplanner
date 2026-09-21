@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-21 22:07
+bijgewerkt: 2026-09-21 22:14
 opgepakt-door: claude-tb-036
 branch: ticket/TB-036-klasfilter-zonder-renderwaarschuwing
 pr:
@@ -48,3 +48,4 @@ Geen.
 
 - 2026-09-16 15:58 · claude-fb-reeks · aangemaakt (status nieuw)
 - 2026-09-21 22:07 · claude-tb-036 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-21 22:14 · claude-tb-036 · klasfase wordt nu afgeleid tijdens het renderen en in een effect weggeschreven; nieuwe tests reproduceren de React-waarschuwing op de oude code
