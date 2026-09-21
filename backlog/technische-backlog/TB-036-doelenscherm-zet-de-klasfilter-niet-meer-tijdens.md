@@ -2,12 +2,12 @@
 id: TB-036
 titel: Doelenscherm zet de klasfilter niet meer tijdens het renderen, zonder React-waarschuwing
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 15:58
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-21 22:07
+opgepakt-door: claude-tb-036
+branch: ticket/TB-036-klasfilter-zonder-renderwaarschuwing
 pr:
 geblokkeerd:
 fr: []
@@ -47,3 +47,4 @@ Geen.
 ## Werklog
 
 - 2026-09-16 15:58 · claude-fb-reeks · aangemaakt (status nieuw)
+- 2026-09-21 22:07 · claude-tb-036 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
