@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-21 22:19
+bijgewerkt: 2026-09-22 00:03
 opgepakt-door: claude-tb-039
 branch: ticket/TB-039-samenvatting-koppelingen
-pr:
+pr: 148
 geblokkeerd:
 fr: []
 ---
@@ -69,3 +69,4 @@ Geen. De eigenaar besliste op 2026-09-21 voor de tekstoplossing.
 - 2026-09-21 22:13 · claude-tb-039 · Label 'Doelen' wordt 'Doelkoppelingen'; telling ongewijzigd. Vitest 1235 groen, pnpm lint groen. Browsercontrole en antagonist lopen.
 - 2026-09-21 22:18 · claude-tb-039 · Antagonist: COMPLIANT, geen CRITICAL/MAJOR. MINOR over totaal-doc gefixt; MINOR over de term Doelkoppelingen staat als vraag voor de eigenaar.
 - 2026-09-21 22:19 · claude-tb-039 · in-uitvoering → klaar: Label 'Doelen' -> 'Doelkoppelingen'; tellingen ongewijzigd. Vitest 1235 groen, pnpm lint groen, browser 1280px en 390px gecontroleerd (label past op een regel, 108px in 160px), antagonist COMPLIANT. Open voor de eigenaar: 'Doelkoppelingen' of 'Koppelingen'.
+- 2026-09-22 00:03 · claude-tb-039 · PR #148
