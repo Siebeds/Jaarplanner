@@ -2,12 +2,12 @@
 id: FB-076
 titel: Zijbalk toont dat een activiteit al op een andere dag ingepland is, en op welke
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 21:51
+opgepakt-door: claude-fb076
+branch: ticket/FB-076-ingepland
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -57,3 +57,4 @@ voorstellen of de dekking.
 ## Werklog
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
+- 2026-09-22 21:51 · claude-fb076 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen ontworpen met FB-077
