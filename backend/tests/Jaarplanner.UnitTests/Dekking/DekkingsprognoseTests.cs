@@ -279,6 +279,23 @@ public sealed class DekkingsprognoseTests
         Assert.Equal(2, vooruitzicht.AantalMinimumdoelen);
     }
 
+    [Fact]
+    public async Task Het_vooruitzicht_telt_de_minimumdoelen_in_de_prognose_zoals_het_dekkingsoverzicht()
+    {
+        // FB-071: Chuck purrs on this count, so it must be the dekkingsoverzicht's own figure, not a second one.
+        var (service, _) = Maak(
+            plaatsingen: [Plaatsing(HerfstId, "Herfst", KoppelingStatus.Voorgesteld)],
+            themaMinimumdoelen: [new Themaminimumdoelkoppeling("K-1", HerfstId, "Herfst")],
+            subthemas: [new Subthemakoppeling("K3-01", "Winter", "Sneeuw", IsIngepland: true)]);
+
+        var vooruitzicht = await service.BerekenVooruitzichtAsync(KlasId);
+        var overzicht = await service.BerekenAsync(KlasId);
+
+        Assert.Equal(1, vooruitzicht.AantalMinimumdoelenInPrognose);
+        Assert.Equal(overzicht.AantalMinimumdoelenInPrognose, vooruitzicht.AantalMinimumdoelenInPrognose);
+        Assert.Equal(overzicht.AantalMinimumdoelenGedekt, vooruitzicht.AantalMinimumdoelenGedekt);
+    }
+
     // ── Jaarfasen.MijlpalenVoor ─────────────────────────────────────────────────────────────────────────────────
 
     [Fact]

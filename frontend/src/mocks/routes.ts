@@ -326,6 +326,34 @@ const TABEL: [Methode, string, Handler][] = [
     }),
   ],
   ["GET", "/api/schooluren", ({ s }) => s.schooluren],
+  // Chuck (FB-071). His posture is set before the page loads (start.ts), so each can be looked at without a job.
+  ["GET", "/api/kat/instelling", ({ s }) => ({ isZichtbaar: s.kat.isZichtbaar })],
+  [
+    "PUT",
+    "/api/kat/instelling",
+    ({ s, body }) => {
+      s.kat.isZichtbaar = Boolean((body as { isZichtbaar?: boolean }).isZichtbaar);
+      return { isZichtbaar: s.kat.isZichtbaar };
+    },
+  ],
+  ["GET", "/api/deurmat", ({ s }) => s.kat.deurmat],
+  ["POST", "/api/deurmat/signalen/:id/gezien", () => new Rauw(204)],
+  [
+    "POST",
+    "/api/deurmat/signalen/:id/later",
+    ({ s, params }) => {
+      s.kat.deurmat = { ...s.kat.deurmat, signalen: s.kat.deurmat.signalen.filter((x) => x.id !== params.id) };
+      return new Rauw(204);
+    },
+  ],
+  [
+    "PUT",
+    "/api/activiteitvoorstellen/:id/beslissing",
+    ({ s, params, body }) => {
+      s.kat.deurmat = { ...s.kat.deurmat, voorstellen: s.kat.deurmat.voorstellen.filter((x) => x.id !== params.id) };
+      return { status: (body as { status: string }).status, activiteitId: null };
+    },
+  ],
   [
     "PUT",
     "/api/schooluren",
@@ -769,7 +797,16 @@ const TABEL: [Methode, string, Handler][] = [
 
   // Dekking
   ["GET", "/api/klassen/:klasId/dekking", (v) => t.dekking(v.s, klasVan(v), bereikVan(v))],
-  ["GET", "/api/klassen/:klasId/dekking/voortgang", (v) => t.dekkingsvoortgang(v.s, klasVan(v), bereikVan(v))],
+  [
+    "GET",
+    "/api/klassen/:klasId/dekking/voortgang",
+    (v) => {
+      const voortgang = t.dekkingsvoortgang(v.s, klasVan(v), bereikVan(v));
+      // A purring Chuck needs every minimumdoel gedekt or in the prognose, which the mock plan never reaches by itself.
+      if (v.s.kat.houding !== "spint" || voortgang.aantalMinimumdoelenGedekt === null) return voortgang;
+      return { ...voortgang, aantalMinimumdoelenInPrognose: voortgang.aantalMinimumdoelen - voortgang.aantalMinimumdoelenGedekt };
+    },
+  ],
 
   // Hoeken
   ["GET", "/api/klassen/:klasId/hoeken", (v) => t.hoeken(v.s, klasVan(v).id)],

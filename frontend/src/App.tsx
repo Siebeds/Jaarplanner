@@ -21,6 +21,7 @@ import { Instellingenindeling } from "./features/instellingen/Instellingenindeli
 import { KlassenScherm } from "./features/instellingen/KlassenScherm";
 import { HoekenScherm } from "./features/instellingen/HoekenScherm";
 import { AlgemeneFichesScherm } from "./features/instellingen/AlgemeneFichesScherm";
+import { ChuckScherm } from "./features/instellingen/ChuckScherm";
 import { WeergaveScherm } from "./features/instellingen/WeergaveScherm";
 import { GebruikersScherm } from "./features/instellingen/GebruikersScherm";
 import { SchoolurenScherm } from "./features/instellingen/SchoolurenScherm";
@@ -38,6 +39,7 @@ const INSTELLINGEN: Record<Deel, ComponentType> = {
   schooluren: SchoolurenScherm,
   hoeken: HoekenScherm,
   "algemene-fiches": AlgemeneFichesScherm,
+  chuck: ChuckScherm,
   weergave: WeergaveScherm,
 };
 

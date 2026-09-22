@@ -10,7 +10,7 @@
  * The label is developer tooling that never ships, so it speaks English (Art. II.3) and stays out of `nl.json`.
  */
 import { beantwoord } from "./routes";
-import { beginToestand } from "./toestand";
+import { beginToestand, katDeurmat } from "./toestand";
 
 /** Where the app opens: the week of 16 november 2026, where the agenda is full. */
 const STARTADRES = "/agenda/dag/2026-11-16?weergave=week";
@@ -60,6 +60,18 @@ async function leesBody(invoer: RequestInfo | URL, init?: RequestInit): Promise<
 
 export function startMock(): void {
   const toestand = beginToestand();
+  // Chuck's posture survives a reload, so each of the four can be looked at (FB-071): set it with
+  // localStorage.setItem("mockmodus-kat", "niets" | "klaar" | "gevaar" | "spint").
+  const katHouding = (() => {
+    try {
+      return localStorage.getItem("mockmodus-kat");
+    } catch {
+      return null;
+    }
+  })();
+  if (katHouding === "niets" || katHouding === "klaar" || katHouding === "gevaar" || katHouding === "spint") {
+    toestand.kat = { isZichtbaar: true, houding: katHouding, deurmat: katDeurmat(katHouding) };
+  }
   const melding = label();
   const echteFetch = window.fetch.bind(window);
 

@@ -197,7 +197,8 @@ public sealed class DekkingService
             scope.Leerplandoelen.Count,
             AantalMinimumdoelenGedekt: isBetrouwbaar ? minimumdoelenGedekt : null,
             AantalMinimumdoelenMogelijkGedekt: isBetrouwbaar ? minimumdoelenMogelijk : null,
-            minimumdoelen.Count);
+            minimumdoelen.Count,
+            AantalMinimumdoelenInPrognose: isBetrouwbaar ? minimumdoelen.Count(m => m.Stap == Dekkingsstap.Prognose) : null);
     }
 
     private async Task<Bronnen> HaalBronnenAsync(Guid klasId, CancellationToken cancellationToken)

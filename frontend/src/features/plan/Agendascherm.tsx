@@ -52,6 +52,7 @@ import { Activiteitkiezer } from "./Activiteitkiezer";
 import { Dagonderschrift } from "./Dagonderschrift";
 import { weekInBeeld } from "./weekInBeeld";
 import { leesWeergave, weergaveZoek, type Weergave } from "./weergave";
+import { Weekhoek } from "../kat/Weekhoek";
 import { overslagenWeekends, schuifWerkweek, werkweekbereik, werkweekdagen } from "./werkweek";
 import { Weekendaanwijzing } from "./Weekendaanwijzing";
 import { Activiteitblad } from "./Activiteitblad";
@@ -915,6 +916,8 @@ export function Agendascherm() {
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
                  a phone. */}
+              {/* Chuck lies on the corner of the week strip when a goal of this klas is at risk (FB-071). */}
+              <Weekhoek klasId={klasId} actief={weekweergave}>
               <Tijdraster
                 dagen={zichtbareDagen.length > 0 ? zichtbareDagen : [leegteDag(anker)]}
                 fichemomenten={ficheblokjes}
@@ -933,6 +936,7 @@ export function Agendascherm() {
                 onKiesDag={weekweergave ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
               />
+              </Weekhoek>
               </>
             )}
           </div>

@@ -7,6 +7,7 @@
  */
 import type { AlgemeneFicheplaatsingWeergave, AlgemeneFicheWeergave } from "../features/algemene-fiches/gegevens";
 import type { HoekWeergave, SubthemaperiodeVerrijkingen } from "../features/hoeken/gegevens";
+import type { Deurmat } from "../features/kat/gegevens";
 import type { Schooluren } from "../features/schooluren/gegevens";
 import type { Ik } from "../lib/aanmelding";
 import type {
@@ -118,6 +119,65 @@ export interface Toestand {
   fiches: { id: string; naam: string; omschrijving: string | null; doelen: { koppelingId: string; code: string }[] }[];
   woordwebs: WoordwebWeergave[];
   schooluren: Schooluren;
+  /** Chuck (FB-071): the school's setting, and what he brought, in one of his four postures. */
+  kat: { isZichtbaar: boolean; houding: Kathouding; deurmat: Deurmat };
+}
+
+/** The four postures the mock mode can put Chuck in (start.ts reads which one from localStorage). */
+export type Kathouding = "niets" | "klaar" | "gevaar" | "spint";
+
+/** What Chuck brought in each posture: made-up items about the mock klas, with no child in them. */
+export function katDeurmat(houding: Kathouding): Deurmat {
+  const [thema] = inhoud.THEMAS;
+  const voorstellen: Deurmat["voorstellen"] = [
+    {
+      soort: "Activiteitvoorstel",
+      id: "kat-voorstel-1",
+      titel: "Kastanjes tellen en vergelijken",
+      verwijzing: null,
+      aiMotivatie:
+        "Week 47 raakt nog geen doel uit Wiskunde, terwijl thema " + thema.naam + " er twee draagt. Tellen met kastanjes past bij de herfsthoek.",
+      klasnaam: inhoud.KLAS.naam,
+      datum: "2026-11-19",
+      begin: "10:15:00",
+      einde: "11:00:00",
+    },
+    {
+      soort: "Subthemavoorstel",
+      id: "kat-voorstel-2",
+      titel: "Bladeren verzamelen",
+      verwijzing: `/themas/${thema.id}`,
+      aiMotivatie: "Drie open leerplandoelen van dit thema passen samen in een nieuw subthema.",
+    },
+  ];
+  switch (houding) {
+    case "klaar":
+      return { signalen: [], voorstellen };
+    case "gevaar":
+      return {
+        signalen: [
+          {
+            id: "kat-signaal-1",
+            soort: "MinimumdoelInGevaar",
+            klasId: inhoud.KLAS.id,
+            klasnaam: inhoud.KLAS.naam,
+            gegevens: {
+              doelRef: inhoud.MINIMUMDOELEN[2].ref,
+              doelTekst: inhoud.MINIMUMDOELEN[2].omschrijving,
+              thema: thema.naam,
+              themaLesweken: 4,
+              vrijeLesweken: 3,
+            },
+            verwijzing: "/dekking",
+            aangemaakt: "2026-11-16T07:00:00+01:00",
+            gezien: false,
+          },
+        ],
+        voorstellen,
+      };
+    default:
+      return { signalen: [], voorstellen: [] };
+  }
 }
 
 function koppeling(code: string) {
@@ -223,6 +283,7 @@ export function beginToestand(): Toestand {
     })),
     woordwebs: [],
     schooluren: { dagen: inhoud.SCHOOLUREN.map((d) => ({ ...d })) },
+    kat: { isZichtbaar: true, houding: "klaar", deurmat: katDeurmat("klaar") },
   };
 }
 
@@ -982,5 +1043,6 @@ export function dekkingsvoortgang(t: Toestand, klas: Toestand["klassen"][number]
         ? null
         : volledig.aantalMinimumdoelenGedekt + volledig.minimumdoelen.filter((m) => m.oorzaak === "WachtOpBeslissing").length,
     aantalMinimumdoelen: volledig.aantalMinimumdoelen,
+    aantalMinimumdoelenInPrognose: volledig.aantalMinimumdoelenInPrognose,
   };
 }

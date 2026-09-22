@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 23:59
+bijgewerkt: 2026-09-23 00:13
 opgepakt-door: claude-fb071
 branch: ticket/FB-071-chuck
 pr:
@@ -127,3 +127,4 @@ Nog open:
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-22 23:59 · claude-fb071 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; beslist: achter een admin-instelling tot de onderwijsadviseur Chuck goedkeurt
+- 2026-09-23 00:13 · claude-fb071 · backend: Katinstelling (standaard uit, admin zet ze) en een voorstel van de kat draagt op de deurmat zijn klas, dag en uur; integratietests groen

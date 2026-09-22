@@ -101,6 +101,11 @@ namespace Jaarplanner.Application.Dekking;
 /// </para>
 /// </param>
 /// <param name="AantalMinimumdoelen">How many minimumdoelen of the klas's mijlpaal are in scope.</param>
+/// <param name="AantalMinimumdoelenInPrognose">
+/// How many of them are in the dekkingsprognose and not yet gedekt, by the same per-minimumdoel computation as the
+/// dekkingsoverzicht; <c>null</c> when <paramref name="IsBetrouwbaar"/> is <c>false</c>. Disjoint from
+/// <paramref name="AantalMinimumdoelenGedekt"/>. Chuck purrs when the two together are every minimumdoel (FB-071).
+/// </param>
 public sealed record Dekkingsvooruitzicht(
     Dekkingsbereik Bereik,
     IReadOnlyList<string> GemetenJaarFasen,
@@ -112,4 +117,5 @@ public sealed record Dekkingsvooruitzicht(
     int AantalLeerplandoelen,
     int? AantalMinimumdoelenGedekt,
     int? AantalMinimumdoelenMogelijkGedekt,
-    int AantalMinimumdoelen);
+    int AantalMinimumdoelen,
+    int? AantalMinimumdoelenInPrognose = null);
