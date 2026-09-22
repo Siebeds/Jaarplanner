@@ -42,6 +42,8 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
             Doel(Regen, "K2", "Temperatuur en neerslag."),
             Doel(Wind, "K2", "Wind zichtbaar maken."),
             Doel(K3Doel, "K3", "Een K3-doel."),
+            // A jaar/fase the server does not know opens no leeftijd without a subthema (ADR-0064 D1).
+            Doel("PLA-X-01", "5-6", "Een doel met een onbekende leeftijd."),
             new Leerplandoel("PLA-K2-99", Doelsoort.Gemeenschappelijk, "K2", "Natuur", "Weer", "9.1", tekst: "Niet geconcordeerd."));
         await context.SaveChangesAsync();
     }

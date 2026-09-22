@@ -2,10 +2,10 @@
 id: FB-062
 titel: Plaats de open doelen verschijnt ook bij een leeftijd die nog geen subthema heeft
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-22 23:58
+bijgewerkt: 2026-09-23 00:01
 opgepakt-door: claude-fb062
 branch: ticket/FB-062-open-doelen-zonder-subthema
 pr:
@@ -82,3 +82,4 @@ Geen.
 - 2026-09-22 23:35 · claude-fb062 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-22 23:47 · claude-fb062 · backend klaar: een leeftijd zonder subthema met open doelen staat in het overzicht voor wie er mag beslissen, en de AI-vraag daar weigert niet meer; integratietests aangepast en uitgebreid, backend 2254 + 594 groen
 - 2026-09-22 23:58 · claude-fb062 · frontend en ADR-0064 klaar (vervangt de laatste zin van ADR-0050 D1); criteria afgevinkt op de integratietests (zicht en weigering per recht, aanvaarden zonder subthema) en ThemadetailScherm.test.tsx, plus een browsercontrole op een kopie van de dev-database: JK/K2/L1/L2 zonder subthema tonen teller en knop op desktop en 390px, een echte AI-vraag bij L1 gaf een voorgesteld subthema, aanvaarden maakte het L1-subthema; vitest 1264, lint, dotnet format groen
+- 2026-09-23 00:01 · claude-fb062 · in-uitvoering → te-testen: klaar: leeftijd zonder subthema met open doelen toont teller en AI-knop voor hoofdleerkracht van die jaarfase en admin, ADR-0064; gates groen; antagonist COMPLIANT, MINOR 1 opgelost (seed met onbekende jaarfase), MINOR 2 genoteerd: de frontend koppelt een marge op de ruwe leeftijdstekst
