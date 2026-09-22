@@ -116,7 +116,7 @@ public sealed class SignaalrondeTests
     public async Task Een_taak_van_een_andere_soort_wordt_niet_aangesproken()
     {
         var opslag = new NepSignaalopslag();
-        var taak = new NepTaak(Signaalsoort.AanbodGat);
+        var taak = new NepTaak(Signaalsoort.Aanbodgat);
         var ronde = Katbouw.Ronde(
             new NepKlassenlezer(EenKlas(Juf)),
             opslag,

@@ -84,14 +84,19 @@ public interface IRechtenbronnen
 public sealed record Woordwebbron(Guid WoordwebId, Guid EigenaarId);
 
 /// <summary>
-/// One AI activiteitvoorstel (FB-025, ADR-0056): the resource of the <c>ActiviteitvoorstelBeslissen</c> row, whose one
-/// column is its asker while she may still make an own activiteit at that leeftijd. A type of its own, so it opens no
-/// other row. Admin passes the row as it passes every row (R3, A3).
+/// One AI activiteitvoorstel (FB-025, ADR-0056; FB-070, ADR-0060): the resource of the
+/// <c>ActiviteitvoorstelBeslissen</c> row. Its column is its asker while she may still make an own activiteit at that
+/// leeftijd (ADR-0056 A3), or, for a proposal the cat brought unasked, a leerkracht of the klas it is addressed to
+/// (ADR-0060 D2). A type of its own, so it opens no other row. Admin passes the row as it passes every row (R3, A3).
 /// </summary>
 /// <param name="ActiviteitvoorstelId">The proposal, or <see cref="Guid.Empty"/> when a read asks about proposals in general.</param>
 /// <param name="Leeftijd">The leeftijd of the subthema it is under.</param>
-/// <param name="AanvragerId">Who asked for it.</param>
-public sealed record Activiteitvoorstelbron(Guid ActiviteitvoorstelId, string Leeftijd, Guid AanvragerId);
+/// <param name="AanvragerId">Who asked for it; <c>null</c> for one the cat brought, which nobody asked for.</param>
+/// <param name="KlasId">
+/// The klas it is addressed to, for one the cat brought; <c>null</c> for one that was asked for. A vervanging is no
+/// klastoewijzing (ADR-0057), so a vervanger does not pass on it.
+/// </param>
+public sealed record Activiteitvoorstelbron(Guid ActiviteitvoorstelId, string Leeftijd, Guid? AanvragerId, Guid? KlasId = null);
 
 /// <summary>
 /// Shared content of one leeftijd (a subthema, its subdoelen, its streefwoordenschat, a new activiteit under it): the

@@ -27,5 +27,5 @@ public enum Signaalsoort
     /// A thema starts in the klas within five schooldagen and a discipline of its jaarfase has an aanbod-gat: goals
     /// in no dekkingsprognose of the klas at all (FB-070, ADR-0060). The one soort that goes on to ask the AI.
     /// </summary>
-    AanbodGat,
+    Aanbodgat,
 }
