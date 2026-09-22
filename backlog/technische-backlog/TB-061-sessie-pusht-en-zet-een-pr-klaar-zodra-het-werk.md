@@ -2,10 +2,10 @@
 id: TB-061
 titel: Sessie pusht en zet een PR klaar zodra het werk af is
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 22:40
+bijgewerkt: 2026-09-22 22:37
 opgepakt-door: claude-tb061
 branch: ticket/TB-pr-klaarzetten
 pr:
@@ -55,3 +55,4 @@ De eigenaar besliste diezelfde dag: telkens wanneer het werk af is, wordt er gep
 
 - 2026-09-22 22:40 · claude-tb061 · aangemaakt (status in-uitvoering)
 - 2026-09-22 22:40 · claude-tb061 · beslissing van de eigenaar op 2026-09-22, na FB-076 en FB-077 die als lokale branch bleven liggen
+- 2026-09-22 22:37 · claude-tb061 · in-uitvoering → klaar: skill ticket-uitvoeren aangepast: pushen en de PR openen horen bij het afronden, PR-tekst in het Nederlands, alleen de eigenaar merget
