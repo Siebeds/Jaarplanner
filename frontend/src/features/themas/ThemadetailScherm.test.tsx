@@ -1105,6 +1105,7 @@ describe("ThemadetailScherm: de AI plaatst de leerplandoelen van de themadoelen 
         leeftijd: "K3",
         aantalOpen: 3,
         magBeslissen: true,
+        heeftSubthema: true,
         subdoelvoorstellen: [
           {
             id: "v-1",
@@ -1129,7 +1130,7 @@ describe("ThemadetailScherm: de AI plaatst de leerplandoelen van de themadoelen 
           },
         ],
       },
-      { leeftijd: "L1", aantalOpen: 2, magBeslissen: false, subdoelvoorstellen: [], subthemavoorstellen: [] },
+      { leeftijd: "L1", aantalOpen: 2, magBeslissen: false, subdoelvoorstellen: [], subthemavoorstellen: [], heeftSubthema: true },
     ],
   };
 
@@ -1142,6 +1143,29 @@ describe("ThemadetailScherm: de AI plaatst de leerplandoelen van de themadoelen 
     expect(await screen.findByText(telWoord(3, "plaatsing.eenOpen", "plaatsing.open"))).toBeInTheDocument();
     expect(screen.getByText(telWoord(2, "plaatsing.eenOpen", "plaatsing.open"))).toBeInTheDocument();
     expect(aiKnoppen()).toHaveLength(1);
+  });
+
+  it("toont een leeftijd zonder subthema met haar open aantal en de AI-knop, op haar plaats in de jaarfasen (FB-062)", async () => {
+    const schrijf = vi.fn((): Response | undefined => new Response(JSON.stringify({ isGeslaagd: true, aantalVoorgesteld: 4, aantalNieuweSubthemas: 1, aantalOvergeslagen: 0, fout: null })));
+    const zonderSubthema: SubdoelplaatsingOverzicht = {
+      ...PLAATSING,
+      leeftijden: [
+        { leeftijd: "K2", aantalOpen: 4, magBeslissen: true, subdoelvoorstellen: [], subthemavoorstellen: [], heeftSubthema: false },
+        ...PLAATSING.leeftijden,
+      ],
+    };
+    toon(ikMet({ hoofdleerkrachtLeeftijden: ["K2", "K3"] }), { plaatsing: zonderSubthema, schrijf });
+
+    const k2 = await screen.findByText(telWoord(4, "plaatsing.eenOpen", "plaatsing.open"));
+    const k3 = screen.getByText(telWoord(3, "plaatsing.eenOpen", "plaatsing.open"));
+    // K2 comes before K3, as the subthema's are ordered, although the thema holds no K2 subthema.
+    expect(k2.compareDocumentPosition(k3) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(aiKnoppen()).toHaveLength(2);
+
+    fireEvent.click(aiKnoppen()[0]);
+    await waitFor(() =>
+      expect(schrijf).toHaveBeenCalledWith("POST", "/api/themas/thema-1/subdoelplaatsing/K2/genereer", undefined),
+    );
   });
 
   it("toont een voorgesteld subdoel in zijn subthema met de vage ring, een label en stille beslisknoppen", async () => {

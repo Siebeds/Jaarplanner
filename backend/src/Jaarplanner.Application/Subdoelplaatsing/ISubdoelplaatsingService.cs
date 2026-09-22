@@ -32,19 +32,24 @@ public interface ISubdoelplaatsingService
     Task BeslisSubthemaAsync(Guid subthemavoorstelId, SubthemavoorstelBeslissing beslissing, CancellationToken cancellationToken = default);
 }
 
-/// <summary>The thema page's view: one entry per leeftijd with a subthema, in the order of <see cref="Jaarfasen.Alle"/>.</summary>
+/// <summary>
+/// The thema page's view, in the order of <see cref="Jaarfasen.Alle"/>: one entry per leeftijd with a subthema, and one
+/// per leeftijd without a subthema that has open goals (ADR-0064), which the Api sends only to whoever may decide there.
+/// </summary>
 public sealed record SubdoelplaatsingOverzicht(Guid ThemaId, IReadOnlyList<LeeftijdPlaatsing> Leeftijden);
 
 /// <summary>
 /// One leeftijd: how many goals are open (for everyone), and the open proposals, which the Api sends only to whoever may
-/// decide them (D6); <see cref="MagBeslissen"/> says which the caller got.
+/// decide them (D6); <see cref="MagBeslissen"/> says which the caller got. <see cref="HeeftSubthema"/> is false for a
+/// leeftijd whose only way in is a proposed new subthema (ADR-0064).
 /// </summary>
 public sealed record LeeftijdPlaatsing(
     string Leeftijd,
     int AantalOpen,
     bool MagBeslissen,
     IReadOnlyList<SubdoelvoorstelWeergave> Subdoelvoorstellen,
-    IReadOnlyList<SubthemavoorstelWeergave> Subthemavoorstellen);
+    IReadOnlyList<SubthemavoorstelWeergave> Subthemavoorstellen,
+    bool HeeftSubthema = true);
 
 /// <summary>
 /// One open goal proposal. <see cref="SubthemaId"/> is set for one in an existing subthema;
