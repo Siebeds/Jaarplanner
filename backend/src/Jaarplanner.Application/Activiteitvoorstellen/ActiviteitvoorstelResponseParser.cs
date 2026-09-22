@@ -5,6 +5,16 @@ using Jaarplanner.Application.Ai;
 namespace Jaarplanner.Application.Activiteitvoorstellen;
 
 /// <summary>One activiteit as the model wrote it; text fields are trimmed and may be <c>null</c>.</summary>
+/// <param name="Subthema">
+/// The key of the subthema it goes under (<c>S1</c>, <c>S2</c>, …), which only the cat's prompt asks for (ADR-0060 D3,
+/// Art. IV.5). A proposal asked for under one subthema carries none, and that flow's validator ignores it.
+/// </param>
+/// <param name="Dag">
+/// The day it proposes, as the model wrote it (ISO, <c>2026-09-28</c>), or <c>null</c>. Only the cat's prompt asks for
+/// it (ADR-0062 M1, Art. IV.5). Text, not a <see cref="DateOnly"/>: reading it is the validator's, which knows which
+/// days were offered (ADR-0062 D2).
+/// </param>
+/// <param name="Beginuur">The hour it proposes on that day (<c>09:15</c>), or <c>null</c>. Text, for the same reason.</param>
 public sealed record RuweActiviteit(
     string? Naam,
     string? Soort,
@@ -12,7 +22,10 @@ public sealed record RuweActiviteit(
     int? LengteInLesuren,
     string? Onderzoeksvraag,
     IReadOnlyList<string> Doelen,
-    string? Motivatie);
+    string? Motivatie,
+    string? Subthema = null,
+    string? Dag = null,
+    string? Beginuur = null);
 
 /// <summary>A readable answer, or the reason it was refused as a whole (Art. IV.5).</summary>
 public sealed record ActiviteitvoorstelParseResultaat(bool IsGeldig, IReadOnlyList<RuweActiviteit> Activiteiten, string? Fout)
@@ -89,7 +102,10 @@ public static class ActiviteitvoorstelResponseParser
                 a.LengteInLesuren,
                 Schoon(a.Onderzoeksvraag),
                 (a.Doelen ?? []).Select(Schoon).OfType<string>().ToList(),
-                Schoon(a.Motivatie)))
+                Schoon(a.Motivatie),
+                Schoon(a.Subthema),
+                Schoon(a.Dag),
+                Schoon(a.Beginuur)))
             .ToList());
     }
 
@@ -146,5 +162,14 @@ public static class ActiviteitvoorstelResponseParser
 
         [JsonPropertyName("motivatie")]
         public string? Motivatie { get; init; }
+
+        [JsonPropertyName("subthema")]
+        public string? Subthema { get; init; }
+
+        [JsonPropertyName("dag")]
+        public string? Dag { get; init; }
+
+        [JsonPropertyName("beginuur")]
+        public string? Beginuur { get; init; }
     }
 }

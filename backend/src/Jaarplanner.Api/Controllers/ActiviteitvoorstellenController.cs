@@ -42,9 +42,11 @@ public sealed class ActiviteitvoorstellenController : ControllerBase
             return Forbid();
         }
 
-        // Asked about a proposal of nobody in particular, so the asker's column cannot pass: only admin does.
+        // Asked about a proposal with no asker and no klas, so neither column of the row can pass: only admin does.
         var vanIedereen = await _autorisatie.MagAsync(
-            User, new Activiteitvoorstelbron(Guid.Empty, string.Empty, Guid.Empty), Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen);
+            User,
+            new Activiteitvoorstelbron(Guid.Empty, string.Empty, AanvragerId: null, KlasId: null),
+            Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen);
         return Ok(await _service.HaalOpAsync(subthemaId, gebruikerId, vanIedereen, cancellationToken));
     }
 
@@ -64,14 +66,17 @@ public sealed class ActiviteitvoorstellenController : ControllerBase
             });
     }
 
-    /// <summary>Accepts, possibly changed, or rejects one of the caller's proposals (D8).</summary>
+    /// <summary>
+    /// Accepts, possibly changed, or rejects a proposal she may decide (ADR-0056 D8): one of her own, or one the cat
+    /// brought her klas (ADR-0060 D2), which accepting also plans.
+    /// </summary>
     [HttpPut("api/activiteitvoorstellen/{activiteitvoorstelId:guid}/beslissing")]
     [RechtOp(Rechtenmatrix.Beleid.ActiviteitvoorstelBeslissen, Rechtbron.Activiteitvoorstel, "activiteitvoorstelId")]
     public async Task<ActionResult<ActiviteitvoorstelBesluit>> Beslis(
         Guid activiteitvoorstelId,
         [FromBody] ActiviteitvoorstelBeslissing beslissing,
         CancellationToken cancellationToken) =>
-        Ok(await _service.BeslisAsync(activiteitvoorstelId, beslissing, cancellationToken));
+        Ok(await _service.BeslisAsync(activiteitvoorstelId, Aanmelder(), beslissing, cancellationToken));
 
     // A [RechtOp] route has already matched the caller to a gebruiker (the matrix handler refuses a principal without one),
     // so a missing id here is a wiring fault, not a teacher's case.

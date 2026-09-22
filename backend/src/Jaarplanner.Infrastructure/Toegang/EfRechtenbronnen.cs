@@ -187,10 +187,12 @@ public sealed class EfRechtenbronnen : IRechtenbronnen
                 from voorstel in _context.Activiteitvoorstellen.AsNoTracking()
                 where voorstel.Id == activiteitvoorstelId
                 join subthema in _context.Subthemas on voorstel.SubthemaId equals subthema.Id
-                select new { subthema.Leeftijd, voorstel.GebruikerId })
+                select new { subthema.Leeftijd, voorstel.GebruikerId, voorstel.KlasId })
             .SingleOrDefaultAsync(cancellationToken);
 
-        return gevonden is null ? null : new Activiteitvoorstelbron(activiteitvoorstelId, gevonden.Leeftijd, gevonden.GebruikerId);
+        return gevonden is null
+            ? null
+            : new Activiteitvoorstelbron(activiteitvoorstelId, gevonden.Leeftijd, gevonden.GebruikerId, gevonden.KlasId);
     }
 
     public async Task<Woordwebbron?> VoorWoordwebAsync(Guid woordwebId, CancellationToken cancellationToken = default)

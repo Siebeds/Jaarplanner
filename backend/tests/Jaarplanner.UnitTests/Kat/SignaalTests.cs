@@ -46,7 +46,7 @@ public sealed class SignaalTests
     [Fact]
     public void Een_sleutel_is_verplicht()
     {
-        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.AanbodGat, Klas, Juf, "  ", Nu));
+        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.Aanbodgat, Klas, Juf, "  ", Nu));
     }
 
     [Fact]
@@ -54,14 +54,14 @@ public sealed class SignaalTests
     {
         var telang = new string('x', Signaal.MaxSleutellengte + 1);
 
-        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.AanbodGat, Klas, Juf, telang, Nu));
+        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.Aanbodgat, Klas, Juf, telang, Nu));
     }
 
     [Fact]
     public void Een_signaal_zonder_klas_of_ontvanger_wordt_geweigerd()
     {
-        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.AanbodGat, Guid.Empty, Juf, "MD-01", Nu));
-        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.AanbodGat, Klas, Guid.Empty, "MD-01", Nu));
+        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.Aanbodgat, Guid.Empty, Juf, "MD-01", Nu));
+        Assert.Throws<ArgumentException>(() => new Signaal(Signaalsoort.Aanbodgat, Klas, Guid.Empty, "MD-01", Nu));
     }
 
     [Fact]

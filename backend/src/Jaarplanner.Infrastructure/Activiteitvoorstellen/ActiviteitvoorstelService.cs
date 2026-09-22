@@ -1,9 +1,12 @@
 using Jaarplanner.Application.Activiteitvoorstellen;
 using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Planning.Weekplanning;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Application.Toegang;
 using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Infrastructure.Persistence;
+using Jaarplanner.Infrastructure.Planning;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -27,20 +30,29 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
     private const string VoorstelWeg = "Dit voorstel is er niet meer. Vernieuw de pagina om te zien wat er nu staat.";
     private const string AlBeslist = "Over dit voorstel is al beslist. Vernieuw de pagina om te zien wat er nu staat.";
 
+    private const string MomentWeg =
+        "Bij dit voorstel hoort geen moment meer. Kies zelf een dag en een uur.";
+
     private readonly AppDbContext _context;
     private readonly IAiClient _ai;
     private readonly Promptbegrenzing _begrenzing;
+    private readonly IWeekplanningService _weekplanning;
+    private readonly IRechtenService _rechten;
     private readonly ActiviteitvoorstelOpties _opties;
 
     public ActiviteitvoorstelService(
         AppDbContext context,
         IAiClient ai,
         Promptbegrenzing begrenzing,
+        IWeekplanningService weekplanning,
+        IRechtenService rechten,
         IOptions<ActiviteitvoorstelOpties> opties)
     {
         _context = context;
         _ai = ai;
         _begrenzing = begrenzing;
+        _weekplanning = weekplanning;
+        _rechten = rechten;
         _opties = opties.Value;
     }
 
@@ -51,14 +63,20 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
         CancellationToken cancellationToken = default)
     {
         var subthema = await LaadSubthemaAsync(subthemaId, tracking: false, cancellationToken);
+
+        // Only the proposals someone asked for. One the cat brought belongs to a klas, carries a moment and is decided
+        // where the cat shows it (FB-071); this screen is per subthema and has no klas and no day to show
+        // (ADR-0060 D2, D4), so listing it here would be a card she could not act on.
         var voorstellen = await _context.Activiteitvoorstellen.AsNoTracking()
-            .Where(v => v.SubthemaId == subthemaId && v.Status == KoppelingStatus.Voorgesteld)
+            .Where(v => v.SubthemaId == subthemaId
+                        && v.Status == KoppelingStatus.Voorgesteld
+                        && v.Bron == Voorstelbron.Gevraagd)
             .Where(v => vanIedereen || v.GebruikerId == gebruikerId)
             .OrderBy(v => v.GebruikerId != gebruikerId)
             .ThenBy(v => v.GebruikerId)
             .ThenBy(v => EF.Property<int>(v, Volgnummer))
             .ToListAsync(cancellationToken);
-        var aanvragers = voorstellen.Select(v => v.GebruikerId).Distinct().ToList();
+        var aanvragers = voorstellen.Select(v => v.GebruikerId).OfType<Guid>().Distinct().ToList();
         var namen = await _context.Gebruikers.AsNoTracking()
             .Where(g => aanvragers.Contains(g.Id))
             .ToDictionaryAsync(g => g.Id, g => g.Naam, cancellationToken);
@@ -69,8 +87,9 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
             .Select(v => new ActiviteitvoorstelWeergave(
                 v.Id,
                 v.SubthemaId,
-                v.GebruikerId,
-                namen.GetValueOrDefault(v.GebruikerId, string.Empty),
+                // Every row here is Gevraagd, which is exactly the source that has an asker.
+                v.GebruikerId!.Value,
+                namen.GetValueOrDefault(v.GebruikerId!.Value, string.Empty),
                 v.GebruikerId == gebruikerId,
                 v.Naam,
                 v.ActiviteitType,
@@ -150,6 +169,7 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
 
     public async Task<ActiviteitvoorstelBesluit> BeslisAsync(
         Guid activiteitvoorstelId,
+        Guid beslisserId,
         ActiviteitvoorstelBeslissing beslissing,
         CancellationToken cancellationToken = default)
     {
@@ -222,20 +242,30 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
 
         var subthema = await LaadSubthemaAsync(voorstel.SubthemaId, tracking: true, cancellationToken);
 
-        // D8: a goal that is no longer a decided subdoel is refused rather than linked in silence.
-        var besliste = subthema.Subdoelen
-            .Where(sd => sd.Koppeling.Status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel)
-            .Select(sd => sd.Koppeling.LeerplandoelCode)
-            .ToHashSet(StringComparer.Ordinal);
-        if (codes.FirstOrDefault(c => !besliste.Contains(c)) is { } weg)
+        if (voorstel.Bron == Voorstelbron.Gevraagd)
         {
-            throw new SchoolcontentValidatieFout(
-                $"{weg} is intussen geen subdoel meer van {subthema.Naam}. Laat het weg, of vraag nieuwe voorstellen.");
+            // ADR-0056 D8: a goal that is no longer a decided subdoel is refused rather than linked in silence.
+            // **Only for a proposal that was asked for.** One the cat brought links goals that are deliberately no
+            // subdoel of this subthema at all (ADR-0060 G1, D1); checking it here would refuse every one of them.
+            var besliste = subthema.Subdoelen
+                .Where(sd => sd.Koppeling.Status is KoppelingStatus.Aanvaard or KoppelingStatus.Manueel)
+                .Select(sd => sd.Koppeling.LeerplandoelCode)
+                .ToHashSet(StringComparer.Ordinal);
+            if (codes.FirstOrDefault(c => !besliste.Contains(c)) is { } weg)
+            {
+                throw new SchoolcontentValidatieFout(
+                    $"{weg} is intussen geen subdoel meer van {subthema.Naam}. Laat het weg, of vraag nieuwe voorstellen.");
+            }
         }
 
-        // A2, A3: the activiteit is the asker's own, also when admin decides.
-        var aanvrager = voorstel.GebruikerId;
-        var activiteit = subthema.VoegActiviteitToe(naam.Trim(), soort, hoek: null, uitkomsten.Trim(), aanvrager, aanvrager);
+        (DateOnly Datum, TimeOnly Begin, TimeOnly Einde)? moment = voorstel.Bron == Voorstelbron.KatAanbodgat
+            ? await KiesMomentAsync(voorstel, beslissing, cancellationToken)
+            : null;
+
+        // ADR-0056 A2/A3: the activiteit is the asker's own, also when admin decides. ADR-0060 D2: one the cat brought
+        // has no asker, so it becomes the own activiteit of whoever accepts it.
+        var eigenaar = voorstel.GebruikerId ?? beslisserId;
+        var activiteit = subthema.VoegActiviteitToe(naam.Trim(), soort, hoek: null, uitkomsten.Trim(), eigenaar, eigenaar);
         activiteit.StelLengteIn(lesuren);
         if (voorstel.OnderzoeksvraagId is { } vraagId && subthema.Onderzoeksvragen.Any(o => o.Id == vraagId))
         {
@@ -248,9 +278,71 @@ public sealed class ActiviteitvoorstelService : IActiviteitvoorstelService
         }
 
         _context.Activiteiten.Add(activiteit);
-        voorstel.Aanvaard(activiteit.Id, naam, soort, uitkomsten, lesuren, codes);
+        voorstel.Aanvaard(activiteit.Id, naam, soort, uitkomsten, lesuren, codes, moment);
         await BewaarAsync(cancellationToken);
-        return new ActiviteitvoorstelBesluit(voorstel.Status, activiteit.Id);
+
+        if (moment is { } gepland)
+        {
+            // G5: an own activiteit that is not planned counts for nothing, so accepting also plans it. Through the
+            // ordinary planning use case, which owns every rule about a day (closed days, the klas's leeftijd, ADR-0049
+            // D6), rather than a second copy of them here.
+            //
+            // A second save, and deliberately: the placement route reads the activiteit from the database, so the
+            // activiteit has to exist first. Everything that route refuses is checked above against the same data, so
+            // what is left is a race; should it still throw, she holds an own activiteit of hers she can place from the
+            // agenda, which is a state she can act on.
+            await _weekplanning.PlanActiviteitAsync(
+                voorstel.KlasId!.Value,
+                activiteit.Id,
+                gepland.Datum,
+                gepland.Begin,
+                gepland.Einde,
+                await _rechten.HaalRechtenOpAsync(beslisserId, cancellationToken),
+                cancellationToken);
+        }
+
+        return new ActiviteitvoorstelBesluit(voorstel.Status, activiteit.Id, moment?.Datum, moment?.Begin, moment?.Einde);
+    }
+
+    /// <summary>
+    /// The moment a cat proposal is planned on (ADR-0060 D4): the one she named, or the one the cat suggested, which
+    /// has to be free still.
+    /// </summary>
+    /// <exception cref="SchoolcontentValidatieFout">
+    /// The proposal carries no moment, her three fields are not all set, the end is not after the start, or the
+    /// suggested moment has meanwhile been taken.
+    /// </exception>
+    private async Task<(DateOnly Datum, TimeOnly Begin, TimeOnly Einde)> KiesMomentAsync(
+        Activiteitvoorstel voorstel,
+        ActiviteitvoorstelBeslissing beslissing,
+        CancellationToken cancellationToken)
+    {
+        if (beslissing is { Datum: { } datum, Begin: { } begin, Einde: { } einde })
+        {
+            if (einde <= begin)
+            {
+                throw new SchoolcontentValidatieFout("Kies een einduur dat na het beginuur valt.");
+            }
+
+            // Her own choice, so no freedom check: the agenda lets her plan two things on one hour, and this route
+            // must not be stricter than the drag she could do instead.
+            return (datum, begin, einde);
+        }
+
+        if (beslissing.Datum is not null || beslissing.Begin is not null || beslissing.Einde is not null)
+        {
+            throw new SchoolcontentValidatieFout("Kies een dag, een beginuur en een einduur, of laat ze alle drie leeg.");
+        }
+
+        if (voorstel is not { KlasId: { } klasId, Datum: { } dag, Begin: { } van, Einde: { } tot })
+        {
+            throw new SchoolcontentValidatieFout(MomentWeg);
+        }
+
+        return await Klasbezetting.IsVrijAsync(_context, klasId, dag, van, tot, cancellationToken)
+            ? (dag, van, tot)
+            : throw new SchoolcontentValidatieFout(
+                "Op dat moment staat er intussen al iets anders. Kies zelf een dag en een uur.");
     }
 
     /// <summary>

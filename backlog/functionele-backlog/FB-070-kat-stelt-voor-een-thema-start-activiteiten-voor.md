@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:52
+bijgewerkt: 2026-09-22 23:05
 opgepakt-door: claude-fb070
 branch: ticket/FB-070-aanbodgat
 pr:
@@ -38,27 +38,31 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
 
 - Vijf schooldagen voor een thema start in de agenda van de klas, kiest de kat de discipline met het grootste aanbod-gat.
 - De AI krijgt het thema, zijn subthema's op de leeftijd van de klas (met onderzoeksvragen), de namen van de activiteiten
-  die er al zijn, en de leerplandoelen van die discipline in het aanbod-gat. Ze stelt twee à drie activiteiten voor, elk
-  onder een subthema van het thema, met naam, soort, verwachte uitkomsten, lengte, de doelen waaraan ze werkt (alleen
-  doelen uit het aanbod-gat), een motivatie waarom het doel in dít thema past, en een voorgestelde dag en uur in de
-  periode van het thema, op een vrij moment binnen de schooluren.
+  die er al zijn, de leerplandoelen van die discipline in het aanbod-gat, en de schooldagen van de themaperiode met hun
+  vrije momenten. Ze stelt twee à drie activiteiten voor, elk onder een subthema van het thema, met naam, soort,
+  verwachte uitkomsten, lengte, de doelen waaraan ze werkt (alleen doelen uit het aanbod-gat), een motivatie waarom het
+  doel in dít thema past, en een voorgestelde dag en beginuur.
+- Een moment dat de school niet kan geven (buiten de schooluren, in de middagpauze, bovenop iets dat al gepland staat)
+  corrigeert de tool: de dag van de AI blijft, het uur schuift op naar het eerstvolgende vrije moment
+  ([ADR-0062](../../docs/adr/0062-de-ai-stelt-het-moment-voor-de-tool-corrigeert.md)).
 - Past geen enkel doel in het thema, dan zegt de AI dat, en brengt de kat niets.
 - De leerkracht aanvaardt een voorstel (eventueel na aanpassen) of weigert het. Aanvaard wordt het haar eigen activiteit
-  met de aanvaarde doelen, gepland op de voorgestelde dag. Een geweigerd voorstel komt niet terug.
+  met de aanvaarde doelen, gepland op de voorgestelde dag; ziet ze een beter moment, dan geeft ze zelf een dag en een uur
+  mee. Een geweigerd voorstel komt niet terug.
 - Minimumdoelen doen niet mee: die tellen alleen via een thema (Art. V.1).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas waarvan een discipline het grootste aanbod-gat heeft, wanneer een thema over vijf schooldagen start,
+- [x] Gegeven een klas waarvan een discipline het grootste aanbod-gat heeft, wanneer een thema over vijf schooldagen start,
   dan liggen er twee à drie voorstellen klaar voor die discipline, onder subthema's van dat thema.
-- [ ] Gegeven een modelantwoord met een doel dat niet in het aanbod-gat zit, of een onbekende code, dan wordt dat doel niet
+- [x] Gegeven een modelantwoord met een doel dat niet in het aanbod-gat zit, of een onbekende code, dan wordt dat doel niet
   getoond en niet bewaard.
-- [ ] Gegeven een aanvaard voorstel, dan is het een eigen activiteit van de leerkracht, gepland op de voorgestelde dag, en
+- [x] Gegeven een aanvaard voorstel, dan is het een eigen activiteit van de leerkracht, gepland op de voorgestelde dag, en
   telt het doel mee voor de dekking van haar klas.
-- [ ] Gegeven een voorgestelde dag en uur, dan valt die binnen de schooluren en de periode van het thema, en overlapt ze
+- [x] Gegeven een voorgestelde dag en uur, dan valt die binnen de schooluren en de periode van het thema, en overlapt ze
   niets wat al gepland staat.
-- [ ] Gegeven een thema waarvoor de kat al voorstellen bracht, dan brengt hij er geen tweede keer.
-- [ ] De logica is getest met een nep-AI-client, en de keuze van de discipline zonder AI.
+- [x] Gegeven een thema waarvoor de kat al voorstellen bracht, dan brengt hij er geen tweede keer.
+- [x] De logica is getest met een nep-AI-client, en de keuze van de discipline zonder AI.
 
 ## Testscenario's
 
@@ -81,11 +85,20 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
   persoon? Standaard: alle leerkrachten van de klas krijgen ze, en wie aanvaardt wordt eigenaar (ADR-0060 D2).
 - Zegt de AI dat er niets past, probeert de kat dan de volgende discipline, of wacht hij tot het volgende thema?
   Standaard wacht hij (ADR-0060 D6).
-- Het inpassen op een vrij moment kan de code van FB-027 hergebruiken.
-- Hangt af van TB-056 (Art. IV.8 en de ADR die ADR-0056 D6 gedeeltelijk vervangt) en TB-057.
+- ~~Het inpassen op een vrij moment kan de code van FB-027 hergebruiken.~~ FB-027 bestaat nog niet; het inpassen zit in
+  `Vrijmoment` en is daar zuiver en getest. FB-027 kan het overnemen.
+- ~~Hangt af van TB-056 (Art. IV.8 en de ADR die ADR-0056 D6 gedeeltelijk vervangt) en TB-057.~~ Allebei klaar.
+- Het zien en beslissen van deze voorstellen komt met FB-071 (het kattenvenster), samen met de teksten in `nl.json`.
+  Tot dan is er wel een API: de voorstellen staan op de deurmat en het beslissen loopt over de bestaande route.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)
 - 2026-09-22 21:52 · claude-fb070 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-22 21:55 · claude-fb070 · scope: backend-only zoals FB-069; het zien en beslissen komt met FB-071 (eigenaar, vandaag)
+- 2026-09-22 22:13 · claude-fb070 · backend staat: AanbodGatDetector (zonder AI), AanbodgatTaak (eerste IKattaak), voorstel met bron/klas/plaatsing/moment, migratie, aanvaarden plant de eigen activiteit; tests volgen
+- 2026-09-22 22:39 · claude-fb070 · integratietest groen: 5 tests over de hele keten (tik, aanvaarden, dekking, geen tweede set, geweigerd doel blijft weg); 2228 unit- en 590 integratietests groen, dotnet format en pnpm lint schoon; antagonist loopt
+- 2026-09-22 22:54 · claude-fb070 · antagonist COMPLIANT in ronde 1 (geen CRITICAL/MAJOR); rechtenmatrixtests voor de klaskolom toegevoegd en een spelling (Aanbodgat) doorgevoerd
+- 2026-09-22 22:55 · claude-fb070 · eigenaar overrulet Art. IV.5 en ADR-0060 D3: de AI stelt de dag en het uur voor, de tool corrigeert een onmogelijk moment; nieuwe ADR en grondwetswijziging volgen
+- 2026-09-22 23:05 · claude-fb070 · omgebouwd naar de beslissing van de eigenaar: de AI kiest de dag en het uur, de tool corrigeert een onmogelijk moment (dag blijft, uur schuift op); ADR-0062, Art. IV.5 aangepast, constitutie-log en FR-14.8 bij

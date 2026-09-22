@@ -362,13 +362,15 @@ public static class Rechtenmatrix
         Kolom.Hoofdleerkracht);
 
     /// <summary>
-    /// "Een AI-activiteitvoorstel zien en beslissen" (FB-025, ADR-0056 A3): its asker, while she may still make an own
-    /// activiteit at that leeftijd, and admin, who sees and decides every leerkracht's proposals (R3). Resource:
+    /// "Een AI-activiteitvoorstel zien en beslissen" (FB-025, ADR-0056 A3; FB-070, ADR-0060 D2): its asker, while she
+    /// may still make an own activiteit at that leeftijd, or, for one the cat brought unasked, a leerkracht of the klas
+    /// it is addressed to; and admin, who sees and decides every one of them (R3). Resource:
     /// <see cref="Activiteitvoorstelbron"/>. Asking is <see cref="EigenActiviteitMaken"/>.
     /// </summary>
     public static readonly Matrixrij ActiviteitvoorstelBeslissen = new(
         Beleid.ActiviteitvoorstelBeslissen,
-        "Een AI-activiteitvoorstel zien en beslissen: wie het vroeg, en een admin (ADR-0056 A3)",
+        "Een AI-activiteitvoorstel zien en beslissen: wie het vroeg of een leerkracht van de klas, en een admin "
+        + "(ADR-0056 A3, ADR-0060 D2)",
         Kolom.AanvragerVanVoorstel);
 
     /// <summary>Every row, each registered as a named policy under its <see cref="Matrixrij.Beleid"/>.</summary>
@@ -550,14 +552,24 @@ public static class Rechtenmatrix
             }
         }
 
-        // ADR-0056 A3: an activiteitvoorstel's asker decides it while she may still make an own activiteit there. Only an
-        // Activiteitvoorstelbron matches this column.
-        if (kolommen.HasFlag(Kolom.AanvragerVanVoorstel)
-            && bron is Activiteitvoorstelbron voorstel
-            && voorstel.AanvragerId == rechten.GebruikerId
-            && rechten.IsLeerkrachtVanLeeftijd(voorstel.Leeftijd))
+        // Only an Activiteitvoorstelbron matches this column, and it has two shapes.
+        if (kolommen.HasFlag(Kolom.AanvragerVanVoorstel) && bron is Activiteitvoorstelbron voorstel)
         {
-            return true;
+            // ADR-0056 A3: an asked-for proposal's asker decides it while she may still make an own activiteit there.
+            if (voorstel.AanvragerId is { } aanvrager
+                && aanvrager == rechten.GebruikerId
+                && rechten.IsLeerkrachtVanLeeftijd(voorstel.Leeftijd))
+            {
+                return true;
+            }
+
+            // ADR-0060 D2: one the cat brought has no asker. It is addressed to the klas's leerkrachten, whoever
+            // accepts becomes the owner of the activiteit it makes, and the decision settles it for all of them. A
+            // vervanger holds no klastoewijzing (ADR-0057), so she is not among them.
+            if (voorstel.KlasId is { } klasId && rechten.IsLeerkrachtVanKlas(klasId))
+            {
+                return true;
+            }
         }
 
         // ADR-0043 W2: a woordweb's owner edits it. Only a Woordwebbron matches this column, so it opens no other resource,
