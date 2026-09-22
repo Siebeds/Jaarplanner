@@ -2,10 +2,10 @@
 id: FB-069
 titel: Kat waarschuwt de leerkracht wanneer een doel van haar klas in gevaar komt
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 20:40
+bijgewerkt: 2026-09-22 21:22
 opgepakt-door: claude-fb069
 branch: ticket/FB-069-dekkingssignalen
 pr:
@@ -39,6 +39,30 @@ De kat meldt de vaste leerkrachten van de klas en directie twee soorten knelpunt
 Elke melding linkt naar de plek waar de leerkracht iets kan doen (de agenda of het dekkingsoverzicht). Een melding
 verdwijnt vanzelf zodra haar reden weg is. Een vervanger krijgt deze meldingen niet.
 
+**De tekst.** De eigenaar besliste op 2026-09-22 dat de taal van de kat in `nl.json` woont: de server stuurt gegevens,
+de frontend stelt de zin samen. De sleutels komen er pas met **FB-071**, dat ze toont, want de catalogustest weigert
+een sleutel die niemand gebruikt. Voorgestelde formulering, zodat ze nu al bijgestuurd kan worden:
+
+- Minimumdoel in gevaar (`doelRef`, `doelTekst`, `thema`, `themaLesweken`, `vrijeLesweken`):
+  "Minimumdoel {doelRef} raakt niet meer gedekt. Alleen thema {thema} draagt het, en dat duurt {themaLesweken}
+  lesweken, terwijl er nog {vrijeLesweken} vrij zijn."
+- Subthema niet gepland (`subthema`, `thema`, `doelen`, `aantalDoelen`):
+  "Plaats subthema {subthema}. Thema {thema} loopt bijna af, en zonder dit subthema blijven {aantalDoelen}
+  leerplandoelen ongedekt: {doelen}."
+
+**Zo is het gebouwd**, voor wie het test:
+
+- Een vrije lesweek is een lesweek waar geen enkele themaplaatsing op ligt, ook geen voorgestelde. Het jaarplanscherm
+  noemt zo'n week al "met thema", en de prognose waarin het bedreigde doel zit telt voorstellen mee.
+- "Loopt binnen vijf schooldagen af" leest het einde van de hele reeks, niet van een deel: een vakantie bewaart één
+  thema als meerdere plaatsingen (ADR-0053).
+- Vijf schooldagen ligt vast (ADR-0059 D4), en is niet instelbaar.
+- Een subthema waarvan alle doelen al elders gedekt zijn, levert geen melding op: er valt niets te winnen.
+- Een doel waarvan het dragende thema al als voorstel in het plan ligt, levert geen ruimtemelding op: daar is
+  beslissen de daad, niet plaats maken.
+- Een klas waarvan de leeftijd niet af te leiden is (de graadklas, Art. XIV) verbreedt in plaats van te zwijgen, zoals
+  de dekking dat doet.
+
 ## Acceptatiecriteria
 
 - [x] Gegeven een minimumdoel in de prognose dat alleen gedragen wordt door een thema van vier lesweken, en nog drie vrije
@@ -52,34 +76,6 @@ verdwijnt vanzelf zodra haar reden weg is. Een vervanger krijgt deze meldingen n
   want FB-063 is geparkeerd, dus die helft valt vandaag niet te testen. Ze volgt uit de bouw: een signaal gaat alleen
   naar de klastoewijzingen van de klas, en een vervanging is geen klastoewijzing (ADR-0057).
 - [x] De detectie is getest zonder AI.
-
-## De tekst van de meldingen
-
-De eigenaar besliste op 2026-09-22 dat de taal van de kat in `nl.json` woont: de server stuurt gegevens, de frontend
-stelt de zin samen. De sleutels komen er dus pas met **FB-071**, dat ze toont, want de catalogustest weigert een
-sleutel die niemand gebruikt. De voorgestelde formulering, hier zodat ze nu al bijgestuurd kan worden:
-
-- **Minimumdoel in gevaar** (gegevens: `doelRef`, `doelTekst`, `thema`, `themaLesweken`, `vrijeLesweken`):
-  > Minimumdoel {doelRef} raakt niet meer gedekt. Alleen thema {thema} draagt het, en dat duurt {themaLesweken}
-  > lesweken, terwijl er nog {vrijeLesweken} vrij zijn.
-- **Subthema niet gepland** (gegevens: `subthema`, `thema`, `doelen`, `aantalDoelen`):
-  > Plaats subthema {subthema}. Thema {thema} loopt bijna af, en zonder dit subthema blijven {aantalDoelen}
-  > leerplandoelen ongedekt: {doelen}.
-
-## Beslissingen van deze bouw
-
-- **Een vrije lesweek is een lesweek waar geen enkele themaplaatsing op ligt**, ook geen voorgestelde. Het
-  jaarplanscherm noemt zo'n week al "met thema", en de prognose waarin het bedreigde doel zit telt voorgestelde
-  plaatsingen mee. De kat mag niet iets anders tellen dan wat de leerkracht ziet.
-- **"Loopt binnen vijf schooldagen af" leest het einde van de hele reeks**, niet van een deel. Een vakantie bewaart
-  één thema als meerdere plaatsingen (ADR-0053); waarschuwen bij het einde van het eerste deel zou midden in een thema
-  afgaan dat nog weken loopt.
-- **Vijf schooldagen blijft vast**, zoals ADR-0059 D4 zegt. Een instelling die niemand verzet, is alleen een knop die
-  onderhouden moet worden.
-- **Een subthema waarvan alle doelen al elders gedekt zijn, levert geen melding op.** Er valt dan niets te winnen, en
-  de kat onderbreekt de leerkracht niet voor niets.
-- **Een klas waarvan de leeftijd niet af te leiden is** (de graadklas, Art. XIV) verbreedt in plaats van te zwijgen,
-  zoals de dekking dat doet: liever een melding over een subthema van een andere leeftijd dan stilte over haar eigen.
 
 ## Testscenario's
 
@@ -107,3 +103,4 @@ sleutel die niemand gebruikt. De voorgestelde formulering, hier zodat ze nu al b
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)
 - 2026-09-22 20:40 · claude-fb069 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; branch stapelt op TB-057 tot die gemerged is
+- 2026-09-22 21:22 · claude-fb069 · in-uitvoering → te-testen: twee detectoren zonder AI: minimumdoel in gevaar en subthema niet gepland; antagonist COMPLIANT na een MAJOR (een subthema dekt ook via zijn gedeelde activiteiten) in ronde 2, vastgepind tegen de dekking met een Postgres-test; 2189 unit- en 585 integratietests groen; de teksten komen met FB-071
