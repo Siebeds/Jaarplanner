@@ -79,7 +79,7 @@ public sealed class Signaalronde
     {
         ArgumentNullException.ThrowIfNull(klas);
 
-        var context = new Katcontext(klas.KlasId, klas.Jaarfase, klas.LeerkrachtIds, vandaag, c => _dekking(klas.KlasId, c));
+        var context = new Katcontext(klas.KlasId, klas.Leeftijden, klas.LeerkrachtIds, vandaag, c => _dekking(klas.KlasId, c));
         var vondsten = new List<Signaalvondst>();
 
         foreach (var detector in _detectoren)

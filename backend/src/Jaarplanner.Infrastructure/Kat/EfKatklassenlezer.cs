@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Kat;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -31,7 +32,7 @@ public sealed class EfKatklassenlezer : IKatklassenlezer
                 from klas in _context.Klassen.AsNoTracking()
                 join schooljaar in _context.Schooljaren on klas.SchooljaarId equals schooljaar.Id
                 where schooljaar.Eind >= vandaag
-                select new { klas.Id, klas.Jaarfase })
+                select new { klas.Id, klas.Leerjaar, klas.Jaarfase })
             .ToListAsync(ct);
 
         var klasIds = klassen.Select(k => k.Id).ToList();
@@ -44,8 +45,14 @@ public sealed class EfKatklassenlezer : IKatklassenlezer
             .GroupBy(t => t.KlasId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<Guid>)g.Select(t => t.GebruikerId).Distinct().ToList());
 
+        // Through the one mapping, never off the Klas row: the detectors must read the klas the way the dekking they
+        // have to agree with reads it, including its fallback to the leerjaar ordinal and its null for "cannot
+        // derive" (Art. VI.1, Art. XIV).
         return klassen
-            .Select(k => new Katklas(k.Id, k.Jaarfase, perKlas.TryGetValue(k.Id, out var ids) ? ids : []))
+            .Select(k => new Katklas(
+                k.Id,
+                Jaarfasen.VoorKlas(k.Leerjaar, k.Jaarfase),
+                perKlas.TryGetValue(k.Id, out var ids) ? ids : []))
             .ToList();
     }
 }

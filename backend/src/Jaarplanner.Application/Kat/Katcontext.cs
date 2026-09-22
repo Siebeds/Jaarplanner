@@ -22,7 +22,7 @@ public sealed class Katcontext
     /// </param>
     public Katcontext(
         Guid klasId,
-        string? jaarfase,
+        IReadOnlyList<string>? leeftijden,
         IReadOnlyList<Guid> ontvangerIds,
         DateOnly vandaag,
         Func<CancellationToken, Task<DekkingWeergave>> dekking)
@@ -35,7 +35,7 @@ public sealed class Katcontext
         }
 
         KlasId = klasId;
-        Jaarfase = jaarfase;
+        Leeftijden = leeftijden;
         OntvangerIds = ontvangerIds;
         Vandaag = vandaag;
         _dekking = dekking;
@@ -44,8 +44,12 @@ public sealed class Katcontext
     /// <summary>The klas.</summary>
     public Guid KlasId { get; }
 
-    /// <summary>Its stated jaarfase, or <c>null</c> for a row that predates the rule (Art. IX.3).</summary>
-    public string? Jaarfase { get; }
+    /// <summary>
+    /// The jaar/fasen the klas is measured against, from the one mapping (<c>Jaarfasen.VoorKlas</c>, Art. VI.1), so a
+    /// detector reads the klas the way the dekking it must agree with does. <c>null</c> is "cannot be derived": widen,
+    /// do not narrow, and say so, as <c>DekkingService</c> does (Art. XIV).
+    /// </summary>
+    public IReadOnlyList<string>? Leeftijden { get; }
 
     /// <summary>The leerkrachten a finding about this klas may address.</summary>
     public IReadOnlyList<Guid> OntvangerIds { get; }

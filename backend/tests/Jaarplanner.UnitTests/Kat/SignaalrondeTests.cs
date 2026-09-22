@@ -14,7 +14,7 @@ public sealed class SignaalrondeTests
     private static readonly Guid Meester = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly DateOnly Vandaag = new(2026, 9, 22);
 
-    private static Katklas EenKlas(params Guid[] leerkrachten) => new(Klas, "K3", leerkrachten);
+    private static Katklas EenKlas(params Guid[] leerkrachten) => new(Klas, ["K3"], leerkrachten);
 
     [Fact]
     public async Task Een_klas_zonder_aanleiding_levert_geen_signaal_op()
@@ -150,7 +150,7 @@ public sealed class SignaalrondeTests
         var tweede = Guid.Parse("55555555-5555-5555-5555-555555555555");
         var opslag = new NepSignaalopslag();
         var ronde = Katbouw.Ronde(
-            new NepKlassenlezer(EenKlas(Juf), new Katklas(tweede, "K2", [Meester])),
+            new NepKlassenlezer(EenKlas(Juf), new Katklas(tweede, ["K2"], [Meester])),
             opslag,
             [new HalfStukkeDetector(Klas)]);
 

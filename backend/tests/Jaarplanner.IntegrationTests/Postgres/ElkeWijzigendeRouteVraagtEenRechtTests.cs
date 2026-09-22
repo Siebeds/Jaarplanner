@@ -45,8 +45,8 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
     /// and pinned by <c>ElkeRouteVraagtEenSessieTests</c>.
     /// <b>The other two:</b> the caller's own deurmat (TB-057, ADR-0059 D5). Both act on a signal only when it is
     /// addressed to the caller's own id, taken from the session, and answer every other id as a missing signal, so
-    /// there is no resource in the route for a row to be checked against. <c>DeurmatRechtenTests</c> pins that a
-    /// signal of someone else's is a 404 for both.
+    /// there is no resource in the route for a row to be checked against. <c>DeurmatEndpointsTests</c> pins that a
+    /// signal of someone else's is a 404, for each of the two.
     /// </summary>
     private static readonly Dictionary<string, string> OpenVoorIedereen = new(StringComparer.Ordinal)
     {

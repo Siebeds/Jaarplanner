@@ -146,6 +146,28 @@ public sealed class DeurmatEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Later_zetten_lukt_alleen_op_een_eigen_signaal()
+    {
+        var school = await Opzet.SchoolAsync();
+        await Opzet.GebruikerAsync(school, klassen: [school.K3Blauw]);
+        var andere = await Opzet.GebruikerAsync(school, klassen: [school.K2Rood]);
+        _detector.Zet(klas => klas == school.K3Blauw ? [Vondst(klas, "MD-01")] : []);
+        await TikAsync();
+
+        await using var context = _db.MaakContext();
+        var signaalId = (await context.Signalen.SingleAsync()).Id;
+
+        using var vreemde = Opzet.Als(andere);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            await RechtenTestOpzet.StatusAsync(vreemde.PostAsync($"/api/deurmat/signalen/{signaalId}/later", content: null)));
+
+        // Refused, and nothing of hers was written: 404 before any change.
+        await using var nalezen = _db.MaakContext();
+        Assert.Null((await nalezen.Signalen.SingleAsync()).UitgesteldTot);
+    }
+
+    [PostgresFact]
     public async Task Later_haalt_het_signaal_van_de_deurmat_tot_de_volgende_schooldag()
     {
         var school = await Opzet.SchoolAsync();

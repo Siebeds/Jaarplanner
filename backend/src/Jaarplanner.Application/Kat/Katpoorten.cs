@@ -10,9 +10,13 @@ public delegate Task<DekkingWeergave> Katdekkingbron(Guid klasId, CancellationTo
 /// A klas the cat watches, with the leerkrachten a signal about it addresses (ADR-0059 D5).
 /// </summary>
 /// <param name="KlasId">The klas.</param>
-/// <param name="Jaarfase">Its stated jaarfase, or <c>null</c> for a row that predates the rule.</param>
+/// <param name="Leeftijden">
+/// The jaar/fasen this klas is measured against, from <c>Jaarfasen.VoorKlas</c>, the one place that maps a klas to its
+/// leeftijden (Art. VI.1). <c>null</c> means it cannot be derived, which a detector must treat as "do not narrow"
+/// rather than as "no leeftijd", exactly as the dekking widens and says so (Art. XIV, the graadklas is open).
+/// </param>
 /// <param name="LeerkrachtIds">Its klastoewijzingen, each once. A klas without one addresses nobody.</param>
-public sealed record Katklas(Guid KlasId, string? Jaarfase, IReadOnlyList<Guid> LeerkrachtIds);
+public sealed record Katklas(Guid KlasId, IReadOnlyList<string>? Leeftijden, IReadOnlyList<Guid> LeerkrachtIds);
 
 /// <summary>Which klassen the cat watches. Implemented over EF in Infrastructure.</summary>
 public interface IKatklassenlezer
