@@ -2,12 +2,12 @@
 id: TB-057
 titel: Signalenlaag en achtergrondtaak waar de kat op reageert
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 19:01
+opgepakt-door: claude-tb057
+branch: ticket/TB-057-signalenlaag
 pr:
 geblokkeerd:
 fr: []
@@ -54,3 +54,4 @@ push).
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-22 19:01 · claude-tb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (kat zonder vervanging: TB-057, FB-069, FB-070, FB-071)
