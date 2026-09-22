@@ -13,6 +13,7 @@ import type { Activiteitenweek } from "../plan/Activiteitensectie";
 import type { Subthemareeks } from "../plan/subthemareeksen";
 import type { Verrijkingenweek } from "./verrijkingenweek";
 import { t } from "../../i18n";
+import { FICHEVLAK } from "../algemene-fiches/merk";
 
 /**
  * The side panel shows one list at a time, the one its switch opened (owner, 2026-09-14: "twee secties ... niet
@@ -285,6 +286,22 @@ describe("Hoekenpaneel: één lijst per schakelaar", () => {
     expect(within(venster).getByText("6.1.G1.1")).toBeInTheDocument();
     expect(within(venster).getByText("Beweegt vlot.")).toBeInTheDocument();
     expect(onKiesAlgemeneFiche).not.toHaveBeenCalled();
+  });
+
+  it("geeft een algemene fiche in de zijbalk het vlak en het icoon van haar blok, een hoek niet (FB-077)", async () => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "algemeen" });
+    toon();
+
+    const fiche = await kaart("turnen");
+    expect(fiche.className).toContain(FICHEVLAK);
+    expect(fiche.querySelector("svg")).toBeInTheDocument();
+
+    // A hoek never becomes a block, so it keeps the quiet card of the chrome column.
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    const hoek = await kaart();
+    expect(hoek.className).not.toContain(FICHEVLAK);
+    expect(hoek.querySelector("svg")).toBeNull();
   });
 
   it("zet geen info-icoon op een hoekenfiche", async () => {

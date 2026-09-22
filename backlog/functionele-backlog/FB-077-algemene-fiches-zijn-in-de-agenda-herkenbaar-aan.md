@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:15
+bijgewerkt: 2026-09-22 21:21
 opgepakt-door: claude-fb077
 branch: ticket/FB-077-fichekleur
 pr:
@@ -53,3 +53,4 @@ Geen. De kleur en het icoon kiest de bouwsessie met de frontend-design-skill.
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-22 21:15 · claude-fb077 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met FB-076 een kleurkeuze
+- 2026-09-22 21:21 · claude-fb077 · kleurkeuze: geen zevende tint maar een dieper neutraal vlak (hue 220, papier) met stevigere rand plus het bestaande icoon, eigenaar 2026-09-22

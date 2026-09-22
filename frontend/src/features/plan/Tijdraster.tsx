@@ -14,6 +14,7 @@ import { cn } from "../../lib/cn";
 import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
+import { FICHEVLAK } from "../algemene-fiches/merk";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
@@ -951,7 +952,8 @@ function Blok({
             ? // The same light grey as before, mixed with the card rather than laid over it, so nothing behind the
               // block shows through its name (FB-058).
               "border-lijn bg-[color-mix(in_srgb,var(--color-vlak-diep)_50%,var(--color-kaart))]"
-            : "border-lijn bg-vlak",
+            : // A fiche is paper rather than pigment, one plane deeper than any activiteit block (FB-077).
+              FICHEVLAK,
           blok.activiteit?.valtBuitenThemaperiode && "border-l-2 border-l-attentie",
           isDragging && "opacity-40",
         )}
