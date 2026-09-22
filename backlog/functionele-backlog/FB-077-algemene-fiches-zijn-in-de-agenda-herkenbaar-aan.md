@@ -2,12 +2,12 @@
 id: FB-077
 titel: Algemene fiches zijn in de agenda herkenbaar aan een eigen kleur en icoon
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 21:15
+opgepakt-door: claude-fb077
+branch: ticket/FB-077-fichekleur
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -52,3 +52,4 @@ Geen. De kleur en het icoon kiest de bouwsessie met de frontend-design-skill.
 ## Werklog
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
+- 2026-09-22 21:15 · claude-fb077 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met FB-076 een kleurkeuze
