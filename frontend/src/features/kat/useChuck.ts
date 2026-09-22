@@ -17,6 +17,10 @@ export function useChuckZichtbaar(): boolean {
 
 export type Chuck = {
   houding: Houding;
+  /** The klas on screen, which a purr is about. */
+  klasnaam: string | null;
+  /** He knows what he brought: the deurmat loaded. Until then, and after a failed load, his posture asserts nothing. */
+  weet: boolean;
   /** He lies on the corner of the week strip, and his basket is empty. */
   opDeHoek: boolean;
   deurmat: ReturnType<typeof useDeurmat>;
@@ -29,11 +33,11 @@ export type Chuck = {
  */
 export function useChuck(): Chuck {
   const deurmat = useDeurmat(true);
-  const { klasId } = useActieveSelectie();
+  const { klasId, klas } = useActieveSelectie();
   const { data: voortgang } = useDekkingsvoortgang(klasId, "EigenJaarFase");
   const hoekKlasId = useKatplek((s) => s.hoekKlasId);
 
   const houding = bepaalHouding(deurmat.data, voortgang, hoekKlasId ?? klasId);
   const opDeHoek = houding.soort === "gevaar" && hoekKlasId !== null && houding.gevaar?.klasId === hoekKlasId;
-  return { houding, opDeHoek, deurmat };
+  return { houding, opDeHoek, deurmat, klasnaam: klas?.naam ?? null, weet: deurmat.isSuccess };
 }

@@ -65,9 +65,12 @@ const HOUDINGSLEUTEL = {
   spint: "kat.houding.spint",
 } as const satisfies Record<Houdingsoort, Vertaalsleutel>;
 
-/** The label every posture carries, visible or in his balloon (never colour or form alone). */
-export function houdingzin(soort: Houdingsoort): string {
-  return t(HOUDINGSLEUTEL[soort]);
+/**
+ * The label every posture carries, visible or in his balloon (never colour or form alone). Purring is true of one klas
+ * only, the one on screen, so it names it.
+ */
+export function houdingzin(soort: Houdingsoort, klasnaam: string | null = null): string {
+  return t(HOUDINGSLEUTEL[soort], { klas: klasnaam ?? "" });
 }
 
 /** "08:30:00" becomes "8.30", the way a Flemish timetable writes it. */

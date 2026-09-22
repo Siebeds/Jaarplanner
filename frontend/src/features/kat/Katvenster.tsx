@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import { forwardRef, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { IcoonKruis } from "../../components/Iconen";
 import { Knop } from "../../components/ui/Knop";
@@ -41,6 +41,7 @@ export const Katvenster = forwardRef<
       aria-modal={naast ? "false" : "true"}
       aria-labelledby={titelId}
       data-komt={komt ? "" : undefined}
+      onKeyDown={naast ? undefined : houdFocusBinnen}
       className={cn(
         "katvenster flex flex-col overflow-hidden bg-kaart text-inkt",
         naast
@@ -105,6 +106,25 @@ export const Katvenster = forwardRef<
     </div>
   );
 });
+
+/**
+ * On a phone the window is a screen of its own over everything else (`aria-modal`), so Tab stays inside it: focus that
+ * wandered behind it would sit on a control nobody can see.
+ */
+function houdFocusBinnen(e: KeyboardEvent<HTMLDivElement>) {
+  if (e.key !== "Tab") return;
+  const focusbaar = [...e.currentTarget.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], [tabindex]:not([tabindex='-1'])")];
+  if (focusbaar.length === 0) return;
+  const eerste = focusbaar[0];
+  const laatste = focusbaar[focusbaar.length - 1];
+  if (e.shiftKey && document.activeElement === eerste) {
+    e.preventDefault();
+    laatste.focus();
+  } else if (!e.shiftKey && document.activeElement === laatste) {
+    e.preventDefault();
+    eerste.focus();
+  }
+}
 
 /** Follows a link on the deurmat: the klas it is about first, since a link carries no klas. */
 function useVolg() {

@@ -75,9 +75,10 @@ export function Schermkop({
         {zonderKat ? (
           rechts
         ) : (
-          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4).
-          <div className="flex min-w-0 items-end gap-3">
-            {rechts}
+          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4). On a phone this group
+          // gives up its width before the title does: the screen's control truncates, the title and the basket stay.
+          <div className="flex min-w-0 shrink-[8] items-end gap-3">
+            <div className="flex min-w-0">{rechts}</div>
             <Katmand />
           </div>
         )}

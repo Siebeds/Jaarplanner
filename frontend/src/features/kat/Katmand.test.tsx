@@ -101,7 +101,7 @@ describe("Chuck in the header", () => {
 
   it("sleeps with a visible label when nothing waits", async () => {
     toon();
-    expect(await mandknop()).toHaveAccessibleName("Chuck slaapt. Open het venster van Chuck.");
+    expect(await screen.findByRole("button", { name: "Chuck slaapt. Open het venster van Chuck." })).toBeInTheDocument();
     expect((await screen.findAllByText("Chuck slaapt")).length).toBeGreaterThan(0);
   });
 
@@ -193,6 +193,37 @@ describe("his window", () => {
       expect(beslissing?.[1]?.method).toBe("PUT");
       expect(JSON.parse(String(beslissing?.[1]?.body))).toEqual({ status: "Aanvaard" });
     });
+  });
+});
+
+describe("what he asserts", () => {
+  it("names the klas when he purrs, and says nothing of his posture when the deurmat did not load", async () => {
+    deurmat = { signalen: [], voorstellen: [] };
+    vi.mocked(fetch).mockImplementation(async (pad) =>
+      String(pad) === "/api/kat/instelling"
+        ? new Response(JSON.stringify({ isZichtbaar: true }), { status: 200, headers: { "Content-Type": "application/json" } })
+        : new Response("{}", { status: 500 }),
+    );
+    toon();
+    const knop = await screen.findByRole("button", { name: /venster van Chuck/ });
+    await waitFor(() => expect(knop).toHaveAccessibleName("Chuck. Open het venster van Chuck."));
+    expect(screen.queryByText("Chuck slaapt")).not.toBeInTheDocument();
+  });
+});
+
+describe("on a phone, the window keeps focus inside", () => {
+  it("wraps Tab from the last control to the first", async () => {
+    minderBeweging = true;
+    deurmat = { signalen: [GEVAAR], voorstellen: [] };
+    toon();
+    fireEvent.click(await mandknop());
+    const venster = await screen.findByRole("dialog");
+    const knoppen = within(venster).getAllByRole("button");
+    await waitFor(() => expect(knoppen.length).toBeGreaterThan(1));
+    const laatste = within(venster).getAllByRole("button").at(-1)!;
+    laatste.focus();
+    fireEvent.keyDown(laatste, { key: "Tab" });
+    expect(within(venster).getByRole("button", { name: "Sluit het venster van Chuck" })).toHaveFocus();
   });
 });
 

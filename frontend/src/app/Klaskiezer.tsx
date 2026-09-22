@@ -33,7 +33,7 @@ export function Klaskiezer() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-9 max-w-[14rem] items-center gap-1.5 rounded-veld border border-lijn-veld bg-kaart px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
+        className="flex h-9 min-w-0 max-w-[14rem] items-center gap-1.5 rounded-veld border border-lijn-veld bg-kaart px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
       >
         <span className="truncate">{klas ? klas.naam : t("context.geenKlas")}</span>
         <IcoonChevron aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />

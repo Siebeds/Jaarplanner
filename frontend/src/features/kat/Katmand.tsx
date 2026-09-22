@@ -41,10 +41,10 @@ function ZichtbareKatregel() {
  * has not. `null` while he lies on the week strip, where his balloon is.
  */
 function houdingstekst(chuck: Chuck, staart: "rechts" | "boven"): ReactNode {
-  const { houding, opDeHoek, deurmat } = chuck;
-  // Nothing until he knows what he brought: a label that reads "Chuck slaapt" for a moment and then turns into a
-  // balloon would say something that was never true.
-  if (opDeHoek || deurmat.isPending) return null;
+  const { houding, opDeHoek, weet, klasnaam } = chuck;
+  // Nothing until he knows what he brought, and nothing when he could not find out: "Chuck slaapt" before a balloon, or
+  // over a deurmat that failed to load, would say something that is not known to be true.
+  if (opDeHoek || !weet) return null;
   if (houding.soort === "klaar" || houding.soort === "gevaar") {
     const zin = houding.soort === "gevaar" && houding.gevaar ? gevaarzin(houding.gevaar) : t("kat.zegtKlaar");
     return (
@@ -53,7 +53,7 @@ function houdingstekst(chuck: Chuck, staart: "rechts" | "boven"): ReactNode {
       </Ballon>
     );
   }
-  return <span className="block max-w-[22ch] text-meta leading-tight text-inkt-zacht">{houdingzin(houding.soort)}</span>;
+  return <span className="block max-w-[36ch] text-right text-meta leading-tight text-inkt-zacht sm:max-w-[22ch] sm:text-left">{houdingzin(houding.soort, klasnaam)}</span>;
 }
 
 type Vensterstand = "dicht" | "komt" | "open";
@@ -180,7 +180,7 @@ function ZichtbareKatmand() {
     if (!openRef.current && !bezig.current) loopje.zetStil(true);
   }, [opDeHoek, loopje]);
 
-  const naam = houdingzin(houding.soort);
+  const naam = chuck.weet ? houdingzin(houding.soort, chuck.klasnaam) : t("kat.naam");
   const vensterInhoud =
     stand === "dicht" ? null : (
       <Katvenster

@@ -591,7 +591,7 @@
       "slaapt": "Chuck slaapt",
       "klaar": "Chuck heeft iets klaargezet",
       "gevaar": "Chuck: een doel komt in gevaar",
-      "spint": "Chuck spint: elk minimumdoel zit in de prognose"
+      "spint": "Chuck spint: elk minimumdoel van {klas} zit in de prognose"
     },
     "knop": "{houding}. Open het venster van Chuck.",
     "knopOpen": "{houding}. Sluit het venster van Chuck.",

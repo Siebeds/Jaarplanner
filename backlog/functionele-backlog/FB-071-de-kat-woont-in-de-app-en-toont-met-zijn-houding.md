@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 00:13
+bijgewerkt: 2026-09-23 01:06
 opgepakt-door: claude-fb071
 branch: ticket/FB-071-chuck
 pr:
@@ -70,20 +70,20 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label.
-- [ ] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon naast zijn mandje.
-- [ ] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
+- [x] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label.
+- [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon naast zijn mandje.
+- [x] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
   bedekken, en zegt hij in een tekstballon welk doel. Er staat nooit meer dan één Chuck op het scherm.
-- [ ] Gegeven een klik op Chuck, of Enter met de focus op hem, dan stapt hij één poot tegelijk uit zijn mandje, elke
+- [x] Gegeven een klik op Chuck, of Enter met de focus op hem, dan stapt hij één poot tegelijk uit zijn mandje, elke
   poot eerst op de rand, en opent het venster met bovenaan wat klaarligt (elk item te bekijken of uit te stellen).
-- [ ] Gegeven dat hij loopt, dan staan er altijd drie poten op de grond en schuift een voet die neerstaat niet.
-- [ ] Gegeven een open venster, wanneer de gebruiker Escape drukt of het sluit, dan staat de focus meteen op de kat en
+- [x] Gegeven dat hij loopt, dan staan er altijd drie poten op de grond en schuift een voet die neerstaat niet.
+- [x] Gegeven een open venster, wanneer de gebruiker Escape drukt of het sluit, dan staat de focus meteen op de kat en
   stapt hij terug in zijn mandje.
-- [ ] Gegeven "minder beweging", dan opent het venster zonder loopje en verandert Chuck van houding zonder animatie.
-- [ ] Gegeven elke houding, dan draagt ze ook tekst, en het contrast haalt WCAG 2.2 AA (zijn silhouet 3:1, tekst 4.5:1),
+- [x] Gegeven "minder beweging", dan opent het venster zonder loopje en verandert Chuck van houding zonder animatie.
+- [x] Gegeven elke houding, dan draagt ze ook tekst, en het contrast haalt WCAG 2.2 AA (zijn silhouet 3:1, tekst 4.5:1),
   gemeten in een echte browser, in licht en in donker.
-- [ ] Gegeven een export of een ontwikkelingsrapport, dan staat er geen kat in.
-- [ ] Bekeken in de echte app op desktop en op ongeveer 390px.
+- [x] Gegeven een export of een ontwikkelingsrapport, dan staat er geen kat in.
+- [x] Bekeken in de echte app op desktop en op ongeveer 390px.
 
 ## Testscenario's
 
@@ -116,15 +116,20 @@ Beslist door de eigenaar op 2026-09-22:
 - Bij een weigering stoot hij niets om: een weigering is een normale uitkomst.
 - Hij praat in een stripballon, alleen als hij iets te melden heeft.
 
-Nog open:
+Beslist door de eigenaar op 2026-09-23:
 
-- De onderwijsadviseur keurt Chuck goed voor hij centraal in de huisstijl komt. Komt FB-071 tot dan achter een
-  instelling?
-- De gembervacht is een uitzondering op de regel in `index.css` dat de app geen merkkleur heeft. Die uitzondering
-  hoort vastgelegd, waarschijnlijk in een ADR.
+- Tot de onderwijsadviseur Chuck goedkeurt, staat hij achter een schoolinstelling die alleen een admin aanzet
+  (Instellingen, Chuck). Standaard staat hij uit.
+
+Vastgelegd in de bouw:
+
+- De gembervacht als uitzondering op "geen merkkleur" staat in ADR-0065 en bovenaan `index.css`. De lichte vacht is
+  van 56% naar 54% helderheid gegaan: 56% haalde op de pagina maar 2,90:1, onder de 3:1 die dit ticket vraagt.
 
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-22 23:59 · claude-fb071 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; beslist: achter een admin-instelling tot de onderwijsadviseur Chuck goedkeurt
 - 2026-09-23 00:13 · claude-fb071 · backend: Katinstelling (standaard uit, admin zet ze) en een voorstel van de kat draagt op de deurmat zijn klas, dag en uur; integratietests groen
+- 2026-09-23 01:06 · claude-fb071 · choreografietest vond twee fouten uit het prototype (achterpoot sloeg de rand over, lijf sprong bij begin en einde) en zijn hersteld; vacht licht naar 54% na meting (56% gaf 2,90:1 op de pagina); alle 10 criteria afgevinkt met test of browsercontrole (mock en echte API op wegwerp-db jp_fb071, desktop en 390px, licht en donker)
+- 2026-09-23 01:06 · claude-fb071 · antagonist COMPLIANT; 3 van 4 MINOR opgelost (label bij laadfout, klas in spinlabel, focus binnen het telefoonvenster), 1 genoteerd; 2255 unit- en 597 integratietests groen, 1308 frontendtests groen, format en lint schoon
