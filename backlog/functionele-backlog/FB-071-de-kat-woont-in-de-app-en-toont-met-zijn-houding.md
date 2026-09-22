@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 01:06
+bijgewerkt: 2026-09-23 01:07
 opgepakt-door: claude-fb071
 branch: ticket/FB-071-chuck
-pr:
+pr: 161
 geblokkeerd:
 fr: []
 ---
@@ -134,3 +134,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 01:06 · claude-fb071 · choreografietest vond twee fouten uit het prototype (achterpoot sloeg de rand over, lijf sprong bij begin en einde) en zijn hersteld; vacht licht naar 54% na meting (56% gaf 2,90:1 op de pagina); alle 10 criteria afgevinkt met test of browsercontrole (mock en echte API op wegwerp-db jp_fb071, desktop en 390px, licht en donker)
 - 2026-09-23 01:06 · claude-fb071 · antagonist COMPLIANT; 3 van 4 MINOR opgelost (label bij laadfout, klas in spinlabel, focus binnen het telefoonvenster), 1 genoteerd; 2255 unit- en 597 integratietests groen, 1308 frontendtests groen, format en lint schoon
 - 2026-09-23 01:06 · claude-fb071 · in-uitvoering → te-testen: Chuck gebouwd: mandje in de kop, houding uit deurmat en dekking, hoek van de weekstrook bij een doel in gevaar, venster met wat hij meebracht, pootje-per-pootje-loopje uit een geteste choreografie, admin-instelling (standaard uit), ADR-0065; gates groen
+- 2026-09-23 01:07 · claude-fb071 · PR #161
