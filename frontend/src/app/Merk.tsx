@@ -2,7 +2,7 @@ import { t } from "../i18n";
 import { cn } from "../lib/cn";
 
 /**
- * The Vizier logo (FB-083, ADR-0062): the mark with the name beside it, or the mark alone.
+ * The Vizier logo (FB-083, ADR-0063): the mark with the name beside it, or the mark alone.
  *
  * **The files are the brand, this component only places them.** It loads them from `public/merk/` by
  * fixed name, so a new logo is a copy of four files with the same names and not a code change
