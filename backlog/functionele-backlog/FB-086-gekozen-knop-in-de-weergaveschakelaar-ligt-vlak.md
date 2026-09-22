@@ -2,12 +2,12 @@
 id: FB-086
 titel: Gekozen knop in de weergaveschakelaar ligt vlak, zonder rand of schaduw
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 23:45
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 23:47
+opgepakt-door: claude-fb086
+branch: ticket/FB-086-segment-vlak
 pr:
 geblokkeerd:
 fr: [FR-6.3]
@@ -53,3 +53,4 @@ Geen.
 ## Werklog
 
 - 2026-09-22 23:45 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-22 23:47 · claude-fb086 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
