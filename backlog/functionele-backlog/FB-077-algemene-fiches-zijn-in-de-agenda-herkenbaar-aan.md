@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:50
+bijgewerkt: 2026-09-22 22:33
 opgepakt-door: claude-fb077
 branch: ticket/FB-077-fichekleur
-pr:
+pr: 153
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -57,3 +57,4 @@ Geen. De kleur en het icoon kiest de bouwsessie met de frontend-design-skill.
 - 2026-09-22 21:40 · claude-fb077 · browsercontrole gedaan op 1440 en 390px, licht en donker: naam 13,32:1 licht en 16,1:1 donker; vlak een stap dieper dan vlak-diep omdat dat maar 1,09:1 haalde tegen een kleurloze activiteit; smal-blokdefect apart als TB-060
 - 2026-09-22 21:50 · claude-fb077 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; vier MINOR opgelost: vlak is nu een token in index.css met bewaakte donkere waarde, kleine tekstregels gemeten (4,88:1 licht, 9,3:1 donker), schermafbeelding op echte 1440, en de onjuiste bewering dat desktop geen last heeft rechtgezet in TB-060
 - 2026-09-22 21:50 · claude-fb077 · in-uitvoering → te-testen: gebouwd: algemene fiche draagt een eigen neutraal vlak (token fiche-vlak/fiche-lijn) plus het fiche-icoon, in de agenda en op de kaart in de zijbalk; gates groen (1243 tests, lint, typecheck), browsercontrole op 1440 en 390px in licht en donker, antagonist COMPLIANT
+- 2026-09-22 22:33 · claude-fb077 · PR #153
