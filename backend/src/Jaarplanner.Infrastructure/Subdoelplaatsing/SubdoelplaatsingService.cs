@@ -34,7 +34,15 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
     {
         var thema = await LaadThemaAsync(themaId, tracking: false, cancellationToken);
         var perLeeftijd = LeeftijdenMetSubthema(thema);
-        var open = await OpenDoelenAsync(thema, perLeeftijd.Keys, cancellationToken);
+        var kandidaten = await KandidatenAsync(thema, cancellationToken);
+
+        // ADR-0064: a leeftijd without a subthema is shown too while the themadoelen bring it open goals, so the AI can
+        // propose its first subthema. The Api keeps it from whoever may not decide there.
+        var zonderSubthema = kandidaten
+            .Select(l => Jaarfasen.Normaliseer(l.JaarFase))
+            .Where(l => Jaarfasen.IsBekend(l) && !perLeeftijd.ContainsKey(l))
+            .ToHashSet(StringComparer.Ordinal);
+        var open = OpenDoelen(thema, kandidaten, perLeeftijd.Keys.Concat(zonderSubthema));
 
         var voorstellen = await _context.Subdoelvoorstellen.AsNoTracking()
             .Where(v => v.ThemaId == themaId && v.Status == KoppelingStatus.Voorgesteld)
@@ -51,6 +59,7 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
                 .ToDictionaryAsync(a => a.Id, a => a.Naam, cancellationToken);
 
         var leeftijden = perLeeftijd.Keys
+            .Concat(zonderSubthema.Where(l => open[l].Count > 0))
             .OrderBy(l => Jaarfasen.Alle.ToList().IndexOf(l))
             .Select(leeftijd => new LeeftijdPlaatsing(
                 leeftijd,
@@ -75,7 +84,8 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
                             .OrderBy(v => v.LeerplandoelCode, StringComparer.Ordinal)
                             .Select(v => Map(v, doelen))
                             .ToList()))
-                    .ToList()))
+                    .ToList(),
+                HeeftSubthema: perLeeftijd.ContainsKey(leeftijd)))
             .ToList();
 
         return new SubdoelplaatsingOverzicht(themaId, leeftijden);
@@ -86,13 +96,9 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
         var code = Jaarfasen.LeesLeeftijd(leeftijd)
             ?? throw new SchoolcontentValidatieFout($"'{leeftijd}' is geen leeftijd. Kies JK, K2, K3 of L1 tot L6.");
         var thema = await LaadThemaAsync(themaId, tracking: false, cancellationToken);
-        var perLeeftijd = LeeftijdenMetSubthema(thema);
-        if (!perLeeftijd.TryGetValue(code, out var subthemas))
-        {
-            throw new SchoolcontentValidatieFout($"Dit thema heeft nog geen subthema voor {code}. Maak er eerst een aan.");
-        }
-
-        var open = (await OpenDoelenAsync(thema, [code], cancellationToken))[code];
+        // ADR-0064: a leeftijd without a subthema is asked too; the model then has only new subthema's to propose.
+        var subthemas = LeeftijdenMetSubthema(thema).GetValueOrDefault(code) ?? [];
+        var open = OpenDoelen(thema, await KandidatenAsync(thema, cancellationToken), [code])[code];
         if (open.Count == 0)
         {
             throw new SchoolcontentValidatieFout($"Alle leerplandoelen van de themadoelen staan al in een subthema van {code}.");
@@ -328,22 +334,26 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
                 g => g.Select(p => p.Subthema).OrderBy(s => s.Naam, StringComparer.OrdinalIgnoreCase).ToList(),
                 StringComparer.Ordinal);
 
-    /// <summary>
-    /// D1: per leeftijd, the leerplandoelen of that jaar/fase that concord to a themadoel and that no subthema of the
-    /// thema at that leeftijd holds as a subdoel. A goal no longer in Op.stap is not proposed.
-    /// </summary>
-    private async Task<Dictionary<string, List<Leerplandoel>>> OpenDoelenAsync(
-        Thema thema,
-        IEnumerable<string> leeftijden,
-        CancellationToken cancellationToken)
+    /// <summary>The leerplandoelen that concord to a themadoel of the thema, at any leeftijd. A goal no longer in Op.stap is not proposed.</summary>
+    private async Task<List<Leerplandoel>> KandidatenAsync(Thema thema, CancellationToken cancellationToken)
     {
         var refs = thema.Minimumdoelen.Select(m => m.MinimumdoelRef).Distinct(StringComparer.Ordinal).ToList();
-        var kandidaten = refs.Count == 0
+        return refs.Count == 0
             ? []
             : await _context.Leerplandoelen.AsNoTracking()
                 .Where(l => l.MinimumdoelRef != null && refs.Contains(l.MinimumdoelRef) && !l.NietMeerInOpstap)
                 .ToListAsync(cancellationToken);
+    }
 
+    /// <summary>
+    /// D1: per leeftijd, the <paramref name="kandidaten"/> of that jaar/fase that no subthema of the thema at that
+    /// leeftijd holds as a subdoel.
+    /// </summary>
+    private static Dictionary<string, List<Leerplandoel>> OpenDoelen(
+        Thema thema,
+        IReadOnlyList<Leerplandoel> kandidaten,
+        IEnumerable<string> leeftijden)
+    {
         var resultaat = new Dictionary<string, List<Leerplandoel>>(StringComparer.Ordinal);
         foreach (var leeftijd in leeftijden)
         {

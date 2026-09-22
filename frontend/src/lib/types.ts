@@ -624,6 +624,8 @@ export interface LeeftijdPlaatsing {
   magBeslissen: boolean;
   subdoelvoorstellen: SubdoelvoorstelWeergave[];
   subthemavoorstellen: SubthemavoorstelWeergave[];
+  /** False for a leeftijd without a subthema, sent only to whoever may decide there (ADR-0064). */
+  heeftSubthema: boolean;
 }
 
 export interface SubdoelplaatsingOverzicht {

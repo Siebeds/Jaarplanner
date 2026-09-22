@@ -60,7 +60,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0047](0047-dekkingsprognose-en-dekking.md) | **Dekking in two steps, the dekkingsprognose and the dekking**: a minimumdoel counts only through a thema it is a themadoel of, a leerplandoel through a subthema at the klas's leeftijd (placed in the agenda, for dekking), plus doelen on activiteiten, accepted doelsuggesties and planned algemene fiches; a klas is measured against the minimumdoelen of its mijlpaal (supersedes the Art. V.1 concordance route) | Accepted |
 | [0048](0048-claude-api-als-tweede-ai-provider.md) | **The Claude API as a second AI provider**: `Ai:Provider` picks Azure AI Foundry (the default) or the Anthropic Claude API for the whole deployment; the Claude client sends the same two prompts through the official SDK to a configurable endpoint with a server-side key; a deployment on the Claude API is not held to an EU processing location (supersedes 0016 in part) | Accepted |
 | [0049](0049-eigen-activiteit-van-de-leerkracht.md) | **A leerkracht's new activiteit is her own**: it belongs to her and follows her across schooljaren; her jaarfase colleagues read it and copy it; its goals count for a klas only once the activiteit is planned in that klas's agenda; a removed owner's activiteiten become shared (answers 0030 §4 (a) for activiteiten) | Accepted |
-| [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted |
+| [0050](0050-ai-plaatst-leerplandoelen-in-subthemas.md) | **The AI places a thema's open leerplandoelen in subthema's**: per leeftijd it proposes an existing subthema or a new one (whose name and onderzoeksvraag it may make up, a second Art. IV.4 exception); a hoofdleerkracht of the jaarfase or directie asks and decides, and only an accepted proposal becomes a subdoel or subthema | Accepted (D1 superseded in part by 0064) |
 | [0051](0051-ai-voorstel-draagt-een-vage-ring.md) | **An AI proposal wears a faint ring** and is decided with quiet icon buttons (amends 0039 decision 5) | Accepted |
 | [0052](0052-doelsuggesties-zijn-minimumdoelen.md) | **A thema's doelsuggesties propose minimumdoelen as themadoelen**: the AI at thema level (thema page and wizard step 2) proposes only minimumdoelen of the mijlpalen the thema's leeftijden meet; accepting one makes it a themadoel and a rejected one is not proposed again; the leerplandoel doelsuggesties are deleted and no longer count for dekking (supersedes 0047 S2) | Accepted |
 | [0053](0053-themaplaatsing-met-eigen-datums.md) | **A thema placement carries its own dates; the themaperiodes leave the planning**: a placement has a first and a last day, no two share a day, a vacation splits a thema into parts, the plan screen is a week timeline, existing plans are converted by one migration, and the generation is switched off until it is reworked for dates (supersedes 0013 and 0020 for the jaarplan) | Accepted |
@@ -74,6 +74,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0061](0061-de-rol-directie-heet-admin.md) | **The directie right is called admin**: the same rights, several holders, and the code, column, API and configuration renamed with it | Accepted |
 | [0062](0062-de-ai-stelt-het-moment-voor-de-tool-corrigeert.md) | **The AI proposes the day and hour of a cat's activiteit**, and the tool corrects a moment the school cannot give (supersedes 0060 D3 in part) | Accepted |
 | [0063](0063-de-app-heet-vizier.md) | **The app is called Vizier**: the logo replaces the year bar as the mark, loaded by fixed name; repository and infrastructure stay Jaarplanner | Accepted |
+| [0064](0064-subdoelplaatsing-bij-een-leeftijd-zonder-subthema.md) | **The subdoelplaatsing also serves a leeftijd without a subthema**, while it has open goals, shown only to whoever may decide there | Accepted |
 
 ## Compliance traceability matrix
 
@@ -140,6 +141,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0061 | Art. II.3, IV.1, IV.8, V.5, VI.1, VI.7, IX.2, XII and XIV (amended); IV.7 unchanged; renames the directie column of 0030 §3 and the configuration key of 0031 | FB-072 | FR-12.2 |
 | 0062 | Art. IV.5 (amended); IV.1, IV.4 and V.1 unchanged; supersedes 0060 D3 in part | FB-070 | FR-14.8 |
 | 0063 | Art. II.3 and XII unchanged; relates to 0017, 0024 | FB-083; FB-084, FB-085 | — |
+| 0064 | Art. IV.1, VI.1 and IX.2 unchanged; supersedes the last sentence of 0050 D1 | FB-062 | FR-4.4 |
 
 ## Open decisions referenced by ADRs
 
