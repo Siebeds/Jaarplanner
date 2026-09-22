@@ -990,7 +990,12 @@ export interface Activiteitplaatsingen {
   activiteiten: GeplandeActiviteitdagen[];
 }
 
-/** One activiteit and the days of this klas's year it stands on, ascending and without duplicates. */
+/**
+ * One activiteit and the days of this klas's year it stands on, ascending and without duplicates.
+ *
+ * The server calls this record `GeplandeActiviteit`. The name is taken here by the week view's planned activiteit,
+ * which is a different thing with a time, a subthema and doelcodes, so this one carries what it adds: the days.
+ */
 export interface GeplandeActiviteitdagen {
   activiteitId: string;
   datums: string[];

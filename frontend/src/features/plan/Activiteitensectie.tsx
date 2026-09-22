@@ -232,8 +232,13 @@ function Activiteitenlijst({
   const { data: ik } = useIk();
   const subthema = thema.data?.subthemas.find((sub) => sub.id === bestemming.id);
 
-  // Where each of them already stands in this klas's year (FB-076). A failed or pending read leaves the map empty,
-  // so a card says nothing rather than claiming an activiteit is planned nowhere.
+  // Where each of them already stands in this klas's year (FB-076).
+  //
+  // A failed or pending read leaves the map empty, and an unmarked card is then indistinguishable from one that is
+  // really planned nowhere. That is the one thing this feature cannot say honestly, and it is accepted rather than
+  // solved: the alternative is a per-card "niet gelezen" line on every activiteit while the read is in flight, which
+  // is noise on the ordinary path for a case a retry fixes. The absent-versus-empty distinction the payload keeps is
+  // therefore real on the wire and invisible on screen (antagonist FB-076).
   const plaatsingen = useActiviteitplaatsingen(klasId);
   const dagenPer = useMemo(
     () => new Map((plaatsingen.data?.activiteiten ?? []).map((a) => [a.activiteitId, a.datums])),

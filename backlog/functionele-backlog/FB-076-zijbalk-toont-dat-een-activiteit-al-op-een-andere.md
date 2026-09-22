@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 22:12
+bijgewerkt: 2026-09-22 22:23
 opgepakt-door: claude-fb076
 branch: ticket/FB-076-ingepland
 pr:
@@ -59,3 +59,4 @@ voorstellen of de dekking.
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-22 21:51 · claude-fb076 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen ontworpen met FB-077
 - 2026-09-22 22:12 · claude-fb076 · eigen leesroute GET /api/klassen/{id}/jaarplan/activiteitplaatsingen voor het hele schooljaar, gehangen in de weekplanning-queryfamilie zodat bestaande invalidaties de markering vers houden; browsercontrole op 1440 en 390px, licht en donker: zin 6,08:1 en 8,44:1, streep 4,64:1 en 6,44:1
+- 2026-09-22 22:23 · claude-fb076 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; twee MINOR opgelost (eerlijker commentaar over een mislukte lezing, en waarom de frontendnaam afwijkt), een derde genoteerd; conventiesweeps ElkeWijzigendeRouteVraagtEenRecht en ElkeRouteVraagtEenSessie alsnog gedraaid: 8 geslaagd, dus de nieuwe route weigert een gebruiker zonder leesrecht
