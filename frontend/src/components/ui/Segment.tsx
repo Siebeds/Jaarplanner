@@ -7,7 +7,9 @@ import { cn } from "../../lib/cn";
  *
  * **The selected option lies flat in the track: a card fill and semibold ink, no border, no
  * shadow** (FB-086). An outline and a shadow made it float above the track. The weight and the
- * darker ink carry the state together with the fill, so it never rests on colour alone. Each label
+ * darker ink carry the state, so it never rests on colour alone; being text, they fall outside
+ * WCAG 1.4.11, and the fill (1.18:1 against the track) only supports them. The owner chose this
+ * over the outline knowingly: do not bring the outline back as a 1.4.11 fix. Each label
  * reserves the width of its semibold form, so choosing an option does not shift its neighbours.
  */
 export function Segment<T extends string>({

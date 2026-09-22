@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 23:47
+bijgewerkt: 2026-09-22 23:53
 opgepakt-door: claude-fb086
 branch: ticket/FB-086-segment-vlak
 pr:
@@ -28,11 +28,11 @@ Wie de schakelaar gebruikt, ziet nog altijd meteen welke keuze actief is, ook in
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de agenda, wanneer een weergave gekozen is, dan heeft de gekozen knop een witte vulling en vette donkere tekst, zonder rand en zonder schaduw.
-- [ ] Gegeven een ander scherm met een weergaveschakelaar (bv. Dekking of Instellingen), wanneer je het opent, dan ziet de gekozen knop er hetzelfde uit als in de agenda.
-- [ ] Gegeven de donkere modus, wanneer je de schakelaar bekijkt, dan is de gekozen knop even duidelijk te onderscheiden van de andere.
-- [ ] Gegeven de nieuwe stijl, wanneer de bouwer het contrast in een echte browser meet, dan onderscheidt de gekozen knop zich volgens WCAG 2.2 AA van de andere; lukt dat niet, dan meldt de bouwer het aan de eigenaar in plaats van het zelf anders op te lossen.
-- [ ] Gegeven een schermlezer of het toetsenbord, wanneer je door de schakelaar gaat, dan wordt de gekozen knop nog steeds als gekozen aangekondigd en blijft de focusrand zichtbaar.
+- [x] Gegeven de agenda, wanneer een weergave gekozen is, dan heeft de gekozen knop een witte vulling en vette donkere tekst, zonder rand en zonder schaduw.
+- [x] Gegeven een ander scherm met een weergaveschakelaar (bv. Dekking of Instellingen), wanneer je het opent, dan ziet de gekozen knop er hetzelfde uit als in de agenda.
+- [x] Gegeven de donkere modus, wanneer je de schakelaar bekijkt, dan is de gekozen knop even duidelijk te onderscheiden van de andere.
+- [x] Gegeven de nieuwe stijl, wanneer de bouwer het contrast in een echte browser meet, dan onderscheidt de gekozen knop zich volgens WCAG 2.2 AA van de andere; lukt dat niet, dan meldt de bouwer het aan de eigenaar in plaats van het zelf anders op te lossen.
+- [x] Gegeven een schermlezer of het toetsenbord, wanneer je door de schakelaar gaat, dan wordt de gekozen knop nog steeds als gekozen aangekondigd en blijft de focusrand zichtbaar.
 
 ## Testscenario's
 
@@ -54,3 +54,4 @@ Geen.
 
 - 2026-09-22 23:45 · Siebeds · aangemaakt (status nieuw)
 - 2026-09-22 23:47 · claude-fb086 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-22 23:53 · claude-fb086 · Segment gebouwd: vlakke witte knop, vet, zonder rand/schaduw; tests 1263/1263, lint groen. Gemeten: vulling tegen balk 1,18:1 (licht en donker), tekst 17,8:1 / 13,1:1; toestand rust op vet + donkerdere tekst.
