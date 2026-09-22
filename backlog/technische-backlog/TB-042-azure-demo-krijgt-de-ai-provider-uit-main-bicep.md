@@ -5,7 +5,7 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:20
+bijgewerkt: 2026-09-22 21:55
 opgepakt-door: claude-code-anthropic
 branch: ticket/TB-bicep-ai-provider
 pr: 121
@@ -56,3 +56,4 @@ Geen.
 - 2026-09-16 22:20 · claude-code-anthropic · PR #121
 - 2026-09-16 22:20 · claude-code-anthropic · Demo: main d43c2754 gedeployed na de migraties HerschrijvingGeweigerd en ThemaMinimumdoelen (met akkoord van de eigenaar), Ai__Provider=Anthropic gezet en webapp herstart; /health 200, /health/ready 200, /api/klassen 401, /agenda 200. Criterium 2 (nieuwe infra-deploy) niet uitgevoerd: de infrastructuur werd niet opnieuw gedeployed, de standaardwaarde Anthropic staat in de template.
 - 2026-09-16 22:20 · claude-code-anthropic · in-uitvoering → klaar: main.bicep zet Ai__Provider; demo draait met de Claude API.
+- 2026-09-22 21:55 · claude-code-anthropic · De statuswijziging naar klaar stond alleen op ticket/TB-bicep-ai-provider (commit na de merge van PR 121); nu op main gemerged, zodat het bord het ticket niet langer in review toont.
