@@ -313,7 +313,14 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Kat.ISignaalopslag, Jaarplanner.Infrastructure.Kat.EfSignaalopslag>();
         services.AddScoped<Jaarplanner.Application.Kat.Katdekkingbron>(sp =>
             (klasId, ct) => sp.GetRequiredService<DekkingService>().BerekenAsync(klasId, cancellationToken: ct));
+        services.AddScoped<Jaarplanner.Application.Kat.IKatplanbron, Jaarplanner.Infrastructure.Kat.EfKatplanbron>();
         services.AddScoped<Jaarplanner.Application.Kat.Signaalronde>();
+
+        // The dekking detectors (FB-069, ADR-0059 D4). Registered as ISignaaldetector, so the round finds them and
+        // nothing else has to know they exist; neither takes an IAiClient, which is what makes the detection
+        // deterministic (K1).
+        services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.MinimumdoelInGevaarDetector>();
+        services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.SubthemaNietGeplandDetector>();
         services.AddScoped<Jaarplanner.Application.Kat.IDeurmatService, Jaarplanner.Infrastructure.Kat.DeurmatService>();
 
         // The background job that ticks it (D1). Off unless an environment asks for it, because it writes without

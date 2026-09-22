@@ -4,6 +4,13 @@
     <ProjectReference Include="..\Jaarplanner.Domain\Jaarplanner.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- So a unit test can reach the counting rules of the cat's detectors (FB-069) directly: how many lesweken are
+         still free, and where a thema's run really ends. They are the subtle part and they belong in a test of their
+         own, but they are nobody's public API. Infrastructure opens itself to the same project for the same reason. -->
+    <InternalsVisibleTo Include="Jaarplanner.UnitTests" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
