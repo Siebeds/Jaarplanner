@@ -2,12 +2,12 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 17:45
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 23:59
+opgepakt-door: claude-fb071
+branch: ticket/FB-071-chuck
 pr:
 geblokkeerd:
 fr: []
@@ -126,3 +126,4 @@ Nog open:
 ## Werklog
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
+- 2026-09-22 23:59 · claude-fb071 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; beslist: achter een admin-instelling tot de onderwijsadviseur Chuck goedkeurt
