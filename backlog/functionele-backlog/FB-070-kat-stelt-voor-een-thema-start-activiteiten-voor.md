@@ -2,12 +2,12 @@
 id: FB-070
 titel: Kat stelt voor een thema start activiteiten voor in een discipline met een aanbod-gat
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:11
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 21:52
+opgepakt-door: claude-fb070
+branch: ticket/FB-070-aanbodgat
 pr:
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-9.2]
@@ -88,3 +88,4 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)
+- 2026-09-22 21:52 · claude-fb070 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
