@@ -460,4 +460,56 @@ public sealed class WeekplanningServiceTests
         Assert.DoesNotContain("AantalGedekt", weekVelden);
         Assert.DoesNotContain("Dekkingspercentage", weekVelden);
     }
+
+    /// <summary>
+    /// FB-076: the panel asks where an activiteit already stands, over the WHOLE year. The days a teacher is looking
+    /// at are exactly the days she does not need to be told about, so a week-scoped answer would say "not planned"
+    /// about the one case the ticket exists for.
+    /// </summary>
+    [Fact]
+    public async Task De_plaatsingen_van_een_activiteit_gelden_voor_het_hele_schooljaar()
+    {
+        var tweede = Guid.NewGuid();
+        var (service, _, klas, _) = Maak(inhoud: [Inhoud("K3"), Inhoud("K3", tweede)]);
+
+        // Three weeks apart, so no one week holds both, and planned in the wrong order to pin the sort.
+        var laat = new DateOnly(2026, 9, 30);
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, laat, Begin, Einde);
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
+        await service.PlanActiviteitAsync(klas.Id, tweede, Woensdag, new TimeOnly(10, 0), new TimeOnly(10, 50));
+
+        var plaatsingen = await service.HaalActiviteitplaatsingenAsync(klas.Id);
+
+        var eerste = Assert.Single(plaatsingen.Activiteiten, a => a.ActiviteitId == ActiviteitId);
+        Assert.Equal([Woensdag, laat], eerste.Datums);
+        Assert.Equal([Woensdag], Assert.Single(plaatsingen.Activiteiten, a => a.ActiviteitId == tweede).Datums);
+    }
+
+    /// <summary>
+    /// An activiteit planned twice on one day is one day to a teacher reading "when did I use this?", and the panel
+    /// would print the same date twice. A klas without a plan is not an error: it simply has nothing planned.
+    /// </summary>
+    [Fact]
+    public async Task Twee_plaatsingen_op_dezelfde_dag_leveren_die_dag_een_keer_op()
+    {
+        var (service, _, klas, _) = Maak();
+
+        Assert.Empty((await service.HaalActiviteitplaatsingenAsync(klas.Id)).Activiteiten);
+
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, Begin, Einde);
+        await service.PlanActiviteitAsync(klas.Id, ActiviteitId, Woensdag, new TimeOnly(14, 0), new TimeOnly(14, 50));
+
+        var gepland = Assert.Single((await service.HaalActiviteitplaatsingenAsync(klas.Id)).Activiteiten);
+        Assert.Equal([Woensdag], gepland.Datums);
+    }
+
+    /// <summary>A klas that does not exist is a 404 here, as on every other read of this controller.</summary>
+    [Fact]
+    public async Task Plaatsingen_van_een_onbekende_klas_zijn_niet_gevonden()
+    {
+        var (service, _, _, _) = Maak();
+
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(
+            () => service.HaalActiviteitplaatsingenAsync(Guid.NewGuid()));
+    }
 }

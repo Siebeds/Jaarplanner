@@ -100,6 +100,40 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     /// <summary>
+    /// FB-076: the panel reads where an activiteit already stands over the WHOLE year, and one day of that year is
+    /// the one it may not answer from — the week on screen.
+    /// <para>
+    /// <b>Postgres rather than the fake, for reason 1 at the top of this file.</b> This read goes through
+    /// <c>LaadJaarplanAsync</c>, whose <c>Include</c> of the placements is exactly what an in-memory aggregate cannot
+    /// prove: without it every activiteit would come back unplanned, and the panel would quietly mark nothing.
+    /// </para>
+    /// </summary>
+    [PostgresFact]
+    public async Task De_plaatsingen_van_de_klas_komen_terug_voor_het_hele_jaar()
+    {
+        var opzet = await ZetOpAsync();
+        var client = _factory.CreateClient();
+        var eerste = await MaakActiviteitAsync(client, opzet, "Bladeren zoeken");
+        var tweede = await MaakActiviteitAsync(client, opzet, "Kastanjes rapen", subthemaNaam: "De beek");
+
+        var later = opzet.EersteLesdag.AddDays(21);
+        await PlanAsync(client, opzet.KlasId, eerste, opzet.EersteLesdag);
+        await PlanAsync(client, opzet.KlasId, eerste, later);
+
+        // A SECOND request, so the answer comes from the database rather than from the tracked aggregate.
+        var plaatsingen = await client.GetFromJsonAsync<PlaatsingenDto>(
+            $"/api/klassen/{opzet.KlasId}/jaarplan/activiteitplaatsingen");
+
+        var gepland = Assert.Single(plaatsingen!.Activiteiten);
+        Assert.Equal(eerste, gepland.ActiviteitId);
+        Assert.Equal([opzet.EersteLesdag, later], gepland.Datums);
+
+        // Planned nowhere is absent rather than present with an empty list: the panel marks what is here, and
+        // "planned, but the days did not load" must never read as "not planned".
+        Assert.DoesNotContain(plaatsingen.Activiteiten, a => a.ActiviteitId == tweede);
+    }
+
+    /// <summary>
     /// The unique index on <c>(JaarplanId, ActiviteitId, Datum, Begin)</c> holds in the database, and the service
     /// refuses the duplicate <b>before</b> it gets there: a raw 23505 would surface as a 500 with an English detail.
     /// <para>
@@ -792,6 +826,10 @@ public sealed class WeekplanningEndpointsTests : IAsyncLifetime
     }
 
     private sealed record Opzet(Guid KlasId, Guid AndereKlasId, DateOnly EersteLesdag);
+
+    private sealed record PlaatsingenDto(IReadOnlyList<GeplandeActiviteitDto> Activiteiten);
+
+    private sealed record GeplandeActiviteitDto(Guid ActiviteitId, IReadOnlyList<DateOnly> Datums);
 
     private sealed record Inhoud(Guid ThemaId, Guid SubthemaId, Guid ActiviteitId);
 

@@ -26,6 +26,7 @@ import type {
   ThemaDoelenoverzicht,
   ThemaWeergave,
   Weekplanning,
+  Activiteitplaatsingen,
 } from "./types";
 
 /**
@@ -532,6 +533,26 @@ export function useWeekplanning(klasId: string | null, van: string, tot: string)
     queryKey: weekplanningSleutel(klasId ?? "", van, tot),
     queryFn: () => get<Weekplanning>(`/api/klassen/${klasId}/jaarplan/weekplanning${naarQuery({ van, tot })}`),
     enabled: Boolean(klasId) && van.length > 0 && tot.length > 0,
+  });
+}
+
+/**
+ * Where the klas already planned each of its activiteiten, over the whole school year (FB-076).
+ *
+ * **Deliberately keyed inside the `weekplanning` family.** Everything that moves an activiteit already invalidates
+ * that family whole (`useDagacties`, `usePlaatsingacties`, a regeneration), because a move usually leaves a week the
+ * screen is not showing. Hanging this under the same root means those three keep this list fresh without knowing it
+ * exists, which is the opposite of the "a new caller forgets" problem `usePlaatsingacties` documents. The tail
+ * segment keeps it apart from the ranges: a range key is `[…, klasId, van, tot]`.
+ */
+export const activiteitplaatsingenSleutel = (klasId: string) =>
+  ["weekplanning", klasId, "activiteitplaatsingen"] as const;
+
+export function useActiviteitplaatsingen(klasId: string | null) {
+  return useQuery({
+    queryKey: activiteitplaatsingenSleutel(klasId ?? ""),
+    queryFn: () => get<Activiteitplaatsingen>(`/api/klassen/${klasId}/jaarplan/activiteitplaatsingen`),
+    enabled: Boolean(klasId),
   });
 }
 

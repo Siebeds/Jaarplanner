@@ -558,11 +558,20 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     "t-2": thema("t-2", "Sinterklaas", [subthema("s-3", "t-2", "De stoomboot", [])]),
   };
 
-  function stubAntwoorden(bestemmingen: unknown[] = BESTEMMINGEN) {
+  /**
+   * @param plaatsingen What the FB-076 read answers. A 404 by default, which is also what the other tests here run
+   * on: a card then says nothing about where it stands, rather than claiming it stands nowhere.
+   */
+  function stubAntwoorden(bestemmingen: unknown[] = BESTEMMINGEN, plaatsingen?: { activiteitId: string; datums: string[] }[]) {
     vi.stubGlobal(
       "fetch",
       vi.fn((pad: string) => {
         if (pad.includes("/api/subthemas/voor-klas/k-1")) return Promise.resolve(antwoord(bestemmingen));
+        if (pad.includes("/jaarplan/activiteitplaatsingen")) {
+          return plaatsingen
+            ? Promise.resolve(antwoord({ activiteiten: plaatsingen }))
+            : Promise.resolve(new Response("{}", { status: 404 }));
+        }
         const themaId = /\/api\/themas\/([^/]+)\/voor-klas\/k-1/.exec(pad)?.[1];
         if (themaId && THEMAS[themaId]) return Promise.resolve(antwoord(THEMAS[themaId]));
         return Promise.resolve(new Response("{}", { status: 404 }));
@@ -622,6 +631,39 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     expect(onKiesActiviteit).toHaveBeenCalledWith({ id: "a-2", naam: "Paddenstoelen tekenen", duur: 2 * STANDAARDDUUR });
     // The other subthema's activiteiten are not in this list.
     expect(screen.queryByText("Eikels rapen")).not.toBeInTheDocument();
+  });
+
+  it("markeert een activiteit die al in de agenda van de klas staat, met de dag erbij (FB-076)", async () => {
+    stubAntwoorden(BESTEMMINGEN, [{ activiteitId: "a-2", datums: ["2026-10-13"] }]);
+    toonActiviteiten({ lopend: ["s-2"] });
+
+    const gemarkeerd = (await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ })) as HTMLElement;
+    expect(within(gemarkeerd).getByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }))).toBeInTheDocument();
+    expect(gemarkeerd.className).toContain("border-l-inkt-zwak");
+
+    // An activiteit that stands nowhere says nothing at all: no rule, no sentence.
+    fireEvent.change(keuzelijst(), { target: { value: "s-1" } });
+    const kaal = (await screen.findByRole("button", { name: /^Eikels rapen/ })) as HTMLElement;
+    expect(kaal.className).not.toContain("border-l-inkt-zwak");
+    expect(within(kaal).queryByText(/Ingepland/)).not.toBeInTheDocument();
+  });
+
+  it("laat de markering los zodra de activiteit uit de agenda gehaald is, zonder herladen (FB-076)", async () => {
+    stubAntwoorden(BESTEMMINGEN, [{ activiteitId: "a-2", datums: ["2026-10-13"] }]);
+    const { client } = toonActiviteiten({ lopend: ["s-2"] });
+    await screen.findByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }));
+
+    // Exactly what taking it off a day does: the placement is gone, and `useDagacties` invalidates the whole
+    // weekplanning family. This read hangs under that family on purpose, so it is refetched without knowing about it.
+    stubAntwoorden(BESTEMMINGEN, []);
+    await client.invalidateQueries({ queryKey: ["weekplanning"] });
+
+    await waitFor(() =>
+      expect(screen.queryByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }))).not.toBeInTheDocument(),
+    );
+    expect((screen.getByRole("button", { name: /^Paddenstoelen tekenen/ }) as HTMLElement).className).not.toContain(
+      "border-l-inkt-zwak",
+    );
   });
 
   it("laat een ander subthema kiezen, gegroepeerd per thema, en toont dan diens activiteiten", async () => {

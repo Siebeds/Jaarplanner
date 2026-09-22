@@ -29,6 +29,18 @@ public interface IWeekplanningService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Every activiteit this klas has planned, with the days it stands on, over the whole school year (FB-076).
+    /// <para>
+    /// Its own read rather than a field on the week: the panel needs the days the week view is not showing, which is
+    /// the only reason a teacher plans the same activiteit twice without noticing.
+    /// </para>
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such class.</exception>
+    Task<Activiteitplaatsingenweergave> HaalActiviteitplaatsingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Schedules one activiteit onto one day. The placement lands as <c>manueel</c> — a teacher's own decision, which
     /// nothing regenerates away (Art. IV.2).
     /// </summary>

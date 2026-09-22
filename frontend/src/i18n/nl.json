@@ -1304,7 +1304,10 @@
     "geenLopendInWeek": "In week {nummer} loopt er geen subthema.",
     "geenSubthemas": "Voor de leeftijd van deze klas zijn er nog geen subthema's.",
     "naarThemas": "Naar de thema's",
-    "geenActiviteiten": "Dit subthema heeft nog geen activiteiten."
+    "geenActiviteiten": "Dit subthema heeft nog geen activiteiten.",
+    "ingeplandOp": "Ingepland op {dag}",
+    "ingeplandOpTwee": "Ingepland op {eerste} en {tweede}",
+    "ingeplandOpMeer": "Ingepland op {aantal} dagen, vanaf {eerste}"
   },
   "activiteitplaatsing": {
     "titel": "{naam} inplannen",
