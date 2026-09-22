@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 22:30
+bijgewerkt: 2026-09-22 22:38
 opgepakt-door: claude-fb080
 branch: ticket/FB-080-dekking-per-discipline
 pr:
@@ -58,3 +58,5 @@ Geen.
 - 2026-09-22 22:01 · eigenaar · nieuw → klaar-voor-bouw: opgenomen in de backlog: klaar voor bouw
 - 2026-09-22 22:03 · claude-fb080 · klaar-voor-bouw → in-uitvoering: opgepakt
 - 2026-09-22 22:30 · claude-fb080 · dekking per discipline gebouwd: aantal, percentage en prognose per groep, plus een doelsoortfilter dat de cijfers stuurt; 1251 frontend-tests en lint groen, browserpas op 1440px en 390px
+- 2026-09-22 22:38 · claude-fb080 · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR's opgelost (export zegt dat hij alle doelsoorten bevat, het aantal bij een doelsoortknop krijgt zijn woord, de tests halen hun Nederlands uit de catalogus)
+- 2026-09-22 22:38 · claude-fb080 · MINOR blijft liggen: de teller van een discipline noemt de gekozen doelsoort niet in haar sr-only-zin; de meter erboven doet dat wel

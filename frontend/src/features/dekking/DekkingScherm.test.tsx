@@ -299,6 +299,9 @@ describe("DekkingScherm (TB-022)", () => {
 });
 
 describe("DekkingScherm: per discipline, met de doelsoortfilter (FB-080)", () => {
+  /** De tellingregel zoals de groepkop ze toont, uit de catalogus samengesteld. */
+  const regel = (deel: number, prognose: number) =>
+    `${t("dekking.deelGedekt", { deel })} · ${t("dekking.meterPrognose", { aantal: prognose })}`;
   const soortenfilter = () => screen.getByRole("radiogroup", { name: t("dekking.doelsoort") });
   const soortknop = (soort: string) =>
     within(soortenfilter()).getByRole("radio", { name: new RegExp(`^${soort}`) });
@@ -307,11 +310,11 @@ describe("DekkingScherm: per discipline, met de doelsoortfilter (FB-080)", () =>
     await toonLeerplandoelen();
 
     // Wiskunde: 1 van 3 gedekt, 2 in de prognose. Muzische vorming: 0 van 2, 0 in de prognose.
-    expect(within(disciplineknop("Wiskunde")).getByText("33% gedekt · 2 in prognose")).toBeInTheDocument();
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(33, 2))).toBeInTheDocument();
     expect(
       within(disciplineknop("Wiskunde")).getByText(t("dekking.groepTelling", { gedekt: 1, totaal: 3, deel: 33, prognose: 2 })),
     ).toBeInTheDocument();
-    expect(within(disciplineknop("Muzische vorming")).getByText("0% gedekt · 0 in prognose")).toBeInTheDocument();
+    expect(within(disciplineknop("Muzische vorming")).getByText(regel(0, 0))).toBeInTheDocument();
   });
 
   it("laat de disciplines optellen tot het totaal dat de meter toont", async () => {
@@ -347,21 +350,21 @@ describe("DekkingScherm: per discipline, met de doelsoortfilter (FB-080)", () =>
         }),
       ),
     ).toBeInTheDocument();
-    expect(within(disciplineknop("Muzische vorming")).getByText("0% gedekt · 0 in prognose")).toBeInTheDocument();
+    expect(within(disciplineknop("Muzische vorming")).getByText(regel(0, 0))).toBeInTheDocument();
     expect(screen.getByText(t("dekking.soortMinimumdoel"))).toBeInTheDocument();
 
     // Wiskunde houdt onder Nog te doen geen enkel ontbrekend minimumdoel over, dus staat het bij Alle doelen.
     fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
-    expect(within(disciplineknop("Wiskunde")).getByText("100% gedekt · 0 in prognose")).toBeInTheDocument();
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(100, 0))).toBeInTheDocument();
 
     // En terug: Alle soorten geeft de volle cijfers.
     fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleSoorten") }));
-    expect(within(disciplineknop("Wiskunde")).getByText("33% gedekt · 2 in prognose")).toBeInTheDocument();
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(33, 2))).toBeInTheDocument();
   });
 
   it("laat 'Nog te doen' de cijfers met rust, want die verandert alleen wat er staat", async () => {
     await toonLeerplandoelen();
-    const telling = "33% gedekt · 2 in prognose";
+    const telling = regel(33, 2);
 
     expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));

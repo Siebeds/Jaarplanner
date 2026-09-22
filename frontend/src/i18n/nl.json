@@ -404,6 +404,7 @@
     "alleSoorten": "Alle soorten",
     "leerplandoelenSoort": "Leerplandoelen ({soort})",
     "soortMinimumdoel": "Dit zijn de leerplandoelen van de soort minimumdoel. De dekking van de minimumdoelen zelf staat onder Minimumdoelen.",
+    "exportAlleSoorten": "De export bevat alle doelsoorten.",
     "acties": "Wat nog ontbreekt",
     "winstEen": "+1 doel",
     "winst": "+{aantal} doelen",

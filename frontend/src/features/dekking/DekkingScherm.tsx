@@ -288,12 +288,17 @@ function Dekkingsmeter({ cijfers, doelsoort, exportPad }: { cijfers: Cijfers; do
             {t("dekking.geenCijfer")}
           </p>
         )}
-        <a
-          href={exportPad}
-          className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
-        >
-          {t("dekking.export")}
-        </a>
+        {/* The export takes the bereik but not the doelsoort, so while one is chosen it says so: the figures in the
+            file are the whole scope's, not the ones beside this button (Art. V.4). */}
+        <span className="flex shrink-0 flex-col items-end gap-1">
+          <a
+            href={exportPad}
+            className="inline-flex h-9 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt transition-colors duration-150 hover:border-inkt"
+          >
+            {t("dekking.export")}
+          </a>
+          {doelsoort ? <span className="text-meta text-inkt-zacht">{t("dekking.exportAlleSoorten")}</span> : null}
+        </span>
       </div>
 
       {cijfers ? (
@@ -401,7 +406,12 @@ function Doelsoortfilter({
               )}
             >
               <Doelsoortmerk soort={doelsoort} />
-              <span className="mono text-[0.6875rem] text-inkt-zacht">{aantal}</span>
+              {/* The bare number would read as an accessible name like "Minimumdoel 2" on a screen whose other
+                  figures are deliberately blank; the word says which number this is. */}
+              <span className="mono text-[0.6875rem] text-inkt-zacht">
+                <span aria-hidden="true">{aantal}</span>
+                <span className="sr-only">{telWoord(aantal, "doelen.eenDoel", "doelen.aantalDoelen")}</span>
+              </span>
             </button>
           );
         })}
