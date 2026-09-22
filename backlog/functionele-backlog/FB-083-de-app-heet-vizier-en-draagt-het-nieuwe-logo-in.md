@@ -8,7 +8,7 @@ aangemaakt: 2026-09-22
 bijgewerkt: 2026-09-22 23:25
 opgepakt-door: claude-fb083
 branch: ticket/FB-083-vizier-logo
-pr:
+pr: 158
 geblokkeerd:
 fr: []
 ---
@@ -93,3 +93,4 @@ Geen.
 - 2026-09-22 23:18 · claude-fb083 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-22 23:24 · claude-fb083 · gebouwd: Merk toont de SVG's uit public/merk (licht/donker via dark:-variant, ook bij expliciete keuze), naam Vizier in nl.json en de statische tussenpagina-h1, ADR-0063; criteria afgevinkt op Merk.test.tsx en een browsercontrole (1440 licht/donker/smalle balk, 390 geen-toegang, afgemeld donker, licht-op-donker-toestel); vitest 1263 groen, lint groen
 - 2026-09-22 23:25 · claude-fb083 · in-uitvoering → te-testen: klaar: logo en naam Vizier in zijbalk en aanmeldschermen, ADR-0063; vitest en lint groen, browsercontrole gedaan; antagonist COMPLIANT (MINOR ADR-verwijzing in Merk.tsx opgelost)
+- 2026-09-22 23:25 · claude-fb083 · PR #158
