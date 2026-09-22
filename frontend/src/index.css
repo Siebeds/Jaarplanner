@@ -72,7 +72,8 @@
      desktop app's petrol, so the three frontends read as one product.
 
      It is spent on exactly five things: the primary action, the active destination, the
-     focus ring, the fill of the year strip, and a selected row. Anywhere else and it starts
+     focus ring, the fill of the year strip, and a selected row. The dot in the Vizier logo is
+     this hue drawn into the image (ADR-0063), not a sixth use. Anywhere else and it starts
      competing with the domain colours again, which is the whole thing this palette avoids.
 
      A selected row includes the time being chosen in the agenda's time grid, while it is

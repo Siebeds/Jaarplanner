@@ -2,13 +2,13 @@
 id: FB-083
 titel: De app heet Vizier en draagt het nieuwe logo in de zijbalk en de aanmeldschermen
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 21:49
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-22 23:25
+opgepakt-door: claude-fb083
+branch: ticket/FB-083-vizier-logo
+pr: 158
 geblokkeerd:
 fr: []
 ---
@@ -48,17 +48,17 @@ iets anders en blijft ongemoeid.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een aangemelde leerkracht, wanneer die de app opent met de zijbalk uitgeklapt, dan staat
+- [x] Gegeven een aangemelde leerkracht, wanneer die de app opent met de zijbalk uitgeklapt, dan staat
       linksboven het Vizier-logo met het woordmerk, en nergens nog het woord "Jaarplanner".
-- [ ] Gegeven diezelfde leerkracht, wanneer die de zijbalk inklapt tot de smalle balk, dan staat daar het
+- [x] Gegeven diezelfde leerkracht, wanneer die de zijbalk inklapt tot de smalle balk, dan staat daar het
       beeldmerk alleen, en blijft "Vizier" beschikbaar voor een schermlezer.
-- [ ] Gegeven een leerkracht in donkere weergave, wanneer die de zijbalk of een aanmeldscherm bekijkt, dan
+- [x] Gegeven een leerkracht in donkere weergave, wanneer die de zijbalk of een aanmeldscherm bekijkt, dan
       toont het logo de versie voor donkere grond, en is het leesbaar tegen die achtergrond.
-- [ ] Gegeven iemand met een account zonder toegang, wanneer die zich aanmeldt, dan draagt het scherm
+- [x] Gegeven iemand met een account zonder toegang, wanneer die zich aanmeldt, dan draagt het scherm
       "Geen toegang" het logo en noemt de tekst de app Vizier.
-- [ ] Gegeven de logobestanden in `frontend/public/merk/`, wanneer je ze vervangt door bestanden met
+- [x] Gegeven de logobestanden in `frontend/public/merk/`, wanneer je ze vervangt door bestanden met
       dezelfde namen, dan toont de app het nieuwe logo zonder dat er code wijzigt.
-- [ ] Er is een ADR die de naam Vizier en het merk vastlegt, met de vaststelling dat de logokleuren gelijk
+- [x] Er is een ADR die de naam Vizier en het merk vastlegt, met de vaststelling dat de logokleuren gelijk
       zijn aan `--color-accent` en de inkt, en dat de repository en de infrastructuur Jaarplanner blijven.
 
 ## Testscenario's
@@ -90,3 +90,7 @@ Geen.
 ## Werklog
 
 - 2026-09-22 21:49 · Siebe · aangemaakt (status nieuw)
+- 2026-09-22 23:18 · claude-fb083 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-22 23:24 · claude-fb083 · gebouwd: Merk toont de SVG's uit public/merk (licht/donker via dark:-variant, ook bij expliciete keuze), naam Vizier in nl.json en de statische tussenpagina-h1, ADR-0063; criteria afgevinkt op Merk.test.tsx en een browsercontrole (1440 licht/donker/smalle balk, 390 geen-toegang, afgemeld donker, licht-op-donker-toestel); vitest 1263 groen, lint groen
+- 2026-09-22 23:25 · claude-fb083 · in-uitvoering → te-testen: klaar: logo en naam Vizier in zijbalk en aanmeldschermen, ADR-0063; vitest en lint groen, browsercontrole gedaan; antagonist COMPLIANT (MINOR ADR-verwijzing in Merk.tsx opgelost)
+- 2026-09-22 23:25 · claude-fb083 · PR #158

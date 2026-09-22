@@ -21,7 +21,7 @@ export function AfgemeldScherm() {
   return (
     <main className="min-h-dvh px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-[34rem]">
-        <Merk />
+        <Merk groot />
 
         <h1 className="mt-12 font-display text-scherm text-inkt">{t("aanmelding.afgemeld.titel")}</h1>
         <p className="mt-4 text-body text-inkt-zacht">{t("aanmelding.afgemeld.gedeeldeComputer")}</p>
