@@ -114,26 +114,69 @@ public sealed class MinimumdoelInGevaarDetectorTests
     }
 
     [Fact]
-    public void Een_lesweek_die_al_voorbij_is_telt_niet_als_vrij()
+    public async Task Een_lesweek_die_al_voorbij_is_telt_niet_mee_als_vrij()
     {
-        var plan = Detectorbouw.Plan([
-            (DezeMaandag.AddDays(-14), false),
-            (DezeMaandag.AddDays(-7), false),
-            (DezeMaandag, false),
-            (DezeMaandag.AddDays(7), true),
-            (DezeMaandag.AddDays(14), false),
-        ]);
+        var detector = new MinimumdoelInGevaarDetector(
+            new NepJaarplanlezer(Detectorbouw.Plan([
+                (DezeMaandag.AddDays(-14), false),
+                (DezeMaandag.AddDays(-7), false),
+                (DezeMaandag, false),
+                (DezeMaandag.AddDays(7), true),
+                (DezeMaandag.AddDays(14), false),
+            ])),
+            new NepKatplanbron { Dragers = [new Jaarplanner.Application.Kat.Themadrager("K-12", Water, "Water", 4)] });
+        var context = Detectorbouw.Context(
+            Detectorbouw.Dekking([Detectorbouw.Minimumdoel("K-12", Dekkingsstap.Prognose)]),
+            Vandaag);
 
-        Assert.Equal(2, MinimumdoelInGevaarDetector.TelVrijeLesweken(plan, Vandaag));
+        var vondst = Assert.Single(await detector.DetecteerAsync(context, CancellationToken.None));
+
+        // Two weeks left that nothing is aimed at: this one and the last. The two that are past are gone, and the
+        // one with a thema on it is taken.
+        Assert.Equal(2, vondst.Gegevens[MinimumdoelInGevaarDetector.Sleutels.VrijeLesweken]);
     }
 
     [Fact]
-    public void Een_week_met_een_voorgesteld_thema_telt_niet_als_vrij()
+    public async Task Een_week_met_een_voorgesteld_thema_telt_niet_als_vrij()
     {
         // The plan screen already calls such a week "met thema", and the prognose the doel sits in counts a proposed
         // placement too; counting it free here would let the cat contradict both.
-        var plan = Detectorbouw.Plan([(DezeMaandag, true), (DezeMaandag.AddDays(7), false)]);
+        var detector = new MinimumdoelInGevaarDetector(
+            new NepJaarplanlezer(Detectorbouw.Plan([(DezeMaandag, true), (DezeMaandag.AddDays(7), false)])),
+            new NepKatplanbron { Dragers = [new Jaarplanner.Application.Kat.Themadrager("K-12", Water, "Water", 4)] });
+        var context = Detectorbouw.Context(
+            Detectorbouw.Dekking([Detectorbouw.Minimumdoel("K-12", Dekkingsstap.Prognose)]),
+            Vandaag);
 
-        Assert.Equal(1, MinimumdoelInGevaarDetector.TelVrijeLesweken(plan, Vandaag));
+        var vondst = Assert.Single(await detector.DetecteerAsync(context, CancellationToken.None));
+
+        Assert.Equal(1, vondst.Gegevens[MinimumdoelInGevaarDetector.Sleutels.VrijeLesweken]);
+    }
+
+    [Fact]
+    public async Task Een_doel_dat_op_een_onbeantwoord_voorstel_wacht_krijgt_geen_ruimtemelding()
+    {
+        // Its thema is already in the plan, awaiting her answer: the act is to accept that placement, not to make
+        // room, so "er zijn nog zoveel lesweken vrij" would send her the wrong way.
+        var detector = Detector(vrijeLesweken: 0, new Jaarplanner.Application.Kat.Themadrager("K-12", Water, "Water", 4));
+        var context = Detectorbouw.Context(
+            Detectorbouw.Dekking([Detectorbouw.Minimumdoel("K-12", Dekkingsstap.Prognose, oorzaak: Lacuneoorzaak.WachtOpBeslissing)]),
+            Vandaag);
+
+        Assert.Empty(await detector.DetecteerAsync(context, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task De_melding_wijst_naar_het_dekkingsoverzicht()
+    {
+        var detector = Detector(vrijeLesweken: 3, new Jaarplanner.Application.Kat.Themadrager("K-12", Water, "Water", 4));
+        var context = Detectorbouw.Context(
+            Detectorbouw.Dekking([Detectorbouw.Minimumdoel("K-12", Dekkingsstap.Prognose)]),
+            Vandaag);
+
+        var vondst = Assert.Single(await detector.DetecteerAsync(context, CancellationToken.None));
+
+        // A route the frontend router actually has: the klas comes from the klasfilter, not from the path.
+        Assert.Equal("/dekking", vondst.Verwijzing);
     }
 }

@@ -16,17 +16,25 @@ public sealed class EfKatplanbron : IKatplanbron
 
     public EfKatplanbron(AppDbContext context) => _context = context;
 
-    public async Task<IReadOnlyList<Themadrager>> HaalThemadragersAsync(CancellationToken ct) =>
-        await _context.Themas.AsNoTracking()
+    public async Task<IReadOnlyList<Themadrager>> HaalThemadragersAsync(CancellationToken ct)
+    {
+        var dragers = await _context.Themas.AsNoTracking()
             .SelectMany(t => t.Minimumdoelen.Select(m => new Themadrager(m.MinimumdoelRef, t.Id, t.Naam, t.DuurWeken)))
             .ToListAsync(ct);
+
+        return dragers.Distinct().ToList();
+    }
 
     public async Task<IReadOnlyList<Katsubthema>> HaalSubthemasAsync(Guid klasId, CancellationToken ct)
     {
         var gepland = await GeplaatsteSubthemaIdsAsync(klasId, ct);
 
-        // Only decided goal links count, as the dekking counts them: a proposal nobody has accepted covers nothing
-        // (Art. IV.1, Art. V.1).
+        // What a subthema covers has two routes, and Art. V.1 names both: its subdoelen, and the goals linked to a
+        // shared activiteit under it. Reading only the first would make the cat silent about a subthema whose open
+        // goals hang on its activiteiten, and would under-report the goals it does name.
+        //
+        // Only decided links count, as the dekking counts them: a proposal nobody has accepted covers nothing
+        // (Art. IV.1, Art. V.1). An own activiteit never counts through its subthema (ADR-0049 D7).
         var subthemas = await _context.Subthemas.AsNoTracking()
             .Select(s => new
             {
@@ -34,9 +42,15 @@ public sealed class EfKatplanbron : IKatplanbron
                 s.ThemaId,
                 s.Naam,
                 s.Leeftijd,
-                Codes = s.Subdoelen
+                Subdoelcodes = s.Subdoelen
                     .Where(d => d.Koppeling.Status == KoppelingStatus.Aanvaard || d.Koppeling.Status == KoppelingStatus.Manueel)
                     .Select(d => d.Koppeling.LeerplandoelCode)
+                    .ToList(),
+                Activiteitcodes = s.Activiteiten
+                    .Where(a => a.EigenaarId == null)
+                    .SelectMany(a => a.Doelkoppelingen
+                        .Where(k => k.Status == KoppelingStatus.Aanvaard || k.Status == KoppelingStatus.Manueel)
+                        .Select(k => k.LeerplandoelCode))
                     .ToList(),
             })
             .ToListAsync(ct);
@@ -48,7 +62,7 @@ public sealed class EfKatplanbron : IKatplanbron
                 s.Naam,
                 s.Leeftijd,
                 gepland.Contains(s.Id),
-                s.Codes.Distinct(StringComparer.Ordinal).ToList()))
+                s.Subdoelcodes.Concat(s.Activiteitcodes).Distinct(StringComparer.Ordinal).ToList()))
             .ToList();
     }
 

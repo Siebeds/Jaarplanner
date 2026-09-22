@@ -81,14 +81,18 @@ internal static class Detectorbouw
             Minimumdoelen: mds);
     }
 
-    public static MinimumdoelDekking Minimumdoel(string doelRef, Dekkingsstap stap, string omschrijving = "Het kind telt tot tien.") =>
+    public static MinimumdoelDekking Minimumdoel(
+        string doelRef,
+        Dekkingsstap stap,
+        string omschrijving = "Het kind telt tot tien.",
+        Lacuneoorzaak? oorzaak = null) =>
         new(doelRef, "K-", doelRef, omschrijving, "Wiskunde", null, null,
             NietMeerInOpstap: false,
             Stap: stap,
             IsGedekt: stap == Dekkingsstap.Gedekt,
             PrognoseThemas: [],
             DekkendeThemas: [],
-            Oorzaak: null,
+            Oorzaak: oorzaak,
             KandidaatThemas: []);
 
     public static LeerplandoelDekking Leerplandoel(string code, bool isGedekt) =>
@@ -124,8 +128,9 @@ internal static class Detectorbouw
         DateOnly van,
         DateOnly tot,
         bool isVervallen = false,
-        ReeksWeergave? reeks = null) =>
-        new(Guid.NewGuid(), themaId, naam, van, tot, isVervallen, "Aanvaard", null, false, [], 4, reeks);
+        ReeksWeergave? reeks = null,
+        string status = "Aanvaard") =>
+        new(Guid.NewGuid(), themaId, naam, van, tot, isVervallen, status, null, false, [], 4, reeks);
 
     /// <summary>A schooljaar with no closures: every weekday is a schooldag, which keeps a calendar test readable.</summary>
     public static Schooljaar Schooljaar() => new("2026-2027", new DateOnly(2026, 9, 1), new DateOnly(2027, 6, 30));

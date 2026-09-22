@@ -20,7 +20,8 @@ public sealed record Themadrager(string MinimumdoelRef, Guid ThemaId, string The
 /// <param name="Leeftijd">The jaar/fase it is written for.</param>
 /// <param name="IsGepland">Whether this klas has it in the agenda: a subthemaplaatsing exists in its jaarplan.</param>
 /// <param name="Leerplandoelcodes">
-/// The codes its decided subdoelen aim at (<c>aanvaard</c> or <c>manueel</c> only), which is what it would cover.
+/// What it would cover, by both routes Art. V.1 names: its decided subdoelen, and the decided goals of the shared
+/// activiteiten under it. An own activiteit is not among them (ADR-0049 D7), and an undecided link covers nothing.
 /// </param>
 public sealed record Katsubthema(
     Guid SubthemaId,

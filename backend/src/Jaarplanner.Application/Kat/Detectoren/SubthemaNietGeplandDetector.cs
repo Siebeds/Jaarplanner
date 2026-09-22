@@ -90,7 +90,7 @@ public sealed class SubthemaNietGeplandDetector : ISignaaldetector
                         [Sleutels.Doelen] = mist,
                         [Sleutels.AantalDoelen] = mist.Count,
                     },
-                    $"/klassen/{context.KlasId}/agenda"));
+                    Agendaverwijzing.Periodes));
             }
         }
 
@@ -111,7 +111,7 @@ public sealed class SubthemaNietGeplandDetector : ISignaaldetector
         Themakalender kalender,
         DateOnly vandaag) =>
         plan.Plaatsingen
-            .Where(p => !p.IsVervallen)
+            .Where(p => !p.IsVervallen && !IsGeweigerd(p))
             .GroupBy(p => p.ThemaId)
             .Select(g => new
             {
@@ -122,4 +122,11 @@ public sealed class SubthemaNietGeplandDetector : ISignaaldetector
             .Where(t => t.Einde >= vandaag && kalender.TelSchooldagen(vandaag, t.Einde) <= Schooldagenvooraf)
             .Select(t => (t.ThemaId, t.ThemaNaam))
             .ToList();
+
+    /// <summary>
+    /// A rejected placement is not a period: nothing is taught on its account, so it can neither run nor end.
+    /// Compared as text because that is how <see cref="ThemaplaatsingWeergave"/> carries the status.
+    /// </summary>
+    private static bool IsGeweigerd(ThemaplaatsingWeergave plaatsing) =>
+        string.Equals(plaatsing.Status, nameof(Domain.Schoolcontent.KoppelingStatus.Geweigerd), StringComparison.Ordinal);
 }

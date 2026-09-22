@@ -38,7 +38,12 @@ public sealed class MinimumdoelInGevaarDetector : ISignaaldetector
         ArgumentNullException.ThrowIfNull(context);
 
         var dekking = await context.HaalDekkingAsync(ct);
-        var bedreigd = dekking.Minimumdoelen.Where(m => m.Stap == Dekkingsstap.Prognose).ToList();
+
+        // A doel whose carrying thema is already in the plan as a proposal is not short of room: the act is to answer
+        // that proposal, not to make space. Telling her how many lesweken are free would send her the wrong way.
+        var bedreigd = dekking.Minimumdoelen
+            .Where(m => m.Stap == Dekkingsstap.Prognose && m.Oorzaak != Lacuneoorzaak.WachtOpBeslissing)
+            .ToList();
         if (bedreigd.Count == 0)
         {
             return [];
@@ -78,7 +83,7 @@ public sealed class MinimumdoelInGevaarDetector : ISignaaldetector
                     [Sleutels.ThemaLesweken] = kortste.DuurWeken,
                     [Sleutels.VrijeLesweken] = vrij,
                 },
-                $"/klassen/{context.KlasId}/jaarplan"));
+                Agendaverwijzing.Dekking));
         }
 
         return vondsten;

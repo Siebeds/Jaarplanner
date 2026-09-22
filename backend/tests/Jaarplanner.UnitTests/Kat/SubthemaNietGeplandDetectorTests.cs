@@ -81,7 +81,7 @@ public sealed class SubthemaNietGeplandDetectorTests
     {
         var detector = Detector(
             [Detectorbouw.Plaatsing(Water, "Water", new DateOnly(2026, 9, 1), OverVierSchooldagen)],
-            Subthema(leeftijd: "K1"));
+            Subthema(leeftijd: "K2"));
 
         Assert.Empty(await detector.DetecteerAsync(Context(["K3"]), CancellationToken.None));
     }
@@ -93,7 +93,7 @@ public sealed class SubthemaNietGeplandDetectorTests
         // because a signal about a subthema of another leeftijd beats silence about her own.
         var detector = Detector(
             [Detectorbouw.Plaatsing(Water, "Water", new DateOnly(2026, 9, 1), OverVierSchooldagen)],
-            Subthema(leeftijd: "K1"));
+            Subthema(leeftijd: "K2"));
         var context = Detectorbouw.ContextZonderLeeftijd(
             Detectorbouw.Dekking(doelen: [Detectorbouw.Leerplandoel("N-01", isGedekt: false)]),
             Vandaag);
@@ -147,6 +147,30 @@ public sealed class SubthemaNietGeplandDetectorTests
             Subthema());
 
         Assert.Empty(await detector.DetecteerAsync(Context(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Een_geweigerde_plaatsing_is_geen_periode()
+    {
+        // Nothing is taught on its account, so it can neither run nor end.
+        var detector = Detector(
+            [Detectorbouw.Plaatsing(Water, "Water", new DateOnly(2026, 9, 1), OverVierSchooldagen, status: "Geweigerd")],
+            Subthema());
+
+        Assert.Empty(await detector.DetecteerAsync(Context(), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task De_melding_wijst_naar_de_periodes_van_het_jaarplan()
+    {
+        var detector = Detector(
+            [Detectorbouw.Plaatsing(Water, "Water", new DateOnly(2026, 9, 1), OverVierSchooldagen)],
+            Subthema());
+
+        var vondst = Assert.Single(await detector.DetecteerAsync(Context(), CancellationToken.None));
+
+        // A route the frontend router actually has: the klas comes from the klasfilter, not from the path.
+        Assert.Equal("/agenda/periodes", vondst.Verwijzing);
     }
 
     [Fact]
