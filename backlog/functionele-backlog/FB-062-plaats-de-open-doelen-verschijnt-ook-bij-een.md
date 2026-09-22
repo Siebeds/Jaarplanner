@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-22 23:35
+bijgewerkt: 2026-09-22 23:58
 opgepakt-door: claude-fb062
 branch: ticket/FB-062-open-doelen-zonder-subthema
 pr:
@@ -40,17 +40,17 @@ subthema's van die leeftijd beheert (de hoofdleerkracht van die jaarfase) en aan
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met een themadoel dat voor K2 leerplandoelen meebrengt en geen K2-subthema, wanneer de
+- [x] Gegeven een thema met een themadoel dat voor K2 leerplandoelen meebrengt en geen K2-subthema, wanneer de
   hoofdleerkracht van K2 of de directie de themapagina opent, dan staat K2 er met het aantal open leerplandoelen en de
   knop "Plaats de open doelen".
-- [ ] Gegeven diezelfde situatie, wanneer een hoofdleerkracht van K3 of een leerkracht de themapagina opent, dan staat
+- [x] Gegeven diezelfde situatie, wanneer een hoofdleerkracht van K3 of een leerkracht de themapagina opent, dan staat
   K2 er niet.
-- [ ] Gegeven een leeftijd zonder subthema en zonder open leerplandoelen, wanneer iemand de themapagina opent, dan
+- [x] Gegeven een leeftijd zonder subthema en zonder open leerplandoelen, wanneer iemand de themapagina opent, dan
   staat die leeftijd er niet.
-- [ ] Gegeven K2 zonder subthema, wanneer de hoofdleerkracht van K2 "Plaats de open doelen" kiest, dan verschijnen
+- [x] Gegeven K2 zonder subthema, wanneer de hoofdleerkracht van K2 "Plaats de open doelen" kiest, dan verschijnen
   voorgestelde nieuwe subthema's met hun doelen, de vage regenboogring, het label "Voorgesteld" en de icoontjes; wie
   geen recht heeft op K2, krijgt van de server een weigering.
-- [ ] Gegeven een voorgesteld nieuw subthema bij K2 zonder subthema, wanneer ik het aanvaard, dan bestaat het
+- [x] Gegeven een voorgesteld nieuw subthema bij K2 zonder subthema, wanneer ik het aanvaard, dan bestaat het
   K2-subthema met zijn doelen als subdoelen en daalt de teller bij K2.
 
 ## Testscenario's
@@ -80,3 +80,5 @@ Geen.
 
 - 2026-09-17 01:44 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-22 23:35 · claude-fb062 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-22 23:47 · claude-fb062 · backend klaar: een leeftijd zonder subthema met open doelen staat in het overzicht voor wie er mag beslissen, en de AI-vraag daar weigert niet meer; integratietests aangepast en uitgebreid, backend 2254 + 594 groen
+- 2026-09-22 23:58 · claude-fb062 · frontend en ADR-0064 klaar (vervangt de laatste zin van ADR-0050 D1); criteria afgevinkt op de integratietests (zicht en weigering per recht, aanvaarden zonder subthema) en ThemadetailScherm.test.tsx, plus een browsercontrole op een kopie van de dev-database: JK/K2/L1/L2 zonder subthema tonen teller en knop op desktop en 390px, een echte AI-vraag bij L1 gaf een voorgesteld subthema, aanvaarden maakte het L1-subthema; vitest 1264, lint, dotnet format groen
