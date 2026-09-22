@@ -2,10 +2,10 @@
 id: TB-057
 titel: Signalenlaag en achtergrondtaak waar de kat op reageert
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 19:58
+bijgewerkt: 2026-09-22 20:13
 opgepakt-door: claude-tb057
 branch: ticket/TB-057-signalenlaag
 pr:
@@ -65,3 +65,4 @@ push).
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-22 19:01 · claude-tb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (kat zonder vervanging: TB-057, FB-069, FB-070, FB-071)
 - 2026-09-22 19:58 · claude-tb057 · gebouwd: Signaal + migratie, Signaalronde met detector- en taakseam, achtergrondtaak met tikrij als lease, deurmat met rechtencontrole; 2167 unit- en 580 integratietests groen, dotnet format schoon
+- 2026-09-22 20:13 · claude-tb057 · in-uitvoering → klaar: signalenlaag, achtergrondtaak met tikrij als lease, detector- en taakseam en deurmat met rechtencontrole; antagonist COMPLIANT na een MAJOR (klasleeftijd via de ene mapping) in ronde 2, vijf MINORs in backlog/worklogs/TB-057/antagonist.md; alle gates groen
