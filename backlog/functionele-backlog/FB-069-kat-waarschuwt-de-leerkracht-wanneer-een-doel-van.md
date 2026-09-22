@@ -2,12 +2,12 @@
 id: FB-069
 titel: Kat waarschuwt de leerkracht wanneer een doel van haar klas in gevaar komt
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-18 18:11
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 20:40
+opgepakt-door: claude-fb069
+branch: ticket/FB-069-dekkingssignalen
 pr:
 geblokkeerd:
 fr: [FR-6.4, FR-9.1, FR-9.3]
@@ -75,3 +75,4 @@ verdwijnt vanzelf zodra haar reden weg is. Een vervanger krijgt deze meldingen n
 
 - 2026-09-18 17:45 · kat-sparring · aangemaakt (status nieuw)
 - 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)
+- 2026-09-22 20:40 · claude-fb069 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; branch stapelt op TB-057 tot die gemerged is
