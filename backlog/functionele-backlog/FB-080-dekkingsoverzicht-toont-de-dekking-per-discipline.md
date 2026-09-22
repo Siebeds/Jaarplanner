@@ -2,12 +2,12 @@
 id: FB-080
 titel: Dekkingsoverzicht toont de dekking per discipline, met doorklikken naar de doelen
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 22:01
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 22:03
+opgepakt-door: claude-fb080
+branch: ticket/FB-080-dekking-per-discipline
 pr:
 geblokkeerd:
 fr: [FR-9.1, FR-9.2]
@@ -56,3 +56,4 @@ Geen.
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-22 22:01 · eigenaar · nieuw → klaar-voor-bouw: opgenomen in de backlog: klaar voor bouw
+- 2026-09-22 22:03 · claude-fb080 · klaar-voor-bouw → in-uitvoering: opgepakt
