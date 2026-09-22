@@ -1,6 +1,6 @@
 ---
 id: TB-060
-titel: Smal blok op telefoonbreedte smoort zijn icoon en naam onder het doel-icoon
+titel: Smal blok smoort zijn naam, en op telefoonbreedte ook zijn icoon, onder het doel-icoon
 soort: technisch
 status: nieuw
 prioriteit: laag
@@ -15,16 +15,16 @@ fr: []
 
 ## Aanleiding
 
-Gezien tijdens de browsercontrole van FB-077, op een breedte van ongeveer 390px. Wanneer twee blokken op dezelfde dag
-staan, is elk blok nog ongeveer 40px breed. Daarvan gaat 16px naar de eigen marge en 28px naar de plek die voor het
-doel-icoon gereserveerd wordt (`pr-7`, FB-018). Wat overblijft voor naam en icoon samen is 4,4px.
+Gezien tijdens de browsercontrole van FB-077. Een blok dat zijn dag met een ander blok deelt, is een halve kolom breed,
+en van die breedte gaat 28px naar de plek die voor het doel-icoon gereserveerd wordt (`pr-7`, FB-018). Wat overblijft
+voor de naam en, bij een algemene fiche, haar icoon, is te weinig.
 
-Het gevolg: de naam is helemaal weg, en sinds FB-077 wordt ook het icoon van een algemene fiche voor twee derde
-afgesneden. Het blok toont dan nog zijn vlak, het doel-icoon en het beginuur. Een fiche die alleen op haar dag staat,
-heeft op diezelfde breedte 50,4px en toont haar icoon volledig.
+Op 1440 kost dat de naam: de fiche toont nog "k…" en de activiteit ernaast "klas…". Op 390px is er van de inhoudsrij
+nog 4,4px over en wordt ook het icoon van de fiche voor twee derde afgesneden; dan draagt alleen nog het vlak. Een
+fiche die alleen op haar dag staat, heeft op diezelfde 390px een rij van 50,4px en toont icoon en naam volledig.
 
-Dit raakt elk blok, niet alleen een fiche: bij een activiteit verdwijnt op dezelfde manier de naam. De leerkracht kan
-het blok wel aantikken, en het blad dat dan opent zegt alles.
+Dit raakt elk blok, niet alleen een fiche, en het bestaat sinds FB-018. De leerkracht kan het blok wel aantikken, en
+het blad dat dan opent zegt alles.
 
 ## Voorgestelde wijziging
 
@@ -38,6 +38,7 @@ het blok wel aantikken, en het blad dat dan opent zegt alles.
 ## Acceptatiecriteria
 
 - [ ] Gegeven twee blokken op dezelfde dag op een breedte van ongeveer 390px, wanneer de leerkracht de agenda bekijkt, dan is het icoon van een algemene fiche volledig zichtbaar.
+- [ ] Gegeven twee blokken op dezelfde dag op een brede schermbreedte, dan is van de naam van elk blok meer leesbaar dan één letter.
 - [ ] Gegeven datzelfde blok, dan is er van de naam nog iets leesbaar, of zegt het blok zichtbaar niets en staat alles in het blad dat het opent.
 - [ ] Gegeven een blok dat breed genoeg is, dan verandert er niets aan wat het vandaag toont.
 - [ ] Gegeven het doel-icoon wanneer het getoond wordt, dan haalt het nog altijd een raakdoel van minstens 24px.
@@ -45,7 +46,7 @@ het blok wel aantikken, en het blad dat dan opent zegt alles.
 ## Buiten scope
 
 - De keuze van het vlak en het icoon van een algemene fiche zelf: dat is FB-077.
-- De agenda op desktop: daar is er plaats genoeg.
+- Het doel-icoon zelf herzien of weghalen: het blijft doen wat FB-018 het gaf.
 
 ## Open vragen
 

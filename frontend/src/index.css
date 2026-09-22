@@ -183,6 +183,27 @@
   --color-ai-blauw: hsl(222 85% 54%);
   --color-ai-cyaan: hsl(190 92% 34%);
 
+  /* ── fiche - the ground of an algemene fiche (FB-077) ──────────────────────────────── */
+  /* NO HUE, and that is the decision rather than a shortage of ideas. Six activiteitkleuren
+     already lie on the agenda as pale washes, and the only free arc left is some 38 degrees
+     from two of them, which as pastels is not a difference a teacher reads at a glance. So a
+     recurring fiche is not given a seventh colour: it is given the paper, one plane deeper
+     than anything else on the grid. Thema content carries colour here; the fixtures of the
+     week are paper.
+
+     Hue 220 at low saturation, like the rest of the neutrals, and a step below `vlak-diep`,
+     which as the fiche's ground measured only 1.09:1 against an activiteit without a
+     teacher's colour. These measure 1.23:1 there, with `--color-inkt` on them at 13.3:1.
+
+     Dark keeps rule 1 of the palette rather than rule 2: this is a SURFACE, not a signal, so
+     it keeps the order of the planes (kaart > vlak > vlak-diep) and goes below all of them,
+     instead of raising its lightness. It is the deepest plane in both palettes.
+
+     Never colour alone (Art. XII): wherever this ground is worn, `IcoonFiche` stands beside
+     the name, and the agenda block also says "algemene fiche" wherever it has the room. */
+  --color-fiche-vlak: hsl(220 16% 88%);
+  --color-fiche-lijn: hsl(220 14% 76%);
+
   /* ── waas - the scrim behind an open sheet ─────────────────────────────────────────── */
   /* A token of its own, alpha included, because it was `inkt/35` and ink is exactly the colour
      the dark palette turns light: the scrim would have become a pale fog over a dark screen. */
@@ -358,6 +379,11 @@
       --color-ai-paars: hsl(275 80% 76%);
       --color-ai-blauw: hsl(220 90% 70%);
       --color-ai-cyaan: hsl(188 72% 52%);
+
+      /* Below every plane, as on paper (rule 1, not rule 2: a surface, not a signal). `inkt`
+         on it measures 16.1:1, the fiche icon 7.09:1. */
+      --color-fiche-vlak: hsl(220 20% 5%);
+      --color-fiche-lijn: hsl(220 12% 24%);
 
       /* Darker and denser than the paper's: slate needs more to recede behind a sheet. */
       --color-waas: hsl(220 40% 3% / 0.6);

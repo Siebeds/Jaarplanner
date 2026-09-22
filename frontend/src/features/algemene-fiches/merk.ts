@@ -9,17 +9,14 @@
  *
  * That also survives what a seventh hue would not: greyscale and a colour-blind reader.
  *
- * **A step deeper than `vlak-diep`, and its dark half written by hand.** `vlak-diep` was the first try and measured
- * 1.09:1 against the ground of an activiteit without a teacher colour: side by side you see it, scattered over a week
- * you do not, and "in één oogopslag" is the whole point of the ticket. These two values sit between `vlak-diep` and
- * `lijn-sterk` instead. They are literals rather than tokens, so, exactly as `activiteiten/kleuren.ts` warns, the guard
- * in `state/weergave.test.ts` cannot see them and the `dark:` half is not generated: it is written out below. Dark
- * keeps the order the surfaces have there (kaart > vlak > vlak-diep, see `index.css`), so the fiche is the deepest
- * plane in both palettes rather than the lightest in one of them.
+ * **Tokens rather than literals, unlike the six in `activiteiten/kleuren.ts`.** Those are literals on purpose,
+ * because they mean whatever the teacher decided and nothing the application reads. This ground means *algemene
+ * fiche*, which is the application's own vocabulary, so it belongs beside the other semantic colours in `index.css`,
+ * where the guard in `state/weergave.test.ts` sees that it has a dark value. That file also holds why it sits a step
+ * below `vlak-diep`, which as the fiche's ground measured only 1.09:1 against a colourless activiteit.
  *
  * **Never colour alone** (Art. XII): everywhere this wash is worn, `IcoonFiche` stands beside the name, and in the
  * agenda the block also says "algemene fiche" under it wherever it has the room. On a block narrowed by a neighbour
- * the name is the first thing clipped, and the icon is what survives.
+ * the name is the first thing clipped, and the icon is what survives (TB-060).
  */
-export const FICHEVLAK =
-  "border-[hsl(220_14%_76%)] bg-[hsl(220_16%_88%)] dark:border-[hsl(220_12%_24%)] dark:bg-[hsl(220_20%_5%)]";
+export const FICHEVLAK = "border-fiche-lijn bg-fiche-vlak";

@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:40
+bijgewerkt: 2026-09-22 21:50
 opgepakt-door: claude-fb077
 branch: ticket/FB-077-fichekleur
 pr:
@@ -55,3 +55,4 @@ Geen. De kleur en het icoon kiest de bouwsessie met de frontend-design-skill.
 - 2026-09-22 21:15 · claude-fb077 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen met FB-076 een kleurkeuze
 - 2026-09-22 21:21 · claude-fb077 · kleurkeuze: geen zevende tint maar een dieper neutraal vlak (hue 220, papier) met stevigere rand plus het bestaande icoon, eigenaar 2026-09-22
 - 2026-09-22 21:40 · claude-fb077 · browsercontrole gedaan op 1440 en 390px, licht en donker: naam 13,32:1 licht en 16,1:1 donker; vlak een stap dieper dan vlak-diep omdat dat maar 1,09:1 haalde tegen een kleurloze activiteit; smal-blokdefect apart als TB-060
+- 2026-09-22 21:50 · claude-fb077 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; vier MINOR opgelost: vlak is nu een token in index.css met bewaakte donkere waarde, kleine tekstregels gemeten (4,88:1 licht, 9,3:1 donker), schermafbeelding op echte 1440, en de onjuiste bewering dat desktop geen last heeft rechtgezet in TB-060
