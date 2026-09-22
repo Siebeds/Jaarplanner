@@ -5,10 +5,10 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 23:05
+bijgewerkt: 2026-09-22 23:11
 opgepakt-door: claude-fb070
 branch: ticket/FB-070-aanbodgat
-pr:
+pr: 157
 geblokkeerd:
 fr: [FR-4.1, FR-4.2, FR-9.2]
 ---
@@ -102,3 +102,4 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
 - 2026-09-22 22:54 · claude-fb070 · antagonist COMPLIANT in ronde 1 (geen CRITICAL/MAJOR); rechtenmatrixtests voor de klaskolom toegevoegd en een spelling (Aanbodgat) doorgevoerd
 - 2026-09-22 22:55 · claude-fb070 · eigenaar overrulet Art. IV.5 en ADR-0060 D3: de AI stelt de dag en het uur voor, de tool corrigeert een onmogelijk moment; nieuwe ADR en grondwetswijziging volgen
 - 2026-09-22 23:05 · claude-fb070 · omgebouwd naar de beslissing van de eigenaar: de AI kiest de dag en het uur, de tool corrigeert een onmogelijk moment (dag blijft, uur schuift op); ADR-0062, Art. IV.5 aangepast, constitutie-log en FR-14.8 bij
+- 2026-09-22 23:11 · claude-fb070 · PR #157
