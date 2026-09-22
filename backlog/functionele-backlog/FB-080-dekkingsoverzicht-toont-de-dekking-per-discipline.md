@@ -2,7 +2,7 @@
 id: FB-080
 titel: Dekkingsoverzicht toont de dekking per discipline, met doorklikken naar de doelen
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
 bijgewerkt: 2026-09-22 22:38
@@ -60,3 +60,4 @@ Geen.
 - 2026-09-22 22:30 · claude-fb080 · dekking per discipline gebouwd: aantal, percentage en prognose per groep, plus een doelsoortfilter dat de cijfers stuurt; 1251 frontend-tests en lint groen, browserpas op 1440px en 390px
 - 2026-09-22 22:38 · claude-fb080 · antagonist ronde 1: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR's opgelost (export zegt dat hij alle doelsoorten bevat, het aantal bij een doelsoortknop krijgt zijn woord, de tests halen hun Nederlands uit de catalogus)
 - 2026-09-22 22:38 · claude-fb080 · MINOR blijft liggen: de teller van een discipline noemt de gekozen doelsoort niet in haar sr-only-zin; de meter erboven doet dat wel
+- 2026-09-22 22:38 · claude-fb080 · in-uitvoering → te-testen: af: dekking per discipline met aantal, percentage en prognose, doelsoortfilter die de cijfers stuurt; 1251 frontend-tests, oxlint, tsc en build groen, browserpas op 1440px en 390px, antagonist COMPLIANT
