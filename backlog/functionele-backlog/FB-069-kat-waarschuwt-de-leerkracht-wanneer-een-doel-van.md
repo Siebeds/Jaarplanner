@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:22
+bijgewerkt: 2026-09-22 21:31
 opgepakt-door: claude-fb069
 branch: ticket/FB-069-dekkingssignalen
-pr:
+pr: 152
 geblokkeerd:
 fr: [FR-6.4, FR-9.1, FR-9.3]
 ---
@@ -104,3 +104,4 @@ een sleutel die niemand gebruikt. Voorgestelde formulering, zodat ze nu al bijge
 - 2026-09-18 18:11 · claude-tb056 · open vragen aangevuld met de standaardkeuzes van TB-056 (ADR-0059, ADR-0060)
 - 2026-09-22 20:40 · claude-fb069 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; branch stapelt op TB-057 tot die gemerged is
 - 2026-09-22 21:22 · claude-fb069 · in-uitvoering → te-testen: twee detectoren zonder AI: minimumdoel in gevaar en subthema niet gepland; antagonist COMPLIANT na een MAJOR (een subthema dekt ook via zijn gedeelde activiteiten) in ronde 2, vastgepind tegen de dekking met een Postgres-test; 2189 unit- en 585 integratietests groen; de teksten komen met FB-071
+- 2026-09-22 21:31 · claude-fb069 · PR #152
