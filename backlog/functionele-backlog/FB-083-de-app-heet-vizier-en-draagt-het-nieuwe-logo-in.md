@@ -2,12 +2,12 @@
 id: FB-083
 titel: De app heet Vizier en draagt het nieuwe logo in de zijbalk en de aanmeldschermen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 21:49
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 23:18
+opgepakt-door: claude-fb083
+branch: ticket/FB-083-vizier-logo
 pr:
 geblokkeerd:
 fr: []
@@ -90,3 +90,4 @@ Geen.
 ## Werklog
 
 - 2026-09-22 21:49 · Siebe · aangemaakt (status nieuw)
+- 2026-09-22 23:18 · claude-fb083 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
