@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 22:03
+bijgewerkt: 2026-09-22 22:30
 opgepakt-door: claude-fb080
 branch: ticket/FB-080-dekking-per-discipline
 pr:
@@ -29,11 +29,11 @@ weten of wiskunde of taal achterblijft, moet de lijst zelf doorlopen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met gekoppelde doelen in meerdere disciplines, wanneer de leerkracht het dekkingsoverzicht opent, dan staat per discipline het aantal en het percentage, voor de dekkingsprognose en de dekking.
-- [ ] Gegeven een discipline, wanneer de leerkracht erop klikt, dan ziet ze de doelen van die discipline, met welke gedekt zijn en welke ontbreken.
-- [ ] Gegeven de cijfers per discipline, dan tellen ze op tot het totaal van het overzicht.
-- [ ] Gegeven een filter op doelsoort, wanneer de leerkracht het aanzet, dan passen de cijfers per discipline zich aan.
-- [ ] Gegeven de weergave per discipline, dan draagt elke toestand een getal of label, nooit alleen kleur.
+- [x] Gegeven een klas met gekoppelde doelen in meerdere disciplines, wanneer de leerkracht het dekkingsoverzicht opent, dan staat per discipline het aantal en het percentage, voor de dekkingsprognose en de dekking.
+- [x] Gegeven een discipline, wanneer de leerkracht erop klikt, dan ziet ze de doelen van die discipline, met welke gedekt zijn en welke ontbreken.
+- [x] Gegeven de cijfers per discipline, dan tellen ze op tot het totaal van het overzicht.
+- [x] Gegeven een filter op doelsoort, wanneer de leerkracht het aanzet, dan passen de cijfers per discipline zich aan.
+- [x] Gegeven de weergave per discipline, dan draagt elke toestand een getal of label, nooit alleen kleur.
 
 ## Testscenario's
 
@@ -57,3 +57,4 @@ Geen.
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-22 22:01 · eigenaar · nieuw → klaar-voor-bouw: opgenomen in de backlog: klaar voor bouw
 - 2026-09-22 22:03 · claude-fb080 · klaar-voor-bouw → in-uitvoering: opgepakt
+- 2026-09-22 22:30 · claude-fb080 · dekking per discipline gebouwd: aantal, percentage en prognose per groep, plus een doelsoortfilter dat de cijfers stuurt; 1251 frontend-tests en lint groen, browserpas op 1440px en 390px

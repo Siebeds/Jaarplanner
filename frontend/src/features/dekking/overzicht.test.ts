@@ -5,7 +5,9 @@ import {
   bepaalActies,
   groepeerPerDiscipline,
   groepeerPerLeergebied,
+  percentage,
   sorteerDisciplines,
+  telDoelsoorten,
   telStappen,
 } from "./overzicht";
 
@@ -59,6 +61,39 @@ describe("telStappen", () => {
   });
 });
 
+describe("percentage", () => {
+  it("rondt af op een heel getal", () => {
+    expect(percentage(1, 3)).toBe(33);
+    expect(percentage(2, 3)).toBe(67);
+  });
+
+  it("zegt nooit 0% of 100% over een breuk die geen van beide is", () => {
+    expect(percentage(1, 500)).toBe(1);
+    expect(percentage(499, 500)).toBe(99);
+  });
+
+  it("zegt wel 0% en 100% wanneer het klopt, en 0% zonder noemer", () => {
+    expect(percentage(0, 12)).toBe(0);
+    expect(percentage(12, 12)).toBe(100);
+    expect(percentage(0, 0)).toBe(0);
+  });
+});
+
+describe("telDoelsoorten", () => {
+  it("telt per doelsoort, in de volgorde van Op.stap, en laat de soorten weg die niet voorkomen", () => {
+    expect(
+      telDoelsoorten([
+        doel("A", { doelsoort: "Verdieping" }),
+        doel("B", { doelsoort: "Minimumdoel" }),
+        doel("C", { doelsoort: "Verdieping" }),
+      ]),
+    ).toEqual([
+      { doelsoort: "Minimumdoel", aantal: 1 },
+      { doelsoort: "Verdieping", aantal: 2 },
+    ]);
+  });
+});
+
 describe("groepeerPerLeergebied", () => {
   it("groepeert de minimumdoelen per leergebied in de volgorde van de server, met de ongeordende apart", () => {
     const groepen = groepeerPerLeergebied([
@@ -68,7 +103,7 @@ describe("groepeerPerLeergebied", () => {
       minimumdoel("K-9", { leergebied: null }),
     ]);
 
-    expect(groepen.map((g) => [g.naam, g.doelen.map((d) => d.ref), g.gedekt, g.totaal])).toEqual([
+    expect(groepen.map((g) => [g.naam, g.doelen.map((d) => d.ref), g.stappen.gedekt, g.stappen.totaal])).toEqual([
       ["Nederlands", ["K-2", "K-3"], 1, 2],
       ["Wiskunde", ["K-1"], 0, 1],
       [null, ["K-9"], 0, 1],
@@ -102,13 +137,17 @@ describe("groepeerPerDiscipline", () => {
     ]);
   });
 
-  it("telt de hele discipline en elk domein, gedekt en niet gedekt", () => {
-    const [wiskunde] = groepeerPerDiscipline([gedekt("W1"), doel("W2"), doel("W3", { domein: "Meten" })]);
+  it("telt de hele discipline en elk domein per stap, zodat de domeinen optellen tot de discipline", () => {
+    const [wiskunde] = groepeerPerDiscipline([
+      gedekt("W1"),
+      doel("W2", { stap: "Prognose" }),
+      doel("W3", { domein: "Meten" }),
+    ]);
 
-    expect([wiskunde.gedekt, wiskunde.totaal]).toEqual([1, 3]);
-    expect(wiskunde.domeinen.map((d) => [d.gedekt, d.totaal])).toEqual([
-      [1, 2],
-      [0, 1],
+    expect(wiskunde.stappen).toEqual({ gedekt: 1, prognose: 1, totaal: 3 });
+    expect(wiskunde.domeinen.map((d) => d.stappen)).toEqual([
+      { gedekt: 1, prognose: 1, totaal: 2 },
+      { gedekt: 0, prognose: 0, totaal: 1 },
     ]);
   });
 
