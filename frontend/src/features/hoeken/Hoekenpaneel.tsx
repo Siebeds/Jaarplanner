@@ -12,6 +12,7 @@ import { useHoeken, useMaakHoek } from "./gegevens";
 import { alsInfodoelen, useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gegevens";
 import { Doelinfo, type Infodoel } from "../plan/Doelinfo";
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
+import { FICHEVLAK } from "../algemene-fiches/merk";
 import { Hoekformulier } from "../instellingen/Hoekformulier";
 import { Algemeneficheformulier } from "../instellingen/Algemeneficheformulier";
 import {
@@ -165,6 +166,7 @@ export function Hoekenpaneel({
           titel: t("hoekenpaneel.titel"),
           sluiten: t("hoekenpaneel.sluiten"),
           Icoon: IcoonHoek,
+          fichesoort: "hoek",
           laadt: klasId !== null && hoeken.isPending,
           mislukt: hoeken.isError && hoeken.data === undefined,
           fiches: (hoeken.data ?? []).map((hoek) => ({
@@ -196,6 +198,7 @@ export function Hoekenpaneel({
             titel: t("hoekenpaneel.algemeenTitel"),
             sluiten: t("hoekenpaneel.algemeenSluiten"),
             Icoon: IcoonFiche,
+            fichesoort: "algemeen",
             laadt: klasId !== null && algemeneFiches.isPending,
             mislukt: algemeneFiches.isError && algemeneFiches.data === undefined,
             fiches: (algemeneFiches.data ?? []).map((fiche) => ({
@@ -363,6 +366,11 @@ interface Lijst {
   titel: string;
   sluiten: string;
   Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
+  /**
+   * Which kind the list holds. An algemene fiche wears the same wash and the same icon here as the block it becomes in
+   * the agenda (FB-077), so a teacher recognises in the panel what she is about to drag; a hoek is never a block.
+   */
+  fichesoort: "algemeen" | "hoek";
   laadt: boolean;
   /**
    * The request failed AND there is nothing loaded to show. Not the same as an empty list, and the panel must not say
@@ -447,6 +455,7 @@ function Fichelijst({
           <li key={fiche.id}>
             <Fiche
               fiche={fiche}
+              fichesoort={lijst.fichesoort}
               kaartId={kaartId(fiche.id)}
               sleepbaar={sleepbaar && fiche.sleepId !== undefined}
               leegeVerrijking={lijst.leegeVerrijking}
@@ -479,17 +488,20 @@ function Fichelijst({
  */
 function Fiche({
   fiche,
+  fichesoort,
   kaartId,
   sleepbaar,
   leegeVerrijking,
   onKies,
 }: {
   fiche: Paneelfiche;
+  fichesoort: Lijst["fichesoort"];
   kaartId: string;
   sleepbaar: boolean;
   leegeVerrijking?: { label: string; plus: boolean };
   onKies: (id: string) => void;
 }) {
+  const algemeen = fichesoort === "algemeen";
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: fiche.sleepId ?? fiche.id,
     disabled: !sleepbaar,
@@ -505,7 +517,10 @@ function Fiche({
         {...(sleepbaar ? listeners : {})}
         {...(sleepbaar ? attributes : {})}
         className={cn(
-          "w-full rounded-veld border border-lijn bg-vlak px-3 py-2.5 text-left",
+          "w-full rounded-veld border px-3 py-2.5 text-left",
+          // An algemene fiche wears in the panel the wash it will wear as a block (FB-077); a hoek keeps the quiet
+          // card, because it never lands on the agenda at all (ADR-0044).
+          algemeen ? FICHEVLAK : "border-lijn bg-vlak",
           "transition-colors duration-150 hover:border-accent",
           // The grabbing hand says this can be picked up (owner, 2026-08-31); `touch-none` so a touch drag lifts the
           // fiche instead of scrolling the panel. Only where it drags.
@@ -515,7 +530,14 @@ function Fiche({
           isDragging && "opacity-40",
         )}
       >
-        <p className="text-meta font-medium text-inkt">{fiche.naam}</p>
+        {/* The icon stands beside the name here as it does on the block (FB-077), so the wash is never the only thing
+            saying what this card is. */}
+        <p className="flex items-baseline gap-1.5 text-meta font-medium text-inkt">
+          {algemeen ? (
+            <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 translate-y-px text-inkt-zwak" />
+          ) : null}
+          <span className="min-w-0">{fiche.naam}</span>
+        </p>
         {fiche.omschrijving ? (
           <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
         ) : null}

@@ -9,6 +9,7 @@ import type { Schooldaguren } from "../schooluren/gegevens";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
 import type { Subthemareeks } from "./subthemareeksen";
 import { t } from "../../i18n";
+import { FICHEVLAK } from "../algemene-fiches/merk";
 
 /**
  * The time grid (ADR-0028).
@@ -325,6 +326,29 @@ describe("Tijdraster", () => {
     expect(screen.getAllByText("12:00")).toHaveLength(1);
     expect(screen.getByText("8:00")).toBeInTheDocument();
     expect(screen.getByText("9:00")).toBeInTheDocument();
+  });
+
+  it("geeft een algemene fiche een ander vlak dan een activiteit van dezelfde week, en een icoon erbij (FB-077)", () => {
+    toon([dag([activiteit("bladeren stempelen", "15:00", "16:00")])], {
+      fichemomenten: [fiche("10:30:00", "11:20:00")],
+      schooluren: [dinsdag],
+    });
+
+    const vlakVan = (naam: RegExp) =>
+      (screen.getByRole("button", { name: naam }).closest(".group\\/blok") as HTMLElement).className;
+
+    // jsdom cannot evaluate a colour, so what is pinned here is that the two blocks are drawn from different grounds
+    // at all; that the fiche's ground is deeper, and legible, is the browser pass.
+    expect(vlakVan(/^turnen/)).toContain(FICHEVLAK);
+    expect(vlakVan(/^bladeren stempelen/)).not.toContain(FICHEVLAK);
+
+    // Never colour alone (Art. XII): the fiche also says what it is, in its name for a screen reader and with the icon
+    // for everyone else.
+    expect(screen.getByRole("button", { name: /^turnen/ }).getAttribute("aria-label")).toContain(
+      t("tijdraster.algemeneFiche"),
+    );
+    expect(screen.getByRole("button", { name: /^turnen/ }).querySelector("svg")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^bladeren stempelen/ }).querySelector("svg")).toBeNull();
   });
 
   it("geeft een activiteit een dekkende achtergrond, zodat de tint er niet door schemert", () => {
