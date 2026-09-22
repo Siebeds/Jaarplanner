@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 21:51
+bijgewerkt: 2026-09-22 22:12
 opgepakt-door: claude-fb076
 branch: ticket/FB-076-ingepland
 pr:
@@ -29,11 +29,11 @@ doorzoeken om te weten of een activiteit al gebruikt is, en plant er soms een tw
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een activiteit die op een dag in de agenda van de klas staat, wanneer de leerkracht de zijbalk bekijkt, dan heeft ze een kleurstreep links, een icoon of label en de dag waarop ze staat.
-- [ ] Gegeven een activiteit die nog nergens ingepland is, dan heeft ze geen markering.
-- [ ] Gegeven een ingeplande activiteit, wanneer de leerkracht ze uit de agenda haalt, dan verdwijnt de markering zonder herladen.
-- [ ] Gegeven een activiteit die op twee dagen staat, dan noemt de zijbalk beide dagen, of het aantal en de eerste dag.
-- [ ] Gegeven de markering, dan haalt de tekst ervan een contrast van minstens 4,5:1, gemeten in de browser.
+- [x] Gegeven een activiteit die op een dag in de agenda van de klas staat, wanneer de leerkracht de zijbalk bekijkt, dan heeft ze een kleurstreep links, een icoon of label en de dag waarop ze staat.
+- [x] Gegeven een activiteit die nog nergens ingepland is, dan heeft ze geen markering.
+- [x] Gegeven een ingeplande activiteit, wanneer de leerkracht ze uit de agenda haalt, dan verdwijnt de markering zonder herladen.
+- [x] Gegeven een activiteit die op twee dagen staat, dan noemt de zijbalk beide dagen, of het aantal en de eerste dag.
+- [x] Gegeven de markering, dan haalt de tekst ervan een contrast van minstens 4,5:1, gemeten in de browser.
 
 ## Testscenario's
 
@@ -58,3 +58,4 @@ voorstellen of de dekking.
 
 - 2026-09-18 17:47 · Siebe · aangemaakt (status nieuw)
 - 2026-09-22 21:51 · claude-fb076 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten, samen ontworpen met FB-077
+- 2026-09-22 22:12 · claude-fb076 · eigen leesroute GET /api/klassen/{id}/jaarplan/activiteitplaatsingen voor het hele schooljaar, gehangen in de weekplanning-queryfamilie zodat bestaande invalidaties de markering vers houden; browsercontrole op 1440 en 390px, licht en donker: zin 6,08:1 en 8,44:1, streep 4,64:1 en 6,44:1
