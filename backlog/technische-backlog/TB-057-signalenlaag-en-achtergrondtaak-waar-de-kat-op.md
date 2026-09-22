@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 20:13
+bijgewerkt: 2026-09-22 20:49
 opgepakt-door: claude-tb057
 branch: ticket/TB-057-signalenlaag
-pr:
+pr: 151
 geblokkeerd:
 fr: []
 ---
@@ -66,3 +66,5 @@ push).
 - 2026-09-22 19:01 · claude-tb057 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (kat zonder vervanging: TB-057, FB-069, FB-070, FB-071)
 - 2026-09-22 19:58 · claude-tb057 · gebouwd: Signaal + migratie, Signaalronde met detector- en taakseam, achtergrondtaak met tikrij als lease, deurmat met rechtencontrole; 2167 unit- en 580 integratietests groen, dotnet format schoon
 - 2026-09-22 20:13 · claude-tb057 · in-uitvoering → klaar: signalenlaag, achtergrondtaak met tikrij als lease, detector- en taakseam en deurmat met rechtencontrole; antagonist COMPLIANT na een MAJOR (klasleeftijd via de ene mapping) in ronde 2, vijf MINORs in backlog/worklogs/TB-057/antagonist.md; alle gates groen
+- 2026-09-22 20:40 · claude-tb057 · PR #151
+- 2026-09-22 20:49 · claude-tb057 · nagekomen op PR 151: een signaal draagt gegevens in plaats van een zin, want de eigenaar besliste bij FB-069 dat de taal van de kat in nl.json woont

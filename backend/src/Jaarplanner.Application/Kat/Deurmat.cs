@@ -11,16 +11,20 @@ namespace Jaarplanner.Application.Kat;
 public sealed record Deurmat(IReadOnlyList<Deurmatsignaal> Signalen, IReadOnlyList<Deurmatvoorstel> Voorstellen);
 
 /// <summary>
-/// One thing the cat noticed, as the deurmat shows it. <paramref name="Titel"/> and <paramref name="Verwijzing"/> are
-/// derived on this read, never read from the stored signal, so the cat cannot assert a state of the dekking the
+/// One thing the cat noticed, as the deurmat shows it. <paramref name="Gegevens"/> and <paramref name="Verwijzing"/>
+/// are derived on this read, never read from the stored signal, so the cat cannot assert a state of the dekking the
 /// computation no longer supports (ADR-0059 D2).
 /// </summary>
+/// <param name="Gegevens">
+/// What the message needs, keyed by the placeholder names of <paramref name="Soort"/>'s entry in <c>nl.json</c>,
+/// which is where the sentence itself lives (owner ruling 2026-09-22).
+/// </param>
 public sealed record Deurmatsignaal(
     Guid Id,
     Signaalsoort Soort,
     Guid KlasId,
     string Klasnaam,
-    string Titel,
+    IReadOnlyDictionary<string, object> Gegevens,
     string? Verwijzing,
     DateTimeOffset Aangemaakt,
     bool Gezien);

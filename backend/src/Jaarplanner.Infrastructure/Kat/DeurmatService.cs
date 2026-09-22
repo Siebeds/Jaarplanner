@@ -144,7 +144,7 @@ public sealed class DeurmatService : IDeurmatService
                 p.Signaal.Soort,
                 p.Signaal.KlasId,
                 namen.GetValueOrDefault(p.Signaal.KlasId, string.Empty),
-                p.Vondst!.Titel,
+                p.Vondst!.Gegevens,
                 p.Vondst.Verwijzing,
                 p.Signaal.Aangemaakt,
                 p.Signaal.GezienOp is not null))
