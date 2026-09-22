@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 22:23
+bijgewerkt: 2026-09-22 22:34
 opgepakt-door: claude-fb076
 branch: ticket/FB-076-ingepland
-pr:
+pr: 154
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -61,3 +61,4 @@ voorstellen of de dekking.
 - 2026-09-22 22:12 · claude-fb076 · eigen leesroute GET /api/klassen/{id}/jaarplan/activiteitplaatsingen voor het hele schooljaar, gehangen in de weekplanning-queryfamilie zodat bestaande invalidaties de markering vers houden; browsercontrole op 1440 en 390px, licht en donker: zin 6,08:1 en 8,44:1, streep 4,64:1 en 6,44:1
 - 2026-09-22 22:23 · claude-fb076 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; twee MINOR opgelost (eerlijker commentaar over een mislukte lezing, en waarom de frontendnaam afwijkt), een derde genoteerd; conventiesweeps ElkeWijzigendeRouteVraagtEenRecht en ElkeRouteVraagtEenSessie alsnog gedraaid: 8 geslaagd, dus de nieuwe route weigert een gebruiker zonder leesrecht
 - 2026-09-22 22:23 · claude-fb076 · in-uitvoering → te-testen: gebouwd: eigen leesroute voor het hele schooljaar plus markering in de zijbalk met streep, icoon en dag; gates groen (1247 frontendtests, 2192 backend-unittests, 26 integratietests, lint en dotnet format), browsercontrole op 1440 en 390px in licht en donker, antagonist COMPLIANT
+- 2026-09-22 22:34 · claude-fb076 · PR #154
