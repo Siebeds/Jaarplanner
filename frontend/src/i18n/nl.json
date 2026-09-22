@@ -1,6 +1,6 @@
 {
   "app": {
-    "naam": "Jaarplanner",
+    "naam": "Vizier",
     "naarInhoud": "Ga naar de inhoud"
   },
   "navigatie": {
@@ -1415,7 +1415,7 @@
     },
     "geenToegang": {
       "titel": "Geen toegang met dit account",
-      "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Jaarplanner niet gebruiken.",
+      "uitleg": "Je bent aangemeld bij Microsoft, maar met dit account kan je Vizier niet gebruiken.",
       "watNu": "Meld je aan met je schoolaccount. Lukt dat niet, vraag dan een admin om je toe te voegen.",
       "opnieuw": "Opnieuw proberen",
       "anderAccount": "Met een ander account aanmelden"
@@ -1425,9 +1425,9 @@
       "uitleg": "Het aanmelden werd onderbroken of liep mis. Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan een admin."
     },
     "tussenpagina": {
-      "openen": "Jaarplanner wordt geopend.",
+      "openen": "Vizier wordt geopend.",
       "doorsturen": "Je wordt doorgestuurd naar de aanmelding.",
-      "fout": "Jaarplanner kan nu niet openen.",
+      "fout": "Vizier kan nu niet openen.",
       "foutUitleg": "Probeer het opnieuw. Lukt het blijvend niet, meld het dan aan een admin.",
       "opnieuw": "Opnieuw proberen"
     }

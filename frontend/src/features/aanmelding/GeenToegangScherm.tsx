@@ -9,7 +9,7 @@ export type Aanmeldfout = "geweigerd" | "mislukt";
 /**
  * Where a sign-in ends when it does not end in a session (E6-01, ADR-0031). Two cases, one page:
  *
- * - **`geweigerd`** (`/geen-toegang`): Microsoft knows the person and Jaarplanner does not let them in.
+ * - **`geweigerd`** (`/geen-toegang`): Microsoft knows the person and the app does not let them in.
  * - **`mislukt`** (`/aanmelden-mislukt`): the sign-in itself did not complete. Among the causes: consent was
  *   cancelled, Entra returned an error, the round trip took too long, or the app's own check failed while handling
  *   the answer (a database outage during the invitation gate lands here too). Nobody refused anything, so the
@@ -36,7 +36,7 @@ export function GeenToegangScherm({ soort = "geweigerd" }: { soort?: Aanmeldfout
   return (
     <main className="min-h-dvh px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-[34rem]">
-        <Merk />
+        <Merk groot />
 
         <h1 className="mt-12 font-display text-scherm text-inkt">
           {mislukt ? t("aanmelding.mislukt.titel") : t("aanmelding.geenToegang.titel")}

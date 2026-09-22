@@ -2,36 +2,36 @@ import { t } from "../i18n";
 import { cn } from "../lib/cn";
 
 /**
- * The wordmark: the product name over a three segment bar.
+ * The Vizier logo (FB-083, ADR-0062): the mark with the name beside it, or the mark alone.
  *
- * The bar is the school year, cut into periods, which is the one shape this whole application is
- * about. It is the same figure the Plan screen enlarges into its year strip, so the mark is a
- * miniature of the product rather than an ornament stuck beside it.
+ * **The files are the brand, this component only places them.** It loads them from `public/merk/` by
+ * fixed name, so a new logo is a copy of four files with the same names and not a code change
+ * (`assets/merk/README.md`). Only the box sizes below assume the delivered proportions.
  *
- * **`compact` is the mark for the 56px rail** (owner, 2026-08-31): the bar alone, at a third of its
- * width and slightly thicker so it still reads as a mark rather than as a stray hairline. The word is
- * what goes, which is exactly what the rail does to every label beneath it, and the bar is the half
- * that survives shrinking. The name stays available to a screen reader, so collapsing the sidebar
- * does not take the product's name out of the accessibility tree.
+ * **Both colourways are in the DOM and the `dark:` variant picks one.** That variant follows the
+ * explicit choice under Instellingen (`data-weergave`) as well as the device, which a `<picture>` with a
+ * `prefers-color-scheme` media query could not: someone who chose dark on a light device would get the
+ * light logo. The hidden one is `display: none`, so it is neither painted nor read.
+ *
+ * **The images are decorative and the name is text.** One `sr-only` span carries "Vizier" in both
+ * states, so collapsing the sidebar to the mark does not take the product's name out of the
+ * accessibility tree, and a screen reader hears the name once rather than twice.
+ *
+ * `compact` is the mark for the 56px rail; `groot` the size above a sign-in screen's heading.
  */
-export function Merk({ compact = false }: { compact?: boolean }) {
+export function Merk({ compact = false, groot = false }: { compact?: boolean; groot?: boolean }) {
+  const vorm = compact ? "beeldmerk" : "horizontaal";
+  const maat = compact ? "h-7 w-7" : groot ? "h-10 w-auto" : "h-8 w-auto";
   return (
-    <div className={cn("flex flex-col gap-1.5", compact && "items-center gap-0")}>
-      {compact ? (
-        <span className="sr-only">{t("app.naam")}</span>
-      ) : (
-        <span className="font-display text-[1.0625rem] font-bold leading-none tracking-[-0.03em] text-inkt">
-          {t("app.naam")}
-        </span>
-      )}
-      <span
+    <div className={cn("flex", compact && "justify-center")}>
+      <span className="sr-only">{t("app.naam")}</span>
+      <img src={`/merk/merk-${vorm}.svg`} alt="" aria-hidden="true" className={cn(maat, "dark:hidden")} />
+      <img
+        src={`/merk/merk-${vorm}-donker.svg`}
+        alt=""
         aria-hidden="true"
-        className={cn("flex gap-[3px]", compact ? "h-[4px] w-[32px]" : "h-[3px] w-[104px]")}
-      >
-        <span className="h-full flex-[4] rounded-full bg-accent" />
-        <span className="h-full flex-[3] rounded-full bg-lijn-sterk" />
-        <span className="h-full flex-[5] rounded-full bg-lijn-sterk" />
-      </span>
+        className={cn(maat, "hidden dark:block")}
+      />
     </div>
   );
 }

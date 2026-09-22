@@ -128,7 +128,7 @@ export function Navigatie() {
         smal ? "lg:w-14" : "lg:w-60",
       )}
     >
-      {/* The wordmark drops its word in the rail and keeps its bar (owner, 2026-08-31). The box holds
+      {/* The logo drops its name in the rail and keeps the mark (FB-083). The box holds
           the same height in both states, because the destinations below it are positioned by it: a
           shorter mark would slide the whole run of icons up as the panel opens. */}
       <div className={cn("hidden h-[4.375rem] lg:flex lg:items-center", smal ? "lg:justify-center" : "lg:px-5")}>

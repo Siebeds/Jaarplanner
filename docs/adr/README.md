@@ -72,6 +72,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0059](0059-de-kat-proactieve-agent.md) | **The cat: a proactive agent** that notices without AI (a background job and signals) and prepares with it; its basket, its window and its chat | Accepted |
 | [0060](0060-activiteitvoorstellen-op-een-aanbod-gat.md) | **Before a thema starts, the cat proposes own activiteiten on the klas's aanbod-gat** (supersedes 0056 D6 in part) | Accepted |
 | [0061](0061-de-rol-directie-heet-admin.md) | **The directie right is called admin**: the same rights, several holders, and the code, column, API and configuration renamed with it | Accepted |
+| [0063](0063-de-app-heet-vizier.md) | **The app is called Vizier**: the logo replaces the year bar as the mark, loaded by fixed name; repository and infrastructure stay Jaarplanner | Accepted |
 
 ## Compliance traceability matrix
 
@@ -136,6 +137,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0059 | Art. I.1, IV.1, IV.2, IV.3, IV.5, IV.8, VI.2, VIII, IX.3 and XII (amended); relates to 0039, 0047, 0051 | TB-056, TB-057; FB-068–FB-071, FB-031, FB-032 | FR-14.7, FR-14.9–FR-14.11 |
 | 0060 | Art. IV.1, IV.4, IV.5, IV.8, VI.1, IX.2 and XII (amended); V.1 unchanged; supersedes 0056 D6 in part | TB-056; FB-070 | FR-14.8 |
 | 0061 | Art. II.3, IV.1, IV.8, V.5, VI.1, VI.7, IX.2, XII and XIV (amended); IV.7 unchanged; renames the directie column of 0030 §3 and the configuration key of 0031 | FB-072 | FR-12.2 |
+| 0063 | Art. II.3 and XII unchanged; relates to 0017, 0024 | FB-083; FB-084, FB-085 | — |
 
 ## Open decisions referenced by ADRs
 
