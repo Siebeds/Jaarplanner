@@ -33,7 +33,10 @@ public sealed class SubdoelplaatsingController : ControllerBase
         _autorisatie = autorisatie;
     }
 
-    /// <summary>Per leeftijd the open count, and the open proposals where the caller may decide them.</summary>
+    /// <summary>
+    /// Per leeftijd the open count, and the open proposals where the caller may decide them. A leeftijd without a subthema
+    /// only where the caller may decide (ADR-0064).
+    /// </summary>
     [HttpGet("api/themas/{themaId:guid}/subdoelplaatsing")]
     public async Task<ActionResult<SubdoelplaatsingOverzicht>> HaalOp(Guid themaId, CancellationToken cancellationToken)
     {
@@ -43,7 +46,16 @@ public sealed class SubdoelplaatsingController : ControllerBase
         {
             var mag = await _autorisatie.MagAsync(
                 User, new Leeftijdsinhoud(leeftijd.Leeftijd), Rechtenmatrix.Beleid.SubdoelplaatsingBeslissen);
-            leeftijden.Add(mag ? leeftijd : leeftijd with { MagBeslissen = false, Subdoelvoorstellen = [], Subthemavoorstellen = [] });
+            if (mag)
+            {
+                leeftijden.Add(leeftijd);
+            }
+            else if (leeftijd.HeeftSubthema)
+            {
+                // ADR-0064: a leeftijd without a subthema is a place to ask, nothing to read, so it goes only to
+                // whoever may decide there.
+                leeftijden.Add(leeftijd with { MagBeslissen = false, Subdoelvoorstellen = [], Subthemavoorstellen = [] });
+            }
         }
 
         return Ok(overzicht with { Leeftijden = leeftijden });

@@ -19,7 +19,7 @@ import {
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
-import type { DoelMatchResultaat, SubthemaWeergave } from "../../lib/types";
+import type { DoelMatchResultaat, LeeftijdPlaatsing, SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
 import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
@@ -583,7 +583,7 @@ export function ThemadetailScherm() {
         {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
             card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
             the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
-        {perLeeftijd(subthemas).map((groep) => {
+        {leeftijdsgroepen(subthemas, plaatsing?.leeftijden, jaarfasen).map((groep) => {
           const plaatsen = plaatsing?.leeftijden.find((l) => l.leeftijd === groep.leeftijd);
           // A refusal other than a 403 (decided elsewhere, subthema gone) is shown at the leeftijd it happened in.
           const beslisFoutHier =
@@ -1040,6 +1040,29 @@ function perLeeftijd(subthemas: SubthemaWeergave[]) {
     else groepen.push({ leeftijd: subthema.leeftijd, subthemas: [subthema] });
   }
   return groepen;
+}
+
+/**
+ * The margins the screen draws: one per leeftijd with subthema's, plus one per leeftijd the subdoelplaatsing lists
+ * without a subthema (FB-062, ADR-0064). The server sends such a leeftijd only to whoever may ask there and only while
+ * it has open doelen, so its margin holds just the count, the AI button and whatever the AI proposed. Merged in the
+ * order of `/api/jaarfasen`, like the subthema's themselves.
+ */
+function leeftijdsgroepen(
+  subthemas: SubthemaWeergave[],
+  plaatsingen: LeeftijdPlaatsing[] | undefined,
+  jaarfasen: string[] | undefined,
+) {
+  const groepen = perLeeftijd(subthemas);
+  for (const plaatsing of plaatsingen ?? []) {
+    if (!plaatsing.heeftSubthema && !groepen.some((g) => g.leeftijd === plaatsing.leeftijd)) {
+      groepen.push({ leeftijd: plaatsing.leeftijd, subthemas: [] });
+    }
+  }
+
+  const volgorde = new Map((jaarfasen ?? []).map((fase, i) => [fase, i]));
+  const rang = (leeftijd: string) => volgorde.get(leeftijd) ?? Number.MAX_SAFE_INTEGER;
+  return groepen.sort((a, b) => rang(a.leeftijd) - rang(b.leeftijd));
 }
 
 function Terug() {

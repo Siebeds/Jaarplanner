@@ -1,6 +1,6 @@
 # ADR-0050 — The AI proposes where a thema's open leerplandoelen go, in an existing or a new subthema
 
-- **Status:** Accepted
+- **Status:** Accepted; the last sentence of D1 superseded by [ADR-0064](0064-subdoelplaatsing-bij-een-leeftijd-zonder-subthema.md), which also serves a leeftijd without a subthema
 - **Date:** 2026-09-16
 - **Deciders:** Project owner, 2026-09-16: the rulings P1 to P6 below, given in session on FB-057 and, for P5, on
   FB-054 the same day. Directie has not been asked.

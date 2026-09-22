@@ -42,6 +42,8 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
             Doel(Regen, "K2", "Temperatuur en neerslag."),
             Doel(Wind, "K2", "Wind zichtbaar maken."),
             Doel(K3Doel, "K3", "Een K3-doel."),
+            // A jaar/fase the server does not know opens no leeftijd without a subthema (ADR-0064 D1).
+            Doel("PLA-X-01", "5-6", "Een doel met een onbekende leeftijd."),
             new Leerplandoel("PLA-K2-99", Doelsoort.Gemeenschappelijk, "K2", "Natuur", "Weer", "9.1", tekst: "Niet geconcordeerd."));
         await context.SaveChangesAsync();
     }
@@ -91,6 +93,9 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     private static async Task<Overzicht> LeesAsync(HttpClient client, Guid themaId) =>
         (await client.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
 
+    private static async Task<LeeftijdDto> K2Async(HttpClient client, Guid themaId) =>
+        Assert.Single((await LeesAsync(client, themaId)).Leeftijden, l => l.Leeftijd == "K2");
+
     private static async Task<Resultaat> GenereerAsync(HttpClient client, Guid themaId, string leeftijd = "K2")
     {
         using var antwoord = await client.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/{leeftijd}/genereer", null);
@@ -99,16 +104,19 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Het_open_aantal_telt_zonder_AI_alleen_de_leeftijden_met_een_subthema()
+    public async Task Het_open_aantal_telt_zonder_AI_ook_bij_een_leeftijd_zonder_subthema_maar_niet_zonder_open_doelen()
     {
         var (themaId, _) = await ThemaAsync();
         using var admin = Opzet.Admin();
 
-        var leeftijd = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
+        var leeftijden = (await LeesAsync(admin, themaId)).Leeftijden;
 
-        Assert.Equal("K2", leeftijd.Leeftijd);
-        Assert.Equal(3, leeftijd.AantalOpen);
-        Assert.Empty(leeftijd.Subdoelvoorstellen);
+        // K2 has a subthema; K3 has none but the themadoel brings it one open goal (ADR-0064). No other leeftijd has an
+        // open goal, so none is listed.
+        Assert.Equal(["K2", "K3"], leeftijden.Select(l => l.Leeftijd));
+        Assert.Equal((3, true), (leeftijden[0].AantalOpen, leeftijden[0].HeeftSubthema));
+        Assert.Equal((1, false), (leeftijden[1].AantalOpen, leeftijden[1].HeeftSubthema));
+        Assert.Empty(leeftijden[0].Subdoelvoorstellen);
     }
 
     [PostgresFact]
@@ -121,7 +129,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         var resultaat = await GenereerAsync(admin, themaId);
         Assert.Equal(new Resultaat(true, 3, 1, 2, null), resultaat);
 
-        var k2 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
+        var k2 = await K2Async(admin, themaId);
         var subdoel = Assert.Single(k2.Subdoelvoorstellen);
         Assert.Equal((Egel, subthemaId, "Dieren voor de winter."), (subdoel.LeerplandoelCode, subdoel.SubthemaId!.Value, subdoel.Tekst));
         var nieuw = Assert.Single(k2.Subthemavoorstellen);
@@ -160,7 +168,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         Assert.Equal(KoppelingStatus.Geweigerd, (await context.Subdoelvoorstellen.AsNoTracking().SingleAsync(v => v.LeerplandoelCode == Wind)).Status);
 
         // Only the goal left out is still open, and a decided proposal is refused.
-        Assert.Equal(1, Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).AantalOpen);
+        Assert.Equal(1, (await K2Async(admin, themaId)).AantalOpen);
         await RechtenTestOpzet.VerwachtAsync(
             admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{subdoel.Id}/status", new { status = "Geweigerd" }),
             HttpStatusCode.BadRequest,
@@ -174,7 +182,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
         await GenereerAsync(admin, themaId);
-        var k2 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
+        var k2 = await K2Async(admin, themaId);
 
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
             admin.PutAsJsonAsync($"/api/subdoelvoorstellen/{k2.Subdoelvoorstellen[0].Id}/status", new { status = "Geweigerd" })));
@@ -184,13 +192,13 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         // The model repeats both: nothing of it is stored.
         var tweede = await GenereerAsync(admin, themaId);
         Assert.Equal(0, tweede.AantalVoorgesteld);
-        Assert.Empty(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subthemavoorstellen);
+        Assert.Empty((await K2Async(admin, themaId)).Subthemavoorstellen);
 
         // A new name is accepted, and a third run replaces its open proposals rather than adding to them.
         _factory.AiAntwoord = Antwoord("Weer en wind");
         await GenereerAsync(admin, themaId);
         await GenereerAsync(admin, themaId);
-        var derde = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden);
+        var derde = await K2Async(admin, themaId);
         Assert.Equal("Weer en wind", Assert.Single(derde.Subthemavoorstellen).Naam);
         Assert.Empty(derde.Subdoelvoorstellen);
 
@@ -199,7 +207,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
-    public async Task Een_onleesbaar_antwoord_bewaart_niets_en_een_leeftijd_zonder_subthema_wordt_geweigerd()
+    public async Task Een_onleesbaar_antwoord_bewaart_niets()
     {
         var (themaId, _) = await ThemaAsync();
         using var admin = Opzet.Admin();
@@ -210,11 +218,38 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
 
         await using var context = _db.MaakContext();
         Assert.False(await context.Subdoelvoorstellen.AnyAsync(v => v.ThemaId == themaId));
+    }
 
-        await RechtenTestOpzet.VerwachtAsync(
-            admin.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K3/genereer", null),
-            HttpStatusCode.BadRequest,
-            "Dit thema heeft nog geen subthema voor K3. Maak er eerst een aan.");
+    [PostgresFact]
+    public async Task Een_leeftijd_zonder_subthema_krijgt_alleen_nieuwe_subthemas_en_aanvaarden_maakt_het_eerste()
+    {
+        var (themaId, _) = await ThemaAsync();
+        using var admin = Opzet.Admin();
+        // The model also tries S1, which does not exist at K3: only the new subthema survives (D7).
+        _factory.AiAntwoord = $$"""
+            {"plaatsingen": [
+               {"code": "{{K3Doel}}", "subthema": "N1", "motivatie": "Eigen subthema."},
+               {"code": "{{K3Doel}}", "subthema": "S1", "motivatie": "Bestaat niet."}],
+             "nieuweSubthemas": [{"sleutel": "N1", "naam": "Wolken", "onderzoeksvraag": "Waarom regent het?", "duurWeken": 2, "motivatie": "Nog niets voor K3."}]}
+            """;
+
+        var resultaat = await GenereerAsync(admin, themaId, "K3");
+        Assert.Equal((1, 1), (resultaat.AantalVoorgesteld, resultaat.AantalNieuweSubthemas));
+
+        var k3 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden, l => l.Leeftijd == "K3");
+        Assert.Empty(k3.Subdoelvoorstellen);
+        var nieuw = Assert.Single(k3.Subthemavoorstellen);
+        Assert.Equal(K3Doel, Assert.Single(nieuw.Doelen).LeerplandoelCode);
+
+        Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
+            admin.PutAsJsonAsync($"/api/subthemavoorstellen/{nieuw.Id}/beslissing", new { status = "Aanvaard" })));
+
+        k3 = Assert.Single((await LeesAsync(admin, themaId)).Leeftijden, l => l.Leeftijd == "K3");
+        Assert.Equal((0, true), (k3.AantalOpen, k3.HeeftSubthema));
+        await using var context = _db.MaakContext();
+        var subthema = await context.Subthemas.Include(s => s.Subdoelen).SingleAsync(s => s.ThemaId == themaId && s.Leeftijd == "K3");
+        Assert.Equal("Wolken", subthema.Naam);
+        Assert.Equal(K3Doel, Assert.Single(subthema.Subdoelen).Koppeling.LeerplandoelCode);
     }
 
     [PostgresFact]
@@ -231,7 +266,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         using var leerkracht = Opzet.Als(await Opzet.GebruikerAsync(school, klassen: [school.K2Rood]));
 
         Assert.Equal(3, (await GenereerAsync(hlK2, themaId)).AantalVoorgesteld);
-        var voorstel = Assert.Single(Assert.Single((await LeesAsync(hlK2, themaId)).Leeftijden).Subdoelvoorstellen);
+        var voorstel = Assert.Single((await K2Async(hlK2, themaId)).Subdoelvoorstellen);
 
         foreach (var ander in new[] { hlK3, themabeheer, leerkracht })
         {
@@ -242,13 +277,25 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
                 HttpStatusCode.Forbidden,
                 RechtenTestOpzet.GeenToegang);
 
-            var gezien = Assert.Single((await LeesAsync(ander, themaId)).Leeftijden);
+            var gezien = await K2Async(ander, themaId);
             Assert.Equal((3, false), (gezien.AantalOpen, gezien.MagBeslissen));
             Assert.Empty(gezien.Subdoelvoorstellen);
             Assert.Empty(gezien.Subthemavoorstellen);
         }
 
-        Assert.True(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).MagBeslissen);
+        // ADR-0064: K3 has no subthema, so only whoever may decide there sees it, and only they may ask for it.
+        Assert.Equal(["K2"], (await LeesAsync(hlK2, themaId)).Leeftijden.Select(l => l.Leeftijd));
+        Assert.Equal(["K2"], (await LeesAsync(themabeheer, themaId)).Leeftijden.Select(l => l.Leeftijd));
+        Assert.Equal(["K2"], (await LeesAsync(leerkracht, themaId)).Leeftijden.Select(l => l.Leeftijd));
+        var k3VoorK3 = Assert.Single((await LeesAsync(hlK3, themaId)).Leeftijden, l => l.Leeftijd == "K3");
+        Assert.Equal((1, true, false), (k3VoorK3.AantalOpen, k3VoorK3.MagBeslissen, k3VoorK3.HeeftSubthema));
+        foreach (var ander in new[] { hlK2, themabeheer, leerkracht })
+        {
+            await RechtenTestOpzet.VerwachtAsync(
+                ander.PostAsync($"/api/themas/{themaId}/subdoelplaatsing/K3/genereer", null), HttpStatusCode.Forbidden, RechtenTestOpzet.GeenToegang);
+        }
+
+        Assert.True((await K2Async(admin, themaId)).MagBeslissen);
         Assert.Equal(HttpStatusCode.NoContent, await RechtenTestOpzet.StatusAsync(
             hlK2.PutAsJsonAsync($"/api/subdoelvoorstellen/{voorstel.Id}/status", new { status = "Aanvaard" })));
     }
@@ -261,7 +308,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
         await GenereerAsync(admin, themaId);
-        var voorstel = Assert.Single(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subdoelvoorstellen);
+        var voorstel = Assert.Single((await K2Async(admin, themaId)).Subdoelvoorstellen);
 
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
             admin.PutAsJsonAsync($"/api/subthemas/{subthemaId}", new { naam = "Regen", duurWeken = 2, leeftijd = "K3" })));
@@ -290,7 +337,7 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         using var admin = Opzet.Admin();
         _factory.AiAntwoord = Antwoord("Regen en wind");
         await GenereerAsync(admin, themaId);
-        var nieuw = Assert.Single(Assert.Single((await LeesAsync(admin, themaId)).Leeftijden).Subthemavoorstellen);
+        var nieuw = Assert.Single((await K2Async(admin, themaId)).Subthemavoorstellen);
 
         Assert.Equal(HttpStatusCode.OK, await RechtenTestOpzet.StatusAsync(
             admin.PostAsJsonAsync($"/api/subthemas/{subthemaId}/doelkoppelingen", new { leerplandoelCode = Regen })));
@@ -329,7 +376,8 @@ public sealed class SubdoelplaatsingEndpointsTests : IAsyncLifetime
         int AantalOpen,
         bool MagBeslissen,
         List<Subdoel> Subdoelvoorstellen,
-        List<Subthema> Subthemavoorstellen);
+        List<Subthema> Subthemavoorstellen,
+        bool HeeftSubthema);
 
     private sealed record Subdoel(Guid Id, string LeerplandoelCode, string? Tekst, Guid? SubthemaId, string AiMotivatie);
 

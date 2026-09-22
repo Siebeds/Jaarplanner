@@ -132,7 +132,7 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
 
         // Only the accepted goal that is not yet a subdoel is proposed, at the subthema, naming the activiteit.
         var overzicht = (await hlK2.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
-        var voorstel = Assert.Single(Assert.Single(overzicht.Leeftijden).Subdoelvoorstellen);
+        var voorstel = Assert.Single(Assert.Single(overzicht.Leeftijden, l => l.Leeftijd == "K2").Subdoelvoorstellen);
         Assert.Equal((K2Doelen[0], subthemaId, activiteit.Naam, $"Past bij {K2Doelen[0]}."),
             (voorstel.LeerplandoelCode, voorstel.SubthemaId!.Value, voorstel.ActiviteitNaam, voorstel.AiMotivatie));
 
@@ -233,7 +233,7 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
 
         // The hoofdleerkracht decides the subdoel it leaves at the subthema.
         var overzicht = (await hlK2.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
-        Assert.Equal(K2Doelen[0], Assert.Single(Assert.Single(overzicht.Leeftijden).Subdoelvoorstellen).LeerplandoelCode);
+        Assert.Equal(K2Doelen[0], Assert.Single(Assert.Single(overzicht.Leeftijden, l => l.Leeftijd == "K2").Subdoelvoorstellen).LeerplandoelCode);
     }
 
     [PostgresFact]
@@ -324,7 +324,7 @@ public sealed class ActiviteitDoelsuggestieEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, nogmaals.StatusCode);
 
         var overzicht = (await admin.GetFromJsonAsync<Overzicht>($"/api/themas/{themaId}/subdoelplaatsing"))!;
-        var voorstellen = Assert.Single(overzicht.Leeftijden).Subdoelvoorstellen.OrderBy(v => v.LeerplandoelCode, StringComparer.Ordinal).ToList();
+        var voorstellen = Assert.Single(overzicht.Leeftijden, l => l.Leeftijd == "K2").Subdoelvoorstellen.OrderBy(v => v.LeerplandoelCode, StringComparer.Ordinal).ToList();
         Assert.Equal(
             [(K2Doelen[0], activiteit.Naam), (K2Doelen[1], (string?)null)],
             voorstellen.Select(v => (v.LeerplandoelCode, v.ActiviteitNaam)));
