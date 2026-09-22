@@ -319,6 +319,10 @@ public sealed class HoekverrijkingServiceTests
             Guid klasId, DateOnly van, DateOnly tot, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<Activiteitplaatsingenweergave> HaalActiviteitplaatsingenAsync(
+            Guid klasId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<Weekplanningweergave> PlanActiviteitAsync(
             Guid klasId, Guid activiteitId, DateOnly datum, TimeOnly begin, TimeOnly einde,
             Jaarplanner.Application.Toegang.Rechten? planner = null,

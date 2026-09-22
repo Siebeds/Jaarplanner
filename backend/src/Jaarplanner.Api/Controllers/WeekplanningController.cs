@@ -57,6 +57,23 @@ public sealed class WeekplanningController : ControllerBase
         Ok(await _service.HaalWeekplanningAsync(klasId, van, tot, cancellationToken));
 
     /// <summary>
+    /// Every activiteit this klas has planned, with the days it stands on, over the whole school year (FB-076).
+    /// <para>
+    /// <b>Its own route rather than a field on the week</b>, for the reason <c>AlgemeneFicheplaatsingenController</c>
+    /// gives: the panel fetches this beside the days it is showing, and it is not scoped to them. Nested under
+    /// <c>weekplanning</c> anyway, because these are the placements that route creates and deletes.
+    /// </para>
+    /// </summary>
+    // ABSOLUTE ROUTE, like the subthemaperiodes window below: relative to this controller's own mount it would read as
+    // a range's placements, which is exactly what it is not.
+    [HttpGet("/api/klassen/{klasId:guid}/jaarplan/activiteitplaatsingen")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBekijken, Rechtbron.Klasinzage, "klasId")]
+    public async Task<ActionResult<Activiteitplaatsingenweergave>> Activiteitplaatsingen(
+        Guid klasId,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.HaalActiviteitplaatsingenAsync(klasId, cancellationToken));
+
+    /// <summary>
     /// Schedules one activiteit onto one day at a time. <b>400</b> when the day is closed or outside the school year,
     /// when the end is not after the start, when the activiteit already starts at that time that day, or when it is
     /// for an age the class does not teach; <b>404</b> when the class or the activiteit does not exist; <b>200</b>

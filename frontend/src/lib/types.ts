@@ -978,3 +978,20 @@ export interface Weekplanning {
   dagen: Dagweergave[];
   subthemaperiodes: Subthemaperiode[];
 }
+
+/**
+ * Where this klas already planned each of its activiteiten, over the whole school year (FB-076).
+ *
+ * Not scoped to the week on screen, unlike `Weekplanning`: the panel's question is about the days a teacher is NOT
+ * looking at, which is how the same activiteit ends up planned twice.
+ */
+export interface Activiteitplaatsingen {
+  /** Only the activiteiten that are planned somewhere. One that is planned nowhere is absent. */
+  activiteiten: GeplandeActiviteitdagen[];
+}
+
+/** One activiteit and the days of this klas's year it stands on, ascending and without duplicates. */
+export interface GeplandeActiviteitdagen {
+  activiteitId: string;
+  datums: string[];
+}

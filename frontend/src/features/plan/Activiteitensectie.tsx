@@ -4,7 +4,8 @@ import { Link } from "react-router-dom";
 import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { Doelmerk } from "../../components/ui/Doelmerk";
-import { useSubthemaBestemmingen, useThemaVoorKlas } from "../../lib/queries";
+import { IcoonPlan } from "../../components/Iconen";
+import { useActiviteitplaatsingen, useSubthemaBestemmingen, useThemaVoorKlas } from "../../lib/queries";
 import { geenToegangZin, isEigenVan, useRechten } from "../../lib/rechten";
 import { useIk } from "../../lib/aanmelding";
 import { Knop } from "../../components/ui/Knop";
@@ -19,6 +20,7 @@ import { Toevoegtegel } from "../hoeken/Toevoegtegel";
 import { STANDAARDDUUR } from "./tijd";
 import { ACTIVITEIT_VOORVOEGSEL, type Activiteitkaartdata } from "./activiteitkaart";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
+import { ingeplandZin } from "./ingepland";
 
 /** An activiteit chosen from the panel: what the agenda needs to plan it. */
 export interface GekozenActiviteit {
@@ -230,6 +232,14 @@ function Activiteitenlijst({
   const { data: ik } = useIk();
   const subthema = thema.data?.subthemas.find((sub) => sub.id === bestemming.id);
 
+  // Where each of them already stands in this klas's year (FB-076). A failed or pending read leaves the map empty,
+  // so a card says nothing rather than claiming an activiteit is planned nowhere.
+  const plaatsingen = useActiviteitplaatsingen(klasId);
+  const dagenPer = useMemo(
+    () => new Map((plaatsingen.data?.activiteiten ?? []).map((a) => [a.activiteitId, a.datums])),
+    [plaatsingen.data],
+  );
+
   if (thema.isPending) return <Laadlijst rijen={3} />;
 
   // A failed request is not an empty subthema, so it says only what it knows, and offers no tile: a list it could not
@@ -284,13 +294,19 @@ function Activiteitenlijst({
             {magPlannen && isVanCollega(activiteit) ? (
               <Leeskaart
                 activiteit={activiteit}
+                dagen={dagenPer.get(activiteit.id) ?? []}
                 gebruik={mag.activiteitGebruiken({ ...activiteit, leeftijd: bestemming.leeftijd }) ? activiteit : undefined}
                 themaId={bestemming.themaId}
               />
             ) : magPlannen ? (
-              <Activiteitkaart activiteit={activiteit} sleepbaar={sleepbaar} onKies={onKies} />
+              <Activiteitkaart
+                activiteit={activiteit}
+                dagen={dagenPer.get(activiteit.id) ?? []}
+                sleepbaar={sleepbaar}
+                onKies={onKies}
+              />
             ) : (
-              <Leeskaart activiteit={activiteit} />
+              <Leeskaart activiteit={activiteit} dagen={dagenPer.get(activiteit.id) ?? []} />
             )}
           </li>
         ))}
@@ -299,6 +315,21 @@ function Activiteitenlijst({
     </div>
   );
 }
+
+/**
+ * The left rule on a card whose activiteit already stands somewhere in this klas's year (FB-076).
+ *
+ * **Achromatic, and that is the decision rather than a shortage of hues.** The ticket asks for a "kleurstreep", and
+ * every hue on this card is spoken for: `Doelmerk` wears `attentie` when an activiteit has no doelen, the doelsoorten,
+ * the suggestiestatussen and the dekking hold the rest, and the accent is rationed to five uses none of which is a
+ * list row (Art. XII, `index.css`). A seventh hue invented here would be read as one of those. So the rule is ink at
+ * the weight the card's own muted text uses, and the sentence under the name carries the meaning
+ * (see `ingepland.ts`). It is the same answer the owner chose for the algemene fiche in FB-077.
+ *
+ * Never colour alone (Art. XII): the rule is never the only mark. The sentence and its calendar icon say what it means
+ * and on which day, and they are what a screen reader gets.
+ */
+const MARKERING = (dagen: readonly string[]) => (dagen.length > 0 ? "border-l-2 border-l-inkt-zwak" : null);
 
 /**
  * The goals an activiteit works on, as the info icon and the mark count them: its accepted and manual links, which is
@@ -322,10 +353,13 @@ function doelenVan(activiteit: ActiviteitWeergave): Infodoel[] {
  */
 function Activiteitkaart({
   activiteit,
+  dagen,
   sleepbaar,
   onKies,
 }: {
   activiteit: ActiviteitWeergave;
+  /** The days of this klas's year it already stands on; empty when it stands nowhere (FB-076). */
+  dagen: readonly string[];
   sleepbaar: boolean;
   onKies: (activiteit: GekozenActiviteit) => void;
 }) {
@@ -349,11 +383,12 @@ function Activiteitkaart({
           // Room for the icon, so a long name wraps before it rather than running under it.
           "w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9 text-left",
           "transition-colors duration-150 hover:border-accent",
+          MARKERING(dagen),
           sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
           isDragging && "opacity-40",
         )}
       >
-        <Kaartinhoud activiteit={activiteit} doelen={doelen} />
+        <Kaartinhoud activiteit={activiteit} doelen={doelen} dagen={dagen} />
       </button>
       <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
     </div>
@@ -369,10 +404,13 @@ function Activiteitkaart({
  */
 function Leeskaart({
   activiteit,
+  dagen,
   gebruik,
   themaId,
 }: {
   activiteit: ActiviteitWeergave;
+  /** The days of this klas's year it already stands on; empty when it stands nowhere (FB-076). */
+  dagen: readonly string[];
   /** The activiteit to copy on "Gebruiken"; absent without that right. */
   gebruik?: ActiviteitWeergave;
   themaId?: string;
@@ -381,8 +419,8 @@ function Leeskaart({
   const kopie = useGebruikActiviteit(themaId);
   return (
     <div className="relative">
-      <div className="w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9">
-        <Kaartinhoud activiteit={activiteit} doelen={doelen} />
+      <div className={cn("w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9", MARKERING(dagen))}>
+        <Kaartinhoud activiteit={activiteit} doelen={doelen} dagen={dagen} />
         {gebruik ? (
           <Knop
             rang="rustig"
@@ -408,11 +446,29 @@ function Leeskaart({
   );
 }
 
-function Kaartinhoud({ activiteit, doelen }: { activiteit: ActiviteitWeergave; doelen: readonly Infodoel[] }) {
+function Kaartinhoud({
+  activiteit,
+  doelen,
+  dagen,
+}: {
+  activiteit: ActiviteitWeergave;
+  doelen: readonly Infodoel[];
+  dagen: readonly string[];
+}) {
+  const ingepland = ingeplandZin(dagen);
+
   return (
     <>
       <p className="text-meta font-medium text-inkt">{activiteit.naam}</p>
       <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />
+      {/* Where it already stands in this klas's year (FB-076). Above the Doelmerk, because it is the thing that
+          changes what she does next: a doel count tells her whether it can count, this tells her she has used it. */}
+      {ingepland ? (
+        <span className="mt-0.5 flex items-center gap-1 text-meta text-inkt-zacht">
+          <IcoonPlan aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+          {ingepland}
+        </span>
+      ) : null}
       <Doelmerk aantal={doelen.length} className="mt-1.5" />
     </>
   );

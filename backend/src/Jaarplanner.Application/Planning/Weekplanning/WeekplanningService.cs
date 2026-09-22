@@ -36,6 +36,27 @@ public sealed class WeekplanningService : IWeekplanningService
         return await ProjecteerAsync(klas, schooljaar, jaarplan, van, tot, cancellationToken);
     }
 
+    public async Task<Activiteitplaatsingenweergave> HaalActiviteitplaatsingenAsync(
+        Guid klasId,
+        CancellationToken cancellationToken = default)
+    {
+        // Loaded for its side effect on the caller: a klas that does not exist is a 404 here as it is on every other
+        // read of this controller, rather than an empty list that reads like "nothing planned yet".
+        await LaadKlasAsync(klasId, cancellationToken);
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
+
+        // No plan yet is not an error: a klas gets one the first time something is placed.
+        var plaatsingen = jaarplan?.Activiteitplaatsingen ?? [];
+
+        return new Activiteitplaatsingenweergave(
+            [.. plaatsingen
+                .GroupBy(plaatsing => plaatsing.ActiviteitId)
+                .Select(groep => new GeplandeActiviteit(
+                    groep.Key,
+                    [.. groep.Select(plaatsing => plaatsing.Datum).Distinct().Order()]))
+                .OrderBy(activiteit => activiteit.Datums[0])]);
+    }
+
     public async Task<Weekplanningweergave> PlanActiviteitAsync(
         Guid klasId,
         Guid activiteitId,
