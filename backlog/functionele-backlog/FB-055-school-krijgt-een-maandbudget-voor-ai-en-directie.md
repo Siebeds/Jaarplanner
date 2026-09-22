@@ -5,7 +5,7 @@ soort: functioneel
 status: nieuw
 prioriteit: hoog
 aangemaakt: 2026-09-16
-bijgewerkt: 2026-09-16 22:23
+bijgewerkt: 2026-09-23 00:25
 opgepakt-door:
 branch:
 pr:
@@ -77,7 +77,12 @@ krijgt een vast maandbudget voor AI, dat de directie kan opvolgen.
 - **De hoogte van het basisbudget** per school (3,5 miljoen is een voorbeeld): de eigenaar beslist het per omgeving.
 - **De weging voor Azure AI Foundry** (gpt-5.4-mini) volgt de prijslijst van Azure; de waarden komen in de configuratie
   naast die van Claude.
+- **Een limiet per gebruiker** (securityscan van 2026-09-23). Het maandbudget begrenst de kost voor de school, maar
+  één gebruiker kan het met een AI-knop in een lus alleen opmaken, waarna niemand nog AI heeft tot de volgende maand. De
+  API heeft vandaag geen enkele frequentielimiet. Moet er ook een grens per gebruiker komen, bijvoorbeeld een aantal
+  AI-vragen per minuut of een deel van het maandbudget?
 
 ## Werklog
 
 - 2026-09-16 22:23 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-23 00:25 · claude-securityscan · open vraag toegevoegd: limiet per gebruiker, uit de securityscan
