@@ -3,7 +3,8 @@ name: ticket-uitvoeren
 description: >-
   Work a Jaarplanner ticket (FB-nnn or TB-nnn) as an agent session and keep its card on the local
   kanban board truthful: claim it, move it to in-uitvoering on its own branch, log progress, block
-  and unblock, run the gates, and write the final status in the last commit. Use when the user says
+  and unblock, run the gates, write the final status in the last commit, and push and open the PR
+  the owner merges. Use when the user says
   "pak FB-012 op", "werk TB-003 af", "neem het volgende ticket", "/ticket-uitvoeren", and ALWAYS
   before changing any file for work that has no ticket and no backlog story yet: then this skill has
   you create a technical ticket first.
@@ -106,10 +107,19 @@ node tools/backlog-board/tickets.mjs status TB-003 klaar --by <sessie-id> --log 
 Commit it with, or right after, the last change. The card now sits under **In review** until the owner merges; after
 the merge and a pull it moves to *Te testen* or *Klaar* by itself.
 
-Push and open a PR only when the owner asks (the existing rule). If you do, record the number **before the merge**:
-push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push that too. Once `main` (or the
-fetched `origin/main`) has your final status, the CLI refuses any write on your branch: the ticket then lives on
-`main`.
+**Then push and open the PR, every time.** A ticket is not handed over while it sits on a branch only your machine
+has: the owner reviews and merges on GitHub, so the last step of the work is putting it there. You do not wait to be
+asked.
+
+Record the number **before the merge**: push, open the PR, run `pr FB-012 <nummer> --by <sessie-id>`, commit and push
+that too. Once `main` (or the fetched `origin/main`) has your final status, the CLI refuses any write on your branch:
+the ticket then lives on `main`.
+
+The PR's title and description are **Dutch**, like the ticket: they are written for the owner, and they are the only
+part of the work he reads before deciding. Say what changed and why, name what you measured, and name what you found
+and did **not** fix, with the ticket you left it in. The commits stay English.
+
+**Only the owner merges.** An open PR is a question to him; opening it is not deciding anything.
 
 **Stopping without finishing?** Give it back so another session can take it:
 `status FB-012 klaar-voor-bouw --by <sessie-id> --log "teruggegeven: <waarom, en wat er al staat>"`, and commit. The
