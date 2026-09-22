@@ -111,5 +111,5 @@ internal static class Katbouw
             new VasteTijd(nu ?? new DateTimeOffset(2026, 9, 22, 7, 0, 0, TimeSpan.Zero)));
 
     public static Signaalvondst Vondst(Guid klasId, string sleutel, params Guid[] ontvangers) =>
-        new(Signaalsoort.MinimumdoelInGevaar, klasId, sleutel, ontvangers, $"Doel {sleutel} komt in gevaar.");
+        new(Signaalsoort.MinimumdoelInGevaar, klasId, sleutel, ontvangers, new Dictionary<string, object> { ["doelRef"] = sleutel });
 }

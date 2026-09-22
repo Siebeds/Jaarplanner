@@ -79,7 +79,7 @@ public sealed class DeurmatEndpointsTests : IAsyncLifetime
 
         var signaal = Assert.Single(deurmat!.Signalen, s => s.KlasId == school.K3Blauw);
         Assert.Equal(Signaalsoort.MinimumdoelInGevaar, signaal.Soort);
-        Assert.Equal("Doel MD-01 komt in gevaar.", signaal.Titel);
+        Assert.Equal("MD-01", signaal.Gegevens["doelRef"].ToString());
         Assert.False(signaal.Gezien);
     }
 
@@ -224,7 +224,7 @@ public sealed class DeurmatEndpointsTests : IAsyncLifetime
     }
 
     private static Signaalvondst Vondst(Guid klasId, string sleutel) =>
-        new(Signaalsoort.MinimumdoelInGevaar, klasId, sleutel, [], $"Doel {sleutel} komt in gevaar.", $"/klassen/{klasId}/agenda");
+        new(Signaalsoort.MinimumdoelInGevaar, klasId, sleutel, [], new Dictionary<string, object> { ["doelRef"] = sleutel }, $"/klassen/{klasId}/agenda");
 
     /// <summary>
     /// A detector the test steers. It addresses every leerkracht of the klas, which is what a real one does when the

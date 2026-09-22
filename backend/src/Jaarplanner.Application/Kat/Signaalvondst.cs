@@ -16,9 +16,16 @@ namespace Jaarplanner.Application.Kat;
 /// Who is addressed, from <see cref="Katcontext.OntvangerIds"/>. A detector narrows that list when a finding concerns
 /// fewer people; it never widens it, because the context already holds everyone the klas addresses (ADR-0059 D5).
 /// </param>
-/// <param name="Titel">
-/// What the recipient reads, in Dutch: a teacher can act on it, which Art. II.3 allows to be composed here. It is
-/// derived again on every read, never stored (D2).
+/// <param name="Gegevens">
+/// What the sentence needs, not the sentence: the doel's code and text, a thema's name, a count of lesweken. The copy
+/// lives in <c>nl.json</c> and the frontend composes it (owner ruling 2026-09-22), so the cat's whole vocabulary stays
+/// in the catalogue the catalogus test guards, rather than half here and half there. Art. II.3 would have allowed
+/// composing it here; the owner chose the catalogue.
+/// <para>
+/// Keys are the placeholder names of the soort's message, and each soort documents its own on
+/// <see cref="Signaalsoort"/>. Values are strings or numbers: a number stays a number so the copy can count
+/// ("1 lesweek" against "3 lesweken"). It is derived again on every read, never stored (D2).
+/// </para>
 /// </param>
 /// <param name="Verwijzing">
 /// Where she can do something about it, as a path in the app (<c>/klassen/{id}/agenda</c>), or <c>null</c> when the
@@ -29,7 +36,7 @@ public sealed record Signaalvondst(
     Guid KlasId,
     string Sleutel,
     IReadOnlyList<Guid> OntvangerIds,
-    string Titel,
+    IReadOnlyDictionary<string, object> Gegevens,
     string? Verwijzing = null)
 {
     /// <summary>Identity across a tick and a read: the same situation, whoever it is addressed to.</summary>
