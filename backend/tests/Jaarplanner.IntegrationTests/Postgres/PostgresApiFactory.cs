@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Ai;
+using Jaarplanner.Application.Kat;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -44,6 +45,13 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     /// <summary>The last request the stub received, so a test can check what the prompt holds.</summary>
     public AiRequest? LaatsteAiVerzoek { get; private set; }
 
+    /// <summary>
+    /// Detectors this host registers for the cat (TB-057). Empty in production terms: the app ships none until
+    /// FB-069 and FB-070 add theirs, so a deurmat test that needs the cat to have noticed something supplies its own.
+    /// They are ordinary <see cref="ISignaaldetector"/>s and see no AI client, exactly as a real one will not.
+    /// </summary>
+    public IList<ISignaaldetector> Detectoren { get; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
@@ -75,6 +83,11 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
             }
 
             services.AddSingleton<IAiClient>(new StubAiClient(() => AiAntwoord, verzoek => LaatsteAiVerzoek = verzoek));
+
+            foreach (var detector in Detectoren)
+            {
+                services.AddSingleton(detector);
+            }
         });
     }
 

@@ -39,15 +39,23 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
 
     /// <summary>
     /// Write routes deliberately open to every signed-in gebruiker, keyed "METHOD route", each with the ruling that opens
-    /// it. <b>One:</b> adding words to one's own woordweb, the personal content of ADR-0043 (D2). That route takes the web
+    /// it. <b>The first:</b> adding words to one's own woordweb, the personal content of ADR-0043 (D2). That route takes the web
     /// from the caller's session and never from the body, so it reaches no one else's; every action on a web by its id is
     /// the <c>WoordwebBewerken</c> row, and the sweep sends those a web that is not the caller's. Signing out is anonymous
     /// and pinned by <c>ElkeRouteVraagtEenSessieTests</c>.
+    /// <b>The other two:</b> the caller's own deurmat (TB-057, ADR-0059 D5). Both act on a signal only when it is
+    /// addressed to the caller's own id, taken from the session, and answer every other id as a missing signal, so
+    /// there is no resource in the route for a row to be checked against. <c>DeurmatEndpointsTests</c> pins that a
+    /// signal of someone else's is a 404, for each of the two.
     /// </summary>
     private static readonly Dictionary<string, string> OpenVoorIedereen = new(StringComparer.Ordinal)
     {
         ["POST api/subthemas/{subthemaId:guid}/woordwebs/eigen/woorden"] =
             "one's own woordweb (ADR-0043 D2): created for the caller, from the session, never for an id in the body",
+        ["POST api/deurmat/signalen/{signaalId:guid}/gezien"] =
+            "one's own deurmat (ADR-0059 D5): the signal must be addressed to the caller, or it does not exist for her",
+        ["POST api/deurmat/signalen/{signaalId:guid}/later"] =
+            "one's own deurmat (ADR-0059 D5): the signal must be addressed to the caller, or it does not exist for her",
     };
 
     /// <summary>

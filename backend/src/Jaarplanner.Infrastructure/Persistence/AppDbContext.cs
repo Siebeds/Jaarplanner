@@ -1,4 +1,5 @@
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Kat;
 using Jaarplanner.Domain.Ontwikkelingsrapport;
 // The type shares its name with its namespace (Art. IX.4 names it); the Infrastructure namespace of that name would
 // shadow it here.
@@ -6,6 +7,7 @@ using Rapportentiteit = Jaarplanner.Domain.Ontwikkelingsrapport.Ontwikkelingsrap
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Domain.Toegang;
+using Jaarplanner.Infrastructure.Kat;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -191,6 +193,15 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
 
     /// <summary>The AI's personal activiteit proposals under a subthema (FB-025, ADR-0056).</summary>
     public DbSet<Activiteitvoorstel> Activiteitvoorstellen => Set<Activiteitvoorstel>();
+
+    /// <summary>
+    /// What the cat noticed about a klas, per recipient (TB-057, ADR-0059 D2). Derived without AI and removed again
+    /// when its reason is gone; it holds no message, and it never counts for dekking.
+    /// </summary>
+    public DbSet<Signaal> Signalen => Set<Signaal>();
+
+    /// <summary>The ticks of the cat's background job that have been claimed (TB-057, ADR-0059 D1).</summary>
+    public DbSet<Kattik> Kattikken => Set<Kattik>();
 
     /// <summary>
     /// The children of the K3 klassen, for the ontwikkelingsrapport (FB-001, Art. IX.4). <b>Pupil data</b> (Art. VI.7):

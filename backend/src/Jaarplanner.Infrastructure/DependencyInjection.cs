@@ -305,6 +305,28 @@ public static class DependencyInjection
         services.AddScoped<IDekkingOpslag, EfDekkingOpslag>();
         services.AddScoped<DekkingService>();
 
+        // The cat's signal layer (TB-057, ADR-0059). Detection uses no AI: nothing registered here takes an IAiClient,
+        // and the round's only route to content is IKattaak, which has no implementation until FB-070 brings one.
+        // The dekking goes in as a delegate so the round can be unit-tested without the dekking machinery, and so a
+        // detector that never asks for it costs nothing.
+        services.AddScoped<Jaarplanner.Application.Kat.IKatklassenlezer, Jaarplanner.Infrastructure.Kat.EfKatklassenlezer>();
+        services.AddScoped<Jaarplanner.Application.Kat.ISignaalopslag, Jaarplanner.Infrastructure.Kat.EfSignaalopslag>();
+        services.AddScoped<Jaarplanner.Application.Kat.Katdekkingbron>(sp =>
+            (klasId, ct) => sp.GetRequiredService<DekkingService>().BerekenAsync(klasId, cancellationToken: ct));
+        services.AddScoped<Jaarplanner.Application.Kat.Signaalronde>();
+        services.AddScoped<Jaarplanner.Application.Kat.IDeurmatService, Jaarplanner.Infrastructure.Kat.DeurmatService>();
+
+        // The background job that ticks it (D1). Off unless an environment asks for it, because it writes without
+        // anybody asking; a bad tikmoment stops the app at startup, where a deploy sees it.
+        services.AddOptions<Jaarplanner.Infrastructure.Kat.KatOpties>()
+            .Bind(configuration.GetSection(Jaarplanner.Infrastructure.Kat.KatOpties.SectionName))
+            .Validate(o => o.IsGeldig(out _), "Kat:Tikmomenten must hold at least one time of day, as HH:mm.")
+            .ValidateOnStart();
+        if (configuration.GetSection(Jaarplanner.Infrastructure.Kat.KatOpties.SectionName).GetValue<bool>("Ingeschakeld"))
+        {
+            services.AddHostedService<Jaarplanner.Infrastructure.Kat.Katachtergrondtaak>();
+        }
+
         // The coverage export as proof of coverage (E5-06, FR-9.5/FR-11.2, Art. V.4). Stateless apart from the
         // clock → singleton-safe. It renders a DekkingWeergave the endpoint has already computed, so there is no
         // second query and no second definition of "gedekt" that could drift from Art. V.1.
