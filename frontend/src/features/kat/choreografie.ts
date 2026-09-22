@@ -1,5 +1,5 @@
 /**
- * Chuck's steps, baked into CSS keyframes (FB-071, ADR-0064): the walk, stepping out of the basket and stepping back
+ * Chuck's steps, baked into CSS keyframes (FB-071, ADR-0065): the walk, stepping out of the basket and stepping back
  * in. Per moment it says where the body is and where each paw is planted or swinging to; two-bone inverse kinematics
  * turns that into a thigh and a shin angle per leg.
  *

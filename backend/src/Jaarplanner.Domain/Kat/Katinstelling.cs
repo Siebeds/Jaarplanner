@@ -1,7 +1,7 @@
 namespace Jaarplanner.Domain.Kat;
 
 /// <summary>
-/// Whether the school shows Chuck, the cat, in the app (FB-071, ADR-0064). One row for the school, set by admin.
+/// Whether the school shows Chuck, the cat, in the app (FB-071, ADR-0065). One row for the school, set by admin.
 /// <para>
 /// <b>Off until the school turns it on.</b> The owner ruled on 2026-09-22 that Chuck waits behind this setting until the
 /// onderwijsadviseur approves him (ADR-0059). No row means off, so a fresh database shows no cat. A gebruiker cannot

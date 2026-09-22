@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { get, post, put } from "../../lib/api";
 
 /**
- * What Chuck reads (FB-071, ADR-0059, ADR-0064): the school's setting that shows him at all, and the deurmat of the
+ * What Chuck reads (FB-071, ADR-0059, ADR-0065): the school's setting that shows him at all, and the deurmat of the
  * signed-in gebruiker, which is what his posture and his window are made of.
  */
 

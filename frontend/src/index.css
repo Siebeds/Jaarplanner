@@ -29,7 +29,7 @@
  * model (`AiKnop`, ADR-0039). Its meaning is "what follows is a proposal", it is worn by
  * nothing else, and it is read as all five stops at once, never as one of them.
  *
- * One warm thing carries no meaning at all: Chuck's coat (ADR-0064). It is allowed only
+ * One warm thing carries no meaning at all: Chuck's coat (ADR-0065). It is allowed only
  * because it is low in chroma and is an animal in one fixed place with its label, never a
  * dot, square or wash; see `--color-vacht`. It is the exception, not a precedent.
  *
@@ -150,7 +150,7 @@
   --color-ster-blauw: hsl(214 59% 49%);
   --color-ster-blauw-rand: hsl(216 65% 35%);
 
-  /* ── chuck - the cat's coat and his basket (FB-071, ADR-0064) ──────────────────────── */
+  /* ── chuck - the cat's coat and his basket (FB-071, ADR-0065) ──────────────────────── */
   /* THE ONE WARM THING THAT MEANS NOTHING, and an exception to the rule at the top of this file. There is no free warm
      hue (ai-oranje 22, ster-oranje 28, attentie 30, doelsoort A 36), so the coat is defended the way the stars are:
      by chroma and by form. Its saturation is 44%, against 85 to 100% for every signal it sits near, and it is an animal

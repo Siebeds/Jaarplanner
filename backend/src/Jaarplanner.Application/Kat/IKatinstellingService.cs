@@ -1,7 +1,7 @@
 namespace Jaarplanner.Application.Kat;
 
 /// <summary>
-/// Whether the school shows Chuck (FB-071, ADR-0064): read by every session, because every screen draws him or not;
+/// Whether the school shows Chuck (FB-071, ADR-0065): read by every session, because every screen draws him or not;
 /// changed by admin.
 /// </summary>
 public interface IKatinstellingService

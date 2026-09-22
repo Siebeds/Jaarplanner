@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Jaarplanner.Infrastructure.Kat;
 
-/// <summary>Whether the school shows Chuck, over EF Core (FB-071, ADR-0064). One row, created on the first change.</summary>
+/// <summary>Whether the school shows Chuck, over EF Core (FB-071, ADR-0065). One row, created on the first change.</summary>
 public sealed class KatinstellingService : IKatinstellingService
 {
     private readonly AppDbContext _db;

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// Thin REST controller (Art. VIII) for whether the school shows Chuck (FB-071, ADR-0064).
+/// Thin REST controller (Art. VIII) for whether the school shows Chuck (FB-071, ADR-0065).
 /// <para>
 /// <b>Rights:</b> reading is open to every session, because every screen draws him or not. Changing it is the row
 /// <c>Beheer</c>, admin only: it is a decision for the school, taken once the onderwijsadviseur has approved him

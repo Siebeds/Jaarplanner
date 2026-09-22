@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Jaarplanner.Infrastructure.Persistence.Configurations;
 
 /// <summary>
-/// EF Core mapping for <see cref="Katinstelling"/> (FB-071, ADR-0064). The fixed id is what keeps it one row: the
+/// EF Core mapping for <see cref="Katinstelling"/> (FB-071, ADR-0065). The fixed id is what keeps it one row: the
 /// service only ever reads and writes <see cref="Katinstelling.EnigeId"/>.
 /// </summary>
 public sealed class KatinstellingConfiguration : IEntityTypeConfiguration<Katinstelling>

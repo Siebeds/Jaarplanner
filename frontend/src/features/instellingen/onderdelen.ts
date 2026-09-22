@@ -26,7 +26,7 @@ export const ONDERDELEN = [
   { deel: "schooluren", labelSleutel: "instellingen.schooluren" },
   { deel: "hoeken", labelSleutel: "instellingen.hoeken" },
   { deel: "algemene-fiches", labelSleutel: "instellingen.algemeneFiches" },
-  // Whether the school shows Chuck (FB-071, ADR-0064): a school decision, admin only, touched once.
+  // Whether the school shows Chuck (FB-071, ADR-0065): a school decision, admin only, touched once.
   { deel: "chuck", labelSleutel: "instellingen.chuck", alleenAdmin: true },
   // Last because it is the least often touched: a teacher sets light or dark once, if ever, while
   // the parts above it are the school's own content and people. The order lives here rather than in

@@ -1,5 +1,5 @@
 /*
- * Chuck (FB-071, ADR-0064). The drawing lives in Tekening.tsx as inline SVG, never <symbol> + <use>: CSS cannot
+ * Chuck (FB-071, ADR-0065). The drawing lives in Tekening.tsx as inline SVG, never <symbol> + <use>: CSS cannot
  * select into a <use> shadow tree, so rules like `.loopt .dij` would silently do nothing and he would slide like a
  * board. The step keyframes are generated (chuck-keyframes.css, `pnpm kat:keyframes`); everything else is here.
  *

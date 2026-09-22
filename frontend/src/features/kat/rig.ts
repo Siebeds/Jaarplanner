@@ -1,5 +1,5 @@
 /**
- * Chuck's rig: the one place the drawing's joints, bone lengths and rest angles are written down (FB-071, ADR-0064).
+ * Chuck's rig: the one place the drawing's joints, bone lengths and rest angles are written down (FB-071, ADR-0065).
  * The drawing (`Katmand.tsx`) and the choreography that bakes his steps (`choreografie.ts`) both read it, so a leg
  * cannot be drawn in one place and planned in another.
  *

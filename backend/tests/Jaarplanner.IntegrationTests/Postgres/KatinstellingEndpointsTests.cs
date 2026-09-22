@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 namespace Jaarplanner.IntegrationTests.Postgres;
 
 /// <summary>
-/// Whether the school shows Chuck, over HTTP against real PostgreSQL (FB-071, ADR-0064): off until admin turns him on,
+/// Whether the school shows Chuck, over HTTP against real PostgreSQL (FB-071, ADR-0065): off until admin turns him on,
 /// read by everyone, changed by admin alone.
 /// </summary>
 public sealed class KatinstellingEndpointsTests : IAsyncLifetime

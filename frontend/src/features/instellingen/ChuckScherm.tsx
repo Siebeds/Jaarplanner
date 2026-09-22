@@ -6,7 +6,7 @@ import { useKatinstelling, useZetKatinstelling } from "../kat/gegevens";
 import { Onderdeelwissel } from "./Instellingenindeling";
 
 /**
- * Instellingen, Chuck: whether the school shows the cat (FB-071, ADR-0064). Admin only: the part is hidden from
+ * Instellingen, Chuck: whether the school shows the cat (FB-071, ADR-0065). Admin only: the part is hidden from
  * everyone else (`onderdelen.ts`) and the server refuses anyone else's change.
  *
  * Off until admin turns him on, which the school does once the onderwijsadviseur has approved him (owner ruling

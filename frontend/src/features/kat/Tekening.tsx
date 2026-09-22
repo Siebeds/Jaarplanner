@@ -5,7 +5,7 @@ import "./chuck-keyframes.css";
 import "./chuck.css";
 
 /**
- * Chuck's two drawings, lying and standing, and the basket scene that holds both (FB-071, ADR-0064).
+ * Chuck's two drawings, lying and standing, and the basket scene that holds both (FB-071, ADR-0065).
  *
  * **Inline, never `<symbol>` + `<use>`.** CSS cannot reach into a `<use>` shadow tree, so the leg rules would do
  * nothing and he would slide like a board. Every instance is a real copy of the drawing.
