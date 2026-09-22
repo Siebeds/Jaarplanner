@@ -43,9 +43,13 @@ const doel = (code: string, delen: Partial<LeerplandoelDekking> = {}): Leerpland
   ...delen,
 });
 
-/** Wiskunde 1 of 3 covered, Muzische vorming 0 of 2: so Muzische vorming is the least covered. */
+/**
+ * Wiskunde 1 of 3 covered, Muzische vorming 0 of 2: so Muzische vorming is the least covered.
+ * Two doelsoorten, because the doelsoort filter (FB-080) narrows to one of them: MD holds W1 (gedekt) and M1 (no
+ * thema), so narrowing to it moves every figure on the screen.
+ */
 const DOELEN: LeerplandoelDekking[] = [
-  doel("W1", { isGedekt: true, dekkendeThemas: ["Plassen (Herfst)"], oorzaak: null, stap: "Gedekt" }),
+  doel("W1", { doelsoort: "Minimumdoel", isGedekt: true, dekkendeThemas: ["Plassen (Herfst)"], oorzaak: null, stap: "Gedekt" }),
   doel("W2", { oorzaak: "NietIngepland", kandidaatThemas: ["Sneeuw (Winter)"], stap: "Prognose", prognoseBronnen: ["Sneeuw (Winter)"] }),
   doel("W3", {
     domein: "Meten",
@@ -54,7 +58,7 @@ const DOELEN: LeerplandoelDekking[] = [
     stap: "Prognose",
     prognoseBronnen: ["Sneeuw (Winter)"],
   }),
-  doel("M1", { disciplineNummer: "6", disciplineNaam: "Muzische vorming", domein: "Beeld" }),
+  doel("M1", { doelsoort: "Minimumdoel", disciplineNummer: "6", disciplineNaam: "Muzische vorming", domein: "Beeld" }),
   doel("M2", {
     disciplineNummer: "6",
     disciplineNaam: "Muzische vorming",
@@ -158,10 +162,14 @@ describe("DekkingScherm: dekkingsprognose en dekking (FB-045)", () => {
     await toon();
 
     expect(
-      screen.getByText(t("dekking.meterAria", { soort: t("dekking.minimumdoelen"), gedekt: 1, prognose: 1, totaal: 3 })),
+      screen.getByText(
+        t("dekking.meterAria", { soort: t("dekking.minimumdoelen"), gedekt: 1, totaal: 3, deel: 33, prognose: 1 }),
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(t("dekking.meterAria", { soort: t("dekking.leerplandoelen"), gedekt: 1, prognose: 2, totaal: 5 })),
+      screen.getByText(
+        t("dekking.meterAria", { soort: t("dekking.leerplandoelen"), gedekt: 1, totaal: 5, deel: 20, prognose: 2 }),
+      ),
     ).toBeInTheDocument();
     expect(screen.getByText(t("dekking.stapPrognose"))).toBeInTheDocument();
   });
@@ -216,7 +224,7 @@ describe("DekkingScherm (TB-022)", () => {
 
   it("houdt de teller van een discipline gelijk bij het wisselen van weergave", async () => {
     await toonLeerplandoelen();
-    const telling = t("dekking.groepTelling", { gedekt: 1, totaal: 3 });
+    const telling = t("dekking.groepTelling", { gedekt: 1, totaal: 3, deel: 33, prognose: 2 });
 
     expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
@@ -281,10 +289,113 @@ describe("DekkingScherm (TB-022)", () => {
     fireEvent.click(disciplineknop("Wiskunde"));
     expect(screen.getAllByText(t("dekking.prognoseVia", { bronnen: "Sneeuw (Winter)" }))).toHaveLength(2);
 
-    // Nothing a figure could hide in either: no fraction in the text and none in an attribute.
+    // Nothing a figure could hide in either: no fraction, no percentage, and nothing in an attribute.
     expect(container.textContent).not.toMatch(/\d+\s*\/\s*\d+/);
+    expect(container.textContent).not.toMatch(/\d+\s*%/);
     for (const element of container.querySelectorAll("[aria-label], [title]")) {
       expect(`${element.getAttribute("aria-label") ?? ""} ${element.getAttribute("title") ?? ""}`).not.toMatch(/\d/);
     }
+  });
+});
+
+describe("DekkingScherm: per discipline, met de doelsoortfilter (FB-080)", () => {
+  /** De tellingregel zoals de groepkop ze toont, uit de catalogus samengesteld. */
+  const regel = (deel: number, prognose: number) =>
+    `${t("dekking.deelGedekt", { deel })} · ${t("dekking.meterPrognose", { aantal: prognose })}`;
+  const soortenfilter = () => screen.getByRole("radiogroup", { name: t("dekking.doelsoort") });
+  const soortknop = (soort: string) =>
+    within(soortenfilter()).getByRole("radio", { name: new RegExp(`^${soort}`) });
+
+  it("toont per discipline een aantal en een percentage, voor de dekking en voor de prognose", async () => {
+    await toonLeerplandoelen();
+
+    // Wiskunde: 1 van 3 gedekt, 2 in de prognose. Muzische vorming: 0 van 2, 0 in de prognose.
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(33, 2))).toBeInTheDocument();
+    expect(
+      within(disciplineknop("Wiskunde")).getByText(t("dekking.groepTelling", { gedekt: 1, totaal: 3, deel: 33, prognose: 2 })),
+    ).toBeInTheDocument();
+    expect(within(disciplineknop("Muzische vorming")).getByText(regel(0, 0))).toBeInTheDocument();
+  });
+
+  it("laat de disciplines optellen tot het totaal dat de meter toont", async () => {
+    await toonLeerplandoelen();
+
+    const tellingen = screen
+      .getAllByRole("button", { expanded: false })
+      .map((knop) => /(\d+) van (\d+) gedekt \((\d+)%\), (\d+) in/.exec(knop.textContent ?? ""))
+      .map((gevonden) => (gevonden ?? []).slice(1).map(Number));
+
+    expect(tellingen).toHaveLength(2);
+    const som = (kolom: number) => tellingen.reduce((totaal, rij) => totaal + rij[kolom], 0);
+    expect([som(0), som(1), som(3)]).toEqual([
+      antwoord.aantalGedekt,
+      antwoord.aantalLeerplandoelen,
+      antwoord.aantalInPrognose,
+    ]);
+  });
+
+  it("laat de cijfers de gekozen doelsoort volgen, bovenaan en per discipline, en zegt bovenaan welke soort", async () => {
+    await toonLeerplandoelen();
+    fireEvent.click(soortknop(t("doelsoort.Minimumdoel")));
+
+    // Alleen W1 (gedekt, Wiskunde) en M1 (nergens, Muzische vorming) zijn minimumdoelen: 1 van 2.
+    expect(
+      screen.getByText(
+        t("dekking.meterAria", {
+          soort: t("dekking.leerplandoelenSoort", { soort: t("doelsoort.Minimumdoel") }),
+          gedekt: 1,
+          totaal: 2,
+          deel: 50,
+          prognose: 0,
+        }),
+      ),
+    ).toBeInTheDocument();
+    expect(within(disciplineknop("Muzische vorming")).getByText(regel(0, 0))).toBeInTheDocument();
+    expect(screen.getByText(t("dekking.soortMinimumdoel"))).toBeInTheDocument();
+
+    // Wiskunde houdt onder Nog te doen geen enkel ontbrekend minimumdoel over, dus staat het bij Alle doelen.
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(100, 0))).toBeInTheDocument();
+
+    // En terug: Alle soorten geeft de volle cijfers.
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleSoorten") }));
+    expect(within(disciplineknop("Wiskunde")).getByText(regel(33, 2))).toBeInTheDocument();
+  });
+
+  it("laat 'Nog te doen' de cijfers met rust, want die verandert alleen wat er staat", async () => {
+    await toonLeerplandoelen();
+    const telling = regel(33, 2);
+
+    expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
+    expect(within(disciplineknop("Wiskunde")).getByText(telling)).toBeInTheDocument();
+  });
+
+  it("toont na het openklikken van een discipline zowel het gedekte doel als wat ontbreekt", async () => {
+    await toonLeerplandoelen();
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.alleDoelen") }));
+    fireEvent.click(disciplineknop("Wiskunde"));
+
+    expect(screen.getByText("Tekst van W1")).toBeInTheDocument();
+    expect(screen.getByText(t("dekking.gedektDoor", { bronnen: "Plassen (Herfst)" }))).toBeInTheDocument();
+    expect(screen.getByText("Tekst van W2")).toBeInTheDocument();
+    expect(screen.getByText("Tekst van W3")).toBeInTheDocument();
+    expect(screen.queryByText("Tekst van M1")).toBeNull();
+  });
+
+  it("laat de doelsoortfilter met het niveau meegaan, zodat geen onzichtbare keuze het cijfer stuurt", async () => {
+    await toonLeerplandoelen();
+    fireEvent.click(soortknop(t("doelsoort.Minimumdoel")));
+
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.minimumdoelen") }));
+    expect(screen.queryByRole("radiogroup", { name: t("dekking.doelsoort") })).toBeNull();
+    expect(
+      screen.getByText(
+        t("dekking.meterAria", { soort: t("dekking.leerplandoelen"), gedekt: 1, totaal: 5, deel: 20, prognose: 2 }),
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("radio", { name: t("dekking.leerplandoelen") }));
+    expect(screen.getByRole("radio", { name: t("dekking.alleSoorten") })).toHaveAttribute("aria-checked", "true");
   });
 });

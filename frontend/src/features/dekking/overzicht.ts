@@ -1,4 +1,12 @@
-import type { Dekkingsstap, Lacuneoorzaak, LeerplandoelDekking, MinimumdoelDekking } from "../../lib/types";
+import {
+  DOELSOORTEN,
+  type Dekkingsstap,
+  type Doelsoort,
+  type DoelsoortFacet,
+  type Lacuneoorzaak,
+  type LeerplandoelDekking,
+  type MinimumdoelDekking,
+} from "../../lib/types";
 
 /**
  * The shape of the dekkingsoverzicht (TB-022): the goals grouped by discipline and then domein, and the gaps turned
@@ -35,76 +43,81 @@ export function telStappen(doelen: readonly { stap: Dekkingsstap }[]): Stappen {
   };
 }
 
+/**
+ * A share as a whole percentage, never 0% or 100% for a fraction that is neither (the E5-03 rule, rebuilt here for
+ * FB-080). Plain rounding turns 1 of 500 into "0%" and 499 of 500 into "100%", and the second is the worst thing an
+ * inspectie-facing screen can say. Every caller prints the count beside it, so the percentage never stands alone.
+ */
+export function percentage(aantal: number, totaal: number): number {
+  if (totaal <= 0 || aantal <= 0) return 0;
+  if (aantal >= totaal) return 100;
+  return Math.min(99, Math.max(1, Math.round((aantal / totaal) * 100)));
+}
+
 /** One leergebied of the decree with its minimumdoelen, in the server's order. */
 export interface Leergebiedgroep {
   /** Null for the minimumdoelen whose ordering is not known; the screen names that group. */
   naam: string | null;
   doelen: MinimumdoelDekking[];
-  gedekt: number;
-  totaal: number;
+  stappen: Stappen;
 }
 
 /** The minimumdoelen grouped by the decree's leergebied, keeping the server's order (unordered last). */
 export function groepeerPerLeergebied(doelen: MinimumdoelDekking[]): Leergebiedgroep[] {
-  const groepen = new Map<string | null, Leergebiedgroep>();
+  const groepen = new Map<string | null, MinimumdoelDekking[]>();
   for (const doel of doelen) {
-    let groep = groepen.get(doel.leergebied);
-    if (!groep) {
-      groep = { naam: doel.leergebied, doelen: [], gedekt: 0, totaal: 0 };
-      groepen.set(doel.leergebied, groep);
-    }
-    groep.doelen.push(doel);
-    groep.totaal += 1;
-    if (doel.isGedekt) groep.gedekt += 1;
+    const bestaand = groepen.get(doel.leergebied);
+    if (bestaand) bestaand.push(doel);
+    else groepen.set(doel.leergebied, [doel]);
   }
-  return [...groepen.values()];
+  return [...groepen].map(([naam, eigen]) => ({ naam, doelen: eigen, stappen: telStappen(eigen) }));
 }
 
 export interface Domein {
   naam: string;
   doelen: LeerplandoelDekking[];
-  gedekt: number;
-  totaal: number;
+  stappen: Stappen;
 }
 
 export interface Disciplinegroep {
   nummer: string;
   naam: string;
   domeinen: Domein[];
-  gedekt: number;
-  totaal: number;
+  stappen: Stappen;
 }
 
 /**
  * Groups by discipline, then domein, keeping the server's order within each. The counts are over every goal passed in,
  * so pass the whole scope rather than what one view shows: a tally that follows the "Nog te doen" filter reads 0/N.
+ *
+ * The doelsoort filter is the one narrowing that may reach these counts, because it changes what is measured rather
+ * than what is shown (E5-03): the screen narrows the list before it calls this, and says beside the figures that it
+ * did.
  */
 export function groepeerPerDiscipline(doelen: LeerplandoelDekking[]): Disciplinegroep[] {
-  const groepen = new Map<string, Disciplinegroep>();
+  const groepen = new Map<string, { nummer: string; naam: string; domeinen: Map<string, LeerplandoelDekking[]> }>();
 
   for (const doel of doelen) {
     let groep = groepen.get(doel.disciplineNummer);
     if (!groep) {
-      groep = { nummer: doel.disciplineNummer, naam: doel.disciplineNaam ?? doel.disciplineNummer, domeinen: [], gedekt: 0, totaal: 0 };
+      groep = { nummer: doel.disciplineNummer, naam: doel.disciplineNaam ?? doel.disciplineNummer, domeinen: new Map() };
       groepen.set(doel.disciplineNummer, groep);
     }
 
-    let domein = groep.domeinen.find((d) => d.naam === doel.domein);
-    if (!domein) {
-      domein = { naam: doel.domein, doelen: [], gedekt: 0, totaal: 0 };
-      groep.domeinen.push(domein);
-    }
-
-    domein.doelen.push(doel);
-    domein.totaal += 1;
-    groep.totaal += 1;
-    if (doel.isGedekt) {
-      domein.gedekt += 1;
-      groep.gedekt += 1;
-    }
+    const bestaand = groep.domeinen.get(doel.domein);
+    if (bestaand) bestaand.push(doel);
+    else groep.domeinen.set(doel.domein, [doel]);
   }
 
-  return [...groepen.values()];
+  return [...groepen.values()].map((groep) => {
+    const domeinen = [...groep.domeinen].map(([naam, eigen]) => ({ naam, doelen: eigen, stappen: telStappen(eigen) }));
+    return {
+      nummer: groep.nummer,
+      naam: groep.naam,
+      domeinen,
+      stappen: telStappen(domeinen.flatMap((domein) => domein.doelen)),
+    };
+  });
 }
 
 /** Discipline numbers in their own order: "2" before "9.1" before "10". */
@@ -117,7 +130,23 @@ const opNummer = (a: Disciplinegroep, b: Disciplinegroep) => a.nummer.localeComp
  */
 export function sorteerDisciplines(groepen: Disciplinegroep[], opDekking: boolean): Disciplinegroep[] {
   if (!opDekking) return [...groepen].sort(opNummer);
-  return [...groepen].sort((a, b) => a.gedekt / a.totaal - b.gedekt / b.totaal || opNummer(a, b));
+  return [...groepen].sort(
+    (a, b) => a.stappen.gedekt / a.stappen.totaal - b.stappen.gedekt / b.stappen.totaal || opNummer(a, b),
+  );
+}
+
+/**
+ * How many goals of each doelsoort are in scope, in Op.stap's own order and only the ones that occur. The screen counts
+ * the whole scope with it rather than the narrowed list, so choosing a doelsoort neither reshuffles nor empties the
+ * control that chose it.
+ */
+export function telDoelsoorten(doelen: readonly LeerplandoelDekking[]): DoelsoortFacet[] {
+  const aantallen = new Map<Doelsoort, number>();
+  for (const doel of doelen) aantallen.set(doel.doelsoort, (aantallen.get(doel.doelsoort) ?? 0) + 1);
+  return DOELSOORTEN.filter((soort) => aantallen.has(soort)).map((soort) => ({
+    doelsoort: soort,
+    aantal: aantallen.get(soort) ?? 0,
+  }));
 }
 
 /** The three causes a teacher closes on the kalender, one thema at a time. */
