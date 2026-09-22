@@ -191,8 +191,18 @@ public sealed class DeurmatService : IDeurmatService
                     voorstel.KlasId,
                     subthema.Leeftijd,
                     voorstel.SubthemaId,
+                    voorstel.Datum,
+                    voorstel.Begin,
+                    voorstel.Einde,
                 })
             .ToListAsync(ct);
+
+        var klasIds = kandidaten.Where(k => k.KlasId is not null).Select(k => k.KlasId!.Value).ToHashSet();
+        var klasnamen = klasIds.Count == 0
+            ? []
+            : await _context.Klassen.AsNoTracking()
+                .Where(k => klasIds.Contains(k.Id))
+                .ToDictionaryAsync(k => k.Id, k => k.Naam, ct);
 
         return kandidaten
             .Where(k => Rechtenmatrix.StaatToe(
@@ -206,7 +216,11 @@ public sealed class DeurmatService : IDeurmatService
                 // One the cat brought is decided where the cat shows it (FB-071): it belongs to a klas and a day, not
                 // to the per-subthema screen, which would show it without either.
                 k.KlasId is null ? $"/subthemas/{k.SubthemaId}/activiteitvoorstellen" : null,
-                k.AiMotivatie));
+                k.AiMotivatie,
+                k.KlasId is { } klasId ? klasnamen.GetValueOrDefault(klasId) : null,
+                k.KlasId is null ? null : k.Datum,
+                k.KlasId is null ? null : k.Begin,
+                k.KlasId is null ? null : k.Einde));
     }
 
     private async Task<IEnumerable<Deurmatvoorstel>> HaalSubdoelvoorstellenAsync(Rechten rechten, CancellationToken ct)

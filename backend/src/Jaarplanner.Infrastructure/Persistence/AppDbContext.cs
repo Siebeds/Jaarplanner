@@ -200,6 +200,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// </summary>
     public DbSet<Signaal> Signalen => Set<Signaal>();
 
+    /// <summary>Whether the school shows Chuck (FB-071, ADR-0064): one row, or none while admin never set it.</summary>
+    public DbSet<Katinstelling> Katinstellingen => Set<Katinstelling>();
+
     /// <summary>The ticks of the cat's background job that have been claimed (TB-057, ADR-0059 D1).</summary>
     public DbSet<Kattik> Kattikken => Set<Kattik>();
 
