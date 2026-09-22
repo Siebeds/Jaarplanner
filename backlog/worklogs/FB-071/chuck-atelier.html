@@ -1,0 +1,4293 @@
+<title>Het atelier van Chuck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Schibsted+Grotesk:wght@500;600;700&display=swap">
+
+<style>
+/* ════════════════════════════════════════════════════════════════════════════
+   Tokens. Elke waarde hieronder komt letterlijk uit frontend/src/index.css,
+   richting "Inkt en Signaal". Wat nieuw is, staat onder "vacht" en "mandje"
+   en is precies wat dit atelier moet beslissen.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  color-scheme: light;
+
+  --vlak: hsl(220 20% 97%);
+  --vlak-diep: hsl(220 16% 93%);
+  --kaart: hsl(0 0% 100%);
+  --lijn: hsl(220 14% 89%);
+  --lijn-sterk: hsl(220 12% 80%);
+  --lijn-veld: hsl(220 10% 58%);
+
+  --accent: hsl(187 74% 27%);
+  --accent-op: hsl(0 0% 100%);
+  --accent-zacht: hsl(186 52% 94%);
+
+  --inkt: hsl(220 18% 10%);
+  --inkt-op: hsl(0 0% 100%);
+  --inkt-zacht: hsl(220 9% 38%);
+  --inkt-zwak: hsl(220 8% 45%);
+
+  --attentie: hsl(30 85% 38%);
+  --attentie-zacht: hsl(40 90% 96%);
+  --attentie-inkt: hsl(25 68% 24%);
+
+  --doelsoort-md: hsl(217 91% 40%);
+  --doelsoort-verdieping: hsl(142 72% 29%);
+  --doelsoort-anderstalige: hsl(36 100% 30%);
+  --dekking-gedekt: hsl(142 72% 29%);
+  --dekking-niet-gedekt: hsl(0 72% 42%);
+  --ster-oranje: hsl(28 86% 54%);
+
+  --ai-oranje: hsl(22 92% 44%);
+  --ai-roze: hsl(335 78% 48%);
+  --ai-paars: hsl(275 62% 52%);
+  --ai-blauw: hsl(222 85% 54%);
+  --ai-cyaan: hsl(190 92% 34%);
+
+  --waas: hsl(220 18% 10% / 0.35);
+
+  --radius-veld: 0.75rem;
+  --radius-kaart: 1rem;
+  --radius-blad: 1.5rem;
+
+  --schaduw-licht: 0 1px 2px hsl(220 30% 10% / 0.05);
+  --schaduw-kaart: 0 1px 2px hsl(220 30% 10% / 0.04), 0 6px 16px -6px hsl(220 30% 10% / 0.08);
+  --schaduw-zweef: 0 12px 32px -10px hsl(220 30% 10% / 0.22);
+
+  --display: "Schibsted Grotesk", system-ui, sans-serif;
+  --sans: "IBM Plex Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  /* Het mandje is bewust kleurloos: het is meubilair, geen signaal.
+     Zo is Chuck het enige warme ding op het scherm. */
+  --mand: hsl(220 12% 84%);
+  --mand-diep: hsl(220 12% 70%);
+
+  --pupil: hsl(220 28% 12%);
+  --oogbol: hsl(40 18% 90%);
+
+  /* ── vacht, variant 1: inkt (standaard tot er gekozen is) ── */
+  --vacht: hsl(220 12% 56%);
+  --vacht-diep: hsl(220 15% 40%);
+  --vacht-licht: hsl(220 16% 84%);
+  --vacht-lijn: transparent;
+  --vacht-lijn-breedte: 0;
+
+  --loop: 1;
+}
+
+:root[data-vacht="gember"] {
+  --vacht: hsl(24 44% 56%);
+  --vacht-diep: hsl(19 42% 38%);
+  --vacht-licht: hsl(32 44% 87%);
+  --vacht-lijn: transparent;
+  --vacht-lijn-breedte: 0;
+}
+:root[data-vacht="lijn"] {
+  --vacht: hsl(28 50% 76%);
+  --vacht-diep: hsl(24 40% 54%);
+  --vacht-licht: hsl(34 46% 91%);
+  --vacht-lijn: hsl(220 18% 10%);
+  --vacht-lijn-breedte: 2.5;
+}
+
+/* ── donker. Dezelfde regel als de app: tint blijft, helderheid omhoog. ── */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --vlak: hsl(220 17% 10%);
+    --vlak-diep: hsl(220 18% 7%);
+    --kaart: hsl(220 15% 14%);
+    --lijn: hsl(220 12% 21%);
+    --lijn-sterk: hsl(220 11% 29%);
+    --lijn-veld: hsl(220 9% 47%);
+    --accent: hsl(187 55% 50%);
+    --accent-op: hsl(187 60% 8%);
+    --accent-zacht: hsl(187 38% 17%);
+    --inkt: hsl(220 22% 92%);
+    --inkt-op: hsl(220 18% 10%);
+    --inkt-zacht: hsl(220 10% 71%);
+    --inkt-zwak: hsl(220 8% 62%);
+    --attentie: hsl(30 85% 58%);
+    --attentie-zacht: hsl(40 42% 14%);
+    --attentie-inkt: hsl(25 90% 74%);
+    --doelsoort-md: hsl(217 90% 68%);
+    --doelsoort-verdieping: hsl(142 52% 52%);
+    --doelsoort-anderstalige: hsl(36 92% 58%);
+    --dekking-gedekt: hsl(142 52% 52%);
+    --dekking-niet-gedekt: hsl(0 80% 70%);
+    --ster-oranje: hsl(28 90% 63%);
+    --ai-oranje: hsl(26 95% 60%);
+    --ai-roze: hsl(335 85% 70%);
+    --ai-paars: hsl(275 80% 76%);
+    --ai-blauw: hsl(220 90% 70%);
+    --ai-cyaan: hsl(188 72% 52%);
+    --waas: hsl(220 40% 3% / 0.6);
+    --schaduw-licht: none;
+    --schaduw-kaart: none;
+    --schaduw-zweef: 0 12px 32px -10px hsl(220 40% 2% / 0.6);
+    --mand: hsl(220 10% 26%);
+    --mand-diep: hsl(220 9% 36%);
+    --oogbol: hsl(40 16% 80%);
+    --vacht: hsl(220 13% 66%);
+    --vacht-diep: hsl(220 14% 46%);
+    --vacht-licht: hsl(220 16% 86%);
+  }
+  :root:not([data-theme="light"])[data-vacht="gember"] {
+    --vacht: hsl(26 52% 64%);
+    --vacht-diep: hsl(20 44% 42%);
+    --vacht-licht: hsl(32 42% 86%);
+  }
+  :root:not([data-theme="light"])[data-vacht="lijn"] {
+    --vacht: hsl(28 50% 68%);
+    --vacht-diep: hsl(24 40% 44%);
+    --vacht-licht: hsl(34 40% 86%);
+    --vacht-lijn: hsl(220 20% 90%);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --vlak: hsl(220 17% 10%);
+  --vlak-diep: hsl(220 18% 7%);
+  --kaart: hsl(220 15% 14%);
+  --lijn: hsl(220 12% 21%);
+  --lijn-sterk: hsl(220 11% 29%);
+  --lijn-veld: hsl(220 9% 47%);
+  --accent: hsl(187 55% 50%);
+  --accent-op: hsl(187 60% 8%);
+  --accent-zacht: hsl(187 38% 17%);
+  --inkt: hsl(220 22% 92%);
+  --inkt-op: hsl(220 18% 10%);
+  --inkt-zacht: hsl(220 10% 71%);
+  --inkt-zwak: hsl(220 8% 62%);
+  --attentie: hsl(30 85% 58%);
+  --attentie-zacht: hsl(40 42% 14%);
+  --attentie-inkt: hsl(25 90% 74%);
+  --doelsoort-md: hsl(217 90% 68%);
+  --doelsoort-verdieping: hsl(142 52% 52%);
+  --doelsoort-anderstalige: hsl(36 92% 58%);
+  --dekking-gedekt: hsl(142 52% 52%);
+  --dekking-niet-gedekt: hsl(0 80% 70%);
+  --ster-oranje: hsl(28 90% 63%);
+  --ai-oranje: hsl(26 95% 60%);
+  --ai-roze: hsl(335 85% 70%);
+  --ai-paars: hsl(275 80% 76%);
+  --ai-blauw: hsl(220 90% 70%);
+  --ai-cyaan: hsl(188 72% 52%);
+  --waas: hsl(220 40% 3% / 0.6);
+  --schaduw-licht: none;
+  --schaduw-kaart: none;
+  --schaduw-zweef: 0 12px 32px -10px hsl(220 40% 2% / 0.6);
+  --mand: hsl(220 10% 26%);
+  --mand-diep: hsl(220 9% 36%);
+  --oogbol: hsl(40 16% 80%);
+  --vacht: hsl(220 13% 66%);
+  --vacht-diep: hsl(220 14% 46%);
+  --vacht-licht: hsl(220 16% 86%);
+}
+:root[data-theme="dark"][data-vacht="gember"] {
+  --vacht: hsl(26 52% 64%);
+  --vacht-diep: hsl(20 44% 42%);
+  --vacht-licht: hsl(32 42% 86%);
+}
+:root[data-theme="dark"][data-vacht="lijn"] {
+  --vacht: hsl(28 50% 68%);
+  --vacht-diep: hsl(24 40% 44%);
+  --vacht-licht: hsl(34 40% 86%);
+  --vacht-lijn: hsl(220 20% 90%);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Basis
+   ════════════════════════════════════════════════════════════════════════════ */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--vlak);
+  color: var(--inkt);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.blad {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 20px;
+}
+
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2.1rem, 6vw, 3.4rem); line-height: 1.02; letter-spacing: -0.035em; font-weight: 700; }
+h2 { font-size: clamp(1.4rem, 3.4vw, 1.9rem); line-height: 1.12; letter-spacing: -0.025em; font-weight: 600; }
+h3 { font-size: 1.0625rem; line-height: 1.3; letter-spacing: -0.012em; font-weight: 600; }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.lood { max-width: 62ch; color: var(--inkt-zacht); }
+.fijn { font-size: 13px; line-height: 1.45; color: var(--inkt-zacht); }
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+section { padding-block: clamp(40px, 7vw, 76px); }
+section + section { border-top: 1px solid var(--lijn); }
+
+.kop-blok { display: flex; flex-direction: column; gap: 10px; margin-bottom: 30px; }
+
+/* ── werkbank: de bediening die de hele pagina stuurt ── */
+.werkbank {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 40;
+  background: color-mix(in srgb, var(--vlak) 88%, transparent);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--lijn);
+}
+.werkbank-rij {
+  max-width: 1080px; margin: 0 auto; padding: 9px 20px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+}
+.groep { display: flex; align-items: center; gap: 7px; }
+.groep > .etiket { font-size: 12px; color: var(--inkt-zwak); white-space: nowrap; }
+
+.segment { display: inline-flex; background: var(--vlak-diep); border-radius: 999px; padding: 2px; gap: 2px; }
+.segment button {
+  font: inherit; font-size: 12.5px; font-weight: 500;
+  border: 0; background: transparent; color: var(--inkt-zacht);
+  padding: 5px 11px; border-radius: 999px; cursor: pointer;
+  min-height: 28px;
+}
+.segment button[aria-pressed="true"] { background: var(--kaart); color: var(--inkt); box-shadow: var(--schaduw-licht); }
+:root[data-theme="dark"] .segment button[aria-pressed="true"],
+:root:not([data-theme="light"]) .segment button[aria-pressed="true"] { border: 1px solid var(--lijn-sterk); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   De kat
+   ════════════════════════════════════════════════════════════════════════════ */
+@property --stap-x { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --ux     { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --uy     { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --pitch  { syntax: "<angle>";  inherits: false; initial-value: 0deg; }
+@property --kijk   { syntax: "<number>"; inherits: false; initial-value: 1; }
+
+.chuck { display: block; overflow: visible; transition: --stap-x var(--stapduur, 520ms) linear; }
+/* De twee katten wisselen van plek binnen dezelfde tekening. */
+.kat-lig { opacity: var(--lig-op, 1); transition: opacity 110ms linear; }
+.kat-sta {
+  opacity: var(--sta-op, 0);
+  transition: opacity var(--staduur, 150ms) linear;
+  transform: translate(calc(var(--stap-x) + var(--ux)), var(--uy));
+}
+.kat-draai  { transform-box: view-box; transform-origin: 290px 82px; transform: scaleX(var(--kijk)); transition: --kijk var(--kijkduur, 240ms) cubic-bezier(.5,0,.3,1); }
+.kat-kantel { transform-box: view-box; transform-origin: 290px 82px; transform: rotate(var(--pitch)); }
+
+/* Toestanden tussen de bewegingen: naast de mand staan, en omgekeerd staan. */
+.buiten .kat-sta      { --ux: -175px; --uy: 21px; }
+.omgedraaid .kat-draai { --kijk: -1; }
+
+/* ── uit de mand en erin ─────────────────────────────────────────────────────
+   Pootje per pootje, zoals een kat: één poot tegelijk, en elke poot eerst op de
+   rand en dan pas eroverheen. Een kleine stappenplanner in de generator bepaalt
+   waar elke voet neerkomt (bodem, rand, vloer) en kantelt het lijf mee met de
+   grond onder de voor- en achterpoten; inverse kinematica rekent de dij- en
+   scheenhoek uit. Wat staat, blijft dus echt staan. Het verloop zit al in de
+   keyframes, daarom is de timing hier lineair. */
+.uit .kat-sta    { animation: uit-pad    calc(2600ms * var(--loop)) linear both; }
+.uit .kat-kantel { animation: uit-kantel calc(2600ms * var(--loop)) linear both; }
+.uit .been-vn .dij    { animation: uit-vn-dij    calc(2600ms * var(--loop)) linear both; }
+.uit .been-vn .scheen { animation: uit-vn-scheen calc(2600ms * var(--loop)) linear both; }
+.uit .been-vv .dij    { animation: uit-vv-dij    calc(2600ms * var(--loop)) linear both; }
+.uit .been-vv .scheen { animation: uit-vv-scheen calc(2600ms * var(--loop)) linear both; }
+.uit .been-av .dij    { animation: uit-av-dij    calc(2600ms * var(--loop)) linear both; }
+.uit .been-av .scheen { animation: uit-av-scheen calc(2600ms * var(--loop)) linear both; }
+.uit .been-an .dij    { animation: uit-an-dij    calc(2600ms * var(--loop)) linear both; }
+.uit .been-an .scheen { animation: uit-an-scheen calc(2600ms * var(--loop)) linear both; }
+
+.in .kat-sta    { animation: in-pad    calc(2600ms * var(--loop)) linear both; }
+.in .kat-kantel { animation: in-kantel calc(2600ms * var(--loop)) linear both; }
+.in .been-vn .dij    { animation: in-vn-dij    calc(2600ms * var(--loop)) linear both; }
+.in .been-vn .scheen { animation: in-vn-scheen calc(2600ms * var(--loop)) linear both; }
+.in .been-vv .dij    { animation: in-vv-dij    calc(2600ms * var(--loop)) linear both; }
+.in .been-vv .scheen { animation: in-vv-scheen calc(2600ms * var(--loop)) linear both; }
+.in .been-av .dij    { animation: in-av-dij    calc(2600ms * var(--loop)) linear both; }
+.in .been-av .scheen { animation: in-av-scheen calc(2600ms * var(--loop)) linear both; }
+.in .been-an .dij    { animation: in-an-dij    calc(2600ms * var(--loop)) linear both; }
+.in .been-an .scheen { animation: in-an-scheen calc(2600ms * var(--loop)) linear both; }
+
+/* gegenereerd door de IK-generator, niet met de hand bewerken */
+@keyframes stap-vn-dij {
+  0% { --dij: -27.08deg; }
+  2.08% { --dij: -27.78deg; }
+  4.17% { --dij: -28.43deg; }
+  6.25% { --dij: -29.05deg; }
+  8.33% { --dij: -29.61deg; }
+  10.42% { --dij: -30.14deg; }
+  12.5% { --dij: -30.61deg; }
+  14.58% { --dij: -31.03deg; }
+  16.67% { --dij: -31.39deg; }
+  18.75% { --dij: -31.70deg; }
+  20.83% { --dij: -31.94deg; }
+  22.92% { --dij: -32.11deg; }
+  25% { --dij: -32.19deg; }
+  27.08% { --dij: -33.77deg; }
+  29.17% { --dij: -37.05deg; }
+  31.25% { --dij: -40.09deg; }
+  33.33% { --dij: -41.57deg; }
+  35.42% { --dij: -40.62deg; }
+  37.5% { --dij: -36.94deg; }
+  39.58% { --dij: -30.94deg; }
+  41.67% { --dij: -23.51deg; }
+  43.75% { --dij: -15.57deg; }
+  45.83% { --dij: -8.00deg; }
+  47.92% { --dij: -2.00deg; }
+  50% { --dij: 0.52deg; }
+  52.08% { --dij: -1.12deg; }
+  54.17% { --dij: -2.70deg; }
+  56.25% { --dij: -4.21deg; }
+  58.33% { --dij: -5.68deg; }
+  60.42% { --dij: -7.09deg; }
+  62.5% { --dij: -8.47deg; }
+  64.58% { --dij: -9.80deg; }
+  66.67% { --dij: -11.09deg; }
+  68.75% { --dij: -12.35deg; }
+  70.83% { --dij: -13.57deg; }
+  72.92% { --dij: -14.76deg; }
+  75% { --dij: -15.91deg; }
+  77.08% { --dij: -17.03deg; }
+  79.17% { --dij: -18.11deg; }
+  81.25% { --dij: -19.16deg; }
+  83.33% { --dij: -20.18deg; }
+  85.42% { --dij: -21.17deg; }
+  87.5% { --dij: -22.12deg; }
+  89.58% { --dij: -23.03deg; }
+  91.67% { --dij: -23.92deg; }
+  93.75% { --dij: -24.76deg; }
+  95.83% { --dij: -25.57deg; }
+  97.92% { --dij: -26.35deg; }
+  100% { --dij: -27.08deg; }
+}
+@keyframes stap-vn-scheen {
+  0% { --scheen: 44.88deg; }
+  2.08% { --scheen: 44.41deg; }
+  4.17% { --scheen: 43.85deg; }
+  6.25% { --scheen: 43.21deg; }
+  8.33% { --scheen: 42.49deg; }
+  10.42% { --scheen: 41.68deg; }
+  12.5% { --scheen: 40.78deg; }
+  14.58% { --scheen: 39.78deg; }
+  16.67% { --scheen: 38.68deg; }
+  18.75% { --scheen: 37.47deg; }
+  20.83% { --scheen: 36.13deg; }
+  22.92% { --scheen: 34.66deg; }
+  25% { --scheen: 33.03deg; }
+  27.08% { --scheen: 37.31deg; }
+  29.17% { --scheen: 47.05deg; }
+  31.25% { --scheen: 58.21deg; }
+  33.33% { --scheen: 68.19deg; }
+  35.42% { --scheen: 75.08deg; }
+  37.5% { --scheen: 77.55deg; }
+  39.58% { --scheen: 75.08deg; }
+  41.67% { --scheen: 68.19deg; }
+  43.75% { --scheen: 58.21deg; }
+  45.83% { --scheen: 47.05deg; }
+  47.92% { --scheen: 37.31deg; }
+  50% { --scheen: 33.03deg; }
+  52.08% { --scheen: 34.66deg; }
+  54.17% { --scheen: 36.13deg; }
+  56.25% { --scheen: 37.47deg; }
+  58.33% { --scheen: 38.68deg; }
+  60.42% { --scheen: 39.78deg; }
+  62.5% { --scheen: 40.78deg; }
+  64.58% { --scheen: 41.68deg; }
+  66.67% { --scheen: 42.49deg; }
+  68.75% { --scheen: 43.21deg; }
+  70.83% { --scheen: 43.85deg; }
+  72.92% { --scheen: 44.41deg; }
+  75% { --scheen: 44.88deg; }
+  77.08% { --scheen: 45.29deg; }
+  79.17% { --scheen: 45.61deg; }
+  81.25% { --scheen: 45.86deg; }
+  83.33% { --scheen: 46.04deg; }
+  85.42% { --scheen: 46.15deg; }
+  87.5% { --scheen: 46.19deg; }
+  89.58% { --scheen: 46.15deg; }
+  91.67% { --scheen: 46.04deg; }
+  93.75% { --scheen: 45.86deg; }
+  95.83% { --scheen: 45.61deg; }
+  97.92% { --scheen: 45.29deg; }
+  100% { --scheen: 44.88deg; }
+}
+@keyframes stap-vv-dij {
+  0% { --dij: 1.21deg; }
+  2.08% { --dij: -0.46deg; }
+  4.17% { --dij: -2.06deg; }
+  6.25% { --dij: -3.61deg; }
+  8.33% { --dij: -5.10deg; }
+  10.42% { --dij: -6.54deg; }
+  12.5% { --dij: -7.93deg; }
+  14.58% { --dij: -9.29deg; }
+  16.67% { --dij: -10.61deg; }
+  18.75% { --dij: -11.88deg; }
+  20.83% { --dij: -13.13deg; }
+  22.92% { --dij: -14.33deg; }
+  25% { --dij: -15.51deg; }
+  27.08% { --dij: -16.65deg; }
+  29.17% { --dij: -17.75deg; }
+  31.25% { --dij: -18.83deg; }
+  33.33% { --dij: -19.87deg; }
+  35.42% { --dij: -20.87deg; }
+  37.5% { --dij: -21.84deg; }
+  39.58% { --dij: -22.78deg; }
+  41.67% { --dij: -23.68deg; }
+  43.75% { --dij: -24.55deg; }
+  45.83% { --dij: -25.38deg; }
+  47.92% { --dij: -26.17deg; }
+  50% { --dij: -26.93deg; }
+  52.08% { --dij: -27.64deg; }
+  54.17% { --dij: -28.32deg; }
+  56.25% { --dij: -28.95deg; }
+  58.33% { --dij: -29.53deg; }
+  60.42% { --dij: -30.07deg; }
+  62.5% { --dij: -30.55deg; }
+  64.58% { --dij: -30.99deg; }
+  66.67% { --dij: -31.36deg; }
+  68.75% { --dij: -31.68deg; }
+  70.83% { --dij: -31.93deg; }
+  72.92% { --dij: -32.10deg; }
+  75% { --dij: -32.19deg; }
+  77.08% { --dij: -33.76deg; }
+  79.17% { --dij: -37.01deg; }
+  81.25% { --dij: -39.96deg; }
+  83.33% { --dij: -41.31deg; }
+  85.42% { --dij: -40.20deg; }
+  87.5% { --dij: -36.37deg; }
+  89.58% { --dij: -30.28deg; }
+  91.67% { --dij: -22.81deg; }
+  93.75% { --dij: -14.86deg; }
+  95.83% { --dij: -7.31deg; }
+  97.92% { --dij: -1.31deg; }
+  100% { --dij: 1.21deg; }
+}
+@keyframes stap-vv-scheen {
+  0% { --scheen: 33.07deg; }
+  2.08% { --scheen: 34.76deg; }
+  4.17% { --scheen: 36.29deg; }
+  6.25% { --scheen: 37.68deg; }
+  8.33% { --scheen: 38.94deg; }
+  10.42% { --scheen: 40.08deg; }
+  12.5% { --scheen: 41.12deg; }
+  14.58% { --scheen: 42.05deg; }
+  16.67% { --scheen: 42.89deg; }
+  18.75% { --scheen: 43.64deg; }
+  20.83% { --scheen: 44.30deg; }
+  22.92% { --scheen: 44.87deg; }
+  25% { --scheen: 45.37deg; }
+  27.08% { --scheen: 45.78deg; }
+  29.17% { --scheen: 46.12deg; }
+  31.25% { --scheen: 46.38deg; }
+  33.33% { --scheen: 46.57deg; }
+  35.42% { --scheen: 46.68deg; }
+  37.5% { --scheen: 46.72deg; }
+  39.58% { --scheen: 46.68deg; }
+  41.67% { --scheen: 46.57deg; }
+  43.75% { --scheen: 46.38deg; }
+  45.83% { --scheen: 46.12deg; }
+  47.92% { --scheen: 45.78deg; }
+  50% { --scheen: 45.37deg; }
+  52.08% { --scheen: 44.87deg; }
+  54.17% { --scheen: 44.30deg; }
+  56.25% { --scheen: 43.64deg; }
+  58.33% { --scheen: 42.89deg; }
+  60.42% { --scheen: 42.05deg; }
+  62.5% { --scheen: 41.12deg; }
+  64.58% { --scheen: 40.08deg; }
+  66.67% { --scheen: 38.94deg; }
+  68.75% { --scheen: 37.68deg; }
+  70.83% { --scheen: 36.29deg; }
+  72.92% { --scheen: 34.76deg; }
+  75% { --scheen: 33.07deg; }
+  77.08% { --scheen: 37.45deg; }
+  79.17% { --scheen: 47.40deg; }
+  81.25% { --scheen: 58.77deg; }
+  83.33% { --scheen: 68.93deg; }
+  85.42% { --scheen: 75.96deg; }
+  87.5% { --scheen: 78.47deg; }
+  89.58% { --scheen: 75.96deg; }
+  91.67% { --scheen: 68.93deg; }
+  93.75% { --scheen: 58.77deg; }
+  95.83% { --scheen: 47.40deg; }
+  97.92% { --scheen: 37.45deg; }
+  100% { --scheen: 33.07deg; }
+}
+@keyframes stap-av-dij {
+  0% { --dij: -7.59deg; }
+  2.08% { --dij: -8.55deg; }
+  4.17% { --dij: -9.48deg; }
+  6.25% { --dij: -10.38deg; }
+  8.33% { --dij: -11.25deg; }
+  10.42% { --dij: -12.08deg; }
+  12.5% { --dij: -12.88deg; }
+  14.58% { --dij: -13.65deg; }
+  16.67% { --dij: -14.37deg; }
+  18.75% { --dij: -15.06deg; }
+  20.83% { --dij: -15.71deg; }
+  22.92% { --dij: -16.32deg; }
+  25% { --dij: -16.89deg; }
+  27.08% { --dij: -17.41deg; }
+  29.17% { --dij: -17.89deg; }
+  31.25% { --dij: -18.32deg; }
+  33.33% { --dij: -18.70deg; }
+  35.42% { --dij: -19.02deg; }
+  37.5% { --dij: -19.28deg; }
+  39.58% { --dij: -19.48deg; }
+  41.67% { --dij: -19.61deg; }
+  43.75% { --dij: -19.67deg; }
+  45.83% { --dij: -19.64deg; }
+  47.92% { --dij: -19.51deg; }
+  50% { --dij: -19.27deg; }
+  52.08% { --dij: -21.08deg; }
+  54.17% { --dij: -24.87deg; }
+  56.25% { --dij: -28.52deg; }
+  58.33% { --dij: -30.69deg; }
+  60.42% { --dij: -30.40deg; }
+  62.5% { --dij: -27.24deg; }
+  64.58% { --dij: -21.61deg; }
+  66.67% { --dij: -14.52deg; }
+  68.75% { --dij: -7.12deg; }
+  70.83% { --dij: -0.47deg; }
+  72.92% { --dij: 4.36deg; }
+  75% { --dij: 6.22deg; }
+  77.08% { --dij: 4.91deg; }
+  79.17% { --dij: 3.63deg; }
+  81.25% { --dij: 2.38deg; }
+  83.33% { --dij: 1.16deg; }
+  85.42% { --dij: -0.03deg; }
+  87.5% { --dij: -1.19deg; }
+  89.58% { --dij: -2.33deg; }
+  91.67% { --dij: -3.44deg; }
+  93.75% { --dij: -4.52deg; }
+  95.83% { --dij: -5.57deg; }
+  97.92% { --dij: -6.59deg; }
+  100% { --dij: -7.59deg; }
+}
+@keyframes stap-av-scheen {
+  0% { --scheen: 27.93deg; }
+  2.08% { --scheen: 27.86deg; }
+  4.17% { --scheen: 27.73deg; }
+  6.25% { --scheen: 27.54deg; }
+  8.33% { --scheen: 27.28deg; }
+  10.42% { --scheen: 26.95deg; }
+  12.5% { --scheen: 26.55deg; }
+  14.58% { --scheen: 26.09deg; }
+  16.67% { --scheen: 25.56deg; }
+  18.75% { --scheen: 24.95deg; }
+  20.83% { --scheen: 24.27deg; }
+  22.92% { --scheen: 23.52deg; }
+  25% { --scheen: 22.69deg; }
+  27.08% { --scheen: 21.78deg; }
+  29.17% { --scheen: 20.79deg; }
+  31.25% { --scheen: 19.70deg; }
+  33.33% { --scheen: 18.53deg; }
+  35.42% { --scheen: 17.25deg; }
+  37.5% { --scheen: 15.87deg; }
+  39.58% { --scheen: 14.37deg; }
+  41.67% { --scheen: 12.75deg; }
+  43.75% { --scheen: 10.98deg; }
+  45.83% { --scheen: 9.06deg; }
+  47.92% { --scheen: 6.95deg; }
+  50% { --scheen: 4.63deg; }
+  52.08% { --scheen: 9.35deg; }
+  54.17% { --scheen: 19.98deg; }
+  56.25% { --scheen: 32.15deg; }
+  58.33% { --scheen: 43.27deg; }
+  60.42% { --scheen: 51.48deg; }
+  62.5% { --scheen: 55.45deg; }
+  64.58% { --scheen: 54.64deg; }
+  66.67% { --scheen: 49.56deg; }
+  68.75% { --scheen: 41.72deg; }
+  70.83% { --scheen: 33.17deg; }
+  72.92% { --scheen: 26.28deg; }
+  75% { --scheen: 23.50deg; }
+  77.08% { --scheen: 24.26deg; }
+  79.17% { --scheen: 24.94deg; }
+  81.25% { --scheen: 25.54deg; }
+  83.33% { --scheen: 26.08deg; }
+  85.42% { --scheen: 26.54deg; }
+  87.5% { --scheen: 26.94deg; }
+  89.58% { --scheen: 27.27deg; }
+  91.67% { --scheen: 27.53deg; }
+  93.75% { --scheen: 27.73deg; }
+  95.83% { --scheen: 27.86deg; }
+  97.92% { --scheen: 27.93deg; }
+  100% { --scheen: 27.93deg; }
+}
+@keyframes stap-an-dij {
+  0% { --dij: -19.40deg; }
+  2.08% { --dij: -21.15deg; }
+  4.17% { --dij: -24.88deg; }
+  6.25% { --dij: -28.53deg; }
+  8.33% { --dij: -30.74deg; }
+  10.42% { --dij: -30.54deg; }
+  12.5% { --dij: -27.49deg; }
+  14.58% { --dij: -21.95deg; }
+  16.67% { --dij: -14.91deg; }
+  18.75% { --dij: -7.52deg; }
+  20.83% { --dij: -0.86deg; }
+  22.92% { --dij: 3.99deg; }
+  25% { --dij: 5.85deg; }
+  27.08% { --dij: 4.57deg; }
+  29.17% { --dij: 3.30deg; }
+  31.25% { --dij: 2.07deg; }
+  33.33% { --dij: 0.87deg; }
+  35.42% { --dij: -0.31deg; }
+  37.5% { --dij: -1.45deg; }
+  39.58% { --dij: -2.57deg; }
+  41.67% { --dij: -3.67deg; }
+  43.75% { --dij: -4.73deg; }
+  45.83% { --dij: -5.76deg; }
+  47.92% { --dij: -6.77deg; }
+  50% { --dij: -7.75deg; }
+  52.08% { --dij: -8.69deg; }
+  54.17% { --dij: -9.61deg; }
+  56.25% { --dij: -10.50deg; }
+  58.33% { --dij: -11.35deg; }
+  60.42% { --dij: -12.17deg; }
+  62.5% { --dij: -12.96deg; }
+  64.58% { --dij: -13.71deg; }
+  66.67% { --dij: -14.42deg; }
+  68.75% { --dij: -15.10deg; }
+  70.83% { --dij: -15.74deg; }
+  72.92% { --dij: -16.34deg; }
+  75% { --dij: -16.91deg; }
+  77.08% { --dij: -17.42deg; }
+  79.17% { --dij: -17.89deg; }
+  81.25% { --dij: -18.32deg; }
+  83.33% { --dij: -18.70deg; }
+  85.42% { --dij: -19.02deg; }
+  87.5% { --dij: -19.29deg; }
+  89.58% { --dij: -19.49deg; }
+  91.67% { --dij: -19.63deg; }
+  93.75% { --dij: -19.70deg; }
+  95.83% { --dij: -19.70deg; }
+  97.92% { --dij: -19.60deg; }
+  100% { --dij: -19.40deg; }
+}
+@keyframes stap-an-scheen {
+  0% { --scheen: 5.47deg; }
+  2.08% { --scheen: 9.97deg; }
+  4.17% { --scheen: 20.20deg; }
+  6.25% { --scheen: 32.01deg; }
+  8.33% { --scheen: 42.82deg; }
+  10.42% { --scheen: 50.79deg; }
+  12.5% { --scheen: 54.61deg; }
+  14.58% { --scheen: 53.73deg; }
+  16.67% { --scheen: 48.68deg; }
+  18.75% { --scheen: 40.92deg; }
+  20.83% { --scheen: 32.47deg; }
+  22.92% { --scheen: 25.66deg; }
+  25% { --scheen: 22.92deg; }
+  27.08% { --scheen: 23.67deg; }
+  29.17% { --scheen: 24.34deg; }
+  31.25% { --scheen: 24.94deg; }
+  33.33% { --scheen: 25.47deg; }
+  35.42% { --scheen: 25.93deg; }
+  37.5% { --scheen: 26.32deg; }
+  39.58% { --scheen: 26.66deg; }
+  41.67% { --scheen: 26.92deg; }
+  43.75% { --scheen: 27.13deg; }
+  45.83% { --scheen: 27.26deg; }
+  47.92% { --scheen: 27.34deg; }
+  50% { --scheen: 27.36deg; }
+  52.08% { --scheen: 27.31deg; }
+  54.17% { --scheen: 27.19deg; }
+  56.25% { --scheen: 27.02deg; }
+  58.33% { --scheen: 26.78deg; }
+  60.42% { --scheen: 26.48deg; }
+  62.5% { --scheen: 26.11deg; }
+  64.58% { --scheen: 25.68deg; }
+  66.67% { --scheen: 25.18deg; }
+  68.75% { --scheen: 24.61deg; }
+  70.83% { --scheen: 23.97deg; }
+  72.92% { --scheen: 23.26deg; }
+  75% { --scheen: 22.47deg; }
+  77.08% { --scheen: 21.61deg; }
+  79.17% { --scheen: 20.67deg; }
+  81.25% { --scheen: 19.65deg; }
+  83.33% { --scheen: 18.53deg; }
+  85.42% { --scheen: 17.33deg; }
+  87.5% { --scheen: 16.02deg; }
+  89.58% { --scheen: 14.61deg; }
+  91.67% { --scheen: 13.08deg; }
+  93.75% { --scheen: 11.42deg; }
+  95.83% { --scheen: 9.61deg; }
+  97.92% { --scheen: 7.64deg; }
+  100% { --scheen: 5.47deg; }
+}
+@keyframes uit-pad {
+  0% { --ux: 0.00px; --uy: 6.00px; }
+  1.042% { --ux: 0.00px; --uy: 6.00px; }
+  2.083% { --ux: 0.00px; --uy: 6.00px; }
+  3.125% { --ux: -0.00px; --uy: 6.00px; }
+  4.167% { --ux: -0.11px; --uy: 6.00px; }
+  5.208% { --ux: -0.38px; --uy: 6.00px; }
+  6.25% { --ux: -0.82px; --uy: 6.00px; }
+  7.292% { --ux: -1.42px; --uy: 6.00px; }
+  8.333% { --ux: -2.19px; --uy: 6.00px; }
+  9.375% { --ux: -3.14px; --uy: 6.00px; }
+  10.417% { --ux: -4.24px; --uy: 6.00px; }
+  11.458% { --ux: -5.52px; --uy: 6.00px; }
+  12.5% { --ux: -6.96px; --uy: 6.00px; }
+  13.542% { --ux: -8.57px; --uy: 6.00px; }
+  14.583% { --ux: -10.35px; --uy: 6.00px; }
+  15.625% { --ux: -12.30px; --uy: 6.00px; }
+  16.667% { --ux: -14.41px; --uy: 6.00px; }
+  17.708% { --ux: -16.65px; --uy: 6.00px; }
+  18.75% { --ux: -18.90px; --uy: 6.00px; }
+  19.792% { --ux: -21.15px; --uy: 6.00px; }
+  20.833% { --ux: -23.41px; --uy: 6.00px; }
+  21.875% { --ux: -25.66px; --uy: 6.00px; }
+  22.917% { --ux: -27.91px; --uy: 6.00px; }
+  23.958% { --ux: -30.16px; --uy: 6.00px; }
+  25% { --ux: -32.41px; --uy: 6.00px; }
+  26.042% { --ux: -34.66px; --uy: 6.00px; }
+  27.083% { --ux: -36.91px; --uy: 6.00px; }
+  28.125% { --ux: -39.16px; --uy: 6.00px; }
+  29.167% { --ux: -41.41px; --uy: 6.00px; }
+  30.208% { --ux: -43.66px; --uy: 6.00px; }
+  31.25% { --ux: -45.91px; --uy: 6.00px; }
+  32.292% { --ux: -48.16px; --uy: 6.00px; }
+  33.333% { --ux: -50.41px; --uy: 6.00px; }
+  34.375% { --ux: -52.66px; --uy: 6.00px; }
+  35.417% { --ux: -54.91px; --uy: 6.00px; }
+  36.458% { --ux: -57.16px; --uy: 6.00px; }
+  37.5% { --ux: -59.41px; --uy: 6.00px; }
+  38.542% { --ux: -61.66px; --uy: 6.00px; }
+  39.583% { --ux: -63.91px; --uy: 6.00px; }
+  40.625% { --ux: -66.17px; --uy: 6.00px; }
+  41.667% { --ux: -68.42px; --uy: 6.00px; }
+  42.708% { --ux: -70.67px; --uy: 6.00px; }
+  43.75% { --ux: -72.92px; --uy: 6.00px; }
+  44.792% { --ux: -75.17px; --uy: 6.00px; }
+  45.833% { --ux: -77.42px; --uy: 6.00px; }
+  46.875% { --ux: -79.67px; --uy: 5.68px; }
+  47.917% { --ux: -81.92px; --uy: 4.08px; }
+  48.958% { --ux: -84.17px; --uy: 1.86px; }
+  50% { --ux: -86.42px; --uy: 0.98px; }
+  51.042% { --ux: -88.67px; --uy: 0.98px; }
+  52.083% { --ux: -90.92px; --uy: 0.98px; }
+  53.125% { --ux: -93.17px; --uy: 0.98px; }
+  54.167% { --ux: -95.42px; --uy: 0.98px; }
+  55.208% { --ux: -97.67px; --uy: 0.98px; }
+  56.25% { --ux: -99.92px; --uy: 0.98px; }
+  57.292% { --ux: -102.17px; --uy: 0.98px; }
+  58.333% { --ux: -104.42px; --uy: 0.98px; }
+  59.375% { --ux: -106.67px; --uy: 0.98px; }
+  60.417% { --ux: -108.92px; --uy: 3.76px; }
+  61.458% { --ux: -111.18px; --uy: 8.18px; }
+  62.5% { --ux: -113.43px; --uy: 12.15px; }
+  63.542% { --ux: -115.68px; --uy: 13.78px; }
+  64.583% { --ux: -117.93px; --uy: 13.78px; }
+  65.625% { --ux: -120.18px; --uy: 13.78px; }
+  66.667% { --ux: -122.43px; --uy: 13.78px; }
+  67.708% { --ux: -124.68px; --uy: 13.78px; }
+  68.75% { --ux: -126.93px; --uy: 13.78px; }
+  69.792% { --ux: -129.18px; --uy: 13.78px; }
+  70.833% { --ux: -131.43px; --uy: 13.78px; }
+  71.875% { --ux: -133.68px; --uy: 13.78px; }
+  72.917% { --ux: -135.93px; --uy: 13.78px; }
+  73.958% { --ux: -138.18px; --uy: 13.78px; }
+  75% { --ux: -140.43px; --uy: 13.78px; }
+  76.042% { --ux: -142.68px; --uy: 14.52px; }
+  77.083% { --ux: -144.93px; --uy: 16.36px; }
+  78.125% { --ux: -147.18px; --uy: 18.78px; }
+  79.167% { --ux: -149.43px; --uy: 21.16px; }
+  80.208% { --ux: -151.68px; --uy: 22.75px; }
+  81.25% { --ux: -153.94px; --uy: 23.00px; }
+  82.292% { --ux: -156.19px; --uy: 23.00px; }
+  83.333% { --ux: -158.44px; --uy: 23.00px; }
+  84.375% { --ux: -160.68px; --uy: 23.00px; }
+  85.417% { --ux: -162.78px; --uy: 23.00px; }
+  86.458% { --ux: -164.72px; --uy: 23.00px; }
+  87.5% { --ux: -166.49px; --uy: 23.00px; }
+  88.542% { --ux: -168.10px; --uy: 23.00px; }
+  89.583% { --ux: -169.53px; --uy: 23.00px; }
+  90.625% { --ux: -170.80px; --uy: 23.00px; }
+  91.667% { --ux: -171.91px; --uy: 23.00px; }
+  92.708% { --ux: -172.84px; --uy: 23.00px; }
+  93.75% { --ux: -173.61px; --uy: 23.00px; }
+  94.792% { --ux: -174.21px; --uy: 23.00px; }
+  95.833% { --ux: -174.64px; --uy: 23.00px; }
+  96.875% { --ux: -174.90px; --uy: 23.00px; }
+  97.917% { --ux: -175.00px; --uy: 23.00px; }
+  98.958% { --ux: -175.00px; --uy: 23.00px; }
+  100% { --ux: -175.00px; --uy: 23.00px; }
+}
+@keyframes uit-kantel {
+  0% { --pitch: 0.00deg; }
+  1.042% { --pitch: 0.00deg; }
+  2.083% { --pitch: 0.00deg; }
+  3.125% { --pitch: 0.00deg; }
+  4.167% { --pitch: 0.00deg; }
+  5.208% { --pitch: 0.00deg; }
+  6.25% { --pitch: 0.00deg; }
+  7.292% { --pitch: 0.00deg; }
+  8.333% { --pitch: 0.00deg; }
+  9.375% { --pitch: 0.00deg; }
+  10.417% { --pitch: 0.00deg; }
+  11.458% { --pitch: 0.00deg; }
+  12.5% { --pitch: 0.00deg; }
+  13.542% { --pitch: 0.00deg; }
+  14.583% { --pitch: 0.00deg; }
+  15.625% { --pitch: 0.00deg; }
+  16.667% { --pitch: 0.00deg; }
+  17.708% { --pitch: 0.00deg; }
+  18.75% { --pitch: 0.00deg; }
+  19.792% { --pitch: 0.00deg; }
+  20.833% { --pitch: 0.00deg; }
+  21.875% { --pitch: 0.00deg; }
+  22.917% { --pitch: 0.00deg; }
+  23.958% { --pitch: 0.00deg; }
+  25% { --pitch: 0.00deg; }
+  26.042% { --pitch: 0.00deg; }
+  27.083% { --pitch: 0.00deg; }
+  28.125% { --pitch: 0.00deg; }
+  29.167% { --pitch: 0.00deg; }
+  30.208% { --pitch: 0.00deg; }
+  31.25% { --pitch: 0.00deg; }
+  32.292% { --pitch: 0.00deg; }
+  33.333% { --pitch: 0.00deg; }
+  34.375% { --pitch: 0.00deg; }
+  35.417% { --pitch: 0.00deg; }
+  36.458% { --pitch: 0.00deg; }
+  37.5% { --pitch: 0.00deg; }
+  38.542% { --pitch: 0.00deg; }
+  39.583% { --pitch: 0.00deg; }
+  40.625% { --pitch: 0.00deg; }
+  41.667% { --pitch: 0.00deg; }
+  42.708% { --pitch: 0.00deg; }
+  43.75% { --pitch: 0.00deg; }
+  44.792% { --pitch: 0.00deg; }
+  45.833% { --pitch: 0.00deg; }
+  46.875% { --pitch: 0.84deg; }
+  47.917% { --pitch: 5.16deg; }
+  48.958% { --pitch: 11.47deg; }
+  50% { --pitch: 14.00deg; }
+  51.042% { --pitch: 14.00deg; }
+  52.083% { --pitch: 14.00deg; }
+  53.125% { --pitch: 14.00deg; }
+  54.167% { --pitch: 14.00deg; }
+  55.208% { --pitch: 14.00deg; }
+  56.25% { --pitch: 14.00deg; }
+  57.292% { --pitch: 14.00deg; }
+  58.333% { --pitch: 14.00deg; }
+  59.375% { --pitch: 14.00deg; }
+  60.417% { --pitch: 6.05deg; }
+  61.458% { --pitch: -5.46deg; }
+  62.5% { --pitch: -14.25deg; }
+  63.542% { --pitch: -17.47deg; }
+  64.583% { --pitch: -17.47deg; }
+  65.625% { --pitch: -17.47deg; }
+  66.667% { --pitch: -17.47deg; }
+  67.708% { --pitch: -17.47deg; }
+  68.75% { --pitch: -17.47deg; }
+  69.792% { --pitch: -17.47deg; }
+  70.833% { --pitch: -17.47deg; }
+  71.875% { --pitch: -17.47deg; }
+  72.917% { --pitch: -17.47deg; }
+  73.958% { --pitch: -17.47deg; }
+  75% { --pitch: -17.47deg; }
+  76.042% { --pitch: -16.04deg; }
+  77.083% { --pitch: -12.45deg; }
+  78.125% { --pitch: -7.80deg; }
+  79.167% { --pitch: -3.35deg; }
+  80.208% { --pitch: -0.45deg; }
+  81.25% { --pitch: 0.00deg; }
+  82.292% { --pitch: 0.00deg; }
+  83.333% { --pitch: 0.00deg; }
+  84.375% { --pitch: 0.00deg; }
+  85.417% { --pitch: 0.00deg; }
+  86.458% { --pitch: 0.00deg; }
+  87.5% { --pitch: 0.00deg; }
+  88.542% { --pitch: 0.00deg; }
+  89.583% { --pitch: 0.00deg; }
+  90.625% { --pitch: 0.00deg; }
+  91.667% { --pitch: 0.00deg; }
+  92.708% { --pitch: 0.00deg; }
+  93.75% { --pitch: 0.00deg; }
+  94.792% { --pitch: 0.00deg; }
+  95.833% { --pitch: 0.00deg; }
+  96.875% { --pitch: 0.00deg; }
+  97.917% { --pitch: 0.00deg; }
+  98.958% { --pitch: 0.00deg; }
+  100% { --pitch: 0.00deg; }
+}
+@keyframes uit-vn-dij {
+  0% { --dij: -27.14deg; }
+  1.042% { --dij: -27.14deg; }
+  2.083% { --dij: -27.14deg; }
+  3.125% { --dij: -27.15deg; }
+  4.167% { --dij: -27.28deg; }
+  5.208% { --dij: -27.63deg; }
+  6.25% { --dij: -28.19deg; }
+  7.292% { --dij: -28.94deg; }
+  8.333% { --dij: -29.87deg; }
+  9.375% { --dij: -30.96deg; }
+  10.417% { --dij: -32.18deg; }
+  11.458% { --dij: -33.49deg; }
+  12.5% { --dij: -36.31deg; }
+  13.542% { --dij: -37.88deg; }
+  14.583% { --dij: -29.57deg; }
+  15.625% { --dij: -14.33deg; }
+  16.667% { --dij: 0.92deg; }
+  17.708% { --dij: 3.84deg; }
+  18.75% { --dij: -1.25deg; }
+  19.792% { --dij: -5.89deg; }
+  20.833% { --dij: -10.19deg; }
+  21.875% { --dij: -14.20deg; }
+  22.917% { --dij: -17.95deg; }
+  23.958% { --dij: -21.46deg; }
+  25% { --dij: -24.72deg; }
+  26.042% { --dij: -27.73deg; }
+  27.083% { --dij: -30.47deg; }
+  28.125% { --dij: -32.93deg; }
+  29.167% { --dij: -35.07deg; }
+  30.208% { --dij: -36.87deg; }
+  31.25% { --dij: -38.29deg; }
+  32.292% { --dij: -39.26deg; }
+  33.333% { --dij: -39.70deg; }
+  34.375% { --dij: -39.44deg; }
+  35.417% { --dij: -53.17deg; }
+  36.458% { --dij: -86.55deg; }
+  37.5% { --dij: -98.29deg; }
+  38.542% { --dij: -33.05deg; }
+  39.583% { --dij: -26.30deg; }
+  40.625% { --dij: -27.40deg; }
+  41.667% { --dij: -33.52deg; }
+  42.708% { --dij: -39.87deg; }
+  43.75% { --dij: -46.40deg; }
+  44.792% { --dij: -53.01deg; }
+  45.833% { --dij: -59.59deg; }
+  46.875% { --dij: -66.37deg; }
+  47.917% { --dij: -71.79deg; }
+  48.958% { --dij: -72.42deg; }
+  50% { --dij: -72.94deg; }
+  51.042% { --dij: -75.07deg; }
+  52.083% { --dij: -76.82deg; }
+  53.125% { --dij: -78.18deg; }
+  54.167% { --dij: -79.14deg; }
+  55.208% { --dij: -79.65deg; }
+  56.25% { --dij: -79.69deg; }
+  57.292% { --dij: -79.18deg; }
+  58.333% { --dij: -85.39deg; }
+  59.375% { --dij: -107.82deg; }
+  60.417% { --dij: -105.70deg; }
+  61.458% { --dij: -30.89deg; }
+  62.5% { --dij: 9.44deg; }
+  63.542% { --dij: 36.80deg; }
+  64.583% { --dij: 29.43deg; }
+  65.625% { --dij: 23.47deg; }
+  66.667% { --dij: 18.21deg; }
+  67.708% { --dij: 13.38deg; }
+  68.75% { --dij: 8.88deg; }
+  69.792% { --dij: 4.63deg; }
+  70.833% { --dij: 0.62deg; }
+  71.875% { --dij: -3.17deg; }
+  72.917% { --dij: -6.74deg; }
+  73.958% { --dij: -10.09deg; }
+  75% { --dij: -13.21deg; }
+  76.042% { --dij: -18.17deg; }
+  77.083% { --dij: -25.34deg; }
+  78.125% { --dij: -32.30deg; }
+  79.167% { --dij: -37.26deg; }
+  80.208% { --dij: -39.30deg; }
+  81.25% { --dij: -41.29deg; }
+  82.292% { --dij: -51.20deg; }
+  83.333% { --dij: -52.04deg; }
+  84.375% { --dij: -40.89deg; }
+  85.417% { --dij: -25.83deg; }
+  86.458% { --dij: -18.80deg; }
+  87.5% { --dij: -21.52deg; }
+  88.542% { --dij: -23.87deg; }
+  89.583% { --dij: -25.86deg; }
+  90.625% { --dij: -27.54deg; }
+  91.667% { --dij: -28.92deg; }
+  92.708% { --dij: -30.05deg; }
+  93.75% { --dij: -30.93deg; }
+  94.792% { --dij: -31.60deg; }
+  95.833% { --dij: -32.07deg; }
+  96.875% { --dij: -32.35deg; }
+  97.917% { --dij: -32.45deg; }
+  98.958% { --dij: -32.45deg; }
+  100% { --dij: -32.45deg; }
+}
+@keyframes uit-vn-scheen {
+  0% { --scheen: 56.76deg; }
+  1.042% { --scheen: 56.76deg; }
+  2.083% { --scheen: 56.76deg; }
+  3.125% { --scheen: 56.76deg; }
+  4.167% { --scheen: 56.76deg; }
+  5.208% { --scheen: 56.76deg; }
+  6.25% { --scheen: 56.73deg; }
+  7.292% { --scheen: 56.65deg; }
+  8.333% { --scheen: 56.50deg; }
+  9.375% { --scheen: 56.22deg; }
+  10.417% { --scheen: 55.77deg; }
+  11.458% { --scheen: 55.08deg; }
+  12.5% { --scheen: 61.01deg; }
+  13.542% { --scheen: 77.42deg; }
+  14.583% { --scheen: 82.73deg; }
+  15.625% { --scheen: 69.91deg; }
+  16.667% { --scheen: 45.65deg; }
+  17.708% { --scheen: 37.36deg; }
+  18.75% { --scheen: 42.64deg; }
+  19.792% { --scheen: 46.80deg; }
+  20.833% { --scheen: 50.10deg; }
+  21.875% { --scheen: 52.65deg; }
+  22.917% { --scheen: 54.56deg; }
+  23.958% { --scheen: 55.86deg; }
+  25% { --scheen: 56.59deg; }
+  26.042% { --scheen: 56.75deg; }
+  27.083% { --scheen: 56.36deg; }
+  28.125% { --scheen: 55.41deg; }
+  29.167% { --scheen: 53.87deg; }
+  30.208% { --scheen: 51.70deg; }
+  31.25% { --scheen: 48.86deg; }
+  32.292% { --scheen: 45.24deg; }
+  33.333% { --scheen: 40.66deg; }
+  34.375% { --scheen: 34.81deg; }
+  35.417% { --scheen: 57.30deg; }
+  36.458% { --scheen: 117.36deg; }
+  37.5% { --scheen: 159.28deg; }
+  38.542% { --scheen: 161.73deg; }
+  39.583% { --scheen: 135.83deg; }
+  40.625% { --scheen: 124.78deg; }
+  41.667% { --scheen: 127.52deg; }
+  42.708% { --scheen: 129.76deg; }
+  43.75% { --scheen: 131.45deg; }
+  44.792% { --scheen: 132.55deg; }
+  45.833% { --scheen: 133.03deg; }
+  46.875% { --scheen: 130.62deg; }
+  47.917% { --scheen: 117.66deg; }
+  48.958% { --scheen: 97.03deg; }
+  50% { --scheen: 86.52deg; }
+  51.042% { --scheen: 83.98deg; }
+  52.083% { --scheen: 80.95deg; }
+  53.125% { --scheen: 77.41deg; }
+  54.167% { --scheen: 73.35deg; }
+  55.208% { --scheen: 68.69deg; }
+  56.25% { --scheen: 63.37deg; }
+  57.292% { --scheen: 57.23deg; }
+  58.333% { --scheen: 64.39deg; }
+  59.375% { --scheen: 106.66deg; }
+  60.417% { --scheen: 148.28deg; }
+  61.458% { --scheen: 138.43deg; }
+  62.5% { --scheen: 78.07deg; }
+  63.542% { --scheen: 22.05deg; }
+  64.583% { --scheen: 32.58deg; }
+  65.625% { --scheen: 39.95deg; }
+  66.667% { --scheen: 45.68deg; }
+  67.708% { --scheen: 50.30deg; }
+  68.75% { --scheen: 54.05deg; }
+  69.792% { --scheen: 57.08deg; }
+  70.833% { --scheen: 59.47deg; }
+  71.875% { --scheen: 61.27deg; }
+  72.917% { --scheen: 62.52deg; }
+  73.958% { --scheen: 63.24deg; }
+  75% { --scheen: 63.44deg; }
+  76.042% { --scheen: 62.65deg; }
+  77.083% { --scheen: 59.64deg; }
+  78.125% { --scheen: 53.76deg; }
+  79.167% { --scheen: 45.55deg; }
+  80.208% { --scheen: 36.53deg; }
+  81.25% { --scheen: 35.55deg; }
+  82.292% { --scheen: 61.29deg; }
+  83.333% { --scheen: 80.15deg; }
+  84.375% { --scheen: 80.95deg; }
+  85.417% { --scheen: 66.39deg; }
+  86.458% { --scheen: 54.94deg; }
+  87.5% { --scheen: 55.88deg; }
+  88.542% { --scheen: 56.45deg; }
+  89.583% { --scheen: 56.71deg; }
+  90.625% { --scheen: 56.76deg; }
+  91.667% { --scheen: 56.66deg; }
+  92.708% { --scheen: 56.46deg; }
+  93.75% { --scheen: 56.23deg; }
+  94.792% { --scheen: 56.01deg; }
+  95.833% { --scheen: 55.82deg; }
+  96.875% { --scheen: 55.69deg; }
+  97.917% { --scheen: 55.65deg; }
+  98.958% { --scheen: 55.65deg; }
+  100% { --scheen: 55.65deg; }
+}
+@keyframes uit-vv-dij {
+  0% { --dij: -26.79deg; }
+  1.042% { --dij: -26.79deg; }
+  2.083% { --dij: -26.79deg; }
+  3.125% { --dij: -26.79deg; }
+  4.167% { --dij: -26.93deg; }
+  5.208% { --dij: -27.29deg; }
+  6.25% { --dij: -27.86deg; }
+  7.292% { --dij: -28.63deg; }
+  8.333% { --dij: -29.59deg; }
+  9.375% { --dij: -30.70deg; }
+  10.417% { --dij: -31.95deg; }
+  11.458% { --dij: -33.30deg; }
+  12.5% { --dij: -34.70deg; }
+  13.542% { --dij: -36.09deg; }
+  14.583% { --dij: -37.41deg; }
+  15.625% { --dij: -38.55deg; }
+  16.667% { --dij: -39.39deg; }
+  17.708% { --dij: -39.72deg; }
+  18.75% { --dij: -39.26deg; }
+  19.792% { --dij: -37.51deg; }
+  20.833% { --dij: -30.81deg; }
+  21.875% { --dij: -31.91deg; }
+  22.917% { --dij: -34.07deg; }
+  23.958% { --dij: -34.56deg; }
+  25% { --dij: -54.12deg; }
+  26.042% { --dij: -48.77deg; }
+  27.083% { --dij: -25.68deg; }
+  28.125% { --dij: -1.98deg; }
+  29.167% { --dij: 4.98deg; }
+  30.208% { --dij: -0.23deg; }
+  31.25% { --dij: -4.96deg; }
+  32.292% { --dij: -9.33deg; }
+  33.333% { --dij: -13.43deg; }
+  34.375% { --dij: -17.26deg; }
+  35.417% { --dij: -20.84deg; }
+  36.458% { --dij: -24.18deg; }
+  37.5% { --dij: -27.27deg; }
+  38.542% { --dij: -30.09deg; }
+  39.583% { --dij: -32.62deg; }
+  40.625% { --dij: -34.84deg; }
+  41.667% { --dij: -36.71deg; }
+  42.708% { --dij: -38.19deg; }
+  43.75% { --dij: -39.22deg; }
+  44.792% { --dij: -39.70deg; }
+  45.833% { --dij: -39.46deg; }
+  46.875% { --dij: -51.14deg; }
+  47.917% { --dij: -86.53deg; }
+  48.958% { --dij: -110.13deg; }
+  50% { --dij: -100.70deg; }
+  51.042% { --dij: -76.73deg; }
+  52.083% { --dij: -68.67deg; }
+  53.125% { --dij: -72.19deg; }
+  54.167% { --dij: -75.38deg; }
+  55.208% { --dij: -78.20deg; }
+  56.25% { --dij: -80.64deg; }
+  57.292% { --dij: -82.67deg; }
+  58.333% { --dij: -84.29deg; }
+  59.375% { --dij: -85.46deg; }
+  60.417% { --dij: -92.32deg; }
+  61.458% { --dij: -102.29deg; }
+  62.5% { --dij: -113.36deg; }
+  63.542% { --dij: -118.63deg; }
+  64.583% { --dij: -118.04deg; }
+  65.625% { --dij: -116.97deg; }
+  66.667% { --dij: -115.52deg; }
+  67.708% { --dij: -113.73deg; }
+  68.75% { --dij: -111.63deg; }
+  69.792% { --dij: -115.67deg; }
+  70.833% { --dij: -149.42deg; }
+  71.875% { --dij: 167.25deg; }
+  72.917% { --dij: 20.87deg; }
+  73.958% { --dij: 14.04deg; }
+  75% { --dij: 44.93deg; }
+  76.042% { --dij: 40.74deg; }
+  77.083% { --dij: 23.37deg; }
+  78.125% { --dij: 6.57deg; }
+  79.167% { --dij: -6.69deg; }
+  80.208% { --dij: -15.87deg; }
+  81.25% { --dij: -20.29deg; }
+  82.292% { --dij: -23.67deg; }
+  83.333% { --dij: -26.80deg; }
+  84.375% { --dij: -29.64deg; }
+  85.417% { --dij: -32.07deg; }
+  86.458% { --dij: -34.06deg; }
+  87.5% { --dij: -35.67deg; }
+  88.542% { --dij: -36.93deg; }
+  89.583% { --dij: -37.89deg; }
+  90.625% { --dij: -38.59deg; }
+  91.667% { --dij: -39.07deg; }
+  92.708% { --dij: -40.70deg; }
+  93.75% { --dij: -46.70deg; }
+  94.792% { --dij: -44.28deg; }
+  95.833% { --dij: -31.14deg; }
+  96.875% { --dij: -14.61deg; }
+  97.917% { --dij: -4.30deg; }
+  98.958% { --dij: -4.22deg; }
+  100% { --dij: -4.22deg; }
+}
+@keyframes uit-vv-scheen {
+  0% { --scheen: 57.42deg; }
+  1.042% { --scheen: 57.42deg; }
+  2.083% { --scheen: 57.42deg; }
+  3.125% { --scheen: 57.42deg; }
+  4.167% { --scheen: 57.42deg; }
+  5.208% { --scheen: 57.41deg; }
+  6.25% { --scheen: 57.38deg; }
+  7.292% { --scheen: 57.31deg; }
+  8.333% { --scheen: 57.15deg; }
+  9.375% { --scheen: 56.86deg; }
+  10.417% { --scheen: 56.39deg; }
+  11.458% { --scheen: 55.67deg; }
+  12.5% { --scheen: 54.62deg; }
+  13.542% { --scheen: 53.13deg; }
+  14.583% { --scheen: 51.09deg; }
+  15.625% { --scheen: 48.32deg; }
+  16.667% { --scheen: 44.59deg; }
+  17.708% { --scheen: 39.61deg; }
+  18.75% { --scheen: 33.15deg; }
+  19.792% { --scheen: 24.13deg; }
+  20.833% { --scheen: 4.80deg; }
+  21.875% { --scheen: 2.26deg; }
+  22.917% { --scheen: 2.21deg; }
+  23.958% { --scheen: 2.26deg; }
+  25% { --scheen: 58.46deg; }
+  26.042% { --scheen: 83.61deg; }
+  27.083% { --scheen: 77.58deg; }
+  28.125% { --scheen: 50.03deg; }
+  29.167% { --scheen: 37.00deg; }
+  30.208% { --scheen: 42.57deg; }
+  31.25% { --scheen: 46.94deg; }
+  32.292% { --scheen: 50.39deg; }
+  33.333% { --scheen: 53.07deg; }
+  34.375% { --scheen: 55.07deg; }
+  35.417% { --scheen: 56.44deg; }
+  36.458% { --scheen: 57.22deg; }
+  37.5% { --scheen: 57.41deg; }
+  38.542% { --scheen: 57.03deg; }
+  39.583% { --scheen: 56.06deg; }
+  40.625% { --scheen: 54.49deg; }
+  41.667% { --scheen: 52.28deg; }
+  42.708% { --scheen: 49.36deg; }
+  43.75% { --scheen: 45.63deg; }
+  44.792% { --scheen: 40.92deg; }
+  45.833% { --scheen: 34.86deg; }
+  46.875% { --scheen: 50.66deg; }
+  47.917% { --scheen: 100.70deg; }
+  48.958% { --scheen: 129.11deg; }
+  50% { --scheen: 135.58deg; }
+  51.042% { --scheen: 116.56deg; }
+  52.083% { --scheen: 101.26deg; }
+  53.125% { --scheen: 100.02deg; }
+  54.167% { --scheen: 98.30deg; }
+  55.208% { --scheen: 96.10deg; }
+  56.25% { --scheen: 93.42deg; }
+  57.292% { --scheen: 90.27deg; }
+  58.333% { --scheen: 86.62deg; }
+  59.375% { --scheen: 82.48deg; }
+  60.417% { --scheen: 99.51deg; }
+  61.458% { --scheen: 121.38deg; }
+  62.5% { --scheen: 133.60deg; }
+  63.542% { --scheen: 133.50deg; }
+  64.583% { --scheen: 127.76deg; }
+  65.625% { --scheen: 121.86deg; }
+  66.667% { --scheen: 115.78deg; }
+  67.708% { --scheen: 109.48deg; }
+  68.75% { --scheen: 102.92deg; }
+  69.792% { --scheen: 102.00deg; }
+  70.833% { --scheen: 122.05deg; }
+  71.875% { --scheen: 147.73deg; }
+  72.917% { --scheen: 158.56deg; }
+  73.958% { --scheen: 81.32deg; }
+  75% { --scheen: 2.20deg; }
+  76.042% { --scheen: 2.27deg; }
+  77.083% { --scheen: 23.70deg; }
+  78.125% { --scheen: 40.27deg; }
+  79.167% { --scheen: 49.52deg; }
+  80.208% { --scheen: 54.44deg; }
+  81.25% { --scheen: 56.26deg; }
+  82.292% { --scheen: 57.13deg; }
+  83.333% { --scheen: 57.42deg; }
+  84.375% { --scheen: 57.13deg; }
+  85.417% { --scheen: 56.34deg; }
+  86.458% { --scheen: 55.14deg; }
+  87.5% { --scheen: 53.64deg; }
+  88.542% { --scheen: 51.93deg; }
+  89.583% { --scheen: 50.10deg; }
+  90.625% { --scheen: 48.21deg; }
+  91.667% { --scheen: 46.35deg; }
+  92.708% { --scheen: 48.42deg; }
+  93.75% { --scheen: 69.24deg; }
+  94.792% { --scheen: 84.37deg; }
+  95.833% { --scheen: 81.53deg; }
+  96.875% { --scheen: 62.83deg; }
+  97.917% { --scheen: 46.43deg; }
+  98.958% { --scheen: 46.30deg; }
+  100% { --scheen: 46.30deg; }
+}
+@keyframes uit-av-dij {
+  0% { --dij: -17.53deg; }
+  1.042% { --dij: -17.53deg; }
+  2.083% { --dij: -17.53deg; }
+  3.125% { --dij: -17.53deg; }
+  4.167% { --dij: -17.65deg; }
+  5.208% { --dij: -17.95deg; }
+  6.25% { --dij: -18.43deg; }
+  7.292% { --dij: -19.08deg; }
+  8.333% { --dij: -19.87deg; }
+  9.375% { --dij: -20.78deg; }
+  10.417% { --dij: -21.78deg; }
+  11.458% { --dij: -22.82deg; }
+  12.5% { --dij: -23.86deg; }
+  13.542% { --dij: -24.83deg; }
+  14.583% { --dij: -25.63deg; }
+  15.625% { --dij: -26.15deg; }
+  16.667% { --dij: -26.22deg; }
+  17.708% { --dij: -26.01deg; }
+  18.75% { --dij: -34.25deg; }
+  19.792% { --dij: -33.73deg; }
+  20.833% { --dij: -16.36deg; }
+  21.875% { --dij: 6.19deg; }
+  22.917% { --dij: 20.82deg; }
+  23.958% { --dij: 17.47deg; }
+  25% { --dij: 12.78deg; }
+  26.042% { --dij: 8.37deg; }
+  27.083% { --dij: 4.19deg; }
+  28.125% { --dij: 0.23deg; }
+  29.167% { --dij: -3.52deg; }
+  30.208% { --dij: -7.06deg; }
+  31.25% { --dij: -10.37deg; }
+  32.292% { --dij: -13.45deg; }
+  33.333% { --dij: -16.27deg; }
+  34.375% { --dij: -18.81deg; }
+  35.417% { --dij: -21.04deg; }
+  36.458% { --dij: -22.94deg; }
+  37.5% { --dij: -24.46deg; }
+  38.542% { --dij: -25.56deg; }
+  39.583% { --dij: -26.17deg; }
+  40.625% { --dij: -26.32deg; }
+  41.667% { --dij: -33.06deg; }
+  42.708% { --dij: -32.99deg; }
+  43.75% { --dij: -16.87deg; }
+  44.792% { --dij: 5.08deg; }
+  45.833% { --dij: 20.39deg; }
+  46.875% { --dij: 16.62deg; }
+  47.917% { --dij: 5.67deg; }
+  48.958% { --dij: -7.36deg; }
+  50% { --dij: -14.43deg; }
+  51.042% { --dij: -17.87deg; }
+  52.083% { --dij: -21.07deg; }
+  53.125% { --dij: -24.00deg; }
+  54.167% { --dij: -26.65deg; }
+  55.208% { --dij: -29.01deg; }
+  56.25% { --dij: -31.03deg; }
+  57.292% { --dij: -32.68deg; }
+  58.333% { --dij: -33.90deg; }
+  59.375% { --dij: -34.63deg; }
+  60.417% { --dij: -29.61deg; }
+  61.458% { --dij: -20.73deg; }
+  62.5% { --dij: -14.55deg; }
+  63.542% { --dij: -13.47deg; }
+  64.583% { --dij: -34.94deg; }
+  65.625% { --dij: -63.79deg; }
+  66.667% { --dij: -37.13deg; }
+  67.708% { --dij: 27.57deg; }
+  68.75% { --dij: 9.07deg; }
+  69.792% { --dij: 2.26deg; }
+  70.833% { --dij: -5.47deg; }
+  71.875% { --dij: -13.69deg; }
+  72.917% { --dij: -22.19deg; }
+  73.958% { --dij: -30.65deg; }
+  75% { --dij: -38.71deg; }
+  76.042% { --dij: -50.82deg; }
+  77.083% { --dij: -71.41deg; }
+  78.125% { --dij: -96.88deg; }
+  79.167% { --dij: -117.57deg; }
+  80.208% { --dij: -127.19deg; }
+  81.25% { --dij: -126.80deg; }
+  82.292% { --dij: -124.70deg; }
+  83.333% { --dij: -122.37deg; }
+  84.375% { --dij: -119.85deg; }
+  85.417% { --dij: -117.30deg; }
+  86.458% { --dij: -114.78deg; }
+  87.5% { --dij: -128.12deg; }
+  88.542% { --dij: -153.75deg; }
+  89.583% { --dij: -167.28deg; }
+  90.625% { --dij: -62.99deg; }
+  91.667% { --dij: -17.58deg; }
+  92.708% { --dij: -8.82deg; }
+  93.75% { --dij: -9.93deg; }
+  94.792% { --dij: -10.78deg; }
+  95.833% { --dij: -11.39deg; }
+  96.875% { --dij: -11.75deg; }
+  97.917% { --dij: -11.89deg; }
+  98.958% { --dij: -11.89deg; }
+  100% { --dij: -11.89deg; }
+}
+@keyframes uit-av-scheen {
+  0% { --scheen: 35.99deg; }
+  1.042% { --scheen: 35.99deg; }
+  2.083% { --scheen: 35.99deg; }
+  3.125% { --scheen: 35.99deg; }
+  4.167% { --scheen: 35.94deg; }
+  5.208% { --scheen: 35.79deg; }
+  6.25% { --scheen: 35.53deg; }
+  7.292% { --scheen: 35.15deg; }
+  8.333% { --scheen: 34.59deg; }
+  9.375% { --scheen: 33.82deg; }
+  10.417% { --scheen: 32.79deg; }
+  11.458% { --scheen: 31.41deg; }
+  12.5% { --scheen: 29.61deg; }
+  13.542% { --scheen: 27.27deg; }
+  14.583% { --scheen: 24.24deg; }
+  15.625% { --scheen: 20.32deg; }
+  16.667% { --scheen: 15.16deg; }
+  17.708% { --scheen: 9.68deg; }
+  18.75% { --scheen: 33.51deg; }
+  19.792% { --scheen: 58.20deg; }
+  20.833% { --scheen: 61.45deg; }
+  21.875% { --scheen: 41.92deg; }
+  22.917% { --scheen: 19.33deg; }
+  23.958% { --scheen: 21.80deg; }
+  25% { --scheen: 26.01deg; }
+  26.042% { --scheen: 29.42deg; }
+  27.083% { --scheen: 32.16deg; }
+  28.125% { --scheen: 34.27deg; }
+  29.167% { --scheen: 35.81deg; }
+  30.208% { --scheen: 36.78deg; }
+  31.25% { --scheen: 37.22deg; }
+  32.292% { --scheen: 37.13deg; }
+  33.333% { --scheen: 36.49deg; }
+  34.375% { --scheen: 35.31deg; }
+  35.417% { --scheen: 33.57deg; }
+  36.458% { --scheen: 31.24deg; }
+  37.5% { --scheen: 28.26deg; }
+  38.542% { --scheen: 24.57deg; }
+  39.583% { --scheen: 20.04deg; }
+  40.625% { --scheen: 14.87deg; }
+  41.667% { --scheen: 34.14deg; }
+  42.708% { --scheen: 57.82deg; }
+  43.75% { --scheen: 61.94deg; }
+  44.792% { --scheen: 43.61deg; }
+  45.833% { --scheen: 20.25deg; }
+  46.875% { --scheen: 21.52deg; }
+  47.917% { --scheen: 25.68deg; }
+  48.958% { --scheen: 27.36deg; }
+  50% { --scheen: 28.04deg; }
+  51.042% { --scheen: 29.06deg; }
+  52.083% { --scheen: 29.49deg; }
+  53.125% { --scheen: 29.35deg; }
+  54.167% { --scheen: 28.63deg; }
+  55.208% { --scheen: 27.31deg; }
+  56.25% { --scheen: 25.37deg; }
+  57.292% { --scheen: 22.76deg; }
+  58.333% { --scheen: 19.39deg; }
+  59.375% { --scheen: 15.12deg; }
+  60.417% { --scheen: 22.04deg; }
+  61.458% { --scheen: 30.33deg; }
+  62.5% { --scheen: 35.16deg; }
+  63.542% { --scheen: 35.05deg; }
+  64.583% { --scheen: 72.05deg; }
+  65.625% { --scheen: 121.46deg; }
+  66.667% { --scheen: 150.58deg; }
+  67.708% { --scheen: 135.98deg; }
+  68.75% { --scheen: 113.82deg; }
+  69.792% { --scheen: 112.24deg; }
+  70.833% { --scheen: 114.43deg; }
+  71.875% { --scheen: 115.91deg; }
+  72.917% { --scheen: 116.60deg; }
+  73.958% { --scheen: 116.45deg; }
+  75% { --scheen: 115.48deg; }
+  76.042% { --scheen: 116.32deg; }
+  77.083% { --scheen: 118.66deg; }
+  78.125% { --scheen: 118.03deg; }
+  79.167% { --scheen: 112.74deg; }
+  80.208% { --scheen: 105.45deg; }
+  81.25% { --scheen: 99.24deg; }
+  82.292% { --scheen: 93.22deg; }
+  83.333% { --scheen: 87.03deg; }
+  84.375% { --scheen: 80.66deg; }
+  85.417% { --scheen: 74.43deg; }
+  86.458% { --scheen: 68.44deg; }
+  87.5% { --scheen: 71.62deg; }
+  88.542% { --scheen: 81.67deg; }
+  89.583% { --scheen: 111.54deg; }
+  90.625% { --scheen: 121.73deg; }
+  91.667% { --scheen: 56.23deg; }
+  92.708% { --scheen: 37.08deg; }
+  93.75% { --scheen: 37.19deg; }
+  94.792% { --scheen: 37.24deg; }
+  95.833% { --scheen: 37.25deg; }
+  96.875% { --scheen: 37.25deg; }
+  97.917% { --scheen: 37.24deg; }
+  98.958% { --scheen: 37.24deg; }
+  100% { --scheen: 37.24deg; }
+}
+@keyframes uit-an-dij {
+  0% { --dij: -17.65deg; }
+  1.042% { --dij: -17.65deg; }
+  2.083% { --dij: -17.65deg; }
+  3.125% { --dij: -17.65deg; }
+  4.167% { --dij: -17.77deg; }
+  5.208% { --dij: -18.06deg; }
+  6.25% { --dij: -18.71deg; }
+  7.292% { --dij: -21.13deg; }
+  8.333% { --dij: -17.35deg; }
+  9.375% { --dij: -5.10deg; }
+  10.417% { --dij: 9.71deg; }
+  11.458% { --dij: 19.79deg; }
+  12.5% { --dij: 17.51deg; }
+  13.542% { --dij: 14.13deg; }
+  14.583% { --dij: 10.58deg; }
+  15.625% { --dij: 6.87deg; }
+  16.667% { --dij: 3.04deg; }
+  17.708% { --dij: -0.82deg; }
+  18.75% { --dij: -4.48deg; }
+  19.792% { --dij: -7.92deg; }
+  20.833% { --dij: -11.14deg; }
+  21.875% { --dij: -14.12deg; }
+  22.917% { --dij: -16.85deg; }
+  23.958% { --dij: -19.29deg; }
+  25% { --dij: -21.43deg; }
+  26.042% { --dij: -23.24deg; }
+  27.083% { --dij: -24.68deg; }
+  28.125% { --dij: -25.70deg; }
+  29.167% { --dij: -26.43deg; }
+  30.208% { --dij: -32.40deg; }
+  31.25% { --dij: -31.27deg; }
+  32.292% { --dij: -15.44deg; }
+  33.333% { --dij: 5.45deg; }
+  34.375% { --dij: 19.66deg; }
+  35.417% { --dij: 16.69deg; }
+  36.458% { --dij: 12.06deg; }
+  37.5% { --dij: 7.71deg; }
+  38.542% { --dij: 3.59deg; }
+  39.583% { --dij: -0.31deg; }
+  40.625% { --dij: -3.99deg; }
+  41.667% { --dij: -7.47deg; }
+  42.708% { --dij: -10.72deg; }
+  43.75% { --dij: -13.73deg; }
+  44.792% { --dij: -16.49deg; }
+  45.833% { --dij: -18.98deg; }
+  46.875% { --dij: -22.41deg; }
+  47.917% { --dij: -30.59deg; }
+  48.958% { --dij: -40.58deg; }
+  50% { --dij: -44.15deg; }
+  51.042% { --dij: -43.82deg; }
+  52.083% { --dij: -42.72deg; }
+  53.125% { --dij: -51.13deg; }
+  54.167% { --dij: -55.37deg; }
+  55.208% { --dij: -43.37deg; }
+  56.25% { --dij: -23.01deg; }
+  57.292% { --dij: -8.94deg; }
+  58.333% { --dij: -10.70deg; }
+  59.375% { --dij: -14.72deg; }
+  60.417% { --dij: -4.59deg; }
+  61.458% { --dij: 10.84deg; }
+  62.5% { --dij: 19.97deg; }
+  63.542% { --dij: 20.32deg; }
+  64.583% { --dij: 16.64deg; }
+  65.625% { --dij: 13.20deg; }
+  66.667% { --dij: 10.00deg; }
+  67.708% { --dij: 7.05deg; }
+  68.75% { --dij: 4.37deg; }
+  69.792% { --dij: 1.97deg; }
+  70.833% { --dij: -0.11deg; }
+  71.875% { --dij: -1.84deg; }
+  72.917% { --dij: -3.18deg; }
+  73.958% { --dij: -4.08deg; }
+  75% { --dij: -4.43deg; }
+  76.042% { --dij: -38.40deg; }
+  77.083% { --dij: -93.99deg; }
+  78.125% { --dij: -122.05deg; }
+  79.167% { --dij: -37.18deg; }
+  80.208% { --dij: -12.18deg; }
+  81.25% { --dij: -7.77deg; }
+  82.292% { --dij: -11.00deg; }
+  83.333% { --dij: -13.99deg; }
+  84.375% { --dij: -16.72deg; }
+  85.417% { --dij: -19.02deg; }
+  86.458% { --dij: -20.92deg; }
+  87.5% { --dij: -22.44deg; }
+  88.542% { --dij: -23.63deg; }
+  89.583% { --dij: -24.53deg; }
+  90.625% { --dij: -25.19deg; }
+  91.667% { --dij: -25.65deg; }
+  92.708% { --dij: -25.95deg; }
+  93.75% { --dij: -26.13deg; }
+  94.792% { --dij: -26.23deg; }
+  95.833% { --dij: -26.28deg; }
+  96.875% { --dij: -26.29deg; }
+  97.917% { --dij: -26.30deg; }
+  98.958% { --dij: -26.30deg; }
+  100% { --dij: -26.30deg; }
+}
+@keyframes uit-an-scheen {
+  0% { --scheen: 35.42deg; }
+  1.042% { --scheen: 35.42deg; }
+  2.083% { --scheen: 35.42deg; }
+  3.125% { --scheen: 35.42deg; }
+  4.167% { --scheen: 35.37deg; }
+  5.208% { --scheen: 35.23deg; }
+  6.25% { --scheen: 35.74deg; }
+  7.292% { --scheen: 48.73deg; }
+  8.333% { --scheen: 59.99deg; }
+  9.375% { --scheen: 56.04deg; }
+  10.417% { --scheen: 37.55deg; }
+  11.458% { --scheen: 19.13deg; }
+  12.5% { --scheen: 20.72deg; }
+  13.542% { --scheen: 23.82deg; }
+  14.583% { --scheen: 26.77deg; }
+  15.625% { --scheen: 29.47deg; }
+  16.667% { --scheen: 31.87deg; }
+  17.708% { --scheen: 33.84deg; }
+  18.75% { --scheen: 35.27deg; }
+  19.792% { --scheen: 36.17deg; }
+  20.833% { --scheen: 36.54deg; }
+  21.875% { --scheen: 36.40deg; }
+  22.917% { --scheen: 35.74deg; }
+  23.958% { --scheen: 34.55deg; }
+  25% { --scheen: 32.82deg; }
+  26.042% { --scheen: 30.51deg; }
+  27.083% { --scheen: 27.59deg; }
+  28.125% { --scheen: 23.97deg; }
+  29.167% { --scheen: 20.15deg; }
+  30.208% { --scheen: 37.85deg; }
+  31.25% { --scheen: 58.37deg; }
+  32.292% { --scheen: 60.25deg; }
+  33.333% { --scheen: 41.61deg; }
+  34.375% { --scheen: 19.69deg; }
+  35.417% { --scheen: 21.50deg; }
+  36.458% { --scheen: 25.57deg; }
+  37.5% { --scheen: 28.89deg; }
+  38.542% { --scheen: 31.55deg; }
+  39.583% { --scheen: 33.61deg; }
+  40.625% { --scheen: 35.11deg; }
+  41.667% { --scheen: 36.08deg; }
+  42.708% { --scheen: 36.52deg; }
+  43.75% { --scheen: 36.44deg; }
+  44.792% { --scheen: 35.85deg; }
+  45.833% { --scheen: 34.74deg; }
+  46.875% { --scheen: 33.27deg; }
+  47.917% { --scheen: 31.39deg; }
+  48.958% { --scheen: 27.08deg; }
+  50% { --scheen: 21.19deg; }
+  51.042% { --scheen: 15.24deg; }
+  52.083% { --scheen: 7.98deg; }
+  53.125% { --scheen: 28.21deg; }
+  54.167% { --scheen: 55.50deg; }
+  55.208% { --scheen: 65.46deg; }
+  56.25% { --scheen: 53.95deg; }
+  57.292% { --scheen: 36.41deg; }
+  58.333% { --scheen: 35.96deg; }
+  59.375% { --scheen: 38.19deg; }
+  60.417% { --scheen: 34.86deg; }
+  61.458% { --scheen: 28.55deg; }
+  62.5% { --scheen: 25.90deg; }
+  63.542% { --scheen: 27.06deg; }
+  64.583% { --scheen: 28.73deg; }
+  65.625% { --scheen: 29.83deg; }
+  66.667% { --scheen: 30.36deg; }
+  67.708% { --scheen: 30.35deg; }
+  68.75% { --scheen: 29.80deg; }
+  69.792% { --scheen: 28.68deg; }
+  70.833% { --scheen: 26.98deg; }
+  71.875% { --scheen: 24.67deg; }
+  72.917% { --scheen: 21.67deg; }
+  73.958% { --scheen: 17.89deg; }
+  75% { --scheen: 13.15deg; }
+  76.042% { --scheen: 66.84deg; }
+  77.083% { --scheen: 122.14deg; }
+  78.125% { --scheen: 142.79deg; }
+  79.167% { --scheen: 114.44deg; }
+  80.208% { --scheen: 52.02deg; }
+  81.25% { --scheen: 36.14deg; }
+  82.292% { --scheen: 36.53deg; }
+  83.333% { --scheen: 36.41deg; }
+  84.375% { --scheen: 35.78deg; }
+  85.417% { --scheen: 34.71deg; }
+  86.458% { --scheen: 33.31deg; }
+  87.5% { --scheen: 31.66deg; }
+  88.542% { --scheen: 29.85deg; }
+  89.583% { --scheen: 27.95deg; }
+  90.625% { --scheen: 26.05deg; }
+  91.667% { --scheen: 24.21deg; }
+  92.708% { --scheen: 22.50deg; }
+  93.75% { --scheen: 20.98deg; }
+  94.792% { --scheen: 19.72deg; }
+  95.833% { --scheen: 18.77deg; }
+  96.875% { --scheen: 18.17deg; }
+  97.917% { --scheen: 17.94deg; }
+  98.958% { --scheen: 17.94deg; }
+  100% { --scheen: 17.94deg; }
+}
+@keyframes in-pad {
+  0% { --ux: -175.00px; --uy: 23.00px; }
+  1.042% { --ux: -175.00px; --uy: 23.00px; }
+  2.083% { --ux: -175.00px; --uy: 23.00px; }
+  3.125% { --ux: -175.00px; --uy: 23.00px; }
+  4.167% { --ux: -174.89px; --uy: 23.00px; }
+  5.208% { --ux: -174.62px; --uy: 23.00px; }
+  6.25% { --ux: -174.18px; --uy: 23.00px; }
+  7.292% { --ux: -173.58px; --uy: 23.00px; }
+  8.333% { --ux: -172.81px; --uy: 23.00px; }
+  9.375% { --ux: -171.86px; --uy: 23.00px; }
+  10.417% { --ux: -170.76px; --uy: 23.00px; }
+  11.458% { --ux: -169.48px; --uy: 23.00px; }
+  12.5% { --ux: -168.04px; --uy: 23.00px; }
+  13.542% { --ux: -166.43px; --uy: 23.00px; }
+  14.583% { --ux: -164.65px; --uy: 23.00px; }
+  15.625% { --ux: -162.70px; --uy: 23.00px; }
+  16.667% { --ux: -160.59px; --uy: 23.00px; }
+  17.708% { --ux: -158.35px; --uy: 23.00px; }
+  18.75% { --ux: -156.10px; --uy: 23.00px; }
+  19.792% { --ux: -153.85px; --uy: 23.00px; }
+  20.833% { --ux: -151.59px; --uy: 23.00px; }
+  21.875% { --ux: -149.34px; --uy: 23.00px; }
+  22.917% { --ux: -147.09px; --uy: 23.00px; }
+  23.958% { --ux: -144.84px; --uy: 22.31px; }
+  25% { --ux: -142.59px; --uy: 19.52px; }
+  26.042% { --ux: -140.34px; --uy: 17.98px; }
+  27.083% { --ux: -138.09px; --uy: 17.98px; }
+  28.125% { --ux: -135.84px; --uy: 17.98px; }
+  29.167% { --ux: -133.59px; --uy: 17.98px; }
+  30.208% { --ux: -131.34px; --uy: 17.98px; }
+  31.25% { --ux: -129.09px; --uy: 17.98px; }
+  32.292% { --ux: -126.84px; --uy: 17.98px; }
+  33.333% { --ux: -124.59px; --uy: 17.98px; }
+  34.375% { --ux: -122.34px; --uy: 17.98px; }
+  35.417% { --ux: -120.09px; --uy: 17.98px; }
+  36.458% { --ux: -117.84px; --uy: 17.98px; }
+  37.5% { --ux: -115.59px; --uy: 17.98px; }
+  38.542% { --ux: -113.34px; --uy: 17.98px; }
+  39.583% { --ux: -111.09px; --uy: 17.98px; }
+  40.625% { --ux: -108.83px; --uy: 17.98px; }
+  41.667% { --ux: -106.58px; --uy: 17.98px; }
+  42.708% { --ux: -104.33px; --uy: 17.98px; }
+  43.75% { --ux: -102.08px; --uy: 17.98px; }
+  44.792% { --ux: -99.83px; --uy: 17.98px; }
+  45.833% { --ux: -97.58px; --uy: 17.98px; }
+  46.875% { --ux: -95.33px; --uy: 17.98px; }
+  47.917% { --ux: -93.08px; --uy: 17.98px; }
+  48.958% { --ux: -90.83px; --uy: 17.98px; }
+  50% { --ux: -88.58px; --uy: 17.98px; }
+  51.042% { --ux: -86.33px; --uy: 17.98px; }
+  52.083% { --ux: -84.08px; --uy: 17.96px; }
+  53.125% { --ux: -81.83px; --uy: 14.08px; }
+  54.167% { --ux: -79.58px; --uy: 8.37px; }
+  55.208% { --ux: -77.33px; --uy: 1.97px; }
+  56.25% { --ux: -75.08px; --uy: -3.26px; }
+  57.292% { --ux: -72.83px; --uy: -6.22px; }
+  58.333% { --ux: -70.58px; --uy: -6.57px; }
+  59.375% { --ux: -68.33px; --uy: -6.57px; }
+  60.417% { --ux: -66.08px; --uy: -6.57px; }
+  61.458% { --ux: -63.82px; --uy: -6.57px; }
+  62.5% { --ux: -61.57px; --uy: -6.57px; }
+  63.542% { --ux: -59.32px; --uy: -6.56px; }
+  64.583% { --ux: -57.07px; --uy: -5.52px; }
+  65.625% { --ux: -54.82px; --uy: -3.01px; }
+  66.667% { --ux: -52.57px; --uy: 0.28px; }
+  67.708% { --ux: -50.32px; --uy: 3.53px; }
+  68.75% { --ux: -48.07px; --uy: 5.70px; }
+  69.792% { --ux: -45.82px; --uy: 6.00px; }
+  70.833% { --ux: -43.57px; --uy: 6.00px; }
+  71.875% { --ux: -41.32px; --uy: 6.00px; }
+  72.917% { --ux: -39.07px; --uy: 6.00px; }
+  73.958% { --ux: -36.82px; --uy: 6.00px; }
+  75% { --ux: -34.57px; --uy: 6.00px; }
+  76.042% { --ux: -32.32px; --uy: 6.00px; }
+  77.083% { --ux: -30.07px; --uy: 6.00px; }
+  78.125% { --ux: -27.82px; --uy: 6.00px; }
+  79.167% { --ux: -25.57px; --uy: 6.00px; }
+  80.208% { --ux: -23.32px; --uy: 6.00px; }
+  81.25% { --ux: -21.06px; --uy: 6.00px; }
+  82.292% { --ux: -18.81px; --uy: 6.00px; }
+  83.333% { --ux: -16.56px; --uy: 6.00px; }
+  84.375% { --ux: -14.32px; --uy: 6.00px; }
+  85.417% { --ux: -12.22px; --uy: 6.00px; }
+  86.458% { --ux: -10.28px; --uy: 6.00px; }
+  87.5% { --ux: -8.51px; --uy: 6.00px; }
+  88.542% { --ux: -6.90px; --uy: 6.00px; }
+  89.583% { --ux: -5.47px; --uy: 6.00px; }
+  90.625% { --ux: -4.20px; --uy: 6.00px; }
+  91.667% { --ux: -3.09px; --uy: 6.00px; }
+  92.708% { --ux: -2.16px; --uy: 6.00px; }
+  93.75% { --ux: -1.39px; --uy: 6.00px; }
+  94.792% { --ux: -0.79px; --uy: 6.00px; }
+  95.833% { --ux: -0.36px; --uy: 6.00px; }
+  96.875% { --ux: -0.10px; --uy: 6.00px; }
+  97.917% { --ux: -0.00px; --uy: 6.00px; }
+  98.958% { --ux: 0.00px; --uy: 6.00px; }
+  100% { --ux: 0.00px; --uy: 6.00px; }
+}
+@keyframes in-kantel {
+  0% { --pitch: 0.00deg; }
+  1.042% { --pitch: 0.00deg; }
+  2.083% { --pitch: 0.00deg; }
+  3.125% { --pitch: 0.00deg; }
+  4.167% { --pitch: 0.00deg; }
+  5.208% { --pitch: 0.00deg; }
+  6.25% { --pitch: 0.00deg; }
+  7.292% { --pitch: 0.00deg; }
+  8.333% { --pitch: 0.00deg; }
+  9.375% { --pitch: 0.00deg; }
+  10.417% { --pitch: 0.00deg; }
+  11.458% { --pitch: 0.00deg; }
+  12.5% { --pitch: 0.00deg; }
+  13.542% { --pitch: 0.00deg; }
+  14.583% { --pitch: 0.00deg; }
+  15.625% { --pitch: 0.00deg; }
+  16.667% { --pitch: 0.00deg; }
+  17.708% { --pitch: 0.00deg; }
+  18.75% { --pitch: 0.00deg; }
+  19.792% { --pitch: 0.00deg; }
+  20.833% { --pitch: 0.00deg; }
+  21.875% { --pitch: 0.00deg; }
+  22.917% { --pitch: 0.00deg; }
+  23.958% { --pitch: 1.82deg; }
+  25% { --pitch: 9.55deg; }
+  26.042% { --pitch: 14.00deg; }
+  27.083% { --pitch: 14.00deg; }
+  28.125% { --pitch: 14.00deg; }
+  29.167% { --pitch: 14.00deg; }
+  30.208% { --pitch: 14.00deg; }
+  31.25% { --pitch: 14.00deg; }
+  32.292% { --pitch: 14.00deg; }
+  33.333% { --pitch: 14.00deg; }
+  34.375% { --pitch: 14.00deg; }
+  35.417% { --pitch: 14.00deg; }
+  36.458% { --pitch: 14.00deg; }
+  37.5% { --pitch: 14.00deg; }
+  38.542% { --pitch: 14.00deg; }
+  39.583% { --pitch: 14.00deg; }
+  40.625% { --pitch: 14.00deg; }
+  41.667% { --pitch: 14.00deg; }
+  42.708% { --pitch: 14.00deg; }
+  43.75% { --pitch: 14.00deg; }
+  44.792% { --pitch: 14.00deg; }
+  45.833% { --pitch: 14.00deg; }
+  46.875% { --pitch: 14.00deg; }
+  47.917% { --pitch: 14.00deg; }
+  48.958% { --pitch: 14.00deg; }
+  50% { --pitch: 14.00deg; }
+  51.042% { --pitch: 14.00deg; }
+  52.083% { --pitch: 14.00deg; }
+  53.125% { --pitch: 13.44deg; }
+  54.167% { --pitch: 4.15deg; }
+  55.208% { --pitch: -7.44deg; }
+  56.25% { --pitch: -17.56deg; }
+  57.292% { --pitch: -23.30deg; }
+  58.333% { --pitch: -23.96deg; }
+  59.375% { --pitch: -23.96deg; }
+  60.417% { --pitch: -23.96deg; }
+  61.458% { --pitch: -23.96deg; }
+  62.5% { --pitch: -23.96deg; }
+  63.542% { --pitch: -23.96deg; }
+  64.583% { --pitch: -21.95deg; }
+  65.625% { --pitch: -17.08deg; }
+  66.667% { --pitch: -10.68deg; }
+  67.708% { --pitch: -4.50deg; }
+  68.75% { --pitch: -0.54deg; }
+  69.792% { --pitch: 0.00deg; }
+  70.833% { --pitch: 0.00deg; }
+  71.875% { --pitch: 0.00deg; }
+  72.917% { --pitch: 0.00deg; }
+  73.958% { --pitch: 0.00deg; }
+  75% { --pitch: 0.00deg; }
+  76.042% { --pitch: 0.00deg; }
+  77.083% { --pitch: 0.00deg; }
+  78.125% { --pitch: 0.00deg; }
+  79.167% { --pitch: 0.00deg; }
+  80.208% { --pitch: 0.00deg; }
+  81.25% { --pitch: 0.00deg; }
+  82.292% { --pitch: 0.00deg; }
+  83.333% { --pitch: 0.00deg; }
+  84.375% { --pitch: 0.00deg; }
+  85.417% { --pitch: 0.00deg; }
+  86.458% { --pitch: 0.00deg; }
+  87.5% { --pitch: 0.00deg; }
+  88.542% { --pitch: 0.00deg; }
+  89.583% { --pitch: 0.00deg; }
+  90.625% { --pitch: 0.00deg; }
+  91.667% { --pitch: 0.00deg; }
+  92.708% { --pitch: 0.00deg; }
+  93.75% { --pitch: 0.00deg; }
+  94.792% { --pitch: 0.00deg; }
+  95.833% { --pitch: 0.00deg; }
+  96.875% { --pitch: 0.00deg; }
+  97.917% { --pitch: 0.00deg; }
+  98.958% { --pitch: 0.00deg; }
+  100% { --pitch: 0.00deg; }
+}
+@keyframes in-vn-dij {
+  0% { --dij: -32.45deg; }
+  1.042% { --dij: -32.45deg; }
+  2.083% { --dij: -32.45deg; }
+  3.125% { --dij: -32.45deg; }
+  4.167% { --dij: -32.56deg; }
+  5.208% { --dij: -32.84deg; }
+  6.25% { --dij: -33.29deg; }
+  7.292% { --dij: -33.89deg; }
+  8.333% { --dij: -34.61deg; }
+  9.375% { --dij: -35.44deg; }
+  10.417% { --dij: -36.34deg; }
+  11.458% { --dij: -37.26deg; }
+  12.5% { --dij: -54.55deg; }
+  13.542% { --dij: -88.21deg; }
+  14.583% { --dij: 89.49deg; }
+  15.625% { --dij: 70.25deg; }
+  16.667% { --dij: 32.71deg; }
+  17.708% { --dij: 17.07deg; }
+  18.75% { --dij: 13.94deg; }
+  19.792% { --dij: 10.70deg; }
+  20.833% { --dij: 7.25deg; }
+  21.875% { --dij: 3.40deg; }
+  22.917% { --dij: -1.28deg; }
+  23.958% { --dij: -30.13deg; }
+  25% { --dij: -77.55deg; }
+  26.042% { --dij: -87.33deg; }
+  27.083% { --dij: -93.74deg; }
+  28.125% { --dij: -99.45deg; }
+  29.167% { --dij: -104.34deg; }
+  30.208% { --dij: -108.42deg; }
+  31.25% { --dij: -111.69deg; }
+  32.292% { --dij: -114.21deg; }
+  33.333% { --dij: -116.04deg; }
+  34.375% { --dij: -117.25deg; }
+  35.417% { --dij: -123.86deg; }
+  36.458% { --dij: -146.64deg; }
+  37.5% { --dij: -128.25deg; }
+  38.542% { --dij: -56.64deg; }
+  39.583% { --dij: -32.76deg; }
+  40.625% { --dij: -20.68deg; }
+  41.667% { --dij: -25.08deg; }
+  42.708% { --dij: -29.26deg; }
+  43.75% { --dij: -33.24deg; }
+  44.792% { --dij: -37.01deg; }
+  45.833% { --dij: -40.58deg; }
+  46.875% { --dij: -43.94deg; }
+  47.917% { --dij: -47.07deg; }
+  48.958% { --dij: -49.95deg; }
+  50% { --dij: -52.57deg; }
+  51.042% { --dij: -54.91deg; }
+  52.083% { --dij: -56.87deg; }
+  53.125% { --dij: -48.19deg; }
+  54.167% { --dij: -41.59deg; }
+  55.208% { --dij: -32.76deg; }
+  56.25% { --dij: -23.05deg; }
+  57.292% { --dij: -16.94deg; }
+  58.333% { --dij: -18.50deg; }
+  59.375% { --dij: -19.21deg; }
+  60.417% { --dij: -6.46deg; }
+  61.458% { --dij: 16.24deg; }
+  62.5% { --dij: 41.25deg; }
+  63.542% { --dij: 55.93deg; }
+  64.583% { --dij: 40.70deg; }
+  65.625% { --dij: 22.66deg; }
+  66.667% { --dij: 6.01deg; }
+  67.708% { --dij: -7.63deg; }
+  68.75% { --dij: -16.70deg; }
+  69.792% { --dij: -20.92deg; }
+  70.833% { --dij: -24.22deg; }
+  71.875% { --dij: -27.27deg; }
+  72.917% { --dij: -30.05deg; }
+  73.958% { --dij: -32.55deg; }
+  75% { --dij: -34.75deg; }
+  76.042% { --dij: -36.61deg; }
+  77.083% { --dij: -38.09deg; }
+  78.125% { --dij: -39.14deg; }
+  79.167% { --dij: -39.67deg; }
+  80.208% { --dij: -39.54deg; }
+  81.25% { --dij: -41.33deg; }
+  82.292% { --dij: -50.83deg; }
+  83.333% { --dij: -49.92deg; }
+  84.375% { --dij: -36.21deg; }
+  85.417% { --dij: -19.11deg; }
+  86.458% { --dij: -11.16deg; }
+  87.5% { --dij: -14.27deg; }
+  88.542% { --dij: -16.97deg; }
+  89.583% { --dij: -19.28deg; }
+  90.625% { --dij: -21.23deg; }
+  91.667% { --dij: -22.87deg; }
+  92.708% { --dij: -24.21deg; }
+  93.75% { --dij: -25.28deg; }
+  94.792% { --dij: -26.09deg; }
+  95.833% { --dij: -26.67deg; }
+  96.875% { --dij: -27.02deg; }
+  97.917% { --dij: -27.14deg; }
+  98.958% { --dij: -27.14deg; }
+  100% { --dij: -27.14deg; }
+}
+@keyframes in-vn-scheen {
+  0% { --scheen: 55.65deg; }
+  1.042% { --scheen: 55.65deg; }
+  2.083% { --scheen: 55.65deg; }
+  3.125% { --scheen: 55.65deg; }
+  4.167% { --scheen: 55.59deg; }
+  5.208% { --scheen: 55.45deg; }
+  6.25% { --scheen: 55.20deg; }
+  7.292% { --scheen: 54.82deg; }
+  8.333% { --scheen: 54.27deg; }
+  9.375% { --scheen: 53.50deg; }
+  10.417% { --scheen: 52.46deg; }
+  11.458% { --scheen: 51.06deg; }
+  12.5% { --scheen: 83.23deg; }
+  13.542% { --scheen: 153.74deg; }
+  14.583% { --scheen: 156.49deg; }
+  15.625% { --scheen: 140.38deg; }
+  16.667% { --scheen: 138.81deg; }
+  17.708% { --scheen: 138.52deg; }
+  18.75% { --scheen: 143.94deg; }
+  19.792% { --scheen: 149.27deg; }
+  20.833% { --scheen: 154.50deg; }
+  21.875% { --scheen: 159.63deg; }
+  22.917% { --scheen: 164.63deg; }
+  23.958% { --scheen: 166.86deg; }
+  25% { --scheen: 150.19deg; }
+  26.042% { --scheen: 138.11deg; }
+  27.083% { --scheen: 136.79deg; }
+  28.125% { --scheen: 134.84deg; }
+  29.167% { --scheen: 132.32deg; }
+  30.208% { --scheen: 129.30deg; }
+  31.25% { --scheen: 125.82deg; }
+  32.292% { --scheen: 121.95deg; }
+  33.333% { --scheen: 117.70deg; }
+  34.375% { --scheen: 113.11deg; }
+  35.417% { --scheen: 116.69deg; }
+  36.458% { --scheen: 142.18deg; }
+  37.5% { --scheen: 166.51deg; }
+  38.542% { --scheen: 141.17deg; }
+  39.583% { --scheen: 86.53deg; }
+  40.625% { --scheen: 55.31deg; }
+  41.667% { --scheen: 58.72deg; }
+  42.708% { --scheen: 61.49deg; }
+  43.75% { --scheen: 63.67deg; }
+  44.792% { --scheen: 65.30deg; }
+  45.833% { --scheen: 66.40deg; }
+  46.875% { --scheen: 66.99deg; }
+  47.917% { --scheen: 67.07deg; }
+  48.958% { --scheen: 66.64deg; }
+  50% { --scheen: 65.71deg; }
+  51.042% { --scheen: 64.25deg; }
+  52.083% { --scheen: 62.14deg; }
+  53.125% { --scheen: 41.61deg; }
+  54.167% { --scheen: 45.15deg; }
+  55.208% { --scheen: 53.19deg; }
+  56.25% { --scheen: 58.79deg; }
+  57.292% { --scheen: 59.57deg; }
+  58.333% { --scheen: 62.50deg; }
+  59.375% { --scheen: 80.19deg; }
+  60.417% { --scheen: 87.13deg; }
+  61.458% { --scheen: 70.45deg; }
+  62.5% { --scheen: 32.11deg; }
+  63.542% { --scheen: 2.26deg; }
+  64.583% { --scheen: 23.19deg; }
+  65.625% { --scheen: 40.38deg; }
+  66.667% { --scheen: 49.41deg; }
+  67.708% { --scheen: 53.13deg; }
+  68.75% { --scheen: 54.46deg; }
+  69.792% { --scheen: 55.69deg; }
+  70.833% { --scheen: 56.51deg; }
+  71.875% { --scheen: 56.76deg; }
+  72.917% { --scheen: 56.46deg; }
+  73.958% { --scheen: 55.60deg; }
+  75% { --scheen: 54.15deg; }
+  76.042% { --scheen: 52.09deg; }
+  77.083% { --scheen: 49.36deg; }
+  78.125% { --scheen: 45.88deg; }
+  79.167% { --scheen: 41.47deg; }
+  80.208% { --scheen: 35.85deg; }
+  81.25% { --scheen: 35.84deg; }
+  82.292% { --scheen: 62.59deg; }
+  83.333% { --scheen: 81.62deg; }
+  84.375% { --scheen: 80.96deg; }
+  85.417% { --scheen: 63.78deg; }
+  86.458% { --scheen: 50.78deg; }
+  87.5% { --scheen: 52.69deg; }
+  88.542% { --scheen: 54.11deg; }
+  89.583% { --scheen: 55.11deg; }
+  90.625% { --scheen: 55.79deg; }
+  91.667% { --scheen: 56.24deg; }
+  92.708% { --scheen: 56.51deg; }
+  93.75% { --scheen: 56.66deg; }
+  94.792% { --scheen: 56.73deg; }
+  95.833% { --scheen: 56.76deg; }
+  96.875% { --scheen: 56.76deg; }
+  97.917% { --scheen: 56.76deg; }
+  98.958% { --scheen: 56.76deg; }
+  100% { --scheen: 56.76deg; }
+}
+@keyframes in-vv-dij {
+  0% { --dij: -4.22deg; }
+  1.042% { --dij: -4.22deg; }
+  2.083% { --dij: -4.22deg; }
+  3.125% { --dij: -4.22deg; }
+  4.167% { --dij: -4.44deg; }
+  5.208% { --dij: -4.99deg; }
+  6.25% { --dij: -5.86deg; }
+  7.292% { --dij: -7.06deg; }
+  8.333% { --dij: -8.55deg; }
+  9.375% { --dij: -10.31deg; }
+  10.417% { --dij: -12.33deg; }
+  11.458% { --dij: -14.57deg; }
+  12.5% { --dij: -17.01deg; }
+  13.542% { --dij: -19.62deg; }
+  14.583% { --dij: -22.34deg; }
+  15.625% { --dij: -25.15deg; }
+  16.667% { --dij: -27.98deg; }
+  17.708% { --dij: -30.72deg; }
+  18.75% { --dij: -33.18deg; }
+  19.792% { --dij: -35.32deg; }
+  20.833% { --dij: -37.10deg; }
+  21.875% { --dij: -38.48deg; }
+  22.917% { --dij: -39.39deg; }
+  23.958% { --dij: -56.64deg; }
+  25% { --dij: -101.71deg; }
+  26.042% { --dij: -154.33deg; }
+  27.083% { --dij: 115.86deg; }
+  28.125% { --dij: -40.35deg; }
+  29.167% { --dij: -52.01deg; }
+  30.208% { --dij: -60.59deg; }
+  31.25% { --dij: -69.70deg; }
+  32.292% { --dij: -79.01deg; }
+  33.333% { --dij: -88.04deg; }
+  34.375% { --dij: -96.35deg; }
+  35.417% { --dij: -103.60deg; }
+  36.458% { --dij: -109.64deg; }
+  37.5% { --dij: -114.48deg; }
+  38.542% { --dij: -118.20deg; }
+  39.583% { --dij: -120.95deg; }
+  40.625% { --dij: -122.85deg; }
+  41.667% { --dij: -124.02deg; }
+  42.708% { --dij: -124.56deg; }
+  43.75% { --dij: -124.56deg; }
+  44.792% { --dij: -124.06deg; }
+  45.833% { --dij: -123.10deg; }
+  46.875% { --dij: -128.28deg; }
+  47.917% { --dij: -155.03deg; }
+  48.958% { --dij: -171.39deg; }
+  50% { --dij: -61.46deg; }
+  51.042% { --dij: -37.18deg; }
+  52.083% { --dij: -25.41deg; }
+  53.125% { --dij: -23.54deg; }
+  54.167% { --dij: -12.14deg; }
+  55.208% { --dij: 5.43deg; }
+  56.25% { --dij: 24.59deg; }
+  57.292% { --dij: 41.03deg; }
+  58.333% { --dij: 33.48deg; }
+  59.375% { --dij: 27.00deg; }
+  60.417% { --dij: 21.94deg; }
+  61.458% { --dij: 17.62deg; }
+  62.5% { --dij: 13.79deg; }
+  63.542% { --dij: 10.38deg; }
+  64.583% { --dij: 2.68deg; }
+  65.625% { --dij: -9.82deg; }
+  66.667% { --dij: -22.92deg; }
+  67.708% { --dij: -33.35deg; }
+  68.75% { --dij: -38.80deg; }
+  69.792% { --dij: -41.75deg; }
+  70.833% { --dij: -50.05deg; }
+  71.875% { --dij: -44.42deg; }
+  72.917% { --dij: -24.86deg; }
+  73.958% { --dij: -3.58deg; }
+  75% { --dij: 5.87deg; }
+  76.042% { --dij: 0.57deg; }
+  77.083% { --dij: -4.22deg; }
+  78.125% { --dij: -8.65deg; }
+  79.167% { --dij: -12.79deg; }
+  80.208% { --dij: -16.66deg; }
+  81.25% { --dij: -20.29deg; }
+  82.292% { --dij: -23.67deg; }
+  83.333% { --dij: -26.80deg; }
+  84.375% { --dij: -29.64deg; }
+  85.417% { --dij: -32.07deg; }
+  86.458% { --dij: -34.06deg; }
+  87.5% { --dij: -35.67deg; }
+  88.542% { --dij: -36.93deg; }
+  89.583% { --dij: -37.89deg; }
+  90.625% { --dij: -38.59deg; }
+  91.667% { --dij: -39.07deg; }
+  92.708% { --dij: -40.79deg; }
+  93.75% { --dij: -48.58deg; }
+  94.792% { --dij: -51.38deg; }
+  95.833% { --dij: -45.21deg; }
+  96.875% { --dij: -34.11deg; }
+  97.917% { --dij: -26.84deg; }
+  98.958% { --dij: -26.79deg; }
+  100% { --dij: -26.79deg; }
+}
+@keyframes in-vv-scheen {
+  0% { --scheen: 46.30deg; }
+  1.042% { --scheen: 46.30deg; }
+  2.083% { --scheen: 46.30deg; }
+  3.125% { --scheen: 46.31deg; }
+  4.167% { --scheen: 46.49deg; }
+  5.208% { --scheen: 46.96deg; }
+  6.25% { --scheen: 47.70deg; }
+  7.292% { --scheen: 48.67deg; }
+  8.333% { --scheen: 49.81deg; }
+  9.375% { --scheen: 51.08deg; }
+  10.417% { --scheen: 52.40deg; }
+  11.458% { --scheen: 53.72deg; }
+  12.5% { --scheen: 54.96deg; }
+  13.542% { --scheen: 56.03deg; }
+  14.583% { --scheen: 56.86deg; }
+  15.625% { --scheen: 57.34deg; }
+  16.667% { --scheen: 57.37deg; }
+  17.708% { --scheen: 56.85deg; }
+  18.75% { --scheen: 55.74deg; }
+  19.792% { --scheen: 54.02deg; }
+  20.833% { --scheen: 51.65deg; }
+  21.875% { --scheen: 48.55deg; }
+  22.917% { --scheen: 44.60deg; }
+  23.958% { --scheen: 68.93deg; }
+  25% { --scheen: 125.84deg; }
+  26.042% { --scheen: 165.53deg; }
+  27.083% { --scheen: 177.49deg; }
+  28.125% { --scheen: 156.97deg; }
+  29.167% { --scheen: 144.80deg; }
+  30.208% { --scheen: 146.67deg; }
+  31.25% { --scheen: 147.72deg; }
+  32.292% { --scheen: 147.87deg; }
+  33.333% { --scheen: 147.12deg; }
+  34.375% { --scheen: 145.52deg; }
+  35.417% { --scheen: 143.16deg; }
+  36.458% { --scheen: 140.17deg; }
+  37.5% { --scheen: 136.64deg; }
+  38.542% { --scheen: 132.66deg; }
+  39.583% { --scheen: 128.30deg; }
+  40.625% { --scheen: 123.60deg; }
+  41.667% { --scheen: 118.60deg; }
+  42.708% { --scheen: 113.29deg; }
+  43.75% { --scheen: 107.68deg; }
+  44.792% { --scheen: 101.74deg; }
+  45.833% { --scheen: 95.44deg; }
+  46.875% { --scheen: 97.47deg; }
+  47.917% { --scheen: 124.85deg; }
+  48.958% { --scheen: 156.41deg; }
+  50% { --scheen: 156.07deg; }
+  51.042% { --scheen: 100.55deg; }
+  52.083% { --scheen: 68.84deg; }
+  53.125% { --scheen: 56.51deg; }
+  54.167% { --scheen: 51.00deg; }
+  55.208% { --scheen: 41.18deg; }
+  56.25% { --scheen: 25.23deg; }
+  57.292% { --scheen: 2.32deg; }
+  58.333% { --scheen: 15.06deg; }
+  59.375% { --scheen: 23.41deg; }
+  60.417% { --scheen: 28.57deg; }
+  61.458% { --scheen: 32.09deg; }
+  62.5% { --scheen: 34.45deg; }
+  63.542% { --scheen: 35.86deg; }
+  64.583% { --scheen: 39.64deg; }
+  65.625% { --scheen: 43.99deg; }
+  66.667% { --scheen: 44.83deg; }
+  67.708% { --scheen: 41.61deg; }
+  68.75% { --scheen: 35.52deg; }
+  69.792% { --scheen: 37.05deg; }
+  70.833% { --scheen: 66.39deg; }
+  71.875% { --scheen: 84.69deg; }
+  72.917% { --scheen: 78.78deg; }
+  73.958% { --scheen: 53.41deg; }
+  75% { --scheen: 35.97deg; }
+  76.042% { --scheen: 41.77deg; }
+  77.083% { --scheen: 46.30deg; }
+  78.125% { --scheen: 49.89deg; }
+  79.167% { --scheen: 52.69deg; }
+  80.208% { --scheen: 54.79deg; }
+  81.25% { --scheen: 56.26deg; }
+  82.292% { --scheen: 57.13deg; }
+  83.333% { --scheen: 57.42deg; }
+  84.375% { --scheen: 57.13deg; }
+  85.417% { --scheen: 56.34deg; }
+  86.458% { --scheen: 55.14deg; }
+  87.5% { --scheen: 53.64deg; }
+  88.542% { --scheen: 51.93deg; }
+  89.583% { --scheen: 50.10deg; }
+  90.625% { --scheen: 48.21deg; }
+  91.667% { --scheen: 46.35deg; }
+  92.708% { --scheen: 47.98deg; }
+  93.75% { --scheen: 66.60deg; }
+  94.792% { --scheen: 81.06deg; }
+  95.833% { --scheen: 81.24deg; }
+  96.875% { --scheen: 68.60deg; }
+  97.917% { --scheen: 57.51deg; }
+  98.958% { --scheen: 57.42deg; }
+  100% { --scheen: 57.42deg; }
+}
+@keyframes in-av-dij {
+  0% { --dij: -11.89deg; }
+  1.042% { --dij: -11.89deg; }
+  2.083% { --dij: -11.89deg; }
+  3.125% { --dij: -11.89deg; }
+  4.167% { --dij: -12.03deg; }
+  5.208% { --dij: -12.40deg; }
+  6.25% { --dij: -12.99deg; }
+  7.292% { --dij: -13.78deg; }
+  8.333% { --dij: -14.77deg; }
+  9.375% { --dij: -15.93deg; }
+  10.417% { --dij: -17.24deg; }
+  11.458% { --dij: -18.65deg; }
+  12.5% { --dij: -20.13deg; }
+  13.542% { --dij: -21.63deg; }
+  14.583% { --dij: -23.08deg; }
+  15.625% { --dij: -24.39deg; }
+  16.667% { --dij: -25.46deg; }
+  17.708% { --dij: -26.41deg; }
+  18.75% { --dij: -32.16deg; }
+  19.792% { --dij: -29.90deg; }
+  20.833% { --dij: -13.26deg; }
+  21.875% { --dij: 7.47deg; }
+  22.917% { --dij: 20.92deg; }
+  23.958% { --dij: 14.78deg; }
+  25% { --dij: -0.95deg; }
+  26.042% { --dij: -11.04deg; }
+  27.083% { --dij: -14.71deg; }
+  28.125% { --dij: -18.14deg; }
+  29.167% { --dij: -21.31deg; }
+  30.208% { --dij: -24.22deg; }
+  31.25% { --dij: -26.85deg; }
+  32.292% { --dij: -29.18deg; }
+  33.333% { --dij: -31.17deg; }
+  34.375% { --dij: -32.79deg; }
+  35.417% { --dij: -33.98deg; }
+  36.458% { --dij: -34.67deg; }
+  37.5% { --dij: -34.70deg; }
+  38.542% { --dij: -33.81deg; }
+  39.583% { --dij: -31.09deg; }
+  40.625% { --dij: -25.71deg; }
+  41.667% { --dij: -77.94deg; }
+  42.708% { --dij: -147.45deg; }
+  43.75% { --dij: 137.15deg; }
+  44.792% { --dij: 92.53deg; }
+  45.833% { --dij: 29.80deg; }
+  46.875% { --dij: 21.33deg; }
+  47.917% { --dij: 21.27deg; }
+  48.958% { --dij: 24.63deg; }
+  50% { --dij: 17.50deg; }
+  51.042% { --dij: -38.12deg; }
+  52.083% { --dij: -77.84deg; }
+  53.125% { --dij: -92.03deg; }
+  54.167% { --dij: -62.19deg; }
+  55.208% { --dij: -34.48deg; }
+  56.25% { --dij: -12.29deg; }
+  57.292% { --dij: -0.09deg; }
+  58.333% { --dij: -1.13deg; }
+  59.375% { --dij: -3.77deg; }
+  60.417% { --dij: -6.10deg; }
+  61.458% { --dij: -8.09deg; }
+  62.5% { --dij: -9.72deg; }
+  63.542% { --dij: -10.99deg; }
+  64.583% { --dij: -28.46deg; }
+  65.625% { --dij: -42.25deg; }
+  66.667% { --dij: -16.40deg; }
+  67.708% { --dij: 1.83deg; }
+  68.75% { --dij: 17.91deg; }
+  69.792% { --dij: 18.25deg; }
+  70.833% { --dij: 13.51deg; }
+  71.875% { --dij: 9.06deg; }
+  72.917% { --dij: 4.85deg; }
+  73.958% { --dij: 0.85deg; }
+  75% { --dij: -2.93deg; }
+  76.042% { --dij: -6.51deg; }
+  77.083% { --dij: -9.86deg; }
+  78.125% { --dij: -12.98deg; }
+  79.167% { --dij: -15.84deg; }
+  80.208% { --dij: -18.42deg; }
+  81.25% { --dij: -20.71deg; }
+  82.292% { --dij: -22.66deg; }
+  83.333% { --dij: -24.24deg; }
+  84.375% { --dij: -25.41deg; }
+  85.417% { --dij: -26.08deg; }
+  86.458% { --dij: -26.26deg; }
+  87.5% { --dij: -32.18deg; }
+  88.542% { --dij: -39.35deg; }
+  89.583% { --dij: -37.25deg; }
+  90.625% { --dij: -26.79deg; }
+  91.667% { --dij: -16.24deg; }
+  92.708% { --dij: -14.95deg; }
+  93.75% { --dij: -15.90deg; }
+  94.792% { --dij: -16.61deg; }
+  95.833% { --dij: -17.11deg; }
+  96.875% { --dij: -17.42deg; }
+  97.917% { --dij: -17.53deg; }
+  98.958% { --dij: -17.53deg; }
+  100% { --dij: -17.53deg; }
+}
+@keyframes in-av-scheen {
+  0% { --scheen: 37.24deg; }
+  1.042% { --scheen: 37.24deg; }
+  2.083% { --scheen: 37.24deg; }
+  3.125% { --scheen: 37.24deg; }
+  4.167% { --scheen: 37.24deg; }
+  5.208% { --scheen: 37.22deg; }
+  6.25% { --scheen: 37.18deg; }
+  7.292% { --scheen: 37.08deg; }
+  8.333% { --scheen: 36.90deg; }
+  9.375% { --scheen: 36.60deg; }
+  10.417% { --scheen: 36.12deg; }
+  11.458% { --scheen: 35.41deg; }
+  12.5% { --scheen: 34.38deg; }
+  13.542% { --scheen: 32.95deg; }
+  14.583% { --scheen: 31.02deg; }
+  15.625% { --scheen: 28.44deg; }
+  16.667% { --scheen: 25.04deg; }
+  17.708% { --scheen: 21.58deg; }
+  18.75% { --scheen: 40.03deg; }
+  19.792% { --scheen: 60.04deg; }
+  20.833% { --scheen: 60.72deg; }
+  21.875% { --scheen: 40.99deg; }
+  22.917% { --scheen: 19.23deg; }
+  23.958% { --scheen: 21.98deg; }
+  25% { --scheen: 25.48deg; }
+  26.042% { --scheen: 26.57deg; }
+  27.083% { --scheen: 28.14deg; }
+  28.125% { --scheen: 29.12deg; }
+  29.167% { --scheen: 29.50deg; }
+  30.208% { --scheen: 29.31deg; }
+  31.25% { --scheen: 28.54deg; }
+  32.292% { --scheen: 27.18deg; }
+  33.333% { --scheen: 25.19deg; }
+  34.375% { --scheen: 22.52deg; }
+  35.417% { --scheen: 19.08deg; }
+  36.458% { --scheen: 14.73deg; }
+  37.5% { --scheen: 9.19deg; }
+  38.542% { --scheen: 1.87deg; }
+  39.583% { --scheen: -9.11deg; }
+  40.625% { --scheen: -25.69deg; }
+  41.667% { --scheen: 65.30deg; }
+  42.708% { --scheen: 120.52deg; }
+  43.75% { --scheen: 119.13deg; }
+  44.792% { --scheen: 127.01deg; }
+  45.833% { --scheen: 129.31deg; }
+  46.875% { --scheen: 132.70deg; }
+  47.917% { --scheen: 138.30deg; }
+  48.958% { --scheen: 144.25deg; }
+  50% { --scheen: 148.91deg; }
+  51.042% { --scheen: 149.66deg; }
+  52.083% { --scheen: 147.90deg; }
+  53.125% { --scheen: 135.39deg; }
+  54.167% { --scheen: 118.72deg; }
+  55.208% { --scheen: 94.59deg; }
+  56.25% { --scheen: 69.76deg; }
+  57.292% { --scheen: 52.42deg; }
+  58.333% { --scheen: 49.31deg; }
+  59.375% { --scheen: 47.84deg; }
+  60.417% { --scheen: 45.86deg; }
+  61.458% { --scheen: 43.35deg; }
+  62.5% { --scheen: 40.28deg; }
+  63.542% { --scheen: 36.68deg; }
+  64.583% { --scheen: 66.95deg; }
+  65.625% { --scheen: 107.07deg; }
+  66.667% { --scheen: 113.92deg; }
+  67.708% { --scheen: 78.46deg; }
+  68.75% { --scheen: 28.73deg; }
+  69.792% { --scheen: 21.04deg; }
+  70.833% { --scheen: 25.39deg; }
+  71.875% { --scheen: 28.92deg; }
+  72.917% { --scheen: 31.76deg; }
+  73.958% { --scheen: 33.97deg; }
+  75% { --scheen: 35.60deg; }
+  76.042% { --scheen: 36.66deg; }
+  77.083% { --scheen: 37.19deg; }
+  78.125% { --scheen: 37.18deg; }
+  79.167% { --scheen: 36.63deg; }
+  80.208% { --scheen: 35.54deg; }
+  81.25% { --scheen: 33.89deg; }
+  82.292% { --scheen: 31.65deg; }
+  83.333% { --scheen: 28.79deg; }
+  84.375% { --scheen: 25.24deg; }
+  85.417% { --scheen: 21.16deg; }
+  86.458% { --scheen: 16.65deg; }
+  87.5% { --scheen: 27.44deg; }
+  88.542% { --scheen: 48.09deg; }
+  89.583% { --scheen: 58.15deg; }
+  90.625% { --scheen: 53.03deg; }
+  91.667% { --scheen: 40.27deg; }
+  92.708% { --scheen: 36.86deg; }
+  93.75% { --scheen: 36.61deg; }
+  94.792% { --scheen: 36.37deg; }
+  95.833% { --scheen: 36.17deg; }
+  96.875% { --scheen: 36.04deg; }
+  97.917% { --scheen: 35.99deg; }
+  98.958% { --scheen: 35.99deg; }
+  100% { --scheen: 35.99deg; }
+}
+@keyframes in-an-dij {
+  0% { --dij: -26.30deg; }
+  1.042% { --dij: -26.30deg; }
+  2.083% { --dij: -26.30deg; }
+  3.125% { --dij: -26.30deg; }
+  4.167% { --dij: -26.30deg; }
+  5.208% { --dij: -26.30deg; }
+  6.25% { --dij: -26.77deg; }
+  7.292% { --dij: -33.05deg; }
+  8.333% { --dij: -30.75deg; }
+  9.375% { --dij: -14.39deg; }
+  10.417% { --dij: 6.06deg; }
+  11.458% { --dij: 19.57deg; }
+  12.5% { --dij: 17.51deg; }
+  13.542% { --dij: 14.13deg; }
+  14.583% { --dij: 10.58deg; }
+  15.625% { --dij: 6.87deg; }
+  16.667% { --dij: 3.04deg; }
+  17.708% { --dij: -0.82deg; }
+  18.75% { --dij: -4.48deg; }
+  19.792% { --dij: -7.92deg; }
+  20.833% { --dij: -11.14deg; }
+  21.875% { --dij: -14.12deg; }
+  22.917% { --dij: -16.85deg; }
+  23.958% { --dij: -22.06deg; }
+  25% { --dij: -35.66deg; }
+  26.042% { --dij: -43.20deg; }
+  27.083% { --dij: -43.93deg; }
+  28.125% { --dij: -44.14deg; }
+  29.167% { --dij: -43.98deg; }
+  30.208% { --dij: -51.56deg; }
+  31.25% { --dij: -53.23deg; }
+  32.292% { --dij: -39.32deg; }
+  33.333% { --dij: -19.10deg; }
+  34.375% { --dij: -6.25deg; }
+  35.417% { --dij: -8.88deg; }
+  36.458% { --dij: -12.99deg; }
+  37.5% { --dij: -16.91deg; }
+  38.542% { --dij: -20.63deg; }
+  39.583% { --dij: -24.16deg; }
+  40.625% { --dij: -27.48deg; }
+  41.667% { --dij: -30.57deg; }
+  42.708% { --dij: -33.41deg; }
+  43.75% { --dij: -35.98deg; }
+  44.792% { --dij: -38.26deg; }
+  45.833% { --dij: -40.22deg; }
+  46.875% { --dij: -41.84deg; }
+  47.917% { --dij: -43.06deg; }
+  48.958% { --dij: -43.86deg; }
+  50% { --dij: -44.15deg; }
+  51.042% { --dij: -43.82deg; }
+  52.083% { --dij: -42.95deg; }
+  53.125% { --dij: -73.03deg; }
+  54.167% { --dij: -95.73deg; }
+  55.208% { --dij: -64.74deg; }
+  56.25% { --dij: -12.75deg; }
+  57.292% { --dij: 19.00deg; }
+  58.333% { --dij: 21.58deg; }
+  59.375% { --dij: 18.24deg; }
+  60.417% { --dij: 15.14deg; }
+  61.458% { --dij: 12.29deg; }
+  62.5% { --dij: 9.72deg; }
+  63.542% { --dij: 7.44deg; }
+  64.583% { --dij: -1.88deg; }
+  65.625% { --dij: -20.33deg; }
+  66.667% { --dij: -43.29deg; }
+  67.708% { --dij: -66.06deg; }
+  68.75% { --dij: -81.20deg; }
+  69.792% { --dij: -83.62deg; }
+  70.833% { --dij: -83.64deg; }
+  71.875% { --dij: -83.19deg; }
+  72.917% { --dij: -82.29deg; }
+  73.958% { --dij: -80.94deg; }
+  75% { --dij: -79.11deg; }
+  76.042% { --dij: -93.95deg; }
+  77.083% { --dij: -118.93deg; }
+  78.125% { --dij: -84.29deg; }
+  79.167% { --dij: -16.82deg; }
+  80.208% { --dij: 12.55deg; }
+  81.25% { --dij: 16.26deg; }
+  82.292% { --dij: 11.66deg; }
+  83.333% { --dij: 7.33deg; }
+  84.375% { --dij: 3.25deg; }
+  85.417% { --dij: -0.39deg; }
+  86.458% { --dij: -3.58deg; }
+  87.5% { --dij: -6.35deg; }
+  88.542% { --dij: -8.74deg; }
+  89.583% { --dij: -10.79deg; }
+  90.625% { --dij: -12.52deg; }
+  91.667% { --dij: -13.95deg; }
+  92.708% { --dij: -15.12deg; }
+  93.75% { --dij: -16.05deg; }
+  94.792% { --dij: -16.75deg; }
+  95.833% { --dij: -17.24deg; }
+  96.875% { --dij: -17.54deg; }
+  97.917% { --dij: -17.65deg; }
+  98.958% { --dij: -17.65deg; }
+  100% { --dij: -17.65deg; }
+}
+@keyframes in-an-scheen {
+  0% { --scheen: 17.94deg; }
+  1.042% { --scheen: 17.94deg; }
+  2.083% { --scheen: 17.94deg; }
+  3.125% { --scheen: 17.94deg; }
+  4.167% { --scheen: 17.69deg; }
+  5.208% { --scheen: 17.05deg; }
+  6.25% { --scheen: 17.38deg; }
+  7.292% { --scheen: 39.26deg; }
+  8.333% { --scheen: 59.27deg; }
+  9.375% { --scheen: 59.57deg; }
+  10.417% { --scheen: 40.27deg; }
+  11.458% { --scheen: 19.36deg; }
+  12.5% { --scheen: 20.72deg; }
+  13.542% { --scheen: 23.82deg; }
+  14.583% { --scheen: 26.77deg; }
+  15.625% { --scheen: 29.47deg; }
+  16.667% { --scheen: 31.87deg; }
+  17.708% { --scheen: 33.84deg; }
+  18.75% { --scheen: 35.27deg; }
+  19.792% { --scheen: 36.17deg; }
+  20.833% { --scheen: 36.54deg; }
+  21.875% { --scheen: 36.40deg; }
+  22.917% { --scheen: 35.74deg; }
+  23.958% { --scheen: 35.03deg; }
+  25% { --scheen: 33.77deg; }
+  26.042% { --scheen: 29.62deg; }
+  27.083% { --scheen: 25.46deg; }
+  28.125% { --scheen: 20.45deg; }
+  29.167% { --scheen: 15.07deg; }
+  30.208% { --scheen: 34.92deg; }
+  31.25% { --scheen: 58.99deg; }
+  32.292% { --scheen: 65.36deg; }
+  33.333% { --scheen: 51.41deg; }
+  34.375% { --scheen: 34.05deg; }
+  35.417% { --scheen: 34.82deg; }
+  36.458% { --scheen: 37.28deg; }
+  37.5% { --scheen: 39.20deg; }
+  38.542% { --scheen: 40.59deg; }
+  39.583% { --scheen: 41.47deg; }
+  40.625% { --scheen: 41.85deg; }
+  41.667% { --scheen: 41.73deg; }
+  42.708% { --scheen: 41.12deg; }
+  43.75% { --scheen: 40.01deg; }
+  44.792% { --scheen: 38.38deg; }
+  45.833% { --scheen: 36.21deg; }
+  46.875% { --scheen: 33.48deg; }
+  47.917% { --scheen: 30.12deg; }
+  48.958% { --scheen: 26.07deg; }
+  50% { --scheen: 21.19deg; }
+  51.042% { --scheen: 15.24deg; }
+  52.083% { --scheen: 8.36deg; }
+  53.125% { --scheen: 56.92deg; }
+  54.167% { --scheen: 106.81deg; }
+  55.208% { --scheen: 125.72deg; }
+  56.25% { --scheen: 92.06deg; }
+  57.292% { --scheen: 38.91deg; }
+  58.333% { --scheen: 29.47deg; }
+  59.375% { --scheen: 30.33deg; }
+  60.417% { --scheen: 30.65deg; }
+  61.458% { --scheen: 30.41deg; }
+  62.5% { --scheen: 29.63deg; }
+  63.542% { --scheen: 28.30deg; }
+  64.583% { --scheen: 36.09deg; }
+  65.625% { --scheen: 52.88deg; }
+  66.667% { --scheen: 69.36deg; }
+  67.708% { --scheen: 79.75deg; }
+  68.75% { --scheen: 81.77deg; }
+  69.792% { --scheen: 77.47deg; }
+  70.833% { --scheen: 72.11deg; }
+  71.875% { --scheen: 66.36deg; }
+  72.917% { --scheen: 60.20deg; }
+  73.958% { --scheen: 53.55deg; }
+  75% { --scheen: 46.29deg; }
+  76.042% { --scheen: 65.25deg; }
+  77.083% { --scheen: 102.73deg; }
+  78.125% { --scheen: 131.78deg; }
+  79.167% { --scheen: 93.93deg; }
+  80.208% { --scheen: 34.45deg; }
+  81.25% { --scheen: 21.91deg; }
+  82.292% { --scheen: 25.91deg; }
+  83.333% { --scheen: 29.16deg; }
+  84.375% { --scheen: 31.75deg; }
+  85.417% { --scheen: 33.65deg; }
+  86.458% { --scheen: 34.96deg; }
+  87.5% { --scheen: 35.82deg; }
+  88.542% { --scheen: 36.31deg; }
+  89.583% { --scheen: 36.52deg; }
+  90.625% { --scheen: 36.54deg; }
+  91.667% { --scheen: 36.42deg; }
+  92.708% { --scheen: 36.22deg; }
+  93.75% { --scheen: 35.99deg; }
+  94.792% { --scheen: 35.77deg; }
+  95.833% { --scheen: 35.59deg; }
+  96.875% { --scheen: 35.46deg; }
+  97.917% { --scheen: 35.42deg; }
+  98.958% { --scheen: 35.42deg; }
+  100% { --scheen: 35.42deg; }
+}
+
+
+.c-adem { transform-box: view-box; transform-origin: 134px 146px; animation: adem 4.4s ease-in-out infinite; }
+.oor-l { transform-box: view-box; transform-origin: 42px 60px; transform: rotate(var(--oor-l, 0deg)); transition: transform 220ms cubic-bezier(.34,1.5,.5,1); }
+.oor-r { transform-box: view-box; transform-origin: 82px 58px; transform: rotate(var(--oor-r, 0deg)); transition: transform 220ms cubic-bezier(.34,1.5,.5,1); }
+.oog-dicht { opacity: var(--oog-dicht, 1); transition: opacity 160ms linear; }
+.oog-open  { opacity: var(--oog-open, 0);  transition: opacity 160ms linear; }
+.staart-liggend { transform-box: view-box; transform-origin: 198px 88px; animation: staartpunt 5.2s ease-in-out infinite; }
+/* De punt doet hetzelfde, een fractie later. Dat naplooien is het verschil. */
+.staart-liggend-punt { transform-box: view-box; transform-origin: 196px 130px; animation: staartpunt 5.2s ease-in-out infinite; animation-delay: 150ms; }
+.spin-golf { opacity: var(--spin, 0); transition: opacity 200ms linear; }
+
+@keyframes adem {
+  0%, 100% { transform: scale(1, 1); }
+  50%      { transform: scale(1.012, 1.028); }
+}
+@keyframes staartpunt {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  72%           { transform: rotate(-5deg); }
+  84%           { transform: rotate(3deg); }
+}
+@keyframes spinnen {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-0.7px); }
+}
+.spint .c-adem { animation: adem 2.4s ease-in-out infinite, spinnen 0.11s linear infinite; }
+
+/* ── het loopje ────────────────────────────────────────────────────────────────
+   Een poot is dij, scheen en voet, en elk gewricht draait om zijn eigen punt.
+   De vier poten lopen dezelfde cyclus met een vierde slag verschil: dat is de
+   laterale gang die een kat stapvoets echt gebruikt (LA, LV, RA, RV).
+   Staart en kop lopen een tel na op het lijf; dat naplooien is wat het verschil
+   maakt tussen een dier en een mechaniek.
+   ──────────────────────────────────────────────────────────────────────────── */
+@property --dij     { syntax: "<angle>";  inherits: false; initial-value: 0deg; }
+@property --scheen  { syntax: "<angle>";  inherits: false; initial-value: 0deg; }
+@property --hef     { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
+.been, .dij, .scheen, .staart-deel, .c-loop-lijf, .kop-staand { transform-box: view-box; }
+.dij    { transform: rotate(calc(var(--rust-dij, 0deg) + var(--dij))); }
+.scheen { transform: rotate(calc(var(--rust-scheen, 0deg) + var(--scheen))); }
+.c-loop-lijf { transform: translateY(var(--hef)); }
+
+/* De achterpoten staan in een hoek: dij naar achter, scheen weer naar voor. */
+.been-av, .been-an { --rust-dij: -19deg; --rust-scheen: 28deg; }
+
+.been-vn .dij { transform-origin: 92px 98px; }   .been-vn .scheen { transform-origin: 92px 124px; }
+.been-vv .dij { transform-origin: 104px 100px; } .been-vv .scheen { transform-origin: 104px 126px; }
+.been-av .dij { transform-origin: 146px 100px; } .been-av .scheen { transform-origin: 146px 126px; }
+.been-an .dij { transform-origin: 158px 98px; }  .been-an .scheen { transform-origin: 158px 124px; }
+
+.staart-basis { transform-origin: 184px 62px; }
+.staart-punt  { transform-origin: 207px 28px; }
+.kop-staand   { transform-origin: 62px 92px; }
+
+/* opstaan: inzakken, strekken, net iets doorveren */
+.rijst .dij          { animation: rijz-dij    calc(220ms * var(--loop)) cubic-bezier(.3,.9,.4,1) both; }
+.rijst .scheen       { animation: rijz-scheen calc(220ms * var(--loop)) cubic-bezier(.3,.9,.4,1) both; }
+.rijst .c-loop-lijf  { animation: rijz-lijf   calc(220ms * var(--loop)) cubic-bezier(.3,1,.4,1) both; }
+.rijst .kop-staand   { animation: rijz-kop    calc(260ms * var(--loop)) cubic-bezier(.3,1,.4,1) both; }
+.rijst .staart-basis { animation: rijz-staart calc(300ms * var(--loop)) cubic-bezier(.3,1,.4,1) both; }
+
+/* neerzakken is dezelfde beweging achteruit afgespeeld */
+.zakt .dij         { animation: rijz-dij    calc(200ms * var(--loop)) cubic-bezier(.4,0,.7,1) both reverse; }
+.zakt .scheen      { animation: rijz-scheen calc(200ms * var(--loop)) cubic-bezier(.4,0,.7,1) both reverse; }
+.zakt .c-loop-lijf { animation: rijz-lijf   calc(200ms * var(--loop)) cubic-bezier(.4,0,.7,1) both reverse; }
+.zakt .kop-staand  { animation: rijz-kop    calc(200ms * var(--loop)) cubic-bezier(.4,0,.7,1) both reverse; }
+
+@keyframes rijz-dij    { from { --dij: 50deg; }    to { --dij: 0deg; } }
+@keyframes rijz-scheen { from { --scheen: -72deg; } to { --scheen: 0deg; } }
+@keyframes rijz-lijf   { from { --hef: 25px; } 62% { --hef: -3px; } to { --hef: 0px; } }
+@keyframes rijz-kop    { from { transform: translateY(17px) rotate(-9deg); } 65% { transform: translateY(-2px) rotate(2deg); } to { transform: translateY(0) rotate(0deg); } }
+@keyframes rijz-staart { from { transform: rotate(26deg); } 70% { transform: rotate(-7deg); } to { transform: rotate(0deg); } }
+
+/* stappen, zoals een kat: één poot tegelijk van de grond, drie altijd neer.
+   Volgorde linksachter, linksvoor, rechtsachter, rechtsvoor; een cyclus is 900 ms en
+   brengt hem 36 eenheden verder. De hoeken komen uit de generator (stap-*). Het lijf
+   glijdt en deint nauwelijks, de kop blijft laag en rustig: een sluipende kat, geen draf. */
+.loopt .been-vn .dij    { animation: stap-vn-dij    calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-vn .scheen { animation: stap-vn-scheen calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-vv .dij    { animation: stap-vv-dij    calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-vv .scheen { animation: stap-vv-scheen calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-av .dij    { animation: stap-av-dij    calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-av .scheen { animation: stap-av-scheen calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-an .dij    { animation: stap-an-dij    calc(900ms * var(--loop)) linear infinite; }
+.loopt .been-an .scheen { animation: stap-an-scheen calc(900ms * var(--loop)) linear infinite; }
+
+.loopt .c-loop-lijf  { animation: wieg calc(225ms * var(--loop)) ease-in-out infinite; }
+.loopt .staart-basis { animation: zwaai-basis calc(1800ms * var(--loop)) ease-in-out infinite; animation-delay: calc(120ms * var(--loop)); }
+.loopt .staart-punt  { animation: zwaai-punt  calc(1800ms * var(--loop)) ease-in-out infinite; animation-delay: calc(280ms * var(--loop)); }
+.loopt .kop-staand   { animation: kop-mee calc(450ms * var(--loop)) ease-in-out infinite; animation-delay: calc(90ms * var(--loop)); }
+
+/* bij elke opgetilde poot zakt het lijf een haar: glijden, niet stuiteren */
+@keyframes wieg        { 0%, 100% { --hef: 0px; } 50% { --hef: 0.6px; } }
+@keyframes zwaai-basis { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+@keyframes zwaai-punt  { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes kop-mee     { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(0.8px) rotate(-0.6deg); } }
+
+/* ── leven in rust: een oortik en een knippering op een onvoorspelbaar moment ── */
+.knippert .oog-dicht { opacity: 1 !important; }
+.knippert .oog-open  { opacity: 0 !important; }
+@keyframes oortik { 0%, 100% { transform: rotate(var(--oor-r, 0deg)); } 30% { transform: rotate(calc(var(--oor-r, 0deg) + 13deg)); } 60% { transform: rotate(calc(var(--oor-r, 0deg) - 4deg)); } }
+.tikt .oor-r { animation: oortik 420ms ease-in-out 1; }
+
+/* ── minder beweging: alles stilgezet op zijn rustframe ── */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-beweging="volledig"]) .c-adem,
+  :root:not([data-beweging="volledig"]) .staart-liggend,
+  :root:not([data-beweging="volledig"]) .staart-liggend-punt,
+  :root:not([data-beweging="volledig"]) .staart-deel,
+  :root:not([data-beweging="volledig"]) .kop-staand,
+  :root:not([data-beweging="volledig"]) .c-loop-lijf { animation: none !important; transform: none !important; }
+  :root:not([data-beweging="volledig"]) .dij,
+  :root:not([data-beweging="volledig"]) .scheen { animation: none !important; }
+  :root:not([data-beweging="volledig"]) .oor-l,
+  :root:not([data-beweging="volledig"]) .oor-r,
+  :root:not([data-beweging="volledig"]) .venster,
+}
+:root[data-beweging="minder"] .c-adem,
+:root[data-beweging="minder"] .staart-liggend,
+:root[data-beweging="minder"] .staart-liggend-punt,
+:root[data-beweging="minder"] .staart-deel,
+:root[data-beweging="minder"] .kop-staand,
+:root[data-beweging="minder"] .c-loop-lijf { animation: none !important; transform: none !important; }
+:root[data-beweging="minder"] .dij,
+:root[data-beweging="minder"] .scheen { animation: none !important; }
+:root[data-beweging="minder"] .oor-l,
+:root[data-beweging="minder"] .oor-r,
+:root[data-beweging="minder"] .venster,
+
+/* ════════════════════════════════════════════════════════════════════════════
+   De opening
+   ════════════════════════════════════════════════════════════════════════════ */
+.opening { padding-block: clamp(34px, 6vw, 60px) clamp(30px, 5vw, 52px); }
+.opening-rij { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); gap: clamp(20px, 3vw, 40px); align-items: center; }
+@media (max-width: 860px) { .opening-rij { grid-template-columns: minmax(0, 1fr); } }
+
+.naamplaat { display: flex; flex-direction: column; gap: 16px; }
+.naamplaat .rol { font-size: 12.5px; color: var(--inkt-zwak); font-family: var(--mono); }
+.naamplaat h1 { margin-block: -2px 0; }
+
+.toneel {
+  position: relative;
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+}
+.toneel .slaper { width: 100%; max-width: 560px; }
+.wek {
+  font: inherit; font-size: 13px; color: var(--inkt-zacht);
+  background: transparent; border: 0; padding: 6px 2px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 7px; align-self: flex-start;
+}
+.wek::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); }
+.slaapknop { border: 0; background: transparent; padding: 0; cursor: pointer; width: 100%; display: block; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Het kleurprobleem
+   ════════════════════════════════════════════════════════════════════════════ */
+.vachten { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.vachtkaart {
+  display: flex; flex-direction: column; gap: 0;
+  background: var(--kaart); border: 1px solid var(--lijn);
+  border-radius: var(--radius-kaart); overflow: hidden;
+  text-align: left; font: inherit; color: inherit; cursor: pointer;
+  padding: 0;
+}
+.vachtkaart[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.vachtkaart .proef { padding: 14px 14px 0; display: grid; place-items: center; }
+.vachtkaart .proef svg { width: 168px; max-width: 100%; }
+.vachtkaart .tekst { padding: 4px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
+.vachtkaart .tekst h3 { display: flex; align-items: center; gap: 8px; }
+.gekozen-merk { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; color: var(--accent); }
+.vachtkaart[aria-pressed="false"] .gekozen-merk { visibility: hidden; }
+
+/* de botsingsstrook */
+.botsing { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 16px 16px; }
+.staal { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--inkt-zacht); }
+.staal i { width: 15px; height: 15px; border-radius: 4px; display: block; }
+
+.meter {
+  background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--radius-kaart);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;
+}
+.meter table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.meter th { text-align: left; font-weight: 500; color: var(--inkt-zwak); font-size: 12px; padding-bottom: 6px; }
+.meter th:nth-child(2), .meter th:nth-child(3), .meter th:nth-child(4) { text-align: right; padding-left: 18px; }
+.meter td { padding: 7px 0; border-top: 1px solid var(--lijn); vertical-align: baseline; }
+.meter td:first-child { width: 99%; }
+.meter td:nth-child(2), .meter td:nth-child(3) { font-family: var(--mono); text-align: right; white-space: nowrap; padding-left: 18px; }
+.meter td:nth-child(4) { text-align: right; white-space: nowrap; padding-left: 18px; }
+.oordeel { font-weight: 600; }
+.oordeel[data-ok="ja"] { color: var(--dekking-gedekt); }
+.oordeel[data-ok="nee"] { color: var(--dekking-niet-gedekt); }
+.meter-uitleg { font-size: 12.5px; color: var(--inkt-zacht); }
+
+.twee { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .twee { grid-template-columns: minmax(0, 1fr); } }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   De houdingen
+   ════════════════════════════════════════════════════════════════════════════ */
+.houdingen { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; }
+.houding {
+  background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--radius-kaart);
+  padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 4px;
+}
+.houding svg { width: 100%; max-width: 210px; align-self: center; }
+.houding .label { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; }
+.houding .label::before {
+  content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--inkt-zwak); flex: none;
+}
+.houding[data-signaal="klaar"] .label::before { background: var(--accent); }
+.houding[data-signaal="gevaar"] .label::before { background: var(--attentie); }
+.houding[data-signaal="schema"] .label::before { background: var(--dekking-gedekt); }
+.houding .bron { font-size: 12.5px; color: var(--inkt-zacht); }
+/* over de lege ruimte rechtsboven in het beeld, zodat de vier katten op één lijn blijven */
+.houding { position: relative; }
+.houding .kaartballon { position: absolute; top: 12px; right: 14px; font-size: 12.5px; line-height: 1.3; padding: 5px 11px; max-width: 58%; z-index: 1; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   De app
+   ════════════════════════════════════════════════════════════════════════════ */
+.toestel { display: flex; flex-direction: column; gap: 10px; }
+.toestel[data-breedte="telefoon"] { max-width: 390px; margin-inline: auto; }
+
+.app {
+  position: relative;
+  background: var(--vlak); border: 1px solid var(--lijn-sterk);
+  border-radius: var(--radius-blad); overflow: hidden;
+  box-shadow: var(--schaduw-kaart);
+  container-type: inline-size;
+}
+.app-kop {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px; background: var(--kaart); border-bottom: 1px solid var(--lijn);
+  min-height: 62px;
+}
+.merk { display: flex; align-items: center; gap: 8px; font-family: var(--display); font-weight: 700; letter-spacing: -0.02em; font-size: 17px; }
+.merk svg { width: 22px; height: 22px; border-radius: 5px; flex: none; }
+.app-nav { display: flex; gap: 2px; margin-left: 6px; }
+.app-nav span { font-size: 13px; color: var(--inkt-zacht); padding: 5px 9px; border-radius: 8px; }
+.app-nav span[data-actief] { background: var(--accent-zacht); color: var(--accent); font-weight: 600; }
+@container (max-width: 560px) { .app-nav { display: none; } }
+
+.app-rechts { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.klasmerk { font-family: var(--mono); font-size: 12.5px; color: var(--inkt-zacht); border: 1px solid var(--lijn); border-radius: 999px; padding: 3px 9px; }
+@container (max-width: 420px) { .klasmerk { display: none; } }
+
+.mandhoek { display: flex; align-items: center; gap: 9px; }
+.mandknop {
+  border: 0; background: transparent; padding: 0; cursor: pointer; color: inherit; font: inherit;
+  border-radius: 12px; flex: none; display: flex; align-items: center; gap: 16px; text-align: left;
+}
+/* Het knopvak houdt alleen de plek vrij en vangt de klik; de tekening zelf ligt
+   als een laag over de app, zodat de kop hem niet afknipt. */
+.mandvak { display: block; width: 94px; height: 62px; }
+.mandscene { position: absolute; top: 1px; right: 9px; width: 174px; z-index: 30; pointer-events: none; }
+.houdingtekst { font-size: 12.5px; color: var(--inkt-zacht); max-width: 13ch; line-height: 1.25; }
+/* Chuck praat alleen als hij iets heeft: dan staat zijn label in een ballon naast de mand. */
+.kopballon { font-size: 12.5px; line-height: 1.3; padding: 6px 11px; max-width: 34ch; }
+@container (max-width: 480px) { .houdingtekst, .kopballon { max-width: 12ch; font-size: 11.5px; } }
+
+/* een ballon met de staart naar rechts, naar de kat die ernaast staat */
+.ballon.naar-rechts .ballon-staart { left: auto; right: -16px; transform: scaleX(-1); }
+
+.app-blad { padding: 16px 16px 20px; display: flex; flex-direction: column; gap: 16px; min-height: 660px; }
+.blad-kop { display: flex; align-items: baseline; gap: 10px; }
+.blad-kop h3 { font-family: var(--display); font-size: 20px; letter-spacing: -0.02em; }
+.blad-kop .week { font-family: var(--mono); font-size: 12.5px; color: var(--inkt-zwak); }
+
+.weekstrook { position: relative; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.dag { background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--radius-veld); padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 148px; }
+.dag > .dagnaam { font-size: 11px; font-weight: 600; letter-spacing: 0.05em; color: var(--inkt-zwak); font-family: var(--mono); }
+.blokje { border-radius: 8px; padding: 6px 7px; font-size: 11.5px; line-height: 1.25; background: var(--vlak-diep); border-left: 3px solid var(--lijn-sterk); }
+.blokje.md { border-left-color: var(--doelsoort-md); }
+.blokje.vd { border-left-color: var(--doelsoort-verdieping); }
+.blokje b { font-weight: 600; display: block; }
+.blokje b, .blokje .code { overflow-wrap: anywhere; }
+.dag { min-width: 0; }
+.blokje .code { font-family: var(--mono); font-size: 10.5px; color: var(--inkt-zwak); }
+
+.blokje.voorstel {
+  background: var(--kaart);
+  border: 1px solid transparent; border-left-width: 1px;
+  background-image:
+    linear-gradient(var(--kaart), var(--kaart)),
+    linear-gradient(to right,
+      color-mix(in srgb, var(--ai-oranje) 55%, var(--kaart)),
+      color-mix(in srgb, var(--ai-roze) 55%, var(--kaart)),
+      color-mix(in srgb, var(--ai-paars) 55%, var(--kaart)),
+      color-mix(in srgb, var(--ai-blauw) 55%, var(--kaart)),
+      color-mix(in srgb, var(--ai-cyaan) 55%, var(--kaart)));
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}
+.blokje.voorstel .code { color: var(--inkt-zacht); }
+
+/* Op de hoek van de weekstrook, niet erop: zijn buik rust op de rand van de laatste dag. */
+.hoekkat { position: absolute; top: -52px; right: -4px; width: 92px; pointer-events: none; }
+.blad-kop { flex-wrap: wrap; row-gap: 8px; }
+.hoekballon { margin-left: auto; margin-right: 96px; align-self: flex-end; font-size: 12.5px; line-height: 1.35; padding: 6px 11px; max-width: 34ch; }
+.hoekballon[hidden] { display: none; }
+.hoekkat svg { width: 100%; display: block; }
+
+.balk { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--inkt-zacht); }
+.balk .spoor { flex: 1; height: 8px; border-radius: 999px; background: var(--vlak-diep); overflow: hidden; }
+.balk .vul { height: 100%; width: 71%; background: var(--dekking-gedekt); border-radius: 999px; }
+
+/* het venster van Chuck */
+.venster {
+  position: absolute; top: 68px; right: 12px; width: 352px; max-width: calc(100% - 24px);
+  background: var(--kaart); border: 1px solid var(--lijn-sterk);
+  border-radius: var(--radius-kaart); box-shadow: var(--schaduw-zweef);
+  display: flex; flex-direction: column; overflow: hidden;
+  max-height: calc(100% - 80px);
+  z-index: 20;
+  transform-origin: top right;
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.2,.8,.3,1);
+}
+.venster[hidden] { display: none !important; }
+.venster.komt { opacity: 0; transform: scale(.94) translate(10px, -8px); }
+@container (max-width: 520px) {
+  .venster { position: absolute; inset: 0; width: auto; max-width: none; border-radius: 0; border: 0; }
+  .venster.komt { transform: translateY(10px); }
+}
+.venster-kop { display: flex; align-items: center; gap: 10px; padding: 11px 12px 11px 14px; border-bottom: 1px solid var(--lijn); flex: none; }
+.venster-kop .naam { font-family: var(--display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.venster-kop .staat { font-size: 12px; color: var(--inkt-zwak); }
+.sluit {
+  margin-left: auto; width: 32px; height: 32px; flex: none;
+  border: 1px solid var(--lijn); background: var(--kaart); color: var(--inkt-zacht);
+  border-radius: 9px; cursor: pointer; font-size: 15px; line-height: 1;
+}
+.sluit:hover { background: var(--vlak); }
+
+.deurmat { padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; border-bottom: 1px solid var(--lijn); background: var(--vlak); flex: none; }
+.meegebracht { background: var(--kaart); border: 1px solid var(--lijn); border-radius: var(--radius-veld); padding: 10px 11px; display: flex; flex-direction: column; gap: 8px; }
+.meegebracht .wat { font-size: 13.5px; font-weight: 600; line-height: 1.3; }
+.meegebracht .waarom { font-size: 12.5px; color: var(--inkt-zacht); line-height: 1.35; }
+.meegebracht .knoppen { display: flex; gap: 7px; }
+
+.knop { font: inherit; font-size: 12.5px; font-weight: 500; border-radius: 9px; padding: 6px 12px; cursor: pointer; min-height: 32px; }
+.knop.hoofd { background: var(--accent); color: var(--accent-op); border: 1px solid var(--accent); }
+.knop.stil { background: var(--kaart); color: var(--inkt-zacht); border: 1px solid var(--lijn); }
+.knop.stil:hover { background: var(--vlak); }
+
+.gesprek { padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; overflow-y: auto; min-height: 56px; flex: 1 1 auto; }
+.bericht { max-width: 86%; font-size: 13px; line-height: 1.45; border-radius: 12px; padding: 8px 11px; }
+
+/* ── wat Chuck zegt: een stripballon ─────────────────────────────────────────
+   Een witte ballon met een inktrand en een staartje naar wie praat. De strip zit
+   in de vorm, niet in de letter: een comicletter zou naar babytaal neigen. Wat de
+   leerkracht zelf typt, blijft een gewoon vak, zodat je ziet wie aan het woord is. */
+.zegt { display: flex; align-items: flex-end; gap: 13px; max-width: 94%; align-self: flex-start; }
+.gezicht {
+  flex: none; width: 34px; height: 34px; border-radius: 50%; overflow: hidden;
+  background: var(--vlak-diep); border: 1.5px solid var(--lijn-sterk);
+}
+.gezicht svg { width: 100%; height: 100%; display: block; }
+.ballon {
+  position: relative;
+  background: var(--kaart); color: var(--inkt);
+  border: 2px solid var(--inkt); border-radius: 18px 18px 18px 14px;
+  padding: 8px 13px; font-size: 13px; line-height: 1.45;
+}
+.ballon-staart { position: absolute; left: -16px; bottom: 6px; width: 18px; height: 14px; overflow: visible; }
+.ballon-staart path { fill: var(--kaart); stroke: var(--inkt); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+/* de staart naar onder, voor een ballon boven zijn kop */
+.ballon.naar-onder .ballon-staart { left: 16px; bottom: -14px; width: 16px; height: 16px; }
+
+@keyframes ballon-pop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+.ballon.pop { animation: ballon-pop 240ms cubic-bezier(.3,1.5,.5,1) both; transform-origin: 18px 100%; }
+@media (prefers-reduced-motion: reduce) { :root:not([data-beweging="volledig"]) .ballon.pop { animation: none; } }
+:root[data-beweging="minder"] .ballon.pop { animation: none; }
+
+/* de ballon in de opening, boven zijn kop wanneer hij naast de mand staat */
+.toneel-ballon { position: absolute; left: 21%; bottom: 84%; max-width: 72%; z-index: 2; }
+.toneel-ballon[hidden] { display: none; }
+.bericht.van-jou { background: var(--accent-zacht); color: var(--accent); align-self: flex-end; border-bottom-right-radius: 4px; }
+:root[data-theme="dark"] .bericht.van-jou, :root:not([data-theme="light"]) .bericht.van-jou { color: var(--inkt); }
+
+.invoer { display: flex; gap: 8px; padding: 11px 14px; border-top: 1px solid var(--lijn); align-items: center; flex: none; }
+.invoer input {
+  flex: 1; min-width: 0; font: inherit; font-size: 13px;
+  border: 1px solid var(--lijn-veld); border-radius: 10px; padding: 8px 11px; min-height: 36px;
+  background: var(--kaart); color: var(--inkt);
+}
+.ai-knop {
+  flex: none; width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
+  display: grid; place-items: center; color: var(--inkt);
+  border: 2px solid transparent;
+  background-image:
+    linear-gradient(var(--kaart), var(--kaart)),
+    linear-gradient(to right, var(--ai-oranje), var(--ai-roze), var(--ai-paars), var(--ai-blauw), var(--ai-cyaan));
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+}
+.ai-knop svg { width: 16px; height: 16px; }
+.vermelding { padding: 9px 14px 12px; font-size: 11.5px; color: var(--inkt-zacht); line-height: 1.35; border-top: 1px solid var(--lijn); background: var(--vlak); flex: none; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Beslissingen
+   ════════════════════════════════════════════════════════════════════════════ */
+.besluiten { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 0; }
+.besluit { padding: 16px 0; border-top: 1px solid var(--lijn); display: flex; flex-direction: column; gap: 5px; }
+.besluit:first-child { border-top: 0; }
+@media (min-width: 720px) {
+  .besluiten { column-gap: 40px; }
+}
+.besluit .vraag { font-size: 12.5px; color: var(--inkt-zwak); }
+.besluit .antwoord { font-weight: 600; font-size: 15px; }
+.besluit .grond { font-size: 13px; color: var(--inkt-zacht); line-height: 1.45; }
+.besluit[data-staat="open"] .antwoord { color: var(--attentie-inkt); }
+:root[data-theme="dark"] .besluit[data-staat="open"] .antwoord,
+:root:not([data-theme="light"]) .besluit[data-staat="open"] .antwoord { color: var(--attentie); }
+
+.aandacht {
+  background: var(--attentie-zacht); border: 1px solid color-mix(in srgb, var(--attentie) 35%, transparent);
+  border-radius: var(--radius-veld); padding: 13px 15px; color: var(--attentie-inkt);
+  font-size: 13.5px; line-height: 1.5;
+}
+:root[data-theme="dark"] .aandacht, :root:not([data-theme="light"]) .aandacht { color: var(--attentie-inkt); }
+
+.lijstje { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 7px; color: var(--inkt-zacht); font-size: 14px; }
+.lijstje strong { color: var(--inkt); font-weight: 600; }
+
+footer { padding-block: 34px 60px; color: var(--inkt-zwak); font-size: 12.5px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<!-- ═══ de tekeningen ═══ Chuck is twee tekeningen, niet vijf: een liggende en een staande. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <clipPath id="knip-lijf"><ellipse cx="134" cy="100" rx="80" ry="46"/></clipPath>
+    <clipPath id="knip-lijf-staand"><ellipse cx="130" cy="82" rx="60" ry="36"/></clipPath>
+    <!-- Alles van de kat boven de voorrand van het mandje. Zo kan geen staart er ooit
+         naast of onderdoor steken, hoe ver hij ook zwaait. -->
+    <clipPath id="knip-mand"><path d="M-60 -60 L300 -60 L300 128 L228 128 C 228 146, 12 146, 12 128 L-60 128 Z"/></clipPath>
+
+    <g id="mand-achter">
+      <path d="M16 124 C16 104 224 104 224 124 L224 140 L16 140 Z" fill="var(--mand-diep)"/>
+    </g>
+    <g id="mand-voor">
+      <path d="M12 128 C12 146 228 146 228 128 L220 164 C218 172 22 172 20 164 Z" fill="var(--mand)"/>
+      <g stroke="var(--mand-diep)" stroke-width="2.6" stroke-linecap="round" opacity=".5">
+        <path d="M44 139 L45 167"/><path d="M70 142 L71 169"/><path d="M96 143 L96 170"/>
+        <path d="M120 144 L120 170"/><path d="M144 143 L144 170"/><path d="M170 142 L169 169"/>
+        <path d="M196 139 L195 167"/>
+      </g>
+      <path d="M12 128 C12 146 228 146 228 128" fill="none" stroke="var(--mand-diep)" stroke-width="3.6"/>
+    </g>
+
+    <!-- ── de opgerolde kat ── -->
+    <g id="kat-lig-vorm">
+      <g class="c-adem">
+        <!-- lijf -->
+        <ellipse cx="134" cy="100" rx="80" ry="46" fill="var(--vacht)"
+                 stroke="var(--vacht-lijn)" stroke-width="var(--vacht-lijn-breedte)"/>
+        <g clip-path="url(#knip-lijf)" opacity=".92">
+          <path d="M112 54 q17 19 12 40" fill="none" stroke="var(--vacht-diep)" stroke-width="9" stroke-linecap="round"/>
+          <path d="M146 52 q18 19 13 42" fill="none" stroke="var(--vacht-diep)" stroke-width="9" stroke-linecap="round"/>
+          <path d="M180 58 q17 18 12 38" fill="none" stroke="var(--vacht-diep)" stroke-width="9" stroke-linecap="round"/>
+        </g>
+
+        <!-- De staart ligt OVER de flank in plaats van om het lijf heen: hij blijft
+             daardoor binnen de mand, en de clip erboven maakt dat hard. Onder elke
+             streng ligt een bredere, donkere streng, want een staart in dezelfde
+             kleur als het lijf is op het lijf onzichtbaar. -->
+        <g class="staart-liggend">
+          <path d="M198 88 C222 98 220 122 196 130"
+                fill="none" stroke="var(--vacht-diep)" stroke-width="20" stroke-linecap="round" opacity=".32"/>
+          <path d="M198 88 C222 98 220 122 196 130"
+                fill="none" stroke="var(--vacht)" stroke-width="16" stroke-linecap="round"/>
+          <g class="staart-liggend-punt">
+            <path d="M196 130 C170 136 138 133 118 125"
+                  fill="none" stroke="var(--vacht-diep)" stroke-width="18" stroke-linecap="round" opacity=".32"/>
+            <path d="M196 130 C170 136 138 133 118 125"
+                  fill="none" stroke="var(--vacht)" stroke-width="14" stroke-linecap="round"/>
+          </g>
+        </g>
+
+        <!-- voorpoot -->
+        <ellipse cx="96" cy="132" rx="24" ry="12" fill="var(--vacht-licht)"/>
+
+        <!-- kop -->
+        <g>
+          <path class="oor oor-l" d="M30 64 L26 22 L58 48 Z" fill="var(--vacht)" stroke="var(--vacht)" stroke-width="7" stroke-linejoin="round"/>
+          <path class="oor oor-l" d="M35 58 L32 34 L51 47 Z" fill="var(--vacht-licht)" stroke="var(--vacht-licht)" stroke-width="3" stroke-linejoin="round"/>
+          <path class="oor oor-r" d="M68 46 L100 26 L94 68 Z" fill="var(--vacht)" stroke="var(--vacht)" stroke-width="7" stroke-linejoin="round"/>
+          <path class="oor oor-r" d="M73 50 L93 37 L89 61 Z" fill="var(--vacht-licht)" stroke="var(--vacht-licht)" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="62" cy="84" r="36" fill="var(--vacht)" stroke="var(--vacht-lijn)" stroke-width="var(--vacht-lijn-breedte)"/>
+          <!-- de M van een cyperse kat -->
+          <g stroke="var(--vacht-diep)" stroke-width="3.6" stroke-linecap="round" opacity=".8">
+            <path d="M47 55 l3 12"/><path d="M59 51 l1 13"/><path d="M71 54 l-2 12"/>
+          </g>
+          <!-- snuit -->
+          <ellipse cx="54" cy="102" rx="26" ry="16" fill="var(--vacht-licht)"/>
+          <path d="M47 94 L61 94 L54 102 Z" fill="var(--vacht-diep)" stroke="var(--vacht-diep)" stroke-width="2.5" stroke-linejoin="round"/>
+          <g fill="none" stroke="var(--vacht-diep)" stroke-width="2.5" stroke-linecap="round">
+            <path d="M54 102 q-6 8 -12 4"/><path d="M54 102 q6 8 12 4"/>
+          </g>
+          <!-- snorharen -->
+          <g fill="none" stroke="var(--vacht-diep)" stroke-width="2" stroke-linecap="round" opacity=".5">
+            <path d="M31 96 L5 89"/><path d="M30 102 L2 102"/><path d="M31 108 L6 117"/>
+          </g>
+          <g class="oog-dicht" fill="none" stroke="var(--vacht-diep)" stroke-width="3.6" stroke-linecap="round">
+            <path d="M33 83 q10 9 20 0"/><path d="M71 80 q10 9 20 0"/>
+          </g>
+          <g class="oog-open">
+            <ellipse cx="43" cy="82" rx="8" ry="9.5" fill="var(--oogbol)"/>
+            <ellipse cx="44" cy="83" rx="3.4" ry="8" fill="var(--pupil)"/>
+            <ellipse cx="80" cy="80" rx="8" ry="9.5" fill="var(--oogbol)"/>
+            <ellipse cx="81" cy="81" rx="3.4" ry="8" fill="var(--pupil)"/>
+          </g>
+        </g>
+      </g>
+
+      <!-- spinnen -->
+      <g class="spin-golf" fill="none" stroke="var(--inkt-zwak)" stroke-width="2.6" stroke-linecap="round" opacity="0">
+        <path d="M124 26 q7 -8 0 -16"/>
+        <path d="M137 30 q11 -12 0 -25"/>
+      </g>
+    </g>
+
+    <!-- Los van het mandje: voor de kaartjes en voor de hoek van de weekstrook. -->
+    <symbol id="chuck-liggend" viewBox="0 0 240 176">
+      <use href="#kat-lig-vorm"/>
+    </symbol>
+
+    <!-- ── staand: het loopje ── -->
+    <g id="kat-sta-vorm">
+      <g class="c-loop-lijf">
+        <!-- de verre poten, doffer zodat ze achter lezen -->
+        <g class="been been-vv">
+          <g class="dij">
+            <path d="M104 100 L104 126" fill="none" stroke="var(--vacht-diep)" stroke-width="14" stroke-linecap="round"/>
+            <g class="scheen">
+              <path d="M104 126 L104 148" fill="none" stroke="var(--vacht-diep)" stroke-width="13" stroke-linecap="round"/>
+              <ellipse cx="104" cy="149" rx="8.5" ry="5" fill="var(--vacht-diep)"/>
+            </g>
+          </g>
+        </g>
+        <g class="been been-av">
+          <g class="dij">
+            <path d="M146 100 L146 126" fill="none" stroke="var(--vacht-diep)" stroke-width="14" stroke-linecap="round"/>
+            <g class="scheen">
+              <path d="M146 126 L146 148" fill="none" stroke="var(--vacht-diep)" stroke-width="13" stroke-linecap="round"/>
+              <ellipse cx="146" cy="149" rx="8.5" ry="5" fill="var(--vacht-diep)"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- staart in twee delen, zodat de punt naloopt -->
+        <g class="staart-deel staart-basis">
+          <path d="M184 62 C202 52 210 38 207 28" fill="none" stroke="var(--vacht)" stroke-width="14" stroke-linecap="round"/>
+          <g class="staart-deel staart-punt">
+            <path d="M207 28 C204 17 197 11 190 10" fill="none" stroke="var(--vacht)" stroke-width="12" stroke-linecap="round"/>
+          </g>
+        </g>
+
+        <!-- lijf -->
+        <ellipse cx="130" cy="82" rx="60" ry="36" fill="var(--vacht)"
+                 stroke="var(--vacht-lijn)" stroke-width="var(--vacht-lijn-breedte)"/>
+        <g clip-path="url(#knip-lijf-staand)" opacity=".92">
+          <path d="M114 44 q14 16 10 34" fill="none" stroke="var(--vacht-diep)" stroke-width="8.5" stroke-linecap="round"/>
+          <path d="M142 42 q14 16 10 35" fill="none" stroke="var(--vacht-diep)" stroke-width="8.5" stroke-linecap="round"/>
+          <path d="M168 48 q13 15 9 32" fill="none" stroke="var(--vacht-diep)" stroke-width="8.5" stroke-linecap="round"/>
+        </g>
+
+        <!-- de nabije poten -->
+        <g class="been been-vn">
+          <g class="dij">
+            <path d="M92 98 L92 124" fill="none" stroke="var(--vacht)" stroke-width="15" stroke-linecap="round"/>
+            <g class="scheen">
+              <path d="M92 124 L92 147" fill="none" stroke="var(--vacht)" stroke-width="14" stroke-linecap="round"/>
+              <ellipse cx="92" cy="148" rx="9" ry="5.4" fill="var(--vacht-licht)"/>
+            </g>
+          </g>
+        </g>
+        <g class="been been-an">
+          <g class="dij">
+            <path d="M158 98 L158 124" fill="none" stroke="var(--vacht)" stroke-width="15" stroke-linecap="round"/>
+            <g class="scheen">
+              <path d="M158 124 L158 147" fill="none" stroke="var(--vacht)" stroke-width="14" stroke-linecap="round"/>
+              <ellipse cx="158" cy="148" rx="9" ry="5.4" fill="var(--vacht-licht)"/>
+            </g>
+          </g>
+        </g>
+
+        <!-- kop -->
+        <g class="kop-staand">
+          <path class="oor oor-l" d="M34 44 L29 6 L60 28 Z" fill="var(--vacht)" stroke="var(--vacht)" stroke-width="7" stroke-linejoin="round"/>
+          <path class="oor oor-l" d="M38 38 L35 17 L53 29 Z" fill="var(--vacht-licht)" stroke="var(--vacht-licht)" stroke-width="3" stroke-linejoin="round"/>
+          <path class="oor oor-r" d="M70 28 L99 8 L94 48 Z" fill="var(--vacht)" stroke="var(--vacht)" stroke-width="7" stroke-linejoin="round"/>
+          <path class="oor oor-r" d="M74 32 L93 20 L90 42 Z" fill="var(--vacht-licht)" stroke="var(--vacht-licht)" stroke-width="3" stroke-linejoin="round"/>
+          <circle cx="62" cy="62" r="33" fill="var(--vacht)" stroke="var(--vacht-lijn)" stroke-width="var(--vacht-lijn-breedte)"/>
+          <g stroke="var(--vacht-diep)" stroke-width="3.2" stroke-linecap="round" opacity=".8">
+            <path d="M49 35 l3 11"/><path d="M60 32 l1 12"/><path d="M71 35 l-2 11"/>
+          </g>
+          <ellipse cx="54" cy="78" rx="23" ry="14" fill="var(--vacht-licht)"/>
+          <path d="M48 71 L60 71 L54 78 Z" fill="var(--vacht-diep)" stroke="var(--vacht-diep)" stroke-width="2.3" stroke-linejoin="round"/>
+          <g fill="none" stroke="var(--vacht-diep)" stroke-width="2.3" stroke-linecap="round">
+            <path d="M54 78 q-5 7 -11 3"/><path d="M54 78 q5 7 11 3"/>
+          </g>
+          <g fill="none" stroke="var(--vacht-diep)" stroke-width="1.9" stroke-linecap="round" opacity=".5">
+            <path d="M33 72 L9 66"/><path d="M32 79 L6 79"/><path d="M33 86 L10 94"/>
+          </g>
+          <g class="oog-open" style="opacity:1">
+            <ellipse cx="46" cy="59" rx="7.5" ry="9" fill="var(--oogbol)"/>
+            <ellipse cx="47" cy="60" rx="3.2" ry="7.5" fill="var(--pupil)"/>
+            <ellipse cx="78" cy="57" rx="7.5" ry="9" fill="var(--oogbol)"/>
+            <ellipse cx="79" cy="58" rx="3.2" ry="7.5" fill="var(--pupil)"/>
+          </g>
+        </g>
+      </g>
+    </g>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Het mandje mét de kat, als één tekening. Dat is de hele reden dat de
+         overgang klopt: de liggende en de staande kat staan op exact dezelfde
+         plek achter dezelfde voorrand, dus hij komt achter het mandje vandaan
+         in plaats van ernaast te verschijnen.
+         ══════════════════════════════════════════════════════════════════════ -->
+    <symbol id="chuck-mand" viewBox="0 0 400 176">
+      <g transform="translate(160 0)"><use href="#mand-achter"/></g>
+      <g class="kat-lig" clip-path="url(#knip-mand-verschoven)">
+        <g transform="translate(160 0)"><use href="#kat-lig-vorm"/></g>
+      </g>
+      <!-- pad (waar hij is) › draai (welke kant hij op kijkt) › kantel (neus op of neer) › de kat -->
+      <g class="kat-sta">
+        <g class="kat-draai">
+          <g class="kat-kantel">
+            <g transform="translate(160 0)"><use href="#kat-sta-vorm"/></g>
+          </g>
+        </g>
+      </g>
+      <g transform="translate(160 0)"><use href="#mand-voor"/></g>
+    </symbol>
+  </defs>
+  <defs>
+    <clipPath id="knip-mand-verschoven"><path d="M100 -60 L460 -60 L460 128 L388 128 C 388 146, 172 146, 172 128 L100 128 Z"/></clipPath>
+  </defs>
+</svg>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<div class="werkbank">
+  <div class="werkbank-rij">
+    <div class="groep">
+      <span class="etiket">Vacht</span>
+      <div class="segment" id="vacht-schakelaar">
+        <button type="button" data-vacht="inkt" aria-pressed="false">Inkt</button>
+        <button type="button" data-vacht="gember" aria-pressed="true">Gember</button>
+        <button type="button" data-vacht="lijn" aria-pressed="false">Inktlijn</button>
+      </div>
+    </div>
+    <div class="groep">
+      <span class="etiket">Weergave</span>
+      <div class="segment" id="thema-schakelaar">
+        <button type="button" data-thema="light" aria-pressed="true">Licht</button>
+        <button type="button" data-thema="dark" aria-pressed="false">Donker</button>
+      </div>
+    </div>
+    <div class="groep">
+      <span class="etiket">Beweging</span>
+      <div class="segment" id="beweging-schakelaar">
+        <button type="button" data-beweging="volledig" aria-pressed="true">Volledig</button>
+        <button type="button" data-beweging="traag" aria-pressed="false">Traag</button>
+        <button type="button" data-beweging="minder" aria-pressed="false">Minder</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ de opening ═══ -->
+<div class="blad">
+  <section class="opening">
+    <div class="opening-rij">
+      <div class="naamplaat">
+        <span class="rol">FB-071 · ontwerp</span>
+        <h1>Chuck</h1>
+        <p class="lood">Hij ligt rechtsboven in Vizier te slapen. Als er iets voor je klaarligt, gaan zijn oren
+          recht. Klik je op hem, dan staat hij op, stapt hij pootje per pootje uit zijn mand en opent hij zijn venster. Hij bereidt
+          voor, hij beslist niets.</p>
+        <button type="button" class="wek" id="wek-knop">Wek hem</button>
+      </div>
+      <div class="toneel">
+        <button type="button" class="slaapknop" id="slaapknop" aria-label="Wek Chuck">
+          <svg class="chuck slaper" id="held" viewBox="-66 0 466 176" aria-hidden="true"><use href="#chuck-mand"/></svg>
+        </button>
+        <p class="ballon naar-onder toneel-ballon" id="held-ballon" aria-live="polite" hidden>Ik heb iets voor je klaargezet.<svg class="ballon-staart" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1 C 4 7, 2.5 12, 0 16 C 6 12.5, 10 7, 13 1"/></svg></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ het kleurprobleem ═══ -->
+  <section>
+    <div class="kop-blok">
+      <h2>Chuck heeft geen vrije tint</h2>
+      <p class="lood">Het palet van Vizier heeft met opzet geen merkkleur: negen tinten dragen betekenis, en alles
+        wat verzadigd is op het scherm betekent iets. In de warme boog is geen gat. Een oranje kat is dus niet te
+        verdedigen met "een andere oranje", alleen met minder verzadiging en met vorm.</p>
+    </div>
+
+    <div class="twee" style="margin-bottom:22px">
+      <div class="aandacht">
+        <strong>De warme boog, tint voor tint.</strong><br>
+        <span class="mono">22</span> ai-oranje · <span class="mono">28</span> ster-oranje ·
+        <span class="mono">30</span> attentie · <span class="mono">36</span> doelsoort A.
+        Daaronder ligt <span class="mono">0</span> (gevaar, geweigerd, niet gedekt), daarboven
+        <span class="mono">45</span> (ster-geel). Tussen 14 en 45 is elke tint op minder dan tien graden van iets
+        dat een leerkracht moet kunnen lezen.
+      </div>
+      <p class="fijn">Het verweer dat overblijft is het verweer dat <span class="mono">index.css</span> al voert voor
+        de sterren van het ontwikkelingsrapport: <em>"a star never stands where those signals do."</em> Chuck is
+        geen vlakje, geen bolletje en geen wassing. Hij is een dier, hij ligt op één vaste plek, en hij draagt
+        altijd zijn label. Daarom mag hij warm zijn, op voorwaarde dat zijn verzadiging ver onder die van elk
+        signaal blijft.</p>
+    </div>
+
+    <div class="vachten" id="vachten" style="margin-bottom:20px">
+      <button type="button" class="vachtkaart" data-kies="inkt" aria-pressed="false">
+        <span class="proef"><svg class="chuck" viewBox="0 0 240 176" style="--oor-l:-11deg;--oor-r:11deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-liggend"/></svg></span>
+        <span class="tekst">
+          <h3>Inkt <span class="gekozen-merk">gekozen</span></h3>
+          <span class="fijn">Chuck is van dezelfde inkt als de rest van de app. Nul botsing, en hij kantelt met het
+            papier mee naar donker. Maar hij is geen gestreepte kat meer, hij is een grijze.</span>
+        </span>
+        <span class="botsing" aria-hidden="true"></span>
+      </button>
+
+      <button type="button" class="vachtkaart" data-kies="gember" aria-pressed="true">
+        <span class="proef"><svg class="chuck" viewBox="0 0 240 176" style="--oor-l:-11deg;--oor-r:11deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-liggend"/></svg></span>
+        <span class="tekst">
+          <h3>Gember <span class="gekozen-merk">gekozen</span></h3>
+          <span class="fijn">Warm, maar op 44% verzadiging: minder dan de helft van attentie (85%), ai-oranje (92%)
+            en doelsoort A (100%). Hij leest als vacht, niet als knelpunt.</span>
+        </span>
+        <span class="botsing" aria-hidden="true"></span>
+      </button>
+
+      <button type="button" class="vachtkaart" data-kies="lijn" aria-pressed="false">
+        <span class="proef"><svg class="chuck" viewBox="0 0 240 176" style="--oor-l:-11deg;--oor-r:11deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-liggend"/></svg></span>
+        <span class="tekst">
+          <h3>Inktlijn <span class="gekozen-merk">gekozen</span></h3>
+          <span class="fijn">Inkten omtrek, warme vulling. De massa leest warm, de rand hoort bij de app. Kost:
+            in donker moet die inktlijn licht worden, en dan is het geen inkt meer.</span>
+        </span>
+        <span class="botsing" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <div class="meter">
+      <h3>Gemeten in deze browser, op de vacht die nu gekozen is</h3>
+      <table>
+        <thead>
+          <tr><th>Wat</th><th>Gemeten</th><th>Vloer</th><th></th></tr>
+        </thead>
+        <tbody id="meettabel"></tbody>
+      </table>
+      <p class="meter-uitleg">WCAG 2.2 AA 1.4.11 vraagt 3:1 voor een grafisch object dat betekenis draagt. Chuck
+        draagt betekenis, dus zijn silhouet moet die vloer halen op het vlak waar hij ligt. Dat is niet een detail:
+        het is de reden dat de gember donkerder staat dan een gemberkat normaal is, precies zoals
+        <span class="mono">--color-lijn-veld</span> in de app op 58% helderheid staat en niet lichter.</p>
+    </div>
+  </section>
+
+  <!-- ═══ de houdingen ═══ -->
+  <section>
+    <div class="kop-blok">
+      <h2>Vier houdingen, elk met woorden</h2>
+      <p class="lood">Geen badges, geen rode bolletjes. Zijn houding zegt of er iets is, en wat het is staat er
+        altijd bij. Hij praat alleen als hij iets heeft: dan in een ballon, anders in een stil label.
+        Kleur draagt nooit alleen.</p>
+    </div>
+    <div class="houdingen">
+      <div class="houding" data-signaal="niets">
+        <svg class="chuck" viewBox="152 0 248 176" aria-hidden="true"><use href="#chuck-mand" width="400" height="176"/></svg>
+        <span class="label">Niets nieuws</span>
+        <span class="bron">Hij slaapt in zijn mandje.</span>
+      </div>
+      <div class="houding" data-signaal="klaar">
+        <p class="ballon naar-onder kaartballon"><span class="sr-only">Er ligt iets klaar. Chuck zegt: </span>Ik heb iets voor je klaargezet.<svg class="ballon-staart" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1 C 4 7, 2.5 12, 0 16 C 6 12.5, 10 7, 13 1"/></svg></p>
+        <svg class="chuck" viewBox="152 0 248 176" style="--oor-l:-13deg;--oor-r:13deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-mand" width="400" height="176"/></svg>
+        <span class="bron">Oren recht. Een briefing, voorbereidingen of voorstellen (FB-065, FB-067, FB-070).</span>
+      </div>
+      <div class="houding" data-signaal="gevaar">
+        <p class="ballon naar-onder kaartballon">Een doel komt in gevaar.<svg class="ballon-staart" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 1 C 4 7, 2.5 12, 0 16 C 6 12.5, 10 7, 13 1"/></svg></p>
+        <svg class="chuck" viewBox="0 0 240 176" style="--oor-l:-9deg;--oor-r:9deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-liggend"/></svg>
+        <span class="bron">Hij verlaat het mandje en ligt op de hoek van de weekstrook (FB-069).</span>
+      </div>
+      <div class="houding spint" data-signaal="schema">
+        <svg class="chuck" viewBox="152 0 248 176" style="--spin:1" aria-hidden="true"><use href="#chuck-mand" width="400" height="176"/></svg>
+        <span class="label">Alles op schema</span>
+        <span class="bron">Hij spint: elk doel van de klas ligt op tijd.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ in de app ═══ -->
+  <section>
+    <div class="kop-blok">
+      <h2>Waar hij woont</h2>
+      <p class="lood">Rechtsboven in de kop, naast de klas. Hij ligt nooit op de gegevens. Klik op hem: hij staat
+        op, stapt uit zijn mand en zijn venster opent. Escape legt hem terug.</p>
+      <div class="groep" style="margin-top:6px">
+        <span class="etiket">Toon de app op</span>
+        <div class="segment" id="breedte-schakelaar">
+          <button type="button" data-breedte="bureau" aria-pressed="true">Bureaublad</button>
+          <button type="button" data-breedte="telefoon" aria-pressed="false">390 px</button>
+        </div>
+        <span class="etiket">Signaal</span>
+        <div class="segment" id="signaal-schakelaar">
+          <button type="button" data-signaal="niets" aria-pressed="false">Niets</button>
+          <button type="button" data-signaal="klaar" aria-pressed="true">Iets klaar</button>
+          <button type="button" data-signaal="gevaar" aria-pressed="false">Doel in gevaar</button>
+          <button type="button" data-signaal="schema" aria-pressed="false">Op schema</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toestel" id="toestel" data-breedte="bureau">
+      <div class="app" id="app">
+        <header class="app-kop">
+          <span class="merk">
+            <svg viewBox="0 0 1024 1024" aria-hidden="true">
+              <rect width="1024" height="1024" rx="225.3" fill="#15181E"/>
+              <g transform="translate(219.16 153.60) scale(4.37073) translate(-33 -17)">
+                <path d="M165.801 40.270 L124.008 145.591 A28 28 0 0 0 92.405 133.050 L134.199 27.730 A17 17 0 0 1 165.801 40.270 Z" fill="#7A8190"/>
+                <path d="M65.801 27.730 L107.595 133.050 A28 28 0 0 0 75.992 145.591 L34.199 40.270 A17 17 0 0 1 65.801 27.730 Z" fill="#E6E9EF"/>
+                <circle cx="100" cy="160" r="21" fill="#39B5C6"/>
+              </g>
+            </svg>
+            Vizier
+          </span>
+          <nav class="app-nav">
+            <span data-actief>Kalender</span><span>Thema's</span><span>Dekking</span>
+          </nav>
+          <div class="app-rechts">
+            <span class="klasmerk">K2B</span>
+            <div class="mandhoek">
+              <button type="button" class="mandknop" id="mandknop" aria-expanded="false" aria-controls="venster">
+                <span class="houdingtekst" id="mandlabel">Chuck: er ligt iets klaar</span>
+                <span class="mandvak"></span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div class="app-blad">
+          <div class="blad-kop">
+            <h3>Herfst</h3>
+            <span class="week">week 42 · 13-17 oktober</span>
+            <p class="ballon naar-rechts hoekballon" id="hoekballon" hidden>Een doel komt in gevaar: MD 2.14 past niet meer in de weken die overblijven.<svg class="ballon-staart" viewBox="0 0 18 14" aria-hidden="true"><path d="M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9"/></svg></p>
+          </div>
+
+          <div class="weekstrook" id="weekstrook">
+            <div class="dag">
+              <span class="dagnaam">MA</span>
+              <div class="blokje md"><b>Kring: de wandeling</b><span class="code">MD 2.14</span></div>
+              <div class="blokje"><b>Woordweb bladeren</b><span class="code">LPD 1.07</span></div>
+            </div>
+            <div class="dag">
+              <span class="dagnaam">DI</span>
+              <div class="blokje vd"><b>Bladerenherbarium</b><span class="code">LPD 3.02</span></div>
+            </div>
+            <div class="dag">
+              <span class="dagnaam">WO</span>
+              <div class="blokje"><b>Bewegingshoek</b><span class="code">LPD 5.11</span></div>
+            </div>
+            <div class="dag">
+              <span class="dagnaam">DO</span>
+              <div class="blokje md"><b>Kring: de herfstwandeling</b><span class="code">MD 2.14</span></div>
+              <div class="blokje voorstel"><b>Kastanjes tellen</b><span class="code">voorstel · LPD 4.03</span></div>
+            </div>
+            <div class="dag">
+              <span class="dagnaam">VR</span>
+              <div class="blokje"><b>Vertelmoment</b><span class="code">LPD 1.12</span></div>
+            </div>
+            <div class="hoekkat" id="hoekkat" hidden>
+              <svg class="chuck" viewBox="0 0 240 176" style="--oor-l:-9deg;--oor-r:9deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-liggend"/></svg>
+            </div>
+          </div>
+
+          <div class="balk">
+            <span>Dekkingsprognose</span>
+            <span class="spoor"><span class="vul"></span></span>
+            <span class="mono">71%</span>
+          </div>
+        </div>
+
+        <!-- Chuck ligt als een laag óver de app, niet in de knop: zo knipt de kop
+             hem niet af en kan hij voor het venster langs lopen. -->
+        <svg class="chuck mandscene" id="mandkat" viewBox="0 0 400 176"
+             style="--oor-l:-13deg;--oor-r:13deg;--oog-dicht:0;--oog-open:1" aria-hidden="true"><use href="#chuck-mand"/></svg>
+
+        <div class="venster" id="venster" role="dialog" aria-modal="false" aria-label="Chuck" hidden>
+          <div class="venster-kop">
+            <span class="naam">Chuck</span>
+            <span class="staat">bracht 2 dingen mee</span>
+            <button type="button" class="sluit" id="sluitknop" aria-label="Sluiten">&times;</button>
+          </div>
+
+          <div class="deurmat">
+            <div class="meegebracht">
+              <span class="wat">Lesvoorbereiding voor donderdag: Kring, de herfstwandeling</span>
+              <span class="waarom">Ik heb ze gemaakt omdat je donderdag vervangen wordt. Jij beslist of ze gebruikt wordt.</span>
+              <span class="knoppen"><button type="button" class="knop hoofd">Bekijken</button><button type="button" class="knop stil">Later</button></span>
+            </div>
+            <div class="meegebracht">
+              <span class="wat">Drie activiteiten voor het gat in week 42</span>
+              <span class="waarom">Week 42 dekt nog geen enkel doel uit Ruimte en tijd. Deze drie sluiten aan bij Herfst.</span>
+              <span class="knoppen"><button type="button" class="knop hoofd">Bekijken</button><button type="button" class="knop stil">Later</button></span>
+            </div>
+          </div>
+
+          <div class="gesprek">
+            <div class="zegt"><span class="gezicht" aria-hidden="true"><svg class="chuck" viewBox="18 18 92 92" style="--oog-dicht:0;--oog-open:1;--oor-l:-6deg;--oor-r:6deg"><use href="#chuck-liggend"/></svg></span><p class="ballon"><span class="sr-only">Chuck: </span>Ik heb de voorbereiding van donderdag klaargezet. Je beslist of je ze gebruikt.<svg class="ballon-staart" viewBox="0 0 18 14" aria-hidden="true"><path d="M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9"/></svg></p></div>
+            <div class="bericht van-jou">Waarom stel je die drie activiteiten voor?</div>
+            <div class="zegt"><span class="gezicht" aria-hidden="true"><svg class="chuck" viewBox="18 18 92 92" style="--oog-dicht:0;--oog-open:1;--oor-l:-6deg;--oor-r:6deg"><use href="#chuck-liggend"/></svg></span><p class="ballon"><span class="sr-only">Chuck: </span>Week 42 raakt geen enkel doel uit Ruimte en tijd, terwijl je thema Herfst er drie van draagt. Deze drie vullen dat gat en passen in je bestaande subthema's.<svg class="ballon-staart" viewBox="0 0 18 14" aria-hidden="true"><path d="M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9"/></svg></p></div>
+          </div>
+
+          <div class="invoer">
+            <label for="chat-invoer" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Vraag iets aan Chuck</label>
+            <input id="chat-invoer" type="text" placeholder="Vraag iets aan Chuck" autocomplete="off">
+            <button type="button" class="ai-knop" aria-label="Versturen naar Chuck">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5L13 3z"/>
+              </svg>
+            </button>
+          </div>
+
+          <p class="vermelding">Geen namen of informatie over kinderen in dit venster. Wat je hier vraagt wordt niet bewaard.</p>
+        </div>
+      </div>
+      <p class="fijn" id="toestel-noot">Klik op Chuck in de kop. Escape sluit het venster en legt hem terug in zijn mandje.</p>
+    </div>
+  </section>
+
+  <!-- ═══ beslissingen ═══ -->
+  <section>
+    <div class="kop-blok">
+      <h2>Wat vastligt en wat nog open staat</h2>
+      <p class="lood">De vragen uit FB-071, met wat er nu op geantwoord is. Wat hier open staat, gaat mee naar de
+        onderwijsadviseur voor Chuck centraal in de huisstijl komt.</p>
+    </div>
+    <div class="besluiten">
+      <div class="besluit" data-staat="vast">
+        <span class="vraag">Hoe heet hij?</span>
+        <span class="antwoord">Chuck</span>
+        <span class="grond">Geen Vlaamse voornaam, dus hij botst nooit met een kleuter in de klas.</span>
+      </div>
+      <div class="besluit" data-staat="vast">
+        <span class="vraag">Spreekt hij in de ik-vorm?</span>
+        <span class="antwoord">Ja, nuchter</span>
+        <span class="grond">"Ik heb de voorbereiding klaargezet." Duidelijk wie iets deed, zonder kattengedrag in de taal. De charme zit in de beweging, en in zijn stripballon: een inktrand met een staartje naar zijn kop. Wat jij typt blijft een gewoon vak.</span>
+      </div>
+      <div class="besluit" data-staat="vast">
+        <span class="vraag">Kan je hem verbergen?</span>
+        <span class="antwoord">Nee</span>
+        <span class="grond">Hij slaapt, ligt nooit op de gegevens en komt hooguit enkele momenten per dag uit zichzelf. Verbergen zou een tweede plek vragen voor alles wat hij meebrengt.</span>
+      </div>
+      <div class="besluit" data-staat="vast">
+        <span class="vraag">Hoe is hij gemaakt?</span>
+        <span class="antwoord">SVG met CSS</span>
+        <span class="grond">Twee tekeningen, liggend en staand, met een gelede rig: dij, scheen en voet per poot. Het uit- en instappen komt uit een stappenplanner met inverse kinematica: één poot tegelijk, elke poot eerst op de rand, en een voet die staat schuift niet. De mand is laag, zoals een echte kattenmand, zodat stappen kan in plaats van springen. De vacht is een token, dus donker is gratis, en minder beweging is één mediaquery.</span>
+      </div>
+      <div class="besluit" data-staat="vast">
+        <span class="vraag">Welke vacht?</span>
+        <span class="antwoord">Gember</span>
+        <span class="grond">Warm genoeg om een kat te zijn, op 44% verzadiging ver genoeg onder elk signaal om er geen te worden, en donker genoeg om 3:1 te halen op een kaart.</span>
+      </div>
+      <div class="besluit" data-staat="open">
+        <span class="vraag">Stoot hij iets om bij een weigering?</span>
+        <span class="antwoord">Voorstel: nee</span>
+        <span class="grond">Een weigering is een normale uitkomst, geen fout. Hem laten sputteren maakt van "nee" een moment met schuld erin, en dat is precies wat een adviserende AI niet mag doen.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ wat dit nog niet is ═══ -->
+  <section>
+    <div class="kop-blok">
+      <h2>Wat dit nog niet is</h2>
+    </div>
+    <ul class="lijstje">
+      <li><strong>Geen echte app.</strong> De weekstrook, de dekkingsbalk en het gesprek zijn nagebouwd om Chuck
+        op zijn plek te beoordelen. De echte schermen staan in de repo.</li>
+      <li><strong>De signalen zelf staan elders:</strong> TB-057 (de signalenlaag), FB-068, FB-069 en FB-070.
+        Wat de chat kan, staat in FB-031 en FB-032.</li>
+      <li><strong>De timing is te bespreken.</strong> Opstaan duurt 220 ms, uitstappen 2,6 s (zestien stapjes, één poot tegelijk), daarna nog één
+        loopcyclus. Het venster opent al na 300 ms, dus je wacht nooit op de kat. Zet "Traag" aan om elke
+        poot afzonderlijk te zien neerkomen.</li>
+      <li><strong>In de app wordt hij inline SVG, nooit <span class="mono">&lt;use&gt;</span>.</strong> Een
+        <span class="mono">&lt;use&gt;</span> tekent in een afgeschermde schaduwboom waar CSS niet in kan kijken: de
+        poten staan dan stil en hij schuift als een plank. Hier worden de tekeningen daarom bij het laden gekopieerd;
+        in de app wordt Chuck een React-component met de SVG erin.</li>
+      <li><strong>Geen kat in exports en niet in het ontwikkelingsrapport.</strong> Dat blijft zo.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Vizier · Chuck · ontwerp bij FB-071, tegen de tokens van <span class="mono">frontend/src/index.css</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var wortel = document.documentElement;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Elke kat wordt een echte kopie van de tekening, geen <use>.
+     Een <use> tekent in een afgeschermde schaduwboom: een regel als
+     ".loopt .dij" kan daar niet in kijken, dus de poten bewogen niet.
+     In de app wordt Chuck een component met inline SVG; dit doet hetzelfde.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function kinderen(n) { return Array.prototype.slice.call(n.childNodes); }
+  function los(n) {
+    if (n.nodeType !== 1) return n.cloneNode(true);
+    if (n.localName === "use") {
+      var doel = document.getElementById((n.getAttribute("href") || "").replace("#", ""));
+      if (!doel) return document.createComment("ontbrekende tekening");
+      if (doel.localName === "symbol") {
+        var g = document.createElementNS(SVGNS, "g");
+        kinderen(doel).forEach(function (c) { g.appendChild(los(c)); });
+        return g;
+      }
+      var kopie = los(doel);
+      kopie.removeAttribute("id");
+      return kopie;
+    }
+    var k = n.cloneNode(false);
+    kinderen(n).forEach(function (c) { k.appendChild(los(c)); });
+    return k;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("svg.chuck > use"), function (u) {
+    u.parentNode.replaceChild(los(u), u);
+  });
+
+  /* ── onthouden, maar nooit erop rekenen ── */
+  function bewaar(sleutel, waarde) {
+    try { localStorage.setItem(sleutel, waarde); } catch (e) { /* prive-venster: geeft niet */ }
+  }
+  function haal(sleutel) {
+    try { return localStorage.getItem(sleutel); } catch (e) { return null; }
+  }
+
+  /* ── segmentknoppen ── */
+  function segment(id, attribuut, bijWissel) {
+    var doos = document.getElementById(id);
+    if (!doos) return;
+    doos.addEventListener("click", function (e) {
+      var knop = e.target.closest("button[data-" + attribuut + "]");
+      if (!knop) return;
+      Array.prototype.forEach.call(doos.querySelectorAll("button"), function (b) {
+        b.setAttribute("aria-pressed", String(b === knop));
+      });
+      bijWissel(knop.dataset[attribuut]);
+    });
+  }
+
+  /* ── vacht ── */
+  function zetVacht(naam) {
+    wortel.dataset.vacht = naam;
+    bewaar("vacht", naam);
+    Array.prototype.forEach.call(document.querySelectorAll("#vachten .vachtkaart"), function (k) {
+      k.setAttribute("aria-pressed", String(k.dataset.kies === naam));
+    });
+    var schakelaar = document.getElementById("vacht-schakelaar");
+    Array.prototype.forEach.call(schakelaar.querySelectorAll("button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.vacht === naam));
+    });
+    meet();
+  }
+  segment("vacht-schakelaar", "vacht", zetVacht);
+  document.getElementById("vachten").addEventListener("click", function (e) {
+    var kaart = e.target.closest(".vachtkaart");
+    if (kaart) zetVacht(kaart.dataset.kies);
+  });
+
+  /* ── thema ── */
+  segment("thema-schakelaar", "thema", function (naam) {
+    wortel.dataset.theme = naam;
+    bewaar("thema", naam);
+    meet();
+  });
+
+  /* ── beweging ── */
+  segment("beweging-schakelaar", "beweging", function (naam) {
+    if (naam === "traag") {
+      wortel.dataset.beweging = "volledig";
+      wortel.style.setProperty("--loop", "4");
+    } else {
+      wortel.dataset.beweging = naam;
+      wortel.style.setProperty("--loop", "1");
+    }
+    bewaar("beweging", naam);
+  });
+
+  /* ── breedte van het toestel ── */
+  segment("breedte-schakelaar", "breedte", function (naam) {
+    document.getElementById("toestel").dataset.breedte = naam;
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     De meter. Dit is de reden dat dit ontwerp in een echte browser leeft:
+     jsdom kan geen kleur samenstellen, deze pagina wel.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var peiler = document.createElement("span");
+  peiler.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+  document.body.appendChild(peiler);
+
+  function rgb(token) {
+    peiler.style.color = "var(" + token + ")";
+    var c = getComputedStyle(peiler).color.match(/[\d.]+/g);
+    if (!c) return { r: 0, g: 0, b: 0, a: 1 };
+    return { r: +c[0], g: +c[1], b: +c[2], a: c.length > 3 ? +c[3] : 1 };
+  }
+  function over(voor, achter) {
+    var a = voor.a;
+    return {
+      r: voor.r * a + achter.r * (1 - a),
+      g: voor.g * a + achter.g * (1 - a),
+      b: voor.b * a + achter.b * (1 - a),
+      a: 1
+    };
+  }
+  function helder(c) {
+    function f(v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  }
+  function verhouding(a, b) {
+    var l1 = helder(a), l2 = helder(b);
+    var hoog = Math.max(l1, l2), laag = Math.min(l1, l2);
+    return (hoog + 0.05) / (laag + 0.05);
+  }
+  function naarHsl(c) {
+    var r = c.r / 255, g = c.g / 255, b = c.b / 255;
+    var max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    var h = 0;
+    if (d !== 0) {
+      if (max === r) h = ((g - b) / d) % 6;
+      else if (max === g) h = (b - r) / d + 2;
+      else h = (r - g) / d + 4;
+      h *= 60;
+      if (h < 0) h += 360;
+    }
+    var l = (max + min) / 2;
+    var s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    return { h: h, s: s * 100, l: l * 100 };
+  }
+  function tintAfstand(a, b) {
+    var d = Math.abs(a - b) % 360;
+    return d > 180 ? 360 - d : d;
+  }
+
+  var signalen = [
+    { naam: "ai-oranje", token: "--ai-oranje" },
+    { naam: "ster-oranje", token: "--ster-oranje" },
+    { naam: "attentie", token: "--attentie" },
+    { naam: "doelsoort A", token: "--doelsoort-anderstalige" }
+  ];
+
+  function rij(wat, gemeten, vloer, ok, woorden) {
+    var tr = document.createElement("tr");
+    var td1 = document.createElement("td"); td1.textContent = wat;
+    var td2 = document.createElement("td"); td2.textContent = gemeten;
+    var td3 = document.createElement("td"); td3.textContent = vloer;
+    var td4 = document.createElement("td");
+    td4.className = "oordeel";
+    var w = woorden || ["haalt het", "haalt het niet"];
+    td4.textContent = ok ? w[0] : w[1];
+    td4.dataset.ok = ok ? "ja" : "nee";
+    tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+    return tr;
+  }
+
+  function meet() {
+    var lijf = document.getElementById("meettabel");
+    if (!lijf) return;
+    lijf.textContent = "";
+
+    var kaart = rgb("--kaart");
+    var vlak = rgb("--vlak");
+    var vacht = over(rgb("--vacht"), kaart);
+    var diep = over(rgb("--vacht-diep"), vacht);
+    var zacht = over(rgb("--inkt-zacht"), kaart);
+
+    var vachtOpKaart = verhouding(vacht, kaart);
+    var vachtOpVlak = verhouding(over(rgb("--vacht"), vlak), vlak);
+    var strepen = verhouding(diep, vacht);
+    var label = verhouding(zacht, kaart);
+
+    lijf.appendChild(rij("Silhouet op een kaart", vachtOpKaart.toFixed(2) + ":1", "3:1", vachtOpKaart >= 3));
+    lijf.appendChild(rij("Silhouet op het papier", vachtOpVlak.toFixed(2) + ":1", "3:1", vachtOpVlak >= 3));
+    lijf.appendChild(rij("Strepen op de vacht", strepen.toFixed(2) + ":1", "leesbaar", strepen >= 1.6, ["leesbaar", "te vlak"]));
+    lijf.appendChild(rij("Zijn label op een kaart", label.toFixed(2) + ":1", "4.5:1", label >= 4.5));
+
+    var h = naarHsl(vacht);
+    var dichtste = null;
+    signalen.forEach(function (s) {
+      var hs = naarHsl(over(rgb(s.token), kaart));
+      var d = tintAfstand(h.h, hs.h);
+      if (!dichtste || d < dichtste.d) dichtste = { naam: s.naam, d: d, s: hs.s };
+      });
+
+    /* Onder ongeveer 18% verzadiging is tint geen betekenis meer maar ruis:
+       een bijna grijze vacht botst per definitie met geen enkel signaal. */
+    if (h.s < 18) {
+      lijf.appendChild(rij("Botsing met een signaal", Math.round(h.s) + "% verzadigd",
+        "kleurloos", true, ["botst met niets", ""]));
+    } else {
+      lijf.appendChild(rij("Dichtste signaal: " + dichtste.naam,
+        Math.round(dichtste.d) + "° tint",
+        Math.round(h.s) + "% vs " + Math.round(dichtste.s) + "%",
+        h.s <= dichtste.s * 0.6, ["genoeg doffer", "te verzadigd"]));
+    }
+
+    /* de botsingsstrook op elke vachtkaart */
+    Array.prototype.forEach.call(document.querySelectorAll(".botsing"), function (strook) {
+      strook.textContent = "";
+      var stalen = [
+        ["vacht", "--vacht"], ["attentie", "--attentie"], ["ai", "--ai-oranje"], ["doel A", "--doelsoort-anderstalige"]
+      ];
+      stalen.forEach(function (p) {
+        var s = document.createElement("span"); s.className = "staal";
+        var i = document.createElement("i"); i.style.background = "var(" + p[1] + ")";
+        s.appendChild(i);
+        s.appendChild(document.createTextNode(p[0]));
+        strook.appendChild(s);
+      });
+    });
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Het loopje
+     ═══════════════════════════════════════════════════════════════════════ */
+  function minderBeweging() {
+    if (wortel.dataset.beweging === "minder") return true;
+    if (wortel.dataset.beweging === "volledig") return false;
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (e) { return false; }
+  }
+  function factor() {
+    var f = parseFloat(getComputedStyle(wortel).getPropertyValue("--loop"));
+    return isNaN(f) ? 1 : f;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Uit de mand en erin. Liggende en staande kat zitten in DEZELFDE tekening,
+     achter dezelfde voorrand, dus dit is geen verschijnen maar een overgang.
+     Hij stapt eruit en erin, pootje per pootje, elke poot eerst op de rand.
+     ═══════════════════════════════════════════════════════════════════════ */
+  var PASSEN = 36; /* één loopcyclus: vier pootjes, elk één keer, in eenheden van de tekening */
+
+  function zetScene(el, lig, sta) {
+    el.style.setProperty("--lig-op", lig);
+    el.style.setProperty("--sta-op", sta);
+  }
+  function na(ms, fn) { window.setTimeout(fn, ms); }
+
+  /* overeind in de mand, eruit stappen, en een loopcyclus */
+  function stapUit(el, verdwijn, klaar) {
+    var f = factor();
+    var rijs = 220 * f, stappen = 2600 * f, loop = 900 * f;
+    el.style.setProperty("--staduur", "150ms");
+    el.classList.remove("loopt", "zakt", "in", "buiten", "omgedraaid");
+    el.classList.add("rijst");
+    zetScene(el, "0", "1");
+
+    na(rijs, function () {
+      el.classList.remove("rijst");
+      el.classList.add("uit");
+
+      na(stappen, function () {
+        /* de eindstand van het uitstappen vasthouden voor de klasse weggaat: geen schok */
+        el.classList.add("buiten");
+        el.classList.remove("uit");
+        el.classList.add("loopt");
+        el.style.setProperty("--stapduur", loop + "ms");
+        el.style.setProperty("--stap-x", (-PASSEN) + "px");
+
+        /* Hij vervaagt TERWIJL hij stapt: dat leest als uit beeld lopen,
+           niet als verdwijnen. */
+        if (verdwijn) {
+          na(loop * 0.3, function () {
+            el.style.setProperty("--staduur", Math.round(loop * 0.7) + "ms");
+            el.style.setProperty("--sta-op", "0");
+          });
+        }
+        na(loop, function () {
+          el.classList.remove("loopt");
+          if (klaar) klaar();
+        });
+      });
+    });
+  }
+
+  /* omdraaien, teruglopen, erin stappen, zich in de mand omdraaien, gaan liggen */
+  function stapTerug(el, verschijn, klaar) {
+    var f = factor();
+    var draai = 240 * f, loop = 900 * f, stappen = 2600 * f, zak = 200 * f;
+
+    function lopen() {
+      el.classList.add("loopt");
+      el.style.setProperty("--stapduur", loop + "ms");
+      el.style.setProperty("--stap-x", "0px");
+      if (verschijn) {
+        el.style.setProperty("--staduur", Math.round(loop * 0.5) + "ms");
+        el.style.setProperty("--sta-op", "1");
+      }
+      na(loop, function () {
+        el.classList.remove("loopt");
+        el.classList.add("in");
+        na(stappen, function () {
+          el.classList.remove("in", "buiten");
+          /* in de mand draait hij zich om voor hij gaat liggen, zoals een kat doet */
+          el.style.setProperty("--kijkduur", draai + "ms");
+          el.classList.remove("omgedraaid");
+          na(draai + 60 * f, function () {
+            el.classList.add("zakt");
+            na(zak, function () {
+              el.classList.remove("zakt");
+              el.style.setProperty("--staduur", "150ms");
+              zetScene(el, "1", "0");
+              if (klaar) klaar();
+            });
+          });
+        });
+      });
+    }
+
+    if (verschijn) {
+      /* onzichtbaar omdraaien, dan zichtbaar worden terwijl hij al loopt */
+      el.style.setProperty("--kijkduur", "0ms");
+      el.classList.add("omgedraaid");
+      na(30, lopen);
+    } else {
+      el.style.setProperty("--kijkduur", draai + "ms");
+      el.classList.add("omgedraaid");
+      na(draai + 80 * f, lopen);
+    }
+  }
+
+  /* de opening: hij stapt eruit, zegt iets, en stapt er weer in */
+  var slaper = document.getElementById("held");
+  var bezigHeld = false;
+
+  function wandelHeld() {
+    if (bezigHeld) return;
+    if (minderBeweging()) {
+      slaper.style.setProperty("--oor-l", "-13deg");
+      slaper.style.setProperty("--oor-r", "13deg");
+      slaper.style.setProperty("--oog-dicht", "0");
+      slaper.style.setProperty("--oog-open", "1");
+      window.setTimeout(function () {
+        slaper.style.removeProperty("--oor-l"); slaper.style.removeProperty("--oor-r");
+        slaper.style.removeProperty("--oog-dicht"); slaper.style.removeProperty("--oog-open");
+      }, 1600);
+      return;
+    }
+    bezigHeld = true;
+    var ballon = document.getElementById("held-ballon");
+    stapUit(slaper, false, function () {
+      /* naast de mand zegt hij wat hij meebracht, en gaat dan terug */
+      ballon.hidden = false;
+      ballon.classList.remove("pop");
+      // eslint-disable-next-line no-unused-expressions
+      ballon.offsetWidth;
+      ballon.classList.add("pop");
+      na(2000 * factor(), function () {
+        ballon.hidden = true;
+        stapTerug(slaper, false, function () { bezigHeld = false; });
+      });
+    });
+  }
+  document.getElementById("slaapknop").addEventListener("click", wandelHeld);
+  document.getElementById("wek-knop").addEventListener("click", wandelHeld);
+
+  /* de app: hij loopt naar zijn venster */
+  var mandknop = document.getElementById("mandknop");
+  var mandkat = document.getElementById("mandkat");
+  var mandlabel = document.getElementById("mandlabel");
+  var venster = document.getElementById("venster");
+  var hoekkat = document.getElementById("hoekkat");
+  var bezigApp = false;
+  var open = false;
+
+  var houdingen = {
+    niets:  { oorL: "0deg",   oorR: "0deg",  dicht: "1", open: "0", spin: "0", label: "Chuck slaapt", zegt: null, hoek: false },
+    klaar:  { oorL: "-13deg", oorR: "13deg", dicht: "0", open: "1", spin: "0", label: "Chuck: er ligt iets klaar", zegt: "Ik heb iets voor je klaargezet.", hoek: false },
+    gevaar: { oorL: "-9deg",  oorR: "9deg",  dicht: "0", open: "1", spin: "0", label: "Chuck: een doel komt in gevaar", zegt: null, hoek: true },
+    schema: { oorL: "0deg",   oorR: "0deg",  dicht: "1", open: "0", spin: "1", label: "Chuck spint: alles op schema", zegt: null, hoek: false }
+  };
+  var huidigSignaal = "klaar";
+  var hoekballon = document.getElementById("hoekballon");
+
+  function ballonStaart() {
+    var svg = document.createElementNS(SVGNS, "svg");
+    svg.setAttribute("class", "ballon-staart");
+    svg.setAttribute("viewBox", "0 0 18 14");
+    svg.setAttribute("aria-hidden", "true");
+    var pad = document.createElementNS(SVGNS, "path");
+    pad.setAttribute("d", "M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9");
+    svg.appendChild(pad);
+    return svg;
+  }
+
+  function zetSignaal(naam) {
+    var h = houdingen[naam] || houdingen.niets;
+    huidigSignaal = naam;
+    mandkat.style.setProperty("--oor-l", h.oorL);
+    mandkat.style.setProperty("--oor-r", h.oorR);
+    mandkat.style.setProperty("--oog-dicht", h.dicht);
+    mandkat.style.setProperty("--oog-open", h.open);
+    mandkat.style.setProperty("--spin", h.spin);
+    mandkat.classList.toggle("spint", h.spin === "1");
+    mandknop.setAttribute("aria-label", h.label);
+
+    /* Chuck praat alleen als hij iets heeft: dan een ballon naast de mand, anders
+       een stil label. Ligt hij op de weekstrook, dan staat zijn ballon dáár. */
+    mandlabel.textContent = "";
+    mandlabel.hidden = h.hoek;
+    if (h.zegt) {
+      mandlabel.className = "ballon naar-rechts kopballon";
+      mandlabel.appendChild(document.createTextNode(h.zegt));
+      mandlabel.appendChild(ballonStaart());
+    } else {
+      mandlabel.className = "houdingtekst";
+      mandlabel.textContent = h.label;
+    }
+    hoekkat.hidden = !h.hoek;
+    hoekballon.hidden = !h.hoek;
+
+    /* Er is maar één Chuck: ligt hij op de weekstrook, dan is zijn mand leeg. */
+    if (!open && !bezigApp) zetScene(mandkat, h.hoek ? "0" : "1", "0");
+  }
+  segment("signaal-schakelaar", "signaal", zetSignaal);
+
+  /* Wie sluit terwijl hij nog uit de mand stapt, laat de terugweg wachten tot
+     hij eruit is; twee bewegingen door elkaar zouden hem laten schokken. */
+  var terugNaUit = null;
+
+  function openVenster() {
+    if (bezigApp || open) return;
+    open = true;
+    mandknop.setAttribute("aria-expanded", "true");
+
+    if (minderBeweging() || huidigSignaal === "gevaar") {
+      venster.hidden = false;
+      document.getElementById("sluitknop").focus();
+      return;
+    }
+
+    bezigApp = true;
+    var f = factor();
+
+    stapUit(mandkat, true, function () {
+      bezigApp = false;
+      if (terugNaUit) { var t = terugNaUit; terugNaUit = null; t(); }
+    });
+
+    /* het venster opent al terwijl hij nog uitstapt: je wacht niet op de kat */
+    window.setTimeout(function () {
+      if (!open) return;
+      venster.hidden = false;
+      venster.classList.add("komt");
+      // eslint-disable-next-line no-unused-expressions
+      venster.offsetWidth;
+      venster.classList.remove("komt");
+      document.getElementById("sluitknop").focus();
+    }, 300 * f);
+  }
+
+  function sluitVenster() {
+    if (!open) return;
+    open = false;
+    mandknop.setAttribute("aria-expanded", "false");
+
+    if (minderBeweging() || huidigSignaal === "gevaar") {
+      venster.hidden = true;
+      mandkat.style.setProperty("--stapduur", "0ms");
+      mandkat.style.setProperty("--stap-x", "0px");
+      mandkat.classList.remove("uit", "in", "buiten", "omgedraaid", "loopt", "rijst", "zakt");
+      zetScene(mandkat, huidigSignaal === "gevaar" ? "0" : "1", "0");
+      mandknop.focus();
+      return;
+    }
+
+    venster.classList.add("komt");
+    /* de focus gaat meteen terug; op de kat wacht niemand met het toetsenbord */
+    mandknop.focus();
+
+    window.setTimeout(function () {
+      venster.hidden = true;
+      venster.classList.remove("komt");
+      function terug() {
+        bezigApp = true;
+        stapTerug(mandkat, true, function () { bezigApp = false; });
+      }
+      if (bezigApp) terugNaUit = terug; else terug();
+    }, 180);
+  }
+
+  mandknop.addEventListener("click", function () {
+    if (open) sluitVenster(); else openVenster();
+  });
+  document.getElementById("sluitknop").addEventListener("click", sluitVenster);
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && open) { e.preventDefault(); sluitVenster(); }
+  });
+  venster.addEventListener("submit", function (e) { e.preventDefault(); });
+
+  /* ── opstarten ── */
+  var bewaardeVacht = haal("vacht");
+  zetVacht(bewaardeVacht === "inkt" || bewaardeVacht === "lijn" ? bewaardeVacht : "gember");
+
+  var bewaardThema = haal("thema");
+  if (bewaardThema === "dark" || bewaardThema === "light") {
+    wortel.dataset.theme = bewaardThema;
+    Array.prototype.forEach.call(document.querySelectorAll("#thema-schakelaar button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.thema === bewaardThema));
+    });
+  } else {
+    wortel.dataset.theme = "light";
+  }
+
+  zetSignaal("klaar");
+  meet();
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Leven in rust. Een kat die elke 4,4 seconden identiek ademt leest als een
+     machine. Een oor dat op een onvoorspelbaar moment tikt en een knippering
+     met een wisselende pauze kosten bijna niets en doen het meeste werk.
+     ═══════════════════════════════════════════════════════════════════════ */
+  function tussen(laag, hoog) { return laag + Math.random() * (hoog - laag); }
+
+  function levendeKatten() {
+    return Array.prototype.filter.call(
+      document.querySelectorAll(".chuck"),
+      function (k) { return k.offsetParent !== null && k.style.opacity !== "0"; }
+    );
+  }
+
+  function planTik() {
+    window.setTimeout(function () {
+      if (!minderBeweging()) {
+        var katten = levendeKatten();
+        if (katten.length) {
+          var k = katten[Math.floor(Math.random() * katten.length)];
+          k.classList.add("tikt");
+          window.setTimeout(function () { k.classList.remove("tikt"); }, 440);
+        }
+      }
+      planTik();
+    }, tussen(5200, 13000));
+  }
+
+  function planKnippering() {
+    window.setTimeout(function () {
+      if (!minderBeweging()) {
+        /* alleen wie zijn ogen open heeft kan knipperen */
+        var katten = levendeKatten().filter(function (k) {
+          return getComputedStyle(k).getPropertyValue("--oog-open").trim() === "1";
+        });
+        if (katten.length) {
+          var k = katten[Math.floor(Math.random() * katten.length)];
+          k.classList.add("knippert");
+          window.setTimeout(function () { k.classList.remove("knippert"); }, tussen(110, 170));
+        }
+      }
+      planKnippering();
+    }, tussen(3400, 9000));
+  }
+
+  planTik();
+  planKnippering();
+
+  try {
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", meet);
+  } catch (e) { /* oudere browser: de meter herrekent bij de volgende klik */ }
+})();
+</script>
