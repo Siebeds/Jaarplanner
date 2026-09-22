@@ -5,11 +5,10 @@ import { cn } from "../../lib/cn";
  * because the choice changes WHAT is listed, not which panel of one thing is showing, and a
  * radiogroup is what a screen reader user can arrow through.
  *
- * **The selected option is outlined in `inkt-zwak`, and that outline is the state.** It used to be
- * `lijn-sterk`, and with the white fill and the soft shadow that made three cues that all measured
- * under WCAG 1.4.11's 3:1 against the track: 1.18:1 for the fill, 1.39:1 for the border in the light
- * palette, and the shadow vanishes on slate. `inkt-zwak` measures 4.2:1 against the light track and
- * 6.8:1 against the dark one. Found by the dark-mode audit (ADR-0027), but it was a defect in both.
+ * **The selected option lies flat in the track: a card fill and semibold ink, no border, no
+ * shadow** (FB-086). An outline and a shadow made it float above the track. The weight and the
+ * darker ink carry the state together with the fill, so it never rests on colour alone. Each label
+ * reserves the width of its semibold form, so choosing an option does not shift its neighbours.
  */
 export function Segment<T extends string>({
   label,
@@ -40,11 +39,16 @@ export function Segment<T extends string>({
             aria-checked={gekozen}
             onClick={() => onKies(optie.waarde)}
             className={cn(
-              "min-h-9 flex-1 whitespace-nowrap rounded-[0.5rem] px-3 text-meta font-medium transition-colors duration-150",
-              gekozen ? "border border-inkt-zwak bg-kaart text-inkt shadow-licht" : "border border-transparent text-inkt-zacht hover:text-inkt",
+              "min-h-9 flex-1 whitespace-nowrap rounded-[0.5rem] px-3 text-meta transition-colors duration-150",
+              gekozen ? "bg-kaart font-semibold text-inkt" : "font-medium text-inkt-zacht hover:text-inkt",
             )}
           >
-            {optie.label}
+            <span
+              data-label={optie.label}
+              className="inline-flex flex-col after:invisible after:h-0 after:overflow-hidden after:font-semibold after:content-[attr(data-label)_/_'']"
+            >
+              {optie.label}
+            </span>
           </button>
         );
       })}
