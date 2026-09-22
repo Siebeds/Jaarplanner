@@ -88,20 +88,24 @@ public sealed class DeurmatService : IDeurmatService
     private async Task<DateOnly> VolgendeSchooldagAsync(Guid klasId, CancellationToken ct)
     {
         var vandaag = Schoolklok.Vandaag(_tijd, _logger);
-        var schooljaar = await (
-                from klas in _context.Klassen.AsNoTracking()
-                where klas.Id == klasId
-                join jaar in _context.Schooljaren.Include(j => j.Vakanties) on klas.SchooljaarId equals jaar.Id
-                select jaar)
+        var schooljaarId = await _context.Klassen.AsNoTracking()
+            .Where(k => k.Id == klasId)
+            .Select(k => k.SchooljaarId)
             .FirstOrDefaultAsync(ct);
+
+        // The closures are an owned collection, so they come with the year; loading it without them would yield a
+        // year with no vacations and a "next schooldag" in the middle of one.
+        var schooljaar = await _context.Schooljaren.AsNoTracking()
+            .FirstOrDefaultAsync(j => j.Id == schooljaarId, ct);
 
         if (schooljaar is null)
         {
             return vandaag.AddDays(1);
         }
 
+        // From tomorrow: Themakalender answers "on or after", and "Later" on a schooldag must not mean "today".
         var kalender = new Themakalender(schooljaar);
-        return kalender.VolgendeSchooldag(vandaag) ?? vandaag.AddDays(1);
+        return kalender.VolgendeSchooldag(vandaag.AddDays(1)) ?? vandaag.AddDays(1);
     }
 
     private async Task<IReadOnlyList<Deurmatsignaal>> HaalSignalenAsync(Guid gebruikerId, CancellationToken ct)
