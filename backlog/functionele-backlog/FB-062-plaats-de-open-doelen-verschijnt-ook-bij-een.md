@@ -2,12 +2,12 @@
 id: FB-062
 titel: Plaats de open doelen verschijnt ook bij een leeftijd die nog geen subthema heeft
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-17
-bijgewerkt: 2026-09-17 01:44
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-22 23:35
+opgepakt-door: claude-fb062
+branch: ticket/FB-062-open-doelen-zonder-subthema
 pr:
 geblokkeerd:
 fr: [FR-4.4]
@@ -79,3 +79,4 @@ Geen.
 ## Werklog
 
 - 2026-09-17 01:44 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-22 23:35 · claude-fb062 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
