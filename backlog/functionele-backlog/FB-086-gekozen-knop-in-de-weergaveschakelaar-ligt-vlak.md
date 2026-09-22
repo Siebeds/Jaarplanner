@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 23:55
+bijgewerkt: 2026-09-22 23:57
 opgepakt-door: claude-fb086
 branch: ticket/FB-086-segment-vlak
-pr:
+pr: 159
 geblokkeerd:
 fr: [FR-6.3]
 ---
@@ -57,3 +57,4 @@ Geen.
 - 2026-09-22 23:53 · claude-fb086 · Segment gebouwd: vlakke witte knop, vet, zonder rand/schaduw; tests 1263/1263, lint groen. Gemeten: vulling tegen balk 1,18:1 (licht en donker), tekst 17,8:1 / 13,1:1; toestand rust op vet + donkerdere tekst.
 - 2026-09-22 23:55 · claude-fb086 · Criteria afgevinkt op browserbewijs (Playwright, mockmodus): agenda en dekking vlak/vet zonder rand of schaduw, donkere modus, 390px zonder horizontale scroll, naam enkelvoudig, focusrand 1,6px. Antagonist: COMPLIANT, 3 MINOR (test op naam en commentaar opgelost; vet i.p.v. semibold ter keuze van de eigenaar).
 - 2026-09-22 23:55 · claude-fb086 · in-uitvoering → te-testen: Gekozen segmentknop ligt vlak (wit, semibold, geen rand/schaduw) in alle schakelaars; vitest 1265/1265, lint groen, antagonist COMPLIANT.
+- 2026-09-22 23:57 · claude-fb086 · PR #159
