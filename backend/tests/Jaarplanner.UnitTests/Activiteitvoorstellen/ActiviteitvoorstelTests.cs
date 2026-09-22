@@ -263,4 +263,102 @@ public sealed class ActiviteitvoorstelTests
         Assert.Throws<ArgumentException>(() => new Activiteitvoorstel(Guid.NewGuid(), Guid.NewGuid(), "X", null, "Y", 1, null, [" "], "Z"));
         Assert.Equal(["B", "A"], Voorstel().LeerplandoelCodes);
     }
+
+    [Fact]
+    public void Een_katvoorstel_hoort_bij_een_klas_en_draagt_een_moment()
+    {
+        var klas = Guid.NewGuid();
+        var plaatsing = Guid.NewGuid();
+
+        var voorstel = Katvoorstel(klas, plaatsing);
+
+        Assert.Equal(Voorstelbron.KatAanbodgat, voorstel.Bron);
+        Assert.Null(voorstel.GebruikerId);
+        Assert.Equal(klas, voorstel.KlasId);
+        Assert.Equal(plaatsing, voorstel.ThemaplaatsingId);
+        Assert.Equal(new DateOnly(2026, 9, 28), voorstel.Datum);
+        Assert.Equal(new TimeOnly(8, 30), voorstel.Begin);
+        Assert.Equal(new TimeOnly(9, 20), voorstel.Einde);
+        Assert.Equal(KoppelingStatus.Voorgesteld, voorstel.Status);
+    }
+
+    [Fact]
+    public void Een_gevraagd_voorstel_hoort_bij_zijn_aanvrager_en_draagt_geen_moment()
+    {
+        var voorstel = Voorstel();
+
+        Assert.Equal(Voorstelbron.Gevraagd, voorstel.Bron);
+        Assert.NotNull(voorstel.GebruikerId);
+        Assert.Null(voorstel.KlasId);
+        Assert.Null(voorstel.ThemaplaatsingId);
+        Assert.Null(voorstel.Datum);
+    }
+
+    [Fact]
+    public void Een_katvoorstel_op_zijn_voorgestelde_moment_aanvaarden_is_aanvaard()
+    {
+        var voorstel = Katvoorstel(Guid.NewGuid(), Guid.NewGuid());
+
+        voorstel.Aanvaard(
+            Guid.NewGuid(),
+            voorstel.Naam,
+            voorstel.ActiviteitType,
+            voorstel.VerwachteUitkomsten,
+            voorstel.LengteInLesuren,
+            [.. voorstel.LeerplandoelCodes],
+            (new DateOnly(2026, 9, 28), new TimeOnly(8, 30), new TimeOnly(9, 20)));
+
+        Assert.Equal(KoppelingStatus.Aanvaard, voorstel.Status);
+    }
+
+    [Fact]
+    public void Een_katvoorstel_op_een_ander_moment_aanvaarden_is_manueel()
+    {
+        // ADR-0060 D4: she may move it before accepting, and moving it is changing the proposal.
+        var voorstel = Katvoorstel(Guid.NewGuid(), Guid.NewGuid());
+
+        voorstel.Aanvaard(
+            Guid.NewGuid(),
+            voorstel.Naam,
+            voorstel.ActiviteitType,
+            voorstel.VerwachteUitkomsten,
+            voorstel.LengteInLesuren,
+            [.. voorstel.LeerplandoelCodes],
+            (new DateOnly(2026, 9, 29), new TimeOnly(10, 0), new TimeOnly(10, 50)));
+
+        Assert.Equal(KoppelingStatus.Manueel, voorstel.Status);
+        Assert.Equal(new DateOnly(2026, 9, 29), voorstel.Datum);
+        Assert.Equal(new TimeOnly(10, 0), voorstel.Begin);
+    }
+
+    [Fact]
+    public void Een_katvoorstel_weigert_ongeldige_waarden()
+    {
+        var dag = new DateOnly(2026, 9, 28);
+        var begin = new TimeOnly(8, 30);
+        var einde = new TimeOnly(9, 20);
+
+        Assert.Throws<ArgumentException>(() => Activiteitvoorstel.OpAanbodgat(
+            Guid.NewGuid(), Guid.Empty, Guid.NewGuid(), "X", null, "Y", 1, null, [], "Z", dag, begin, einde));
+        Assert.Throws<ArgumentException>(() => Activiteitvoorstel.OpAanbodgat(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.Empty, "X", null, "Y", 1, null, [], "Z", dag, begin, einde));
+        Assert.Throws<ArgumentException>(() => Activiteitvoorstel.OpAanbodgat(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), "X", null, "Y", 1, null, [], "Z", dag, einde, begin));
+    }
+
+    private static Activiteitvoorstel Katvoorstel(Guid klasId, Guid themaplaatsingId) =>
+        Activiteitvoorstel.OpAanbodgat(
+            Guid.NewGuid(),
+            klasId,
+            themaplaatsingId,
+            "Drijftafel",
+            ActiviteitType.Experiment,
+            "De kleuters testen voorwerpen in een bak water.",
+            1,
+            null,
+            ["WO-NAT-GK3-01"],
+            "Dit doel past bij het thema Water.",
+            new DateOnly(2026, 9, 28),
+            new TimeOnly(8, 30),
+            new TimeOnly(9, 20));
 }

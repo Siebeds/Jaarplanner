@@ -96,15 +96,26 @@ internal static class Detectorbouw
             KandidaatThemas: []);
 
     public static LeerplandoelDekking Leerplandoel(string code, bool isGedekt) =>
-        new(code, Doelsoort.Gemeenschappelijk, "K3", "9", "Natuur", "Water", "Drijven", $"Tekst van {code}",
+        Leerplandoel(code, isGedekt ? Dekkingsstap.Gedekt : Dekkingsstap.Geen);
+
+    /// <summary>
+    /// A leerplandoel at an exact <see cref="Dekkingsstap"/> and in an exact discipline: what the aanbod-gat is
+    /// measured over (FB-070, ADR-0060 G2), where <c>Prognose</c> and <c>Geen</c> are not the same thing.
+    /// </summary>
+    public static LeerplandoelDekking Leerplandoel(
+        string code,
+        Dekkingsstap stap,
+        string disciplineNummer = "9",
+        string? disciplineNaam = "Natuur en techniek") =>
+        new(code, Doelsoort.Gemeenschappelijk, "K3", disciplineNummer, disciplineNaam, "Natuur", "Water", $"Tekst van {code}",
             MinimumdoelRef: null,
             NietMeerInOpstap: false,
-            IsGedekt: isGedekt,
+            IsGedekt: stap == Dekkingsstap.Gedekt,
             DekkendeThemas: [],
             DekkendeFiches: [],
             Oorzaak: null,
             KandidaatThemas: [],
-            Stap: isGedekt ? Dekkingsstap.Gedekt : Dekkingsstap.Geen,
+            Stap: stap,
             PrognoseBronnen: [],
             DekkendeActiviteiten: []);
 

@@ -305,8 +305,8 @@ public static class DependencyInjection
         services.AddScoped<IDekkingOpslag, EfDekkingOpslag>();
         services.AddScoped<DekkingService>();
 
-        // The cat's signal layer (TB-057, ADR-0059). Detection uses no AI: nothing registered here takes an IAiClient,
-        // and the round's only route to content is IKattaak, which has no implementation until FB-070 brings one.
+        // The cat's signal layer (TB-057, ADR-0059). Detection uses no AI: no detector registered here takes an
+        // IAiClient, and the round's only route to content is IKattaak (FB-070's AanbodgatTaak, below).
         // The dekking goes in as a delegate so the round can be unit-tested without the dekking machinery, and so a
         // detector that never asks for it costs nothing.
         services.AddScoped<Jaarplanner.Application.Kat.IKatklassenlezer, Jaarplanner.Infrastructure.Kat.EfKatklassenlezer>();
@@ -321,7 +321,12 @@ public static class DependencyInjection
         // deterministic (K1).
         services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.MinimumdoelInGevaarDetector>();
         services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.SubthemaNietGeplandDetector>();
+        services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.AanbodgatDetector>();
         services.AddScoped<Jaarplanner.Application.Kat.IDeurmatService, Jaarplanner.Infrastructure.Kat.DeurmatService>();
+
+        // The one task, and the one place the cat calls the AI unasked (FB-070, ADR-0060, Art. IV.8). It runs for a
+        // finding the round has just noticed for the first time, so a tick over an unchanged state costs no call.
+        services.AddScoped<Jaarplanner.Application.Kat.IKattaak, Jaarplanner.Infrastructure.Kat.AanbodgatTaak>();
 
         // The background job that ticks it (D1). Off unless an environment asks for it, because it writes without
         // anybody asking; a bad tikmoment stops the app at startup, where a deploy sees it.

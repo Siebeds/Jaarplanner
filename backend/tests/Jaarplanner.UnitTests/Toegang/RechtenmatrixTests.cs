@@ -692,10 +692,38 @@ public sealed class RechtenmatrixTests
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.ActiviteitvoorstelBeslissen, new Leeftijdsinhoud(Leeftijd)));
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.WoordwebBewerken, eigen));
 
-        // The read question the controller asks: a proposal of nobody.
-        var niemands = new Activiteitvoorstelbron(Guid.Empty, string.Empty, Guid.Empty);
+        // The read question the controller asks: a proposal with no asker and no klas.
+        var niemands = new Activiteitvoorstelbron(Guid.Empty, string.Empty, AanvragerId: null, KlasId: null);
         Assert.False(Rechtenmatrix.StaatToe(alles, Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
         Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.ActiviteitvoorstelBeslissen, niemands));
+    }
+
+    // --- One the cat brought on an aanbod-gat (FB-070, ADR-0060 D2): the klas's leerkrachten, and admin. ---
+
+    [Fact]
+    public void Een_katvoorstel_beslist_een_leerkracht_van_de_klas_of_een_admin()
+    {
+        var vanDeKlas = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, AanvragerId: null, KlasId: EigenKlas);
+
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["LK K3 lopend"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["LK eigen"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.True(Rechtenmatrix.StaatToe(Relaties["Admin"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+    }
+
+    [Fact]
+    public void Een_katvoorstel_beslist_niemand_zonder_klastoewijzing_op_die_klas()
+    {
+        // ADR-0060 D2: it is addressed to the klas's leerkrachten. A jaarfase colleague who reads that klas's planning
+        // (ADR-0040), a hoofdleerkracht of the leeftijd, themabeheer and a leerkracht of another klas are not among
+        // them. A vervanging is no klastoewijzing (ADR-0057), so a vervanger is not either: she holds no EigenKlasId.
+        var vanDeKlas = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, AanvragerId: null, KlasId: EigenKlas);
+        var vanEenAndereKlas = new Activiteitvoorstelbron(Guid.NewGuid(), Leeftijd, AanvragerId: null, KlasId: AndereKlas);
+
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["LK leeftijd"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["HL"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["TB"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["Ander"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanDeKlas));
+        Assert.False(Rechtenmatrix.StaatToe(Relaties["LK K3 lopend"], Rechtenmatrix.ActiviteitvoorstelBeslissen, vanEenAndereKlas));
     }
 
     private static object? BronVoor(Matrixrij rij) => rij.Kolommen switch

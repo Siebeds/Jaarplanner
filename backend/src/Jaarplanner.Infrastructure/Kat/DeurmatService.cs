@@ -108,11 +108,22 @@ public sealed class DeurmatService : IDeurmatService
         return kalender.VolgendeSchooldag(vandaag.AddDays(1)) ?? vandaag.AddDays(1);
     }
 
+    /// <summary>
+    /// Whether a soort is the cat's own bookkeeping rather than something it tells her.
+    /// <para>
+    /// <see cref="Signaalsoort.Aanbodgat"/> is the one: its row exists so the tick asks the AI once per thema
+    /// placement (ADR-0060 G3), and what the cat brings for it are the activiteitvoorstellen below. Showing the signal
+    /// too would say "this discipline has a gap" even when the AI found nothing that fits, which FR-14.8 and G4
+    /// answer with silence.
+    /// </para>
+    /// </summary>
+    private static bool IsStilleSoort(Signaalsoort soort) => soort == Signaalsoort.Aanbodgat;
+
     private async Task<IReadOnlyList<Deurmatsignaal>> HaalSignalenAsync(Guid gebruikerId, CancellationToken ct)
     {
         var opgeslagen = await _opslag.HaalVoorOntvangerAsync(gebruikerId, ct);
         var vandaag = Schoolklok.Vandaag(_tijd, _logger);
-        var zichtbaar = opgeslagen.Where(s => s.IsZichtbaarOp(vandaag)).ToList();
+        var zichtbaar = opgeslagen.Where(s => s.IsZichtbaarOp(vandaag) && !IsStilleSoort(s.Soort)).ToList();
         if (zichtbaar.Count == 0)
         {
             return [];
@@ -163,24 +174,38 @@ public sealed class DeurmatService : IDeurmatService
 
     private async Task<IEnumerable<Deurmatvoorstel>> HaalActiviteitvoorstellenAsync(Rechten rechten, CancellationToken ct)
     {
+        var eigenKlassen = rechten.EigenKlasIds;
         var kandidaten = await (
                 from voorstel in _context.Activiteitvoorstellen.AsNoTracking()
                 where voorstel.Status == KoppelingStatus.Voorgesteld
-                      && (rechten.IsAdmin || voorstel.GebruikerId == rechten.GebruikerId)
+                      && (rechten.IsAdmin
+                          || voorstel.GebruikerId == rechten.GebruikerId
+                          || (voorstel.KlasId != null && eigenKlassen.Contains(voorstel.KlasId.Value)))
                 join subthema in _context.Subthemas on voorstel.SubthemaId equals subthema.Id
-                select new { voorstel.Id, voorstel.Naam, voorstel.AiMotivatie, voorstel.GebruikerId, subthema.Leeftijd, voorstel.SubthemaId })
+                select new
+                {
+                    voorstel.Id,
+                    voorstel.Naam,
+                    voorstel.AiMotivatie,
+                    voorstel.GebruikerId,
+                    voorstel.KlasId,
+                    subthema.Leeftijd,
+                    voorstel.SubthemaId,
+                })
             .ToListAsync(ct);
 
         return kandidaten
             .Where(k => Rechtenmatrix.StaatToe(
                 rechten,
                 Rechtenmatrix.ActiviteitvoorstelBeslissen,
-                new Activiteitvoorstelbron(k.Id, k.Leeftijd, k.GebruikerId)))
+                new Activiteitvoorstelbron(k.Id, k.Leeftijd, k.GebruikerId, k.KlasId)))
             .Select(k => new Deurmatvoorstel(
                 Deurmatvoorstelsoort.Activiteitvoorstel,
                 k.Id,
                 k.Naam,
-                $"/subthemas/{k.SubthemaId}/activiteitvoorstellen",
+                // One the cat brought is decided where the cat shows it (FB-071): it belongs to a klas and a day, not
+                // to the per-subthema screen, which would show it without either.
+                k.KlasId is null ? $"/subthemas/{k.SubthemaId}/activiteitvoorstellen" : null,
                 k.AiMotivatie));
     }
 

@@ -1,6 +1,6 @@
 # ADR-0060 — Before a thema starts, the cat proposes own activiteiten on the leerplandoelen no subthema carries
 
-- **Status:** Accepted
+- **Status:** Accepted; D3's last clause superseded by [ADR-0062](0062-de-ai-stelt-het-moment-voor-de-tool-corrigeert.md), which gives the choice of the moment to the AI
 - **Date:** 2026-09-18
 - **Deciders:** Project owner, in the sparring session of 2026-09-18 on the agentic extension. Directie has not been
   asked.
@@ -48,7 +48,9 @@ Defaults of this session, which the owner may change on their own:
   all of them. A vervanger does not get them.
 - **D3. What the AI is sent:** the thema, its subthema's at the klas's leeftijd with their onderzoeksvragen, the names
   of the activiteiten already there, and the aanbod-gat's leerplandoelen of the chosen discipline. It picks the subthema
-  each proposal goes under; the tool picks the moment, fitting it into the free time of that day as FB-027 does.
+  each proposal goes under; ~~the tool picks the moment, fitting it into the free time of that day as FB-027 does~~ —
+  [ADR-0062](0062-de-ai-stelt-het-moment-voor-de-tool-corrigeert.md) gives the day and the hour to the AI and leaves the
+  tool only the correction of a moment the school cannot give.
 - **D4. Accepting** creates the own activiteit with the accepted goals (`aanvaard`, or `manueel` when edited) and plans
   it on the suggested moment, which she may change first. A moment no longer free is refused with a sentence.
 - **D5. Rejected stays out:** a rejected proposal's goals are not proposed again for that klas in that schooljaar.

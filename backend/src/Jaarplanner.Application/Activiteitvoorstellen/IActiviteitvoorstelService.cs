@@ -30,13 +30,22 @@ public interface IActiviteitvoorstelService
     Task<ActiviteitvoorstelResultaat> StelVoorAsync(Guid subthemaId, Guid gebruikerId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Accepts, possibly changed, or rejects a proposal (D8). Accepting creates an own activiteit of its asker, whoever
-    /// decides (A3).
+    /// Accepts, possibly changed, or rejects a proposal (ADR-0056 D8).
+    /// <para>
+    /// For a proposal that was asked for, accepting creates an own activiteit <b>of its asker</b>, whoever decides
+    /// (A3). For one the cat brought on an aanbod-gat, there is no asker: the activiteit is
+    /// <paramref name="beslisserId"/>'s, and it is planned on its moment straight away, because an own activiteit that
+    /// is not planned counts for nothing (ADR-0060 D2, D4, G5).
+    /// </para>
     /// </summary>
+    /// <param name="beslisserId">Who is deciding. The Api has already checked she may (<c>ActiviteitvoorstelBeslissen</c>).</param>
     /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such proposal.</exception>
-    /// <exception cref="Schoolcontent.Beheer.SchoolcontentValidatieFout">Already decided, or the decision is not valid.</exception>
+    /// <exception cref="Schoolcontent.Beheer.SchoolcontentValidatieFout">
+    /// Already decided, the decision is not valid, or the moment a cat proposal would be planned on is no longer free.
+    /// </exception>
     Task<ActiviteitvoorstelBesluit> BeslisAsync(
         Guid activiteitvoorstelId,
+        Guid beslisserId,
         ActiviteitvoorstelBeslissing beslissing,
         CancellationToken cancellationToken = default);
 }
@@ -65,16 +74,34 @@ public sealed record ActiviteitvoorstelWeergave(
 /// as it is; with one, it is the edited form and every field is taken as given: a <c>null</c> soort is none, a
 /// <c>null</c> list keeps no goal, and the expected outcomes and length are required.
 /// </summary>
+/// <param name="Datum">
+/// For a cat proposal: the day she wants it on instead of the suggested one (ADR-0060 D4); <c>null</c> keeps the
+/// suggested moment. Set it together with <paramref name="Begin"/> and <paramref name="Einde"/>, or none of the three.
+/// Ignored for a proposal that was asked for, which carries no moment.
+/// </param>
+/// <param name="Begin">When it starts on <paramref name="Datum"/>.</param>
+/// <param name="Einde">When it ends. Must lie after <paramref name="Begin"/>.</param>
 public sealed record ActiviteitvoorstelBeslissing(
     KoppelingStatus Status,
     string? Naam = null,
     ActiviteitType? ActiviteitType = null,
     string? VerwachteUitkomsten = null,
     int? LengteInLesuren = null,
-    IReadOnlyList<string>? LeerplandoelCodes = null);
+    IReadOnlyList<string>? LeerplandoelCodes = null,
+    DateOnly? Datum = null,
+    TimeOnly? Begin = null,
+    TimeOnly? Einde = null);
 
-/// <summary>What a decision did: the status stored, and for an acceptance the own activiteit it created.</summary>
-public sealed record ActiviteitvoorstelBesluit(KoppelingStatus Status, Guid? ActiviteitId);
+/// <summary>
+/// What a decision did: the status stored, the own activiteit it created, and, for a cat proposal, the moment it was
+/// planned on (<c>null</c> for a proposal that was asked for, which is not planned by accepting it).
+/// </summary>
+public sealed record ActiviteitvoorstelBesluit(
+    KoppelingStatus Status,
+    Guid? ActiviteitId,
+    DateOnly? Datum = null,
+    TimeOnly? Begin = null,
+    TimeOnly? Einde = null);
 
 /// <summary>
 /// What a run did: how many proposals it stored and how many items of the answer it dropped, or, for an unreadable
