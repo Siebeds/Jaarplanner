@@ -127,6 +127,30 @@ public sealed class VrijmomentTests
     }
 
     [Fact]
+    public void Vindt_de_zoektocht_vooruit_niets_dan_telt_een_eerdere_dag_alsnog()
+    {
+        // ADR-0062 D1: a moment the school cannot give is corrected, never dropped. The model chose the Tuesday and
+        // the Tuesday is full, so the free Monday it passed over is better than no activiteit at all.
+        var moment = Vrijmoment.Zoek(
+            [Dag(Maandag), Dag(Dinsdag, (8, 30, 12, 0), (13, 0, 15, 30))],
+            50,
+            (Dinsdag, new TimeOnly(9, 0)));
+
+        Assert.Equal((Maandag, new TimeOnly(8, 30), new TimeOnly(9, 20)), moment);
+    }
+
+    [Fact]
+    public void Past_het_op_geen_enkele_dag_dan_is_er_ook_met_een_voorkeur_geen_moment()
+    {
+        var moment = Vrijmoment.Zoek(
+            [Dag(Maandag, (8, 30, 12, 0), (13, 0, 15, 30)), Dag(Dinsdag, (8, 30, 12, 0), (13, 0, 15, 30))],
+            50,
+            (Dinsdag, new TimeOnly(9, 0)));
+
+        Assert.Null(moment);
+    }
+
+    [Fact]
     public void Een_dag_die_niet_wordt_aangeboden_valt_terug_op_de_eerste_vrije_dag()
     {
         // ADR-0062 D2 leaves such a day out of the preference; this is the other half of that rule.

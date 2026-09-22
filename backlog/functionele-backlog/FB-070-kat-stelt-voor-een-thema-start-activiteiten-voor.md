@@ -2,10 +2,10 @@
 id: FB-070
 titel: Kat stelt voor een thema start activiteiten voor in een discipline met een aanbod-gat
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-22 23:11
+bijgewerkt: 2026-09-22 23:18
 opgepakt-door: claude-fb070
 branch: ticket/FB-070-aanbodgat
 pr: 157
@@ -103,3 +103,5 @@ Dit wijkt af van ADR-0056 D6 en van de volgorde "eerst doelen, dan aanbod" (Art.
 - 2026-09-22 22:55 · claude-fb070 · eigenaar overrulet Art. IV.5 en ADR-0060 D3: de AI stelt de dag en het uur voor, de tool corrigeert een onmogelijk moment; nieuwe ADR en grondwetswijziging volgen
 - 2026-09-22 23:05 · claude-fb070 · omgebouwd naar de beslissing van de eigenaar: de AI kiest de dag en het uur, de tool corrigeert een onmogelijk moment (dag blijft, uur schuift op); ADR-0062, Art. IV.5 aangepast, constitutie-log en FR-14.8 bij
 - 2026-09-22 23:11 · claude-fb070 · PR #157
+- 2026-09-22 23:18 · claude-fb070 · antagonist COMPLIANT in ronde 2; D1 letterlijk gemaakt (valt de zoektocht vooruit stil, dan telt een eerdere dag alsnog) en ADR-0060 draagt nu zelf dat D3 vervangen is. MINOR blijven: een tweede AI-oproep als het model niets brengt, de leeftijdscontrole op de kattak, en het AanbodGat-signaal dat nooit getoond wordt
+- 2026-09-22 23:18 · claude-fb070 · in-uitvoering → te-testen: kat brengt activiteitvoorstellen op het aanbod-gat: detector zonder AI, AanbodgatTaak als eerste IKattaak, voorstel per klas met plaatsing en moment, aanvaarden maakt de eigen activiteit en plant ze; eigenaar liet de AI de dag en het uur kiezen (ADR-0062, Art. IV.5 aangepast); 2251 unit- en 592 integratietests groen, format en lint schoon, antagonist COMPLIANT; het scherm komt met FB-071

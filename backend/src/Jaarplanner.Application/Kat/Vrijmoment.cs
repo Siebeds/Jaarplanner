@@ -58,9 +58,10 @@ public static class Vrijmoment
     /// <param name="minuten">How long the block runs. Must be positive.</param>
     /// <param name="voorkeur">
     /// The day and hour the AI proposed (ADR-0062 M1), or <c>null</c> to take the first free moment of the first day.
-    /// The search starts on that day at that hour and walks forward from there; when the day is not among
-    /// <paramref name="dagen"/> it is ignored (ADR-0062 D2), and days before it are never used, because a moment the
-    /// model did not want is not a better answer than a later one it might have.
+    /// The search starts on that day at that hour and walks forward from there, so a later moment it might have
+    /// wanted beats an earlier one it did not. When the day is not among <paramref name="dagen"/> it is ignored
+    /// (ADR-0062 D2), and when that forward walk finds nothing the whole period is tried, because losing a good
+    /// activiteit over the model's arithmetic is exactly what D1 says must not happen.
     /// </param>
     public static (DateOnly Datum, TimeOnly Begin, TimeOnly Einde)? Zoek(
         IEnumerable<Schooldagvenster> dagen,
@@ -75,9 +76,21 @@ public static class Vrijmoment
             ? lijst.FindIndex(d => d.Datum == gewenst.Datum)
             : 0;
 
-        for (var i = vanaf; i < lijst.Count; i++)
+        return Loop(lijst, minuten, vanaf, voorkeur)
+            // The second walk covers the days before the model's, and only runs when the first found nothing at all.
+            ?? (vanaf > 0 ? Loop(lijst, minuten, 0, voorkeur: null) : null);
+    }
+
+    /// <summary>The first moment that fits from <paramref name="vanaf"/> on, or <c>null</c>.</summary>
+    private static (DateOnly Datum, TimeOnly Begin, TimeOnly Einde)? Loop(
+        IReadOnlyList<Schooldagvenster> dagen,
+        int minuten,
+        int vanaf,
+        (DateOnly Datum, TimeOnly Begin)? voorkeur)
+    {
+        for (var i = vanaf; i < dagen.Count; i++)
         {
-            var dag = lijst[i];
+            var dag = dagen[i];
             if (dag.Uren is not { } uren)
             {
                 continue;
