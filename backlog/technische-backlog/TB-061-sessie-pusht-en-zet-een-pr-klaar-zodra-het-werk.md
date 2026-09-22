@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 22:37
+bijgewerkt: 2026-09-22 22:38
 opgepakt-door: claude-tb061
 branch: ticket/TB-pr-klaarzetten
-pr:
+pr: 155
 geblokkeerd:
 fr: []
 ---
@@ -56,3 +56,4 @@ De eigenaar besliste diezelfde dag: telkens wanneer het werk af is, wordt er gep
 - 2026-09-22 22:40 · claude-tb061 · aangemaakt (status in-uitvoering)
 - 2026-09-22 22:40 · claude-tb061 · beslissing van de eigenaar op 2026-09-22, na FB-076 en FB-077 die als lokale branch bleven liggen
 - 2026-09-22 22:37 · claude-tb061 · in-uitvoering → klaar: skill ticket-uitvoeren aangepast: pushen en de PR openen horen bij het afronden, PR-tekst in het Nederlands, alleen de eigenaar merget
+- 2026-09-22 22:38 · claude-tb061 · PR #155
