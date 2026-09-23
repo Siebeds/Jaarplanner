@@ -2,10 +2,10 @@
 id: FB-087
 titel: Subthema inplannen staat in de themastrook van de agenda, bij het thema zelf
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:30
+bijgewerkt: 2026-09-23 10:52
 opgepakt-door: claude-fb087b
 branch: ticket/FB-087-alleen-zonder-subthema
 pr:
@@ -62,7 +62,7 @@ Op telefoonbreedte blijft het knopje bereikbaar, desnoods alleen als plusteken m
       een zichtbare focusrand en een voorleesbare naam.
 - [x] Gegeven een scherm van ongeveer 390 pixels breed, wanneer de leerkracht de agenda in een themaweek opent, dan is
       het knopje zichtbaar en bruikbaar, en blijft de naam van het thema leesbaar.
-- [ ] Gegeven een thema waarin op sommige dagen al een subthema loopt, wanneer de leerkracht de agenda opent, dan toont
+- [x] Gegeven een thema waarin op sommige dagen al een subthema loopt, wanneer de leerkracht de agenda opent, dan toont
       de themastrook op de dagen met een subthema geen knopje "+ Subthema", en op de dagen van dat thema zonder
       subthema wel.
 
@@ -105,3 +105,6 @@ Geen.
 - 2026-09-23 09:21 · claude-fb087 · PR #163
 - 2026-09-23 10:29 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: in de themastrook, verwacht het knopje + Subthema alleen op dagen zonder subthema, gezien ook op dagen waar al een subthema loopt
 - 2026-09-23 10:30 · claude-fb087b · klaar-voor-bouw → in-uitvoering: opgepakt: knopje alleen op dagen zonder subthema
+- 2026-09-23 10:50 · claude-fb087b · Knopje alleen op lesdagen zonder lopend subthema, ook midden in de rij waar een vrije strook begint; lint en 1321 frontendtests groen, browserpas maand en werkweek op 1440 en 390 px met tijdelijk ingekorte mockvensters.
+- 2026-09-23 10:52 · claude-fb087b · Criterium 7 afgevinkt met Vitest (subthemaruimte, Themastroken) en de browserpas. Antagonist: COMPLIANT, geen CRITICAL of MAJOR. MINOR opgelost: componenttests voor ruimte. MINOR zonder gevolg: dag buiten het schooljaar is nooit een lesdag. Vraag voor de test: het knopje staat eenmaal per vrije strook (kop van de rij of begin van de strook), niet op elke vrije dag.
+- 2026-09-23 10:52 · claude-fb087b · in-uitvoering → te-testen: Knopje + Subthema alleen op lesdagen zonder lopend subthema, ook waar een vrije strook midden in de rij begint; lint en 1321 frontendtests groen, browserpas 1440/390 px, antagonist COMPLIANT.

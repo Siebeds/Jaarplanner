@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { Themastroken } from "./Themastroken";
 import type { Themavak } from "./themavakken";
+import type { Subthemaruimte } from "./subthemareeksen";
 import { t } from "../../i18n";
 import { themapaginaPad } from "../themas/themapagina";
 
@@ -129,5 +130,32 @@ describe("Themastroken: subthema inplannen (FB-087)", () => {
     expect(screen.queryByRole("button")).toBeNull();
     toonMet("2026-09-01", () => {}, vak([]));
     expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+
+describe("Themastroken: geen knop naast een lopend subthema (FB-087)", () => {
+  const herfst = () => vak([{ id: "t-herfst", naam: "De herfst" }]);
+  const naam = t("periode.planSubthemaIn", { naam: "De herfst" });
+  const toonMet = (datum: string, ruimte: Subthemaruimte) =>
+    render(
+      <MemoryRouter>
+        <Themastroken vak={herfst()} datum={datum} dicht onPlanSubthema={() => {}} ruimte={ruimte} />
+      </MemoryRouter>,
+    );
+
+  it("zet geen knop op de band met de naam als er die dag al een subthema loopt", () => {
+    // 14 september 2026 is a Monday: the band prints the name.
+    toonMet("2026-09-14", "geen");
+    expect(screen.queryByRole("button", { name: naam })).toBeNull();
+  });
+
+  it("zet de knop midden in de rij waar een vrije strook begint", () => {
+    toonMet("2026-09-16", "begint");
+    expect(screen.getByRole("button", { name: naam })).toBeInTheDocument();
+  });
+
+  it("zet geen tweede knop verder in dezelfde vrije strook", () => {
+    toonMet("2026-09-17", "vrij");
+    expect(screen.queryByRole("button", { name: naam })).toBeNull();
   });
 });
