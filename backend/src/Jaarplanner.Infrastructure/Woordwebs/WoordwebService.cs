@@ -17,11 +17,13 @@ public sealed class WoordwebService : IWoordwebService
 {
     private readonly AppDbContext _context;
     private readonly IAiClient _ai;
+    private readonly Promptbegrenzing _begrenzing;
 
-    public WoordwebService(AppDbContext context, IAiClient ai)
+    public WoordwebService(AppDbContext context, IAiClient ai, Promptbegrenzing begrenzing)
     {
         _context = context;
         _ai = ai;
+        _begrenzing = begrenzing;
     }
 
     public async Task<IReadOnlyList<WoordwebWeergave>> HaalVoorSubthemaAsync(
@@ -63,6 +65,7 @@ public sealed class WoordwebService : IWoordwebService
             _context.Woordwebs.Add(web);
         }
 
+        VereisPlaats(web, geldig);
         web.VoegWoordenToe(geldig);
         await BewaarAsync(cancellationToken);
         return await MapAsync(web, gebruikerId, cancellationToken);
@@ -77,6 +80,7 @@ public sealed class WoordwebService : IWoordwebService
         var geldig = VereisWoorden(woorden);
         var web = await LaadAsync(woordwebId, cancellationToken);
 
+        VereisPlaats(web, geldig);
         web.VoegWoordenToe(geldig);
         await BewaarAsync(cancellationToken);
         return await MapAsync(web, gebruikerId, cancellationToken);
@@ -121,13 +125,19 @@ public sealed class WoordwebService : IWoordwebService
             throw new SchoolcontentValidatieFout("Over dit woord is al beslist.");
         }
 
+        if (status == KoppelingStatus.Aanvaard && web.AantalInWeb >= Woordweb.MaxWoordenInWeb)
+        {
+            throw new SchoolcontentValidatieFout(VolZin(web.AantalInWeb));
+        }
+
         web.Beslis(woordId, status);
         await BewaarAsync(cancellationToken);
         return await MapAsync(web, gebruikerId, cancellationToken);
     }
 
     /// <summary>
-    /// The AI step (W5, W6, D1). Refused before any call when the web holds no word of the teacher's own. The model's
+    /// The AI step (W5, W6, D1). Refused before any call when the web holds no word of the teacher's own, when it keeps
+    /// <see cref="Woordweb.MaxWoordenBewaard"/> words, or when the prompt is over the ceiling (TB-062). The model's
     /// answer is validated as a whole (Art. IV.5): an invalid one stores nothing and is reported, a valid one is taken
     /// word by word through the aggregate, which skips what the web already holds, and at most
     /// <see cref="WoordwebPromptBuilder.MaxVoorstellen"/> are kept.
@@ -144,6 +154,12 @@ public sealed class WoordwebService : IWoordwebService
                 "Zet eerst zelf een woord in je woordweb. Daarna stelt de AI er woorden bij voor.");
         }
 
+        if (!web.KanVoorstellenOntvangen)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"De AI stelt voor dit woordweb geen woorden meer voor: het bewaart al {web.Woorden.Count} woorden, de voorstellen en de geweigerde woorden meegeteld.");
+        }
+
         var subthema = await _context.Subthemas
             .AsNoTracking()
             .Include(s => s.Onderzoeksvragen)
@@ -154,6 +170,7 @@ public sealed class WoordwebService : IWoordwebService
             .SingleAsync(t => t.Id == subthema.ThemaId, cancellationToken);
 
         var verzoek = WoordwebPromptBuilder.Bouw(WoordwebPromptBuilder.ContextVoor(web, subthema, thema));
+        _begrenzing.Bewaak(verzoek, web);
         var antwoord = await _ai.CompleteAsync(verzoek, cancellationToken);
         var parse = WoordwebResponseParser.Parse(antwoord);
         if (!parse.IsGeldig)
@@ -195,6 +212,13 @@ public sealed class WoordwebService : IWoordwebService
             throw new SchoolcontentValidatieFout("Typ minstens één woord.");
         }
 
+        // Before anything is loaded, so an oversized request costs no more than this count (TB-062).
+        if (geldig.Count > Woordweb.MaxWoordenInWeb)
+        {
+            throw new SchoolcontentValidatieFout(
+                $"Je kan hoogstens {Woordweb.MaxWoordenInWeb} woorden tegelijk toevoegen. Voeg ze in kleinere delen toe.");
+        }
+
         if (geldig.FirstOrDefault(w => w.Length > Woordweb.MaxWoordlengte) is { } teLang)
         {
             throw new SchoolcontentValidatieFout(
@@ -203,6 +227,19 @@ public sealed class WoordwebService : IWoordwebService
 
         return geldig;
     }
+
+    /// <summary>The web's bound (TB-062), in Dutch before the aggregate refuses in English.</summary>
+    private static void VereisPlaats(Woordweb web, IReadOnlyList<string> woorden)
+    {
+        if (web.AantalInWeb + web.TelNieuwInWeb(woorden) > Woordweb.MaxWoordenInWeb)
+        {
+            throw new SchoolcontentValidatieFout(VolZin(web.AantalInWeb));
+        }
+    }
+
+    // "Dit woordweb", not "je woordweb": admin also edits another person's web.
+    private static string VolZin(int aantalInWeb) =>
+        $"Er passen hoogstens {Woordweb.MaxWoordenInWeb} woorden in een woordweb, en dit woordweb telt er al {aantalInWeb}. Haal eerst woorden weg die je niet meer nodig hebt.";
 
     private async Task VereisSubthemaAsync(Guid subthemaId, CancellationToken cancellationToken)
     {

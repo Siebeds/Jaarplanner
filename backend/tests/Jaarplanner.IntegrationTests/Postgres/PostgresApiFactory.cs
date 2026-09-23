@@ -54,6 +54,12 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     public IList<ISignaaldetector> Detectoren { get; } = [];
 
     /// <summary>
+    /// Extra configuration keys for this host, such as a low <c>AiPrompt:MaxTokens</c>. Read when the host is built, so
+    /// set them before the first client.
+    /// </summary>
+    public IDictionary<string, string> Instellingen { get; } = new Dictionary<string, string>();
+
+    /// <summary>
     /// Log providers this host adds, at every level, so a test can prove what never reaches a log (the cat's chat,
     /// ADR-0059 D6). Set before the first client is made.
     /// </summary>
@@ -67,6 +73,10 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
         // Supply the connection string through configuration, the same key production reads, so the
         // Infrastructure wiring stays untouched.
         builder.UseSetting("ConnectionStrings:Postgres", _connectionString);
+        foreach (var (sleutel, waarde) in Instellingen)
+        {
+            builder.UseSetting(sleutel, waarde);
+        }
 
         if (Logvangers.Count > 0)
         {

@@ -247,6 +247,105 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
             "Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
 
+    [PostgresFact]
+    public async Task Meer_woorden_dan_het_maximum_in_een_aanvraag_krijgt_een_nederlandse_zin_en_bewaart_niets()
+    {
+        var subthemaId = await Opzet.SubthemaAsync("K3");
+        using var an = Opzet.Als(await PersoonAsync("Leerkracht An"));
+        var teveel = Woorden(Woordweb.MaxWoordenInWeb + 1);
+        var zin = $"Je kan hoogstens {Woordweb.MaxWoordenInWeb} woorden tegelijk toevoegen. Voeg ze in kleinere delen toe.";
+
+        await RechtenTestOpzet.VerwachtAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = teveel }), HttpStatusCode.BadRequest, zin);
+        Assert.Empty(await LeesAsync(an, subthemaId));
+
+        var web = await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "wind" } }));
+        await RechtenTestOpzet.VerwachtAsync(
+            an.PostAsJsonAsync($"/api/woordwebs/{web.Id}/woorden", new { woorden = teveel }), HttpStatusCode.BadRequest, zin);
+        Assert.Equal(["wind"], Assert.Single(await LeesAsync(an, subthemaId)).Woorden.Select(w => w.Woord));
+    }
+
+    [PostgresFact]
+    public async Task Een_vol_woordweb_weigert_een_nieuw_woord_en_het_aanvaarden_van_een_voorstel()
+    {
+        var subthemaId = await Opzet.SubthemaAsync("K3");
+        using var an = Opzet.Als(await PersoonAsync("Leerkracht An"));
+        var web = await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = Woorden(Woordweb.MaxWoordenInWeb - 1) }));
+        _factory.AiAntwoord = Antwoord("wolk");
+        var wolk = (await VoorstelAsync(an, web.Id)).Woordweb!.Woorden.Single(w => w.Woord == "wolk");
+
+        // The last free place: exactly the maximum still goes in, through either route.
+        await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "laatste" } }));
+
+        var vol = $"Er passen hoogstens {Woordweb.MaxWoordenInWeb} woorden in een woordweb, en dit woordweb telt er al {Woordweb.MaxWoordenInWeb}. Haal eerst woorden weg die je niet meer nodig hebt.";
+        await RechtenTestOpzet.VerwachtAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "nieuw" } }), HttpStatusCode.BadRequest, vol);
+        await RechtenTestOpzet.VerwachtAsync(
+            an.PostAsJsonAsync($"/api/woordwebs/{web.Id}/woorden", new { woorden = new[] { "nieuw" } }), HttpStatusCode.BadRequest, vol);
+        await RechtenTestOpzet.VerwachtAsync(
+            an.PutAsJsonAsync($"/api/woordwebs/{web.Id}/woorden/{wolk.Id}/status", new { status = "Aanvaard" }), HttpStatusCode.BadRequest, vol);
+
+        // A word already in the web is still fine, and taking one out makes room again.
+        await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "WOORD1" } }));
+        var gelezen = Assert.Single(await LeesAsync(an, subthemaId));
+        Assert.Equal(Woordweb.MaxWoordenInWeb, gelezen.Woorden.Count(w => w.Status is "Manueel" or "Aanvaard"));
+        Assert.DoesNotContain(gelezen.Woorden, w => w.Woord == "nieuw");
+        Assert.Equal("Voorgesteld", gelezen.Woorden.Single(w => w.Woord == "wolk").Status);
+
+        await WebAsync(an.DeleteAsync($"/api/woordwebs/{web.Id}/woorden/{gelezen.Woorden.Single(w => w.Woord == "laatste").Id}"));
+        await WebAsync(an.PutAsJsonAsync($"/api/woordwebs/{web.Id}/woorden/{wolk.Id}/status", new { status = "Aanvaard" }));
+    }
+
+    [PostgresFact]
+    public async Task Een_woordweb_dat_het_bewaarde_maximum_haalt_vraagt_de_ai_niets_meer()
+    {
+        var subthemaId = await Opzet.SubthemaAsync("K3");
+        var anId = await PersoonAsync("Leerkracht An");
+
+        // Seeded through the aggregate: reaching the bound over HTTP would take dozens of AI requests.
+        var web = new Woordweb(subthemaId, anId);
+        web.VoegWoordenToe(Woorden(Woordweb.MaxWoordenInWeb));
+        foreach (var woord in Woorden(Woordweb.MaxWoordenBewaard - Woordweb.MaxWoordenInWeb, "voorstel"))
+        {
+            web.Beslis(web.VoegVoorstelToe(woord, "Een reden.")!.Id, KoppelingStatus.Geweigerd);
+        }
+
+        await using (var context = _db.MaakContext())
+        {
+            context.Woordwebs.Add(web);
+            await context.SaveChangesAsync();
+        }
+
+        // The stub is unset, so a call to the model would fail the test.
+        using var an = Opzet.Als(anId);
+        await RechtenTestOpzet.VerwachtAsync(
+            an.PostAsync($"/api/woordwebs/{web.Id}/voorstellen", null),
+            HttpStatusCode.BadRequest,
+            $"De AI stelt voor dit woordweb geen woorden meer voor: het bewaart al {Woordweb.MaxWoordenBewaard} woorden, de voorstellen en de geweigerde woorden meegeteld.");
+    }
+
+    [PostgresFact]
+    public async Task Een_prompt_boven_de_grens_roept_de_ai_niet_aan_en_bewaart_niets()
+    {
+        await using var kleineGrens = new PostgresApiFactory(_db.ConnectionString);
+        kleineGrens.Instellingen["AiPrompt:MaxTokens"] = "10";
+        kleineGrens.AiAntwoord = Antwoord("wolk");
+        var opzet = new RechtenTestOpzet(_db, kleineGrens);
+        var subthemaId = await opzet.SubthemaAsync("K3");
+        using var an = opzet.Als(await PersoonAsync("Leerkracht An"));
+        var web = await WebAsync(an.PostAsJsonAsync(Eigen(subthemaId), new { woorden = new[] { "wind" } }));
+
+        using var antwoord = await an.PostAsync($"/api/woordwebs/{web.Id}/voorstellen", null);
+
+        Assert.Equal(HttpStatusCode.BadRequest, antwoord.StatusCode);
+        var detail = (await antwoord.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("detail").GetString();
+        Assert.StartsWith("Deze aanvraag is te groot voor de AI: de tekst van 1 woord", detail, StringComparison.Ordinal);
+        Assert.Contains("de grens is 10)", detail, StringComparison.Ordinal);
+        Assert.Null(kleineGrens.LaatsteAiVerzoek);
+        Assert.Equal(["wind"], Assert.Single(await LeesAsync(an, subthemaId)).Woorden.Select(w => w.Woord));
+    }
+
+    private static string[] Woorden(int aantal, string voorvoegsel = "woord") =>
+        Enumerable.Range(1, aantal).Select(i => $"{voorvoegsel}{i}").ToArray();
+
     private async Task<Guid> PersoonAsync(string naam, bool admin = false, Guid[]? klassen = null)
     {
         var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isAdmin: admin);

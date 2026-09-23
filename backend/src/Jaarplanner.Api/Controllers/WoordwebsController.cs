@@ -23,6 +23,11 @@ namespace Jaarplanner.Api.Controllers;
 [ApiController]
 public sealed class WoordwebsController : ControllerBase
 {
+    // A full request of Woordweb.MaxWoordenInWeb words at the longest length, every character JSON-escaped, is about
+    // 80 KB; this leaves room and keeps the body far below Kestrel's 30 MB default (TB-062). The word count itself is
+    // refused in Dutch by the service.
+    private const long WoordenAanvraagLimiet = 128 * 1024;
+
     private readonly IWoordwebService _service;
 
     public WoordwebsController(IWoordwebService service) => _service = service;
@@ -36,6 +41,7 @@ public sealed class WoordwebsController : ControllerBase
 
     /// <summary>Adds typed words to the caller's own web on the subthema, creating it on the first word (D2).</summary>
     [HttpPost("api/subthemas/{subthemaId:guid}/woordwebs/eigen/woorden")]
+    [RequestSizeLimit(WoordenAanvraagLimiet)]
     public async Task<ActionResult<WoordwebWeergave>> VoegEigenWoordenToe(
         Guid subthemaId,
         [FromBody] WoordenInvoer invoer,
@@ -46,6 +52,7 @@ public sealed class WoordwebsController : ControllerBase
 
     /// <summary>Adds typed words to a web by its id: its owner, or admin.</summary>
     [HttpPost("api/woordwebs/{woordwebId:guid}/woorden")]
+    [RequestSizeLimit(WoordenAanvraagLimiet)]
     [RechtOp(Rechtenmatrix.Beleid.WoordwebBewerken, Rechtbron.Woordweb, "woordwebId")]
     public async Task<ActionResult<WoordwebWeergave>> VoegWoordenToe(
         Guid woordwebId,

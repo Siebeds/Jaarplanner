@@ -2,13 +2,13 @@
 id: TB-062
 titel: Woordweb krijgt een maximum aantal woorden en valt onder de promptbegrenzing
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:21
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 12:35
+opgepakt-door: claude-tb062
+branch: ticket/TB-062-woordweb-maximum
+pr: 173
 geblokkeerd:
 fr: []
 ---
@@ -40,13 +40,13 @@ Gevonden bij de securityscan van 2026-09-23. Elke aangemelde gebruiker mag een e
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een woordweb, wanneer iemand in één verzoek meer woorden stuurt dan het maximum, dan weigert de server
+- [x] Gegeven een woordweb, wanneer iemand in één verzoek meer woorden stuurt dan het maximum, dan weigert de server
   met een Nederlandse melding en wordt er niets bewaard.
-- [ ] Gegeven een woordweb dat het maximum bereikt heeft, wanneer iemand nog een woord toevoegt, dan weigert de server
+- [x] Gegeven een woordweb dat het maximum bereikt heeft, wanneer iemand nog een woord toevoegt, dan weigert de server
   met dezelfde soort melding.
-- [ ] Gegeven een prompt voor woordvoorstellen die boven `AiPrompt:MaxTokens` uitkomt, wanneer iemand voorstellen
+- [x] Gegeven een prompt voor woordvoorstellen die boven `AiPrompt:MaxTokens` uitkomt, wanneer iemand voorstellen
   vraagt, dan wordt het model niet aangeroepen en krijgt de gebruiker de melding van de promptbegrenzing.
-- [ ] Gegeven een woordweb van normale grootte, dan werken woorden toevoegen en voorstellen vragen zoals vandaag.
+- [x] Gegeven een woordweb van normale grootte, dan werken woorden toevoegen en voorstellen vragen zoals vandaag.
 
 ## Buiten scope
 
@@ -61,3 +61,8 @@ Gevonden bij de securityscan van 2026-09-23. Elke aangemelde gebruiker mag een e
 ## Werklog
 
 - 2026-09-23 00:21 · claude-securityscan · aangemaakt (status nieuw)
+- 2026-09-23 12:19 · claude-tb062 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 12:33 · claude-tb062 · gebouwd: maximum 200 woorden in het web en 400 bewaard, lineaire toevoeging, bodylimiet 128 KB, promptbegrenzing op woordvoorstellen; 2264 unit- en 601 integratietests groen, dotnet format schoon
+- 2026-09-23 12:35 · claude-tb062 · antagonist: COMPLIANT; open: maximum 200 (en 400 bewaard) wacht op bevestiging eigenaar; niet opgelost (MINOR): capaciteitscontrole en bewaren niet atomair bij gelijktijdige verzoeken van dezelfde eigenaar, 413 zonder Nederlandse zin boven 128 KB; melding komt van de server, niet uit nl.json
+- 2026-09-23 12:35 · claude-tb062 · in-uitvoering → klaar: criteria afgevinkt met de unit- en integratietests in WoordwebTests, PromptbegrenzingTests en WoordwebEndpointsTests; alle backendtests groen, dotnet format schoon, geen frontendwijziging
+- 2026-09-23 12:35 · claude-tb062 · PR #173

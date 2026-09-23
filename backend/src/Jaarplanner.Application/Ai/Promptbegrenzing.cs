@@ -92,6 +92,20 @@ public sealed class Promptbegrenzing
     }
 
     /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for a prompt that carries the words of one woordweb
+    /// (FB-036). The web's own bound keeps it far below the default ceiling, so only a low server setting trips this,
+    /// and the advice is that setting.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void Bewaak(AiRequest request, Woordweb woordweb)
+    {
+        ArgumentNullException.ThrowIfNull(woordweb);
+        var aantal = woordweb.Woorden.Count;
+        var omschrijving = aantal == 1 ? "1 woord" : string.Create(Nederlands, $"{aantal:N0} woorden");
+        Bewaak(request, omschrijving, ServerRaad);
+    }
+
+    /// <summary>
     /// Refuses <paramref name="request"/> when it is over the ceiling, for the cat's chat (FB-031): the handleiding and
     /// one question, whose length the chat already caps, so only the server setting helps.
     /// </summary>
