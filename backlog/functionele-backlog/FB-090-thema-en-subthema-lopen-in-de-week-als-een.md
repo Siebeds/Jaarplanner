@@ -2,13 +2,13 @@
 id: FB-090
 titel: Thema en subthema lopen in de week als één doorlopende balk
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 11:32
+opgepakt-door: claude-fb090
+branch: ticket/FB-090-doorlopende-themabalk
+pr: 170
 geblokkeerd:
 fr: []
 ---
@@ -41,17 +41,17 @@ in `features/plan/Themastroken.tsx`). Het probleem is de onderbreking.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week waarin één thema van maandag tot vrijdag loopt, wanneer de leerkracht de werkweek opent, dan
+- [x] Gegeven een week waarin één thema van maandag tot vrijdag loopt, wanneer de leerkracht de werkweek opent, dan
       ziet ze één grijze balk over de vijf dagen met de naam één keer, en geen lege balkjes.
-- [ ] Gegeven een week waarin een thema op woensdag eindigt en een ander op donderdag begint, wanneer de week opent,
+- [x] Gegeven een week waarin een thema op woensdag eindigt en een ander op donderdag begint, wanneer de week opent,
       dan staan er twee balken met elk hun naam, en zie je duidelijk waar de ene stopt.
-- [ ] Gegeven een subthema dat vorige week begon, wanneer de week opent, dan begint zijn balk met een pijltje naar
+- [x] Gegeven een subthema dat vorige week begon, wanneer de week opent, dan begint zijn balk met een pijltje naar
       links en niet met "…".
-- [ ] Gegeven een gebruiker die de klas mag plannen, wanneer ze naar de themabalk kijkt, dan staat de knop om een
+- [x] Gegeven een gebruiker die de klas mag plannen, wanneer ze naar de themabalk kijkt, dan staat de knop om een
       subthema in te plannen er nog, en werkt hij zoals voordien.
-- [ ] Gegeven het toetsenbord, wanneer de gebruiker door de themabalken tabt, dan is er één tabstop per thema per
+- [x] Gegeven het toetsenbord, wanneer de gebruiker door de themabalken tabt, dan is er één tabstop per thema per
       rij, die de naam van het thema voorleest.
-- [ ] Gegeven een telefoon van ~390px, wanneer de week opent, dan blijft de naam leesbaar of wordt ze netjes
+- [x] Gegeven een telefoon van ~390px, wanneer de week opent, dan blijft de naam leesbaar of wordt ze netjes
       ingekort, zonder dat de balk buiten de kolommen steekt.
 
 ## Testscenario's
@@ -75,3 +75,8 @@ Geen.
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 11:17 · claude-fb090 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 11:27 · claude-fb090 · doorlopende balken gebouwd in de weekkop (dag- en maandweergave ongewijzigd), tests en lint groen; browsercheck volgt
+- 2026-09-23 11:31 · claude-fb090 · antagonist COMPLIANT; MINOR commentaar opgelost; criteria afgevinkt op Vitest (1-5) en browsercheck mock 1440/390px licht+donker (1,2,3,6); knop '+ Subthema' alleen in Vitest gezien, mockdata heeft geen dag zonder subthema
+- 2026-09-23 11:31 · claude-fb090 · in-uitvoering → te-testen: doorlopende thema- en subthemabalk in week en werkweek; lint en 1340 tests groen
+- 2026-09-23 11:32 · claude-fb090 · PR #170
