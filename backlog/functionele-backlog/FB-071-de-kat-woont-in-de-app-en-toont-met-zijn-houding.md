@@ -8,7 +8,7 @@ aangemaakt: 2026-09-18
 bijgewerkt: 2026-09-23 09:23
 opgepakt-door: claude-fb071-kop
 branch: ticket/FB-071-kop
-pr:
+pr: 164
 geblokkeerd:
 fr: []
 ---
@@ -155,3 +155,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 09:21 · claude-fb071-kop · tekst van Chuck staat onder hem; klaskiezer uit de kop naar de zijbalk (rail: icoon) en op telefoon bovenaan Instellingen; bekeken op mockdata op 1440 en 390px; lint en 443 gerelateerde tests groen
 - 2026-09-23 09:23 · claude-fb071-kop · antagonist COMPLIANT; 2 MINOR opgelost (tekst 'bovenaan het scherm' wordt 'Kies eerst een klas.', lege regels), 1 gecontroleerd (alleen Chuck gebruikt de ballon met staart naar boven); 1312 frontendtests groen, lint schoon
 - 2026-09-23 09:23 · claude-fb071-kop · in-uitvoering → te-testen: tekst van Chuck onder hem, klaskiezer in de zijbalk (telefoon: bovenaan Instellingen), Vandaag blijft staan; gates groen
+- 2026-09-23 09:23 · claude-fb071-kop · PR #164
