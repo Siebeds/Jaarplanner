@@ -2,10 +2,10 @@
 id: TB-070
 titel: Vercel agent-skills op projectniveau installeren voor Claude Code
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:13
+bijgewerkt: 2026-09-23 09:14
 opgepakt-door: vercel-agent-skills
 branch: ticket/vercel-agent-skills
 pr:
@@ -29,9 +29,9 @@ app-code.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de branch, wanneer je `.claude/skills/` bekijkt, dan staat elk van de 9 skills er als eigen map met een `SKILL.md`.
-- [ ] Gegeven de installatie, wanneer je de diff bekijkt, dan verandert er niets buiten `.claude/skills/` en een lockbestand van de skills-CLI.
-- [ ] Gegeven de geïnstalleerde skills, wanneer je ze doorzoekt, dan bevatten ze geen geheimen of tokens.
+- [x] Gegeven de branch, wanneer je `.claude/skills/` bekijkt, dan staat elk van de 9 skills er als eigen map met een `SKILL.md`.
+- [x] Gegeven de installatie, wanneer je de diff bekijkt, dan verandert er niets buiten `.claude/skills/` en een lockbestand van de skills-CLI.
+- [x] Gegeven de geïnstalleerde skills, wanneer je ze doorzoekt, dan bevatten ze geen geheimen of tokens.
 
 ## Buiten scope
 
@@ -45,3 +45,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 09:13 · vercel-agent-skills · aangemaakt (status in-uitvoering)
+- 2026-09-23 09:14 · vercel-agent-skills · in-uitvoering → klaar: 9 skills als kopie in .claude/skills geïnstalleerd plus skills-lock.json; elke map heeft een SKILL.md, diff raakt niets anders, geheimenscan leeg. Let op: deploy-to-vercel uploadt het project zonder login naar Vercel.
