@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Segment } from "../../components/ui/Segment";
+import { Weergavekeuze } from "./Weergavekeuze";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Knop } from "../../components/ui/Knop";
@@ -702,133 +702,124 @@ export function Agendascherm() {
         breed
         titel={t("periode.titel")}
         onder={
-          /* Both rows travel with the sticky header. The range and its arrows used to scroll away
-             with the grid, and a month is tall enough that they did: they ended up half behind the
-             blurred bar, which reads as a rendering fault rather than as scrolling. */
+          /* One toolbar, and it travels with the sticky header (a month is tall enough to scroll the range away).
+             FB-089: Vandaag first, so it never moves with the length of the date; the arrows as one joined
+             control; the date and its week number centred on the same line; the view switch to the right. Every
+             control is `h-9` with the `lijn-veld` edge, `Segment` included. Below `sm` the switch wraps onto a row
+             of its own at full width. */
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <Segment
-                label={t("periode.weergave")}
-                waarde={weergave}
-                onKies={(zicht) => ga({ weergave: zicht })}
-                opties={[
-                  { waarde: "maand", label: t("periode.maand") },
-                  { waarde: "week", label: t("periode.week") },
-                  { waarde: "werkweek", label: t("periode.werkweek") },
-                  { waarde: "dag", label: t("periode.dag") },
-                ]}
-              />
-
-              <Link
-                to="/agenda/periodes"
-                className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-              >
-                {t("periode.naarJaarplan")}
-              </Link>
-
-              {/*
-                THE HOEKENFICHES SWITCH IS IN THE SIDEBAR FROM `lg`, AND THIS IS WHAT IS LEFT OF IT
-                BELOW THAT.
-
-                The owner asked for the switch in the sidepane (2026-08-31), and a sidepane exists
-                only from `lg`: below it the navigation is a bottom bar of five tabs with no room for
-                a sixth, while the panel still has to be reachable on a phone, where it opens as a
-                sheet. So this chip is `lg:hidden` and `Navigatie` carries the switch from `lg`
-                upward. One control per viewport, never two at once, which is what made a single
-                control in the toolbar the earlier answer.
-              */}
-              {/* Two chips since 2026-09-14, one per list, for the reason the sidebar has two switches (owner: "twee
-                  secties ... niet gegroepeerd als fiches"), and a third for the activiteiten since 2026-09-15 (FB-017).
-                  The algemene fiches' chip only for a gebruiker who may plan this klas; the activiteiten and hoekenfiches
-                  chips for everyone who reads the agenda, whose cards then plan and write nothing (owner, 2026-09-15,
-                  FB-017 and FB-038). In the sidebar's order: Activiteiten, Algemene fiches, Hoekenfiches (owner,
-                  TB-024). */}
-              {/* None until the rights are known, so the fiche chips do not appear after the activiteiten chip a moment
-                  later, as the sidebar does. */}
-              {([
-                { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
-                ...(magPlannen
-                  ? ([{ soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche }] as const)
-                  : []),
-                { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
-              ] as const)
-                .filter(() => rechtenBekend)
-                .map(({ soort, label, Icoon }) => {
-                const aan = paneelOpen && paneelSoort === soort;
-                return (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <div className="flex min-w-0 flex-1 basis-auto items-center gap-3">
+                {/* The button when there is a today to go to, and the reason when there is not, in the same place.
+                    Never a dead control: in augustus the school year has not started and no day is today. */}
+                {vandaagBereikbaar ? (
                   <button
-                    key={soort}
                     type="button"
-                    onClick={() => kiesPaneel(soort)}
-                    aria-pressed={aan}
-                    className={cn(
-                      "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150 lg:hidden",
-                      aan
-                        ? "border-accent bg-accent-zacht text-accent"
-                        : "border-lijn text-inkt-zacht hover:border-accent hover:text-accent",
-                    )}
+                    onClick={() => ga({ datum: nu })}
+                    className="inline-flex h-9 shrink-0 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
                   >
-                    <Icoon aria-hidden="true" className="h-4 w-4" />
-                    {label}
+                    {t("periode.vandaag")}
                   </button>
-                );
-              })}
-            </div>
+                ) : (
+                  <p className="max-w-36 shrink-0 text-meta leading-tight text-inkt-zwak">
+                    {t("periode.vandaagBuitenSchooljaar")}
+                  </p>
+                )}
 
-            {/* The range, its arrows and the way back to today, together and at heading size. Navigation
-                next to the thing it moves: the arrows used to sit up in the chrome, three controls away
-                from the only label that told you what pressing them had done. */}
-            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
-              <div className="flex min-w-0 items-start gap-2">
-                <button
-                  type="button"
-                  aria-label={t("periode.vorige")}
-                  onClick={() => schuif(-1)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-veld border border-lijn-veld text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-                >
-                  <IcoonPijlLinks className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={t("periode.volgende")}
-                  onClick={() => schuif(1)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-veld border border-lijn-veld text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-                >
-                  <IcoonPijlRechts className="h-4 w-4" />
-                </button>
+                <div className="inline-flex h-9 shrink-0 rounded-veld border border-lijn-veld">
+                  <button
+                    type="button"
+                    aria-label={t("periode.vorige")}
+                    onClick={() => schuif(-1)}
+                    className="flex w-9 items-center justify-center rounded-l-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-accent"
+                  >
+                    <IcoonPijlLinks className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t("periode.volgende")}
+                    onClick={() => schuif(1)}
+                    className="flex w-9 items-center justify-center rounded-r-veld border-l border-lijn-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-accent"
+                  >
+                    <IcoonPijlRechts className="h-4 w-4" />
+                  </button>
+                </div>
 
-                <div className="ml-1 min-w-0">
-                  {/* Wraps rather than truncates: beside the arrows a 320px screen has room for
-                      "vrijdag 11 septem...", and the month is the half of the date that matters. */}
-                  <h2 className="flex min-h-9 items-center font-display text-[1.375rem] leading-tight text-inkt sm:text-[1.625rem]">
-                    {ankerLabel}
-                  </h2>
-
-                  <Dagonderschrift
-                    weekLabel={weekLabel}
-                    dagweergave={weergave === "dag"}
-                    datum={anker}
-                    schooljaar={rooster ? { start: rooster.start, eind: rooster.eind, blokken } : undefined}
-                    vakken={vakken}
-                    planGeladen={planGeladen}
-                  />
+                {/* Wraps rather than truncates: on a phone "vrijdag 11 september" does not fit beside the controls,
+                    and the month is the half of the date that matters. The week number sits on the date's baseline. */}
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+                  <h2 className="font-display text-[1.25rem] leading-tight text-inkt sm:text-[1.5rem]">{ankerLabel}</h2>
+                  {weekLabel ? (
+                    <span className="shrink-0 text-meta tabular-nums text-inkt-zacht">{weekLabel}</span>
+                  ) : null}
                 </div>
               </div>
 
-              {/* The button when there is a today to go to, and the reason when there is not. Never a
-                  dead control: in augustus the school year has not started and no day is today. */}
-              {vandaagBereikbaar ? (
-                <button
-                  type="button"
-                  onClick={() => ga({ datum: nu })}
-                  className="inline-flex h-9 shrink-0 items-center rounded-veld border border-lijn-veld px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-                >
-                  {t("periode.vandaag")}
-                </button>
-              ) : (
-                <p className="text-meta text-inkt-zwak">{t("periode.vandaagBuitenSchooljaar")}</p>
-              )}
+              {/* "Jaar" is the jaarplan: another screen, so choosing it navigates there (pushed, so the browser's
+                  back button returns here), and it is never the checked option on this one. */}
+              <Weergavekeuze
+                waarde={weergave}
+                onKies={(zicht) => (zicht === "jaar" ? navigeer("/agenda/periodes") : ga({ weergave: zicht }))}
+                className="w-full sm:w-auto"
+              />
             </div>
+
+            {weergave === "dag" ? (
+              <Dagonderschrift
+                datum={anker}
+                schooljaar={rooster ? { start: rooster.start, eind: rooster.eind, blokken } : undefined}
+                vakken={vakken}
+                planGeladen={planGeladen}
+              />
+            ) : null}
+
+            {/*
+              THE PANEL SWITCHES ARE IN THE SIDEBAR FROM `lg`, AND THIS ROW IS WHAT IS LEFT OF THEM BELOW THAT.
+
+              The owner asked for the switches in the sidepane (2026-08-31), and a sidepane exists only from `lg`:
+              below it the navigation is a bottom bar of five tabs with no room for more, while the panels still have
+              to be reachable on a phone, where they open as a sheet. So this row is `lg:hidden` and `Navigatie`
+              carries the switches from `lg` upward: one control per viewport, never two at once. A row of its own
+              since FB-089, so the switches no longer sit between the views.
+
+              One chip per list, in the sidebar's order: Activiteiten, Algemene fiches, Hoekenfiches (owner, TB-024).
+              The algemene fiches' chip only for a gebruiker who may plan this klas; the other two for everyone who
+              reads the agenda, whose cards then plan and write nothing (owner, 2026-09-15, FB-017 and FB-038). None
+              until the rights are known, so the fiche chip does not appear a moment after the others. Below `sm` the
+              icons give way, so the three fit one row at 390px.
+            */}
+            {rechtenBekend ? (
+              <div className="flex flex-wrap items-center gap-2 lg:hidden">
+                {(
+                  [
+                    { soort: "activiteiten", label: t("periode.activiteiten"), Icoon: IcoonActiviteit },
+                    ...(magPlannen
+                      ? ([{ soort: "algemeen", label: t("periode.algemeneFiches"), Icoon: IcoonFiche }] as const)
+                      : []),
+                    { soort: "hoeken", label: t("periode.hoekenfiches"), Icoon: IcoonHoek },
+                  ] as const
+                ).map(({ soort, label, Icoon }) => {
+                  const aan = paneelOpen && paneelSoort === soort;
+                  return (
+                    <button
+                      key={soort}
+                      type="button"
+                      onClick={() => kiesPaneel(soort)}
+                      aria-pressed={aan}
+                      className={cn(
+                        "inline-flex h-9 items-center gap-1.5 rounded-veld border px-3 text-meta font-medium transition-colors duration-150",
+                        aan
+                          ? "border-accent bg-accent-zacht text-accent"
+                          : "border-lijn-veld text-inkt-zacht hover:border-accent hover:text-accent",
+                      )}
+                    >
+                      <Icoon aria-hidden="true" className="h-4 w-4 max-sm:hidden" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         }
       />

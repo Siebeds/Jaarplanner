@@ -4,34 +4,28 @@ import { cn } from "../../lib/cn";
 import { themaClausule, themaLabel, vakOpDag, type Themavak } from "./themavakken";
 
 /**
- * Where the agenda's anchored day sits in the school year, as a caption under the heading.
+ * Where the day of the day view sits in the school year, as a caption under the toolbar. Only the day view renders
+ * it; the week number that used to open it stands beside the date in the toolbar (FB-089), so a caption with
+ * nothing true to say renders nothing at all.
  *
  * **It is a caption and not a row of chips.** The owner read the filled pills that used to sit beside
  * the heading as buttons (2026-09-11), and nothing in them can be pressed. So there is no fill and no
  * radius here, only one neutral rule before the thema. The caption is set well below the heading in a
  * softer ink, and only the thema's days and its name are in full ink.
  *
- * **The thema and its days are facts about one day, so they are only printed where the view IS one day.** In the
- * month and week views the answer is on the days instead, where it can differ per day: `Themastroken`.
+ * **The thema and its days are facts about one day**, which is why only the day view shows this. In the month and
+ * week views the answer is on the days instead, where it can differ per day: `Themastroken`.
  *
  * **Every sentence here is printed only where its own condition holds** (the E5-03 rule), because a day without a
  * thema is not necessarily "between two thema's": it may lie outside the school year, before the first thema or
  * after the last, or the rooster may simply not have arrived yet.
  */
 export function Dagonderschrift({
-  weekLabel,
-  dagweergave,
   datum,
   schooljaar,
   vakken,
   planGeladen,
 }: {
-  /**
-   * Null wherever the days in view are not one week (`weekInBeeld`), and the caption is then empty.
-   * That costs the period nothing: it is only printed in the day view, and one day is always one week.
-   */
-  weekLabel: string | null;
-  dagweergave: boolean;
   datum: string;
   /** Undefined while the rooster is still loading. `blokken` are the thema placements as stretches of days. */
   schooljaar: { start: string; eind: string; blokken: readonly { start: string; eind: string }[] } | undefined;
@@ -39,15 +33,12 @@ export function Dagonderschrift({
   /** False while the jaarplan loads or failed to: an empty thema list then means "unknown", not "none". */
   planGeladen: boolean;
 }) {
-  if (!weekLabel) return null;
-
-  const vak = dagweergave ? vakOpDag(vakken, datum) : undefined;
-  const plaats = dagweergave && !vak ? plaatsZonderPeriode(datum, schooljaar) : null;
+  const vak = vakOpDag(vakken, datum);
+  const plaats = vak ? null : plaatsZonderPeriode(datum, schooljaar);
+  if (!vak && !plaats) return null;
 
   return (
     <p className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-1 text-meta text-inkt-zacht">
-      <span className="shrink-0 tabular-nums">{weekLabel}</span>
-
       {vak ? (
         <>
           <span className="shrink-0">
