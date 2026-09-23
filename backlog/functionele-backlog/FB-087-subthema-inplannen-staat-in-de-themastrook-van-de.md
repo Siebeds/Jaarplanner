@@ -2,12 +2,12 @@
 id: FB-087
 titel: Subthema inplannen staat in de themastrook van de agenda, bij het thema zelf
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:47
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 09:05
+opgepakt-door: claude-fb087
+branch: ticket/FB-087-subthema-knop
 pr:
 geblokkeerd:
 fr: [FR-6.3]
@@ -88,3 +88,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 00:47 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-23 09:05 · claude-fb087 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
