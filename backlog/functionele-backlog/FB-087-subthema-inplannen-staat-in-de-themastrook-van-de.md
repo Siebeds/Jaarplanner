@@ -2,13 +2,13 @@
 id: FB-087
 titel: Subthema inplannen staat in de themastrook van de agenda, bij het thema zelf
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:21
-opgepakt-door: claude-fb087
-branch: ticket/FB-087-subthema-knop
-pr: 163
+bijgewerkt: 2026-09-23 10:29
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: [FR-6.3]
 ---
@@ -41,6 +41,10 @@ Het knopje staat er alleen voor wie de planning van de klas mag wijzigen. Wie de
 themastrook zoals vandaag, zonder knopje. Waar geen thema loopt, is er geen strook en dus ook geen knopje, en de kop van
 het scherm blijft op zijn plaats staan.
 
+Het knopje staat alleen op dagen waar nog geen subthema loopt. Loopt er op een dag al een subthema, dan toont de
+themastrook van die dag geen knopje. Een thema kan meerdere subthema's na elkaar hebben: zolang er binnen het thema nog
+dagen zonder subthema zijn, staat het knopje daar en kan je er nog een inplannen.
+
 Op telefoonbreedte blijft het knopje bereikbaar, desnoods alleen als plusteken met een voorleesbare naam.
 
 ## Acceptatiecriteria
@@ -58,6 +62,9 @@ Op telefoonbreedte blijft het knopje bereikbaar, desnoods alleen als plusteken m
       een zichtbare focusrand en een voorleesbare naam.
 - [x] Gegeven een scherm van ongeveer 390 pixels breed, wanneer de leerkracht de agenda in een themaweek opent, dan is
       het knopje zichtbaar en bruikbaar, en blijft de naam van het thema leesbaar.
+- [ ] Gegeven een thema waarin op sommige dagen al een subthema loopt, wanneer de leerkracht de agenda opent, dan toont
+      de themastrook op de dagen met een subthema geen knopje "+ Subthema", en op de dagen van dat thema zonder
+      subthema wel.
 
 ## Testscenario's
 
@@ -73,6 +80,8 @@ Op telefoonbreedte blijft het knopje bereikbaar, desnoods alleen als plusteken m
 6. Druk op Tab tot het knopje de focus krijgt. Je ziet een focusrand, en Enter opent de planner.
 7. Maak het venster ongeveer 390 pixels breed. Het knopje is nog zichtbaar en werkt, en de naam van het thema blijft
    leesbaar.
+8. Open een themaweek waarin al een subthema loopt. Op de dagen met dat subthema staat geen "+ Subthema" in de
+   themastrook. Blader naar een week van hetzelfde thema zonder subthema: daar staat het knopje wel.
 
 ## Buiten scope
 
@@ -94,3 +103,4 @@ Geen.
 - 2026-09-23 09:21 · claude-fb087 · Antagonist: COMPLIANT, geen CRITICAL of MAJOR. MINOR opgelost: commentaar bij onMouseDown. MINOR open: mislukt het laden van de themaperiode, dan blijft de planner laden in plaats van een fout te tonen; maandweergave heeft op telefoonbreedte geen themastrook en dus geen knop (buiten scope); plannerPlaatsingId wordt niet gewist, zonder gevolg.
 - 2026-09-23 09:21 · claude-fb087 · in-uitvoering → te-testen: Knop Subthema inplannen staat in de themastrook (week, werkweek, dag, maand), niet meer in de kop; lint en 1313 tests groen, browserpas 1440/390 px, antagonist COMPLIANT.
 - 2026-09-23 09:21 · claude-fb087 · PR #163
+- 2026-09-23 10:29 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: in de themastrook, verwacht het knopje + Subthema alleen op dagen zonder subthema, gezien ook op dagen waar al een subthema loopt
