@@ -91,6 +91,13 @@ public sealed class Promptbegrenzing
         Bewaak(request, omschrijving, ServerRaad);
     }
 
+    /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for the cat's chat (FB-031): the handleiding and
+    /// one question, whose length the chat already caps, so only the server setting helps.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void BewaakChat(AiRequest request) => Bewaak(request, "de handleiding en je vraag", ServerRaad);
+
     // "Beheer" is the admin's right in this app, and the ceiling is no in-app setting, so this advice names whoever
     // runs the server rather than sending admin to look for a setting it cannot find.
     private const string ServerRaad =

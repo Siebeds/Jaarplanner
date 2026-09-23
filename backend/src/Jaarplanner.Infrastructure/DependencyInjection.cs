@@ -325,6 +325,11 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Kat.IDeurmatService, Jaarplanner.Infrastructure.Kat.DeurmatService>();
         services.AddScoped<Jaarplanner.Application.Kat.IKatinstellingService, Jaarplanner.Infrastructure.Kat.KatinstellingService>();
 
+        // The cat's chat (FB-031, ADR-0066): one model call picks an explanation or a lookup, and the lookup reads the
+        // tool's own data. Nothing of it is stored.
+        services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatopzoekbron, Jaarplanner.Infrastructure.Kat.EfKatopzoekbron>();
+        services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatchatService, Jaarplanner.Application.Kat.Chat.KatchatService>();
+
         // The one task, and the one place the cat calls the AI unasked (FB-070, ADR-0060, Art. IV.8). It runs for a
         // finding the round has just noticed for the first time, so a tick over an unchanged state costs no call.
         services.AddScoped<Jaarplanner.Application.Kat.IKattaak, Jaarplanner.Infrastructure.Kat.AanbodgatTaak>();
