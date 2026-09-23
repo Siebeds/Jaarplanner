@@ -2,13 +2,13 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 09:39
-opgepakt-door: claude-fb071-kop
-branch: ticket/FB-071-kop
-pr: 164
+bijgewerkt: 2026-09-23 09:55
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: []
 ---
@@ -161,3 +161,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 09:23 · claude-fb071-kop · PR #164
 - 2026-09-23 09:29 · claude-fb071-kop · op vraag van de eigenaar staat de klaskiezer onderaan: in de zijbalk boven naam en Afmelden, op telefoon onderaan Instellingen; bekeken op 1440 en 390px, lint en 162 tests groen
 - 2026-09-23 09:39 · claude-fb071-kop · op vraag van de eigenaar (doorgegeven via een andere sessie): tekstballonnen boven Chuck met het staartje naar zijn kop, het stille label blijft onder hem; ook op de hoek van de weekstrook; bekeken op 1500 en 390px, 108 tests groen
+- 2026-09-23 09:55 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: Chuck steekt boven de agenda-kop uit, hij moet uitgelijnd staan met de kop; de Vandaag-knop dichter bij de datum
