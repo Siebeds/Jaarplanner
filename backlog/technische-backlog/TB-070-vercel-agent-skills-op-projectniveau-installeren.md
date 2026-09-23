@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:14
+bijgewerkt: 2026-09-23 09:15
 opgepakt-door: vercel-agent-skills
 branch: ticket/vercel-agent-skills
-pr:
+pr: 162
 geblokkeerd:
 fr: []
 ---
@@ -46,3 +46,4 @@ Geen.
 
 - 2026-09-23 09:13 · vercel-agent-skills · aangemaakt (status in-uitvoering)
 - 2026-09-23 09:14 · vercel-agent-skills · in-uitvoering → klaar: 9 skills als kopie in .claude/skills geïnstalleerd plus skills-lock.json; elke map heeft een SKILL.md, diff raakt niets anders, geheimenscan leeg. Let op: deploy-to-vercel uploadt het project zonder login naar Vercel.
+- 2026-09-23 09:15 · vercel-agent-skills · PR #162
