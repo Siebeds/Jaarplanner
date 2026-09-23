@@ -38,6 +38,7 @@ export function Schermkop({
   breed,
   smal,
   zonderKat,
+  meeScrollen,
 }: {
   titel: string;
   /** An emoji before the title, decorative (a thema's, FB-060). */
@@ -50,13 +51,19 @@ export function Schermkop({
   smal?: boolean;
   /** No Chuck on this screen: the ontwikkelingsrapport carries no cat (FB-071, ADR-0059 D7). */
   zonderKat?: boolean;
+  /**
+   * Scrolls away with the page rather than sticking. For a screen that fills the viewport and scrolls inside itself
+   * (the agenda's time grid, FB-092): its page scrolls only on a low phone, and there a sticky header would lie over
+   * the grid's own day headings.
+   */
+  meeScrollen?: boolean;
 }) {
   const meet = breed ? BREED : smal ? SMAL : MAAT;
   const kop = useRef<HTMLElement>(null);
   useSchermtitel(titel);
-  useKopruimte(kop);
+  useKopruimte(meeScrollen ? null : kop);
   return (
-    <header ref={kop} className="sticky top-0 z-20 bg-vlak/85 backdrop-blur-md">
+    <header ref={kop} className={cn(!meeScrollen && "sticky top-0 z-20 bg-vlak/85 backdrop-blur-md")}>
       {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
           title and the rows under it, his top level with the title's. On a phone the rows under the title
           need the full width, so there he stays beside the title. */}
@@ -107,9 +114,10 @@ export function Schermkop({
  * measured rather than fixed, because the header grows with its `onder` row, with a wrapping title on a phone and with
  * the safe area, and a fixed guess is exactly one of those short.
  */
-function useKopruimte(kop: RefObject<HTMLElement | null>) {
+function useKopruimte(kop: RefObject<HTMLElement | null> | null) {
   useEffect(() => {
-    const element = kop.current;
+    // A header that scrolls away covers nothing, so it asks for no room.
+    const element = kop?.current;
     if (!element) return;
     const wortel = document.documentElement;
     const zet = () => {
@@ -138,14 +146,17 @@ export function Schermvlak({
   children,
   breed,
   smal,
+  className,
 }: {
   children: ReactNode;
   breed?: boolean;
   /** A document measure, centred rather than left aligned. See `SMAL`. */
   smal?: boolean;
+  /** Extra layout for the body, such as the agenda's column that fills the viewport (FB-092). */
+  className?: string;
 }) {
   return (
-    <div className={cn("mx-auto px-4 pb-16 sm:px-6", breed ? BREED : smal ? SMAL : MAAT)}>
+    <div className={cn("mx-auto px-4 pb-16 sm:px-6", breed ? BREED : smal ? SMAL : MAAT, className)}>
       {children}
     </div>
   );

@@ -8,19 +8,18 @@
  * **The constants below are presentation, not school data** (ADR-0028 decision 5). The server stores the times a
  * teacher picked, to the minute, and knows nothing about when a lesuur starts. These say what the grid draws and what
  * it snaps to. The school's own hours (FB-023, ADR-0038) are data and live in `features/schooluren`; they decide where
- * the grid opens when they are set, and these two are what it falls back on when they are not.
+ * the grid opens when they are set, and `DAGBEGIN` is what it falls back on when they are not.
  */
 
 /**
- * The hours a teacher sees without scrolling, and where the grid opens when the school has set no hours.
+ * Where the grid opens when the school has set no hours.
  *
- * **These are not the hours the grid draws.** It draws the whole day (`HEEL_DE_DAG`); these two say which stretch of
- * it is on screen when the agenda arrives. Owner, 2026-09-11: *"ik wil gewoon kunnen scrollen maar default moet het
- * wel op 7u-18u staan"*, so an opvang at 6:45 or an oudercontact at 19:30 is a scroll away rather than behind a
- * control, and the ordinary school day is still what opens.
+ * **Not an hour the grid starts at.** It draws the whole day (`HEEL_DE_DAG`); this says where the scroll stands when
+ * the agenda arrives. Owner, 2026-09-11: *"ik wil gewoon kunnen scrollen maar default moet het wel op 7u-18u staan"*,
+ * so an opvang at 6:45 or an oudercontact at 19:30 is a scroll away rather than behind a control. How many hours below
+ * it are on screen follows from the screen, since the grid fills what the agenda leaves it (FB-092).
  */
 export const DAGBEGIN = 7 * 60;
-export const DAGEINDE = 18 * 60;
 
 /**
  * The hours the grid draws: all of them.

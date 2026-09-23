@@ -313,19 +313,30 @@ describe("Tijdraster", () => {
     expect(strook("na").style.top).toBe(`${930 * (56 / 60)}px`);
   });
 
-  it("schrijft de grenzen van de schooldag in de uurkolom, in plaats van het uur waarop ze vallen", () => {
+  it("schrijft alleen hele uren in de uurkolom en tekent de grenzen van de schooldag in de kolom zelf (FB-092)", () => {
     const { container } = toon([dag()], { schooluren: [dinsdag] });
 
-    // Never the tint alone (Art. XII): the gutter says where each stretch starts and stops.
-    const grenzen = [...container.querySelectorAll("[data-schoolgrens]")].map((el) => el.textContent);
-    expect(grenzen).toEqual(["8:30", "12:00", "13:15", "15:30"]);
-    const grens = container.querySelector('[data-schoolgrens="8:30"]') as HTMLElement;
-    expect(grens.style.top).toBe(`${510 * (56 / 60)}px`);
-
-    // 12:00 is written once, as a boundary, and the hours around the others stay.
-    expect(screen.getAllByText("12:00")).toHaveLength(1);
+    // No half-hour label under "12:00" or "8:00": the gutter is whole hours, all 24 of them.
+    expect(screen.queryByText("8:30")).not.toBeInTheDocument();
+    expect(screen.queryByText("13:15")).not.toBeInTheDocument();
+    expect(screen.queryByText("15:30")).not.toBeInTheDocument();
     expect(screen.getByText("8:00")).toBeInTheDocument();
-    expect(screen.getByText("9:00")).toBeInTheDocument();
+    expect(screen.getByText("12:00")).toBeInTheDocument();
+    expect(screen.getByText("15:00")).toBeInTheDocument();
+
+    // Never the tint alone (Art. XII): each stretch is edged by a dashed line on the side that faces the school day.
+    const strook = (soort: string) => container.querySelector(`[data-schooltijd="${soort}"]`) as HTMLElement;
+    expect(strook("voor")).toHaveClass("border-dashed", "border-b");
+    expect(strook("pauze")).toHaveClass("border-dashed", "border-y");
+    expect(strook("na")).toHaveClass("border-dashed", "border-t");
+  });
+
+  it("is een scrollgebied dat het toetsenbord bereikt en een naam heeft (FB-092)", () => {
+    toon([dag()], { schooluren: [dinsdag] });
+
+    const uren = screen.getByRole("region", { name: "Uren van de dag" });
+    expect(uren).toHaveAttribute("tabindex", "0");
+    expect(uren).toHaveClass("overflow-y-auto", "rustige-schuifbalk");
   });
 
   it("geeft een algemene fiche een ander vlak dan een activiteit van dezelfde week, en een icoon erbij (FB-077)", () => {

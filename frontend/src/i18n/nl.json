@@ -1283,6 +1283,7 @@
     "kiezerTitelBereik": "{dag} van {begin} tot {einde}",
     "enOpDitBereik": "Bewaren maakt de activiteit en plant ze meteen op {dag} van {begin} tot {einde}.",
     "algemeneFiche": "algemene fiche",
+    "uren": "Uren van de dag",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },
   "doelinfo": {
