@@ -123,6 +123,7 @@ export function Themastroken({
         onClick={() => onPlanSubthema(vak.plaatsingId)}
         aria-label={t("periode.planSubthemaIn", { naam: genoemd.naam })}
         title={t("periode.planSubthema")}
+        // As the band's link: a press leaves no focus ring behind in the agenda. The keyboard still focuses it.
         onMouseDown={(e) => e.preventDefault()}
         className="group/plan pointer-events-auto flex h-6 shrink-0 items-start focus-visible:outline-offset-[-2px]"
       >
