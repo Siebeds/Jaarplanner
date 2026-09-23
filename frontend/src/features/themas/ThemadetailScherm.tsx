@@ -306,7 +306,7 @@ export function ThemadetailScherm() {
 
       <Schermvlak smal>
         {/* THE FOUR FIGURES, ONCE (FB-094). Each used to stand in a margin beside its block and again on that block. */}
-        <dl aria-label={t("thema.samenvatting")} className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-body sm:flex sm:flex-wrap sm:gap-x-8">
+        <dl aria-label={t("thema.samenvatting")} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-body sm:flex sm:flex-wrap sm:gap-x-8">
           <Cijfer aantal={thema.duurWeken} een="themas.weekEen" meer="themas.weekMeer" />
           <Cijfer aantal={thema.minimumdoelen.length} een="themas.minimumdoelEen" meer="themas.minimumdoelMeer" />
           {leerplandoelen !== null ? (
