@@ -16,6 +16,7 @@ import {
 } from "./gegevens";
 import { Gesprek, Vraagveld } from "./Katchat";
 import { useKatchat } from "./useKatchat";
+import { Kopje } from "./Tekening";
 import type { Chuck } from "./useChuck";
 import { katvoorstelMoment, signaalzin, voorstelzin } from "./zinnen";
 
@@ -53,6 +54,7 @@ export const Katvenster = forwardRef<
       )}
     >
       <div className="flex shrink-0 items-center gap-3 border-b border-lijn py-2.5 pl-4 pr-2.5">
+        <Kopje className="-mr-1 h-8 w-8 shrink-0" />
         <h2 id={titelId} className="font-display text-sectie text-inkt">
           {t("kat.naam")}
         </h2>

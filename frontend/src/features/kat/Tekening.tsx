@@ -117,6 +117,41 @@ function Been({ poot, ver }: { poot: Poot; ver: boolean }) {
   );
 }
 
+/** The standing cat's head: on the standing cat, and on its own beside what he says in the chat. */
+function StaandeKop() {
+  return (
+    <g className="kop-staand">
+      <path className="oor-l" d="M34 44 L29 6 L60 28 Z" fill={VACHT} stroke={VACHT} strokeWidth="7" strokeLinejoin="round" />
+      <path className="oor-l" d="M38 38 L35 17 L53 29 Z" fill={LICHT} stroke={LICHT} strokeWidth="3" strokeLinejoin="round" />
+      <path className="oor-r" d="M70 28 L99 8 L94 48 Z" fill={VACHT} stroke={VACHT} strokeWidth="7" strokeLinejoin="round" />
+      <path className="oor-r" d="M74 32 L93 20 L90 42 Z" fill={LICHT} stroke={LICHT} strokeWidth="3" strokeLinejoin="round" />
+      <circle cx="62" cy="62" r="33" fill={VACHT} />
+      <g stroke={DIEP} strokeWidth="3.2" strokeLinecap="round" opacity=".8">
+        <path d="M49 35 l3 11" />
+        <path d="M60 32 l1 12" />
+        <path d="M71 35 l-2 11" />
+      </g>
+      <ellipse cx="54" cy="78" rx="23" ry="14" fill={LICHT} />
+      <path d="M48 71 L60 71 L54 78 Z" fill={DIEP} stroke={DIEP} strokeWidth="2.3" strokeLinejoin="round" />
+      <g fill="none" stroke={DIEP} strokeWidth="2.3" strokeLinecap="round">
+        <path d="M54 78 q-5 7 -11 3" />
+        <path d="M54 78 q5 7 11 3" />
+      </g>
+      <g fill="none" stroke={DIEP} strokeWidth="1.9" strokeLinecap="round" opacity=".5">
+        <path d="M33 72 L9 66" />
+        <path d="M32 79 L6 79" />
+        <path d="M33 86 L10 94" />
+      </g>
+      <g className="oog-open">
+        <ellipse cx="46" cy="59" rx="7.5" ry="9" fill="var(--color-oogbol)" />
+        <ellipse cx="47" cy="60" rx="3.2" ry="7.5" fill="var(--color-pupil)" />
+        <ellipse cx="78" cy="57" rx="7.5" ry="9" fill="var(--color-oogbol)" />
+        <ellipse cx="79" cy="58" rx="3.2" ry="7.5" fill="var(--color-pupil)" />
+      </g>
+    </g>
+  );
+}
+
 /** The standing cat, in the same 240 by 176 space as the lying one. */
 function StaandeVorm() {
   const lijf = useSvgId("chuck-lijf-staand");
@@ -148,35 +183,7 @@ function StaandeVorm() {
       <Been poot="vn" ver={false} />
       <Been poot="an" ver={false} />
 
-      <g className="kop-staand">
-        <path className="oor-l" d="M34 44 L29 6 L60 28 Z" fill={VACHT} stroke={VACHT} strokeWidth="7" strokeLinejoin="round" />
-        <path className="oor-l" d="M38 38 L35 17 L53 29 Z" fill={LICHT} stroke={LICHT} strokeWidth="3" strokeLinejoin="round" />
-        <path className="oor-r" d="M70 28 L99 8 L94 48 Z" fill={VACHT} stroke={VACHT} strokeWidth="7" strokeLinejoin="round" />
-        <path className="oor-r" d="M74 32 L93 20 L90 42 Z" fill={LICHT} stroke={LICHT} strokeWidth="3" strokeLinejoin="round" />
-        <circle cx="62" cy="62" r="33" fill={VACHT} />
-        <g stroke={DIEP} strokeWidth="3.2" strokeLinecap="round" opacity=".8">
-          <path d="M49 35 l3 11" />
-          <path d="M60 32 l1 12" />
-          <path d="M71 35 l-2 11" />
-        </g>
-        <ellipse cx="54" cy="78" rx="23" ry="14" fill={LICHT} />
-        <path d="M48 71 L60 71 L54 78 Z" fill={DIEP} stroke={DIEP} strokeWidth="2.3" strokeLinejoin="round" />
-        <g fill="none" stroke={DIEP} strokeWidth="2.3" strokeLinecap="round">
-          <path d="M54 78 q-5 7 -11 3" />
-          <path d="M54 78 q5 7 11 3" />
-        </g>
-        <g fill="none" stroke={DIEP} strokeWidth="1.9" strokeLinecap="round" opacity=".5">
-          <path d="M33 72 L9 66" />
-          <path d="M32 79 L6 79" />
-          <path d="M33 86 L10 94" />
-        </g>
-        <g className="oog-open">
-          <ellipse cx="46" cy="59" rx="7.5" ry="9" fill="var(--color-oogbol)" />
-          <ellipse cx="47" cy="60" rx="3.2" ry="7.5" fill="var(--color-pupil)" />
-          <ellipse cx="78" cy="57" rx="7.5" ry="9" fill="var(--color-oogbol)" />
-          <ellipse cx="79" cy="58" rx="3.2" ry="7.5" fill="var(--color-pupil)" />
-        </g>
-      </g>
+      <StaandeKop />
     </g>
   );
 }
@@ -249,3 +256,15 @@ export const LiggendeKat = forwardRef<SVGSVGElement, { className?: string }>(fun
     </svg>
   );
 });
+
+/**
+ * Chuck's head on its own, ears up and eyes open: beside each of his balloons in the chat and beside his name in the
+ * window's heading (FB-031), so a balloon's tail points at somebody.
+ */
+export function Kopje({ className }: { className?: string }) {
+  return (
+    <svg className={cn("chuck", className)} viewBox="0 0 104 100" aria-hidden="true" focusable="false">
+      <StaandeKop />
+    </svg>
+  );
+}
