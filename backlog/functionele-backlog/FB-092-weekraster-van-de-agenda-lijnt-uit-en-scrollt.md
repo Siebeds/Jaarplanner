@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 11:31
+bijgewerkt: 2026-09-23 11:32
 opgepakt-door: claude-fb092
 branch: ticket/FB-092-weekraster
-pr:
+pr: 171
 geblokkeerd:
 fr: []
 ---
@@ -70,3 +70,4 @@ De themastroken zelf (FB-090), de blokken zelf (FB-091) en de werkbalk boven de 
 - 2026-09-23 11:27 · claude-fb092 · browser 1440x900: strook en blok op dezelfde randen in alle kolommen, pagina 900=900, één dunne schuifbalk, PageDown scrollt het raster; 390x844 geen paginascroll, 390x667 pagina scrollt 115px zonder de kaart onder de onderbalk; vitest 1327 groen, lint schoon
 - 2026-09-23 11:31 · claude-fb092 · antagonist: COMPLIANT; vier MINOR opgelost (ADR-0028 en ADR-0038 aangevuld, commentaar, bredere schuifbalkduim)
 - 2026-09-23 11:31 · claude-fb092 · in-uitvoering → te-testen: gebouwd: raster vult het scherm (flex-kolom over 100dvh), één dunne schuifbalk, strook en blok op dezelfde randen, alleen hele uren met gestippelde schoolgrens; vitest en lint groen
+- 2026-09-23 11:32 · claude-fb092 · PR #171
