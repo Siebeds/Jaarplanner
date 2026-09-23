@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:41
+bijgewerkt: 2026-09-23 23:50
 opgepakt-door: claude-fb096
 branch: ticket/FB-096-subthema-uit-agenda
 pr:
@@ -102,3 +102,4 @@ Geen.
 
 - 2026-09-23 22:07 · Siebeds · aangemaakt (status nieuw)
 - 2026-09-23 23:41 · claude-fb096 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 23:50 · claude-fb096 · backend: GET .../subthemaperiodes/weghaling telt wat meegaat, DELETE haalt periode, activiteiten van dat subthema en hoekverrijkingen samen weg; unit- en Postgres-tests groen

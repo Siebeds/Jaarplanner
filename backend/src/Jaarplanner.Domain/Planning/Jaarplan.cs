@@ -141,6 +141,34 @@ public sealed class Jaarplan
     }
 
     /// <summary>
+    /// The windows of this subthema that share a day with <paramref name="van"/>–<paramref name="tot"/> (FB-096): what
+    /// taking the subthema out of the agenda over those days takes away.
+    /// </summary>
+    public IReadOnlyList<Subthemaplaatsing> SubthemaplaatsingenTussen(Guid subthemaId, DateOnly van, DateOnly tot) =>
+        _subthemaplaatsingen
+            .Where(p => p.SubthemaId == subthemaId && p.Overlapt(van, tot))
+            .OrderBy(p => p.Van)
+            .ToList();
+
+    /// <summary>
+    /// Takes a subthema window out of the plan (FB-096).
+    /// <para>
+    /// Like <see cref="VerwijderActiviteitplaatsing"/> it checks no status: a window is only ever the teacher's own
+    /// statement, and this is only reached from her explicit action after a confirmation that named what goes with it.
+    /// </para>
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The window belongs to another jaarplan.</exception>
+    public void VerwijderSubthemaplaatsing(Subthemaplaatsing plaatsing)
+    {
+        ArgumentNullException.ThrowIfNull(plaatsing);
+
+        if (!_subthemaplaatsingen.Remove(plaatsing))
+        {
+            throw new InvalidOperationException("The subthema window does not belong to this jaarplan.");
+        }
+    }
+
+    /// <summary>
     /// Places an activiteit on one day (E9-03, FR-7.2).
     /// <para>
     /// <b>There is no class boundary left for this method to enforce, and the remarks below say where the check
