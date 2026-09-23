@@ -2,12 +2,12 @@
 id: FB-095
 titel: Themapagina-kop: Chuck staat rechtsboven zonder de knoppen te bedekken, en de kop ademt
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:36
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 20:38
+opgepakt-door: claude-fb095
+branch: ticket/FB-095-themakop-chuck
 pr:
 geblokkeerd:
 fr: []
@@ -60,3 +60,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 20:36 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-23 20:38 · claude-fb095 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
