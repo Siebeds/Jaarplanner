@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 11:05
+bijgewerkt: 2026-09-23 11:12
 opgepakt-door: claude-fb089
 branch: ticket/FB-089-agenda-werkbalk
 pr: 168
@@ -101,3 +101,4 @@ in de plaats van de knop "Agenda".
 - 2026-09-23 10:59 · claude-fb089 · klaar-voor-bouw → in-uitvoering: opnieuw opgepakt voor de bevinding, op dezelfde branch en PR
 - 2026-09-23 11:04 · claude-fb089 · in-uitvoering → te-testen: jaarplan toont dezelfde weergavekeuze met Jaar gekozen, knop Agenda weg; Vitest 1320 groen, lint groen, in de echte app op 1440/1280/390px gemeten; antagonist COMPLIANT op de delta
 - 2026-09-23 11:05 · claude-fb089 · PR #168
+- 2026-09-23 11:12 · claude-fb089 · bevinding eigenaar: werkbalk verspringt bij snel wisselen; oorzaak: de schuifbalk van de pagina komt en gaat (15px); opgelost met scrollbar-gutter: stable op html, gemeten op 1366x650 en 1440x900

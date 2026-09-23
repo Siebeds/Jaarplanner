@@ -311,6 +311,11 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* The page's scrollbar always has its room, used or not (FB-089). Without it, a view that fits the window and
+       one that does not differ by the scrollbar's width, and everything aligned right or centred (the view switch,
+       Chuck) jumps sideways on each switch, and again while a view loads and its height settles. Overlay
+       scrollbars, as on a phone, take no room and are unaffected. */
+    scrollbar-gutter: stable;
   }
 
   :root {
