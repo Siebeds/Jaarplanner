@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 11:32
+bijgewerkt: 2026-09-23 11:33
 opgepakt-door: claude-fb031
 branch: ticket/FB-031-kat-chat
-pr:
+pr: 172
 geblokkeerd:
 fr: []
 ---
@@ -124,3 +124,4 @@ Regels:
 - 2026-09-23 11:24 · claude-fb031 · browserpas op een kopie van de database met Claude Haiku: uitleg, onbekend, ja/nee met plek, niet gevonden, kiezen en opnieuw zoeken werken, op 1440px en 390px, zonder horizontale scroll; lange doelteksten ingekort
 - 2026-09-23 11:32 · claude-fb031 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR opgelost (geweigerde themaplaatsing niet in de agenda, eigen activiteit via de rechtenmatrix, geen gedachtestreepje in een uitleg); open MINOR: een 400 met een Nederlandse zin (prompt te groot) toont de algemene fouttekst; vraag aan de eigenaar: de handleiding uitdrukkelijk in Art. IV.4 noemen
 - 2026-09-23 11:32 · claude-fb031 · in-uitvoering → te-testen: chat van Chuck gebouwd: uitleg uit de handleiding (eerste versie, na te kijken door de eigenaar) en vijf opzoekingen uit de eigen gegevens met de rechten van de gebruiker, ook de agenda; niets bewaard of gelogd (ADR-0066); criteria bewezen met unit-, Postgres- en Vitest-tests en een browserpas op 1440px en 390px; volledige suites, dotnet format en pnpm lint groen
+- 2026-09-23 11:33 · claude-fb031 · PR #172
