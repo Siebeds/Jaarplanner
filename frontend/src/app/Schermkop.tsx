@@ -23,7 +23,8 @@ const SMAL = "max-w-[57.5rem]";
 /**
  * A narrow screen's header stands on the default measure, so Chuck lies where he lies on every other screen, and moves
  * its title and rows in to the narrow column: by the gap between the two measures' left edges, and no wider than the
- * column (`SMAL` less its padding). `cqw` is the header's own width, the width the body centres itself in.
+ * column (`SMAL` less its padding). `cqw` is the header's own width, the width the body centres itself in. The widths
+ * are `SMAL` and `MAAT` written out, because a Tailwind class cannot be composed at runtime: change them together.
  */
 const SMAL_IN_MAAT = "ml-[calc(max(0px,(100cqw_-_57.5rem)/2)_-_max(0px,(100cqw_-_80rem)/2))] max-w-[54.5rem]";
 

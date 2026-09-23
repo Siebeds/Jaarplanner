@@ -2,10 +2,10 @@
 id: FB-095
 titel: Themapagina-kop: Chuck staat rechtsboven zonder de knoppen te bedekken, en de kop ademt
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:34
+bijgewerkt: 2026-09-23 23:35
 opgepakt-door: claude-fb095
 branch: ticket/FB-095-themakop-chuck
 pr:
@@ -63,3 +63,5 @@ Geen.
 - 2026-09-23 20:38 · claude-fb095 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 20:45 · claude-fb095 · Kop ruimer: kruimelpad 12px boven de titel, cijferrij 12px verder; Chuck over de knoppen niet na te bootsen op nepdata (1024-1440px, met en zonder ballon), schermafbeelding gevraagd
 - 2026-09-23 23:34 · claude-fb095 · Chuck op de smalle themapagina op de brede maat gezet, titel en rijen ingesprongen tot de smalle kolom; gemeten op 1920/1280/1024/390px: Chucks rechterrand gelijk aan de themalijst, titel gelijk met de inhoud; lint en 279 tests groen
+- 2026-09-23 23:35 · claude-fb095 · Antagonist: COMPLIANT; MINOR over de hand geschreven breedtes met een commentaar verholpen, kruimelpad wordt alleen op de themapagina gebruikt
+- 2026-09-23 23:35 · claude-fb095 · in-uitvoering → te-testen: Chuck staat op de themapagina op de plek van de andere schermen, kop ruimer; lint, 279 tests en browsercontrole groen
