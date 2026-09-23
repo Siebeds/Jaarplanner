@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 10:52
 opgepakt-door: claude-fb087b
 branch: ticket/FB-087-alleen-zonder-subthema
-pr:
+pr: 169
 geblokkeerd:
 fr: [FR-6.3]
 ---
@@ -108,3 +108,4 @@ Geen.
 - 2026-09-23 10:50 · claude-fb087b · Knopje alleen op lesdagen zonder lopend subthema, ook midden in de rij waar een vrije strook begint; lint en 1321 frontendtests groen, browserpas maand en werkweek op 1440 en 390 px met tijdelijk ingekorte mockvensters.
 - 2026-09-23 10:52 · claude-fb087b · Criterium 7 afgevinkt met Vitest (subthemaruimte, Themastroken) en de browserpas. Antagonist: COMPLIANT, geen CRITICAL of MAJOR. MINOR opgelost: componenttests voor ruimte. MINOR zonder gevolg: dag buiten het schooljaar is nooit een lesdag. Vraag voor de test: het knopje staat eenmaal per vrije strook (kop van de rij of begin van de strook), niet op elke vrije dag.
 - 2026-09-23 10:52 · claude-fb087b · in-uitvoering → te-testen: Knopje + Subthema alleen op lesdagen zonder lopend subthema, ook waar een vrije strook midden in de rij begint; lint en 1321 frontendtests groen, browserpas 1440/390 px, antagonist COMPLIANT.
+- 2026-09-23 10:52 · claude-fb087b · PR #169
