@@ -41,6 +41,8 @@ Code: `features/plan/Agendascherm.tsx` (de `onder`-rij van `Schermkop`) en `comp
   op dezelfde lijn.
 - **Jaarplan wordt "Jaar" als eerste keuze in de weergavekeuze**: Jaar, Maand, Week, Werkweek, Dag. Het opent
   hetzelfde scherm als nu.
+- **Het jaarplan toont dezelfde weergavekeuze, met Jaar gekozen** (eigenaar, 2026-09-23). Maand, Week, Werkweek of
+  Dag brengt je naar de agenda in die weergave. De losse knop "Agenda" op het jaarplan verdwijnt.
 - **Op een telefoon (~390px)** staan Vandaag, de pijlen en de datum op de eerste rij, en de weergavekeuze over de
   volle breedte op de tweede. De knoppen voor de panelen (Activiteiten, Algemene fiches, Hoekenfiches) krijgen een
   eigen rij eronder en staan niet meer tussen de weergavekeuze.
@@ -60,6 +62,8 @@ Code: `features/plan/Agendascherm.tsx` (de `onder`-rij van `Schermkop`) en `comp
       volgende, dan de weergavekeuze, met een zichtbare focusring.
 - [x] Gegeven een andere keuzebalk in de app die `Segment` gebruikt, wanneer die mee verandert, dan ziet ze er nog
       goed uit op desktop en op ~390px.
+- [ ] Gegeven het jaarplan, wanneer het opent, dan staat dezelfde weergavekeuze erboven met Jaar gekozen en geen
+      knop "Agenda"; wanneer de gebruiker Week kiest, dan opent de agenda in de weekweergave.
 
 ## Testscenario's
 
@@ -71,10 +75,13 @@ Code: `features/plan/Agendascherm.tsx` (de `onder`-rij van `Schermkop`) en `comp
 4. Open de agenda op een telefoon. Eerste rij: Vandaag, pijlen en datum. Tweede rij: de weergavekeuze. Daaronder de
    knoppen voor de panelen. Niets steekt buiten het scherm.
 5. Zet het schooljaar zo dat vandaag erbuiten valt: in plaats van de knop Vandaag staat de uitleg, op dezelfde plek.
+6. Open het jaarplan. Bovenaan staat de weergavekeuze met Jaar gekozen. Kies Maand: de agenda opent in de
+   maandweergave.
 
 ## Buiten scope
 
-De kalender zelf, de dekkingsbalk en de zijbalk. Het jaarplanscherm zelf verandert niet.
+De kalender zelf, de dekkingsbalk en de zijbalk. Op het jaarplan verandert alleen de kop: de weergavekeuze komt
+in de plaats van de knop "Agenda".
 
 ## Open vragen
 

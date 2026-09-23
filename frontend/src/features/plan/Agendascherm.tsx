@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Segment } from "../../components/ui/Segment";
+import { Weergavekeuze } from "./Weergavekeuze";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Knop } from "../../components/ui/Knop";
@@ -757,17 +757,9 @@ export function Agendascherm() {
 
               {/* "Jaar" is the jaarplan: another screen, so choosing it navigates there (pushed, so the browser's
                   back button returns here), and it is never the checked option on this one. */}
-              <Segment<Weergave | "jaar">
-                label={t("periode.weergave")}
+              <Weergavekeuze
                 waarde={weergave}
                 onKies={(zicht) => (zicht === "jaar" ? navigeer("/agenda/periodes") : ga({ weergave: zicht }))}
-                opties={[
-                  { waarde: "jaar", label: t("periode.jaar") },
-                  { waarde: "maand", label: t("periode.maand") },
-                  { waarde: "week", label: t("periode.week") },
-                  { waarde: "werkweek", label: t("periode.werkweek") },
-                  { waarde: "dag", label: t("periode.dag") },
-                ]}
                 className="w-full sm:w-auto"
               />
             </div>
