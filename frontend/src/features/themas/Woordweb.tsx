@@ -99,7 +99,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
       {bekend ? (
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
           <AiKnop
-            className="h-9 min-h-9 px-2.5 text-meta"
+            className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
             disabled={eigen === null || eigenWoorden.length === 0}
             onClick={() => eigen && stelVoor.mutate(eigen.id)}
@@ -142,7 +142,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
 
       {collegas.length > 0 ? (
         <div className="mt-4">
-          <h4 className="text-meta font-medium text-inkt-zacht">{t("woordweb.collegas")}</h4>
+          <h6 className="text-meta font-medium text-inkt-zacht">{t("woordweb.collegas")}</h6>
           <ul className="mt-2 flex flex-col gap-3">
             {collegas.map((web) => (
               <li key={web.id} aria-label={t("woordweb.vanCollega", { naam: web.eigenaarNaam })}>
@@ -196,7 +196,7 @@ function Woordchip({ woord, omlijnd, onHaalWeg }: { woord: string; omlijnd?: boo
           type="button"
           aria-label={t("woordweb.haalWeg", { woord })}
           onClick={onHaalWeg}
-          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-inkt-zwak transition-colors duration-150 hover:bg-kaart hover:text-inkt"
+          className="inline-flex h-raak w-9 shrink-0 items-center justify-center rounded-full text-inkt-zwak sm:h-6 sm:w-6 transition-colors duration-150 hover:bg-kaart hover:text-inkt"
         >
           <IcoonKruis aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
@@ -251,7 +251,7 @@ function WoordInvoer({
       onChange={(e) => setTekst(e.target.value)}
       onKeyDown={opToets}
       onPaste={opPlakken}
-      className="min-h-8 w-36 rounded-full border border-dashed border-lijn-veld bg-transparent px-3 text-meta text-inkt outline-none placeholder:text-inkt-zacht focus-visible:border-solid focus-visible:ring-2 focus-visible:ring-inkt/30"
+      className="min-h-raak w-36 rounded-full sm:min-h-8 border border-dashed border-lijn-veld bg-transparent px-3 text-meta text-inkt outline-none placeholder:text-inkt-zacht focus-visible:border-solid focus-visible:ring-2 focus-visible:ring-inkt/30"
     />
   );
 }

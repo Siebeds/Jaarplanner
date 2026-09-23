@@ -168,12 +168,9 @@
     "onderzoeksvragenTitel": "Onderzoeksvragen",
     "subdoelenTitel": "Subdoelen",
     "koppelAanSubthema": "Doel koppelen aan subthema {naam}",
-    "doelenLabel": "Doelkoppelingen",
-    "geenDoelenGekoppeld": "Nog geen doelen gekoppeld",
     "doelenOpThema": "op het thema",
     "doelenOpSubthemas": "op subthema's",
     "doelenOpActiviteiten": "op activiteiten",
-    "zonderDoelLabel": "Zonder doel",
     "zonderDoelEen": "1 activiteit",
     "zonderDoelMeer": "{aantal} activiteiten",
     "eenActiviteit": "1 activiteit",
@@ -191,7 +188,6 @@
     "subdoelInActiviteitEen": "{aantal} van 1 subdoel in een activiteit",
     "subdoelenInActiviteit": "{aantal} van {totaal} subdoelen in een activiteit",
     "subthemaLeeftijd": ", leeftijd {leeftijd}",
-    "overzichtTitel": "Doelen per leeftijd",
     "overzichtFout": "Doelen per leeftijd niet geladen",
     "overzichtLeerplandoelWoordEen": "leerplandoel",
     "overzichtLeerplandoelWoordMeer": "leerplandoelen",
@@ -206,8 +202,6 @@
     "plaatsSubdoel": "subdoel in {naam}",
     "plaatsEenActiviteit": "1 activiteit",
     "plaatsActiviteiten": "{aantal} activiteiten",
-    "eenMinimumdoel": "1 minimumdoel",
-    "minimumdoelen": "{aantal} minimumdoelen",
     "lijstMinimumdoelen": "minimumdoelen",
     "lijstActiviteiten": "activiteiten",
     "lijstSubdoelen": "subdoelen",
@@ -225,7 +219,19 @@
     "subdoelOntkoppelOnbeslist": "{code} is dan geen subdoel meer van {subthema}.",
     "subdoelOntkoppelBlijftEen": "Het blijft wel meetellen via de activiteit {namen}, die dit doel ook draagt.",
     "subdoelOntkoppelBlijftMeer": "Het blijft wel meetellen via {aantal} activiteiten die dit doel ook dragen: {namen}.",
-    "subdoelOntkoppelGeenDrager": "Geen activiteit van dit subthema draagt dit doel, dus via dit subthema telt het dan niet meer mee."
+    "subdoelOntkoppelGeenDrager": "Geen activiteit van dit subthema draagt dit doel, dus via dit subthema telt het dan niet meer mee.",
+    "leerplandoelenVoor": "Leerplandoelen voor {leeftijd}",
+    "alleBekijken": "Alle {aantal} bekijken",
+    "minderTonen": "Minder tonen",
+    "subdoelenBekijken": "Subdoelen bekijken",
+    "subdoelenVerbergen": "Subdoelen verbergen",
+    "samenvatting": "Samenvatting",
+    "voorLeeftijd": "Voor {leeftijd}",
+    "doelenTitel": "Doelen",
+    "gekoppeld": "Gekoppeld: {lijst}.",
+    "zonderDoelZin": "{activiteiten} zonder doel.",
+    "kruimelpad": "Kruimelpad",
+    "geenDoelenGekoppeldZin": "Nog geen doelen gekoppeld."
   },
   "lijst": {
     "zoekIn": "Zoek in {lijst}",
@@ -706,8 +712,6 @@
     "nieuwTitel": "Nieuw thema",
     "wijzigTitel": "{naam} bewerken",
     "bewerk": "Bewerken",
-    "bewerkAria": "{naam} bewerken",
-    "verwijderAria": "{naam} verwijderen",
     "verwijder": "Verwijderen",
     "naam": "Naam",
     "naamVerplicht": "Geef het thema een naam.",
@@ -733,7 +737,9 @@
     "annuleer": "Annuleren",
     "bewaarMislukt": "Bewaren is niet gelukt",
     "verwijderTitel": "{naam} verwijderen",
-    "verwijderGevolg": "Hiermee verdwijnen ook {subthemas} subthema's en {doelen} gekoppelde doelen. Dat is niet terug te draaien."
+    "verwijderGevolg": "Hiermee verdwijnen ook {subthemas} subthema's en {doelen} gekoppelde doelen. Dat is niet terug te draaien.",
+    "menuAria": "Meer acties voor {naam}",
+    "bewerkThema": "Thema bewerken"
   },
   "emojikiezer": {
     "kies": "Emoji kiezen",
@@ -832,8 +838,6 @@
     "nieuwTitel": "Nieuw subthema",
     "wijzigTitel": "Subthema bewerken",
     "toevoegen": "Subthema toevoegen",
-    "bewerkAria": "Subthema {naam} bewerken",
-    "verwijderAria": "Subthema {naam} verwijderen",
     "voorWie": "Voor wie",
     "leeftijd": "Leeftijd",
     "kiesLeeftijd": "Kies een leeftijd",
@@ -850,7 +854,8 @@
     "verwijderGevolgMetVerrijkingen": "Hiermee verdwijnen ook {activiteiten} activiteiten, {doelen} gekoppelde doelen en {verrijkingen} van klassen. Dat is niet terug te draaien.",
     "verwijderGevolgVerrijkingenOnbekend": "Hiermee verdwijnen ook {activiteiten} activiteiten, {doelen} gekoppelde doelen en eventuele hoekverrijkingen van klassen. Hoeveel dat er zijn, kon niet gelezen worden. Dat is niet terug te draaien.",
     "eenVerrijking": "1 hoekverrijking",
-    "aantalVerrijkingen": "{aantal} hoekverrijkingen"
+    "aantalVerrijkingen": "{aantal} hoekverrijkingen",
+    "menuAria": "Meer acties voor subthema {naam}"
   },
   "instellingen": {
     "titel": "Instellingen",
@@ -1340,6 +1345,7 @@
     "kiezerTitelBereik": "{dag} van {begin} tot {einde}",
     "enOpDitBereik": "Bewaren maakt de activiteit en plant ze meteen op {dag} van {begin} tot {einde}.",
     "algemeneFiche": "algemene fiche",
+    "tot": "tot {tijd}",
     "uren": "Uren van de dag",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen."
   },

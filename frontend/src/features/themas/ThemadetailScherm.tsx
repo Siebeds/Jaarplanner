@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
@@ -7,15 +7,16 @@ import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
-import { Bewerkknop, Verwijderknop } from "../../components/ui/Rijknoppen";
+import { Actiemenu } from "../../components/ui/Actiemenu";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
-import { IcoonDoelen } from "../../components/Iconen";
+import { IcoonDoelen, IcoonPotlood } from "../../components/Iconen";
 import {
   useBeoordeelSuggestie,
   useDoelsuggesties,
   useGenereerDoelsuggesties,
   useJaarfasen,
   useThema,
+  useThemaDoelenoverzicht,
 } from "../../lib/queries";
 import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
@@ -28,13 +29,13 @@ import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
 import { Plaatsingsbalk, Subthemavoorstelkaart } from "./Subdoelplaatsing";
 import { beslisFout, useBeslisSubdoelvoorstel, useSubdoelplaatsing } from "./plaatsingen";
-import { Blok, Feit, Groep, Kop } from "./Fiche";
+import { Kaart, Sectie } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
 import { Doeldetailblad } from "./Doeldetailblad";
 import { Themadoelenoverzicht } from "./Themadoelenoverzicht";
 import { Minimumdoelkoppelaar, Themaminimumdoelen } from "./Themaminimumdoelen";
 import { MIJLPAAL } from "../doelen/mijlpaal";
-import { themabalans } from "./themabalans";
+import { aantalLeerplandoelen, themabalans } from "./themabalans";
 import { beslist, subthemabalans } from "./subthemabalans";
 import { useWoordwebs } from "./woordwebs";
 import {
@@ -56,51 +57,25 @@ import {
 } from "./mutaties";
 
 /**
- * One thema, as a document rather than as a stack of tables.
+ * One thema, read top to bottom in the order a teacher uses it (FB-094): the kop with its four figures and what the thema
+ * is, then its subthema's, then its doelen.
  *
- * **The three earlier passes fixed controls; this one fixes the page.** The complaints were "too
- * many buttons", "everything the same size", "no consistency", "sloppy", and each was answered where
- * it was reported: icons instead of words, one shape for adding, the counts moved onto the headings.
- * The screen was still ugly afterwards, because none of that touched the reason. There was no
- * composition, only a stack: every object began at the same x, every object was the same width,
- * every gap was the same size. At 1440 that made an activiteit holding eight words a box eleven
- * hundred pixels wide, and it made three levels of nesting a matter of twenty pixels of indent.
+ * **Each figure stands once**, in one line under the title; the counts no longer sit in a margin beside every block and
+ * again on the block. **The two main sections have real headings** in the display face, and every label under them is
+ * in sentence case, a step down. **The actions are one "Bewerken" and one "…"** beside the title, and one "…" per
+ * subthema, so deleting is never as loud as editing.
  *
- * **So the page has a margin now, and the blocks hang off it as siblings.** `Fiche.tsx` holds the
- * grid and the argument. Here is what that buys, in order:
+ * **The subthema's are ordered by leeftijd** (the server's own order, from `/api/jaarfasen`), one list per leeftijd. A
+ * thema is school-wide and its subthema's are per age: two of them are usually two ages side by side, not a sequence.
  *
- * - **The fiche has a measure, and the whole screen takes it.** A document measure rather than the
- *   default `80rem`, so the rows stop stretching to the width of the window. It is set on `Schermkop`
- *   and `Schermvlak` together via `smal`, which also CENTRES it. The first version put a 54rem
- *   wrapper inside the default measure, and that measure is left aligned: on a wide window it left a
- *   small gap on one side and a large one on the other, which reads as a mistake rather than as a
- *   margin (owner, 2026-08-31). Applying it to the header too is what keeps the title lined up with
- *   the fiche's margin.
- * - **The margin carries the figures**, so a section heading no longer has to be a count as well as
- *   a name, and the loudest thing in a block is not its add-button.
- * - **A subthema is a chapter, not a card**, at the same axis as the thema's own facts. The level a
- *   doel hangs on (Art. IX.2) is carried by the page's structure rather than by a border.
- * - **The labels of the thema's facts line up**, so the values start at one edge. Four labels of
- *   four different lengths put four values at four different x positions, which is the "slordig"
- *   the owner reported in its second form.
+ * **Nothing here claims anything about dekking.** A doel is gedekt when it is linked AND the thema is placed in a plan
+ * (Art. V.1), and this screen knows nothing about any plan, so it counts links and says "gekoppeld".
  *
- * **The subthema's are ordered by leeftijd** (the server's own order, from `/api/jaarfasen`), so the
- * ages group instead of arriving in insertion order. A thema is school-wide and its subthema's are
- * per age; two of them are usually two ages running side by side in two classes, not a sequence.
- *
- * **Nothing here claims anything about dekking.** A doel is gedekt when it is linked AND the thema
- * is placed in a plan (Art. V.1), and this screen knows nothing about any plan. The margin counts
- * links and the copy says "gekoppeld".
- *
- * **Each control is drawn only for whoever holds its row of the ADR-0030 §3 matrix** (E6-02 slice 4), decided in
+ * **Each control is drawn only for whoever holds its row of the ADR-0030 §3 matrix** (E6-02), decided in
  * `lib/rechten.ts`. The thema, its themadoelen and the doelsuggesties are admin's and themabeheer's. Deleting the
- * thema is admin's, and themabeheer's while the thema is empty (I26). The server also lets themabeheer delete a
- * thema holding only its own open wizard run's items, but this read does not carry a run's items, so that case waits
- * for E6-05. Each chapter asks about its own leeftijd.
- * Everyone reads the whole fiche. No sentence explains a missing control: on this screen most visitors read, and a
- * hint repeated per block is the prose this interface cuts first. Open doelsuggesties are shown only to whoever may
- * decide them, since for anyone else they are proposals waiting on somebody else (owner, 2026-09-14: kept hidden).
- * *Until fix round 1 this said no read carries the delete's fact at all; the empty thema is one it does carry.*
+ * thema is admin's, and themabeheer's while the thema is empty (I26). Each subthema asks about its own leeftijd. Everyone
+ * reads the whole page, and no sentence explains a missing control. Open doelsuggesties are shown only to whoever may
+ * decide them (owner, 2026-09-14).
  */
 export function ThemadetailScherm() {
   const { themaId } = useParams<{ themaId: string }>();
@@ -108,6 +83,8 @@ export function ThemadetailScherm() {
   const { data: thema, isPending, isError } = useThema(themaId);
   const { data: suggesties } = useDoelsuggesties(themaId);
   const { data: jaarfasen } = useJaarfasen();
+  // The same read as "Leerplandoelen voor …" below, for the one figure under the title.
+  const { data: overzicht } = useThemaDoelenoverzicht(themaId);
   const genereer = useGenereerDoelsuggesties(id);
   const beoordeel = useBeoordeelSuggestie(id);
   const navigeer = useNavigate();
@@ -204,6 +181,7 @@ export function ThemadetailScherm() {
   const openSuggesties = (suggesties ?? []).filter((s) => s.status === "Voorgesteld");
 
   const balans = themabalans(thema);
+  const leerplandoelen = overzicht ? aantalLeerplandoelen(overzicht.leeftijden) : null;
   const subthemas = opLeeftijd(thema.subthemas, jaarfasen);
 
   // WHICH GOALS A DOELSUGGESTIE RUN SEARCHES (TB-007). The server never sends the whole Op.stap catalogue, so the run
@@ -272,129 +250,258 @@ export function ThemadetailScherm() {
     .map((mutatie) => geenToegangZin(mutatie.error))
     .find((zin) => zin !== null);
 
+  // THE THEMA'S ACTIONS SIT BESIDE ITS TITLE (FB-094): "Bewerken", and the rest in one "…", so deleting is no louder
+  // than editing. Only what this gebruiker holds; no menu at all without anything in it.
+  const themamenu = (
+    <Actiemenu
+      omrand
+      label={t("themabeheer.menuAria", { naam: thema.naam })}
+      acties={
+        mag.themaVerwijderen(thema)
+          ? [
+              {
+                label: t("themabeheer.verwijder"),
+                soort: "verwijder",
+                onSelect: () => {
+                  verwijder.reset();
+                  setVerwijderOpen(true);
+                },
+              },
+            ]
+          : []
+      }
+    />
+  );
+  const openBewerken = () => {
+    wijzig.reset();
+    setBewerkOpen(true);
+  };
+
+  // One mijlpaal for every themadoel is said once, at their heading, instead of on each row (FB-094).
+  const mijlpalen = [...new Set(thema.minimumdoelen.map((m) => mijlpaalVan(m.minimumdoelRef)))];
+  const gedeeldeMijlpaal = mijlpalen.length === 1 && MIJLPAAL[mijlpalen[0]] ? t(MIJLPAAL[mijlpalen[0]]) : null;
+
+  const groepen = leeftijdsgroepen(subthemas, plaatsing?.leeftijden, jaarfasen);
+
   return (
     <>
-      {/* THE THEMA'S TWO CONTROLS ARE NOT UP HERE ANY MORE (owner, 2026-08-31: "het edit potloodje
-          en trashcan zitten nog wat te verdoken in de hoek"). In the screen header they were two
-          bare 36 pixel icons at the far right of a 1440 wide bar, eleven hundred pixels from the
-          title they act on and with nothing around them to be read against. They now sit on the
-          thema's own card, which is exactly the card whose contents the pencil opens for editing. */}
-      <Schermkop smal titel={thema.naam} icoon={thema.icoon} />
+      <Schermkop
+        smal
+        titel={thema.naam}
+        icoon={thema.icoon}
+        kruimelpad={<Kruimelpad naam={thema.naam} />}
+        rechts={
+          <div className="flex items-center gap-2">
+            {/* On a phone "Bewerken" moves under the thema's facts, so the title keeps its width. */}
+            {mag.themaBewerken ? (
+              <Knop className="hidden sm:inline-flex" onClick={openBewerken}>
+                <IcoonPotlood aria-hidden="true" className="h-[18px] w-[18px]" />
+                {t("themabeheer.bewerk")}
+              </Knop>
+            ) : null}
+            {themamenu}
+          </div>
+        }
+      />
 
       <Schermvlak smal>
-        <Terug />
+        {/* THE FOUR FIGURES, ONCE (FB-094). Each used to stand in a margin beside its block and again on that block. */}
+        <dl aria-label={t("thema.samenvatting")} className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-body sm:flex sm:flex-wrap sm:gap-x-8">
+          <Cijfer aantal={thema.duurWeken} een="themas.weekEen" meer="themas.weekMeer" />
+          <Cijfer aantal={thema.minimumdoelen.length} een="themas.minimumdoelEen" meer="themas.minimumdoelMeer" />
+          {leerplandoelen !== null ? (
+            <Cijfer
+              aantal={leerplandoelen}
+              een="thema.overzichtLeerplandoelWoordEen"
+              meer="thema.overzichtLeerplandoelWoordMeer"
+            />
+          ) : null}
+          <Cijfer aantal={thema.subthemas.length} een="themas.subthemaEen" meer="themas.subthemaMeer" />
+        </dl>
 
-        {/* WHAT THIS THEMA IS. The duration goes in the margin, where every other block keeps its
-            measure, and the rest are labelled facts in one aligned column. Three of the four
-            counts this block used to carry are gone from it entirely: they sat directly above the
-            lists they counted, and each one now lives in the margin of the block that holds those
-            lists. */}
-        <Blok
-          figuur={thema.duurWeken}
-          onder={t(thema.duurWeken === 1 ? "themas.weekEen" : "themas.weekMeer")}
+        {/* WHAT THIS THEMA IS: label and value, no card of its own. The two vocabulary lists keep Op.stap's own names,
+            the ones a teacher meets in the thema form. */}
+        {thema.invalshoeken || thema.kernwoordenschat.length > 0 || thema.rijkeWoordenschat.length > 0 ? (
+          <dl className="mt-5 grid gap-y-3 border-t border-lijn pt-5 text-body sm:grid-cols-[10rem_minmax(0,1fr)] sm:gap-x-6 sm:gap-y-2.5">
+            {thema.invalshoeken ? (
+              <Gegeven label={t("themabeheer.invalshoeken")}>{thema.invalshoeken}</Gegeven>
+            ) : null}
+            {thema.kernwoordenschat.length > 0 ? (
+              <Gegeven label={t("themabeheer.kernwoordenschat")}>{thema.kernwoordenschat.join(", ")}</Gegeven>
+            ) : null}
+            {thema.rijkeWoordenschat.length > 0 ? (
+              <Gegeven label={t("themabeheer.rijkeWoordenschat")}>{thema.rijkeWoordenschat.join(", ")}</Gegeven>
+            ) : null}
+          </dl>
+        ) : null}
+
+        {mag.themaBewerken ? (
+          <Knop className="mt-5 sm:hidden" onClick={openBewerken}>
+            <IcoonPotlood aria-hidden="true" className="h-[18px] w-[18px]" />
+            {t("themabeheer.bewerkThema")}
+          </Knop>
+        ) : null}
+
+        {/* THE SUBTHEMA'S COME BEFORE THE DOELEN (FB-094): a teacher comes to this page for them. Per leeftijd, in the
+            order of `/api/jaarfasen`, each leeftijd one list. A leeftijd the subdoelplaatsing lists without a subthema
+            (FB-062) holds just its count, the AI button and what the AI proposed. */}
+        <Sectie
+          id="thema-subthemas"
+          titel={t("thema.subthemasTitel")}
           acties={
-            mag.themaBewerken || mag.themaVerwijderen(thema) ? (
-              <>
-                {mag.themaBewerken ? (
-                  <Bewerkknop
-                    omrand
-                    label={t("themabeheer.bewerkAria", { naam: thema.naam })}
-                    onClick={() => {
-                      wijzig.reset();
-                      setBewerkOpen(true);
-                    }}
-                  />
-                ) : null}
-                {mag.themaVerwijderen(thema) ? (
-                  <Verwijderknop
-                    omrand
-                    label={t("themabeheer.verwijderAria", { naam: thema.naam })}
-                    onClick={() => {
-                      verwijder.reset();
-                      setVerwijderOpen(true);
-                    }}
-                  />
-                ) : null}
-              </>
+            // At SOME leeftijd; the form then offers only the leeftijden this gebruiker may use.
+            mag.subthemaToevoegen ? (
+              <Toevoegknop
+                label={t("subthemabeheer.toevoegen")}
+                onClick={() => {
+                  maakSubthema.reset();
+                  setSubthemaBlad({});
+                }}
+              />
             ) : undefined
           }
         >
-          <dl className="flex flex-col gap-2">
-            {thema.invalshoeken ? (
-              <Feit label={t("themabeheer.invalshoeken")}>{thema.invalshoeken}</Feit>
-            ) : null}
+          {groepen.length === 0 ? <p className="text-meta text-inkt-zacht">{t("thema.geenSubthemas")}</p> : null}
+          {groepen.map((groep) => {
+            const plaatsen = plaatsing?.leeftijden.find((l) => l.leeftijd === groep.leeftijd);
+            // A refusal other than a 403 (decided elsewhere, subthema gone) is shown at the leeftijd it happened in.
+            const beslisFoutHier =
+              beslisSubdoel.isError &&
+              geenToegangZin(beslisSubdoel.error) === null &&
+              plaatsen?.subdoelvoorstellen.some((v) => v.id === beslisSubdoel.variables?.voorstelId);
+            return (
+              <section key={groep.leeftijd} aria-label={t("thema.voorLeeftijd", { leeftijd: groep.leeftijd })} className="flex flex-col gap-2">
+                <h3 className="text-meta font-semibold text-inkt-zacht">
+                  {t("thema.voorLeeftijd", { leeftijd: groep.leeftijd })}
+                </h3>
+                {plaatsen ? (
+                  <Plaatsingsbalk
+                    themaId={id}
+                    leeftijd={plaatsen.leeftijd}
+                    aantalOpen={plaatsen.aantalOpen}
+                    magVragen={mag.subdoelplaatsingVragen(plaatsen.leeftijd)}
+                  />
+                ) : null}
+                {beslisFoutHier ? (
+                  <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                    {beslisFout(beslisSubdoel.error)}
+                  </p>
+                ) : null}
+                {groep.subthemas.length > 0 ? (
+                  <Kaart>
+                    <ul className="divide-y divide-lijn">
+                      {groep.subthemas.map((subthema) => (
+                        <li key={subthema.id}>
+                          <Subthemahoofdstuk
+                            subthema={subthema}
+                            mag={mag}
+                            gevraagd={subthema.id === gevraagdSubthema}
+                            koppelenBezig={koppelSubdoel.isPending || ontkoppelSubdoel.isPending}
+                            onBewerk={() => {
+                              wijzigSubthema.reset();
+                              setSubthemaBlad({ subthema });
+                            }}
+                            onVerwijder={() => {
+                              verwijderSubthema.reset();
+                              setTeVerwijderenSubthema(subthema);
+                            }}
+                            onNieuweActiviteit={() => {
+                              maakActiviteit.reset();
+                              setActiviteitBlad({ subthemaId: subthema.id });
+                            }}
+                            onBewerkActiviteit={(activiteit) => {
+                              wijzigActiviteit.reset();
+                              setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
+                            }}
+                            onVerwijderActiviteit={(activiteit) => {
+                              verwijderActiviteit.reset();
+                              setTeVerwijderenActiviteit(activiteit);
+                            }}
+                            onKoppelSubdoel={(code) =>
+                              koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
+                            }
+                            onOntkoppelSubdoel={(subdoelId) => {
+                              ontkoppelSubdoel.reset();
+                              setTeOntkoppelenSubdoel({ subthemaId: subthema.id, subdoelId });
+                            }}
+                            onToonDoel={toonDoel}
+                            voorstellen={plaatsen?.subdoelvoorstellen.filter((v) => v.subthemaId === subthema.id)}
+                            beslisBezig={beslisSubdoel.isPending}
+                            onBeslisVoorstel={
+                              plaatsen?.magBeslissen
+                                ? (voorstelId, status) => beslisSubdoel.mutate({ voorstelId, status })
+                                : undefined
+                            }
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </Kaart>
+                ) : null}
+                {plaatsen?.subthemavoorstellen.map((voorstel) => (
+                  <Subthemavoorstelkaart
+                    key={voorstel.id}
+                    themaId={id}
+                    voorstel={voorstel}
+                    magBeslissen={plaatsen.magBeslissen}
+                    onToon={toonDoel}
+                  />
+                ))}
+              </section>
+            );
+          })}
+        </Sectie>
 
-            {/* The two vocabulary lists keep their full names rather than being shortened to
-                "Kern" and "Rijk": they are Op.stap's own terms and a teacher meets them in the
-                thema form under exactly these words. */}
-            {thema.kernwoordenschat.length > 0 ? (
-              <Feit label={t("themabeheer.kernwoordenschat")}>
-                {thema.kernwoordenschat.join(" · ")}
-              </Feit>
-            ) : null}
-            {thema.rijkeWoordenschat.length > 0 ? (
-              <Feit label={t("themabeheer.rijkeWoordenschat")} zacht>
-                {thema.rijkeWoordenschat.join(" · ")}
-              </Feit>
-            ) : null}
-
-            {/* WHERE THE DOELEN ARE, AND WHERE THE HOLE IS (owner's pick, 2026-08-30). They hang
-                at three depths and were nowhere added up, so the one question a teacher opens this
-                screen with, "what still needs a doel", could only be answered by scrolling the
-                whole page and counting. `gekoppeld`, never `gedekt`: see `themabalans.ts`. */}
-            <Feit label={t("thema.doelenLabel")}>
+        {/* THE DOELEN, where they hang: on the thema, on subthema's, on activiteiten. `gekoppeld`, never `gedekt`:
+            dekking belongs to a klas with a plan (Art. V.1), and this page knows none (`themabalans.ts`). */}
+        <Sectie
+          id="thema-doelen"
+          titel={t("thema.doelenTitel")}
+          onder={
+            <>
               {balans.totaal === 0 ? (
-                t("thema.geenDoelenGekoppeld")
+                t("thema.geenDoelenGekoppeldZin")
               ) : (
-                // Only the levels that carry something. A thema with two themadoelen and nothing
-                // else would otherwise read "2 op het thema, 0 op subthema's, 0 op activiteiten",
-                // which spends three facts to state one.
-                <span className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <Deel aantal={balans.themadoelen} woord="thema.doelenOpThema" />
-                  <Deel aantal={balans.subdoelen} woord="thema.doelenOpSubthemas" />
-                  <Deel aantal={balans.activiteitdoelen} woord="thema.doelenOpActiviteiten" />
-                </span>
+                // Only the levels that carry something: "2 op het thema, 0 op subthema's, 0 op activiteiten" would spend
+                // three facts to state one.
+                t("thema.gekoppeld", {
+                  lijst: [
+                    [balans.themadoelen, "thema.doelenOpThema"] as const,
+                    [balans.subdoelen, "thema.doelenOpSubthemas"] as const,
+                    [balans.activiteitdoelen, "thema.doelenOpActiviteiten"] as const,
+                  ]
+                    .filter(([aantal]) => aantal > 0)
+                    .map(([aantal, woord]) => `${aantal} ${t(woord)}`)
+                    .join(", "),
+                })
               )}
-            </Feit>
-
-            {/* Only when there is a hole, and it then states only what it counted. An activiteit
-                with no doel at all can never contribute to coverage whatever else happens to it,
-                which is what earns `attentie` here; the label carries the meaning without the
-                colour (Art. XII). */}
-            {balans.activiteitenZonderDoel > 0 ? (
-              <Feit label={t("thema.zonderDoelLabel")}>
+              {/* An activiteit with no doel can never count, which earns `attentie`; the words carry it without the
+                  colour (Art. XII). */}
+              {balans.activiteitenZonderDoel > 0 ? (
                 <span className="font-medium text-attentie-inkt">
-                  {telWoord(
-                    balans.activiteitenZonderDoel,
-                    "thema.zonderDoelEen",
-                    "thema.zonderDoelMeer",
-                  )}
+                  {" "}
+                  {t("thema.zonderDoelZin", {
+                    activiteiten: telWoord(balans.activiteitenZonderDoel, "thema.zonderDoelEen", "thema.zonderDoelMeer"),
+                  })}
                 </span>
-              </Feit>
-            ) : null}
-          </dl>
-        </Blok>
-
-        {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE BLOCK. As a sibling section the suggesties cost a second heading, a
-            second empty state and a permanent "Geen open suggesties" line.
-
-            A themadoel is a minimumdoel (FB-043): each opens to its leeftijden, and each leeftijd to the leerplandoelen
-            that lead there. The doelsuggesties propose minimumdoelen too (FB-053): accepting one puts it in the list
-            above, so a proposal wears the same MD chip as the themadoel it would become.
-
-            The AI half is unchanged where it counts (Art. IV): every suggestion is still shown
-            with its motivation and still has to be accepted or rejected by hand, and "Vraag
-            suggesties" is always reachable rather than appearing only when the list is empty. */}
-        <Blok
-          figuur={thema.minimumdoelen.length}
-          onder={t(thema.minimumdoelen.length === 1 ? "themas.minimumdoelEen" : "themas.minimumdoelMeer")}
+              ) : null}
+            </>
+          }
         >
-          <Kop
-            titel={t("thema.themadoelen")}
-            icoon={<IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />}
-            acties={
-              mag.themaBewerken || mag.doelsuggestiesMaken ? (
-                <>
+          {/* THEMADOELEN AND DOELSUGGESTIES ARE ONE CARD. A themadoel is a minimumdoel (FB-043); the doelsuggesties
+              propose minimumdoelen too (FB-053), so a proposal wears the MD chip of the themadoel it would become. Every
+              suggestion is shown with its motivation and accepted or rejected by hand (Art. IV). */}
+          <Kaart className="p-4 sm:p-5">
+            <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <h3 className="flex items-center gap-1.5 font-display text-sectie text-inkt">
+                  <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />
+                  {t("thema.themadoelen")}
+                </h3>
+                {gedeeldeMijlpaal ? <p className="mt-0.5 text-meta text-inkt-zacht">{gedeeldeMijlpaal}</p> : null}
+              </div>
+              {mag.themaBewerken || mag.doelsuggestiesMaken ? (
+                <div className="flex flex-wrap items-center gap-2 has-[>.w-full]:basis-full">
                   {mag.themaBewerken ? (
                     <Minimumdoelkoppelaar
                       onKies={(ref) => koppelMinimumdoel.mutate(ref)}
@@ -402,26 +509,18 @@ export function ThemadetailScherm() {
                       alGekozen={thema.minimumdoelen.map((m) => m.minimumdoelRef)}
                     />
                   ) : null}
-                  {/* Deliberately NOT a `Toevoegknop`, and it is the exception that makes the rule
-                      legible: this does not add a themadoel, it asks the model for candidates that a
-                      teacher then has to accept one by one (Art. IV). Admin and themabeheer only (R14). */}
-                  {/* FB-042: the heading carries only "Vraag suggesties". It asks nothing yet: it swaps itself for the
-                      choice, which reads on as the same phrase, "Vraag suggesties voor K3 L1", then the send button
-                      that does call the model and so is the one ring on show (ADR-0039), and a way back. */}
+                  {/* FB-042: "Vraag suggesties" asks nothing yet: it swaps itself for the choice of leeftijden, then
+                      the send button that does call the model and so is the one ring on show (ADR-0039). */}
                   {mag.doelsuggestiesMaken ? (
                     <div ref={vraagRef} className="contents">
                       {vraagOpen ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-meta text-inkt-zacht">{t("thema.suggestiesVragenVoor")}</span>
                           {jaarfasen ? (
-                            <Leeftijdkeuze
-                              jaarfasen={jaarfasen}
-                              gekozen={gekozenLeeftijden}
-                              onWijzig={setLeeftijdkeuze}
-                            />
+                            <Leeftijdkeuze jaarfasen={jaarfasen} gekozen={gekozenLeeftijden} onWijzig={setLeeftijdkeuze} />
                           ) : null}
                           <AiKnop
-                            className="h-9 min-h-9 px-2.5 text-meta"
+                            className="px-2.5 text-meta sm:h-9 sm:min-h-9"
                             bezig={genereer.isPending}
                             disabled={geenLeeftijd}
                             aria-describedby={geenLeeftijd ? "doelsuggesties-kies-leeftijd" : undefined}
@@ -429,50 +528,46 @@ export function ThemadetailScherm() {
                           >
                             {genereer.isPending ? t("thema.suggestiesBezig") : t("thema.suggestiesVersturen")}
                           </AiKnop>
-                          <Knop
-                            className="h-9 min-h-9 px-2.5 text-meta"
-                            disabled={genereer.isPending}
-                            onClick={sluitVraag}
-                          >
+                          <Knop className="px-2.5 text-meta sm:h-9 sm:min-h-9" disabled={genereer.isPending} onClick={sluitVraag}>
                             {t("thema.suggestiesAnnuleren")}
                           </Knop>
                         </div>
                       ) : (
-                        <AiKnop
-                          className="h-9 min-h-9 px-2.5 text-meta"
-                          onClick={() => setVraagOpen(true)}
-                        >
+                        <AiKnop className="px-2.5 text-meta sm:h-9 sm:min-h-9" onClick={() => setVraagOpen(true)}>
                           {t("thema.suggestiesVragen")}
                         </AiKnop>
                       )}
                     </div>
                   ) : null}
-                </>
-              ) : undefined
-            }
-          >
+                </div>
+              ) : null}
+            </div>
+
             {/* Why the AI button is disabled, directly under it, and only while it is. */}
             {mag.doelsuggestiesMaken && vraagOpen && geenLeeftijd ? (
-              <p id="doelsuggesties-kies-leeftijd" className="mb-3 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
+              <p id="doelsuggesties-kies-leeftijd" className="mt-2 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
             ) : null}
 
-            {thema.minimumdoelen.length === 0 ? (
-              <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
-            ) : (
-              <Themaminimumdoelen
-                koppelingen={thema.minimumdoelen}
-                ontkoppelBezig={ontkoppelMinimumdoel.isPending}
-                onOntkoppel={
-                  mag.themaBewerken
-                    ? (koppelingId) => {
-                        ontkoppelMinimumdoel.reset();
-                        setTeOntkoppelenMinimumdoel(koppelingId);
-                      }
-                    : undefined
-                }
-                onToonDoel={toonDoel}
-              />
-            )}
+            <div className="mt-3">
+              {thema.minimumdoelen.length === 0 ? (
+                <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
+              ) : (
+                <Themaminimumdoelen
+                  koppelingen={thema.minimumdoelen}
+                  toonMijlpaal={gedeeldeMijlpaal === null}
+                  ontkoppelBezig={ontkoppelMinimumdoel.isPending}
+                  onOntkoppel={
+                    mag.themaBewerken
+                      ? (koppelingId) => {
+                          ontkoppelMinimumdoel.reset();
+                          setTeOntkoppelenMinimumdoel(koppelingId);
+                        }
+                      : undefined
+                  }
+                  onToonDoel={toonDoel}
+                />
+              )}
+            </div>
 
             {/* A link that did not happen, other than a refusal (the page's line below says that): an already linked
                 minimumdoel or one no longer loaded. The server's own Dutch sentence. */}
@@ -484,9 +579,8 @@ export function ThemadetailScherm() {
               </p>
             ) : null}
 
-            {/* A refusal's own Dutch sentence where the server wrote one (too many goals, no leeftijd). A 422 is a bad
-                model answer and its detail is an English operator diagnostic (Art. II.3), so the catalogue line stands
-                in for it. */}
+            {/* A refusal's own Dutch sentence where the server wrote one. A 422 is a bad model answer and its detail is
+                an English operator diagnostic (Art. II.3), so the catalogue line stands in for it. */}
             {genereer.isError ? (
               <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
                 {genereer.error instanceof ApiError && genereer.error.status !== 422 && genereer.error.detail
@@ -501,19 +595,11 @@ export function ThemadetailScherm() {
               {genereer.isSuccess ? resultaatZin(genereer.data) : null}
             </p>
 
-            {/* Open suggestions, when there are any, one at a time in the `Voorstelstapel` (TB-045). Its card keeps a
-                white surface where the rest of this screen has none, and that is the point: everything else here is a
-                fact to read, and these are the only objects on the page waiting for a decision.
-
-                Only for whoever may make that decision (R14: admin and themabeheer). For anyone
-                else a card waiting on somebody else's verdict is noise, and a card without its two
-                buttons would read as a themadoel that is not one. Kept hidden by the owner's ruling
-                (owner, 2026-09-14), asked after the slice 4 audit. */}
+            {/* Open suggestions, one at a time (TB-045), only for whoever may decide them (R14: admin and themabeheer;
+                owner, 2026-09-14: kept hidden from everyone else). */}
             {mag.doelsuggestiesBeoordelen && openSuggesties.length > 0 ? (
               <>
-                <h3 className="mt-5 text-micro uppercase tracking-wide text-inkt-zacht">
-                  {t("thema.suggesties")}
-                </h3>
+                <h4 className="mt-5 text-meta font-semibold text-inkt-zacht">{t("thema.suggesties")}</h4>
                 <div className="mt-2">
                   <Voorstelstapel
                     label={t("voorstelstapel.doelenLabel")}
@@ -541,127 +627,11 @@ export function ThemadetailScherm() {
                 </div>
               </>
             ) : null}
-          </Kop>
-        </Blok>
+          </Kaart>
 
-        {/* WHAT THE THEMA REACHES, PER LEEFTIJD (FB-009), between its anchors and the chapters it is computed from. */}
-        <Themadoelenoverzicht themaId={id} onToonDoel={toonDoel} />
-
-        {/* THE HEADING AND ITS CHAPTERS SIT IN ONE TRAY (owner, 2026-08-31: "ik vind het wat
-            verwarrend dat de subthemas niet een sectie is"). The chapters are still not nested
-            INSIDE the heading's block: they are siblings hanging off the same margin, which is what
-            keeps their leeftijd legible as an axis. What the tray adds is the boundary that says
-            those siblings and that heading are one section. See `Groep`. */}
-        <Groep>
-        <Blok
-          kaal
-          strak
-          figuur={thema.subthemas.length}
-          onder={t(thema.subthemas.length === 1 ? "themas.subthemaEen" : "themas.subthemaMeer")}
-        >
-          <Kop
-            titel={t("thema.subthemasTitel")}
-            acties={
-              // At SOME leeftijd; the form then offers only the leeftijden this gebruiker may use.
-              mag.subthemaToevoegen ? (
-                <Toevoegknop
-                  label={t("subthemabeheer.toevoegen")}
-                  onClick={() => {
-                    maakSubthema.reset();
-                    setSubthemaBlad({});
-                  }}
-                />
-              ) : undefined
-            }
-          >
-            {subthemas.length === 0 ? (
-              <p className="text-meta text-inkt-zacht">{t("thema.geenSubthemas")}</p>
-            ) : null}
-          </Kop>
-        </Blok>
-
-        {/* ONE MARGIN PER LEEFTIJD (FB-047): a leeftijd often needs several subthema's to fill the thema, and each
-            card repeating "K2" beside the next made the axis stutter. The leeftijd is the figure and it is LABELLED:
-            the values are free text, from "K3" to "8-9", and four small letters remove the ambiguity. */}
-        {leeftijdsgroepen(subthemas, plaatsing?.leeftijden, jaarfasen).map((groep) => {
-          const plaatsen = plaatsing?.leeftijden.find((l) => l.leeftijd === groep.leeftijd);
-          // A refusal other than a 403 (decided elsewhere, subthema gone) is shown at the leeftijd it happened in.
-          const beslisFoutHier =
-            beslisSubdoel.isError &&
-            geenToegangZin(beslisSubdoel.error) === null &&
-            plaatsen?.subdoelvoorstellen.some((v) => v.id === beslisSubdoel.variables?.voorstelId);
-          return (
-          <Blok key={groep.leeftijd} stapel boven={t("subthemabeheer.leeftijd")} figuur={groep.leeftijd}>
-            {plaatsen ? (
-              <Plaatsingsbalk
-                themaId={id}
-                leeftijd={plaatsen.leeftijd}
-                aantalOpen={plaatsen.aantalOpen}
-                magVragen={mag.subdoelplaatsingVragen(plaatsen.leeftijd)}
-              />
-            ) : null}
-            {beslisFoutHier ? (
-              <p role="alert" className="rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-                {beslisFout(beslisSubdoel.error)}
-              </p>
-            ) : null}
-            {groep.subthemas.map((subthema) => (
-              <Subthemahoofdstuk
-                key={subthema.id}
-                subthema={subthema}
-                mag={mag}
-                gevraagd={subthema.id === gevraagdSubthema}
-                koppelenBezig={koppelSubdoel.isPending || ontkoppelSubdoel.isPending}
-                onBewerk={() => {
-                  wijzigSubthema.reset();
-                  setSubthemaBlad({ subthema });
-                }}
-                onVerwijder={() => {
-                  verwijderSubthema.reset();
-                  setTeVerwijderenSubthema(subthema);
-                }}
-                onNieuweActiviteit={() => {
-                  maakActiviteit.reset();
-                  setActiviteitBlad({ subthemaId: subthema.id });
-                }}
-                onBewerkActiviteit={(activiteit) => {
-                  wijzigActiviteit.reset();
-                  setActiviteitBlad({ subthemaId: subthema.id, activiteitId: activiteit.id });
-                }}
-                onVerwijderActiviteit={(activiteit) => {
-                  verwijderActiviteit.reset();
-                  setTeVerwijderenActiviteit(activiteit);
-                }}
-                onKoppelSubdoel={(code) =>
-                  koppelSubdoel.mutate({ subthemaId: subthema.id, leerplandoelCode: code })
-                }
-                onOntkoppelSubdoel={(subdoelId) => {
-                  ontkoppelSubdoel.reset();
-                  setTeOntkoppelenSubdoel({ subthemaId: subthema.id, subdoelId });
-                }}
-                onToonDoel={toonDoel}
-                voorstellen={plaatsen?.subdoelvoorstellen.filter((v) => v.subthemaId === subthema.id)}
-                beslisBezig={beslisSubdoel.isPending}
-                onBeslisVoorstel={
-                  plaatsen?.magBeslissen
-                    ? (voorstelId, status) => beslisSubdoel.mutate({ voorstelId, status })
-                    : undefined
-                }
-              />
-            ))}
-            {plaatsen?.subthemavoorstellen.map((voorstel) => (
-              <Subthemavoorstelkaart
-                key={voorstel.id}
-                themaId={id}
-                voorstel={voorstel}
-                magBeslissen={plaatsen.magBeslissen}
-                onToon={toonDoel}
-              />
-            ))}
-          </Blok>
-          );
-        })}
-        </Groep>
+          {/* THE LEERPLANDOELEN PER LEEFTIJD (FB-009), shut, under the themadoelen they are the concordance of. */}
+          <Themadoelenoverzicht themaId={id} onToonDoel={toonDoel} />
+        </Sectie>
       </Schermvlak>
 
       <Doeldetailblad
@@ -943,21 +913,47 @@ export function ThemadetailScherm() {
   );
 }
 
-/**
- * One level's share of the doelen: the figure in the mono face, the level in words.
- *
- * The same pairing the thema library card uses for its counts, and for the same reason: the number
- * carries the weight, the word steps back, and three of them read as three separate facts on one
- * line instead of as a sentence to parse. Renders nothing at all for a level that holds none.
- */
-function Deel({ aantal, woord }: { aantal: number; woord: Vertaalsleutel }) {
-  if (aantal === 0) return null;
-
+/** One of the four figures under the title: the number, then its word. `dt` first in the markup, as a `dl` asks. */
+function Cijfer({ aantal, een, meer }: { aantal: number; een: Vertaalsleutel; meer: Vertaalsleutel }) {
   return (
-    <span className="whitespace-nowrap">
-      <span className="mono font-medium text-inkt">{aantal}</span> {t(woord)}
-    </span>
+    <div className="flex items-baseline gap-1.5">
+      <dt className="order-2 text-inkt-zacht">{t(aantal === 1 ? een : meer)}</dt>
+      <dd className="mono font-medium text-inkt">{aantal}</dd>
+    </div>
   );
+}
+
+/** One fact about the thema: a label in sentence case, its value beside it from `sm`, under it on a phone. */
+function Gegeven({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="contents">
+      <dt className="text-meta text-inkt-zacht sm:pt-0.5">{label}</dt>
+      <dd className="-mt-2 min-w-0 text-inkt sm:mt-0">{children}</dd>
+    </div>
+  );
+}
+
+/** "Thema's / Herfst in het bos": where this page sits, in place of a separate back button. */
+function Kruimelpad({ naam }: { naam: string }) {
+  return (
+    <nav aria-label={t("thema.kruimelpad")} className="flex min-w-0 items-center gap-2 text-meta text-inkt-zacht">
+      <Link
+        to="/themas"
+        className="-mx-1 inline-flex min-h-raak items-center rounded-veld px-1 underline decoration-lijn-veld underline-offset-4 hover:text-inkt hover:decoration-inkt sm:min-h-0"
+      >
+        {t("themas.titel")}
+      </Link>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page" className="truncate">
+        {naam}
+      </span>
+    </nav>
+  );
+}
+
+/** The mijlpaal a minimumdoel's ref starts with: `K-1.1.3` is `K-`, the key `MIJLPAAL` names. */
+function mijlpaalVan(ref: string): string {
+  return `${ref.split("-")[0] ?? ""}-`;
 }
 
 /**

@@ -1,8 +1,9 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
-import { IcoonChevron, IcoonKruis, IcoonZoek } from "../../components/Iconen";
+import { IcoonKruis, IcoonZoek } from "../../components/Iconen";
 import { Invoer } from "../../components/ui/Veld";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
+import { Vouwpijl } from "./Fiche";
 
 /** How many rows one press shows. */
 export const PAGINA = 5;
@@ -39,6 +40,7 @@ export function Inklaplijst<T>({
   zoekLaadt,
   onZoekOpen,
   kop,
+  altijdOpen = false,
 }: {
   items: T[];
   sleutel: (item: T) => string;
@@ -64,9 +66,16 @@ export function Inklaplijst<T>({
     /** Said under the heading while the list is empty. */
     leeg: string;
   };
+  /**
+   * No fold: the first page shows at once, with "Laad meer" under it and, for a list longer than one page, the search
+   * field always above it. The themadoelen, which the page shows at once (FB-094). Ignored with `kop`.
+   */
+  altijdOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const [zoekOpen, setZoekOpen] = useState(false);
+  const [open, setOpen] = useState(altijdOpen);
+  const [zoekOpen, setZoekOpen] = useState(altijdOpen);
+  // An always-open list asks its caller for the search texts only once someone uses the field.
+  const zoekGemeld = useRef(false);
   const [zoek, setZoek] = useState("");
   const [zichtbaar, setZichtbaar] = useState(PAGINA);
   const lijst = useRef<HTMLUListElement>(null);
@@ -122,8 +131,14 @@ export function Inklaplijst<T>({
         className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-inkt-zwak"
       />
       <Invoer
-        autoFocus
+        autoFocus={!altijdOpen}
         value={zoek}
+        onFocus={() => {
+          if (altijdOpen && !zoekGemeld.current) {
+            zoekGemeld.current = true;
+            onZoekOpen?.(true);
+          }
+        }}
         aria-label={zoekLabel}
         placeholder={zoekPlaatshouder}
         onChange={(e) => {
@@ -133,11 +148,12 @@ export function Inklaplijst<T>({
         onKeyDown={(e) => {
           if (e.key === "Escape") {
             e.preventDefault();
-            sluitZoek();
+            if (altijdOpen) setZoek("");
+            else sluitZoek();
           }
         }}
         // Important: `Invoer` sets `h-raak`, which `cn` does not recognise as a height, so a plain `h-8` loses.
-        className="h-8! min-h-8 pl-7 pr-2 text-meta"
+        className="h-raak! min-h-raak pl-7 pr-2 text-meta sm:h-8! sm:min-h-8"
       />
     </div>
   );
@@ -150,7 +166,7 @@ export function Inklaplijst<T>({
       title={zoekLabel}
       aria-expanded={false}
       onClick={() => zetZoekOpen(true)}
-      className={cn(ICOONKNOP, "h-8 w-8")}
+      className={cn(ICOONKNOP, "h-raak w-raak sm:h-8 sm:w-8")}
     >
       <IcoonZoek aria-hidden="true" className="h-4 w-4" />
     </button>
@@ -163,7 +179,7 @@ export function Inklaplijst<T>({
       title={sluitLabel}
       aria-expanded
       onClick={sluitZoek}
-      className={cn(ICOONKNOP, "h-8 w-8")}
+      className={cn(ICOONKNOP, "h-raak w-raak sm:h-8 sm:w-8")}
     >
       <IcoonKruis aria-hidden="true" className="h-4 w-4" />
     </button>
@@ -203,7 +219,7 @@ export function Inklaplijst<T>({
           setZichtbaar(zichtbaar + PAGINA);
         }}
         className={cn(
-          "items-center gap-2 text-meta font-medium text-inkt transition-colors duration-150 hover:bg-inkt/[0.035]",
+          "min-h-raak items-center gap-2 text-meta font-medium text-inkt transition-colors duration-150 hover:bg-inkt/[0.035] sm:min-h-9",
           klasse,
         )}
       >
@@ -212,10 +228,25 @@ export function Inklaplijst<T>({
       </button>
     ) : null;
 
+  if (!kop && altijdOpen) {
+    return (
+      <div className="overflow-hidden rounded-veld border border-lijn">
+        {items.length > PAGINA ? (
+          <div className="border-b border-lijn px-3 py-2">
+            <div className="flex sm:w-72">{zoekveld}</div>
+            {status}
+          </div>
+        ) : null}
+        {rijen("")}
+        {laadMeer("flex w-full border-t border-lijn px-3 py-2.5 text-left")}
+      </div>
+    );
+  }
+
   if (!kop) {
-    // A FRAMED ROW, the shape of a leeftijd in "Doelen per leeftijd" (owner, 2026-09-16): the count on the left, the
-    // chevron on the right, and the list opening inside the same frame. The search icon is laid over the fold button,
-    // which covers the whole row, so the two stay separate controls.
+    // A FRAMED ROW: the arrow and the count on the left (FB-094: the arrow is always left of what it opens), and the
+    // list opening inside the same frame. The search icon is laid over the fold button, which covers the whole row, so
+    // the two stay separate controls.
     return (
       <div className="overflow-hidden rounded-veld border border-lijn">
         <div className="relative">
@@ -223,20 +254,14 @@ export function Inklaplijst<T>({
             type="button"
             aria-expanded={open}
             onClick={vouw}
-            className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+            className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
           >
+            <Vouwpijl open={open} />
             <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{aantalTekst}</span>
             {/* Room for the search icon. */}
-            <span aria-hidden="true" className="w-8 shrink-0" />
-            <IcoonChevron
-              aria-hidden="true"
-              className={cn(
-                "h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-                open && "rotate-180",
-              )}
-            />
+            <span aria-hidden="true" className="w-11 shrink-0 sm:w-8" />
           </button>
-          <span className="absolute right-10 top-1/2 flex -translate-y-1/2">
+          <span className="absolute right-2 top-1/2 flex -translate-y-1/2">
             {zoekOpen ? zoekknopDicht : zoekknopOpen}
           </span>
         </div>
@@ -258,11 +283,11 @@ export function Inklaplijst<T>({
   // room than a word or a code (owner, 2026-09-16: "de zoekbalk is te groot"). On a phone it takes a line of its own,
   // together with its close button.
   return (
-    <section className="mt-5 border-t border-lijn pt-2">
+    <section className="mt-4">
       <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2">
         <h3 className="min-w-0">
           {leeg ? (
-            <span className="inline-flex h-8 items-center gap-1.5 text-micro uppercase tracking-wide text-inkt-zacht">
+            <span className="inline-flex min-h-raak items-center gap-1.5 text-meta font-semibold text-inkt-zacht sm:min-h-8">
               {kop.icoon}
               {kop.titel}
             </span>
@@ -271,19 +296,13 @@ export function Inklaplijst<T>({
               type="button"
               aria-expanded={open}
               onClick={vouw}
-              className="-ml-1.5 inline-flex h-8 items-center gap-1.5 rounded-veld px-1.5 text-micro uppercase tracking-wide text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt"
+              className="-ml-1.5 inline-flex min-h-raak items-center gap-1.5 rounded-veld px-1.5 text-meta font-semibold text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt sm:min-h-8"
             >
-              <IcoonChevron
-                aria-hidden="true"
-                className={cn(
-                  "h-3.5 w-3.5 shrink-0 text-inkt-zacht transition-transform duration-200 motion-reduce:transition-none",
-                  !open && "-rotate-90",
-                )}
-              />
+              <Vouwpijl open={open} className="h-4 w-4" />
               {kop.icoon}
               {kop.titel}
               {/* A space in the text too, so the name reads "Activiteiten 5" and not "Activiteiten5". */}{" "}
-              <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium normal-case tracking-normal text-inkt">
+              <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium text-inkt">
                 {items.length}
               </span>
             </button>
@@ -304,7 +323,7 @@ export function Inklaplijst<T>({
       {leeg ? <p className="mt-1 text-meta text-inkt-zacht">{kop.leeg}</p> : null}
       {status}
       {rijen("mt-2 overflow-hidden rounded-veld border border-lijn")}
-      {laadMeer("mt-2 inline-flex h-9 rounded-veld px-2")}
+      {laadMeer("mt-2 inline-flex rounded-veld px-2")}
     </section>
   );
 }

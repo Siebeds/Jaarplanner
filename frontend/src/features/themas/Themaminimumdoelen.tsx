@@ -2,20 +2,19 @@ import { useEffect, useRef, useState } from "react";
 import { Knop } from "../../components/ui/Knop";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { Invoer } from "../../components/ui/Veld";
-import { IcoonChevron, IcoonPlus, IcoonZoek } from "../../components/Iconen";
+import { IcoonPlus, IcoonZoek } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
-import { cn } from "../../lib/cn";
 import { useMinimumdoel, useMinimumdoelen, useMinimumdoelTeksten } from "../../lib/queries";
 import type { GeconcordeerdLeerplandoel, ThemaMinimumdoelWeergave } from "../../lib/types";
 import { MIJLPAAL } from "../doelen/mijlpaal";
-import { Doellijst, Ontkoppel } from "./Fiche";
+import { Doellijst, Ontkoppel, Vouwpijl } from "./Fiche";
 import { Inklaplijst } from "./Inklaplijst";
 import { opMinimumdoelRef } from "./opCode";
 
 /**
  * The themadoelen of a thema, which are minimumdoelen (FB-043).
  *
- * **Four levels, each shut until asked for**: the list itself (TB-051), then the three below. The owner, 2026-09-16:
+ * **The list shows at once (FB-094), paged, and the three levels below it are shut until asked for.** The owner, 2026-09-16:
  * first which minimumdoelen the thema aims at, then, per minimumdoel, the leerplandoelen that lead there. A thema runs
  * across several leeftijden and a leerplandoel belongs to one, so between the two sits one row per leeftijd with its
  * count ("K2 · 3 leerplandoelen"). Opened, a leeftijd lists its leerplandoelen and nothing else: the minimumdoel they
@@ -32,8 +31,11 @@ export function Themaminimumdoelen({
   ontkoppelBezig,
   onOntkoppel,
   onToonDoel,
+  toonMijlpaal = true,
 }: {
   koppelingen: ThemaMinimumdoelWeergave[];
+  /** False when every themadoel shares one mijlpaal and the heading above already names it once (FB-094). */
+  toonMijlpaal?: boolean;
   ontkoppelBezig?: boolean;
   /** Absent without the right to unlink (R4): the rows then only open. */
   onOntkoppel?: (koppelingId: string) => void;
@@ -50,9 +52,9 @@ export function Themaminimumdoelen({
 
   return (
     <Inklaplijst
+      altijdOpen
       items={gesorteerd}
       sleutel={(koppeling) => koppeling.id}
-      aantalTekst={telWoord(gesorteerd.length, "thema.eenMinimumdoel", "thema.minimumdoelen")}
       lijstnaam={t("thema.lijstMinimumdoelen")}
       zoekPlaatshouder={t("thema.zoekMinimumdoel")}
       zoektekst={(koppeling) => `${koppeling.minimumdoelRef} ${teksten.get(koppeling.minimumdoelRef) ?? ""}`}
@@ -61,6 +63,7 @@ export function Themaminimumdoelen({
       render={(koppeling) => (
         <Minimumdoelrij
           minimumdoelRef={koppeling.minimumdoelRef}
+          toonMijlpaal={toonMijlpaal}
           ontkoppelBezig={ontkoppelBezig}
           onOntkoppel={onOntkoppel ? () => onOntkoppel(koppeling.id) : undefined}
           onToonDoel={onToonDoel}
@@ -72,11 +75,13 @@ export function Themaminimumdoelen({
 
 function Minimumdoelrij({
   minimumdoelRef,
+  toonMijlpaal,
   ontkoppelBezig,
   onOntkoppel,
   onToonDoel,
 }: {
   minimumdoelRef: string;
+  toonMijlpaal: boolean;
   ontkoppelBezig?: boolean;
   onOntkoppel?: () => void;
   onToonDoel: (code: string, knop: HTMLElement) => void;
@@ -95,20 +100,14 @@ function Minimumdoelrij({
           onClick={() => setOpen(!open)}
           className="flex min-w-0 flex-1 items-start gap-2 text-left"
         >
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn(
-              "mt-0.5 h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-              open && "rotate-180",
-            )}
-          />
+          <Vouwpijl open={open} className="mt-0.5" />
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {/* The ref in the minimumdoel hue, as in the doelen per leeftijd: it IS the MD doelsoort (Art. XII). */}
               <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
                 {minimumdoelRef}
               </span>
-              {data ? (
+              {data && toonMijlpaal ? (
                 <span className="text-meta text-inkt-zacht">
                   {MIJLPAAL[data.leeftijd] ? t(MIJLPAAL[data.leeftijd]) : data.leeftijd}
                 </span>
@@ -182,19 +181,13 @@ function Leeftijdrij({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+        className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
       >
+        <Vouwpijl open={open} />
         <span className="w-9 shrink-0 font-display text-sectie text-inkt">{leeftijd}</span>
         <span className="min-w-0 flex-1 text-meta text-inkt-zacht">
           {telWoord(leerplandoelen.length, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen")}
         </span>
-        <IcoonChevron
-          aria-hidden="true"
-          className={cn(
-            "h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
       </button>
 
       {open ? (
@@ -330,7 +323,7 @@ export function Minimumdoelkoppelaar({
       )}
 
       <div className="mt-2">
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={sluit}>
+        <Knop rang="stil" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={sluit}>
           {t("themabeheer.annuleer")}
         </Knop>
       </div>
