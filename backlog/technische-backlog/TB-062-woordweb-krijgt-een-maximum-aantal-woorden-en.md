@@ -2,12 +2,12 @@
 id: TB-062
 titel: Woordweb krijgt een maximum aantal woorden en valt onder de promptbegrenzing
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:21
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 12:19
+opgepakt-door: claude-tb062
+branch: ticket/TB-062-woordweb-maximum
 pr:
 geblokkeerd:
 fr: []
@@ -61,3 +61,4 @@ Gevonden bij de securityscan van 2026-09-23. Elke aangemelde gebruiker mag een e
 ## Werklog
 
 - 2026-09-23 00:21 · claude-securityscan · aangemaakt (status nieuw)
+- 2026-09-23 12:19 · claude-tb062 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
