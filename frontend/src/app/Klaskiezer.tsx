@@ -9,7 +9,7 @@ import { geenToegangZin, useGeenKlassenZin, useRechten } from "../lib/rechten";
 import type { KlasWeergave } from "../lib/types";
 import { t } from "../i18n";
 
-/** Where the picker stands: the sidebar from `lg`, its 56px rail, or a card at the top of Instellingen on a phone. */
+/** Where the picker stands: the sidebar from `lg`, its 56px rail, or a card at the foot of Instellingen on a phone. */
 export type Klaskiezervorm = "zijbalk" | "rail" | "kaart";
 
 /**
@@ -17,9 +17,10 @@ export type Klaskiezervorm = "zijbalk" | "rail" | "kaart";
  *
  * **It lives in the navigation, not in a screen's header** (owner, 2026-09-23, FB-071). In the header it stood beside
  * Chuck, and the cat read as one more button among the screen's controls. The klas is the app's context rather than a
- * screen's filter, so it stands under the logo in the sidebar from `lg`, as a quiet field and never as a destination:
- * no accent, no `aria-current`. A phone has no sidebar and its bottom bar keeps its five tabs, so there it is a card at
- * the top of Instellingen, beside the report's (owner: "Via Instellingen"). One per viewport, never two.
+ * screen's filter, and a teacher rarely changes it, so from `lg` it stands at the bottom of the sidebar above the
+ * sign-in row, as a quiet field and never as a destination: no accent, no `aria-current`. A phone has no sidebar and
+ * its bottom bar keeps its five tabs, so there it is a card at the foot of Instellingen (owner: "Via Instellingen").
+ * One per viewport, never two.
  *
  * It is a chosen context, not an identity: nothing here says "your class".
  */

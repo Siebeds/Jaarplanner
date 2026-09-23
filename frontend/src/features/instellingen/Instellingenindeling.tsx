@@ -49,11 +49,8 @@ export function Instellingenindeling() {
           destination (`mag.ontwikkelingsrapportTab`: ADR-0035 D18, and a hoofdleerkracht of K3 since 2026-09-15). From
           `lg` the sidebar carries it instead (`Navigatie`), so a viewport offers it once. It is a destination, not a part
           of Instellingen, so it is a link above the page rather than an entry in its parts. */}
-      {/* The klas and the schooljaar on a phone (owner, 2026-09-23, FB-071, "Via Instellingen"), then the report. From
-          `lg` the sidebar carries both, so a viewport offers each once. */}
-      <div className="mx-auto flex max-w-[57.5rem] flex-col gap-2 px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 lg:hidden">
-        <Klaskiezer vorm="kaart" />
-        {mag.ontwikkelingsrapportTab ? (
+      {mag.ontwikkelingsrapportTab ? (
+        <div className="mx-auto max-w-[57.5rem] px-4 pt-[calc(env(safe-area-inset-top)+1rem)] sm:px-6 lg:hidden">
           <Link
             to={RAPPORT.pad}
             className="flex min-h-14 items-center gap-3 rounded-kaart border border-lijn bg-kaart px-4 text-body font-medium text-inkt transition-colors duration-150 hover:bg-vlak"
@@ -62,8 +59,8 @@ export function Instellingenindeling() {
             <span className="flex-1">{t(RAPPORT.labelSleutel)}</span>
             <IcoonPijlRechts aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zwak" />
           </Link>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <nav
         aria-labelledby="instellingen-kolom"
@@ -123,7 +120,12 @@ export function Instellingenindeling() {
           `Schermvlak` of its own so it takes the page's gutter and measure. */}
       <div className="lg:hidden">
         <Schermvlak smal>
-          <Aanmeldregel className="border-t border-lijn pt-2" />
+          {/* The klas and the schooljaar on a phone (owner, 2026-09-23, FB-071, "Via Instellingen"), at the foot with
+              the sign-in row: a teacher rarely changes klas. From `lg` the sidebar carries both. */}
+          <div className="flex flex-col gap-2 border-t border-lijn pt-4">
+            <Klaskiezer vorm="kaart" />
+            <Aanmeldregel />
+          </div>
         </Schermvlak>
       </div>
     </>

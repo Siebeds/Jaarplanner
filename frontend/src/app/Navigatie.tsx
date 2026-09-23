@@ -53,8 +53,8 @@ import { cn } from "../lib/cn";
  * the K3 set and scale though not the children (owner, after FB-002's antagonist round 1). See
  * `mag.ontwikkelingsrapportTab`.
  *
- * **The klaskiezer stands under the logo from `lg`** (owner, 2026-09-23, FB-071), as a field rather than a destination;
- * on a phone it is at the top of Instellingen. See `Klaskiezer`.
+ * **The klaskiezer stands at the bottom from `lg`, above the sign-in row** (owner, 2026-09-23, FB-071), as a field
+ * rather than a destination; on a phone it is at the foot of Instellingen. See `Klaskiezer`.
  *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
@@ -139,12 +139,6 @@ export function Navigatie() {
         <Merk compact={smal} />
       </div>
 
-      {/* Which klas the app is about, under the logo and above the destinations it scopes (owner, 2026-09-23, FB-071).
-          From `lg` only: on a phone it is a card at the top of Instellingen, so a viewport offers it once. */}
-      <div className={cn("hidden lg:block lg:pb-3", smal ? "lg:px-2" : "lg:px-3")}>
-        <Klaskiezer vorm={smal ? "rail" : "zijbalk"} />
-      </div>
-
       {/* One list, both groups. The phone bar reads them as one run of tabs; the sidebar pushes the
           second group down with `lg:mt-auto` on its first item, which is why the two are separate
           arrays rather than one with a divider spliced in. */}
@@ -214,12 +208,13 @@ export function Navigatie() {
           />
         ))}
 
-        {/* Who is signed in, and signing out (E6-01): below everything a teacher does all year, from
-            `lg` only. The phone keeps its five tabs and finds the same row at the foot of
-            Instellingen, so each viewport has one way out, never two. The rule belongs to the row
-            rather than to this item, so it only appears once there is a name to put under it. */}
-        <li className="hidden lg:block">
-          <Aanmeldregel smal={smal} className="lg:mt-2 lg:border-t lg:border-lijn lg:pt-2" />
+        {/* Which klas the app is about, and who is signed in with signing out (E6-01): below everything a teacher
+            does all year, from `lg` only. A teacher rarely changes klas, so the picker stands down here with the
+            sign-in row rather than under the logo (owner, 2026-09-23, FB-071). The phone keeps its five tabs and finds
+            both at the foot of Instellingen, so each viewport offers each once, never twice. */}
+        <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-1 lg:border-t lg:border-lijn lg:pt-3">
+          <Klaskiezer vorm={smal ? "rail" : "zijbalk"} />
+          <Aanmeldregel smal={smal} />
         </li>
       </ul>
     </nav>

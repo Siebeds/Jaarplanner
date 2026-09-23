@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 09:23
+bijgewerkt: 2026-09-23 09:29
 opgepakt-door: claude-fb071-kop
 branch: ticket/FB-071-kop
 pr: 164
@@ -41,8 +41,8 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 - Chuck ligt rechtsboven in de kop van de app in een laag mandje, voor de leerkracht, de vervanger en directie. Hij
   ligt nooit op de gegevens. Er staat altijd precies één Chuck op het scherm. Hij staat alleen rechtsboven: geen
   knop van het scherm staat naast hem, zodat niemand hem voor een knop tussen de knoppen houdt.
-- De klaskiezer staat niet meer in de kop van een scherm. Op een laptop staat hij in de linker zijbalk, onder het logo;
-  op een telefoon kies je de klas bovenaan in Instellingen. Knoppen die bij het scherm zelf horen, zoals "Vandaag" in
+- De klaskiezer staat niet meer in de kop van een scherm. Op een laptop staat hij onderaan in de linker zijbalk,
+  boven je naam en Afmelden; op een telefoon kies je de klas onderaan in Instellingen, boven Afmelden. Knoppen die bij het scherm zelf horen, zoals "Vandaag" in
   de agenda, blijven waar ze staan.
 - Zijn houding toont de toestand, en er staat altijd tekst bij:
   - hij slaapt in zijn mandje, met een stil label: er ligt niets nieuws;
@@ -78,7 +78,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
   onder hem.
 - [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon onder zijn mandje.
 - [x] Gegeven de agenda, het jaarplan of de dekking, dan staat er geen knop naast Chuck: de klaskiezer staat op een
-  laptop in de linker zijbalk en op een telefoon bovenaan in Instellingen.
+  laptop onderaan in de linker zijbalk en op een telefoon onderaan in Instellingen.
 - [x] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
   bedekken, en zegt hij in een tekstballon welk doel. Er staat nooit meer dan één Chuck op het scherm.
 - [x] Gegeven een klik op Chuck, of Enter met de focus op hem, dan stapt hij één poot tegelijk uit zijn mandje, elke
@@ -95,7 +95,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 ## Testscenario's
 
 1. Meld aan als leerkracht zonder open signaal of voorstel. Chuck slaapt rechtsboven in zijn mandje, met een label
-   onder hem, en er staat geen knop naast hem. De klas kies je in de linker zijbalk.
+   onder hem, en er staat geen knop naast hem. De klas kies je onderaan in de linker zijbalk.
 2. Laat een lesvoorbereiding klaarzetten (FB-068). Zijn oren staan recht en onder zijn mandje staat een tekstballon.
    Klik op hem: hij staat op, stapt pootje per pootje uit zijn mandje, en het venster toont bovenaan de voorbereiding
    met "Bekijken" en "Later".
@@ -104,7 +104,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
    tekstballon, en de weekstrook blijft leesbaar. Er is maar één kat te zien.
 5. Zet "minder beweging" aan in het besturingssysteem: het venster opent zonder loopje.
 6. Herhaal op telefoonbreedte (ongeveer 390px): het venster vult de breedte en geen ballon ligt over gegevens. De klas
-   kies je bovenaan in Instellingen.
+   kies je onderaan in Instellingen.
 7. Herhaal in donkere weergave.
 
 ## Buiten scope
@@ -135,6 +135,8 @@ Beslist door de eigenaar op 2026-09-23, na de test:
 - Wat Chuck zegt (label of ballon) staat onder hem, niet ernaast.
 - De klaskiezer verhuist uit de kop: op een laptop naar de linker zijbalk, op een telefoon naar de top van
   Instellingen. "Vandaag" blijft staan.
+- Leerkrachten wisselen zelden van klas, dus de klaskiezer staat onderaan: in de zijbalk boven je naam en Afmelden, op
+  een telefoon onderaan Instellingen.
 
 Vastgelegd in de bouw:
 
@@ -156,3 +158,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 09:23 · claude-fb071-kop · antagonist COMPLIANT; 2 MINOR opgelost (tekst 'bovenaan het scherm' wordt 'Kies eerst een klas.', lege regels), 1 gecontroleerd (alleen Chuck gebruikt de ballon met staart naar boven); 1312 frontendtests groen, lint schoon
 - 2026-09-23 09:23 · claude-fb071-kop · in-uitvoering → te-testen: tekst van Chuck onder hem, klaskiezer in de zijbalk (telefoon: bovenaan Instellingen), Vandaag blijft staan; gates groen
 - 2026-09-23 09:23 · claude-fb071-kop · PR #164
+- 2026-09-23 09:29 · claude-fb071-kop · op vraag van de eigenaar staat de klaskiezer onderaan: in de zijbalk boven naam en Afmelden, op telefoon onderaan Instellingen; bekeken op 1440 en 390px, lint en 162 tests groen
