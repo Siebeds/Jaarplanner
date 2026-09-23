@@ -12,8 +12,8 @@ import type { Weekbalk } from "./weekbalkindeling";
 /**
  * Where a bar sits in the header grid of the week: its columns, and the grid row it takes.
  *
- * The bar is inset by the same four pixels a day heading keeps from its column's edges, at its two ends only, so the
- * columns it crosses show no break (FB-090).
+ * Each bar's `mx-1` insets it by the four pixels a day heading keeps from its column's edges, at its two ends only, so
+ * the columns it crosses show no break (FB-090).
  */
 function plek(balk: Weekbalk<unknown>, rij: number): CSSProperties {
   return { gridColumn: `${balk.van + 1} / ${balk.tot + 2}`, gridRow: rij };

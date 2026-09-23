@@ -41,17 +41,17 @@ in `features/plan/Themastroken.tsx`). Het probleem is de onderbreking.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week waarin één thema van maandag tot vrijdag loopt, wanneer de leerkracht de werkweek opent, dan
+- [x] Gegeven een week waarin één thema van maandag tot vrijdag loopt, wanneer de leerkracht de werkweek opent, dan
       ziet ze één grijze balk over de vijf dagen met de naam één keer, en geen lege balkjes.
-- [ ] Gegeven een week waarin een thema op woensdag eindigt en een ander op donderdag begint, wanneer de week opent,
+- [x] Gegeven een week waarin een thema op woensdag eindigt en een ander op donderdag begint, wanneer de week opent,
       dan staan er twee balken met elk hun naam, en zie je duidelijk waar de ene stopt.
-- [ ] Gegeven een subthema dat vorige week begon, wanneer de week opent, dan begint zijn balk met een pijltje naar
+- [x] Gegeven een subthema dat vorige week begon, wanneer de week opent, dan begint zijn balk met een pijltje naar
       links en niet met "…".
-- [ ] Gegeven een gebruiker die de klas mag plannen, wanneer ze naar de themabalk kijkt, dan staat de knop om een
+- [x] Gegeven een gebruiker die de klas mag plannen, wanneer ze naar de themabalk kijkt, dan staat de knop om een
       subthema in te plannen er nog, en werkt hij zoals voordien.
-- [ ] Gegeven het toetsenbord, wanneer de gebruiker door de themabalken tabt, dan is er één tabstop per thema per
+- [x] Gegeven het toetsenbord, wanneer de gebruiker door de themabalken tabt, dan is er één tabstop per thema per
       rij, die de naam van het thema voorleest.
-- [ ] Gegeven een telefoon van ~390px, wanneer de week opent, dan blijft de naam leesbaar of wordt ze netjes
+- [x] Gegeven een telefoon van ~390px, wanneer de week opent, dan blijft de naam leesbaar of wordt ze netjes
       ingekort, zonder dat de balk buiten de kolommen steekt.
 
 ## Testscenario's
