@@ -2,12 +2,12 @@
 id: FB-027
 titel: AI stelt de activiteiten van het subthema voor in de weekagenda
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 20:12
+opgepakt-door: claude-fb027
+branch: ticket/FB-027-weekvoorstel
 pr:
 geblokkeerd:
 fr: [FR-6.2, FR-7.1]
@@ -73,3 +73,4 @@ aanvaardt of weigert.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-23 20:12 · claude-fb027 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (vóór FB-032)
