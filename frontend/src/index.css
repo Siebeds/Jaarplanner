@@ -688,8 +688,8 @@
  * earns by being the only feedback during a wait of several seconds. The reduced-motion block
  * stops it dead on its last frame, which is the resting ring.
  *
- * `:disabled` is overridden while busy on purpose: `Knop` fades every disabled button to 45%, and
- * a run disables its own button, which would dim the one thing that shows the run is going.
+ * The fade is overridden while busy on purpose: `Knop` fades a disabled or busy button to 45%, which
+ * would dim the one thing that shows the run is going.
  */
 /*
  * The faint ring of an undecided AI proposal (ADR-0051), the quiet sibling of `knop-ai` below.
@@ -767,7 +767,8 @@
     animation: ai-veeg 1.8s linear infinite;
   }
 
-  &[aria-busy="true"]:disabled {
+  &[aria-busy="true"]:disabled,
+  &[aria-busy="true"][aria-disabled="true"] {
     opacity: 1;
   }
 }

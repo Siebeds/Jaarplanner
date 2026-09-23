@@ -46,7 +46,7 @@ export function Generatiebalk({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <AiKnop bezig={bezig} disabled={bezig} onClick={genereer}>
+        <AiKnop bezig={bezig} onClick={genereer}>
           {bezig ? t("plan.genereerBezig") : t("plan.genereer")}
         </AiKnop>
         <div aria-live="polite">

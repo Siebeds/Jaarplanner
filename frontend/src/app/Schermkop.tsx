@@ -1,6 +1,7 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode, type RefObject } from "react";
 import { Katmand } from "../features/kat/Katmand";
 import { cn } from "../lib/cn";
+import { useSchermtitel } from "../lib/useSchermtitel";
 
 const MAAT = "max-w-[80rem]";
 const BREED = "max-w-[104rem]";
@@ -51,8 +52,11 @@ export function Schermkop({
   zonderKat?: boolean;
 }) {
   const meet = breed ? BREED : smal ? SMAL : MAAT;
+  const kop = useRef<HTMLElement>(null);
+  useSchermtitel(titel);
+  useKopruimte(kop);
   return (
-    <header className="sticky top-0 z-20 bg-vlak/85 backdrop-blur-md">
+    <header ref={kop} className="sticky top-0 z-20 bg-vlak/85 backdrop-blur-md">
       {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
           title and the rows under it, his top level with the title's. On a phone the rows under the title
           need the full width, so there he stays beside the title. */}
@@ -93,6 +97,34 @@ export function Schermkop({
       </div>
     </header>
   );
+}
+
+/**
+ * Keeps a focused field out from under the sticky header (WCAG 2.4.11).
+ *
+ * The page scrolls the document, and the browser scrolls a field that receives focus only just into view: tabbing back
+ * up, that is under the header. `scroll-padding-top` on the document tells it where the view really starts. It is
+ * measured rather than fixed, because the header grows with its `onder` row, with a wrapping title on a phone and with
+ * the safe area, and a fixed guess is exactly one of those short.
+ */
+function useKopruimte(kop: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const element = kop.current;
+    if (!element) return;
+    const wortel = document.documentElement;
+    const zet = () => {
+      // A little air under the header, so the focus ring of the field is not flush against it.
+      wortel.style.scrollPaddingTop = `${element.offsetHeight + 8}px`;
+    };
+    zet();
+    // jsdom has no ResizeObserver; the first measurement above is then all there is.
+    const waarnemer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(zet);
+    waarnemer?.observe(element);
+    return () => {
+      waarnemer?.disconnect();
+      wortel.style.scrollPaddingTop = "";
+    };
+  }, [kop]);
 }
 
 /**

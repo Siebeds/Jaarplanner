@@ -430,7 +430,7 @@ function Leeskaart({
           <Knop
             rang="rustig"
             className="mt-2 h-9 min-h-9 px-3 text-meta"
-            disabled={kopie.isPending}
+            bezig={kopie.isPending}
             aria-label={t("activiteit.gebruikAria", {
               naam: activiteit.naam,
               eigenaar: activiteit.eigenaarNaam ?? t("activiteit.vanEenCollega"),

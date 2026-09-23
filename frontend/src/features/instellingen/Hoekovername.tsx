@@ -70,7 +70,8 @@ export function Hoekovername({
             vol
             form={id}
             type="submit"
-            disabled={bezig || klassen.length === 0}
+            bezig={bezig}
+            disabled={klassen.length === 0}
             className="@sm:w-auto @sm:px-6"
           >
             {bezig ? t("hoeken.overnemenBezig") : t("hoeken.overnemen")}

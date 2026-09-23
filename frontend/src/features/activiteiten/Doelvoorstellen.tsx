@@ -34,7 +34,6 @@ export function Doelvoorstellen({
         <AiKnop
           className="h-9 min-h-9 px-2.5 text-meta"
           bezig={stelVoor.isPending}
-          disabled={stelVoor.isPending}
           onClick={() => {
             beslis.reset();
             stelVoor.mutate(activiteit.id);

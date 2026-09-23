@@ -318,7 +318,8 @@ function Dagsectie({
         </div>
         <Knop
           rang="rustig"
-          disabled={bezig || !gewijzigd || ongeldig}
+          bezig={bezig}
+          disabled={!gewijzigd || ongeldig}
           onClick={() => onVerplaats(nieuweDag, `${nieuwBegin}:00`, `${nieuwEinde}:00`)}
         >
           {t("periode.verplaats")}

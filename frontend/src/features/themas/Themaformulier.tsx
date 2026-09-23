@@ -138,7 +138,8 @@ export function Themaformulier({
               vol
               form={id}
               type="submit"
-              disabled={bezig || (!nieuw && !vuil)}
+              bezig={bezig}
+              disabled={!nieuw && !vuil}
               className="@sm:w-auto @sm:px-6"
             >
               {nieuw

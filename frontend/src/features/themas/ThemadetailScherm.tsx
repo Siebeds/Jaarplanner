@@ -423,7 +423,7 @@ export function ThemadetailScherm() {
                           <AiKnop
                             className="h-9 min-h-9 px-2.5 text-meta"
                             bezig={genereer.isPending}
-                            disabled={genereer.isPending || geenLeeftijd}
+                            disabled={geenLeeftijd}
                             aria-describedby={geenLeeftijd ? "doelsuggesties-kies-leeftijd" : undefined}
                             onClick={verstuurVraag}
                           >

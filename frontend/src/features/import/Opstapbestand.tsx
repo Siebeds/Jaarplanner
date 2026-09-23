@@ -99,7 +99,7 @@ export function Opstapbestand() {
           <div>
             {/* `rustig`, both here and on Inladen below: this upload sits under the API flow, whose buttons carry the one
                 accent, so a screen never shows two accent buttons (E1-22, antagonist round 1 MINOR). */}
-            <Knop rang="rustig" disabled={!klaar || bezig !== null} onClick={() => voerUit("voorbeeld")}>
+            <Knop rang="rustig" bezig={bezig === "voorbeeld"} disabled={!klaar || (bezig !== null && bezig !== "voorbeeld")} onClick={() => voerUit("voorbeeld")}>
               {bezig === "voorbeeld" ? t("importeren.bezig") : t("importeren.bekijkVoorbeeld")}
             </Knop>
           </div>
@@ -179,7 +179,8 @@ export function Opstapbestand() {
               <div className="flex flex-wrap items-center gap-2">
                 <Knop
                   rang="rustig"
-                  disabled={!getoond.isBestandGeldig || bezig !== null}
+                  bezig={bezig === "import"}
+                  disabled={!getoond.isBestandGeldig || (bezig !== null && bezig !== "import")}
                   onClick={() => voerUit("import")}
                 >
                   {bezig === "import" ? t("importeren.bezig") : t("importeren.voerUit")}

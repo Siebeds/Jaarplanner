@@ -141,7 +141,8 @@ export function Algemeneficheplaatsingblad({
             vol
             form={id}
             type="submit"
-            disabled={bezig || urenOngeldig}
+            bezig={bezig}
+            disabled={urenOngeldig}
             className="@sm:w-auto @sm:px-6"
           >
             {bezig ? t("ficheplaatsing.bezig") : t("ficheplaatsing.plaats")}

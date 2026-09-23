@@ -421,7 +421,7 @@ describe("Activiteitformulier", () => {
 
         // Another doel from the register; the search does not offer a subdoel, which is a row above.
         fireEvent.click(screen.getByRole("button", { name: t("doelkiezer.koppel") }));
-        fireEvent.change(screen.getByPlaceholderText(t("doelkiezer.zoek")), { target: { value: "bl" } });
+        fireEvent.change(screen.getByRole("textbox", { name: t("doelkiezer.zoek") }), { target: { value: "bl" } });
         const ander = await screen.findByRole("button", { name: /MU-5/ });
         expect(within(ander.closest("ul")!).queryByRole("button", { name: /WO-2/ })).toBeNull();
         fireEvent.click(ander);

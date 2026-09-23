@@ -2,6 +2,7 @@ import { Merk } from "../../app/Merk";
 import { Knop, Knoplink } from "../../components/ui/Knop";
 import { t } from "../../i18n";
 import { aanmeldAdres, useAfmelden } from "../../lib/aanmelding";
+import { useSchermtitel } from "../../lib/useSchermtitel";
 
 /** Why the sign-in did not end in a session. */
 export type Aanmeldfout = "geweigerd" | "mislukt";
@@ -32,6 +33,7 @@ export type Aanmeldfout = "geweigerd" | "mislukt";
 export function GeenToegangScherm({ soort = "geweigerd" }: { soort?: Aanmeldfout }) {
   const afmelden = useAfmelden();
   const mislukt = soort === "mislukt";
+  useSchermtitel(mislukt ? t("aanmelding.mislukt.titel") : t("aanmelding.geenToegang.titel"));
 
   return (
     <main className="min-h-dvh px-4 py-16 sm:py-24">
