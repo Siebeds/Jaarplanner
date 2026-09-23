@@ -7,14 +7,15 @@ import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { useSelectie } from "../../state/selectie";
 import { Ballon } from "./Ballon";
+import { Kopje } from "./Tekening";
 import { MAX_VRAAG, type Katantwoord, type Katopzoeking, type Katplek } from "./chat";
 import type { Katchat } from "./useKatchat";
 import { agendazin, antwoordzin, doelplekzin, perKlas, plekzin, uitlegblokken } from "./chatzinnen";
 
 /**
  * The chat in Chuck's window (FB-031, ADR-0066). What she asks stands in a plain box on the right; what he says in his
- * comic balloon on the left (FB-071). The conversation lives only while the window is open: closing it unmounts this
- * state, and nothing is sent anywhere to be kept (ADR-0059 D6).
+ * comic balloon on the left, its tail pointing at his head beside it (FB-071). The conversation lives only while the
+ * window is open: closing it unmounts this state, and nothing is sent anywhere to be kept (ADR-0059 D6).
  */
 
 /** A link in an answer: ink, underlined, so it reads as a link without the accent colour. */
@@ -41,24 +42,27 @@ export function Gesprek({ chat, onSluit }: { chat: Katchat; onSluit: () => void 
             <span className="sr-only">{t("kat.chat.jij")}: </span>
             {beurt.vraag}
           </p>
-          <div className="ml-4 mr-2">
-            {beurt.fout ? (
-              <Ballon staart="links" className="text-inkt">
-                <span className="sr-only">{t("kat.chat.chuck")}: </span>
-                {beurt.fout}
-              </Ballon>
-            ) : beurt.antwoord ? (
-              <Antwoord antwoord={beurt.antwoord} chat={chat} onSluit={onSluit} />
-            ) : (
-              <Ballon staart="links" className="text-inkt-zacht">
-                {t("kat.chat.bezig")}
-                <span aria-hidden="true" className="ai-puntjes">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-              </Ballon>
-            )}
+          <div className="mr-2 flex items-end gap-3.5">
+            <Kopje className="h-8 w-8 shrink-0" />
+            <div className="min-w-0 flex-1">
+              {beurt.fout ? (
+                <Ballon staart="links" className="text-inkt">
+                  <span className="sr-only">{t("kat.chat.chuck")}: </span>
+                  {beurt.fout}
+                </Ballon>
+              ) : beurt.antwoord ? (
+                <Antwoord antwoord={beurt.antwoord} chat={chat} onSluit={onSluit} />
+              ) : (
+                <Ballon staart="links" className="text-inkt-zacht">
+                  {t("kat.chat.bezig")}
+                  <span aria-hidden="true" className="ai-puntjes ml-1">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                </Ballon>
+              )}
+            </div>
           </div>
         </li>
       ))}
