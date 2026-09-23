@@ -596,6 +596,21 @@
     "lengteOngeldig": "Vul een aantal lesuren in, van 1 tot 4.",
     "annuleer": "Annuleer"
   },
+  "weekvoorstel": {
+    "vraag": "Stel mijn week voor",
+    "vraagBezig": "Week voorstellen…",
+    "geenVoorstellen": "Er is geen nieuw voorstel bijgekomen.",
+    "eenVoorgesteld": "1 activiteit voorgesteld.",
+    "voorgesteld": "{aantal} activiteiten voorgesteld.",
+    "pastNiet": "Past nergens meer deze week: {namen}.",
+    "aiOngeldig": "Het antwoord van de AI was onbruikbaar. Vraag het opnieuw.",
+    "aiMislukt": "Je week voorstellen lukte niet.",
+    "beslisMislukt": "Beslissen lukte niet.",
+    "eenOpen": "1 voorstel van de AI",
+    "open": "{aantal} voorstellen van de AI",
+    "allesAanvaarden": "Alles aanvaarden",
+    "voorstel": "AI-voorstel"
+  },
   "kat": {
     "naam": "Chuck",
     "houding": {

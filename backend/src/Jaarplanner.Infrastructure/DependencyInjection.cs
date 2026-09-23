@@ -299,6 +299,9 @@ public static class DependencyInjection
         services.AddScoped<IWeekplanningOpslag, EfWeekplanningOpslag>();
         services.AddScoped<IWeekplanningService, WeekplanningService>();
 
+        // The weekvoorstel (FB-027, ADR-0067): the AI picks the week's activiteiten, the tool fits them as proposals.
+        services.AddScoped<Jaarplanner.Application.Planning.Weekvoorstel.IWeekvoorstelService, WeekvoorstelService>();
+
         // Coverage computation (E5-01, FR-9.1, Art. V.1). Computed on read, never stored: there is no dekking
         // table to register, no cache and no invalidation. The service depends only on IJaarplanLezer and this
         // port, so the highest-risk logic in the system (Art. V.6) is unit-tested with no database.

@@ -72,19 +72,25 @@ public sealed class Activiteitplaatsing
     /// </param>
     /// <param name="begin">When it starts on that day, as the teacher chose it.</param>
     /// <param name="einde">When it ends. Must lie after <paramref name="begin"/>.</param>
+    /// <param name="aiMotivatie">
+    /// Why the AI put it here, for a <see cref="KoppelingStatus.Voorgesteld"/> placement of a weekvoorstel (FB-027,
+    /// ADR-0067); <c>null</c> for one a person placed.
+    /// </param>
     public Activiteitplaatsing(
         Guid jaarplanId,
         Guid activiteitId,
         DateOnly datum,
         KoppelingStatus status,
         TimeOnly begin,
-        TimeOnly einde)
+        TimeOnly einde,
+        string? aiMotivatie = null)
     {
         JaarplanId = RequireId(jaarplanId, nameof(jaarplanId));
         ActiviteitId = RequireId(activiteitId, nameof(activiteitId));
         Datum = datum;
         Status = RequireStatus(status);
         (Begin, Einde) = RequireTijden(begin, einde);
+        AiMotivatie = string.IsNullOrWhiteSpace(aiMotivatie) ? null : aiMotivatie.Trim();
     }
 
     /// <summary>Surrogate identity.</summary>
@@ -124,19 +130,18 @@ public sealed class Activiteitplaatsing
     public TimeOnly Einde { get; private set; }
 
     /// <summary>
-    /// Whether anything may discard this placement without asking the teacher.
+    /// Why the AI proposed this activiteit on this day (FB-027, ADR-0067 W1), or <c>null</c> for a placement a person
+    /// made. Dropped when she moves the block herself, because it argued for a moment the block has left.
+    /// </summary>
+    public string? AiMotivatie { get; private set; }
+
+    /// <summary>
+    /// Whether anything may discard this placement without asking the teacher: an open proposal of a weekvoorstel
+    /// (FB-027, ADR-0067 W5), which a new request for that week replaces. The <c>Klas</c> delete guard asks it too.
     /// <para>
-    /// <b>Today this is false for every row that exists, and saying so is the point.</b> Nothing generates activity
-    /// schedules — E9-03 deliberately left AI day-planning out of scope, because FR-5 generates thema's onto periods
-    /// and says nothing about days — so every placement here is a teacher's own and
-    /// <see cref="MenselijkBeslotenActiviteitplaatsingen"/> currently counts all of them. The predicate exists anyway
-    /// because it is what the <c>Klas</c> delete guard must ask, and a guard that hard-codes "all of them" would
-    /// quietly start destroying proposals the day a generator appears.
-    /// </para>
-    /// <para>
-    /// There is no <c>Vergrendeld</c> flag alongside it, deliberately: locking exists on
-    /// <see cref="Themaplaatsing"/> to survive a regeneration, and nothing regenerates these. A flag with no consumer
-    /// is a control that does nothing.
+    /// There is no <c>Vergrendeld</c> flag alongside it, deliberately: locking exists on <see cref="Themaplaatsing"/>
+    /// to survive a regeneration of the whole year, while a weekvoorstel replaces only what nobody decided yet, and
+    /// deciding it is the lock.
     /// </para>
     /// </summary>
     public bool IsVervangbaar => Status == KoppelingStatus.Voorgesteld;
@@ -169,12 +174,11 @@ public sealed class Activiteitplaatsing
     /// Moves this activiteit to another day and/or another time, which is also how it is made longer or shorter
     /// (E9-04, FR-6.2/FR-7.2; clock times since ADR-0027).
     /// <para>
-    /// <b>Unlike <see cref="Themaplaatsing.VerplaatsNaar"/>, this neither rewrites the status nor destroys anything.</b>
-    /// That method has to convert a proposal into the teacher's own placement and drop an AI motivation that argued for
-    /// a period the thema has left — which is what makes a thema move a small unrecoverable edit the UI must warn
-    /// about. Here there is no motivation to lose and no proposal to override: every placement is the teacher's
-    /// already. <b>So a day move is genuinely reversible, and E9-04 must not copy E3-07's confirmation step onto it</b>
-    /// — a warning about a consequence that cannot happen trains teachers to dismiss the warnings that matter.
+    /// <b>A decided placement keeps its status</b>, so moving one is genuinely reversible and E9-04 must not copy
+    /// E3-07's confirmation step onto it: a warning about a consequence that cannot happen trains teachers to dismiss
+    /// the warnings that matter. <b>An open proposal of a weekvoorstel becomes <see cref="KoppelingStatus.Manueel"/></b>
+    /// and loses its motivation (ADR-0067 W4), as a moved thema placement does: the moment is now one she chose, and
+    /// the motivation argued for another.
     /// </para>
     /// <para>
     /// That the target is a teaching day is the service's check, exactly as at construction. Nothing here requires the
@@ -186,6 +190,27 @@ public sealed class Activiteitplaatsing
     {
         Datum = datum;
         (Begin, Einde) = RequireTijden(begin, einde);
+
+        if (Status == KoppelingStatus.Voorgesteld)
+        {
+            Status = KoppelingStatus.Manueel;
+            AiMotivatie = null;
+        }
+    }
+
+    /// <summary>
+    /// Accepts an open proposal of a weekvoorstel (FB-027, ADR-0067 W4): from here on it is planned like any other
+    /// block and counts (Art. V.1). The motivation stays, as it does on an accepted themaplaatsing.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">It is not an open proposal; the service checks first.</exception>
+    public void Aanvaard()
+    {
+        if (Status != KoppelingStatus.Voorgesteld)
+        {
+            throw new InvalidOperationException("Only a proposed placement can be accepted.");
+        }
+
+        Status = KoppelingStatus.Aanvaard;
     }
 
     // The guards below catch programmer error, never teacher input, so their messages are English (Art. II.2).

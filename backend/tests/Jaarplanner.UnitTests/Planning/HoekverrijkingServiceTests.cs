@@ -331,11 +331,24 @@ public sealed class HoekverrijkingServiceTests
 
         public Task<Weekplanningweergave> VerplaatsActiviteitAsync(
             Guid klasId, Guid plaatsingId, DateOnly datum, TimeOnly begin, TimeOnly einde,
+            Jaarplanner.Application.Toegang.Rechten? planner = null,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public Task<Weekplanningweergave> VerwijderActiviteitplaatsingAsync(
             Guid klasId, Guid plaatsingId, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Weekplanningweergave> BeslisVoorstelAsync(
+            Guid klasId, Guid plaatsingId, bool aanvaard,
+            Jaarplanner.Application.Toegang.Rechten? beslisser = null,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Weekplanningweergave> AanvaardVoorstellenAsync(
+            Guid klasId, DateOnly van, DateOnly tot,
+            Jaarplanner.Application.Toegang.Rechten? beslisser = null,
+            CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 }

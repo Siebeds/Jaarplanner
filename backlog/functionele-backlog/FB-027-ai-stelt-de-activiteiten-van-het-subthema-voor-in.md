@@ -2,13 +2,13 @@
 id: FB-027
 titel: AI stelt de activiteiten van het subthema voor in de weekagenda
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:10
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 20:55
+opgepakt-door: claude-fb027
+branch: ticket/FB-027-weekvoorstel
+pr: 177
 geblokkeerd:
 fr: [FR-6.2, FR-7.1]
 ---
@@ -40,16 +40,16 @@ aanvaardt of weigert.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week met schooluren 8:30 tot 15:30, middagpauze 12:00 tot 13:15 en een algemene fiche elke dag van
+- [x] Gegeven een week met schooluren 8:30 tot 15:30, middagpauze 12:00 tot 13:15 en een algemene fiche elke dag van
   13:15 tot 14:00, wanneer de leerkracht een voorstel vraagt, dan valt geen voorgesteld blok buiten de schooluren, in de
   middagpauze of over de fiche.
-- [ ] Gegeven de voorstellen, dan staan ze als voorgesteld in de agenda, en tellen ze pas mee in de dekking als ze
+- [x] Gegeven de voorstellen, dan staan ze als voorgesteld in de agenda, en tellen ze pas mee in de dekking als ze
   aanvaard zijn.
-- [ ] Gegeven een voorgesteld blok, wanneer de leerkracht het weigert, dan verdwijnt het; wanneer ze het aanvaardt, blijft
+- [x] Gegeven een voorgesteld blok, wanneer de leerkracht het weigert, dan verdwijnt het; wanneer ze het aanvaardt, blijft
   het als gewone planning.
-- [ ] Gegeven een activiteit die de AI kiest maar die nergens past, dan meldt de tool dat en plant ze niets.
-- [ ] Gegeven een opnieuw gevraagd voorstel, dan blijven aanvaarde blokken en eerder geplande activiteiten staan.
-- [ ] De logica is getest met een nep-AI-client, en het inpassen ook zonder AI.
+- [x] Gegeven een activiteit die de AI kiest maar die nergens past, dan meldt de tool dat en plant ze niets.
+- [x] Gegeven een opnieuw gevraagd voorstel, dan blijven aanvaarde blokken en eerder geplande activiteiten staan.
+- [x] De logica is getest met een nep-AI-client, en het inpassen ook zonder AI.
 
 ## Testscenario's
 
@@ -73,3 +73,9 @@ aanvaardt of weigert.
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-23 20:12 · claude-fb027 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (vóór FB-032)
+- 2026-09-23 20:22 · claude-fb027 · ontwerp vastgelegd in ADR-0067: voorgesteld blok is een activiteitplaatsing met status voorgesteld; AI kiest activiteit, volgorde en dag, de tool het uur; grondwet IV.5 en V.1 aangevuld
+- 2026-09-23 20:43 · claude-fb027 · backend en frontend gebouwd; backend 2350 unit + 613 integratie groen, frontend 277 tests groen, lint groen
+- 2026-09-23 20:50 · claude-fb027 · antagonist: 1 MAJOR (verslepen van andermans voorstel beslist zonder eigenaarscheck) opgelost met test; MINORs: opnieuw vragen laat voorstellen van een collega staan, geen voorstel meer op een voorbij uur vandaag; rest in worklog
+- 2026-09-23 20:54 · claude-fb027 · in-uitvoering → te-testen: gebouwd: AI stelt de week voor, voorstellen als voorgestelde blokken in de agenda, aanvaarden/weigeren per blok of alles; gates groen, antagonist COMPLIANT na 1 ronde
+- 2026-09-23 20:55 · claude-fb027 · PR #177

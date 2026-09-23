@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useDndMonitor, useDraggable, useDroppable } from "@dnd-kit/core";
-import { IcoonFiche } from "../../components/Iconen";
+import { IcoonFiche, IcoonToverstok } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
@@ -1050,7 +1050,10 @@ function Blok({
   const [rekEinde, setRekEinde] = useState<number | null>(null);
 
   const einde = rekEinde ?? blok.einde;
-  const kleur = blok.activiteit?.kleur ?? null;
+  // An open proposal of a weekvoorstel (FB-027) wears the faint AI ring and the wand instead of its colour, so it
+  // cannot be taken for a block she planned (ADR-0051); the strip above the grid says why it is there and decides it.
+  const voorstel = blok.activiteit?.status === "Voorgesteld";
+  const kleur = voorstel ? null : (blok.activiteit?.kleur ?? null);
   const breedte = 100 / plek.kolommen;
 
   /*
@@ -1107,7 +1110,7 @@ function Blok({
       <div
         className={cn(
           "group/blok relative h-full overflow-hidden rounded-veld border",
-          kleur ? KLEURVLAK[kleur] : blok.doel.soort === "activiteit"
+          voorstel ? "voorstel-ai" : kleur ? KLEURVLAK[kleur] : blok.doel.soort === "activiteit"
             ? // The same light grey as before, mixed with the card rather than laid over it, so nothing behind the
               // block shows through its name (FB-058).
               "border-lijn bg-[color-mix(in_srgb,var(--color-vlak-diep)_50%,var(--color-kaart))]"
@@ -1135,7 +1138,7 @@ function Blok({
           // tells it from an activiteit, and a short block does not print it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
             blok.doel.soort === "activiteit" ? "" : `, ${blok.onder}`
-          }${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
+          }${voorstel ? `, ${t("weekvoorstel.voorstel")}` : ""}${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
             blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""
           }${blok.tekst ? `, ${blok.tekst}` : ""}`}
           // dnd-kit's attributes say "draggable" to a screen reader, so a block that cannot move does not get them.
@@ -1153,6 +1156,8 @@ function Blok({
           <span className="flex min-w-0 items-baseline gap-1 overflow-hidden">
             {blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
+            ) : voorstel ? (
+              <IcoonToverstok aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zacht" />
             ) : null}
             <span
               className={cn(

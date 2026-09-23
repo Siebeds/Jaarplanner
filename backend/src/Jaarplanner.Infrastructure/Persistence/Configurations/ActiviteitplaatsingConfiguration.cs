@@ -58,6 +58,9 @@ public sealed class ActiviteitplaatsingConfiguration : IEntityTypeConfiguration<
         builder.Property(p => p.Begin).IsRequired();
         builder.Property(p => p.Einde).IsRequired();
 
+        // Only a weekvoorstel's open proposal has one (FB-027, ADR-0067 W1); unbounded text, as on themaplaatsingen.
+        builder.Property(p => p.AiMotivatie);
+
         // The domain invariant, held in the database too: one activiteit at most once per start time per day. The
         // same activiteit on two different days is legitimate and common (a reading moment on Monday and again on
         // Thursday), which is why the day is part of the key rather than the activiteit alone. Begin is part of it

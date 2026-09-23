@@ -45,8 +45,9 @@ public sealed class WeekplanningService : IWeekplanningService
         await LaadKlasAsync(klasId, cancellationToken);
         var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
 
-        // No plan yet is not an error: a klas gets one the first time something is placed.
-        var plaatsingen = jaarplan?.Activiteitplaatsingen ?? [];
+        // No plan yet is not an error: a klas gets one the first time something is placed. An open proposal of a
+        // weekvoorstel is not planned yet (ADR-0067 W4), so a screen that says "al ingepland" must not count it.
+        var plaatsingen = (jaarplan?.Activiteitplaatsingen ?? []).Where(p => !p.IsVervangbaar).ToList();
 
         return new Activiteitplaatsingenweergave(
             [.. plaatsingen
@@ -160,10 +161,23 @@ public sealed class WeekplanningService : IWeekplanningService
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Rechten? planner = null,
         CancellationToken cancellationToken = default)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
         var (jaarplan, plaatsing) = await LaadPlaatsingAsync(klasId, plaatsingId, cancellationToken);
+
+        // Moving an open proposal decides it (ADR-0067 W4), so it takes the same right as accepting it (W6): a
+        // colleague's own activiteit is hers or an admin's to decide, whichever route the decision takes.
+        if (plaatsing.IsVervangbaar)
+        {
+            var inhoud = await _opslag.LaadActiviteitinhoudAsync(plaatsing.ActiviteitId, cancellationToken)
+                ?? throw new SchoolcontentNietGevondenFout($"Activiteit {plaatsing.ActiviteitId} is niet gevonden.");
+            if (!MagPlannen(inhoud, planner))
+            {
+                throw OngeldigeDagplanningFout.VoorstelVanEenAnder();
+            }
+        }
 
         // Only the target is validated. The placement's current day is deliberately not, which is what makes this the
         // route off a day the school has since closed (see IWeekplanningService).
@@ -202,6 +216,86 @@ public sealed class WeekplanningService : IWeekplanningService
 
         return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, dag, cancellationToken);
     }
+
+    public async Task<Weekplanningweergave> BeslisVoorstelAsync(
+        Guid klasId,
+        Guid plaatsingId,
+        bool aanvaard,
+        Rechten? beslisser = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+        var (jaarplan, plaatsing) = await LaadPlaatsingAsync(klasId, plaatsingId, cancellationToken);
+
+        if (!plaatsing.IsVervangbaar)
+        {
+            throw OngeldigeDagplanningFout.VoorstelAlBeslist();
+        }
+
+        var dag = plaatsing.Datum;
+        if (aanvaard)
+        {
+            var inhoud = await _opslag.LaadActiviteitinhoudAsync(plaatsing.ActiviteitId, cancellationToken)
+                ?? throw new SchoolcontentNietGevondenFout($"Activiteit {plaatsing.ActiviteitId} is niet gevonden.");
+            if (!MagPlannen(inhoud, beslisser))
+            {
+                throw OngeldigeDagplanningFout.VoorstelVanEenAnder();
+            }
+
+            plaatsing.Aanvaard();
+        }
+        else
+        {
+            // Rejected, it goes (ADR-0067 W4, D3): an undecided proposal is not a human decision to keep.
+            jaarplan.VerwijderActiviteitplaatsing(plaatsing);
+        }
+
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return await ProjecteerWeekAsync(klas, schooljaar, jaarplan, dag, cancellationToken);
+    }
+
+    public async Task<Weekplanningweergave> AanvaardVoorstellenAsync(
+        Guid klasId,
+        DateOnly van,
+        DateOnly tot,
+        Rechten? beslisser = null,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
+        if (jaarplan is null)
+        {
+            return await ProjecteerAsync(klas, schooljaar, null, van, tot, cancellationToken);
+        }
+
+        var open = jaarplan.Activiteitplaatsingen
+            .Where(p => p.IsVervangbaar && p.Datum >= van && p.Datum <= tot)
+            .ToList();
+        var inhoud = (await _opslag.LaadActiviteitinhoudAsync(
+                open.Select(p => p.ActiviteitId).Distinct().ToList(),
+                cancellationToken))
+            .ToDictionary(i => i.ActiviteitId);
+
+        // A colleague's own activiteit stays open rather than failing the lot: it is still on screen as a proposal,
+        // which is the honest state, and she decides it herself (ADR-0067 W6).
+        foreach (var plaatsing in open.Where(p => inhoud.TryGetValue(p.ActiviteitId, out var i) && MagPlannen(i, beslisser)))
+        {
+            plaatsing.Aanvaard();
+        }
+
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return await ProjecteerAsync(klas, schooljaar, jaarplan, van, tot, cancellationToken);
+    }
+
+    /// <summary>
+    /// Whether <paramref name="planner"/> may put this activiteit in an agenda: a shared one anyone with the klas's
+    /// planning may, an own one only its owner or an admin (ADR-0049 D6). Without a planner it fails closed.
+    /// </summary>
+    private static bool MagPlannen(Activiteitinhoud inhoud, Rechten? planner) =>
+        inhoud.EigenaarId is not { } eigenaarId
+        || (planner is not null && (planner.IsAdmin || planner.GebruikerId == eigenaarId));
 
     /// <summary>
     /// Refuses a day the school is not open on, telling the two cases apart because the teacher acts differently on
@@ -445,7 +539,8 @@ public sealed class WeekplanningService : IWeekplanningService
             Status: plaatsing.Status.ToString(),
             Doelcodes: inhoud.Doelcodes,
             ValtBuitenThemaperiode: buiten,
-            Kleur: inhoud.Kleur);
+            Kleur: inhoud.Kleur,
+            AiMotivatie: plaatsing.AiMotivatie);
     }
 
     private async Task<(Klas Klas, Schooljaar Schooljaar)> LaadKlasAsync(

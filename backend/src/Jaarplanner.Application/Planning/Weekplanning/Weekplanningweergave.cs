@@ -151,4 +151,9 @@ public sealed record GeplandeActiviteitWeergave(
     IReadOnlyList<string> Doelcodes,
     bool ValtBuitenThemaperiode,
     /// <summary>The teacher's colour label on the activiteit, or null. Rendered as a wash plus its name.</summary>
-    Activiteitkleur? Kleur = null);
+    Activiteitkleur? Kleur = null,
+    /// <summary>
+    /// Why the AI proposed it here, for an open proposal of a weekvoorstel or an accepted one (FB-027, ADR-0067);
+    /// null for a block a person placed.
+    /// </summary>
+    string? AiMotivatie = null);

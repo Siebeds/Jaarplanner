@@ -77,6 +77,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0064](0064-subdoelplaatsing-bij-een-leeftijd-zonder-subthema.md) | **The subdoelplaatsing also serves a leeftijd without a subthema**, while it has open goals, shown only to whoever may decide there | Accepted |
 | [0065](0065-chuck-de-kat-in-de-app.md) | **Chuck, the cat, in the app**: a gember coat that is the one exception to "no brand hue" (low chroma, measured 3:1), inline SVG with keyframes generated from one rig, a posture derived from the deurmat and the dekking, and a school setting that keeps him off until admin turns him on | Accepted |
 | [0066](0066-de-chat-van-de-kat-kiest-een-opzoeking.md) | **The cat's chat picks a lookup, the tool answers it**: one model call classifies a question as an explanation from the handleiding, one of five fixed lookups or unknown; the tool runs the lookup over its own data with the gebruiker's rights, and nothing is kept or logged | Accepted |
+| [0067](0067-weekvoorstel-in-de-agenda.md) | **The AI proposes a week's activiteiten, the tool fits them**: the model picks activiteiten of the running subthema's, their order and day; the tool sets the hour in the free time inside the schooluren; each is an `Activiteitplaatsing` with status `voorgesteld` and a motivation, and counts for nothing until accepted | Accepted |
 
 ## Compliance traceability matrix
 
@@ -146,6 +147,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0064 | Art. IV.1, VI.1 and IX.2 unchanged; supersedes the last sentence of 0050 D1 | FB-062 | FR-4.4 |
 | 0065 | Art. IV.1, IV.8, VI.1, VI.7 and XII unchanged; realises 0059 K4, K5 and D7; one exception to 0024's palette rule | FB-071 | FR-14.7 |
 | 0066 | Art. IV.2, IV.3, IV.4, IV.5, VI.1 and VI.2 unchanged; realises 0059 D6 for the chat | FB-031 | FR-14.10 |
+| 0067 | Art. IV.5 and V.1 amended; IV.1, IV.2 and VI.1 unchanged | FB-027 | FR-6.2, FR-7.1 |
 
 ## Open decisions referenced by ADRs
 

@@ -1,3 +1,5 @@
+using Jaarplanner.Application.Toegang;
+
 namespace Jaarplanner.Application.Planning.Weekplanning;
 
 /// <summary>
@@ -99,6 +101,7 @@ public interface IWeekplanningService
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Rechten? planner = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -113,5 +116,28 @@ public interface IWeekplanningService
     Task<Weekplanningweergave> VerwijderActiviteitplaatsingAsync(
         Guid klasId,
         Guid plaatsingId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Decides one open proposal of a weekvoorstel (FB-027, ADR-0067 W4): accepted, it is planned like any other block;
+    /// rejected, it goes. A block that is no open proposal is refused, and so is accepting a colleague's own activiteit
+    /// unless <paramref name="beslisser"/> is admin (W6).
+    /// </summary>
+    Task<Weekplanningweergave> BeslisVoorstelAsync(
+        Guid klasId,
+        Guid plaatsingId,
+        bool aanvaard,
+        Rechten? beslisser = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Accepts every open proposal between <paramref name="van"/> and <paramref name="tot"/> that
+    /// <paramref name="beslisser"/> may accept (FB-027 "allemaal"); a colleague's own activiteit stays open.
+    /// </summary>
+    Task<Weekplanningweergave> AanvaardVoorstellenAsync(
+        Guid klasId,
+        DateOnly van,
+        DateOnly tot,
+        Rechten? beslisser = null,
         CancellationToken cancellationToken = default);
 }

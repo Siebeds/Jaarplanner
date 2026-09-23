@@ -68,6 +68,8 @@ export function subthemareeksen(
     const gezien = new Set<string>();
 
     for (const activiteit of dag.activiteiten) {
+      // An open proposal of a weekvoorstel is not planned yet (ADR-0067 W4): it widens no band.
+      if (activiteit.status === "Voorgesteld") continue;
       if (gezien.has(activiteit.subthemaId)) continue;
       gezien.add(activiteit.subthemaId);
 

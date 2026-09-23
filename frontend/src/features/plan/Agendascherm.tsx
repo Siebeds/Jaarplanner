@@ -43,6 +43,7 @@ import { cn } from "../../lib/cn";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { Maandrooster } from "./Maandrooster";
 import { Tijdraster, type Ficheblokje, type Tijddoel } from "./Tijdraster";
+import { Weekvoorstel } from "./Weekvoorstel";
 import { STANDAARDBEGIN, alsTijd, minuten, toonTijd } from "./tijd";
 import { beginSleep, doelTijd, eindigSleep, leesKolomId } from "./tijdsleep";
 import { eindeVan, type Gevraagdeplek } from "./gevraagdeplek";
@@ -922,6 +923,11 @@ export function Agendascherm() {
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
                  a phone. */}
+              {/* The AI proposes the week (FB-027): only in the week views, the unit it proposes, and only for whoever
+                  may plan this klas, who decides it. */}
+              {weekweergave && magPlannen && klasId && zichtbareDagen.length > 0 ? (
+                <Weekvoorstel klasId={klasId} datum={anker} dagen={zichtbareDagen} />
+              ) : null}
               {/* Chuck lies on the corner of the week strip when a goal of this klas is at risk (FB-071). */}
               <Weekhoek klasId={klasId} actief={weekweergave}>
               <Tijdraster

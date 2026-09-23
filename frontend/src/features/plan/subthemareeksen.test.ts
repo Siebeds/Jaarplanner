@@ -102,6 +102,15 @@ describe("subthemareeksen", () => {
   it("geeft niets terug voor dagen zonder activiteit", () => {
     expect(subthemareeksen([dag("2026-09-01"), dag("2026-09-02")], september)).toEqual([]);
   });
+
+  it("laat een open voorstel van de AI de reeks niet verbreden (FB-027)", () => {
+    const voorstel = dag("2026-09-04", "s1");
+    voorstel.activiteiten[0].status = "Voorgesteld";
+
+    const reeksen = subthemareeksen([dag("2026-09-01", "s1"), voorstel], september);
+
+    expect(reeksen[0]).toMatchObject({ van: "2026-09-01", tot: "2026-09-01", aantalDagen: 1 });
+  });
 });
 
 describe("reeksenPerDag", () => {
