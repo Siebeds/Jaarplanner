@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
+import { IcoonKruis, IcoonPijlLinks, IcoonPijlRechts, IcoonPlus } from "../../components/Iconen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { themapaginaPad } from "../themas/themapagina";
@@ -116,8 +116,21 @@ export function Themabalk({
   );
 }
 
-/** A subthema running over a stretch of the week, as one bar under the thema's, opening its chapter (FB-090). */
-export function Subthemabalk({ balk, rij }: { balk: Weekbalk<Subthemareeks>; rij: number }) {
+/**
+ * A subthema running over a stretch of the week, as one bar under the thema's, opening its chapter (FB-090).
+ *
+ * **Taking it out of the agenda sits at its right end (FB-096)**, where the thema bar keeps its planner: a quiet cross on
+ * the bar's own grey, never the accent. Passed only to whoever may plan; the screen asks before anything goes.
+ */
+export function Subthemabalk({
+  balk,
+  rij,
+  onHaalWeg,
+}: {
+  balk: Weekbalk<Subthemareeks>;
+  rij: number;
+  onHaalWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
+}) {
   const reeks = balk.item;
 
   return (
@@ -140,7 +153,46 @@ export function Subthemabalk({ balk, rij }: { balk: Weekbalk<Subthemareeks>; rij
           <Balktekst balk={balk}>{reeks.subthemaNaam}</Balktekst>
         </span>
       </Link>
+      {onHaalWeg ? <Weghaalknop reeks={reeks} onHaalWeg={onHaalWeg} /> : null}
     </div>
+  );
+}
+
+/**
+ * The cross that takes a subthema out of the agenda (FB-096), on a week bar and on a day's strip alike.
+ *
+ * A 24 pixel slot with the 20 pixel band along its top, as the strips beside it. The cross is the only thing drawn, so
+ * the name keeps its room on a phone's narrow column; the spoken name and the tooltip say what it does.
+ */
+export function Weghaalknop({
+  reeks,
+  onHaalWeg,
+  dicht = true,
+}: {
+  reeks: Subthemareeks;
+  onHaalWeg: (reeks: Subthemareeks, knop: HTMLElement) => void;
+  /** The day view's strips set their type one step larger; the band keeps its height either way. */
+  dicht?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => onHaalWeg(reeks, e.currentTarget)}
+      aria-label={t("subthemaWeg.knopAria", { naam: reeks.subthemaNaam })}
+      title={t("subthemaWeg.knop")}
+      // As the bar's link: a press leaves no focus ring behind in the agenda. The keyboard still focuses it.
+      onMouseDown={(e) => e.preventDefault()}
+      className="group/weg pointer-events-auto flex h-6 shrink-0 items-start focus-visible:outline-offset-[-2px]"
+    >
+      <span
+        className={cn(
+          "flex h-5 items-center border-l border-lijn-veld bg-lijn text-inkt-zacht transition-colors duration-150 group-hover/weg:bg-lijn-sterk group-hover/weg:text-inkt",
+          dicht ? "px-1" : "px-1.5",
+        )}
+      >
+        <IcoonKruis aria-hidden="true" className="h-3 w-3" />
+      </span>
+    </button>
   );
 }
 

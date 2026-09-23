@@ -11,7 +11,7 @@ import type { Ik } from "../../lib/aanmelding";
 import { STANDAARDDUUR } from "../plan/tijd";
 import type { Activiteitenweek } from "../plan/Activiteitensectie";
 import type { Subthemareeks } from "../plan/subthemareeksen";
-import type { Verrijkingenweek } from "./verrijkingenweek";
+import type { Verrijkingenweek, Volgendsubthema } from "./verrijkingenweek";
 import { t } from "../../i18n";
 import { FICHEVLAK } from "../algemene-fiches/merk";
 
@@ -80,11 +80,13 @@ const weekMet = (tekst?: string): Verrijkingenweek => ({
 });
 
 const GEEN_SUBTHEMA: Verrijkingenweek = { status: "klaar", reeksen: [], periodes: [] };
+const NIETS_HIERNA: Volgendsubthema = { status: "klaar", reeks: null, periodes: [] };
 
 function toon({
   onKiesAlgemeneFiche = vi.fn(),
   klasId = "k-1" as string | null,
   verrijkingenWeek = GEEN_SUBTHEMA,
+  volgendSubthema = NIETS_HIERNA,
   magPlannen = true,
 } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -98,6 +100,7 @@ function toon({
             magPlannen={magPlannen}
             activiteitenWeek={EEN_WEEK}
             verrijkingenWeek={verrijkingenWeek}
+            volgendSubthema={volgendSubthema}
             onKiesActiviteit={vi.fn()}
           />
         </DndContext>
@@ -107,41 +110,225 @@ function toon({
   return { onKiesAlgemeneFiche, client };
 }
 
+/** A hoek's row: one button with its name, and under it what it holds or the offer to write it. */
 const kaart = async (naam = "bouwhoek") => (await screen.findByText(naam)).closest("button")!;
 
-describe("Hoekenpaneel: de verrijking van de week onder elke hoek (FB-038)", () => {
+const ZES_HOEKEN = ["bouwhoek", "knutselhoek", "leeshoek", "ontdekhoek", "poppenhoek", "schrijfhoek"].map((naam, i) => ({
+  id: i === 0 ? "h-1" : `h-${naam}`,
+  klasId: "k-1",
+  naam,
+  omschrijving: i === 0 ? "Blokken, bouwplaten en voertuigen" : null,
+  aantalVerrijkingen: 0,
+}));
+
+const regen: Subthemareeks = {
+  ...herfst,
+  subthemaId: "s-regen",
+  subthemaNaam: "Regen",
+  van: "2026-09-17",
+  tot: "2026-10-02",
+  periodeId: "p-regen",
+};
+
+const dieren = {
+  subthemaId: "s-dieren",
+  subthemaNaam: "Dieren in de herfst",
+  van: "2026-10-26",
+  tot: "2026-11-06",
+  periodeId: "p-dieren",
+};
+
+const volgendMet = (tekst?: string): Volgendsubthema => ({
+  status: "klaar",
+  reeks: dieren,
+  periodes: [
+    {
+      subthemaperiodeId: "p-dieren",
+      subthemaId: "s-dieren",
+      subthemaNaam: "Dieren in de herfst",
+      van: dieren.van,
+      tot: dieren.tot,
+      verrijkingen: tekst ? [{ id: "v-9", hoekId: "h-leeshoek", tekst }] : [],
+    },
+  ],
+});
+
+function metHoeken(hoeken: object[]) {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((_pad: string, init?: RequestInit) => Promise.resolve(antwoord(init?.method === "PUT" ? {} : hoeken))),
+  );
+}
+
+const verstuurd = () => {
+  const oproepen = vi.mocked(fetch).mock.calls as [string, RequestInit | undefined][];
+  const [pad, init] = oproepen.find(([, verzoek]) => verzoek?.method === "PUT")!;
+  return { pad, body: JSON.parse(String(init!.body)) };
+};
+
+describe("Hoekenpaneel: de hoeken per subthema, met de stand en wat erna komt (FB-098)", () => {
+  beforeEach(() => {
+    zetSchermbreedte(true);
+    useHoekenpaneel.setState({ open: true, soort: "hoeken" });
+    metHoeken(ZES_HOEKEN);
+    // A day outside every run below, so a period is written without "Nu" unless a test says otherwise.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 5, 1));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("zet het subthema één keer boven de hoeken, met zijn periode, en niet bij elke hoek", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+
+    const blok = await screen.findByRole("region", { name: "De herfst" });
+    await within(blok).findByText("schrijfhoek");
+    expect(within(blok).getByText("14 tot 25 september")).toBeInTheDocument();
+    expect(screen.getAllByText("De herfst")).toHaveLength(1);
+    expect(within(blok).getAllByRole("listitem")).toHaveLength(6);
+  });
+
+  it("zegt 'Nu' bij de periode alleen wanneer vandaag een van haar dagen is", async () => {
+    vi.setSystemTime(new Date(2026, 8, 16));
+    toon({ verrijkingenWeek: weekMet() });
+
+    expect(await screen.findByText(t("hoekenpaneel.nu", { periode: "14 tot 25 september" }))).toBeInTheDocument();
+  });
+
+  it("toont de stand '1 van 6', de verrijking met een vinkje, en bij de andere hoeken het aanbod om er een in te vullen", async () => {
+    toon({ verrijkingenWeek: weekMet("veel blaadjes") });
+
+    const blok = await screen.findByRole("region", { name: "De herfst" });
+    await within(blok).findByText("schrijfhoek");
+    expect(within(blok).getByText("1 van 6")).toBeInTheDocument();
+    expect(within(blok).getByText(t("hoekenpaneel.standVoluit", { aantal: 1, totaal: 6 }))).toBeInTheDocument();
+    const bouwhoek = await kaart();
+    expect(within(bouwhoek).getByText("veel blaadjes")).toBeInTheDocument();
+    expect(within(bouwhoek).getByText(t("hoekenpaneel.verrijkt"))).toBeInTheDocument();
+    expect(within(blok).getAllByText(t("hoekenpaneel.verrijkingInvullen"))).toHaveLength(5);
+  });
+
+  it("toont de beschrijving van een hoek niet in het paneel, maar wel in de fiche die de naam opent", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+
+    fireEvent.click(await kaart());
+    const blad = await screen.findByRole("dialog", { name: "bouwhoek" });
+    expect(within(blad).getByText("Blokken, bouwplaten en voertuigen")).toBeInTheDocument();
+    expect(screen.getAllByText("Blokken, bouwplaten en voertuigen")).toHaveLength(1);
+  });
+
+  it("geeft elk subthema van de week een eigen blok, met zijn eigen periode en stand, in volgorde van begin", async () => {
+    const herfstweek = weekMet("kastanjes");
+    if (herfstweek.status !== "klaar") throw new Error("week");
+    const week: Verrijkingenweek = {
+      status: "klaar",
+      reeksen: [herfst, regen],
+      periodes: [
+        ...herfstweek.periodes,
+        {
+          subthemaperiodeId: "p-regen",
+          subthemaId: "s-regen",
+          subthemaNaam: "Regen",
+          van: regen.van,
+          tot: regen.tot,
+          verrijkingen: [],
+        },
+      ],
+    };
+    toon({ verrijkingenWeek: week });
+
+    await screen.findAllByText("schrijfhoek");
+    const blokken = screen.getAllByRole("region");
+    expect(blokken.map((blok) => within(blok).getByRole("heading").textContent)).toEqual(["De herfst", "Regen"]);
+    expect(within(blokken[0]).getByText("1 van 6")).toBeInTheDocument();
+    expect(within(blokken[1]).getByText("0 van 6")).toBeInTheDocument();
+    expect(within(blokken[1]).getByText("17 september tot 2 oktober")).toBeInTheDocument();
+  });
+
+  it("toont onderaan het volgende subthema met zijn begindatum en stand, en 'Al voorbereiden' vult het in", async () => {
+    toon({ verrijkingenWeek: weekMet(), volgendSubthema: volgendMet("boeken over egels") });
+
+    const hierna = await screen.findByRole("region", { name: "Dieren in de herfst" });
+    expect(within(hierna).getByText(t("hoekenpaneel.hierna", { datum: "26 oktober" }))).toBeInTheDocument();
+    expect(within(hierna).getByText("1 van 6")).toBeInTheDocument();
+
+    fireEvent.click(within(hierna).getByRole("button", { name: t("hoekenpaneel.alVoorbereiden") }));
+    const blad = await screen.findByRole("dialog", { name: "Dieren in de herfst" });
+    expect(within(blad).getByLabelText("leeshoek")).toHaveValue("boeken over egels");
+    fireEvent.change(within(blad).getByLabelText("bouwhoek"), { target: { value: "een egelhol van takken" } });
+    fireEvent.click(within(blad).getByRole("button", { name: t("hoekverrijkingblad.bewaren") }));
+
+    await waitFor(() => expect(blad).not.toBeInTheDocument());
+    // Only the corner she changed: the leeshoek's text is not sent back over a colleague's newer one.
+    expect(verstuurd().body).toEqual({
+      subthemaperiodeId: "p-dieren",
+      verrijkingen: [{ hoekId: "h-1", tekst: "een egelhol van takken" }],
+    });
+    await waitFor(() => expect(screen.getByRole("button", { name: t("hoekenpaneel.alVoorbereiden") })).toHaveFocus());
+  });
+
+  it("legt bij 'Al voorbereiden' de dagen vast van een volgend subthema zonder opgeslagen venster", async () => {
+    const zonderVenster: Volgendsubthema = { status: "klaar", reeks: { ...dieren, periodeId: undefined }, periodes: [] };
+    toon({ verrijkingenWeek: weekMet(), volgendSubthema: zonderVenster });
+
+    fireEvent.click(await screen.findByRole("button", { name: t("hoekenpaneel.alVoorbereiden") }));
+    const blad = await screen.findByRole("dialog", { name: "Dieren in de herfst" });
+    fireEvent.change(within(blad).getByLabelText("bouwhoek"), { target: { value: "egels" } });
+    fireEvent.click(within(blad).getByRole("button", { name: t("hoekverrijkingblad.bewaren") }));
+
+    await waitFor(() => expect(blad).not.toBeInTheDocument());
+    expect(verstuurd().body).toEqual({
+      subthemaperiodeId: null,
+      subthemaId: "s-dieren",
+      van: dieren.van,
+      tot: dieren.tot,
+      verrijkingen: [{ hoekId: "h-1", tekst: "egels" }],
+    });
+  });
+
+  it("laat het deel 'Hierna' weg wanneer er na deze week niets gepland is", async () => {
+    toon({ verrijkingenWeek: weekMet() });
+    await screen.findAllByText("schrijfhoek");
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: t("hoekenpaneel.alVoorbereiden") })).not.toBeInTheDocument();
+  });
+
+  it("laat het deel 'Hierna' weg zolang niet gelezen is wat erna komt", async () => {
+    toon({ verrijkingenWeek: weekMet(), volgendSubthema: { status: "laadt" } });
+    await screen.findAllByText("schrijfhoek");
+    expect(screen.getAllByRole("region")).toHaveLength(1);
+  });
+
+  it("toont de hoeken zonder woord eronder zolang de week niet gelezen is", async () => {
+    toon({ verrijkingenWeek: { status: "laadt" } });
+    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  });
+
+  it("zegt in een week zonder subthema dat er geen loopt, en toont wel wat erna komt", async () => {
+    toon({ verrijkingenWeek: GEEN_SUBTHEMA, volgendSubthema: volgendMet() });
+    expect(await screen.findByText(t("hoekenpaneel.geenSubthemaInWeek"))).toBeInTheDocument();
+    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
+    expect(screen.getByRole("region", { name: "Dieren in de herfst" })).toBeInTheDocument();
+  });
+
+  it("houdt de tegel om een hoek toe te voegen onderaan, na 'Hierna'", async () => {
+    toon({ verrijkingenWeek: weekMet(), volgendSubthema: volgendMet() });
+    const hierna = await screen.findByRole("region", { name: "Dieren in de herfst" });
+    const tegel = screen.getByRole("button", { name: t("hoeken.toevoegen") });
+    expect(hierna.compareDocumentPosition(tegel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+describe("Hoekenpaneel: de fiche van een hoek (FB-038)", () => {
   beforeEach(() => {
     zetSchermbreedte(true);
     useHoekenpaneel.setState({ open: true, soort: "hoeken" });
   });
 
-  it("toont onder de hoek wat hij bevat terwijl het subthema van deze week loopt, met de naam van dat subthema", async () => {
-    toon({ verrijkingenWeek: weekMet("kastanjes en dennenappels") });
-
-    const hoek = await kaart();
-    expect(within(hoek).getByText("kastanjes en dennenappels")).toBeInTheDocument();
-    expect(within(hoek).getByText("De herfst")).toBeInTheDocument();
-  });
-
-  it("biedt onder een hoek zonder verrijking aan om er een in te vullen", async () => {
-    toon({ verrijkingenWeek: weekMet() });
-
-    const hoek = await kaart();
-    expect(within(hoek).getByText("De herfst")).toBeInTheDocument();
-    expect(within(hoek).getByText(t("hoekenpaneel.verrijkingInvullen"))).toBeInTheDocument();
-  });
-
-  it("zegt niets onder een hoek zolang de week niet gelezen is, en niets in een week zonder subthema", async () => {
-    toon({ verrijkingenWeek: { status: "laadt" } });
-    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
-  });
-
-  it("zegt niets onder een hoek in een week waarin geen subthema loopt", async () => {
-    toon({ verrijkingenWeek: GEEN_SUBTHEMA });
-    expect(await kaart()).toHaveTextContent(/^bouwhoek$/);
-  });
-
-  it("opent bij een klik het blad van die hoek, bewaart alleen die hoek, en zet de focus terug op de kaart", async () => {
+  it("opent bij een klik het blad van die hoek, bewaart alleen die hoek, en zet de focus terug op de rij", async () => {
     toon({ verrijkingenWeek: weekMet() });
 
     fireEvent.click(await kaart());
@@ -150,14 +337,10 @@ describe("Hoekenpaneel: de verrijking van de week onder elke hoek (FB-038)", () 
     fireEvent.click(within(blad).getByRole("button", { name: t("hoekverrijkingblad.bewaren") }));
 
     await waitFor(() => expect(blad).not.toBeInTheDocument());
-    const oproepen = vi.mocked(fetch).mock.calls as [string, RequestInit | undefined][];
-    const [pad, init] = oproepen.find(([, verzoek]) => verzoek?.method === "PUT")!;
+    const { pad, body } = verstuurd();
     expect(pad).toBe("/api/klassen/k-1/hoekverrijkingen");
-    expect(JSON.parse(String(init!.body))).toEqual({
-      subthemaperiodeId: "p-herfst",
-      verrijkingen: [{ hoekId: "h-1", tekst: "kastanjes" }],
-    });
-    // Back on the corner she pressed, not on <body>: `Blad` gives Radix no trigger to return focus to.
+    expect(body).toEqual({ subthemaperiodeId: "p-herfst", verrijkingen: [{ hoekId: "h-1", tekst: "kastanjes" }] });
+    // Back on the row she pressed, not on <body>: `Blad` gives Radix no trigger to return focus to.
     await waitFor(() => expect(screen.getByText("bouwhoek").closest("button")).toHaveFocus());
   });
 
@@ -209,6 +392,13 @@ describe("Hoekenpaneel: de hoeken voor wie de klas alleen mag bekijken (FB-038)"
     const hoek = await kaart();
     expect(within(hoek).getByText(t("hoekenpaneel.geenVerrijking"))).toBeInTheDocument();
     expect(within(hoek).queryByText(t("hoekenpaneel.verrijkingInvullen"))).toBeNull();
+  });
+
+  it("toont een lezer wat erna komt, zonder 'Al voorbereiden'", async () => {
+    toon({ magPlannen: false, verrijkingenWeek: weekMet(), volgendSubthema: volgendMet() });
+
+    expect(await screen.findByRole("region", { name: "Dieren in de herfst" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("hoekenpaneel.alVoorbereiden") })).not.toBeInTheDocument();
   });
 
   it("stuurt een lezer bij een klas zonder hoeken niet naar Instellingen om er te maken", async () => {
@@ -626,6 +816,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
               magPlannen={magPlannen}
               activiteitenWeek={{ maandag: WEEK, nummer: 38, lopend }}
               verrijkingenWeek={GEEN_SUBTHEMA}
+              volgendSubthema={NIETS_HIERNA}
               onKiesActiviteit={onKiesActiviteit}
             />
           </DndContext>

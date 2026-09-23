@@ -1,3 +1,5 @@
+import { t } from "../i18n";
+
 /**
  * Dates arrive from the backend as plain `yyyy-MM-dd` (a C# `DateOnly`), never with a time or a
  * zone. They are parsed and formatted as such: `new Date("2026-09-01")` is UTC midnight, which in a
@@ -24,6 +26,23 @@ export function maandKort(isoDatum: string): string {
 /** "1 sep - 12 okt", with an en dash, which is what a date range takes. */
 export function periode(vanIso: string, totIso: string | null): string {
   return totIso ? `${dagMaand(vanIso)} – ${dagMaand(totIso)}` : dagMaand(vanIso);
+}
+
+const DAG_MAAND_LANG = new Intl.DateTimeFormat("nl-BE", { day: "numeric", month: "long" });
+
+/** "26 oktober": a date written out, where a sentence names it rather than a label abbreviating it. */
+export function dagMaandVoluit(isoDatum: string): string {
+  return DAG_MAAND_LANG.format(lokaleDatum(isoDatum));
+}
+
+/**
+ * "12 tot 23 oktober", or "28 september tot 9 oktober" across a month: a range as a sentence says it. The month is
+ * written once when both days share it.
+ */
+export function periodeVoluit(vanIso: string, totIso: string): string {
+  const zelfdeMaand = vanIso.slice(0, 7) === totIso.slice(0, 7);
+  const van = zelfdeMaand ? String(Number(vanIso.slice(8, 10))) : dagMaandVoluit(vanIso);
+  return t("periode.voluit", { van, tot: dagMaandVoluit(totIso) });
 }
 
 /** Whole days between two dates, both ends included. Used to size the year strip. */

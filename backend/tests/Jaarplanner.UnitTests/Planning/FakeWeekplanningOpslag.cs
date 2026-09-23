@@ -85,6 +85,26 @@ internal sealed class FakeWeekplanningOpslag : IWeekplanningOpslag
                 .ToList());
     }
 
+    /// <summary>The hoekverrijkingen per window id, as a count; removing them takes the key away (FB-096).</summary>
+    public Dictionary<Guid, int> Hoekverrijkingen { get; } = [];
+
+    public Task<int> TelHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(subthemaplaatsingIds.Sum(id => Hoekverrijkingen.GetValueOrDefault(id)));
+
+    public Task VerwijderHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default)
+    {
+        foreach (var id in subthemaplaatsingIds)
+        {
+            Hoekverrijkingen.Remove(id);
+        }
+
+        return Task.CompletedTask;
+    }
+
     public Task BewaarAsync(CancellationToken cancellationToken = default)
     {
         AantalKeerBewaard++;

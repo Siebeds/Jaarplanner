@@ -79,6 +79,19 @@ public interface IWeekplanningOpslag
         CancellationToken cancellationToken = default);
 
     Task BewaarAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>How many hoekverrijkingen are written against these subthema windows (FB-096).</summary>
+    Task<int> TelHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Marks the hoekverrijkingen of these windows for removal with the next <see cref="BewaarAsync"/> (FB-096).
+    /// PostgreSQL cascades them through the window anyway; removing them here keeps a store without that cascade honest.
+    /// </summary>
+    Task VerwijderHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

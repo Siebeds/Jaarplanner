@@ -87,6 +87,39 @@ public interface IWeekplanningService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// What <see cref="HaalSubthemaWegAsync"/> would take with it over those days, without changing anything (FB-096).
+    /// </summary>
+    /// <exception cref="Schoolcontent.Beheer.SchoolcontentNietGevondenFout">
+    /// The klas does not exist, or the subthema has neither a window nor an activiteit on those days.
+    /// </exception>
+    Task<Subthemaweghaling> BekijkSubthemaWeghalingAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Takes a subthema out of the klas's agenda over a stretch of days (FB-096, FR-7.2): every window of it that shares
+    /// a day with the stretch, and every activiteitplaatsing of it on the days those windows and the stretch cover.
+    /// <para>
+    /// <b>Only what belongs to this subthema goes.</b> An algemene fiche, an activiteit of another subthema and a
+    /// hoekplaatsing on the same days stay. The hoekverrijkingen written against a window go with it, as they do when
+    /// the subthema itself is deleted.
+    /// </para>
+    /// <para>
+    /// Whatever the status, as <see cref="VerwijderActiviteitplaatsingAsync"/>: an explicit teacher action is the one
+    /// actor Art. IV.2 allows to discard a human decision, and the client asks her first.
+    /// </para>
+    /// </summary>
+    Task<Weekplanningweergave> HaalSubthemaWegAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Moves a scheduled activiteit to another day and/or another time, which is also how a block is made longer or
     /// shorter: dragging its bottom edge sends the same day and start with a new end.
     /// <para>

@@ -155,6 +155,104 @@ public sealed class WeekplanningService : IWeekplanningService
         return await ProjecteerAsync(klas, schooljaar, jaarplan, van, tot, cancellationToken);
     }
 
+    public async Task<Subthemaweghaling> BekijkSubthemaWeghalingAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default)
+    {
+        await LaadKlasAsync(klasId, cancellationToken);
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
+        var selectie = await SelecteerSubthemaAsync(jaarplan, subthemaId, van, tot, cancellationToken);
+
+        var vensterIds = selectie.Vensters.Select(p => p.Id).ToList();
+        return new Subthemaweghaling(
+            AantalActiviteiten: selectie.Plaatsingen.Count,
+            AantalHoekverrijkingen: vensterIds.Count == 0 ? 0 : await _opslag.TelHoekverrijkingenAsync(vensterIds, cancellationToken),
+            HeeftPeriode: vensterIds.Count > 0,
+            BlijftElders: jaarplan!.Subthemaplaatsingen.Any(p => p.SubthemaId == subthemaId && !vensterIds.Contains(p.Id)));
+    }
+
+    public async Task<Weekplanningweergave> HaalSubthemaWegAsync(
+        Guid klasId,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken = default)
+    {
+        var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
+        var jaarplan = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
+        var selectie = await SelecteerSubthemaAsync(jaarplan, subthemaId, van, tot, cancellationToken);
+
+        // Before the windows leave the plan: their ids are what the verrijkingen hang on.
+        await _opslag.VerwijderHoekverrijkingenAsync([.. selectie.Vensters.Select(p => p.Id)], cancellationToken);
+        foreach (var venster in selectie.Vensters)
+        {
+            jaarplan!.VerwijderSubthemaplaatsing(venster);
+        }
+
+        foreach (var plaatsing in selectie.Plaatsingen)
+        {
+            jaarplan!.VerwijderActiviteitplaatsing(plaatsing);
+        }
+
+        await _opslag.BewaarAsync(cancellationToken);
+
+        return await ProjecteerAsync(klas, schooljaar, jaarplan, selectie.Van, selectie.Tot, cancellationToken);
+    }
+
+    /// <summary>
+    /// What belongs to <paramref name="subthemaId"/> over <paramref name="van"/>–<paramref name="tot"/>: the one selection
+    /// both the confirmation's counts and the delete read (FB-096).
+    /// <para>
+    /// <b>The stretch widens to the windows it touches.</b> The agenda draws a run as the union of its window and the
+    /// days its activiteiten stand on, so a window that reaches past the stretch takes its own days' activiteiten along:
+    /// otherwise those would go on drawing the band the teacher just removed.
+    /// </para>
+    /// </summary>
+    /// <exception cref="SchoolcontentNietGevondenFout">Nothing of the subthema is on those days.</exception>
+    private async Task<Subthemaselectie> SelecteerSubthemaAsync(
+        Jaarplan? jaarplan,
+        Guid subthemaId,
+        DateOnly van,
+        DateOnly tot,
+        CancellationToken cancellationToken)
+    {
+        if (tot < van)
+        {
+            throw OngeldigeDagplanningFout.PeriodeLooptAchteruit();
+        }
+
+        var vensters = jaarplan?.SubthemaplaatsingenTussen(subthemaId, van, tot) ?? [];
+        var begin = vensters.Select(p => p.Van).Append(van).Min();
+        var einde = vensters.Select(p => p.Tot).Append(tot).Max();
+
+        var opDieDagen = (jaarplan?.Activiteitplaatsingen ?? [])
+            .Where(p => p.Datum >= begin && p.Datum <= einde)
+            .ToList();
+        var vanDitSubthema = (await _opslag.LaadActiviteitinhoudAsync(
+                opDieDagen.Select(p => p.ActiviteitId).Distinct().ToList(),
+                cancellationToken))
+            .Where(i => i.SubthemaId == subthemaId)
+            .Select(i => i.ActiviteitId)
+            .ToHashSet();
+        var plaatsingen = opDieDagen.Where(p => vanDitSubthema.Contains(p.ActiviteitId)).ToList();
+
+        if (vensters.Count == 0 && plaatsingen.Count == 0)
+        {
+            throw new SchoolcontentNietGevondenFout("Dit subthema staat op die dagen niet in de agenda.");
+        }
+
+        return new Subthemaselectie(vensters, plaatsingen, begin, einde);
+    }
+
+    private sealed record Subthemaselectie(
+        IReadOnlyList<Subthemaplaatsing> Vensters,
+        IReadOnlyList<Activiteitplaatsing> Plaatsingen,
+        DateOnly Van,
+        DateOnly Tot);
+
     public async Task<Weekplanningweergave> VerplaatsActiviteitAsync(
         Guid klasId,
         Guid plaatsingId,

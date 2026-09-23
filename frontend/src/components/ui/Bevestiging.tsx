@@ -19,6 +19,7 @@ export function Bevestiging({
   gevolg,
   bevestigLabel,
   bezig,
+  klaar = true,
   terugNaar,
   onBevestig,
   onSluit,
@@ -29,6 +30,8 @@ export function Bevestiging({
   gevolg?: string;
   bevestigLabel: string;
   bezig?: boolean;
+  /** False while the caller is still finding out what goes: the question shows, the yes waits (FB-096). */
+  klaar?: boolean;
   /**
    * Where focus goes when the question closes, for a caller that opened it without a trigger (the agenda's right-click
    * menu, TB-030). Skipped when that element has left the page, which is what a confirmed delete does to it.
@@ -58,6 +61,7 @@ export function Bevestiging({
             vol
             type="button"
             bezig={bezig}
+            disabled={!klaar}
             onClick={onBevestig}
             // Ink rather than red. Red means "niet gedekt" everywhere else in this application, and
             // borrowing it here would put a coverage signal on a delete button. The darkest surface
