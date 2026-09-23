@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:29
+bijgewerkt: 2026-09-23 23:43
 opgepakt-door: claude-fb098
 branch: ticket/FB-098-hoekenfiches-per-subthema
 pr:
@@ -90,3 +90,4 @@ overnemen (FB-078).
 
 - 2026-09-23 23:26 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 23:29 · claude-fb098 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 23:43 · claude-fb098 · Gebouwd: blok per subthema met periode en stand, rij per hoek, 'Hierna' met 'Al voorbereiden'; het volgende subthema komt uit de opgeslagen subthemaperiodes tot het einde van het schooljaar, geen API-wijziging nodig. Vitest 1379 groen, lint groen.
