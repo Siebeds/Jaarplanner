@@ -5,7 +5,7 @@ import type { Ik } from "../lib/aanmelding";
 import type { KlasWeergave, SchooljaarSamenvatting } from "../lib/types";
 import { t } from "../i18n";
 import { ADMIN, NIEMAND, ikMet, metIk } from "../test/rechten";
-import { Klaskiezer } from "./Klaskiezer";
+import { Klaskiezer, type Klaskiezervorm } from "./Klaskiezer";
 
 /**
  * The klaskiezer's jaarfase field writes `PUT /api/klassen/{id}`, the §3 "beheren" row: admin only (E6-02). Every
@@ -54,18 +54,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function open(ik: Ik) {
+function open(ik: Ik, vorm: Klaskiezervorm = "zijbalk") {
   render(
     <QueryClientProvider client={metIk(new QueryClient(), ik)}>
-      <Klaskiezer />
+      <Klaskiezer vorm={vorm} />
     </QueryClientProvider>,
   );
-  const knop = selectie.klassen.length > 0 ? KLAS.naam : t("context.geenKlas");
-  fireEvent.click(screen.getByRole("button", { name: knop }));
+  const naam = selectie.klassen.length > 0 ? KLAS.naam : t("context.geenKlas");
+  fireEvent.click(screen.getByRole("button", { name: new RegExp(naam) }));
   return screen.getByRole("dialog");
 }
 
 describe("Klaskiezer", () => {
+  it.each<Klaskiezervorm>(["zijbalk", "rail", "kaart"])("draagt de naam van de klas in elke vorm (%s)", (vorm) => {
+    const blad = open(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: [KLAS.id] }), vorm);
+    expect(within(blad).getByRole("combobox", { name: t("context.klas") })).toBeInTheDocument();
+  });
+
+  it("toont in de zijbalk ook het schooljaar", () => {
+    render(
+      <QueryClientProvider client={metIk(new QueryClient(), ADMIN)}>
+        <Klaskiezer vorm="zijbalk" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole("button", { name: `${KLAS.naam} ${JAAR.naam}` })).toBeInTheDocument();
+  });
+
   it("laat een leerkracht van de klas kiezen, maar niet de leeftijd van de klas instellen", () => {
     const blad = open(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: [KLAS.id] }));
 

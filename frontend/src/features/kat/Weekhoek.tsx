@@ -11,8 +11,8 @@ import { gevaarzin } from "./zinnen";
  * The corner of the week strip, where Chuck lies when a goal of this klas is at risk (FB-071, ADR-0059 K5). His
  * basket in the header is empty then: there is exactly one Chuck on screen.
  *
- * He lies in a row of his own above the grid, his belly on its top edge, with his balloon beside him. The row exists
- * only while he is there, so he never covers a day, an hour or a block.
+ * He lies in a row of his own above the grid, his belly on its top edge, with his balloon above him like a comic's
+ * (owner, 2026-09-23). The row exists only while he is there, so he never covers a day, an hour or a block.
  */
 export function Weekhoek({ klasId, actief, children }: { klasId: string | null; actief: boolean; children: ReactNode }) {
   useMeldHoek(actief ? klasId : null);
@@ -31,8 +31,8 @@ function Hoekkat() {
   useLevenInRust(kat, opDeHoek);
   if (!opDeHoek || !houding.gevaar) return null;
   return (
-    <div className="flex items-end justify-end gap-3">
-      <Ballon staart="rechts" pop className="mb-5 max-w-[40ch]">
+    <div className="flex flex-col items-end gap-2.5">
+      <Ballon staart="onder" pop className="max-w-[40ch]">
         {gevaarzin(houding.gevaar)}
       </Ballon>
       {/* The drawing's lowest point is its belly at y 146 of 176: the negative margin sets that on the grid's edge. */}

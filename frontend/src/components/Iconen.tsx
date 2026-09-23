@@ -321,6 +321,21 @@ export function IcoonInfo(props: IconProps) {
 }
 
 /**
+ * Klas: two children side by side, the smaller one in front. The group the agenda, the jaarplan and the dekking are
+ * about.
+ */
+export function IcoonKlas(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3.5 19c.7-3 2.8-4.8 5.5-4.8s4.8 1.8 5.5 4.8" />
+      <circle cx="16.5" cy="10" r="2.3" />
+      <path d="M15.2 14.6c.4-.1.9-.2 1.3-.2 2.1 0 3.7 1.5 4.2 4.6" />
+    </Icoon>
+  );
+}
+
+/**
  * Persoon: a head and shoulders. Marks an own activiteit, beside the word that says whose it is (ADR-0049).
  */
 export function IcoonPersoon(props: IconProps) {

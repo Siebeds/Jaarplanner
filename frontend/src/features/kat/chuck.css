@@ -212,7 +212,7 @@
 .ballon[data-staart="rechts"] .ballon-staart { right: -16px; bottom: 6px; width: 18px; height: 14px; transform: scaleX(-1); }
 .ballon[data-staart="links"] { border-bottom-left-radius: 14px; }
 .ballon[data-staart="links"] .ballon-staart { left: -16px; bottom: 6px; width: 18px; height: 14px; }
-.ballon[data-staart="boven"] .ballon-staart { right: 22px; top: -14px; width: 16px; height: 16px; transform: scaleY(-1); }
+.ballon[data-staart="onder"] .ballon-staart { right: 66px; bottom: -14px; width: 16px; height: 16px; }
 .ballon.pop { animation: chuck-ballon-pop 240ms cubic-bezier(.3, 1.5, .5, 1) both; }
 @keyframes chuck-ballon-pop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) {

@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Klaskiezer } from "../../app/Klaskiezer";
 import { Segment } from "../../components/ui/Segment";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
@@ -689,7 +688,7 @@ export function Agendascherm() {
   if (!klasId) {
     return (
       <>
-        <Schermkop titel={t("periode.titel")} rechts={<Klaskiezer />} />
+        <Schermkop titel={t("periode.titel")} />
         <Schermvlak>
           <Geenklasleegte titel={t("plan.geenKlas")} />
         </Schermvlak>
@@ -702,7 +701,6 @@ export function Agendascherm() {
       <Schermkop
         breed
         titel={t("periode.titel")}
-        rechts={<Klaskiezer />}
         onder={
           /* Both rows travel with the sticky header. The range and its arrows used to scroll away
              with the grid, and a month is tall enough that they did: they ended up half behind the

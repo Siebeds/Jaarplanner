@@ -18,6 +18,7 @@
     "schooljaar": "Schooljaar",
     "klas": "Klas",
     "geenKlas": "Kies een klas",
+    "kiesKlas": "Klas: {klas}. Kies een andere klas of een ander schooljaar.",
     "geenKlassen": "Dit schooljaar heeft nog geen klassen",
     "geenKlassenInzage": "Dit schooljaar heeft geen klas die je mag inkijken.",
     "geenInzageTitel": "Geen klas om in te kijken",
@@ -1270,7 +1271,7 @@
     "bezigMaken": "Bezig met maken",
     "annuleer": "Annuleer",
     "maakMislukt": "De activiteit is niet aangemaakt. Probeer het opnieuw.",
-    "geenKlas": "Kies eerst een klas bovenaan het scherm.",
+    "geenKlas": "Kies eerst een klas.",
     "opnieuw": "Probeer opnieuw",
     "leeftijd": "leeftijd {leeftijd}",
     "geenKlasTitel": "Nog geen klas gekozen"

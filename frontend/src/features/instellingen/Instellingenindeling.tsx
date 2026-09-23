@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigationType } from "react-router-dom";
 import { Aanmeldregel } from "../../app/Aanmeldregel";
+import { Klaskiezer } from "../../app/Klaskiezer";
 import { Schermvlak } from "../../app/Schermkop";
 import { RAPPORT } from "../../app/routes";
 import { IcoonKruis, IcoonPijlRechts } from "../../components/Iconen";
@@ -119,7 +120,12 @@ export function Instellingenindeling() {
           `Schermvlak` of its own so it takes the page's gutter and measure. */}
       <div className="lg:hidden">
         <Schermvlak smal>
-          <Aanmeldregel className="border-t border-lijn pt-2" />
+          {/* The klas and the schooljaar on a phone (owner, 2026-09-23, FB-071, "Via Instellingen"), at the foot with
+              the sign-in row: a teacher rarely changes klas. From `lg` the sidebar carries both. */}
+          <div className="flex flex-col gap-2 border-t border-lijn pt-4">
+            <Klaskiezer vorm="kaart" />
+            <Aanmeldregel />
+          </div>
         </Schermvlak>
       </div>
     </>

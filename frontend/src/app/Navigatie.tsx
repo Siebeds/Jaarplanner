@@ -3,6 +3,7 @@ import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, RAPPORT, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
+import { Klaskiezer } from "./Klaskiezer";
 import { IcoonActiviteit, IcoonFiche, IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useActieveSelectie } from "../lib/selectie";
@@ -51,6 +52,9 @@ import { cn } from "../lib/cn";
  * It shows to whoever may read a report (D18), and since 2026-09-15 also to a hoofdleerkracht of K3, who may view
  * the K3 set and scale though not the children (owner, after FB-002's antagonist round 1). See
  * `mag.ontwikkelingsrapportTab`.
+ *
+ * **The klaskiezer stands at the bottom from `lg`, above the sign-in row** (owner, 2026-09-23, FB-071), as a field
+ * rather than a destination; on a phone it is at the foot of Instellingen. See `Klaskiezer`.
  *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
@@ -204,12 +208,13 @@ export function Navigatie() {
           />
         ))}
 
-        {/* Who is signed in, and signing out (E6-01): below everything a teacher does all year, from
-            `lg` only. The phone keeps its five tabs and finds the same row at the foot of
-            Instellingen, so each viewport has one way out, never two. The rule belongs to the row
-            rather than to this item, so it only appears once there is a name to put under it. */}
-        <li className="hidden lg:block">
-          <Aanmeldregel smal={smal} className="lg:mt-2 lg:border-t lg:border-lijn lg:pt-2" />
+        {/* Which klas the app is about, and who is signed in with signing out (E6-01): below everything a teacher
+            does all year, from `lg` only. A teacher rarely changes klas, so the picker stands down here with the
+            sign-in row rather than under the logo (owner, 2026-09-23, FB-071). The phone keeps its five tabs and finds
+            both at the foot of Instellingen, so each viewport offers each once, never twice. */}
+        <li className="hidden lg:mt-2 lg:flex lg:flex-col lg:gap-1 lg:border-t lg:border-lijn lg:pt-3">
+          <Klaskiezer vorm={smal ? "rail" : "zijbalk"} />
+          <Aanmeldregel smal={smal} />
         </li>
       </ul>
     </nav>
