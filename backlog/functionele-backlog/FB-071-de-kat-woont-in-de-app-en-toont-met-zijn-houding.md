@@ -2,12 +2,12 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 09:13
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 09:14
+opgepakt-door: claude-fb071-kop
+branch: ticket/FB-071-kop
 pr:
 geblokkeerd:
 fr: []
@@ -151,3 +151,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 01:06 · claude-fb071 · in-uitvoering → te-testen: Chuck gebouwd: mandje in de kop, houding uit deurmat en dekking, hoek van de weekstrook bij een doel in gevaar, venster met wat hij meebracht, pootje-per-pootje-loopje uit een geteste choreografie, admin-instelling (standaard uit), ADR-0065; gates groen
 - 2026-09-23 01:07 · claude-fb071 · PR #161
 - 2026-09-23 09:13 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: tekst van Chuck (bv. 'Chuck slaapt') moet onder de kat, niet ernaast; Chuck staat verwarrend tussen de knoppen, dus de klaskiezer verhuist naar de linker zijbalk (telefoon: bovenaan Instellingen); Vandaag blijft staan
+- 2026-09-23 09:14 · claude-fb071-kop · klaar-voor-bouw → in-uitvoering: opgepakt na de test: tekst onder Chuck, klaskiezer naar de zijbalk
