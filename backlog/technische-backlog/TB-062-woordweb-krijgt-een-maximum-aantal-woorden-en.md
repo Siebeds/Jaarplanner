@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 12:35
 opgepakt-door: claude-tb062
 branch: ticket/TB-062-woordweb-maximum
-pr:
+pr: 173
 geblokkeerd:
 fr: []
 ---
@@ -65,3 +65,4 @@ Gevonden bij de securityscan van 2026-09-23. Elke aangemelde gebruiker mag een e
 - 2026-09-23 12:33 · claude-tb062 · gebouwd: maximum 200 woorden in het web en 400 bewaard, lineaire toevoeging, bodylimiet 128 KB, promptbegrenzing op woordvoorstellen; 2264 unit- en 601 integratietests groen, dotnet format schoon
 - 2026-09-23 12:35 · claude-tb062 · antagonist: COMPLIANT; open: maximum 200 (en 400 bewaard) wacht op bevestiging eigenaar; niet opgelost (MINOR): capaciteitscontrole en bewaren niet atomair bij gelijktijdige verzoeken van dezelfde eigenaar, 413 zonder Nederlandse zin boven 128 KB; melding komt van de server, niet uit nl.json
 - 2026-09-23 12:35 · claude-tb062 · in-uitvoering → klaar: criteria afgevinkt met de unit- en integratietests in WoordwebTests, PromptbegrenzingTests en WoordwebEndpointsTests; alle backendtests groen, dotnet format schoon, geen frontendwijziging
+- 2026-09-23 12:35 · claude-tb062 · PR #173
