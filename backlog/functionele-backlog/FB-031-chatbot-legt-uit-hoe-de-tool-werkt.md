@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 10:39
+bijgewerkt: 2026-09-23 11:01
 opgepakt-door: claude-fb031
 branch: ticket/FB-031-kat-chat
 pr:
@@ -100,12 +100,17 @@ Regels:
 
 ## Open vragen
 
-- **De handleiding bestaat nog niet.** Wie schrijft ze, en hoort ze bij dit ticket?
-- **Opzoekvragen en de AI:** vertaalt de AI de vraag naar een vaste opzoeking in de tool (aanbevolen: het antwoord komt
-  dan altijd uit de gegevens en er gaat weinig naar de AI), of krijgt de AI de gegevens zelf mee?
-- Gaat "waar wordt doel x gebruikt?" ook over de agenda (in welke week), of alleen over de inhoud?
-- Wordt dit ticket te groot, splits dan de opzoekvragen af in een eigen ticket.
-- Wordt een gesprek bewaard (bv. om de antwoorden te verbeteren)? **Standaard** niet.
+- ~~**De handleiding bestaat nog niet.** Wie schrijft ze, en hoort ze bij dit ticket?~~ **Beslist door de eigenaar,
+  2026-09-23:** de sessie schrijft een eerste versie als deel van dit ticket, de eigenaar kijkt ze na
+  (`backend/src/Jaarplanner.Application/Kat/Chat/Handleiding.md`).
+- ~~**Opzoekvragen en de AI:** vertaalt de AI de vraag naar een vaste opzoeking in de tool, of krijgt de AI de gegevens
+  zelf mee?~~ **Beslist door de eigenaar, 2026-09-23:** de AI kiest een vaste opzoeking, de tool zoekt het antwoord in
+  haar eigen gegevens ([ADR-0066](../../docs/adr/0066-de-chat-van-de-kat-kiest-een-opzoeking.md)).
+- ~~Gaat "waar wordt doel x gebruikt?" ook over de agenda?~~ **Beslist door de eigenaar, 2026-09-23:** ja, in welke
+  weken, voor de klassen die de gebruiker mag inkijken.
+- Wordt een gesprek bewaard (bv. om de antwoorden te verbeteren)? **Standaard** niet, en zo gebouwd.
+- Elke vraag staat op zichzelf: een vervolgvraag die op het vorige antwoord steunt, begrijpt de kat mogelijk niet
+  (ADR-0066 D1).
 - **AI-omgeving:** er is nog geen werkende AI-omgeving (TB-004 wacht op Azure), en de demo draait zonder AI. Ook de kost
   per vraag moet gemeten worden.
 
@@ -115,3 +120,4 @@ Regels:
 - 2026-09-16 22:46 · claude · opzoekvragen over de eigen inhoud toegevoegd op vraag van de eigenaar (zit doel x in thema y, zit activiteit a in subthema z, waar wordt doel x gebruikt)
 - 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)
 - 2026-09-23 10:39 · claude-fb031 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; open vragen beantwoord (handleiding door de sessie, opzoeking via tool use, ook de agenda)
+- 2026-09-23 11:01 · claude-fb031 · backend klaar: één AI-aanroep kiest uitleg uit de handleiding of een vaste opzoeking, de tool antwoordt met de rechten van de gebruiker; eerste versie van de handleiding en ADR-0066; unit- en Postgres-tests groen
