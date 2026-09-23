@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
-/** Towards whom the tail points: his head beside it, or above it. */
-export type Staart = "links" | "rechts" | "boven";
+/** Towards whom the tail points: his head beside it, or below it. */
+export type Staart = "links" | "rechts" | "onder";
 
 const PAD: Record<Staart, { viewBox: string; d: string }> = {
   links: { viewBox: "0 0 18 14", d: "M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9" },
   rechts: { viewBox: "0 0 18 14", d: "M18 1 C 12 6, 6 10, 0 13 C 7 12.5, 13 11, 18 9" },
-  boven: { viewBox: "0 0 16 16", d: "M3 1 C 4 7, 2.5 12, 0 16 C 6 12.5, 10 7, 13 1" },
+  onder: { viewBox: "0 0 16 16", d: "M3 1 C 4 7, 2.5 12, 0 16 C 6 12.5, 10 7, 13 1" },
 };
 
 /**

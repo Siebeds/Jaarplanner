@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 09:29
+bijgewerkt: 2026-09-23 09:39
 opgepakt-door: claude-fb071-kop
 branch: ticket/FB-071-kop
 pr: 164
@@ -46,9 +46,9 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
   de agenda, blijven waar ze staan.
 - Zijn houding toont de toestand, en er staat altijd tekst bij:
   - hij slaapt in zijn mandje, met een stil label: er ligt niets nieuws;
-  - hij ligt met zijn oren recht en zegt in een tekstballon onder zijn mandje "Ik heb iets voor je klaargezet.": er
+  - hij ligt met zijn oren recht en zegt in een tekstballon boven zich "Ik heb iets voor je klaargezet.": er
     ligt iets klaar (een briefing, voorbereidingen, voorstellen);
-  - hij ligt op de hoek van de weekstrook, zijn mandje in de kop is leeg, en hij zegt in een tekstballon naast zich
+  - hij ligt op de hoek van de weekstrook, zijn mandje in de kop is leeg, en hij zegt in een tekstballon boven zich
     welk doel in gevaar komt (FB-069). Hij bedekt nooit de gegevens zelf;
   - hij spint, met een stil label: alle doelen van de klas liggen op schema.
 - Chuck praat alleen als hij iets heeft. Wat hij zegt, staat in een stripballon met een inktrand en een staartje naar
@@ -76,7 +76,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 
 - [x] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label
   onder hem.
-- [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon onder zijn mandje.
+- [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon boven zich, met het staartje naar zijn kop.
 - [x] Gegeven de agenda, het jaarplan of de dekking, dan staat er geen knop naast Chuck: de klaskiezer staat op een
   laptop onderaan in de linker zijbalk en op een telefoon onderaan in Instellingen.
 - [x] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
@@ -96,7 +96,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 
 1. Meld aan als leerkracht zonder open signaal of voorstel. Chuck slaapt rechtsboven in zijn mandje, met een label
    onder hem, en er staat geen knop naast hem. De klas kies je onderaan in de linker zijbalk.
-2. Laat een lesvoorbereiding klaarzetten (FB-068). Zijn oren staan recht en onder zijn mandje staat een tekstballon.
+2. Laat een lesvoorbereiding klaarzetten (FB-068). Zijn oren staan recht en boven hem staat een tekstballon.
    Klik op hem: hij staat op, stapt pootje per pootje uit zijn mandje, en het venster toont bovenaan de voorbereiding
    met "Bekijken" en "Later".
 3. Druk Escape: de focus staat meteen op de kat, en hij stapt terug in zijn mandje en gaat liggen.
@@ -132,7 +132,8 @@ Beslist door de eigenaar op 2026-09-23:
 
 Beslist door de eigenaar op 2026-09-23, na de test:
 
-- Wat Chuck zegt (label of ballon) staat onder hem, niet ernaast.
+- Het stille label (bv. "Chuck slaapt") staat onder Chuck; een tekstballon staat boven hem, zoals bij een
+  stripfiguur, met het staartje naar zijn kop. Nooit ernaast. Dat geldt ook op de hoek van de weekstrook.
 - De klaskiezer verhuist uit de kop: op een laptop naar de linker zijbalk, op een telefoon naar de top van
   Instellingen. "Vandaag" blijft staan.
 - Leerkrachten wisselen zelden van klas, dus de klaskiezer staat onderaan: in de zijbalk boven je naam en Afmelden, op
@@ -159,3 +160,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 09:23 · claude-fb071-kop · in-uitvoering → te-testen: tekst van Chuck onder hem, klaskiezer in de zijbalk (telefoon: bovenaan Instellingen), Vandaag blijft staan; gates groen
 - 2026-09-23 09:23 · claude-fb071-kop · PR #164
 - 2026-09-23 09:29 · claude-fb071-kop · op vraag van de eigenaar staat de klaskiezer onderaan: in de zijbalk boven naam en Afmelden, op telefoon onderaan Instellingen; bekeken op 1440 en 390px, lint en 162 tests groen
+- 2026-09-23 09:39 · claude-fb071-kop · op vraag van de eigenaar (doorgegeven via een andere sessie): tekstballonnen boven Chuck met het staartje naar zijn kop, het stille label blijft onder hem; ook op de hoek van de weekstrook; bekeken op 1500 en 390px, 108 tests groen
