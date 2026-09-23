@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace Jaarplanner.IntegrationTests.Postgres;
 
@@ -58,6 +59,12 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     /// </summary>
     public IDictionary<string, string> Instellingen { get; } = new Dictionary<string, string>();
 
+    /// <summary>
+    /// Log providers this host adds, at every level, so a test can prove what never reaches a log (the cat's chat,
+    /// ADR-0059 D6). Set before the first client is made.
+    /// </summary>
+    public IList<ILoggerProvider> Logvangers { get; } = [];
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
@@ -69,6 +76,22 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
         foreach (var (sleutel, waarde) in Instellingen)
         {
             builder.UseSetting(sleutel, waarde);
+        }
+
+        if (Logvangers.Count > 0)
+        {
+            // Every category at every level, the framework's own included, or a quiet default would prove nothing.
+            builder.UseSetting("Logging:LogLevel:Default", "Trace");
+            builder.UseSetting("Logging:LogLevel:Microsoft.AspNetCore", "Trace");
+            builder.ConfigureLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Trace);
+                logging.AddFilter(_ => true);
+                foreach (var vanger in Logvangers)
+                {
+                    logging.AddProvider(vanger);
+                }
+            });
         }
 
         builder.ConfigureServices(services =>

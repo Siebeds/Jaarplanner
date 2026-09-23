@@ -1,9 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Jaarplanner.Domain\Jaarplanner.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The cat's handleiding (FB-031, ADR-0066): the only source of its explanations, shipped inside the assembly. -->
+    <EmbeddedResource Include="Kat\Chat\Handleiding.md" LogicalName="Jaarplanner.Kat.Handleiding.md" />
+  </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>

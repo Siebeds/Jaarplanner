@@ -76,6 +76,7 @@ This folder records the **architecturally significant decisions** for Jaarplanne
 | [0063](0063-de-app-heet-vizier.md) | **The app is called Vizier**: the logo replaces the year bar as the mark, loaded by fixed name; repository and infrastructure stay Jaarplanner | Accepted |
 | [0064](0064-subdoelplaatsing-bij-een-leeftijd-zonder-subthema.md) | **The subdoelplaatsing also serves a leeftijd without a subthema**, while it has open goals, shown only to whoever may decide there | Accepted |
 | [0065](0065-chuck-de-kat-in-de-app.md) | **Chuck, the cat, in the app**: a gember coat that is the one exception to "no brand hue" (low chroma, measured 3:1), inline SVG with keyframes generated from one rig, a posture derived from the deurmat and the dekking, and a school setting that keeps him off until admin turns him on | Accepted |
+| [0066](0066-de-chat-van-de-kat-kiest-een-opzoeking.md) | **The cat's chat picks a lookup, the tool answers it**: one model call classifies a question as an explanation from the handleiding, one of five fixed lookups or unknown; the tool runs the lookup over its own data with the gebruiker's rights, and nothing is kept or logged | Accepted |
 
 ## Compliance traceability matrix
 
@@ -144,6 +145,7 @@ Each ADR → the Constitution article(s) it realises → the backlog epic(s) it 
 | 0063 | Art. II.3 and XII unchanged; relates to 0017, 0024 | FB-083; FB-084, FB-085 | — |
 | 0064 | Art. IV.1, VI.1 and IX.2 unchanged; supersedes the last sentence of 0050 D1 | FB-062 | FR-4.4 |
 | 0065 | Art. IV.1, IV.8, VI.1, VI.7 and XII unchanged; realises 0059 K4, K5 and D7; one exception to 0024's palette rule | FB-071 | FR-14.7 |
+| 0066 | Art. IV.2, IV.3, IV.4, IV.5, VI.1 and VI.2 unchanged; realises 0059 D6 for the chat | FB-031 | FR-14.10 |
 
 ## Open decisions referenced by ADRs
 
