@@ -54,7 +54,7 @@ export function Schermkop({
   return (
     <header className="sticky top-0 z-20 bg-vlak/85 backdrop-blur-md">
       {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
-          title and the rows under it, his words ending where the header ends. On a phone the rows under the title
+          title and the rows under it, his top level with the title's. On a phone the rows under the title
           need the full width, so there he stays beside the title. */}
       <div
         className={cn(
@@ -83,7 +83,7 @@ export function Schermkop({
         {zonderKat ? null : (
           // Chuck lies at the right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says
           // above or under him.
-          <div className={cn("col-start-2 row-start-1 self-end", onder && "sm:row-span-2")}>
+          <div className={cn("col-start-2 row-start-1 self-start", onder && "sm:row-span-2")}>
             <Katmand />
           </div>
         )}
