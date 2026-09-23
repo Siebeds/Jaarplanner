@@ -1,0 +1,65 @@
+---
+id: FB-091
+titel: Terugkerende fiche weegt in de agenda minder dan een geplande activiteit
+soort: functioneel
+status: nieuw
+prioriteit: middel
+aangemaakt: 2026-09-23
+bijgewerkt: 2026-09-23 10:59
+opgepakt-door:
+branch:
+pr:
+geblokkeerd:
+fr: []
+---
+
+## Aanleiding
+
+Een klas met een dagelijkse fiche als "Onthaal" ziet in de week vijf identieke, zware blokken: een rand, een vulling,
+een vetgedrukte naam, het icoon voor terugkerend, het beginuur en het doel-icoon, allemaal in een strook van een
+uur. De eigenaar bekeek dat op 2026-09-23. De routine die een leerkracht elke dag al kent, is zo het zwaarste op
+het scherm, en een geplande activiteit valt ernaast minder op.
+
+Het beginuur in het blok herhaalt bovendien wat de tijdas er vlak naast al zegt, wanneer het blok op een heel uur
+begint.
+
+## Gewenst gedrag
+
+- Een **terugkerende** fiche staat stiller in de agenda dan een activiteit: lichter, zonder zware rand en niet
+  vetgedrukt. Ze blijft herkenbaar aan het icoon voor terugkerend en aan de kleur en het icoon van een algemene
+  fiche (FB-077). Een fiche die één keer gepland is, blijft zoals ze is.
+- Het **beginuur** staat alleen in een blok dat niet op een heel uur begint. Een blok dat om 8:00 begint, toont geen
+  "8:00" meer; een blok dat om 8:15 begint, wel.
+- Het doel-icoon (FB-018) blijft staan zoals nu.
+
+## Acceptatiecriteria
+
+- [ ] Gegeven een week met een dagelijkse fiche "Onthaal" en een geplande activiteit op dezelfde dag, wanneer de
+      leerkracht de week opent, dan springt de activiteit meer in het oog dan de fiche.
+- [ ] Gegeven een terugkerende fiche, wanneer ze in de agenda staat, dan is ze nog altijd herkenbaar als algemene
+      fiche en als terugkerend, door een icoon en niet door kleur alleen.
+- [ ] Gegeven een blok dat om 8:00 begint, wanneer het in de week staat, dan staat er geen "8:00" in het blok; een
+      blok dat om 8:15 begint, toont "8:15".
+- [ ] Gegeven de stillere fiche, wanneer het contrast gemeten wordt in een echte browser, in lichte en donkere
+      weergave, dan haalt de tekst WCAG 2.2 AA.
+- [ ] Gegeven een fiche die één keer gepland is, wanneer ze in de agenda staat, dan ziet ze eruit zoals voordien.
+
+## Testscenario's
+
+1. Open een week met een dagelijkse fiche "Onthaal" om 8:00 en een activiteit om 10:00 op maandag. De activiteit
+   springt eruit; Onthaal staat er rustig, met het icoon voor terugkerend.
+2. Kijk in het blok van Onthaal: er staat geen "8:00".
+3. Verplaats een activiteit naar 10:15: het blok toont "10:15".
+4. Schakel naar donkere weergave: Onthaal blijft leesbaar.
+
+## Buiten scope
+
+De kleur en het icoon van een algemene fiche zelf (FB-077), en wat een smal blok laat vallen (TB-060).
+
+## Open vragen
+
+Geen.
+
+## Werklog
+
+- 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
