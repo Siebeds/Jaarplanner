@@ -2,12 +2,12 @@
 id: FB-087
 titel: Subthema inplannen staat in de themastrook van de agenda, bij het thema zelf
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:29
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 10:30
+opgepakt-door: claude-fb087b
+branch: ticket/FB-087-alleen-zonder-subthema
 pr:
 geblokkeerd:
 fr: [FR-6.3]
@@ -104,3 +104,4 @@ Geen.
 - 2026-09-23 09:21 · claude-fb087 · in-uitvoering → te-testen: Knop Subthema inplannen staat in de themastrook (week, werkweek, dag, maand), niet meer in de kop; lint en 1313 tests groen, browserpas 1440/390 px, antagonist COMPLIANT.
 - 2026-09-23 09:21 · claude-fb087 · PR #163
 - 2026-09-23 10:29 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: in de themastrook, verwacht het knopje + Subthema alleen op dagen zonder subthema, gezien ook op dagen waar al een subthema loopt
+- 2026-09-23 10:30 · claude-fb087b · klaar-voor-bouw → in-uitvoering: opgepakt: knopje alleen op dagen zonder subthema
