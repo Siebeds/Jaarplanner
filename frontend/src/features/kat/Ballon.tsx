@@ -22,20 +22,23 @@ export function Ballon({
   children,
   className,
   pop,
+  als: Tag = "p",
 }: {
   staart: Staart;
   children: ReactNode;
   className?: string;
+  /** A `div` when the balloon holds lists or links, as a chat answer does (FB-031). */
+  als?: "p" | "div";
   /** Appear with a small pop: when he starts to say something, not on every render. */
   pop?: boolean;
 }) {
   const pad = PAD[staart];
   return (
-    <p data-staart={staart} className={cn("ballon px-3 py-1.5 text-meta leading-snug", pop && "pop", className)}>
+    <Tag data-staart={staart} className={cn("ballon px-3 py-1.5 text-meta leading-snug", pop && "pop", className)}>
       {children}
       <svg className="ballon-staart" viewBox={pad.viewBox} aria-hidden="true" focusable="false">
         <path d={pad.d} />
       </svg>
-    </p>
+    </Tag>
   );
 }

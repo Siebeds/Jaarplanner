@@ -14,12 +14,14 @@ import {
   type Deurmatsignaal,
   type Deurmatvoorstel,
 } from "./gegevens";
+import { Gesprek, Vraagveld } from "./Katchat";
+import { useKatchat } from "./useKatchat";
 import type { Chuck } from "./useChuck";
 import { katvoorstelMoment, signaalzin, voorstelzin } from "./zinnen";
 
 /**
- * Chuck's window (FB-071, ADR-0059 K4): on top what he brought, each item to look at or put off; below it the chat,
- * which is not built yet (FB-031, FB-032) and says so in visible text rather than offering an input that does nothing.
+ * Chuck's window (FB-071, ADR-0059 K4): on top what he brought, each item to look at or put off; below it the chat
+ * (FB-031, ADR-0066), with its question field fixed at the bottom so it stays in reach while the conversation scrolls.
  * Below `sm` it is a screen of its own.
  *
  * It decides nothing itself except what the cat brought for a klas: those proposals have no other screen (ADR-0060),
@@ -32,6 +34,7 @@ export const Katvenster = forwardRef<
   const { deurmat, houding } = chuck;
   const titelId = `${id}-titel`;
   const aantal = houding.aantal;
+  const chat = useKatchat();
 
   return (
     <div
@@ -97,8 +100,10 @@ export const Katvenster = forwardRef<
           )}
         </div>
 
-        <p className="px-4 py-4 text-meta text-inkt-zacht">{t("kat.venster.chatKomt")}</p>
+        <Gesprek chat={chat} onSluit={onSluit} />
       </div>
+
+      <Vraagveld chat={chat} />
 
       <p className="shrink-0 border-t border-lijn bg-vlak px-4 py-2.5 text-micro text-inkt-zacht">
         {t("kat.venster.geenKinderen")}

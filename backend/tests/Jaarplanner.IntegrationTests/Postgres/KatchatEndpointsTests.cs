@@ -179,8 +179,8 @@ public sealed class KatchatEndpointsTests : IAsyncLifetime
 
         // The request itself was logged at every level: had the question been in a line, it would be here.
         Assert.Contains(_log.Regels, r => r.Contains("/api/kat/chat", StringComparison.Ordinal));
-        Assert.Empty(_log.Regels.Where(r => r.Contains(VraagMerk, StringComparison.OrdinalIgnoreCase)));
-        Assert.Empty(_log.Regels.Where(r => r.Contains(AntwoordMerk, StringComparison.OrdinalIgnoreCase)));
+        Assert.DoesNotContain(_log.Regels, r => r.Contains(VraagMerk, StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(_log.Regels, r => r.Contains(AntwoordMerk, StringComparison.OrdinalIgnoreCase));
     }
 
     [PostgresFact]
