@@ -137,6 +137,11 @@ public sealed class KatchatEndpointsTests : IAsyncLifetime
                 context.Jaarplannen.Add(jaarplan);
             }
 
+            // A rejected placement is not in the agenda, so no answer names it.
+            var geweigerd = new Jaarplan(school.K3Groen);
+            geweigerd.VoegPlaatsingToe(thema.Id, vandaag, vandaag.AddDays(11), KoppelingStatus.Geweigerd);
+            context.Jaarplannen.Add(geweigerd);
+
             await context.SaveChangesAsync();
         }
 

@@ -494,16 +494,13 @@ public sealed class Katopzoeker
                 .ThenBy(p => p.Doel?.Code, StringComparer.Ordinal)
                 .ToList();
 
-        // ADR-0049 D3: an own activiteit is read by its owner, the leerkrachten and hoofdleerkrachten of its leeftijd,
-        // and an admin.
-        private bool MagLezen(Chatactiviteit activiteit, Chatsubthema subthema)
-        {
-            var rechten = _lezer.Rechten;
-            return activiteit.EigenaarId is null
-                || activiteit.EigenaarId == rechten.GebruikerId
-                || rechten.IsAdmin
-                || rechten.IsLeerkrachtVanLeeftijd(subthema.Leeftijd)
-                || rechten.IsHoofdleerkrachtVan(subthema.Leeftijd);
-        }
+        // ADR-0049 D3, asked of the matrix every screen asks: an own activiteit is read by its owner, the leerkrachten and
+        // hoofdleerkrachten of its leeftijd, and an admin. Maker and goal links do not decide a read.
+        private bool MagLezen(Chatactiviteit activiteit, Chatsubthema subthema) =>
+            activiteit.EigenaarId is not { } eigenaarId
+            || Rechtenmatrix.StaatToe(
+                _lezer.Rechten,
+                Rechtenmatrix.EigenActiviteitLezen,
+                new Activiteitbron(activiteit.Id, subthema.Leeftijd, null, false, eigenaarId));
     }
 }

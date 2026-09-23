@@ -150,7 +150,7 @@ public sealed class EfKatopzoekbron : IKatopzoekbron
 
         var klassen = klasIds.ToList();
 
-        // The thema placements are owned by the jaarplan, so they come with it.
+        // The thema placements are owned by the jaarplan, so they come with it. A rejected one is not in the agenda.
         var jaarplannen = await _context.Jaarplannen.AsNoTracking()
             .Where(j => klassen.Contains(j.KlasId))
             .ToListAsync(cancellationToken);
@@ -158,7 +158,7 @@ public sealed class EfKatopzoekbron : IKatopzoekbron
         var jaarplanIds = klasVan.Keys.ToList();
 
         var themas = jaarplannen
-            .SelectMany(j => j.Plaatsingen.Select(p => new Katthemaplaatsing(
+            .SelectMany(j => j.Plaatsingen.Where(p => p.IsGepland).Select(p => new Katthemaplaatsing(
                 j.KlasId, p.ThemaId, p.Van, p.Tot, p.Status == KoppelingStatus.Voorgesteld)))
             .ToList();
         var subthemas = (await _context.Subthemaplaatsingen.AsNoTracking()

@@ -40,6 +40,14 @@ public sealed class KatchatAntwoordParserTests
     }
 
     [Fact]
+    public void Een_uitleg_draagt_geen_gedachtestreepje()
+    {
+        var besluit = Parse("{\"soort\":\"uitleg\",\"antwoord\":\"Open de agenda — daar staat het.—Klaar.\",\"hoofdstukken\":[\"De agenda\"]}");
+
+        Assert.Equal("Open de agenda: daar staat het., Klaar.", besluit.Uitleg);
+    }
+
+    [Fact]
     public void Onbekend_is_onbekend() => Assert.Equal(Katbesluitsoort.Onbekend, Parse("""{"soort":"onbekend"}""").Soort);
 
     [Theory]

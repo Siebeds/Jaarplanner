@@ -66,7 +66,10 @@ public static class KatchatAntwoordParser
 
     private static Katbesluit Uitleg(JsonElement root, Handleiding handleiding)
     {
-        var antwoord = Tekst(root, "antwoord")?.Trim();
+        // No em dash reaches a teacher (Art. II.5): the prompt asks for none, and this makes sure.
+        var antwoord = Tekst(root, "antwoord")?.Replace(" — ", ": ", StringComparison.Ordinal)
+            .Replace("—", ", ", StringComparison.Ordinal)
+            .Trim();
         if (string.IsNullOrEmpty(antwoord) || antwoord.Length > KatchatPromptBuilder.MaxUitlegLengte)
         {
             return Katbesluit.Mislukt;
