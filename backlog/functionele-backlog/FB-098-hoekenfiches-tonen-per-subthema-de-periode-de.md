@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:47
+bijgewerkt: 2026-09-23 23:48
 opgepakt-door: claude-fb098
 branch: ticket/FB-098-hoekenfiches-per-subthema
-pr:
+pr: 179
 geblokkeerd:
 fr: []
 ---
@@ -95,3 +95,4 @@ overnemen (FB-078).
 - 2026-09-23 23:47 · claude-fb098 · Open vraag beantwoord: het volgende subthema komt uit de ingeladen reeksen en de opgeslagen subthemaperiodes tot het einde van het schooljaar; een later subthema dat alleen uit activiteiten bestaat zonder opgeslagen periode ziet het paneel niet. 'Nu' staat er alleen als vandaag in de periode valt.
 - 2026-09-23 23:47 · claude-fb098 · Antagonist: COMPLIANT, drie MINOR: de beperking hierboven, het blad Al voorbereiden neemt de hoekenlijst van bij het openen, en hoeken hadden nooit een doel-icoon (FB-018 gold alleen voor algemene fiches), dus er viel niets te behouden.
 - 2026-09-23 23:47 · claude-fb098 · in-uitvoering → te-testen: Gebouwd: hoekenfiches per subthema met periode, stand en Hierna/Al voorbereiden; Vitest 1379 groen, lint groen, browser op 1440x900 en 390px, antagonist COMPLIANT.
+- 2026-09-23 23:48 · claude-fb098 · PR #179
