@@ -2,10 +2,10 @@
 id: TB-073
 titel: Toegankelijkheidsgaten dichten: focus, labels en schermtitels
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:20
+bijgewerkt: 2026-09-23 10:22
 opgepakt-door: claude-tb073
 branch: ticket/TB-073-toegankelijkheid
 pr:
@@ -49,16 +49,16 @@ WCAG 2.2 AA-belofte van de app (ADR-0017) of hinderen wie met een schermlezer of
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven het woordveld van de kernwoordenschat, wanneer de gebruiker er met Tab in komt, dan is een focusring
+- [x] Gegeven het woordveld van de kernwoordenschat, wanneer de gebruiker er met Tab in komt, dan is een focusring
       zichtbaar, gemeten in een echte browser, in lichte en donkere weergave.
-- [ ] Gegeven een lang scherm met de vaste kop, wanneer de gebruiker met Shift+Tab naar boven gaat, dan staat het
+- [x] Gegeven een lang scherm met de vaste kop, wanneer de gebruiker met Shift+Tab naar boven gaat, dan staat het
       veld met focus nooit onder de kop.
-- [ ] Gegeven het zoekveld van de doelkiezer, wanneer een schermlezer het voorleest, dan heeft het een naam.
-- [ ] Gegeven een knop die een mutatie start, wanneer de mutatie loopt, dan blijft de toetsenbordfocus op die knop
+- [x] Gegeven het zoekveld van de doelkiezer, wanneer een schermlezer het voorleest, dan heeft het een naam.
+- [x] Gegeven een knop die een mutatie start, wanneer de mutatie loopt, dan blijft de toetsenbordfocus op die knop
       en doet een tweede klik niets.
-- [ ] Gegeven "Bekijken" in het kattenvenster, wanneer de gebruiker Ctrl+klikt, dan opent het doel in een nieuw
+- [x] Gegeven "Bekijken" in het kattenvenster, wanneer de gebruiker Ctrl+klikt, dan opent het doel in een nieuw
       tabblad.
-- [ ] Gegeven elk scherm uit de navigatie, wanneer het opent, dan draagt het tabblad de naam van dat scherm.
+- [x] Gegeven elk scherm uit de navigatie, wanneer het opent, dan draagt het tabblad de naam van dat scherm.
 
 ## Buiten scope
 
@@ -74,3 +74,5 @@ Geen.
 - 2026-09-23 09:55 · claude-tb073 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 10:14 · claude-tb073 · gebouwd: Knop-bezigstand op de knoppen die een mutatie starten, focusring Woordchips, scroll-padding onder de kop, schermtitels, Bekijken als link, laadteksten met …; lint en 1321 tests groen
 - 2026-09-23 10:20 · claude-tb073 · browserpas (mock, headless Chrome): focusring woordveld licht/donker zichtbaar, Shift+Tab 0 velden onder de kop op 1440 en 390 (tegenproef zonder padding: 4), titels per scherm, Ctrl+klik op Bekijken opent nieuw tabblad
+- 2026-09-23 10:22 · claude-tb073 · antagonist: COMPLIANT; MINOR niet opgelost: Plaatsingkaart deelt één bezig over vier knoppen (aria-busy ook op knoppen die niets startten), useSchermtitel zet de titel niet terug bij unmount, scroll-padding alleen in de browser getest, Ctrl+klik kiest de klas ook in het huidige tabblad
+- 2026-09-23 10:22 · claude-tb073 · in-uitvoering → klaar: gebouwd en getest: alle zes criteria afgevinkt (1, 2, 5, 6 in de browser; 3 en 4 met Vitest), lint en 1321 tests groen
