@@ -778,7 +778,7 @@ export function Agendascherm() {
             {/* The range, its arrows and the way back to today, together and at heading size. Navigation
                 next to the thing it moves: the arrows used to sit up in the chrome, three controls away
                 from the only label that told you what pressing them had done. */}
-            <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
+            <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
               <div className="flex min-w-0 items-start gap-2">
                 <button
                   type="button"
