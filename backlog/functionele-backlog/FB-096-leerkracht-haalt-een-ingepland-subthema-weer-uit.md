@@ -2,12 +2,12 @@
 id: FB-096
 titel: Leerkracht haalt een ingepland subthema weer uit de agenda
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 22:07
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 23:41
+opgepakt-door: claude-fb096
+branch: ticket/FB-096-subthema-uit-agenda
 pr:
 geblokkeerd:
 fr: [FR-7.2, FR-6.5]
@@ -101,3 +101,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 22:07 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-23 23:41 · claude-fb096 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
