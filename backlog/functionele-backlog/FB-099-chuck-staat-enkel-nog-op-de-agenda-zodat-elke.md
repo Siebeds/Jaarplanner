@@ -2,12 +2,12 @@
 id: FB-099
 titel: Chuck staat enkel nog op de agenda, zodat elke pagina op dezelfde hoogte begint
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:51
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 23:52
+opgepakt-door: claude-fb099
+branch: ticket/FB-099-chuck-enkel-agenda
 pr:
 geblokkeerd:
 fr: []
@@ -52,3 +52,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 23:51 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-23 23:52 · claude-fb099 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
