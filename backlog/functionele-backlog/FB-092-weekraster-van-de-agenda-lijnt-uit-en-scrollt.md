@@ -2,12 +2,12 @@
 id: FB-092
 titel: Weekraster van de agenda lijnt uit en scrollt maar op één plek
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 11:06
+opgepakt-door: claude-fb092
+branch: ticket/FB-092-weekraster
 pr:
 geblokkeerd:
 fr: []
@@ -65,3 +65,4 @@ De themastroken zelf (FB-090), de blokken zelf (FB-091) en de werkbalk boven de 
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 11:06 · claude-fb092 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
