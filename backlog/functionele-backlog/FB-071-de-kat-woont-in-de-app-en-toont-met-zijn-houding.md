@@ -8,7 +8,7 @@ aangemaakt: 2026-09-18
 bijgewerkt: 2026-09-23 10:00
 opgepakt-door: claude-fb071-uitlijning
 branch: ticket/FB-071-uitlijning
-pr:
+pr: 165
 geblokkeerd:
 fr: []
 ---
@@ -165,3 +165,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 09:56 · claude-fb071-uitlijning · klaar-voor-bouw → in-uitvoering: opgepakt na de test: Chuck uitgelijnd met de kop, Vandaag naast de datum
 - 2026-09-23 10:00 · claude-fb071-uitlijning · antagonist COMPLIANT; 2 MINOR gecontroleerd in de browser: geen scherm met zonderKat geeft rechts mee, en de ruimte onder de titel blijft 12px (Dekking bekeken)
 - 2026-09-23 10:00 · claude-fb071-uitlijning · in-uitvoering → te-testen: Chuck staat naast het hele kopblok in plaats van erboven uit te steken (telefoon: naast de titel), Vandaag direct achter de datum; bekeken op 1500 en 390px, lint en 359 tests groen
+- 2026-09-23 10:00 · claude-fb071-uitlijning · PR #165
