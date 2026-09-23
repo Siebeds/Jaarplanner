@@ -194,6 +194,20 @@ public sealed class WeekvoorstelEndpointsTests : IAsyncLifetime
             collegaClient.PutAsJsonAsync($"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning/{eigen.PlaatsingId}/beslissing", new { aanvaard = true }),
             HttpStatusCode.BadRequest,
             "Dit voorstel is een eigen activiteit van een collega. Alleen zij of een admin kan het aanvaarden.");
+
+        // Moving it would decide it too (W4), so that is refused the same way.
+        await RechtenTestOpzet.VerwachtAsync(
+            collegaClient.PutAsJsonAsync(
+                $"/api/klassen/{opzet.KlasId}/jaarplan/weekplanning/{eigen.PlaatsingId}/dag",
+                new { datum = Woensdag, begin = new TimeOnly(10, 0), einde = new TimeOnly(10, 50) }),
+            HttpStatusCode.BadRequest,
+            "Dit voorstel is een eigen activiteit van een collega. Alleen zij of een admin kan het aanvaarden.");
+
+        // And when the co-teacher asks for the week herself, her colleague's open proposal stays (W5).
+        _factory.AiAntwoord = Antwoord(("A1", Vrijdag));
+        await StelVoorAsync(collegaClient, opzet.KlasId);
+        var nog = Assert.Single(await BlokkenAsync(leerkracht, opzet.KlasId), b => b.PlaatsingId == eigen.PlaatsingId);
+        Assert.Equal("Voorgesteld", nog.Status);
     }
 
     [PostgresFact]

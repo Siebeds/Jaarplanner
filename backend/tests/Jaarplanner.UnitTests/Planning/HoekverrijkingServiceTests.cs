@@ -331,6 +331,7 @@ public sealed class HoekverrijkingServiceTests
 
         public Task<Weekplanningweergave> VerplaatsActiviteitAsync(
             Guid klasId, Guid plaatsingId, DateOnly datum, TimeOnly begin, TimeOnly einde,
+            Jaarplanner.Application.Toegang.Rechten? planner = null,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 

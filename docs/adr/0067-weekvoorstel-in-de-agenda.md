@@ -40,12 +40,13 @@ generated placements yet and that the predicate existed for the day a generator 
   is not "already planned" anywhere the tool says so (FB-076), and does not widen a subthema band. Accepting it sets
   `Aanvaard`; rejecting it removes it, so it *verdwijnt* as the ticket asks. Moving or resizing it is her deciding the
   moment herself: it becomes `Manueel` and loses the motivation, as a moved thema placement does.
-- **W5. Asking again replaces only the open proposals of that week**, and only when the new answer keeps at least one,
-  so none vanish without a replacement (the ADR-0056 D4 rule). Accepted and manual placements, fiches and hoeken stay
+- **W5. Asking again replaces only the open proposals of that week** of the shared activiteiten and the asker's own;
+  a co-teacher's proposals of her own activiteiten stay, since they are hers to decide. It replaces them only when the
+  new answer keeps at least one, so none vanish without a replacement (the ADR-0056 D4 rule). Accepted and manual placements, fiches and hoeken stay
   where they are; the new proposals fit around them.
 - **W6. Rights.** Asking, accepting and rejecting is the klas's planning, `KlasplanningBewerken` (a leerkracht of the
   klas or an admin, Art. IV.1 "for a generated plan"). An own activiteit is proposed only to its owner, and accepted
-  only by its owner or an admin (ADR-0049 D6, the same check as planning it by hand).
+  or moved (which decides it, W4) only by its owner or an admin (ADR-0049 D6, the same check as planning it by hand).
 
 Defaults of this session, which the owner may change on their own:
 
@@ -53,7 +54,8 @@ Defaults of this session, which the owner may change on their own:
   starts on the day it named and walks on through the week's other days (ADR-0062 D1). Only an activiteit with room on
   **no** day of the week is reported as not fitting, by name, and nothing is planned for it: the ticket's "past een
   gekozen activiteit nergens, dan zegt de tool dat".
-- **D2. Only days from today on.** A proposal on a day that has passed is a record of something that did not happen.
+- **D2. Only moments still ahead.** Days from today on, and on today only the hours still to come: a proposal on a
+  moment that has passed is a record of something that did not happen.
 - **D3. A rejection is not remembered.** The block is removed; asking again may bring the same activiteit back. A
   remembered rejection would need a row per rejected block, for a list of candidates that is short and entirely hers.
 - **D4. An unknown key, a repeated key or a day that is not a schooldag of the week is dropped or ignored per item**,

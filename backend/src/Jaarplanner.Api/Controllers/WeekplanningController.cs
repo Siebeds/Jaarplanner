@@ -137,9 +137,9 @@ public sealed class WeekplanningController : ControllerBase
     /// Moves a scheduled activiteit to another day and/or time — the teacher dragging a block in the time grid, or its
     /// bottom edge to make it longer (FR-6.2), persisted immediately (FR-6.5).
     /// <para>
-    /// <b>Reversible, unlike a thema move.</b> Nothing is rewritten and nothing is destroyed: there is no AI motivation
-    /// to lose and no proposal to override, because every placement here is the teacher's own. So no confirmation step
-    /// belongs on it — see <c>Activiteitplaatsing.VerplaatsNaar</c>.
+    /// <b>Reversible for a decided block</b>: nothing is rewritten and nothing is destroyed, so no confirmation step
+    /// belongs on it (see <c>Activiteitplaatsing.VerplaatsNaar</c>). An open proposal of a weekvoorstel she moves becomes
+    /// hers (ADR-0067 W4), which is why the planner's rights go along: a colleague's own activiteit is not hers to decide.
     /// </para>
     /// </summary>
     [HttpPut("{plaatsingId:guid}/dag")]
@@ -148,9 +148,13 @@ public sealed class WeekplanningController : ControllerBase
         Guid klasId,
         Guid plaatsingId,
         [FromBody] Dagwijziging wijziging,
-        CancellationToken cancellationToken) =>
-        Ok(await _service.VerplaatsActiviteitAsync(
-            klasId, plaatsingId, wijziging.Datum, wijziging.Begin, wijziging.Einde, cancellationToken));
+        CancellationToken cancellationToken)
+    {
+        // The planner's rights go along: moving an open proposal of a weekvoorstel decides it (ADR-0067 W4, W6).
+        var planner = Aanmelding.GebruikerId(User) is { } id ? await _rechten.HaalRechtenOpAsync(id, cancellationToken) : null;
+        return Ok(await _service.VerplaatsActiviteitAsync(
+            klasId, plaatsingId, wijziging.Datum, wijziging.Begin, wijziging.Einde, planner, cancellationToken));
+    }
 
     /// <summary>
     /// Takes an activiteit off its day, whatever its status — an explicit teacher action is the one actor Art. IV.2

@@ -101,6 +101,7 @@ public interface IWeekplanningService
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Rechten? planner = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

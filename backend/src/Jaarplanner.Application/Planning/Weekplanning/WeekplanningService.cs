@@ -161,10 +161,23 @@ public sealed class WeekplanningService : IWeekplanningService
         DateOnly datum,
         TimeOnly begin,
         TimeOnly einde,
+        Rechten? planner = null,
         CancellationToken cancellationToken = default)
     {
         var (klas, schooljaar) = await LaadKlasAsync(klasId, cancellationToken);
         var (jaarplan, plaatsing) = await LaadPlaatsingAsync(klasId, plaatsingId, cancellationToken);
+
+        // Moving an open proposal decides it (ADR-0067 W4), so it takes the same right as accepting it (W6): a
+        // colleague's own activiteit is hers or an admin's to decide, whichever route the decision takes.
+        if (plaatsing.IsVervangbaar)
+        {
+            var inhoud = await _opslag.LaadActiviteitinhoudAsync(plaatsing.ActiviteitId, cancellationToken)
+                ?? throw new SchoolcontentNietGevondenFout($"Activiteit {plaatsing.ActiviteitId} is niet gevonden.");
+            if (!MagPlannen(inhoud, planner))
+            {
+                throw OngeldigeDagplanningFout.VoorstelVanEenAnder();
+            }
+        }
 
         // Only the target is validated. The placement's current day is deliberately not, which is what makes this the
         // route off a day the school has since closed (see IWeekplanningService).

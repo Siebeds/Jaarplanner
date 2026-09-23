@@ -65,7 +65,8 @@ public sealed class WeekvoorstelService : IWeekvoorstelService
 
         // The week from today on and inside the school year (D2).
         var maandag = dagInWeek.AddDays(-(((int)dagInWeek.DayOfWeek + 6) % 7));
-        var vandaag = DateOnly.FromDateTime(_tijd.GetLocalNow().DateTime);
+        var nu = _tijd.GetLocalNow().DateTime;
+        var vandaag = DateOnly.FromDateTime(nu);
         var van = Max(Max(maandag, vandaag), schooljaar.Start);
         var tot = Min(maandag.AddDays(6), schooljaar.Eind);
         if (tot < van)
@@ -91,7 +92,19 @@ public sealed class WeekvoorstelService : IWeekvoorstelService
             throw new SchoolcontentValidatieFout(GeenSubthema);
         }
 
-        var dagen = await BouwDagenAsync(klasId, schooljaar, van, tot, cancellationToken);
+        // W5: the open proposals this run replaces are the shared activiteiten's and the asker's own. A co-teacher's
+        // proposals of her own activiteiten stay: they are hers to decide, and never this asker's candidates.
+        var open = jaarplan.Activiteitplaatsingen.Where(p => p.IsVervangbaar && p.Datum >= van && p.Datum <= tot).ToList();
+        var openIds = open.Select(p => p.ActiviteitId).Distinct().ToList();
+        var eigenaars = await _context.Activiteiten.AsNoTracking()
+            .Where(a => openIds.Contains(a.Id))
+            .ToDictionaryAsync(a => a.Id, a => a.EigenaarId, cancellationToken);
+        var vervangen = open
+            .Where(p => eigenaars.GetValueOrDefault(p.ActiviteitId) is not { } eigenaar || eigenaar == vrager.GebruikerId)
+            .ToList();
+        var blijven = open.Except(vervangen).ToList();
+
+        var dagen = await BouwDagenAsync(klasId, schooljaar, van, tot, blijven, vandaag, TimeOnly.FromDateTime(nu), cancellationToken);
         if (dagen.Count == 0)
         {
             throw new SchoolcontentValidatieFout(GeenSchooldag);
@@ -131,9 +144,9 @@ public sealed class WeekvoorstelService : IWeekvoorstelService
         // W5: the week's open proposals make way. Removed and saved before the new ones go in, so a new block on the
         // very moment of an old one cannot collide with it on the unique index.
         await using var transactie = await _context.Database.BeginTransactionAsync(cancellationToken);
-        foreach (var open in jaarplan.Activiteitplaatsingen.Where(p => p.IsVervangbaar && p.Datum >= van && p.Datum <= tot).ToList())
+        foreach (var oud in vervangen)
         {
-            jaarplan.VerwijderActiviteitplaatsing(open);
+            jaarplan.VerwijderActiviteitplaatsing(oud);
         }
 
         await _opslag.BewaarAsync(cancellationToken);
@@ -210,19 +223,28 @@ public sealed class WeekvoorstelService : IWeekvoorstelService
     }
 
     /// <summary>
-    /// The schooldagen of <paramref name="van"/>–<paramref name="tot"/>, with the school's hours and what is taken,
-    /// leaving out the open proposals this run replaces (W5).
+    /// The schooldagen of <paramref name="van"/>–<paramref name="tot"/>, with the school's hours and what is taken:
+    /// everything but the open proposals this run replaces (W5), and on today the hours that have passed (D2).
     /// </summary>
     private async Task<IReadOnlyList<Schooldagvenster>> BouwDagenAsync(
         Guid klasId,
         Schooljaar schooljaar,
         DateOnly van,
         DateOnly tot,
+        IReadOnlyList<Activiteitplaatsing> blijvendeVoorstellen,
+        DateOnly vandaag,
+        TimeOnly nu,
         CancellationToken ct)
     {
         var kalender = new Themakalender(schooljaar);
         var uren = await _context.Schooldaguren.AsNoTracking().ToDictionaryAsync(u => u.Weekdag, ct);
         var bezet = await Klasbezetting.HaalAsync(_context, klasId, van, tot, ct, zonderOpenVoorstellen: true);
+        foreach (var voorstel in blijvendeVoorstellen)
+        {
+            Voeg(bezet, voorstel.Datum, new Tijdvak(voorstel.Begin, voorstel.Einde));
+        }
+
+        Voeg(bezet, vandaag, new Tijdvak(TimeOnly.MinValue, nu));
 
         var dagen = new List<Schooldagvenster>();
         for (var dag = van; dag <= tot; dag = dag.AddDays(1))
@@ -234,6 +256,17 @@ public sealed class WeekvoorstelService : IWeekvoorstelService
         }
 
         return dagen;
+    }
+
+    private static void Voeg(Dictionary<DateOnly, List<Tijdvak>> bezet, DateOnly dag, Tijdvak vak)
+    {
+        if (!bezet.TryGetValue(dag, out var lijst))
+        {
+            lijst = [];
+            bezet[dag] = lijst;
+        }
+
+        lijst.Add(vak);
     }
 
     private static DateOnly Max(DateOnly a, DateOnly b) => a > b ? a : b;

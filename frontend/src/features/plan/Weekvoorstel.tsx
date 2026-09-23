@@ -92,7 +92,7 @@ export function Weekvoorstel({
       </div>
 
       {open.length > 0 ? (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="grid gap-1.5 md:grid-cols-2 2xl:grid-cols-3">
           {open.map((voorstel) => (
             <li key={voorstel.plaatsingId} className="voorstel-ai flex items-start gap-2 rounded-veld px-3 py-2">
               <div className="min-w-0 flex-1">
