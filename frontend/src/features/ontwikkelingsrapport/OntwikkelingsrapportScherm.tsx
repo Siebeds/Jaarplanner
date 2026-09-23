@@ -324,7 +324,7 @@ function Nieuwkind({ klasId }: { klasId: string }) {
         voornaamVeld={voornaamVeld}
         achternaamVeld={achternaamVeld}
         knoppen={
-          <Knop rang="hoofd" type="submit" disabled={maak.isPending}>
+          <Knop rang="hoofd" type="submit" bezig={maak.isPending}>
             <IcoonPlus aria-hidden="true" className="h-4 w-4" />
             {maak.isPending ? t("algemeen.bezig") : t("ontwikkelingsrapport.toevoegen")}
           </Knop>
@@ -383,7 +383,7 @@ function Kindbewerking({ kind, klasId, onKlaar }: { kind: Leerling; klasId: stri
         achternaamVeld={achternaamVeld}
         knoppen={
           <div className="flex items-center gap-2">
-            <Knop rang="hoofd" type="submit" disabled={wijzig.isPending}>
+            <Knop rang="hoofd" type="submit" bezig={wijzig.isPending}>
               {wijzig.isPending ? t("algemeen.bezig") : t("themabeheer.bewaar")}
             </Knop>
             <Knop rang="stil" disabled={wijzig.isPending} onClick={onKlaar}>

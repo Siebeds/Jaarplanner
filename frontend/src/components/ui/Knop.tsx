@@ -9,10 +9,22 @@ import { knopklassen, type Rang } from "./knopklassen";
 export function Knop({
   rang = "rustig",
   vol,
+  bezig,
   className,
   type = "button",
+  onClick,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { rang?: Rang; vol?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  rang?: Rang;
+  vol?: boolean;
+  /**
+   * A save this button started is under way. The button then ignores every press but stays enabled, marked
+   * `aria-disabled` and `aria-busy`, so the keyboard focus stays on it: `disabled` would drop that focus to the page
+   * body mid-save, and the teacher would have to tab back from the top. A button that waits on its own save uses this;
+   * one that cannot be pressed for another reason uses `disabled`.
+   */
+  bezig?: boolean;
+}) {
   return (
     <button
       // `button`, not the HTML default of `submit`. A <button> with no type submits whatever form it
@@ -21,7 +33,16 @@ export function Knop({
       // sheet instead of opening the goal picker. Submitting is now something a caller asks for, and
       // the three forms that want it already pass type="submit" explicitly.
       type={type}
-      className={cn(knopklassen(rang, vol), "disabled:pointer-events-none disabled:opacity-45", className)}
+      aria-disabled={bezig || undefined}
+      aria-busy={bezig || undefined}
+      // `preventDefault` too, so a busy submit button does not submit its form again, also not through Enter in one of
+      // its fields, which the browser turns into a click on this button.
+      onClick={bezig ? (e) => e.preventDefault() : onClick}
+      className={cn(
+        knopklassen(rang, vol),
+        "disabled:pointer-events-none disabled:opacity-45 aria-disabled:cursor-wait aria-disabled:opacity-45",
+        className,
+      )}
       {...props}
     />
   );
@@ -32,8 +53,8 @@ export function Knop({
  *
  * It wears the rainbow ring of ADR-0039, and the wand in front of its label says the same thing without
  * colour (Art. XII). This is the one way to the `ai` look: a caller that wants the ring gets the wand with
- * it. `bezig` sets `aria-busy` for the run, which is also what keeps the ring bright and sweeping while
- * the button is disabled.
+ * it. `bezig` is the busy state of `Knop`, whose `aria-busy` also keeps the ring bright and sweeping
+ * during the run.
  *
  * During a run the wand throws sparks in the five ring colours and three dots bounce after the label (TB-044), so a
  * wait of several seconds reads as thinking rather than as a button that stuck. Both are decoration, hidden from a
@@ -46,7 +67,7 @@ export function AiKnop({
   ...props
 }: Omit<ComponentProps<typeof Knop>, "rang"> & { bezig?: boolean }) {
   return (
-    <Knop rang="ai" aria-busy={bezig || undefined} {...props}>
+    <Knop rang="ai" bezig={bezig} {...props}>
       <span className="relative inline-flex shrink-0">
         <IcoonToverstok aria-hidden="true" className="h-4 w-4" />
         {bezig ? (

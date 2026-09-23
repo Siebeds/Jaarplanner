@@ -159,7 +159,8 @@ export function Plaatsingkaart({
             <Knop
               type="submit"
               rang="hoofd"
-              disabled={bezig || ongeldig || (ongewijzigd && !plaatsing.isVervallen)}
+              bezig={bezig}
+              disabled={ongeldig || (ongewijzigd && !plaatsing.isVervallen)}
             >
               {t("plan.bewaarDatums")}
             </Knop>
@@ -173,10 +174,10 @@ export function Plaatsingkaart({
 
           {teBeoordelen ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Knop rang="hoofd" disabled={bezig} onClick={onAanvaard}>
+              <Knop rang="hoofd" bezig={bezig} onClick={onAanvaard}>
                 {t("plan.aanvaard")}
               </Knop>
-              <Knop disabled={bezig} onClick={onWeiger}>
+              <Knop bezig={bezig} onClick={onWeiger}>
                 {t("plan.weiger")}
               </Knop>
               <p className="text-meta text-inkt-zacht">{t("plan.weigerUitleg")}</p>
@@ -194,7 +195,7 @@ export function Plaatsingkaart({
           {t("plan.openInAgenda")}
         </Link>
         {magBewerken ? (
-          <Knop rang="stil" className="ml-auto" disabled={bezig} onClick={onVerwijder}>
+          <Knop rang="stil" className="ml-auto" bezig={bezig} onClick={onVerwijder}>
             {t("plan.verwijder")}
           </Knop>
         ) : null}

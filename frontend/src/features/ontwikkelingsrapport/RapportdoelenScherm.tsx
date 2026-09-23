@@ -264,7 +264,7 @@ function Rapportdoelblad({ rapportdoel, onSluit }: { rapportdoel?: Rapportdoel; 
       maat="breed"
       voet={
         <div className="flex items-center gap-2">
-          <Knop rang="hoofd" type="submit" form={formulier} disabled={actie.isPending}>
+          <Knop rang="hoofd" type="submit" form={formulier} bezig={actie.isPending}>
             {actie.isPending ? t("algemeen.bezig") : t("themabeheer.bewaar")}
           </Knop>
           <Knop rang="stil" disabled={actie.isPending} onClick={onSluit}>

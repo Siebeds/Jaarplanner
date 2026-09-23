@@ -256,7 +256,8 @@ function Dagtekstvorm({
       <Knop
         type="button"
         className="mt-2"
-        disabled={zet.isPending || vergrendeld || tekst.trim() === opgeslagen}
+        bezig={zet.isPending}
+        disabled={vergrendeld || tekst.trim() === opgeslagen}
         onClick={() => zet.mutate({ plaatsingId, momentId: moment.id, tekst: tekst.trim() })}
       >
         {zet.isPending ? t("fichedetail.bewarenBezig") : t("fichedetail.dagtekstBewaren")}
@@ -378,7 +379,8 @@ function Momentvorm({
       <Knop
         type="button"
         className="mt-2"
-        disabled={verplaats.isPending || vergrendeld || urenOngeldig || ongewijzigd || datum === "" || weekend}
+        bezig={verplaats.isPending}
+        disabled={vergrendeld || urenOngeldig || ongewijzigd || datum === "" || weekend}
         onClick={() => {
           verplaats.reset();
           verplaats.mutate({

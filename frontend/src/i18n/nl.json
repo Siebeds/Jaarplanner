@@ -1,6 +1,7 @@
 {
   "app": {
     "naam": "Vizier",
+    "schermtitel": "{scherm} · {app}",
     "naarInhoud": "Ga naar de inhoud"
   },
   "navigatie": {
@@ -144,7 +145,7 @@
     "minimumdoelZonderLeerplandoel": "Er leidt nog geen leerplandoel naar dit minimumdoel",
     "suggesties": "Voorgestelde minimumdoelen",
     "suggestiesVragen": "Vraag suggesties",
-    "suggestiesBezig": "Bezig",
+    "suggestiesBezig": "Bezig…",
     "suggestiesMislukt": "Suggesties niet gelukt",
     "suggestiesVragenVoor": "Vraag suggesties voor",
     "suggestiesVersturen": "Verstuur",
@@ -254,7 +255,7 @@
     "voegThemaToe": "Thema toevoegen",
     "kiesThema": "Kies een thema",
     "geenThemas": "Er zijn nog geen thema's",
-    "genereerBezig": "Bezig met genereren",
+    "genereerBezig": "Bezig met genereren…",
     "generatieVraag": "Jaarplan opnieuw genereren?",
     "generatieGevolgEen": "1 thema dat nog een open voorstel is, verdwijnt uit het jaarplan. Wat je aanvaardde of zelf plaatste, blijft staan.",
     "generatieGevolg": "{aantal} thema's die nog een open voorstel zijn, verdwijnen uit het jaarplan. Wat je aanvaardde of zelf plaatste, blijft staan.",
@@ -347,7 +348,7 @@
     "verspreid": "Verspreid",
     "voorbeeld": "Zo komt het te staan",
     "planAantal": "Plan {aantal} activiteiten in",
-    "bezig": "Bezig",
+    "bezig": "Bezig…",
     "geenSubthemaVoorKlasEen": "{klas} heeft nog geen subthema onder {thema}.",
     "geenSubthemaVoorKlasMeer": "{klas} heeft nog geen subthema onder de thema's van deze dagen.",
     "subthemaHoortBijLeeftijd": "Een subthema hoort bij een leeftijd. Maak er een bij het thema voor de leeftijd van deze klas, dan staat het hier klaar om in te plannen.",
@@ -507,7 +508,7 @@
     "invoerVolgend": "Nog een woord",
     "haalWeg": "{woord} uit het woordweb halen",
     "voorstellen": "Stel woorden voor",
-    "voorstellenBezig": "Woorden zoeken",
+    "voorstellenBezig": "Woorden zoeken…",
     "eerstZelf": "Zet eerst zelf een woord in je woordweb.",
     "geenNieuwe": "De AI vond geen nieuwe woorden.",
     "aiOngeldig": "Het antwoord van de AI was onbruikbaar. Vraag het opnieuw.",
@@ -666,12 +667,12 @@
     "rijkeWoordenschat": "Rijke woordenschat",
     "rijkUitleg": "Extra woorden voor wie verder kan.",
     "aanmaken": "Thema aanmaken",
-    "aanmakenBezig": "Aanmaken",
+    "aanmakenBezig": "Aanmaken…",
     "nietBewaard": "Je wijzigingen zijn nog niet bewaard.",
     "weggooien": "Weggooien",
     "verderBewerken": "Verder bewerken",
     "bewaar": "Bewaren",
-    "bewaarBezig": "Bewaren",
+    "bewaarBezig": "Bewaren…",
     "annuleer": "Annuleren",
     "bewaarMislukt": "Bewaren is niet gelukt",
     "verwijderTitel": "{naam} verwijderen",
@@ -1040,7 +1041,7 @@
     "grootte": "{kb} kB",
     "bekijkVoorbeeld": "Voorbeeld bekijken",
     "voerUit": "Inladen",
-    "bezig": "Bezig",
+    "bezig": "Bezig…",
     "mislukt": "Niet gelukt",
     "problemen": "{aantal} rijen konden niet gelezen worden",
     "rij": "rij {nummer}",
@@ -1157,7 +1158,7 @@
   "algemeen": {
     "sluiten": "Sluiten",
     "gewijzigd": "gewijzigd",
-    "bezig": "Bezig",
+    "bezig": "Bezig…",
     "nietTerugTeDraaien": "Dat is niet terug te draaien."
   },
   "activiteit": {
@@ -1268,7 +1269,7 @@
     "activiteitType": "Soort",
     "activiteitLesuren": "Lesuren",
     "maakEnKoppel": "Maak en koppel",
-    "bezigMaken": "Bezig met maken",
+    "bezigMaken": "Bezig met maken…",
     "annuleer": "Annuleer",
     "maakMislukt": "De activiteit is niet aangemaakt. Probeer het opnieuw.",
     "geenKlas": "Kies eerst een klas.",
@@ -1307,7 +1308,7 @@
     "verwijderGevolgAantal": "De {aantal} verrijkingen die bij deze hoek staan, verdwijnen mee. Dat is niet terug te draaien.",
     "verwijderMislukt": "Verwijderen is niet gelukt.",
     "overnemen": "Hoeken overnemen",
-    "overnemenBezig": "Bezig met overnemen",
+    "overnemenBezig": "Bezig met overnemen…",
     "overnemenTitel": "Hoeken overnemen",
     "overnemenVan": "Van welke klas?",
     "kiesKlas": "Kies een klas",
@@ -1382,7 +1383,7 @@
     "tot": "Tot",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "plaats": "Inplannen",
-    "bezig": "Bezig met inplannen",
+    "bezig": "Bezig met inplannen…",
     "mislukt": "Inplannen is niet gelukt."
   },
   "ficheplaatsing": {
@@ -1402,7 +1403,7 @@
     "uurUitleg": "De fiche komt op dit uur op elke gekozen dag van de periode. Vakanties en vrije dagen worden overgeslagen.",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "plaats": "Inplannen",
-    "bezig": "Bezig met inplannen",
+    "bezig": "Bezig met inplannen…",
     "mislukt": "Inplannen is niet gelukt."
   },
   "blokmenu": {
@@ -1429,7 +1430,7 @@
     "geenSchooldag": "Op die dag is er geen school. Kies een schooldag.",
     "eindeVoorBegin": "Het einduur moet na het beginuur liggen.",
     "bewaren": "Bewaren",
-    "bewarenBezig": "Bezig met bewaren",
+    "bewarenBezig": "Bezig met bewaren…",
     "momentMislukt": "Deze dag aanpassen is niet gelukt.",
     "laatstePeriode": "Dit is de enige periode van deze fiche in de agenda. Haal je ze weg, dan telt de fiche niet meer mee voor de dekking.",
     "dagtekst": "Tekst voor {dag}",
@@ -1443,7 +1444,7 @@
     "bevestigTeksten": "Bij {aantal} dagen van deze periode staat een tekst. Die gaan mee verloren.",
     "bevestigLabel": "Periode weghalen",
     "verwijder": "Hele periode uit de agenda halen",
-    "verwijderBezig": "Bezig met weghalen",
+    "verwijderBezig": "Bezig met weghalen…",
     "verwijderMislukt": "Weghalen is niet gelukt.",
     "sluiten": "Sluiten"
   },
@@ -1460,7 +1461,7 @@
     "geenSubthema": "In deze week loopt geen subthema. Een verrijking hoort altijd bij een subthema.",
     "laadtMislukt": "De subthema's van deze week of hun verrijkingen konden niet geladen worden. Probeer het later opnieuw.",
     "bewaren": "Bewaren",
-    "bewarenBezig": "Bezig met bewaren",
+    "bewarenBezig": "Bezig met bewaren…",
     "annuleren": "Annuleren",
     "mislukt": "Bewaren is niet gelukt."
   },

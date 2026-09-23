@@ -2,6 +2,7 @@ import { Merk } from "../../app/Merk";
 import { Knoplink } from "../../components/ui/Knop";
 import { t } from "../../i18n";
 import { aanmeldAdres } from "../../lib/aanmelding";
+import { useSchermtitel } from "../../lib/useSchermtitel";
 
 /**
  * Where a sign-out lands (TB-032): `/afgemeld`, the `post_logout_redirect_uri` of the Microsoft sign-out and the
@@ -18,6 +19,7 @@ import { aanmeldAdres } from "../../lib/aanmelding";
  * Signing in again is the one action, and the primary one (one of the accent's five uses).
  */
 export function AfgemeldScherm() {
+  useSchermtitel(t("aanmelding.afgemeld.titel"));
   return (
     <main className="min-h-dvh px-4 py-16 sm:py-24">
       <div className="mx-auto max-w-[34rem]">

@@ -235,7 +235,7 @@ export function Activiteitformulier({
         fiche ? (
           onGebruik ? (
             <div className="flex flex-col gap-1.5 @sm:flex-row @sm:items-center @sm:gap-3">
-              <Knop rang="hoofd" vol onClick={onGebruik} disabled={gebruikBezig} className="@sm:w-auto @sm:px-6">
+              <Knop rang="hoofd" vol onClick={onGebruik} bezig={gebruikBezig} className="@sm:w-auto @sm:px-6">
                 {gebruikBezig ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
               </Knop>
               <p className="text-meta text-inkt-zacht">{t("activiteit.gebruikUitleg")}</p>
@@ -243,7 +243,7 @@ export function Activiteitformulier({
           ) : undefined
         ) : (
           <div className="flex items-center gap-2">
-            <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
+            <Knop rang="hoofd" vol form={id} type="submit" bezig={bezig} className="@sm:w-auto @sm:px-6">
               {bezig ? t("themabeheer.bewaarBezig") : t("themabeheer.bewaar")}
             </Knop>
             <Knop rang="stil" type="button" onClick={onSluit} disabled={bezig}>

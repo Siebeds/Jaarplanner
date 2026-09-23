@@ -57,7 +57,7 @@ export function Bevestiging({
             rang="hoofd"
             vol
             type="button"
-            disabled={bezig}
+            bezig={bezig}
             onClick={onBevestig}
             // Ink rather than red. Red means "niet gedekt" everywhere else in this application, and
             // borrowing it here would put a coverage signal on a delete button. The darkest surface

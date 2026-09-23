@@ -72,7 +72,8 @@ export function Activiteitplaatsingblad({
             type="submit"
             // Disabled on an impossible slot rather than sending it: a refusal for something the screen could see
             // coming is a round trip that teaches nothing.
-            disabled={bezig || datum === "" || urenOngeldig}
+            bezig={bezig}
+            disabled={datum === "" || urenOngeldig}
             className="@sm:w-auto @sm:px-6"
           >
             {bezig ? t("activiteitplaatsing.bezig") : t("activiteitplaatsing.plaats")}

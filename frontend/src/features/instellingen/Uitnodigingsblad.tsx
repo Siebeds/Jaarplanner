@@ -51,7 +51,7 @@ export function Uitnodigingsblad({
       titel={t("gebruikers.uitnodigen")}
       voet={
         <div className="flex items-center gap-2">
-          <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
+          <Knop rang="hoofd" vol form={id} type="submit" bezig={bezig} className="@sm:w-auto @sm:px-6">
             {bezig ? t("algemeen.bezig") : t("gebruikers.uitnodig")}
           </Knop>
           <Knop rang="stil" onClick={onSluit} disabled={bezig}>

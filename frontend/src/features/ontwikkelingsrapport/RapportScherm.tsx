@@ -533,7 +533,7 @@ function Herschrijfvak({
         className="self-start"
         aria-label={knoplabel}
         bezig={herschrijf.isPending}
-        disabled={bezig || herschrijf.isPending}
+        disabled={bezig}
         onClick={vraag}
       >
         {t("ontwikkelingsrapport.herschrijven")}
@@ -606,7 +606,7 @@ function Herschrijfvak({
                 </Knop>
                 <Knop
                   rang="rustig"
-                  disabled={weiger.isPending}
+                  bezig={weiger.isPending}
                   onClick={() =>
                     weiger.mutate({ rapportdoelId, herschrijving: voorstel.herschrijving }, { onSuccess: sluit })
                   }

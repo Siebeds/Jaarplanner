@@ -79,6 +79,7 @@ export function Doelkiezer({
           disabled={bezig}
           onChange={(e) => setZoek(e.target.value)}
           placeholder={t("doelkiezer.zoek")}
+          aria-label={t("doelkiezer.zoek")}
           className="pl-10"
         />
       </div>

@@ -114,7 +114,7 @@ function Schoolurenformulier({ uren }: { uren: readonly Schooldaguren[] }) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-3">
-        <Knop rang="hoofd" type="submit" disabled={bewaar.isPending}>
+        <Knop rang="hoofd" type="submit" bezig={bewaar.isPending}>
           {t("schooluren.bewaar")}
         </Knop>
         <p role="status" className="text-meta text-inkt-zacht">

@@ -67,7 +67,8 @@ export function Themaplaatsingblad({
         <Knop
           rang="hoofd"
           vol
-          disabled={bezig || ongeldig || voorstelFout !== null}
+          bezig={bezig}
+          disabled={ongeldig || voorstelFout !== null}
           onClick={() => onPlaats({ themaId, van, tot })}
         >
           {t("plan.toevoegen")}
