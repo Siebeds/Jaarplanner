@@ -2,13 +2,13 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 10:00
-opgepakt-door: claude-fb071-uitlijning
-branch: ticket/FB-071-uitlijning
-pr: 165
+bijgewerkt: 2026-09-23 10:20
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: []
 ---
@@ -166,3 +166,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 10:00 · claude-fb071-uitlijning · antagonist COMPLIANT; 2 MINOR gecontroleerd in de browser: geen scherm met zonderKat geeft rechts mee, en de ruimte onder de titel blijft 12px (Dekking bekeken)
 - 2026-09-23 10:00 · claude-fb071-uitlijning · in-uitvoering → te-testen: Chuck staat naast het hele kopblok in plaats van erboven uit te steken (telefoon: naast de titel), Vandaag direct achter de datum; bekeken op 1500 en 390px, lint en 359 tests groen
 - 2026-09-23 10:00 · claude-fb071-uitlijning · PR #165
+- 2026-09-23 10:20 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: Chuck staat op de agenda te laag; hij hoort op de hoogte van de titel, zoals op Dekking
