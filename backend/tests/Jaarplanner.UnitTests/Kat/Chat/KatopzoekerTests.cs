@@ -84,6 +84,20 @@ public sealed class KatopzoekerTests
     }
 
     [Fact]
+    public async Task Een_lange_doeltekst_wordt_als_kandidaat_ingekort_op_een_regel()
+    {
+        var lang = "Hoeveelheden meten:\n- " + string.Join(" ", Enumerable.Repeat("met natuurlijke getallen", 20));
+        _school.Doelen.Add(new Katdoel("G-WI-09", Katdoelsoort.Leerplandoel, lang));
+
+        var antwoord = await Zoek(new Katopzoeking(Katvraag.WaarGebruikt, Doel: "hoeveelheden"));
+
+        var kandidaat = antwoord.Keuze!.Kandidaten.Single(k => k.Id == "G-WI-09");
+        Assert.True(kandidaat.Detail!.Length <= Katopzoeker.MaxDetailLengte);
+        Assert.EndsWith("…", kandidaat.Detail);
+        Assert.StartsWith("Hoeveelheden meten: - met natuurlijke", kandidaat.Detail);
+    }
+
+    [Fact]
     public async Task Een_onbestaand_doel_of_thema_wordt_niet_gevonden()
     {
         var geenDoel = await Zoek(new Katopzoeking(Katvraag.DoelInThema, Doel: "ZZ-99", Thema: "Herfst"));

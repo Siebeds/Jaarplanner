@@ -83,7 +83,7 @@ function Antwoord({ antwoord, chat, onSluit }: { antwoord: Katantwoord; chat: Ka
       )}
 
       {antwoord.doel && antwoord.soort !== "DoelenVanThema" ? (
-        <p className="text-meta text-inkt-zacht">{antwoord.doel.tekst}</p>
+        <p className="line-clamp-3 text-meta text-inkt-zacht">{antwoord.doel.tekst}</p>
       ) : null}
 
       {antwoord.soort === "Kies" && antwoord.keuze && antwoord.opzoeking ? (

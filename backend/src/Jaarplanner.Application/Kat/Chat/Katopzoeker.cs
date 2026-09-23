@@ -246,8 +246,24 @@ public sealed class Katopzoeker
             0 => new(null, NietGevonden(opzoeking, Katonderwerp.Doel, term)),
             1 => new(doelen[0], null),
             _ => new(null, Kies(opzoeking, Katonderwerp.Doel, term, doelen
-                .Select(d => new Katkandidaat(d.Code, d.Code, d.Tekst)))),
+                .Select(d => new Katkandidaat(d.Code, d.Code, Kort(d.Tekst))))),
         };
+    }
+
+    /// <summary>The longest text a candidate carries: enough to tell goals apart, short enough to read out.</summary>
+    public const int MaxDetailLengte = 160;
+
+    // A minimumdoel can run to a page of bullets; a candidate needs its first sentence or so, on one line.
+    private static string Kort(string tekst)
+    {
+        var regel = string.Join(' ', tekst.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (regel.Length <= MaxDetailLengte)
+        {
+            return regel;
+        }
+
+        var knip = regel.LastIndexOf(' ', MaxDetailLengte - 1);
+        return regel[..(knip > 0 ? knip : MaxDetailLengte - 1)].TrimEnd(',', ':', ';') + "…";
     }
 
     private static Katantwoord NietGevonden(Katopzoeking opzoeking, Katonderwerp wat, string term) =>
