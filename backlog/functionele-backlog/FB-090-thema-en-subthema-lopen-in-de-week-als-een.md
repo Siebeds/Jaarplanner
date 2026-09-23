@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 11:31
+bijgewerkt: 2026-09-23 11:32
 opgepakt-door: claude-fb090
 branch: ticket/FB-090-doorlopende-themabalk
-pr:
+pr: 170
 geblokkeerd:
 fr: []
 ---
@@ -79,3 +79,4 @@ Geen.
 - 2026-09-23 11:27 · claude-fb090 · doorlopende balken gebouwd in de weekkop (dag- en maandweergave ongewijzigd), tests en lint groen; browsercheck volgt
 - 2026-09-23 11:31 · claude-fb090 · antagonist COMPLIANT; MINOR commentaar opgelost; criteria afgevinkt op Vitest (1-5) en browsercheck mock 1440/390px licht+donker (1,2,3,6); knop '+ Subthema' alleen in Vitest gezien, mockdata heeft geen dag zonder subthema
 - 2026-09-23 11:31 · claude-fb090 · in-uitvoering → te-testen: doorlopende thema- en subthemabalk in week en werkweek; lint en 1340 tests groen
+- 2026-09-23 11:32 · claude-fb090 · PR #170
