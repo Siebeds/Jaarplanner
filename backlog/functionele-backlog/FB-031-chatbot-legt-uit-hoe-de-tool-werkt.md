@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 11:01
+bijgewerkt: 2026-09-23 11:24
 opgepakt-door: claude-fb031
 branch: ticket/FB-031-kat-chat
 pr:
@@ -121,3 +121,4 @@ Regels:
 - 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)
 - 2026-09-23 10:39 · claude-fb031 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; open vragen beantwoord (handleiding door de sessie, opzoeking via tool use, ook de agenda)
 - 2026-09-23 11:01 · claude-fb031 · backend klaar: één AI-aanroep kiest uitleg uit de handleiding of een vaste opzoeking, de tool antwoordt met de rechten van de gebruiker; eerste versie van de handleiding en ADR-0066; unit- en Postgres-tests groen
+- 2026-09-23 11:24 · claude-fb031 · browserpas op een kopie van de database met Claude Haiku: uitleg, onbekend, ja/nee met plek, niet gevonden, kiezen en opnieuw zoeken werken, op 1440px en 390px, zonder horizontale scroll; lange doelteksten ingekort
