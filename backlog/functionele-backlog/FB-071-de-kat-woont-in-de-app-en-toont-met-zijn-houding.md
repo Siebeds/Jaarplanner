@@ -8,7 +8,7 @@ aangemaakt: 2026-09-18
 bijgewerkt: 2026-09-23 10:22
 opgepakt-door: claude-fb071-hoogte
 branch: ticket/FB-071-hoogte
-pr:
+pr: 166
 geblokkeerd:
 fr: []
 ---
@@ -169,3 +169,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 10:20 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: Chuck staat op de agenda te laag; hij hoort op de hoogte van de titel, zoals op Dekking
 - 2026-09-23 10:20 · claude-fb071-hoogte · klaar-voor-bouw → in-uitvoering: opgepakt na de test: Chuck op de hoogte van de titel
 - 2026-09-23 10:22 · claude-fb071-hoogte · in-uitvoering → te-testen: Chuck staat bovenaan het kopblok, op de hoogte van de titel zoals op Dekking; telefoon ongewijzigd; bekeken op 1500 en 390px, lint en 359 tests groen
+- 2026-09-23 10:22 · claude-fb071-hoogte · PR #166
