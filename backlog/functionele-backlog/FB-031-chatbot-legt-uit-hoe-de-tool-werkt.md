@@ -2,10 +2,10 @@
 id: FB-031
 titel: Chatbot legt de tool uit en beantwoordt opzoekvragen over doelen, thema's en activiteiten
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 20:26
+bijgewerkt: 2026-09-23 20:31
 opgepakt-door: claude-fb031
 branch: ticket/FB-031-chuck-kopje
 pr:
@@ -127,3 +127,4 @@ Regels:
 - 2026-09-23 11:33 · claude-fb031 · PR #172
 - 2026-09-23 20:23 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: (1) terwijl Chuck een antwoord zoekt, overlappen de drie puntjes de tekst 'Chuck denkt na' in de ballon; verwacht een kleine ruimte tussen tekst en puntjes, gezien puntjes over de laatste letter (oorzaak: .ai-puntjes heeft margin-left -4px, index.css). (2) De kat is in het chatvenster niet zichtbaar en het staartje van de ballon wijst naar niets; gewenst: een klein kopje van Chuck (ca. 32px) als chaticoon naast elke ballon van hem, met het staartje ernaartoe, en naast 'Chuck' in de kop van het venster.
 - 2026-09-23 20:26 · claude-fb031 · klaar-voor-bouw → in-uitvoering: opgepakt: bevindingen van de eigenaar (puntjes, kopje van Chuck)
+- 2026-09-23 20:31 · claude-fb031 · in-uitvoering → te-testen: bevindingen verwerkt: puntjes staan 4px na 'Chuck denkt na' (alleen in de chat, de AI-knop blijft), en een kopje van Chuck (32px) naast elke ballon, met het staartje ernaartoe, en naast zijn naam in de kop; nagekeken in de browser op 1440px en 390px zonder horizontale scroll; kat-tests en pnpm lint groen; antagonist COMPLIANT, één MINOR (het kopje draagt de klasse chuck) gelaten
