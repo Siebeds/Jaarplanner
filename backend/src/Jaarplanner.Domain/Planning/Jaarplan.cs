@@ -182,7 +182,8 @@ public sealed class Jaarplan
         DateOnly datum,
         KoppelingStatus status,
         TimeOnly begin,
-        TimeOnly einde)
+        TimeOnly einde,
+        string? aiMotivatie = null)
     {
         if (IsAlGeplaatstOp(activiteitId, datum, begin))
         {
@@ -190,7 +191,7 @@ public sealed class Jaarplan
                 $"Activiteit {activiteitId} already starts at {begin:HH:mm} on {datum:yyyy-MM-dd}.");
         }
 
-        var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, begin, einde);
+        var plaatsing = new Activiteitplaatsing(Id, activiteitId, datum, status, begin, einde, aiMotivatie);
         _activiteitplaatsingen.Add(plaatsing);
 
         return plaatsing;

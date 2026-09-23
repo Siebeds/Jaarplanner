@@ -168,7 +168,9 @@ public sealed class EfDekkingOpslag : IDekkingOpslag
         var gepland = await (
                 from plaatsing in _context.Activiteitplaatsingen.AsNoTracking()
                 join jaarplan in _context.Jaarplannen on plaatsing.JaarplanId equals jaarplan.Id
-                where jaarplan.KlasId == klasId
+                // Only a decided placement plans it (Art. V.1, ADR-0067 W4): an open proposal of a weekvoorstel counts
+                // for nothing until she accepts it.
+                where jaarplan.KlasId == klasId && plaatsing.Status != KoppelingStatus.Voorgesteld
                 select plaatsing.ActiviteitId)
             .Distinct()
             .ToListAsync(cancellationToken);

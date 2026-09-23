@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 20:22
+bijgewerkt: 2026-09-23 20:43
 opgepakt-door: claude-fb027
 branch: ticket/FB-027-weekvoorstel
 pr:
@@ -75,3 +75,4 @@ aanvaardt of weigert.
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-23 20:12 · claude-fb027 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (vóór FB-032)
 - 2026-09-23 20:22 · claude-fb027 · ontwerp vastgelegd in ADR-0067: voorgesteld blok is een activiteitplaatsing met status voorgesteld; AI kiest activiteit, volgorde en dag, de tool het uur; grondwet IV.5 en V.1 aangevuld
+- 2026-09-23 20:43 · claude-fb027 · backend en frontend gebouwd; backend 2350 unit + 613 integratie groen, frontend 277 tests groen, lint groen

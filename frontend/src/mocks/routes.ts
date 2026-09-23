@@ -113,6 +113,54 @@ function eisLesdag(datum: string) {
   if (!t.isLesdag(datum)) throw new Fout(400, `Op ${datum} is er geen school.`);
 }
 
+/**
+ * A stand-in for the weekvoorstel (FB-027): no AI in mock mode, so it picks the running subthema's activiteiten that are
+ * not in the week yet, one per schooldag, on the first free 50 minutes between 8:30 and 12:00.
+ */
+function weekvoorstelMock(s: Toestand, datum: string) {
+  const dag = new Date(`${datum}T00:00:00`);
+  const maandag = new Date(dag);
+  maandag.setDate(dag.getDate() - ((dag.getDay() + 6) % 7));
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const dagen = [0, 1, 2, 3, 4].map((i) => {
+    const d = new Date(maandag);
+    d.setDate(maandag.getDate() + i);
+    return iso(d);
+  }).filter(t.isLesdag);
+  const periode = s.periodes.find((p) => dagen.some((d) => d >= p.van && d <= p.tot));
+  const gevonden = periode ? t.zoekSubthema(s, periode.subthemaId) : null;
+  if (!gevonden) {
+    throw new Fout(400, "In deze week loopt geen subthema. Plan eerst een subthema in de agenda, dan kan de AI er activiteiten voor voorstellen.");
+  }
+
+  s.dagplaatsingen = s.dagplaatsingen.filter((p) => !(p.status === "Voorgesteld" && dagen.includes(p.datum)));
+  const inWeek = new Set(s.dagplaatsingen.filter((p) => dagen.includes(p.datum)).map((p) => p.activiteitId));
+  const kandidaten = gevonden.subthema.activiteiten.filter((a) => !inWeek.has(a.id)).slice(0, dagen.length);
+  const pastNiet: string[] = [];
+  const minuut = (tijd: string) => Number(tijd.slice(0, 2)) * 60 + Number(tijd.slice(3, 5));
+  const tijd = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}:00`;
+  kandidaten.forEach((activiteit, i) => {
+    const datumVan = dagen[i];
+    const bezet = s.dagplaatsingen.filter((p) => p.datum === datumVan).map((p) => [minuut(p.begin), minuut(p.einde)]);
+    let begin = 8 * 60 + 30;
+    while (begin + 50 <= 12 * 60 && bezet.some(([b, e]) => b < begin + 50 && e > begin)) begin += 15;
+    if (begin + 50 > 12 * 60) {
+      pastNiet.push(activiteit.naam);
+      return;
+    }
+    s.dagplaatsingen.push({
+      id: t.nieuwId(),
+      activiteitId: activiteit.id,
+      datum: datumVan,
+      begin: tijd(begin),
+      einde: tijd(begin + 50),
+      status: "Voorgesteld",
+      aiMotivatie: "Past goed bij het begin van deze dag.",
+    });
+  });
+  return { aantalVoorgesteld: kandidaten.length - pastNiet.length, pastNiet, aantalOvergeslagen: 0 };
+}
+
 function nieuweKoppeling(code: string) {
   return { id: t.nieuwId(), leerplandoelCode: code, status: "Manueel" as const, aiMotivatie: null };
 }
@@ -770,8 +818,45 @@ const TABEL: [Methode, string, Handler][] = [
       );
       const { datum, begin, einde } = v.body as Record<string, string>;
       eisLesdag(datum);
-      Object.assign(plaatsing, { datum, begin, einde });
+      // A proposal she moves becomes hers (ADR-0067 W4), as on the server.
+      Object.assign(plaatsing, { datum, begin, einde }, plaatsing.status === "Voorgesteld" ? { status: undefined, aiMotivatie: undefined } : {});
       return t.weekplanning(v.s, klas, datum, datum);
+    },
+  ],
+  [
+    "POST",
+    "/api/klassen/:klasId/jaarplan/weekvoorstel",
+    (v) => {
+      klasVan(v);
+      const { datum } = v.body as Record<string, string>;
+      return weekvoorstelMock(v.s, datum);
+    },
+  ],
+  [
+    "PUT",
+    "/api/klassen/:klasId/jaarplan/weekplanning/:plaatsingId/beslissing",
+    (v) => {
+      const klas = klasVan(v);
+      const plaatsing = vind(v.s.dagplaatsingen.find((p) => p.id === v.params.plaatsingId), "Deze plaatsing");
+      if (plaatsing.status !== "Voorgesteld") {
+        throw new Fout(400, "Over dit voorstel is al beslist. Vernieuw de pagina om te zien wat er nu staat.");
+      }
+      const { aanvaard } = v.body as { aanvaard: boolean };
+      if (aanvaard) plaatsing.status = "Aanvaard";
+      else v.s.dagplaatsingen = v.s.dagplaatsingen.filter((p) => p.id !== plaatsing.id);
+      return t.weekplanning(v.s, klas, plaatsing.datum, plaatsing.datum);
+    },
+  ],
+  [
+    "POST",
+    "/api/klassen/:klasId/jaarplan/weekvoorstel/aanvaard",
+    (v) => {
+      const klas = klasVan(v);
+      const { van, tot } = v.body as Record<string, string>;
+      for (const p of v.s.dagplaatsingen) {
+        if (p.status === "Voorgesteld" && p.datum >= van && p.datum <= tot) p.status = "Aanvaard";
+      }
+      return t.weekplanning(v.s, klas, van, tot);
     },
   ],
   [

@@ -1,6 +1,7 @@
 using Jaarplanner.Api.Infrastructure.Authenticatie;
 using Jaarplanner.Api.Infrastructure.Autorisatie;
 using Jaarplanner.Application.Planning.Weekplanning;
+using Jaarplanner.Application.Planning.Weekvoorstel;
 using Jaarplanner.Application.Toegang;
 using Microsoft.AspNetCore.Mvc;
 
@@ -31,11 +32,13 @@ namespace Jaarplanner.Api.Controllers;
 public sealed class WeekplanningController : ControllerBase
 {
     private readonly IWeekplanningService _service;
+    private readonly IWeekvoorstelService _weekvoorstel;
     private readonly IRechtenService _rechten;
 
-    public WeekplanningController(IWeekplanningService service, IRechtenService rechten)
+    public WeekplanningController(IWeekplanningService service, IWeekvoorstelService weekvoorstel, IRechtenService rechten)
     {
         _service = service;
+        _weekvoorstel = weekvoorstel;
         _rechten = rechten;
     }
 
@@ -169,7 +172,76 @@ public sealed class WeekplanningController : ControllerBase
         Guid plaatsingId,
         CancellationToken cancellationToken) =>
         Ok(await _service.VerwijderActiviteitplaatsingAsync(klasId, plaatsingId, cancellationToken));
+
+    /// <summary>
+    /// Asks the AI to propose the week that holds <c>datum</c> (FB-027, ADR-0067): it picks from the activiteiten of the
+    /// subthema's running then, and the tool fits them into the free time as open proposals. <b>400</b> with a Dutch
+    /// sentence when there is nothing to ask; <b>422</b> with an English diagnostic and no change when the model's
+    /// answer is not the JSON asked for (Art. IV.5).
+    /// </summary>
+    [HttpPost("~/api/klassen/{klasId:guid}/jaarplan/weekvoorstel")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
+    public async Task<ActionResult<WeekvoorstelResultaat>> StelWeekVoor(
+        Guid klasId,
+        [FromBody] Weekvraag vraag,
+        CancellationToken cancellationToken)
+    {
+        if (Aanmelding.GebruikerId(User) is not { } id)
+        {
+            return Forbid();
+        }
+
+        var vrager = await _rechten.HaalRechtenOpAsync(id, cancellationToken);
+        var resultaat = await _weekvoorstel.StelVoorAsync(klasId, vraag.Datum, vrager, cancellationToken);
+        return resultaat.IsGeldig
+            ? Ok(resultaat)
+            : UnprocessableEntity(new ProblemDetails
+            {
+                Status = StatusCodes.Status422UnprocessableEntity,
+                Title = "Invalid AI response",
+                Detail = resultaat.Fout,
+            });
+    }
+
+    /// <summary>
+    /// Accepts or rejects one open proposal (FB-027, ADR-0067 W4). <b>400</b> when it is no open proposal any more, or
+    /// when accepting a colleague's own activiteit without admin (W6).
+    /// </summary>
+    [HttpPut("{plaatsingId:guid}/beslissing")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
+    public async Task<ActionResult<Weekplanningweergave>> BeslisVoorstel(
+        Guid klasId,
+        Guid plaatsingId,
+        [FromBody] Voorstelbeslissing beslissing,
+        CancellationToken cancellationToken)
+    {
+        var beslisser = Aanmelding.GebruikerId(User) is { } id ? await _rechten.HaalRechtenOpAsync(id, cancellationToken) : null;
+        return Ok(await _service.BeslisVoorstelAsync(klasId, plaatsingId, beslissing.Aanvaard, beslisser, cancellationToken));
+    }
+
+    /// <summary>Accepts every open proposal from <c>van</c> to <c>tot</c> the caller may accept (FB-027 "allemaal").</summary>
+    [HttpPost("~/api/klassen/{klasId:guid}/jaarplan/weekvoorstel/aanvaard")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
+    public async Task<ActionResult<Weekplanningweergave>> AanvaardWeek(
+        Guid klasId,
+        [FromBody] Weekbereik bereik,
+        CancellationToken cancellationToken)
+    {
+        var beslisser = Aanmelding.GebruikerId(User) is { } id ? await _rechten.HaalRechtenOpAsync(id, cancellationToken) : null;
+        return Ok(await _service.AanvaardVoorstellenAsync(klasId, bereik.Van, bereik.Tot, beslisser, cancellationToken));
+    }
 }
+
+/// <summary>The body of a weekvoorstel request.</summary>
+/// <param name="Datum">Any day of the week to propose.</param>
+public sealed record Weekvraag(DateOnly Datum);
+
+/// <summary>The body of a decision on one open proposal.</summary>
+/// <param name="Aanvaard">True to accept it, false to reject it.</param>
+public sealed record Voorstelbeslissing(bool Aanvaard);
+
+/// <summary>The days whose open proposals are accepted, both inclusive.</summary>
+public sealed record Weekbereik(DateOnly Van, DateOnly Tot);
 
 /// <summary>The body of a scheduling request.</summary>
 /// <param name="ActiviteitId">The activiteit to schedule. Must belong to the class in the path (Art. IX.2).</param>

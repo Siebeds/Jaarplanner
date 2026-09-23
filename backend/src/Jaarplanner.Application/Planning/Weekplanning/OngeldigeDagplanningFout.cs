@@ -116,6 +116,18 @@ public sealed class OngeldigeDagplanningFout : Exception
     /// </summary>
     public static OngeldigeDagplanningFout EigenActiviteitVanEenAnder() =>
         new("Dit is de eigen activiteit van een collega. Kies eerst 'Gebruiken': dan krijg je een eigen kopie die je kan inplannen.");
+
+    /// <summary>
+    /// The block is no open proposal any more (FB-027): someone accepted or moved it a moment ago, or it was never one.
+    /// </summary>
+    public static OngeldigeDagplanningFout VoorstelAlBeslist() =>
+        new("Over dit voorstel is al beslist. Vernieuw de pagina om te zien wat er nu staat.");
+
+    /// <summary>
+    /// The open proposal is of a colleague's own activiteit (ADR-0049 D6, ADR-0067 W6): only she or an admin accepts it.
+    /// </summary>
+    public static OngeldigeDagplanningFout VoorstelVanEenAnder() =>
+        new("Dit voorstel is een eigen activiteit van een collega. Alleen zij of een admin kan het aanvaarden.");
 }
 
 /// <summary>

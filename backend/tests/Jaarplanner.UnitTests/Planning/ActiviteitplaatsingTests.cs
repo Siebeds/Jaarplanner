@@ -162,28 +162,68 @@ public sealed class ActiviteitplaatsingTests
     }
 
     /// <summary>
-    /// <b>A day move destroys nothing, unlike a thema move.</b> <c>Themaplaatsing.VerplaatsNaar</c> rewrites the status
-    /// to <c>Manueel</c> and clears the AI motivation, which is what makes a thema move a small unrecoverable edit the
-    /// UI has to warn about. Here there is no motivation to lose and no proposal to override.
-    /// <para>
-    /// Pinned as a test because E9-04 must <b>not</b> copy E3-07's confirmation step onto a day drag: warning about a
-    /// consequence that cannot happen trains teachers to dismiss the warnings that matter.
-    /// </para>
+    /// <b>Moving a decided block destroys nothing.</b> Pinned as a test because E9-04 must <b>not</b> copy E3-07's
+    /// confirmation step onto a day drag: warning about a consequence that cannot happen trains teachers to dismiss the
+    /// warnings that matter.
     /// </summary>
-    [Fact]
-    public void Een_dagverplaatsing_verandert_de_status_niet()
+    [Theory]
+    [InlineData(KoppelingStatus.Manueel)]
+    [InlineData(KoppelingStatus.Aanvaard)]
+    public void Een_dagverplaatsing_van_een_besliste_plaatsing_verandert_de_status_niet(KoppelingStatus status)
     {
         var klasId = Guid.NewGuid();
         var jaarplan = PlanVoor(klasId);
-        var plaatsing = jaarplan.PlaatsActiviteit(
-            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, Negen, NegenVijftig);
+        var plaatsing = jaarplan.PlaatsActiviteit(Guid.NewGuid(), Maandag, status, Negen, NegenVijftig);
 
         plaatsing.VerplaatsNaar(Donderdag, new TimeOnly(13, 0), new TimeOnly(14, 15));
 
         Assert.Equal(Donderdag, plaatsing.Datum);
         Assert.Equal(new TimeOnly(13, 0), plaatsing.Begin);
         Assert.Equal(new TimeOnly(14, 15), plaatsing.Einde);
-        Assert.Equal(KoppelingStatus.Voorgesteld, plaatsing.Status);
+        Assert.Equal(status, plaatsing.Status);
+    }
+
+    /// <summary>
+    /// An open proposal of a weekvoorstel that she moves is a moment she chose (FB-027, ADR-0067 W4): it becomes hers,
+    /// and the motivation, which argued for the old moment, goes, as on a moved thema placement.
+    /// </summary>
+    [Fact]
+    public void Een_verplaatst_voorstel_wordt_manueel_en_verliest_zijn_motivatie()
+    {
+        var jaarplan = PlanVoor(Guid.NewGuid());
+        var plaatsing = jaarplan.PlaatsActiviteit(
+            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, Negen, NegenVijftig, "Past bij de start van de week.");
+
+        plaatsing.VerplaatsNaar(Donderdag, new TimeOnly(13, 0), new TimeOnly(14, 15));
+
+        Assert.Equal(KoppelingStatus.Manueel, plaatsing.Status);
+        Assert.Null(plaatsing.AiMotivatie);
+        Assert.False(plaatsing.IsVervangbaar);
+    }
+
+    [Fact]
+    public void Een_aanvaard_voorstel_houdt_zijn_moment_en_motivatie()
+    {
+        var jaarplan = PlanVoor(Guid.NewGuid());
+        var plaatsing = jaarplan.PlaatsActiviteit(
+            Guid.NewGuid(), Maandag, KoppelingStatus.Voorgesteld, Negen, NegenVijftig, "  Past bij de start van de week. ");
+
+        plaatsing.Aanvaard();
+
+        Assert.Equal(KoppelingStatus.Aanvaard, plaatsing.Status);
+        Assert.Equal("Past bij de start van de week.", plaatsing.AiMotivatie);
+        Assert.Equal((Maandag, Negen, NegenVijftig), (plaatsing.Datum, plaatsing.Begin, plaatsing.Einde));
+        Assert.False(plaatsing.IsVervangbaar);
+    }
+
+    [Theory]
+    [InlineData(KoppelingStatus.Manueel)]
+    [InlineData(KoppelingStatus.Aanvaard)]
+    public void Alleen_een_open_voorstel_kan_aanvaard_worden(KoppelingStatus status)
+    {
+        var plaatsing = PlanVoor(Guid.NewGuid()).PlaatsActiviteit(Guid.NewGuid(), Maandag, status, Negen, NegenVijftig);
+
+        Assert.Throws<InvalidOperationException>(plaatsing.Aanvaard);
     }
 
     /// <summary>
@@ -214,9 +254,8 @@ public sealed class ActiviteitplaatsingTests
     }
 
     /// <summary>
-    /// The delete guard's predicate. Today nothing generates day schedules, so every placement is a human decision and
-    /// all of them count — and the test says so explicitly rather than leaving it to be inferred, because a guard that
-    /// hard-coded "all of them" would quietly start destroying proposals the day a generator appears.
+    /// The delete guard's predicate: every placement a person decided counts, and an open proposal of a weekvoorstel
+    /// (FB-027) does not, because nobody decided it.
     /// </summary>
     [Fact]
     public void Menselijk_beslote_dagplaatsingen_zijn_alles_behalve_een_voorstel()

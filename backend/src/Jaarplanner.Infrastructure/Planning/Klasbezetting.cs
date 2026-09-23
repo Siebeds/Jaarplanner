@@ -1,3 +1,4 @@
+using Jaarplanner.Domain.Schoolcontent;
 using Jaarplanner.Application.Kat;
 using Jaarplanner.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -17,17 +18,23 @@ namespace Jaarplanner.Infrastructure.Planning;
 internal static class Klasbezetting
 {
     /// <summary>What is taken on each day of <paramref name="van"/>–<paramref name="tot"/>, by day.</summary>
+    /// <param name="zonderOpenVoorstellen">
+    /// Leave out the open proposals of a weekvoorstel: the ones a new weekvoorstel for these days replaces (FB-027,
+    /// ADR-0067 W5). Everyone else counts them as taken, so nothing is proposed over a block on screen.
+    /// </param>
     public static async Task<Dictionary<DateOnly, List<Tijdvak>>> HaalAsync(
         AppDbContext context,
         Guid klasId,
         DateOnly van,
         DateOnly tot,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool zonderOpenVoorstellen = false)
     {
         var activiteiten = await (
                 from plaatsing in context.Activiteitplaatsingen.AsNoTracking()
                 join jaarplan in context.Jaarplannen.AsNoTracking() on plaatsing.JaarplanId equals jaarplan.Id
                 where jaarplan.KlasId == klasId && plaatsing.Datum >= van && plaatsing.Datum <= tot
+                    && (!zonderOpenVoorstellen || plaatsing.Status != KoppelingStatus.Voorgesteld)
                 select new { plaatsing.Datum, plaatsing.Begin, plaatsing.Einde })
             .ToListAsync(ct);
 

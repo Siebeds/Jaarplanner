@@ -945,6 +945,18 @@ export interface GeplandeActiviteit {
    * than on purpose.
    */
   valtBuitenThemaperiode: boolean;
+  /**
+   * Why the AI proposed this block here (FB-027, ADR-0067). Present on an open proposal (status Voorgesteld) and
+   * on one she accepted; absent on a block a person placed or moved.
+   */
+  aiMotivatie?: string | null;
+}
+
+/** What a weekvoorstel did (FB-027): how many blocks it proposed, and what it picked that fits on no day. */
+export interface WeekvoorstelResultaat {
+  aantalVoorgesteld: number;
+  pastNiet: string[];
+  aantalOvergeslagen: number;
 }
 
 export interface Dagweergave {

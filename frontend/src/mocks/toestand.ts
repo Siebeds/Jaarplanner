@@ -88,6 +88,9 @@ export interface Dagplaatsing {
   datum: string;
   begin: string;
   einde: string;
+  /** An open proposal of a weekvoorstel (FB-027) or an accepted one; absent means the teacher placed it. */
+  status?: "Voorgesteld" | "Aanvaard";
+  aiMotivatie?: string;
 }
 
 export interface Periode {
@@ -843,7 +846,8 @@ export function weekplanning(t: Toestand, klas: Toestand["klassen"][number], van
             themaNaam: thema.naam,
             begin: p.begin,
             einde: p.einde,
-            status: "Manueel",
+            status: p.status ?? "Manueel",
+            aiMotivatie: p.aiMotivatie ?? null,
             kleur: activiteit.kleur,
             doelcodes: activiteit.doelkoppelingen.map((k) => k.leerplandoelCode),
             valtBuitenThemaperiode: !inPeriode,

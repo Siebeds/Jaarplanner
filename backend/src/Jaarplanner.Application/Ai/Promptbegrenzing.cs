@@ -112,6 +112,20 @@ public sealed class Promptbegrenzing
     /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
     public void BewaakChat(AiRequest request) => Bewaak(request, "de handleiding en je vraag", ServerRaad);
 
+    /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for a weekvoorstel (FB-027): the activiteiten of
+    /// the subthema's running that week and its days. Nothing on the screen makes the week smaller, so the advice is the
+    /// server setting.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void BewaakWeekvoorstel(AiRequest request, int aantalActiviteiten)
+    {
+        var omschrijving = aantalActiviteiten == 1
+            ? "1 activiteit"
+            : string.Create(Nederlands, $"{aantalActiviteiten:N0} activiteiten");
+        Bewaak(request, omschrijving, ServerRaad);
+    }
+
     // "Beheer" is the admin's right in this app, and the ceiling is no in-app setting, so this advice names whoever
     // runs the server rather than sending admin to look for a setting it cannot find.
     private const string ServerRaad =
