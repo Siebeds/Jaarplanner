@@ -112,9 +112,7 @@ public sealed class WeekplanningController : ControllerBase
     /// later, which is the ordinary order of work, so the window has to be able to exist before its content does.
     /// </para>
     /// <para>
-    /// <b>Deliberately no DELETE beside it.</b> The owner asked for the window to be stored, not for a control to
-    /// clear it, and a route nobody calls is worse than one that does not exist (the E3-06 rule). Re-planning the
-    /// subthema moves its window, which is how a teacher changes it today.
+    /// Taken out again by <see cref="HaalSubthemaWeg"/> (FB-096), which the agenda's subthema bar calls.
     /// </para>
     /// </summary>
     // ABSOLUTE ROUTE, deliberately. This controller is mounted on `.../jaarplan/weekplanning`, and relative to that
@@ -132,6 +130,38 @@ public sealed class WeekplanningController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _service.PlaatsSubthemaAsync(
             klasId, periode.SubthemaId, periode.Van, periode.Tot, cancellationToken));
+
+    /// <summary>
+    /// What taking a subthema out of the agenda from <c>van</c> to <c>tot</c> would take with it, for the confirmation
+    /// that comes first (FB-096). Changes nothing. <b>404</b> when nothing of the subthema is on those days.
+    /// <para>
+    /// The planning's write right rather than its read right: only whoever may take it out is ever asked this.
+    /// </para>
+    /// </summary>
+    [HttpGet("~/api/klassen/{klasId:guid}/jaarplan/subthemaperiodes/weghaling")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
+    public async Task<ActionResult<Subthemaweghaling>> BekijkSubthemaWeghaling(
+        Guid klasId,
+        [FromQuery] Guid subthemaId,
+        [FromQuery] DateOnly van,
+        [FromQuery] DateOnly tot,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.BekijkSubthemaWeghalingAsync(klasId, subthemaId, van, tot, cancellationToken));
+
+    /// <summary>
+    /// Takes a subthema out of the agenda from <c>van</c> to <c>tot</c> (FB-096): its windows there and its
+    /// activiteiten on those days, together, and nothing that belongs to anything else. <b>404</b> when nothing of the
+    /// subthema is on those days; <b>200</b> with the affected range otherwise.
+    /// </summary>
+    [HttpDelete("~/api/klassen/{klasId:guid}/jaarplan/subthemaperiodes")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.Klas, "klasId")]
+    public async Task<ActionResult<Weekplanningweergave>> HaalSubthemaWeg(
+        Guid klasId,
+        [FromQuery] Guid subthemaId,
+        [FromQuery] DateOnly van,
+        [FromQuery] DateOnly tot,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.HaalSubthemaWegAsync(klasId, subthemaId, van, tot, cancellationToken));
 
     /// <summary>
     /// Moves a scheduled activiteit to another day and/or time — the teacher dragging a block in the time grid, or its
