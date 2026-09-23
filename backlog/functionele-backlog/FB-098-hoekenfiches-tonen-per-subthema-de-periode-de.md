@@ -2,12 +2,12 @@
 id: FB-098
 titel: Hoekenfiches tonen per subthema de periode, de stand van de verrijkingen en wat erna komt
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:26
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 23:29
+opgepakt-door: claude-fb098
+branch: ticket/FB-098-hoekenfiches-per-subthema
 pr:
 geblokkeerd:
 fr: []
@@ -89,3 +89,4 @@ overnemen (FB-078).
 ## Werklog
 
 - 2026-09-23 23:26 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 23:29 · claude-fb098 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
