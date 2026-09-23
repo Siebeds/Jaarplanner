@@ -72,10 +72,10 @@ export function Subkop({
   return (
     <section className="min-w-0">
       <div className="flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <h4 className="flex items-center gap-1.5 text-meta font-semibold text-inkt-zacht">
+        <h5 className="flex items-center gap-1.5 text-meta font-semibold text-inkt-zacht">
           {icoon}
           {titel}
-        </h4>
+        </h5>
         {acties ? <div className="flex flex-wrap items-center gap-2">{acties}</div> : null}
       </div>
       <div className="mt-2">{children}</div>

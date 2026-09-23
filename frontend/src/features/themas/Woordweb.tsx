@@ -142,7 +142,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
 
       {collegas.length > 0 ? (
         <div className="mt-4">
-          <h4 className="text-meta font-medium text-inkt-zacht">{t("woordweb.collegas")}</h4>
+          <h6 className="text-meta font-medium text-inkt-zacht">{t("woordweb.collegas")}</h6>
           <ul className="mt-2 flex flex-col gap-3">
             {collegas.map((web) => (
               <li key={web.id} aria-label={t("woordweb.vanCollega", { naam: web.eigenaarNaam })}>

@@ -2,10 +2,10 @@
 id: FB-094
 titel: Themapagina krijgt een overzichtelijke opbouw: kop, subthema's, dan doelen
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:20
+bijgewerkt: 2026-09-23 20:24
 opgepakt-door: claude-fb094
 branch: ticket/FB-094-themapagina-opbouw
 pr:
@@ -59,21 +59,21 @@ en "Voorstel, telefoon", met "Nu" ernaast ter vergelijking).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de themapagina van een thema met subthema's, wanneer ze opent, dan staat elk van de vier cijfers
+- [x] Gegeven de themapagina van een thema met subthema's, wanneer ze opent, dan staat elk van de vier cijfers
       (weken, minimumdoelen, leerplandoelen, subthema's) precies één keer op de pagina, onder de titel.
-- [ ] Gegeven dezelfde pagina, wanneer de leerkracht naar beneden leest, dan komen eerst de kop en de
+- [x] Gegeven dezelfde pagina, wanneer de leerkracht naar beneden leest, dan komen eerst de kop en de
       themagegevens, dan de subthema's, dan de doelen.
-- [ ] Gegeven de kop, wanneer de gebruiker het thema wil verwijderen, dan vindt ze dat in het menu "…" naast
+- [x] Gegeven de kop, wanneer de gebruiker het thema wil verwijderen, dan vindt ze dat in het menu "…" naast
       "Bewerken", en niet als losse knop.
-- [ ] Gegeven een subthema, wanneer de gebruiker het bewerkt of verwijdert, dan doet ze dat via één menu "…" op zijn
+- [x] Gegeven een subthema, wanneer de gebruiker het bewerkt of verwijdert, dan doet ze dat via één menu "…" op zijn
       rij, en werkt het zoals voordien.
-- [ ] Gegeven een opengeklapt subthema, wanneer het opent, dan ziet de leerkracht de onderzoeksvraag, het woordweb
+- [x] Gegeven een opengeklapt subthema, wanneer het opent, dan ziet de leerkracht de onderzoeksvraag, het woordweb
       en de eerste activiteiten zonder nog iets uit te klappen.
-- [ ] Gegeven elke uitklapper op de pagina, wanneer je hem bekijkt, dan staat de pijl links, en een schermlezer
+- [x] Gegeven elke uitklapper op de pagina, wanneer je hem bekijkt, dan staat de pijl links, en een schermlezer
       meldt of hij open of dicht is.
-- [ ] Gegeven een telefoon van ~390px, wanneer de pagina opent, dan scrolt niets horizontaal en is elke knop minstens
+- [x] Gegeven een telefoon van ~390px, wanneer de pagina opent, dan scrolt niets horizontaal en is elke knop minstens
       44px hoog.
-- [ ] Gegeven een gebruiker zonder recht om het thema te bewerken, wanneer ze de pagina opent, dan ziet ze geen
+- [x] Gegeven een gebruiker zonder recht om het thema te bewerken, wanneer ze de pagina opent, dan ziet ze geen
       "Bewerken", geen menu met acties die ze niet mag, en leest ze alles zoals nu.
 
 ## Testscenario's
@@ -104,3 +104,5 @@ Geen.
 - 2026-09-23 19:55 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 19:57 · claude-fb094 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 20:20 · claude-fb094 · pagina herbouwd: kop met kruimelpad, Bewerken en menu, samenvatting met vier cijfers, subthema's voor de doelen; tests en lint groen, bekeken op 1440 en 390 px (licht en donker)
+- 2026-09-23 20:24 · claude-fb094 · antagonist: COMPLIANT; kleine punten opgelost (kopniveaus genest, Radix-pakket vastgepind); criteria afgevinkt op vitest (ThemadetailScherm, Themaminimumdoelen) en de browserpas op 1440 en 390 px
+- 2026-09-23 20:24 · claude-fb094 · in-uitvoering → te-testen: themapagina herbouwd als kop, subthema's, doelen; lint en tests groen, bekeken in de browser

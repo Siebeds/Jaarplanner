@@ -159,7 +159,7 @@ export function Subthemahoofdstuk({
   return (
     <div className="px-1 py-1 sm:px-2">
       <div className="flex items-start gap-1">
-        <h3 className="min-w-0 flex-1">
+        <h4 className="min-w-0 flex-1">
           <button
             ref={vouwknop}
             type="button"
@@ -185,7 +185,7 @@ export function Subthemahoofdstuk({
               </span>
             </span>
           </button>
-        </h3>
+        </h4>
         <Actiemenu
           className="mt-0.5"
           label={t("subthemabeheer.menuAria", { naam: subthema.naam })}

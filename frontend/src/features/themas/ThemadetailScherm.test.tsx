@@ -645,7 +645,7 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     fireEvent.click(hoofdstuk("Bladeren", false));
 
     // In reading order: the question, the woordweb, then the activiteiten, each under a small heading of its own.
-    const koppen = screen.getAllByRole("heading", { level: 4 }).map((kop) => kop.textContent ?? "");
+    const koppen = screen.getAllByRole("heading", { level: 5 }).map((kop) => kop.textContent ?? "");
     const vraag = koppen.indexOf(t("thema.onderzoeksvraagTitel"));
     const woordweb = koppen.indexOf(t("woordweb.titel"));
     expect(vraag).toBeGreaterThan(-1);
