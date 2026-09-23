@@ -2,12 +2,12 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: klaar-voor-bouw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-18
 bijgewerkt: 2026-09-23 10:20
-opgepakt-door:
-branch:
+opgepakt-door: claude-fb071-hoogte
+branch: ticket/FB-071-hoogte
 pr:
 geblokkeerd:
 fr: []
@@ -167,3 +167,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 10:00 · claude-fb071-uitlijning · in-uitvoering → te-testen: Chuck staat naast het hele kopblok in plaats van erboven uit te steken (telefoon: naast de titel), Vandaag direct achter de datum; bekeken op 1500 en 390px, lint en 359 tests groen
 - 2026-09-23 10:00 · claude-fb071-uitlijning · PR #165
 - 2026-09-23 10:20 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: Chuck staat op de agenda te laag; hij hoort op de hoogte van de titel, zoals op Dekking
+- 2026-09-23 10:20 · claude-fb071-hoogte · klaar-voor-bouw → in-uitvoering: opgepakt na de test: Chuck op de hoogte van de titel
