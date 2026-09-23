@@ -886,6 +886,8 @@ export interface Dekkingsvoortgang {
   /** A ceiling over proposals, never coverage (Art. IV.1). */
   aantalMinimumdoelenMogelijkGedekt: number | null;
   aantalMinimumdoelen: number;
+  /** In the dekkingsprognose and not yet gedekt, the dekkingsoverzicht's own figure. Chuck purrs on it (FB-071). */
+  aantalMinimumdoelenInPrognose?: number | null;
 }
 
 export interface DekkingWeergave {

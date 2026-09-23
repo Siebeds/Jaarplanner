@@ -190,6 +190,30 @@ public sealed class AanbodgatEndpointsTests : IAsyncLifetime
     }
 
     [PostgresFact]
+    public async Task Op_de_deurmat_draagt_een_voorstel_van_de_kat_zijn_klas_en_moment_en_geen_verwijzing()
+    {
+        // FB-071: the cat's window decides it, so it must be able to say for which klas and when accepting plans it.
+        var opzet = await OpzetAsync();
+        var dag = Weekdagen(Start, 2);
+        _factory.AiAntwoord = Antwoord(Item("Drijftafel", [Gat01], dag, "10:15"));
+        await TikAsync();
+
+        using var juf = Opzet.Als(opzet.LeerkrachtId);
+        using var antwoord = await juf.GetAsync("/api/deurmat");
+        antwoord.EnsureSuccessStatusCode();
+        using var json = JsonDocument.Parse(await antwoord.Content.ReadAsStringAsync());
+
+        var voorstel = Assert.Single(json.RootElement.GetProperty("voorstellen").EnumerateArray());
+        Assert.Equal("Activiteitvoorstel", voorstel.GetProperty("soort").GetString());
+        Assert.Equal("Drijftafel", voorstel.GetProperty("titel").GetString());
+        Assert.Equal(JsonValueKind.Null, voorstel.GetProperty("verwijzing").ValueKind);
+        Assert.False(string.IsNullOrEmpty(voorstel.GetProperty("klasnaam").GetString()));
+        Assert.Equal(dag.ToString("yyyy-MM-dd"), voorstel.GetProperty("datum").GetString());
+        Assert.Equal("10:15:00", voorstel.GetProperty("begin").GetString());
+        Assert.NotEqual(JsonValueKind.Null, voorstel.GetProperty("einde").ValueKind);
+    }
+
+    [PostgresFact]
     public async Task Aanvaarden_maakt_een_eigen_activiteit_die_gepland_staat_en_meetelt_voor_de_dekking()
     {
         var opzet = await OpzetAsync();

@@ -323,6 +323,7 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.SubthemaNietGeplandDetector>();
         services.AddScoped<Jaarplanner.Application.Kat.ISignaaldetector, Jaarplanner.Application.Kat.Detectoren.AanbodgatDetector>();
         services.AddScoped<Jaarplanner.Application.Kat.IDeurmatService, Jaarplanner.Infrastructure.Kat.DeurmatService>();
+        services.AddScoped<Jaarplanner.Application.Kat.IKatinstellingService, Jaarplanner.Infrastructure.Kat.KatinstellingService>();
 
         // The one task, and the one place the cat calls the AI unasked (FB-070, ADR-0060, Art. IV.8). It runs for a
         // finding the round has just noticed for the first time, so a tick over an unchanged state costs no call.

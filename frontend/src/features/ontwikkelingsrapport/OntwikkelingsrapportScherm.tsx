@@ -61,6 +61,7 @@ export function OntwikkelingsrapportScherm() {
   return (
     <>
       <Schermkop
+        zonderKat
         titel={t("ontwikkelingsrapport.titel")}
         smal
         onder={

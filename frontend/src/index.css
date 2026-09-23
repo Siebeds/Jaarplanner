@@ -29,6 +29,10 @@
  * model (`AiKnop`, ADR-0039). Its meaning is "what follows is a proposal", it is worn by
  * nothing else, and it is read as all five stops at once, never as one of them.
  *
+ * One warm thing carries no meaning at all: Chuck's coat (ADR-0065). It is allowed only
+ * because it is low in chroma and is an animal in one fixed place with its label, never a
+ * dot, square or wash; see `--color-vacht`. It is the exception, not a precedent.
+ *
  * Never colour alone (Art. XII, WCAG 2.2 AA): every coloured state also carries a letter,
  * label or icon. The doelsoort swatch is a square AND its letter, never the square alone.
  *
@@ -145,6 +149,23 @@
   --color-ster-rood-rand: hsl(5 72% 36%);
   --color-ster-blauw: hsl(214 59% 49%);
   --color-ster-blauw-rand: hsl(216 65% 35%);
+
+  /* ── chuck - the cat's coat and his basket (FB-071, ADR-0065) ──────────────────────── */
+  /* THE ONE WARM THING THAT MEANS NOTHING, and an exception to the rule at the top of this file. There is no free warm
+     hue (ai-oranje 22, ster-oranje 28, attentie 30, doelsoort A 36), so the coat is defended the way the stars are:
+     by chroma and by form. Its saturation is 44%, against 85 to 100% for every signal it sits near, and it is an animal
+     in one fixed place that always carries its label, never a dot, a square or a wash. Its lightness is what clears
+     1.4.11's 3:1 for his silhouette where he lies, measured in a browser: 3.09:1 on the page (the header, the row above
+     the week strip) and 3.32:1 on a card. The prototype's 56% measured 2.90:1 on the page; lighter reads nicer and fails.
+
+     The basket is achromatic on purpose: furniture, not a signal, so Chuck is the only warm thing on screen. */
+  --color-vacht: hsl(24 44% 54%);
+  --color-vacht-diep: hsl(19 42% 38%);
+  --color-vacht-licht: hsl(32 44% 87%);
+  --color-mand: hsl(220 12% 84%);
+  --color-mand-diep: hsl(220 12% 70%);
+  --color-oogbol: hsl(40 18% 90%);
+  --color-pupil: hsl(220 28% 12%);
 
   /* ── gevaar - the one destructive control (owner, 2026-08-30: "verwijderen = rood") ── */
   /* NO NEW HUE. It is `suggestie-geweigerd` and `dekking-niet-gedekt` byte for byte, given a
@@ -370,6 +391,15 @@
       --color-ster-rood-rand: hsl(6 80% 80%);
       --color-ster-blauw: hsl(214 71% 66%);
       --color-ster-blauw-rand: hsl(214 72% 80%);
+
+      /* Chuck: the coat rises in lightness like a signal does, the basket sinks with the slate. */
+      --color-vacht: hsl(26 52% 64%);
+      --color-vacht-diep: hsl(20 44% 42%);
+      --color-vacht-licht: hsl(32 42% 86%);
+      --color-mand: hsl(220 10% 26%);
+      --color-mand-diep: hsl(220 9% 36%);
+      --color-oogbol: hsl(40 16% 80%);
+      --color-pupil: hsl(220 28% 12%);
 
       --color-gevaar: hsl(0 80% 70%);
       --color-gevaar-zacht: hsl(0 42% 16%);

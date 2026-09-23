@@ -1,0 +1,230 @@
+/*
+ * Chuck (FB-071, ADR-0065). The drawing lives in Tekening.tsx as inline SVG, never <symbol> + <use>: CSS cannot
+ * select into a <use> shadow tree, so rules like `.loopt .dij` would silently do nothing and he would slide like a
+ * board. The step keyframes are generated (chuck-keyframes.css, `pnpm kat:keyframes`); everything else is here.
+ *
+ * Every animated custom property is registered, or it would jump instead of interpolating.
+ */
+@property --stap-x { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --ux { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --uy { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --pitch { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --kijk { syntax: "<number>"; inherits: false; initial-value: 1; }
+@property --dij { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --scheen { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@property --hef { syntax: "<length>"; inherits: false; initial-value: 0px; }
+
+.chuck {
+  display: block;
+  overflow: visible;
+  transition: --stap-x var(--stapduur, 520ms) linear;
+}
+
+/* ── posture: ears, eyes, purring ─────────────────────────────────────────────── */
+.chuck.houding-slaapt,
+.chuck.houding-spint {
+  --oor-l: 0deg;
+  --oor-r: 0deg;
+  --oog-dicht: 1;
+  --oog-open: 0;
+}
+.chuck.houding-klaar {
+  --oor-l: -13deg;
+  --oor-r: 13deg;
+  --oog-dicht: 0;
+  --oog-open: 1;
+}
+.chuck.houding-gevaar {
+  --oor-l: -9deg;
+  --oor-r: 9deg;
+  --oog-dicht: 0;
+  --oog-open: 1;
+}
+.chuck.houding-spint { --spin: 1; }
+
+.chuck .oor-l,
+.chuck .oor-r,
+.chuck .c-adem,
+.chuck .staart-liggend,
+.chuck .staart-liggend-punt,
+.chuck .been,
+.chuck .dij,
+.chuck .scheen,
+.chuck .staart-deel,
+.chuck .c-loop-lijf,
+.chuck .kop-staand,
+.chuck .kat-draai,
+.chuck .kat-kantel {
+  transform-box: view-box;
+}
+.chuck .oor-l { transform-origin: 42px 60px; transform: rotate(var(--oor-l, 0deg)); transition: transform 220ms cubic-bezier(.34, 1.5, .5, 1); }
+.chuck .oor-r { transform-origin: 82px 58px; transform: rotate(var(--oor-r, 0deg)); transition: transform 220ms cubic-bezier(.34, 1.5, .5, 1); }
+.chuck .oog-dicht { opacity: var(--oog-dicht, 1); transition: opacity 160ms linear; }
+.chuck .oog-open { opacity: var(--oog-open, 0); transition: opacity 160ms linear; }
+.chuck .kop-staand .oog-open { opacity: 1; }
+.chuck .spin-golf { opacity: var(--spin, 0); transition: opacity 200ms linear; }
+
+/* ── idle life ────────────────────────────────────────────────────────────────── */
+.chuck .c-adem { transform-origin: 134px 146px; animation: chuck-adem 4.4s ease-in-out infinite; }
+.chuck .staart-liggend { transform-origin: 198px 88px; animation: chuck-staart 5.2s ease-in-out infinite; }
+/* The tip does the same a fraction later. That follow-through is the difference between an animal and a mechanism. */
+.chuck .staart-liggend-punt { transform-origin: 196px 130px; animation: chuck-staart 5.2s ease-in-out 150ms infinite; }
+.chuck.houding-spint .c-adem { animation: chuck-adem 2.4s ease-in-out infinite, chuck-spinnen 0.11s linear infinite; }
+
+@keyframes chuck-adem {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.012, 1.028); }
+}
+@keyframes chuck-staart {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  72% { transform: rotate(-5deg); }
+  84% { transform: rotate(3deg); }
+}
+@keyframes chuck-spinnen {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.7px); }
+}
+
+/* An ear flick and a blink at unpredictable moments (useLevenInRust). */
+.chuck.knippert .oog-dicht { opacity: 1 !important; }
+.chuck.knippert .oog-open { opacity: 0 !important; }
+.chuck.tikt .oor-r { animation: chuck-oortik 420ms ease-in-out 1; }
+@keyframes chuck-oortik {
+  0%, 100% { transform: rotate(var(--oor-r, 0deg)); }
+  30% { transform: rotate(calc(var(--oor-r, 0deg) + 13deg)); }
+  60% { transform: rotate(calc(var(--oor-r, 0deg) - 4deg)); }
+}
+
+/* ── the scene: the lying and the standing cat in one drawing ────────────────────
+   They swap in place behind the same front rim, so he comes out from behind the basket instead of appearing beside it.
+   Nesting of the standing cat, outside in: path › turn › tilt › translate(160 0) › the cat. */
+.chuck .kat-lig { opacity: var(--lig-op, 1); transition: opacity 110ms linear; }
+.chuck .kat-sta {
+  opacity: var(--sta-op, 0);
+  transition: opacity var(--staduur, 150ms) linear;
+  transform: translate(calc(var(--stap-x) + var(--ux)), var(--uy));
+}
+.chuck .kat-draai { transform-origin: 290px 82px; transform: scaleX(var(--kijk)); transition: --kijk var(--kijkduur, 240ms) cubic-bezier(.5, 0, .3, 1); }
+.chuck .kat-kantel { transform-origin: 290px 82px; transform: rotate(var(--pitch)); }
+
+/* The static states between the moves: standing beside the basket, and turned round. */
+.chuck.buiten .kat-sta { --ux: -175px; --uy: 21px; }
+.chuck.omgedraaid .kat-draai { --kijk: -1; }
+
+/* The empty basket: he lies on the corner of the week strip (one Chuck on screen). */
+.chuck.leeg .kat-lig,
+.chuck.leeg .kat-sta { opacity: 0; }
+
+/* ── legs: thigh, shin and paw, each turning about its own joint ───────────────── */
+.chuck .dij { transform: rotate(calc(var(--rust-dij, 0deg) + var(--dij))); }
+.chuck .scheen { transform: rotate(calc(var(--rust-scheen, 0deg) + var(--scheen))); }
+.chuck .c-loop-lijf { transform: translateY(var(--hef)); }
+.chuck .staart-basis { transform-origin: 184px 62px; }
+.chuck .staart-punt { transform-origin: 207px 28px; }
+.chuck .kop-staand { transform-origin: 62px 92px; }
+
+/* Standing up: crouch, stretch, overshoot a hair. Lying down is the same played backward. */
+.chuck.rijst .dij { animation: chuck-rijz-dij 220ms cubic-bezier(.3, .9, .4, 1) both; }
+.chuck.rijst .scheen { animation: chuck-rijz-scheen 220ms cubic-bezier(.3, .9, .4, 1) both; }
+.chuck.rijst .c-loop-lijf { animation: chuck-rijz-lijf 220ms cubic-bezier(.3, 1, .4, 1) both; }
+.chuck.rijst .kop-staand { animation: chuck-rijz-kop 260ms cubic-bezier(.3, 1, .4, 1) both; }
+.chuck.rijst .staart-basis { animation: chuck-rijz-staart 300ms cubic-bezier(.3, 1, .4, 1) both; }
+.chuck.zakt .dij { animation: chuck-rijz-dij 200ms cubic-bezier(.4, 0, .7, 1) both reverse; }
+.chuck.zakt .scheen { animation: chuck-rijz-scheen 200ms cubic-bezier(.4, 0, .7, 1) both reverse; }
+.chuck.zakt .c-loop-lijf { animation: chuck-rijz-lijf 200ms cubic-bezier(.4, 0, .7, 1) both reverse; }
+.chuck.zakt .kop-staand { animation: chuck-rijz-kop 200ms cubic-bezier(.4, 0, .7, 1) both reverse; }
+@keyframes chuck-rijz-dij { from { --dij: 50deg; } to { --dij: 0deg; } }
+@keyframes chuck-rijz-scheen { from { --scheen: -72deg; } to { --scheen: 0deg; } }
+@keyframes chuck-rijz-lijf { from { --hef: 25px; } 62% { --hef: -3px; } to { --hef: 0px; } }
+@keyframes chuck-rijz-kop { from { transform: translateY(17px) rotate(-9deg); } 65% { transform: translateY(-2px) rotate(2deg); } to { transform: translateY(0) rotate(0deg); } }
+@keyframes chuck-rijz-staart { from { transform: rotate(26deg); } 70% { transform: rotate(-7deg); } to { transform: rotate(0deg); } }
+
+/* Out of the basket and back in, paw by paw. The easing is in the keyframes, so the timing here is linear. */
+.chuck.uit .kat-sta { animation: chuck-uit-pad 2600ms linear both; }
+.chuck.uit .kat-kantel { animation: chuck-uit-kantel 2600ms linear both; }
+.chuck.in .kat-sta { animation: chuck-in-pad 2600ms linear both; }
+.chuck.in .kat-kantel { animation: chuck-in-kantel 2600ms linear both; }
+.chuck.uit .been-vn .dij { animation: chuck-uit-vn-dij 2600ms linear both; }
+.chuck.uit .been-vn .scheen { animation: chuck-uit-vn-scheen 2600ms linear both; }
+.chuck.uit .been-vv .dij { animation: chuck-uit-vv-dij 2600ms linear both; }
+.chuck.uit .been-vv .scheen { animation: chuck-uit-vv-scheen 2600ms linear both; }
+.chuck.uit .been-av .dij { animation: chuck-uit-av-dij 2600ms linear both; }
+.chuck.uit .been-av .scheen { animation: chuck-uit-av-scheen 2600ms linear both; }
+.chuck.uit .been-an .dij { animation: chuck-uit-an-dij 2600ms linear both; }
+.chuck.uit .been-an .scheen { animation: chuck-uit-an-scheen 2600ms linear both; }
+.chuck.in .been-vn .dij { animation: chuck-in-vn-dij 2600ms linear both; }
+.chuck.in .been-vn .scheen { animation: chuck-in-vn-scheen 2600ms linear both; }
+.chuck.in .been-vv .dij { animation: chuck-in-vv-dij 2600ms linear both; }
+.chuck.in .been-vv .scheen { animation: chuck-in-vv-scheen 2600ms linear both; }
+.chuck.in .been-av .dij { animation: chuck-in-av-dij 2600ms linear both; }
+.chuck.in .been-av .scheen { animation: chuck-in-av-scheen 2600ms linear both; }
+.chuck.in .been-an .dij { animation: chuck-in-an-dij 2600ms linear both; }
+.chuck.in .been-an .scheen { animation: chuck-in-an-scheen 2600ms linear both; }
+
+/* Walking like a cat: one paw off the ground at a time, three always down. 900 ms a cycle, 36 units further. The body
+   glides and barely rocks, the head stays low and calm: a prowl, not a trot. */
+.chuck.loopt .been-vn .dij { animation: chuck-stap-vn-dij 900ms linear infinite; }
+.chuck.loopt .been-vn .scheen { animation: chuck-stap-vn-scheen 900ms linear infinite; }
+.chuck.loopt .been-vv .dij { animation: chuck-stap-vv-dij 900ms linear infinite; }
+.chuck.loopt .been-vv .scheen { animation: chuck-stap-vv-scheen 900ms linear infinite; }
+.chuck.loopt .been-av .dij { animation: chuck-stap-av-dij 900ms linear infinite; }
+.chuck.loopt .been-av .scheen { animation: chuck-stap-av-scheen 900ms linear infinite; }
+.chuck.loopt .been-an .dij { animation: chuck-stap-an-dij 900ms linear infinite; }
+.chuck.loopt .been-an .scheen { animation: chuck-stap-an-scheen 900ms linear infinite; }
+.chuck.loopt .c-loop-lijf { animation: chuck-wieg 225ms ease-in-out infinite; }
+.chuck.loopt .staart-basis { animation: chuck-zwaai-basis 1800ms ease-in-out 120ms infinite; }
+.chuck.loopt .staart-punt { animation: chuck-zwaai-punt 1800ms ease-in-out 280ms infinite; }
+.chuck.loopt .kop-staand { animation: chuck-kop-mee 450ms ease-in-out 90ms infinite; }
+@keyframes chuck-wieg { 0%, 100% { --hef: 0px; } 50% { --hef: 0.6px; } }
+@keyframes chuck-zwaai-basis { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(5deg); } }
+@keyframes chuck-zwaai-punt { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(10deg); } }
+@keyframes chuck-kop-mee { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(0.8px) rotate(-0.6deg); } }
+
+/* ── reduced motion: every part held on its resting frame, posture changes without transition ── */
+@media (prefers-reduced-motion: reduce) {
+  .chuck,
+  .chuck * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── the speech balloon: Chuck speaks in a comic balloon, what she types stays a plain box ── */
+.ballon {
+  position: relative;
+  background: var(--color-kaart);
+  color: var(--color-inkt);
+  border: 2px solid var(--color-inkt);
+  border-radius: 18px;
+}
+.ballon-staart {
+  position: absolute;
+  overflow: visible;
+}
+.ballon-staart path {
+  fill: var(--color-kaart);
+  stroke: var(--color-inkt);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.ballon[data-staart="rechts"] { border-bottom-right-radius: 14px; }
+.ballon[data-staart="rechts"] .ballon-staart { right: -16px; bottom: 6px; width: 18px; height: 14px; transform: scaleX(-1); }
+.ballon[data-staart="links"] { border-bottom-left-radius: 14px; }
+.ballon[data-staart="links"] .ballon-staart { left: -16px; bottom: 6px; width: 18px; height: 14px; }
+.ballon[data-staart="boven"] .ballon-staart { right: 22px; top: -14px; width: 16px; height: 16px; transform: scaleY(-1); }
+.ballon.pop { animation: chuck-ballon-pop 240ms cubic-bezier(.3, 1.5, .5, 1) both; }
+@keyframes chuck-ballon-pop { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .ballon.pop { animation: none; }
+}
+
+/* ── the window ─────────────────────────────────────────────────────────────── */
+.katvenster { transition: opacity 180ms ease, transform 220ms cubic-bezier(.2, .8, .3, 1); transform-origin: top right; }
+.katvenster[data-komt] { opacity: 0; transform: scale(.94) translate(10px, -8px); }
+@media (max-width: 639px) {
+  .katvenster[data-komt] { transform: translateY(10px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .katvenster { transition: none; }
+}

@@ -49,12 +49,23 @@ public enum Deurmatvoorstelsoort
 /// One open proposal on the deurmat. It is a pointer, not a second place to decide: deciding it stays in the flow that
 /// owns it, so there is one definition of what accepting means.
 /// </summary>
+/// <param name="Klasnaam">
+/// The klas a proposal the cat brought is for (ADR-0060), or <c>null</c> for any other. Such a proposal has no
+/// <paramref name="Verwijzing"/>: the cat's window decides it, and says for which klas.
+/// </param>
+/// <param name="Datum">The day accepting plans it on, for one the cat brought; <c>null</c> otherwise.</param>
+/// <param name="Begin">When on <paramref name="Datum"/> it starts.</param>
+/// <param name="Einde">When on <paramref name="Datum"/> it ends.</param>
 public sealed record Deurmatvoorstel(
     Deurmatvoorstelsoort Soort,
     Guid Id,
     string Titel,
     string? Verwijzing,
-    string AiMotivatie);
+    string AiMotivatie,
+    string? Klasnaam = null,
+    DateOnly? Datum = null,
+    TimeOnly? Begin = null,
+    TimeOnly? Einde = null);
 
 /// <summary>What the cat brought the signed-in gebruiker, and the two things she can do with a signal.</summary>
 public interface IDeurmatService

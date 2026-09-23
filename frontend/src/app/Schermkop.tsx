@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Katmand, Katregel } from "../features/kat/Katmand";
 import { cn } from "../lib/cn";
 
 const MAAT = "max-w-[80rem]";
@@ -35,6 +36,7 @@ export function Schermkop({
   onder,
   breed,
   smal,
+  zonderKat,
 }: {
   titel: string;
   /** An emoji before the title, decorative (a thema's, FB-060). */
@@ -45,6 +47,8 @@ export function Schermkop({
   breed?: boolean;
   /** A document measure, centred rather than left aligned. See `SMAL`. */
   smal?: boolean;
+  /** No Chuck on this screen: the ontwikkelingsrapport carries no cat (FB-071, ADR-0059 D7). */
+  zonderKat?: boolean;
 }) {
   const meet = breed ? BREED : smal ? SMAL : MAAT;
   return (
@@ -68,8 +72,22 @@ export function Schermkop({
             {titel}
           </h1>
         </div>
-        {rechts}
+        {zonderKat ? (
+          rechts
+        ) : (
+          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4). On a phone this group
+          // gives up its width before the title does: the screen's control truncates, the title and the basket stay.
+          <div className="flex min-w-0 shrink-[8] items-end gap-3">
+            <div className="flex min-w-0">{rechts}</div>
+            <Katmand />
+          </div>
+        )}
       </div>
+      {zonderKat ? null : (
+        <div className={cn("mx-auto px-4 sm:px-6", meet)}>
+          <Katregel />
+        </div>
+      )}
       {onder ? <div className={cn("mx-auto px-4 pb-3 sm:px-6", meet)}>{onder}</div> : null}
     </header>
   );

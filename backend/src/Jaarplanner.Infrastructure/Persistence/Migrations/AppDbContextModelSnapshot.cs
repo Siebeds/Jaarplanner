@@ -276,6 +276,19 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("opstapversies", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Kat.Katinstelling", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("IsZichtbaar")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("katinstelling", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Kat.Signaal", b =>
                 {
                     b.Property<Guid>("Id")

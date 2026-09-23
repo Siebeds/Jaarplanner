@@ -585,6 +585,62 @@
     "lengteOngeldig": "Vul een aantal lesuren in, van 1 tot 4.",
     "annuleer": "Annuleer"
   },
+  "kat": {
+    "naam": "Chuck",
+    "houding": {
+      "slaapt": "Chuck slaapt",
+      "klaar": "Chuck heeft iets klaargezet",
+      "gevaar": "Chuck: een doel komt in gevaar",
+      "spint": "Chuck spint: elk minimumdoel van {klas} zit in de prognose"
+    },
+    "knop": "{houding}. Open het venster van Chuck.",
+    "knopOpen": "{houding}. Sluit het venster van Chuck.",
+    "zegtKlaar": "Ik heb iets voor je klaargezet.",
+    "zegtMinimumdoel": "Minimumdoel {doelRef} komt in gevaar in {klas}.",
+    "zegtSubthema": "In {klas} staat subthema {subthema} nog niet in de agenda.",
+    "signaal": {
+      "minimumdoelInGevaar": "Minimumdoel {doelRef} raakt niet meer gedekt. Het kortste thema dat het draagt, {thema}, duurt {themaDuur}, en er zijn nog {vrij} vrij.",
+      "minimumdoelInGevaarEen": "Minimumdoel {doelRef} raakt niet meer gedekt. Het kortste thema dat het draagt, {thema}, duurt {themaDuur}, en er is nog 1 lesweek vrij.",
+      "minimumdoelInGevaarGeen": "Minimumdoel {doelRef} raakt niet meer gedekt. Het kortste thema dat het draagt, {thema}, duurt {themaDuur}, en er is geen lesweek meer vrij.",
+      "subthemaNietGepland": "Plaats subthema {subthema}. Thema {thema} loopt bijna af, en zonder dit subthema blijven {aantalDoelen} leerplandoelen ongedekt: {doelen}.",
+      "subthemaNietGeplandEen": "Plaats subthema {subthema}. Thema {thema} loopt bijna af, en zonder dit subthema blijft 1 leerplandoel ongedekt: {doelen}.",
+      "onbekend": "Chuck merkte iets op in {klas}."
+    },
+    "eenLesweek": "1 lesweek",
+    "lesweken": "{aantal} lesweken",
+    "voorstel": {
+      "Activiteitvoorstel": "Activiteit: {titel}",
+      "Subdoelvoorstel": "Plaats voor doel {titel}",
+      "Subthemavoorstel": "Nieuw subthema: {titel}",
+      "Minimumdoelsuggestie": "Themadoel {titel}"
+    },
+    "katvoorstelMoment": "Voor {klas}, {dag} van {begin} tot {einde}",
+    "katvoorstelKlas": "Voor {klas}",
+    "aanvaard": "Aanvaard en plan in",
+    "bekijken": "Bekijken",
+    "bekijkenAria": "Bekijken: {wat}",
+    "later": "Later",
+    "laterAria": "Later: {wat}",
+    "venster": {
+      "sluiten": "Sluit het venster van Chuck",
+      "eenDing": "bracht 1 ding mee",
+      "dingen": "bracht {aantal} dingen mee",
+      "niets": "heeft niets nieuws",
+      "leeg": "Er ligt niets klaar.",
+      "laadt": "Chuck kijkt wat hij meebracht.",
+      "fout": "Chuck kon niet ophalen wat hij meebracht. Probeer het later opnieuw.",
+      "mislukt": "Dat lukte niet. Probeer het opnieuw.",
+      "chatKomt": "Met Chuck praten kan nog niet. Dat komt in een volgende versie.",
+      "geenKinderen": "Namen en informatie over kinderen horen niet in dit venster."
+    },
+    "instelling": {
+      "uitleg": "Chuck, de kat, ligt rechtsboven in de app. Hij toont wat hij voor iemand klaarzette en wanneer een doel van een klas in gevaar komt. Hij beslist niets.",
+      "label": "Chuck tonen voor de hele school",
+      "aan": "Aan",
+      "uit": "Uit",
+      "mislukt": "Bewaren lukte niet. Probeer het opnieuw."
+    }
+  },
   "themabeheer": {
     "nieuwTitel": "Nieuw thema",
     "wijzigTitel": "{naam} bewerken",
@@ -743,7 +799,8 @@
     "hoeken": "Hoeken",
     "algemeneFiches": "Algemene fiches",
     "schooluren": "Schooluren",
-    "sluiten": "Instellingen sluiten"
+    "sluiten": "Instellingen sluiten",
+    "chuck": "Chuck"
   },
   "weergave": {
     "titel": "Weergave",
