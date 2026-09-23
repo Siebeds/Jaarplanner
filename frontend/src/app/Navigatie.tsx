@@ -3,6 +3,7 @@ import { NavLink, useMatch } from "react-router-dom";
 import { BESTEMMINGEN, ONDERAAN, RAPPORT, type Bestemming } from "./routes";
 import { Merk } from "./Merk";
 import { Aanmeldregel } from "./Aanmeldregel";
+import { Klaskiezer } from "./Klaskiezer";
 import { IcoonActiviteit, IcoonFiche, IcoonHoek } from "../components/Iconen";
 import { useHoekenpaneel } from "../state/hoekenpaneel";
 import { useActieveSelectie } from "../lib/selectie";
@@ -51,6 +52,9 @@ import { cn } from "../lib/cn";
  * It shows to whoever may read a report (D18), and since 2026-09-15 also to a hoofdleerkracht of K3, who may view
  * the K3 set and scale though not the children (owner, after FB-002's antagonist round 1). See
  * `mag.ontwikkelingsrapportTab`.
+ *
+ * **The klaskiezer stands under the logo from `lg`** (owner, 2026-09-23, FB-071), as a field rather than a destination;
+ * on a phone it is at the top of Instellingen. See `Klaskiezer`.
  *
  * **The hoekenfiches switch lives here from `lg` (owner, 2026-08-31), under the four and over a
  * rule.** It is not a destination and must not read as one, so it is a `button` with `aria-pressed`,
@@ -133,6 +137,12 @@ export function Navigatie() {
           shorter mark would slide the whole run of icons up as the panel opens. */}
       <div className={cn("hidden h-[4.375rem] lg:flex lg:items-center", smal ? "lg:justify-center" : "lg:px-5")}>
         <Merk compact={smal} />
+      </div>
+
+      {/* Which klas the app is about, under the logo and above the destinations it scopes (owner, 2026-09-23, FB-071).
+          From `lg` only: on a phone it is a card at the top of Instellingen, so a viewport offers it once. */}
+      <div className={cn("hidden lg:block lg:pb-3", smal ? "lg:px-2" : "lg:px-3")}>
+        <Klaskiezer vorm={smal ? "rail" : "zijbalk"} />
       </div>
 
       {/* One list, both groups. The phone bar reads them as one run of tabs; the sidebar pushes the

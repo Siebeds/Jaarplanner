@@ -18,6 +18,7 @@
     "schooljaar": "Schooljaar",
     "klas": "Klas",
     "geenKlas": "Kies een klas",
+    "kiesKlas": "Klas: {klas}. Kies een andere klas of een ander schooljaar.",
     "geenKlassen": "Dit schooljaar heeft nog geen klassen",
     "geenKlassenInzage": "Dit schooljaar heeft geen klas die je mag inkijken.",
     "geenInzageTitel": "Geen klas om in te kijken",

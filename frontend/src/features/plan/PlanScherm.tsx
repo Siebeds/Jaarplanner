@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Klaskiezer } from "../../app/Klaskiezer";
 import { Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
@@ -77,7 +76,7 @@ export function PlanScherm() {
     <>
       <Schermkop
         titel={t("plan.titel")}
-        rechts={<Klaskiezer />}
+       
         onder={
           /* The way back. This screen is not the agenda's front door, so it needs one. */
           <Link

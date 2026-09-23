@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Katmand, Katregel } from "../features/kat/Katmand";
+import { Katmand } from "../features/kat/Katmand";
 import { cn } from "../lib/cn";
 
 const MAAT = "max-w-[80rem]";
@@ -75,19 +75,15 @@ export function Schermkop({
         {zonderKat ? (
           rechts
         ) : (
-          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4). On a phone this group
-          // gives up its width before the title does: the screen's control truncates, the title and the basket stay.
-          <div className="flex min-w-0 shrink-[8] items-end gap-3">
-            <div className="flex min-w-0">{rechts}</div>
+          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says under
+          // him. A wider gap keeps him apart from the screen's own controls. On a phone this group gives up its width
+          // before the title does: the screen's control truncates, the title and the basket stay.
+          <div className="flex min-w-0 shrink-[8] items-end gap-6">
+            {rechts ? <div className="flex min-w-0 pb-1">{rechts}</div> : null}
             <Katmand />
           </div>
         )}
       </div>
-      {zonderKat ? null : (
-        <div className={cn("mx-auto px-4 sm:px-6", meet)}>
-          <Katregel />
-        </div>
-      )}
       {onder ? <div className={cn("mx-auto px-4 pb-3 sm:px-6", meet)}>{onder}</div> : null}
     </header>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { t } from "../../i18n";
+import { cn } from "../../lib/cn";
 import { useMediaQuery } from "../../lib/scherm";
 import { Ballon } from "./Ballon";
 import { Katvenster } from "./Katvenster";
@@ -23,24 +24,10 @@ export function Katmand() {
 }
 
 /**
- * What he says, on a phone: under the header row, so no balloon ever lies over data. From `sm` it stands beside the
- * basket instead, inside `Katmand`.
- */
-export function Katregel() {
-  return useChuckZichtbaar() ? <ZichtbareKatregel /> : null;
-}
-
-function ZichtbareKatregel() {
-  const chuck = useChuck();
-  const tekst = houdingstekst(chuck, "boven");
-  return tekst ? <div className="flex justify-end pt-1 sm:hidden">{tekst}</div> : null;
-}
-
-/**
  * The words every posture carries (never form alone): a balloon when he has something to say, a quiet label when he
  * has not. `null` while he lies on the week strip, where his balloon is.
  */
-function houdingstekst(chuck: Chuck, staart: "rechts" | "boven"): ReactNode {
+function houdingstekst(chuck: Chuck): ReactNode {
   const { houding, opDeHoek, weet, klasnaam } = chuck;
   // Nothing until he knows what he brought, and nothing when he could not find out: "Chuck slaapt" before a balloon, or
   // over a deurmat that failed to load, would say something that is not known to be true.
@@ -48,12 +35,12 @@ function houdingstekst(chuck: Chuck, staart: "rechts" | "boven"): ReactNode {
   if (houding.soort === "klaar" || houding.soort === "gevaar") {
     const zin = houding.soort === "gevaar" && houding.gevaar ? gevaarzin(houding.gevaar) : t("kat.zegtKlaar");
     return (
-      <Ballon key={zin} staart={staart} pop className="max-w-[34ch]">
+      <Ballon key={zin} staart="boven" pop className="max-w-[34ch]">
         {zin}
       </Ballon>
     );
   }
-  return <span className="block max-w-[36ch] text-right text-meta leading-tight text-inkt-zacht sm:max-w-[22ch] sm:text-left">{houdingzin(houding.soort, klasnaam)}</span>;
+  return <span className="block max-w-[26ch] text-right text-meta leading-tight text-inkt-zacht">{houdingzin(houding.soort, klasnaam)}</span>;
 }
 
 type Vensterstand = "dicht" | "komt" | "open";
@@ -193,9 +180,12 @@ function ZichtbareKatmand() {
       />
     );
 
+  // What he says stands under him (owner, 2026-09-23), never beside him: beside the basket it stood between the
+  // screen's own controls and read as one more of them. While he is out of the basket it keeps its room, invisible,
+  // so the header does not jump when he walks.
+  const tekst = houdingstekst(chuck);
   return (
-    <div className="relative flex shrink-0 items-end gap-4">
-      <div className="hidden pb-3 sm:block">{open || onderweg ? null : houdingstekst(chuck, "rechts")}</div>
+    <div className="relative flex shrink-0 flex-col items-end gap-2.5">
       <button
         ref={knop}
         type="button"
@@ -211,6 +201,7 @@ function ZichtbareKatmand() {
           className="pointer-events-none absolute -bottom-[2px] -right-[5px] z-30 w-[174px] max-w-none"
         />
       </button>
+      {tekst ? <div className={cn("flex justify-end", (open || onderweg) && "invisible")}>{tekst}</div> : null}
       {naast ? vensterInhoud : vensterInhoud && createPortal(vensterInhoud, document.body)}
     </div>
   );

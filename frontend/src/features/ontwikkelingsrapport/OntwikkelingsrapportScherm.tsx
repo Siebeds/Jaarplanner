@@ -34,7 +34,7 @@ import { Rapportwissel } from "./Rapportwissel";
  * that the gebruiker teaches or, for admin and Leerlingzorg, any. The screen never compares a jaarfase to "K3"
  * itself: that would be a second mapping, and directie's graadklas decision (Art. XIV) would then have to change this
  * file as well (antagonist round 1). The klassen come from the report's own list (`GET /api/rapportklassen`, FB-008),
- * not the planning's that the header's Klaskiezer shows: a colleague's klas there would be a klas whose children this
+ * not the planning's that the navigation's Klaskiezer shows: a colleague's klas there would be a klas whose children this
  * person may not see (R17), and Leerlingzorg reads the reports of klassen whose planning it does not (R18). Choosing
  * one still sets the app's one klas, so the agenda opens on it afterwards when its planning is readable too.
  *

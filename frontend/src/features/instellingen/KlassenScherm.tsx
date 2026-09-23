@@ -24,7 +24,7 @@ import { useMaakKlas, useVerwijderKlas, useWijzigKlasVolledig } from "./mutaties
  * part's name is now the page title, in the display face. The other parts are one press away: in the
  * column beside it from `lg`, in the switch under the title below that.
  *
- * **A klas is defined here and chosen everywhere else.** The Klaskiezer in the header answers "which
+ * **A klas is defined here and chosen everywhere else.** The Klaskiezer in the navigation answers "which
  * class am I looking at"; this answers "which classes exist and what is each one". Keeping the two
  * apart is why this screen is not a sheet hanging off the picker.
  *

@@ -1,7 +1,6 @@
 import { useId, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
-import { Klaskiezer } from "../../app/Klaskiezer";
 import { Segment } from "../../components/ui/Segment";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Leegte } from "../../components/ui/Leegte";
@@ -140,7 +139,7 @@ export function DekkingScherm() {
     <>
       <Schermkop
         titel={t("dekking.titel")}
-        rechts={<Klaskiezer />}
+       
         onder={
           <Segment
             label={t("dekking.bereik")}
