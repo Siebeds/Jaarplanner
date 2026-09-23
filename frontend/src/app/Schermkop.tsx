@@ -53,38 +53,44 @@ export function Schermkop({
   const meet = breed ? BREED : smal ? SMAL : MAAT;
   return (
     <header className="sticky top-0 z-20 bg-vlak/85 backdrop-blur-md">
+      {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
+          title and the rows under it, his words ending where the header ends. On a phone the rows under the title
+          need the full width, so there he stays beside the title. */}
       <div
         className={cn(
-          "mx-auto flex items-end justify-between gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)] sm:px-6 lg:pt-8",
+          "mx-auto grid gap-y-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)] sm:px-6 lg:pt-8",
+          zonderKat ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_auto] gap-x-6",
           meet,
         )}
       >
-        <div className="min-w-0">
-          {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
-              deep in a week needs to be told which period those dates belong to. */}
-          {boven ? <p className="text-micro uppercase text-inkt-zwak">{boven}</p> : null}
-          <h1 className="font-display text-scherm text-inkt sm:text-[2rem]">
-            {icoon ? (
-              <span aria-hidden="true" className="mr-[0.3em]">
-                {icoon}
-              </span>
-            ) : null}
-            {titel}
-          </h1>
+        <div className="col-start-1 row-start-1 flex min-w-0 items-end justify-between gap-3 self-end">
+          <div className="min-w-0">
+            {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
+                deep in a week needs to be told which period those dates belong to. */}
+            {boven ? <p className="text-micro uppercase text-inkt-zwak">{boven}</p> : null}
+            <h1 className="font-display text-scherm text-inkt sm:text-[2rem]">
+              {icoon ? (
+                <span aria-hidden="true" className="mr-[0.3em]">
+                  {icoon}
+                </span>
+              ) : null}
+              {titel}
+            </h1>
+          </div>
+          {/* On a phone the screen's control gives up its width before the title does: it truncates, the title stays. */}
+          {rechts ? <div className={cn("flex min-w-0 shrink-[8]", !zonderKat && "pb-1")}>{rechts}</div> : null}
         </div>
-        {zonderKat ? (
-          rechts
-        ) : (
-          // Chuck lies top right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says under
-          // him. A wider gap keeps him apart from the screen's own controls. On a phone this group gives up its width
-          // before the title does: the screen's control truncates, the title and the basket stay.
-          <div className="flex min-w-0 shrink-[8] items-end gap-6">
-            {rechts ? <div className="flex min-w-0 pb-1">{rechts}</div> : null}
+        {zonderKat ? null : (
+          // Chuck lies at the right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says
+          // above or under him.
+          <div className={cn("col-start-2 row-start-1 self-end", onder && "sm:row-span-2")}>
             <Katmand />
           </div>
         )}
+        {onder ? (
+          <div className={cn("row-start-2 min-w-0", zonderKat ? "col-start-1" : "col-span-2 sm:col-span-1")}>{onder}</div>
+        ) : null}
       </div>
-      {onder ? <div className={cn("mx-auto px-4 pb-3 sm:px-6", meet)}>{onder}</div> : null}
     </header>
   );
 }
