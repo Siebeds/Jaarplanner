@@ -118,7 +118,15 @@ export function Schermkop({
         {zonderKat ? null : (
           // Chuck lies at the right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says
           // above or under him.
-          <div className={cn("col-start-2 row-start-1 self-start", onder && "sm:row-span-2")}>
+          <div
+            className={cn(
+              "col-start-2 row-start-1 self-start",
+              onder && "sm:row-span-2",
+              // Where the margin beside the narrow column holds him, his column is only as wide as he is, so the
+              // screen's controls end on the column's edge; a balloon stands above them and may reach over.
+              smalMetKat && "@min-[72rem]:has-[.ballon]:w-[94px] @min-[72rem]:[&_.ballon]:shrink-0",
+            )}
+          >
             <Katmand />
           </div>
         )}

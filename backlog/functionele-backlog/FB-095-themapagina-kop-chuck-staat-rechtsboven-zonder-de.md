@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:35
+bijgewerkt: 2026-09-23 23:41
 opgepakt-door: claude-fb095
 branch: ticket/FB-095-themakop-chuck
 pr: 178
@@ -66,3 +66,4 @@ Geen.
 - 2026-09-23 23:35 · claude-fb095 · Antagonist: COMPLIANT; MINOR over de hand geschreven breedtes met een commentaar verholpen, kruimelpad wordt alleen op de themapagina gebruikt
 - 2026-09-23 23:35 · claude-fb095 · in-uitvoering → te-testen: Chuck staat op de themapagina op de plek van de andere schermen, kop ruimer; lint, 279 tests en browsercontrole groen
 - 2026-09-23 23:35 · claude-fb095 · PR #178
+- 2026-09-23 23:41 · claude-fb095 · Op vraag van de eigenaar: knoppen eindigen op de rand van de witte blokken waar de marge Chuck houdt (vanaf 72rem kopbreedte), de ballon mag erboven uitsteken; gemeten op 1920 en 1440px op dezelfde pixel; lint en 279 tests groen
