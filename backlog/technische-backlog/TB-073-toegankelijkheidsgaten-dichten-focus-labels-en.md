@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:55
+bijgewerkt: 2026-09-23 10:20
 opgepakt-door: claude-tb073
 branch: ticket/TB-073-toegankelijkheid
 pr:
@@ -72,3 +72,5 @@ Geen.
 
 - 2026-09-23 09:49 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 09:55 · claude-tb073 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 10:14 · claude-tb073 · gebouwd: Knop-bezigstand op de knoppen die een mutatie starten, focusring Woordchips, scroll-padding onder de kop, schermtitels, Bekijken als link, laadteksten met …; lint en 1321 tests groen
+- 2026-09-23 10:20 · claude-tb073 · browserpas (mock, headless Chrome): focusring woordveld licht/donker zichtbaar, Shift+Tab 0 velden onder de kop op 1440 en 390 (tegenproef zonder padding: 4), titels per scherm, Ctrl+klik op Bekijken opent nieuw tabblad
