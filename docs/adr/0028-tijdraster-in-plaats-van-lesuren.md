@@ -95,6 +95,15 @@ does not claim to know a school's hours; it draws the hours the teacher herself 
 > Amended in place rather than superseded by a new ADR: the reasoning survives intact and only a parenthetical
 > enumeration was falsified. Found by the antagonist round on the day-view fixes.
 
+> **Amended 2026-09-23 (FB-092): the window's height follows from the screen.** The window is no longer sized to
+> eleven hours by a `clamp(24rem, 100dvh - 21rem, 616px)` estimate, and `DAGEINDE` is gone. In the week and the day,
+> the agenda is a column exactly the viewport less the bottom bar, and the grid takes what the header, the coverage
+> bar and any notice above it leave, with a floor of about four hours; the page itself then does not scroll on a
+> laptop, and the grid is the one scroll region. The estimate was 65px short at 1440×900, so the page scrolled beside
+> the grid. What the owner's *"default 7u-18u"* keeps is the top: the grid still opens at 7:00 (`DAGBEGIN`) when the
+> school has set no hours, and how far down it reaches depends on the screen. Restoring a fixed ceiling would bring
+> back the second scrollbar or a blank strip under 18:00, so do not.
+
 **6. Existing rows are converted roughly, and that is a ruling rather than an oversight.** The migration maps
 `volgorde n` to `08:30 + n × 50 minutes` and the end to `begin + lengte_in_lesuren × 50 minutes`. It is arithmetic
 about a bell schedule nobody recorded, so it cannot be right; the owner ruled it good enough because every row it

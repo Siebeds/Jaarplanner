@@ -2,13 +2,13 @@
 id: FB-092
 titel: Weekraster van de agenda lijnt uit en scrollt maar op één plek
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 11:32
+opgepakt-door: claude-fb092
+branch: ticket/FB-092-weekraster
+pr: 171
 geblokkeerd:
 fr: []
 ---
@@ -35,13 +35,13 @@ Het weekraster van de agenda heeft een paar kleine onevenwichtigheden, die de ei
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een dagkolom met een themastrook en een blok, wanneer je ze in een echte browser bekijkt, dan hebben
+- [x] Gegeven een dagkolom met een themastrook en een blok, wanneer je ze in een echte browser bekijkt, dan hebben
       ze dezelfde linker- en rechterrand.
-- [ ] Gegeven een schooldag die om 12:30 eindigt, wanneer de week opent, dan toont de tijdas alleen hele uren en is
+- [x] Gegeven een schooldag die om 12:30 eindigt, wanneer de week opent, dan toont de tijdas alleen hele uren en is
       het einde van de dag toch zichtbaar.
-- [ ] Gegeven de week op een laptop, wanneer de leerkracht naar de middag scrollt, dan beweegt er één schuifbalk en
+- [x] Gegeven de week op een laptop, wanneer de leerkracht naar de middag scrollt, dan beweegt er één schuifbalk en
       blijven de dagkoppen bovenaan staan.
-- [ ] Gegeven een telefoon van ~390px, wanneer de week opent, dan scrollt het raster zonder dat de pagina horizontaal
+- [x] Gegeven een telefoon van ~390px, wanneer de week opent, dan scrollt het raster zonder dat de pagina horizontaal
       mee schuift.
 
 ## Testscenario's
@@ -65,3 +65,9 @@ De themastroken zelf (FB-090), de blokken zelf (FB-091) en de werkbalk boven de 
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 11:06 · claude-fb092 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 11:13 · claude-fb092 · eigenaar koos: raster vult de rest van het scherm, pagina scrollt op een laptop niet meer, dunne schuifbalk
+- 2026-09-23 11:27 · claude-fb092 · browser 1440x900: strook en blok op dezelfde randen in alle kolommen, pagina 900=900, één dunne schuifbalk, PageDown scrollt het raster; 390x844 geen paginascroll, 390x667 pagina scrollt 115px zonder de kaart onder de onderbalk; vitest 1327 groen, lint schoon
+- 2026-09-23 11:31 · claude-fb092 · antagonist: COMPLIANT; vier MINOR opgelost (ADR-0028 en ADR-0038 aangevuld, commentaar, bredere schuifbalkduim)
+- 2026-09-23 11:31 · claude-fb092 · in-uitvoering → te-testen: gebouwd: raster vult het scherm (flex-kolom over 100dvh), één dunne schuifbalk, strook en blok op dezelfde randen, alleen hele uren met gestippelde schoolgrens; vitest en lint groen
+- 2026-09-23 11:32 · claude-fb092 · PR #171

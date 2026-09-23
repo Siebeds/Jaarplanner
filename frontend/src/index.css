@@ -531,6 +531,29 @@
   }
 }
 
+/* A scroll region inside the page, such as the agenda's hours (FB-092): a thin rounded thumb in the app's own grey, no
+   arrows, and a gutter kept so a header row with the same utility stays over its columns. Chrome, Edge and Safari
+   draw it from the webkit pseudo-elements, which they ignore once `scrollbar-width` is set, so the standard
+   properties go only to a browser without them (Firefox, which draws no arrows on a thin bar). */
+@utility rustige-schuifbalk {
+  scrollbar-gutter: stable;
+  &::-webkit-scrollbar {
+    width: 10px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background: var(--color-lijn-veld) padding-box;
+  }
+  @supports not selector(::-webkit-scrollbar) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-lijn-veld) transparent;
+  }
+}
+
 @utility waas-in {
   animation: waas-in 160ms ease-out;
 }

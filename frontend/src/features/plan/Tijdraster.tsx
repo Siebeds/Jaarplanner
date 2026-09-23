@@ -26,10 +26,9 @@ import { subthemaruimte, subthemaZin, type Subthemareeks, type Subthemaruimte } 
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import type { Agendadag } from "./roosterdagen";
 import type { Schooldaguren } from "../schooluren/gegevens";
-import { GOOTLABEL_MINUTEN, grenstijden, openingsminuut, urenOp } from "../schooluren/schooluren";
+import { openingsminuut, urenOp } from "../schooluren/schooluren";
 import {
   DAGBEGIN,
-  DAGEINDE,
   HEEL_DE_DAG,
   KORTSTE,
   PX_PER_MINUUT,
@@ -176,17 +175,13 @@ export function Tijdraster({
 
   // WHERE THE GRID OPENS. At the whole hour in which the earliest school day on screen begins (FB-023: "openen op het
   // begin van de schooldag"), so a day starting at 8:30 opens at 8:00 with its first half hour shaded above the start.
-  // Without school hours, at 7:00, in a box exactly the 7:00-18:00 the owner asked to see by default. The hours outside
-  // the box are drawn and a scroll away, which is what makes an early opvang or a 19:30 oudercontact plannable without
-  // a control that has to be found first.
+  // Without school hours, at 7:00, the start of the 7:00-18:00 the owner asked to see by default. How far down the
+  // screen reaches depends on the screen (FB-092); every other hour is drawn and a scroll away, which is what makes
+  // an early opvang or a 19:30 oudercontact plannable without a control that has to be found first.
   //
   // It moves the scroll only when the opening hour itself changes: when the hours first arrive, or when another week
   // starts earlier. A refetch that answers the same hours does not pull a teacher back from where she scrolled.
   const opening = openingsminuut(schooluren, dagen) ?? DAGBEGIN;
-  // Where the tinted stretches start and stop, written in the gutter because the stretches carry no words (FB-058).
-  // An hour label those words would sit on is left out, and one exactly on a boundary is replaced by it.
-  const grenzen = grenstijden(schooluren, dagen);
-  const uurlabels = UREN.filter((uur) => grenzen.every((grens) => Math.abs(uur - grens) >= GOOTLABEL_MINUTEN));
   const scrollvak = useRef<HTMLDivElement | null>(null);
   useLayoutEffect(() => {
     if (scrollvak.current) scrollvak.current.scrollTop = (opening - bereik.van) * PX_PER_MINUUT;
@@ -201,7 +196,10 @@ export function Tijdraster({
     : dagen.find((rij) => rij.isLesdag)?.datum;
 
   return (
-    <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
+    // A column that takes the height its parent gives it (FB-092): the screen decides how tall the grid is, and the
+    // hours scroll inside it. `min-h-80`, about four hours under the headings, is the floor below which a grid shows too
+    // few hours to plan in; only a low phone reaches it, and there the page scrolls a little.
+    <div className="flex min-h-80 flex-auto flex-col overflow-hidden rounded-kaart border border-lijn bg-kaart">
       {/* THE DAY HEADINGS AND THE ALL-DAY BAND, outside the scroller so they stay put while the hours move.
           What is in the band is what is true of a whole day and has no hour: which themaperiode it belongs to and
           which subthema runs on it.
@@ -212,7 +210,7 @@ export function Tijdraster({
           is only reserved on an element that can scroll, hence `overflow-hidden`. Sideways it clips where the card
           already did, at the last heading's right edge, and the row grows with its headings, so it cuts off nothing
           that was visible before. With overlay scrollbars both reserve nothing, which is equal too. */}
-      <div className="flex overflow-hidden border-b border-lijn [scrollbar-gutter:stable]">
+      <div className="rustige-schuifbalk flex shrink-0 overflow-hidden border-b border-lijn">
         <div className="w-12 shrink-0 border-r border-lijn sm:w-14" />
         {week ? (
           <Weekkop
@@ -251,49 +249,34 @@ export function Tijdraster({
         )}
       </div>
 
-      {/* AT MOST DAGBEGIN..DAGEINDE tall, computed rather than written out, so "default 7u-18u" is one fact in one
-          place: move those constants and the box that shows them moves with them. An inline style because a Tailwind
-          arbitrary value has to be a literal, and this one is arithmetic.
+      {/* THE ONE THING ON THE SCREEN THAT SCROLLS (owner, 2026-09-23, FB-092). It fills what the card has left, so its
+          height follows from the layout and never from a guess at what stands above the grid: that guess was 65
+          pixels short on a laptop, and the page scrolled beside it. `contain: size` keeps the day's 24 hours out of
+          the height the column asks for, so they cannot push the page past the viewport.
 
-          At most, not exactly. The ceiling only binds from about 950 pixels of viewport; below that the middle term
-          wins and the window is shorter, and on a 390x844 phone it is 508 pixels, which is 7:00 to about 16:00. The
-          rest of the default day is a scroll away rather than on screen. Said here because the owner's default is a
-          promise about what he sees, and on a phone it is one the pixels cannot keep. */}
+          A scroll region a keyboard reaches and a screen reader names (WCAG 2.2 SC 2.1.1): arrow keys and Page Down
+          then move the hours without a mouse. */}
       <div
         ref={scrollvak}
-        className="overflow-y-auto [scrollbar-gutter:stable]"
-        style={{ maxHeight: `clamp(24rem, calc(100dvh - 21rem), ${(DAGEINDE - DAGBEGIN) * PX_PER_MINUUT}px)` }}
+        tabIndex={0}
+        role="region"
+        aria-label={t("tijdraster.uren")}
+        className="rustige-schuifbalk min-h-0 flex-1 overflow-y-auto [contain:size] focus-visible:outline-offset-[-2px]"
       >
         <div className="flex" style={{ height: hoogte }}>
           {/* The hour gutter. Each label hangs just UNDER its own line, the way a paper timetable and every calendar
               app write it, so it labels the hour that follows. Centred on the line it half-hung above the line, which
               at the top of the scroller meant the first hour of the day was drawn cut in two (owner, 2026-09-11). */}
+          {/* WHOLE HOURS ONLY (FB-092). A school day's edge at 12:30 is drawn in its own column (`Schooltijdlagen`),
+              where it belongs to that day, rather than as a half-hour label just under "12:00", which read as a fault. */}
           <div className="relative w-12 shrink-0 border-r border-lijn sm:w-14">
-            {uurlabels.map((uur) => (
+            {UREN.map((uur) => (
               <span
                 key={uur}
                 className="absolute right-1.5 translate-y-0.5 text-micro text-inkt-zwak"
                 style={{ top: (uur - bereik.van) * PX_PER_MINUUT }}
               >
                 {toonTijd(uur)}
-              </span>
-            ))}
-
-            {/* The school day's edges (FB-058): in full ink where the hours are muted, with a short tick on the line
-                they name, since a half hour has no line of its own across the columns. Hidden from a screen reader,
-                which hears the hours per day in the day heading instead. */}
-            {grenzen.map((grens) => (
-              <span
-                key={grens}
-                aria-hidden="true"
-                data-schoolgrens={toonTijd(grens)}
-                className="absolute inset-x-0"
-                style={{ top: (grens - bereik.van) * PX_PER_MINUUT }}
-              >
-                <span className="absolute right-0 top-0 w-1.5 border-t border-lijn-veld" />
-                <span className="absolute right-1.5 translate-y-0.5 text-micro font-medium text-inkt">
-                  {toonTijd(grens)}
-                </span>
               </span>
             ))}
 
@@ -366,8 +349,9 @@ const LEEG: Subthemareeks[] = [];
  * ground colour, lighter than the tint of a closed day, so "no school today" still reads darker than "no school at
  * this hour", and a closed day keeps its name. Ink, not a hue (Art. XII).
  *
- * **Never the tint alone:** the stretches carry no words, and the hour gutter writes where each one starts and stops
- * (`grenstijden`); the day heading says the hours to a screen reader.
+ * **Never the tint alone:** each stretch is edged, on the side that faces the school day, by a dashed line in that
+ * day's own column (FB-092), so a day that ends at 12:30 shows it at 12:30 in its column and nowhere else; the day
+ * heading says the hours to a screen reader. The gutter writes whole hours only.
  *
  * **It never catches a click.** Every hour stays plannable (ADR-0028), so a 7:45 opvang is placed on the tint exactly
  * as on any other hour.
@@ -386,15 +370,18 @@ function Schooltijdlagen({ uren, rasterVan }: { uren: Schooldaguren; rasterVan: 
 
   return (
     <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-      <div data-schooltijd="voor" className={STROOK} style={strook(HEEL_DE_DAG.van, begin)} />
-      {pauze ? <div data-schooltijd="pauze" className={STROOK} style={strook(pauze.begin, pauze.einde)} /> : null}
-      <div data-schooltijd="na" className={STROOK} style={strook(einde, HEEL_DE_DAG.tot)} />
+      <div data-schooltijd="voor" className={cn(STROOK, "border-b")} style={strook(HEEL_DE_DAG.van, begin)} />
+      {pauze ? (
+        <div data-schooltijd="pauze" className={cn(STROOK, "border-y")} style={strook(pauze.begin, pauze.einde)} />
+      ) : null}
+      <div data-schooltijd="na" className={cn(STROOK, "border-t")} style={strook(einde, HEEL_DE_DAG.tot)} />
     </div>
   );
 }
 
-// The ground colour at 70% on the white card: about 98% light, against a closed day's `bg-vlak-diep/60`.
-const STROOK = "absolute inset-x-0 bg-vlak/70";
+// The ground colour at 70% on the white card: about 98% light, against a closed day's `bg-vlak-diep/60`. The edge is
+// dashed so it never reads as one of the solid hour lines, and in `lijn-veld` so it holds 3:1 on the card.
+const STROOK = "absolute inset-x-0 border-dashed border-lijn-veld bg-vlak/70";
 
 /** The school's hours as the day heading says them to a screen reader, as a clause after the date. */
 function urenZin(uren: Schooldaguren | undefined): string {
@@ -566,7 +553,9 @@ function Dagkop({
   return (
     <div
       aria-current={isVandaag ? "date" : undefined}
-      className={cn("min-w-0 border-l border-lijn px-1 pb-1 pt-2 first:border-l-0", !dag.isLesdag && "bg-vlak-diep/60")}
+      // `px-0.5`, the same inset as a block below it (`Blok`), so the bands and the blocks of a column share one left
+      // and one right edge (FB-092).
+      className={cn("min-w-0 border-l border-lijn px-0.5 pb-1 pt-2 first:border-l-0", !dag.isLesdag && "bg-vlak-diep/60")}
     >
       <Dagtitel dag={dag} isVandaag={isVandaag} reeksen={reeksen} vak={vak} uren={uren} onKiesDag={onKiesDag} />
       {!dag.isLesdag ? (
@@ -728,7 +717,9 @@ function Dagkolom({
       ref={setNodeRef}
       {...{ [KOLOM_ATTRIBUUT]: dag.datum, [VAN_ATTRIBUUT]: bereik.van }}
       className={cn(
-        "relative min-w-0 border-l border-lijn first:border-l-0",
+        // `first-of-type`, not `first`: the hour lines are spans before the columns, so `first` never matched, and the
+        // first column drew a second line beside the gutter and sat its blocks a pixel right of its bands (FB-092).
+        "relative min-w-0 border-l border-lijn first-of-type:border-l-0",
         !dag.isLesdag && "bg-vlak-diep/60",
         // The accent as its selected-row use: the day a moved block would land on (ADR-0024 amendment, 2026-09-14).
         isOver && dag.isLesdag && "bg-accent-zacht/60",
@@ -996,7 +987,7 @@ function Landingsvak({ begin, einde, rasterVan }: { begin: number; einde: number
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-1 z-10 rounded-veld border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
+      className="pointer-events-none absolute inset-x-0.5 z-10 rounded-veld border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
       style={{
         top: (begin - rasterVan) * PX_PER_MINUUT,
         height: Math.max(einde - begin, KORTSTE) * PX_PER_MINUUT,

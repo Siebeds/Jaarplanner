@@ -31,6 +31,9 @@ export function Schil() {
     <div
       className={cn(
         "min-h-dvh transition-[padding] duration-200 ease-out motion-reduce:transition-none",
+        // The bottom bar's reservation as a variable, so a screen that fills the viewport (the agenda's time grid,
+        // FB-092) subtracts exactly what `main` reserves under it rather than guessing.
+        "[--onderbalk:calc(3.5rem+env(safe-area-inset-bottom))] lg:[--onderbalk:0px]",
         zijkolom ? "lg:pl-[18.5rem]" : "lg:pl-60",
       )}
     >
@@ -56,7 +59,7 @@ export function Schil() {
         Without it the next Tab press returns to the navigation the teacher just asked to skip, which
         makes the link look like it did nothing.
       */}
-      <main id="inhoud" tabIndex={-1} className="pb-[calc(3.5rem+env(safe-area-inset-bottom))] outline-none lg:pb-0">
+      <main id="inhoud" tabIndex={-1} className="pb-(--onderbalk) outline-none">
         <Outlet />
       </main>
 

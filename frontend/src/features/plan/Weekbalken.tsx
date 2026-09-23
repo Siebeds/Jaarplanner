@@ -12,11 +12,18 @@ import type { Weekbalk } from "./weekbalkindeling";
 /**
  * Where a bar sits in the header grid of the week: its columns, and the grid row it takes.
  *
- * Each bar's `mx-1` insets it by the four pixels a day heading keeps from its column's edges, at its two ends only, so
- * the columns it crosses show no break (FB-090).
+ * Inset at its two ends only, so the columns it crosses show no break (FB-090).
  */
 function plek(balk: Weekbalk<unknown>, rij: number): CSSProperties {
   return { gridColumn: `${balk.van + 1} / ${balk.tot + 2}`, gridRow: rij };
+}
+
+/**
+ * The inset that puts a bar's ends on the same edges as the blocks in the columns under it (FB-092): the blocks' two
+ * pixels, plus on the left the one-pixel line a day column after the first draws inside its own box.
+ */
+function inzet(kolom: number): string {
+  return cn("mr-0.5", kolom > 0 ? "ml-[calc(0.125rem+1px)]" : "ml-0.5");
 }
 
 /**
@@ -79,7 +86,7 @@ export function Themabalk({
     ) : null;
 
   return (
-    <div className={cn("relative z-10 mx-1 flex min-w-0", planknop && "@container")} style={plek(balk, rij)}>
+    <div className={cn("relative z-10 flex min-w-0", inzet(balk.van), planknop && "@container")} style={plek(balk, rij)}>
       {genoemd ? (
         <Link
           to={themapaginaPad(genoemd.id)}
@@ -114,7 +121,7 @@ export function Subthemabalk({ balk, rij }: { balk: Weekbalk<Subthemareeks>; rij
   const reeks = balk.item;
 
   return (
-    <div className="relative z-10 mx-1 flex min-w-0" style={plek(balk, rij)}>
+    <div className={cn("relative z-10 flex min-w-0", inzet(balk.van))} style={plek(balk, rij)}>
       <Link
         to={themapaginaPad(reeks.themaId, reeks.subthemaId)}
         aria-label={t("periode.naarSubthema", { naam: reeks.subthemaNaam })}
@@ -156,7 +163,11 @@ function Balktekst({ balk, children }: { balk: Weekbalk<unknown>; children: Reac
 /** The runs on one day that found no row of their own, as a count. Names none, so it opens none. */
 export function Subthemateveel({ kolom, rij, aantal }: { kolom: number; rij: number; aantal: number }) {
   return (
-    <span aria-hidden="true" className="relative z-10 mx-1 flex h-6 items-start" style={{ gridColumn: kolom + 1, gridRow: rij }}>
+    <span
+      aria-hidden="true"
+      className={cn("relative z-10 flex h-6 items-start", inzet(kolom))}
+      style={{ gridColumn: kolom + 1, gridRow: rij }}
+    >
       <span className="flex h-5 min-w-0 flex-1 items-center border-l-2 border-l-lijn bg-lijn px-1.5 text-[0.625rem] font-medium leading-none text-inkt-zacht">
         {t("periode.subthemaMeer", { aantal })}
       </span>

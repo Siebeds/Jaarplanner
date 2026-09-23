@@ -696,17 +696,29 @@ export function Agendascherm() {
     );
   }
 
+  // THE TIME GRID FILLS THE SCREEN, AND THE LAYOUT SAYS HOW TALL THAT IS (owner, 2026-09-23, FB-092). A column exactly
+  // the viewport less the bottom bar, in which the grid takes what the header, the coverage bar and any notice above it
+  // leave: the page itself then does not scroll on a laptop, and the grid is the one thing that does. `min-h-min` lets
+  // the column grow past the viewport only where even the grid's floor does not fit, on a low phone, and then the page
+  // scrolls a little. The month grows with its weeks and keeps scrolling the page.
+  const vultScherm = weergave !== "maand";
+
   return (
     <>
+      <div
+        className={cn(vultScherm && "flex min-h-min flex-col")}
+        style={vultScherm ? { height: "calc(100dvh - var(--onderbalk))" } : undefined}
+      >
       <Schermkop
         breed
+        meeScrollen={vultScherm}
         titel={t("periode.titel")}
         onder={
-          /* One toolbar, and it travels with the sticky header (a month is tall enough to scroll the range away).
-             FB-089: Vandaag first, so it never moves with the length of the date; the arrows as one joined
-             control; the date and its week number centred on the same line; the view switch to the right. Every
-             control is `h-9` with the `lijn-veld` edge, `Segment` included. Below `sm` the switch wraps onto a row
-             of its own at full width. */
+          /* One toolbar, and it travels with the header, which sticks in the month (tall enough to scroll the range
+             away); in the week and the day the page does not scroll (FB-092). FB-089: Vandaag first, so it never
+             moves with the length of the date; the arrows as one joined control; the date and its week number
+             centred on the same line; the view switch to the right. Every control is `h-9` with the `lijn-veld`
+             edge, `Segment` included. Below `sm` the switch wraps onto a row of its own at full width. */
           <div className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex min-w-0 flex-1 basis-auto items-center gap-3">
@@ -824,7 +836,7 @@ export function Agendascherm() {
         }
       />
 
-      <Schermvlak breed>
+      <Schermvlak breed className={cn(vultScherm && "flex min-h-0 w-full flex-auto flex-col pb-4")}>
         {/* Once, above everything, and only when it is true: the rights have answered and this gebruiker holds no
             planning right on the klas the picker shows. It names the klas, because the picker is what changed. */}
         {rechtenBekend && !magPlannen && klas ? (
@@ -870,7 +882,7 @@ export function Agendascherm() {
               }}
             />
 
-          <div className="mt-3">
+          <div className={cn("mt-3", vultScherm && "flex min-h-0 flex-auto flex-col")}>
             {isPending || !planning ? (
               <Laadvlak className="h-72" />
             ) : heelBereikBuiten ? (
@@ -965,6 +977,7 @@ export function Agendascherm() {
           bladOpen={nieuw !== null || geopend !== null || plannerOpen || (magPlannen && gekozenActiviteit !== null)}
         />
       </Schermvlak>
+      </div>
 
       <Activiteitkiezer
         // Closed as soon as this gebruiker may not plan the klas, which after a 403 is the moment the refetched rights
