@@ -174,4 +174,91 @@ public sealed class WoordwebTests
         Assert.Throws<ArgumentException>(() => new Woordweb(Guid.Empty, Guid.NewGuid()));
         Assert.Throws<ArgumentException>(() => new Woordweb(Guid.NewGuid(), Guid.Empty));
     }
+
+    private static string[] Woorden(int aantal, string voorvoegsel = "woord") =>
+        Enumerable.Range(1, aantal).Select(i => $"{voorvoegsel}{i}").ToArray();
+
+    [Fact]
+    public void Een_web_neemt_precies_het_maximum_aan_in_een_keer_met_opeenvolgende_volgnummers()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb));
+
+        Assert.Equal(Woordweb.MaxWoordenInWeb, web.AantalInWeb);
+        Assert.Equal(Enumerable.Range(1, Woordweb.MaxWoordenInWeb), web.Woorden.Select(w => w.Volgnummer));
+    }
+
+    [Fact]
+    public void Een_aanvraag_die_het_web_boven_het_maximum_brengt_wordt_geweigerd_en_verandert_niets()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb - 1));
+
+        Assert.Throws<InvalidOperationException>(() => web.VoegWoordenToe(["extra1", "extra2"]));
+        Assert.Equal(Woordweb.MaxWoordenInWeb - 1, web.Woorden.Count);
+    }
+
+    [Fact]
+    public void Een_vol_web_neemt_een_woord_dat_er_al_staat_nog_aan_maar_geen_nieuw()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb));
+
+        // Already in the web, in another case, and twice in one call: nothing new, so no refusal.
+        Assert.Empty(web.VoegWoordenToe(["WOORD1", "woord2", "woord2"]));
+        Assert.Equal(0, web.TelNieuwInWeb(["WOORD1", "woord2"]));
+        Assert.Throws<InvalidOperationException>(() => web.VoegWoordenToe(["nieuw"]));
+    }
+
+    [Fact]
+    public void Een_dubbel_woord_in_een_aanvraag_telt_eenmaal_tegen_het_maximum()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb - 1));
+
+        Assert.Equal(1, web.TelNieuwInWeb(["nieuw", "NIEUW", " nieuw "]));
+        Assert.Single(web.VoegWoordenToe(["nieuw", "NIEUW", " nieuw "]));
+        Assert.Equal(Woordweb.MaxWoordenInWeb, web.AantalInWeb);
+    }
+
+    [Fact]
+    public void Een_geweigerd_woord_dat_de_leerkracht_typt_telt_mee_tegen_het_maximum()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb - 1));
+        var voorstel = web.VoegVoorstelToe("wolk", "Wolken brengen regen.")!;
+        web.Beslis(voorstel.Id, KoppelingStatus.Geweigerd);
+        web.VoegWoordenToe(["laatste"]);
+
+        Assert.Equal(1, web.TelNieuwInWeb(["wolk"]));
+        Assert.Throws<InvalidOperationException>(() => web.VoegWoordenToe(["wolk"]));
+        Assert.Equal(KoppelingStatus.Geweigerd, voorstel.Status);
+    }
+
+    [Fact]
+    public void Een_vol_web_aanvaardt_geen_voorstel_meer_maar_weigert_het_wel()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb - 1));
+        var wolk = web.VoegVoorstelToe("wolk", "Wolken brengen regen.")!;
+        var plas = web.VoegVoorstelToe("plas", "Na de regen.")!;
+        web.VoegWoordenToe(["laatste"]);
+
+        Assert.Throws<InvalidOperationException>(() => web.Beslis(wolk.Id, KoppelingStatus.Aanvaard));
+        Assert.Equal(KoppelingStatus.Voorgesteld, wolk.Status);
+
+        web.Beslis(plas.Id, KoppelingStatus.Geweigerd);
+        Assert.Equal(KoppelingStatus.Geweigerd, plas.Status);
+    }
+
+    [Fact]
+    public void Een_web_dat_het_bewaarde_maximum_haalt_krijgt_geen_voorstellen_meer()
+    {
+        var web = WebMet(Woorden(Woordweb.MaxWoordenInWeb));
+        foreach (var woord in Woorden(Woordweb.MaxWoordenBewaard - Woordweb.MaxWoordenInWeb - 1, "voorstel"))
+        {
+            web.Beslis(web.VoegVoorstelToe(woord, "Een reden.")!.Id, KoppelingStatus.Geweigerd);
+        }
+
+        Assert.True(web.KanVoorstellenOntvangen);
+        Assert.NotNull(web.VoegVoorstelToe("laatste", "Een reden."));
+
+        Assert.False(web.KanVoorstellenOntvangen);
+        Assert.Null(web.VoegVoorstelToe("teveel", "Een reden."));
+        Assert.Equal(Woordweb.MaxWoordenBewaard, web.Woorden.Count);
+    }
 }

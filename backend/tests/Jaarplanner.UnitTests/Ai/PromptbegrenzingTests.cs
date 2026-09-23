@@ -1,5 +1,6 @@
 using Jaarplanner.Application.Ai;
 using Jaarplanner.Domain.Curriculum;
+using Jaarplanner.Domain.Schoolcontent;
 
 namespace Jaarplanner.UnitTests.Ai;
 
@@ -71,4 +72,21 @@ public sealed class PromptbegrenzingTests
             "Deze aanvraag is te groot voor de AI: de tekst van 1 doel is meer dan één aanvraag mag bevatten (ongeveer 1.001 tokens, de grens is 1.000). Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.",
             fout.Message);
     }
+
+    [Fact]
+    public void Boven_de_grens_voor_een_woordweb_noemt_zijn_woorden_en_de_serverinstelling()
+    {
+        var web = new Woordweb(Guid.NewGuid(), Guid.NewGuid());
+        web.VoegWoordenToe(["wind", "regen"]);
+
+        var fout = Assert.Throws<PromptTeGrootFout>(() => new Promptbegrenzing(1_000).Bewaak(Request(4_001), web));
+
+        Assert.Equal(
+            "Deze aanvraag is te groot voor de AI: de tekst van 2 woorden is meer dan één aanvraag mag bevatten (ongeveer 1.001 tokens, de grens is 1.000). Die grens is een instelling op de server: vraag wie de app technisch beheert om ze te verhogen.",
+            fout.Message);
+    }
+
+    [Fact]
+    public void Een_woordweb_op_de_grens_gaat_door() =>
+        new Promptbegrenzing(1_000).Bewaak(Request(4_000), new Woordweb(Guid.NewGuid(), Guid.NewGuid()));
 }

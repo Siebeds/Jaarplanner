@@ -52,6 +52,12 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
     /// </summary>
     public IList<ISignaaldetector> Detectoren { get; } = [];
 
+    /// <summary>
+    /// Extra configuration keys for this host, such as a low <c>AiPrompt:MaxTokens</c>. Read when the host is built, so
+    /// set them before the first client.
+    /// </summary>
+    public IDictionary<string, string> Instellingen { get; } = new Dictionary<string, string>();
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
@@ -60,6 +66,10 @@ public sealed class PostgresApiFactory : JaarplannerApiFactory
         // Supply the connection string through configuration, the same key production reads, so the
         // Infrastructure wiring stays untouched.
         builder.UseSetting("ConnectionStrings:Postgres", _connectionString);
+        foreach (var (sleutel, waarde) in Instellingen)
+        {
+            builder.UseSetting(sleutel, waarde);
+        }
 
         builder.ConfigureServices(services =>
         {

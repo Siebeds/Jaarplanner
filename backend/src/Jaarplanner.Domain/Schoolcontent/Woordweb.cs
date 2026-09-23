@@ -25,6 +25,19 @@ public sealed class Woordweb
     /// <summary>The longest word a web holds, in characters; the column's length.</summary>
     public const int MaxWoordlengte = 64;
 
+    /// <summary>
+    /// The most words that stand in one web (typed or accepted), well above what a real brainstorm needs. It bounds the
+    /// prompt of a request for proposals and the work of one request to add words.
+    /// </summary>
+    public const int MaxWoordenInWeb = 200;
+
+    /// <summary>
+    /// The most words one web keeps in any status. A rejected word is kept for good (D1) and goes into every prompt, so
+    /// without this bound a loop of asking and rejecting would grow the web without end. Once it is reached the AI
+    /// proposes nothing more; typing and deciding are bounded by <see cref="MaxWoordenInWeb"/> alone.
+    /// </summary>
+    public const int MaxWoordenBewaard = 2 * MaxWoordenInWeb;
+
     private readonly List<WoordwebWoord> _woorden = [];
 
     // EF Core materialisation only.
@@ -67,35 +80,67 @@ public sealed class Woordweb
     /// </summary>
     public bool HeeftWoordInWeb => _woorden.Any(w => w.StaatInWeb);
 
+    /// <summary>How many words stand in the web (typed or accepted).</summary>
+    public int AantalInWeb => _woorden.Count(w => w.StaatInWeb);
+
+    /// <summary>Whether the AI may add proposals: the web keeps fewer than <see cref="MaxWoordenBewaard"/> words.</summary>
+    public bool KanVoorstellenOntvangen => _woorden.Count < MaxWoordenBewaard;
+
+    /// <summary>
+    /// How many of <paramref name="woorden"/> would newly stand in the web if typed: words it does not hold yet, and
+    /// proposed or rejected words that would become hers, each counted once. Lets a caller refuse in its own words
+    /// before <see cref="VoegWoordenToe"/> does.
+    /// </summary>
+    public int TelNieuwInWeb(IEnumerable<string> woorden)
+    {
+        ArgumentNullException.ThrowIfNull(woorden);
+
+        var index = Index();
+        var nieuw = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var ruw in woorden)
+        {
+            if (Normaliseer(ruw) is { } woord && !(index.TryGetValue(woord, out var bestaand) && bestaand.StaatInWeb))
+            {
+                nieuw.Add(woord);
+            }
+        }
+
+        return nieuw.Count;
+    }
+
     /// <summary>
     /// Adds typed words (<see cref="KoppelingStatus.Manueel"/>). Blank entries are skipped, a word already in the web is
-    /// left alone, and a proposed or rejected word the teacher now types becomes hers.
+    /// left alone, and a proposed or rejected word the teacher now types becomes hers. A refused call changes nothing.
     /// </summary>
     /// <returns>The words that now stand in the web because of this call.</returns>
     /// <exception cref="ArgumentException">A word is longer than <see cref="MaxWoordlengte"/>.</exception>
+    /// <exception cref="InvalidOperationException">The web would hold more than <see cref="MaxWoordenInWeb"/> words.</exception>
     public IReadOnlyList<WoordwebWoord> VoegWoordenToe(IEnumerable<string> woorden)
     {
         ArgumentNullException.ThrowIfNull(woorden);
 
-        var toegevoegd = new List<WoordwebWoord>();
-        foreach (var ruw in woorden)
+        var lijst = woorden.Select(Normaliseer).OfType<string>().ToList();
+        if (lijst.Any(w => w.Length > MaxWoordlengte))
         {
-            var woord = Normaliseer(ruw);
-            if (woord is null)
-            {
-                continue;
-            }
+            throw new ArgumentException($"A woordweb word is at most {MaxWoordlengte} characters.", nameof(woorden));
+        }
 
-            if (woord.Length > MaxWoordlengte)
-            {
-                throw new ArgumentException($"A woordweb word is at most {MaxWoordlengte} characters.", nameof(woorden));
-            }
+        if (AantalInWeb + TelNieuwInWeb(lijst) > MaxWoordenInWeb)
+        {
+            throw new InvalidOperationException($"A woordweb holds at most {MaxWoordenInWeb} words.");
+        }
 
-            var bestaand = Zoek(woord);
-            if (bestaand is null)
+        // One index and one running volgnummer for the whole call, so a large call is linear rather than quadratic.
+        var index = Index();
+        var volgnummer = VolgendVolgnummer();
+        var toegevoegd = new List<WoordwebWoord>();
+        foreach (var woord in lijst)
+        {
+            if (!index.TryGetValue(woord, out var bestaand))
             {
-                var nieuw = new WoordwebWoord(Id, woord, KoppelingStatus.Manueel, aiMotivatie: null, VolgendVolgnummer());
+                var nieuw = new WoordwebWoord(Id, woord, KoppelingStatus.Manueel, aiMotivatie: null, volgnummer++);
                 _woorden.Add(nieuw);
+                index.Add(woord, nieuw);
                 toegevoegd.Add(nieuw);
             }
             else if (!bestaand.StaatInWeb)
@@ -112,7 +157,8 @@ public sealed class Woordweb
     /// Records a word the AI proposed, as <see cref="KoppelingStatus.Voorgesteld"/> with its motivation (Art. IV.1 to
     /// IV.3). Returns <c>null</c>, and records nothing, for a word the web already holds in any status (so a rejected
     /// word never returns, D1), a blank one, one without a motivation, or one longer than <see cref="MaxWoordlengte"/>:
-    /// the AI's answer is skipped, never repaired.
+    /// the AI's answer is skipped, never repaired. Also <c>null</c> once the web keeps <see cref="MaxWoordenBewaard"/>
+    /// words.
     /// </summary>
     /// <exception cref="InvalidOperationException">The web holds no word the teacher decided on yet (W5).</exception>
     public WoordwebWoord? VoegVoorstelToe(string woord, string motivatie)
@@ -121,7 +167,11 @@ public sealed class Woordweb
 
         var genormaliseerd = Normaliseer(woord);
         var uitleg = Normaliseer(motivatie);
-        if (genormaliseerd is null || uitleg is null || genormaliseerd.Length > MaxWoordlengte || Zoek(genormaliseerd) is not null)
+        if (!KanVoorstellenOntvangen
+            || genormaliseerd is null
+            || uitleg is null
+            || genormaliseerd.Length > MaxWoordlengte
+            || Zoek(genormaliseerd) is not null)
         {
             return null;
         }
@@ -136,7 +186,10 @@ public sealed class Woordweb
     /// <see cref="KoppelingStatus.Geweigerd"/> keeps it out for good (D1).
     /// </summary>
     /// <exception cref="ArgumentException">The status is not aanvaard or geweigerd.</exception>
-    /// <exception cref="InvalidOperationException">The web has no such word, or it is not a proposal awaiting a decision.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The web has no such word, it is not a proposal awaiting a decision, or accepting it would put more than
+    /// <see cref="MaxWoordenInWeb"/> words in the web.
+    /// </exception>
     public WoordwebWoord Beslis(Guid woordId, KoppelingStatus status)
     {
         if (status is not (KoppelingStatus.Aanvaard or KoppelingStatus.Geweigerd))
@@ -148,6 +201,11 @@ public sealed class Woordweb
         if (woord.Status != KoppelingStatus.Voorgesteld)
         {
             throw new InvalidOperationException("Only a proposed word awaits a decision.");
+        }
+
+        if (status == KoppelingStatus.Aanvaard && AantalInWeb >= MaxWoordenInWeb)
+        {
+            throw new InvalidOperationException($"A woordweb holds at most {MaxWoordenInWeb} words.");
         }
 
         woord.Beslis(status);
@@ -182,6 +240,17 @@ public sealed class Woordweb
 
     private WoordwebWoord? Zoek(string woord) =>
         _woorden.FirstOrDefault(w => string.Equals(w.Woord, woord, StringComparison.OrdinalIgnoreCase));
+
+    private Dictionary<string, WoordwebWoord> Index()
+    {
+        var index = new Dictionary<string, WoordwebWoord>(_woorden.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (var woord in _woorden)
+        {
+            index.TryAdd(woord.Woord, woord);
+        }
+
+        return index;
+    }
 
     private WoordwebWoord ZoekOpId(Guid woordId) =>
         _woorden.FirstOrDefault(w => w.Id == woordId)
