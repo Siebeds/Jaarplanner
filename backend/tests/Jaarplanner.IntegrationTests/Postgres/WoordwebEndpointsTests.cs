@@ -247,7 +247,6 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
             "Dit subthema bestaat niet meer. Iemand anders heeft het verwijderd.");
     }
 
-
     [PostgresFact]
     public async Task Meer_woorden_dan_het_maximum_in_een_aanvraag_krijgt_een_nederlandse_zin_en_bewaart_niets()
     {
@@ -346,6 +345,7 @@ public sealed class WoordwebEndpointsTests : IAsyncLifetime
 
     private static string[] Woorden(int aantal, string voorvoegsel = "woord") =>
         Enumerable.Range(1, aantal).Select(i => $"{voorvoegsel}{i}").ToArray();
+
     private async Task<Guid> PersoonAsync(string naam, bool admin = false, Guid[]? klassen = null)
     {
         var gebruiker = new Gebruiker($"{Guid.NewGuid():N}@school.be", naam, isAdmin: admin);
