@@ -124,6 +124,7 @@ export function Tijdraster({
   onKiesDag,
   onWijzigTijd,
   onPlanSubthema,
+  onHaalSubthemaWeg,
 }: {
   /** The days to draw, in order. One for the day view, three on a phone's week, seven on a desktop's. */
   dagen: Agendadag[];
@@ -159,6 +160,8 @@ export function Tijdraster({
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
   /** Opens the subthema planner for a thema placement, from its band (FB-087). Left out for whoever may not plan. */
   onPlanSubthema?: (plaatsingId: string) => void;
+  /** Takes a subthema run out of the agenda, from its bar (FB-096). Left out for whoever may not plan. */
+  onHaalSubthemaWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
 }) {
   const blokken = useMemo(
     () => bouwBlokken(dagen, fichemomenten),
@@ -225,6 +228,7 @@ export function Tijdraster({
             vandaagIso={vandaagIso}
             onKiesDag={onKiesDag}
             onPlanSubthema={onPlanSubthema}
+            onHaalSubthemaWeg={onHaalSubthemaWeg}
           />
         ) : (
         <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))` }}>
@@ -246,6 +250,7 @@ export function Tijdraster({
               altijdNaam={geenMaandag || dag.datum === naamdrager}
               onKiesDag={onKiesDag}
               onPlanSubthema={onPlanSubthema}
+              onHaalSubthemaWeg={onHaalSubthemaWeg}
               ruimte={subthemaruimte(dagen, i, reeksenPerDag)}
             />
           ))}
@@ -542,6 +547,7 @@ function Dagkop({
   altijdNaam,
   onKiesDag,
   onPlanSubthema,
+  onHaalSubthemaWeg,
   ruimte,
 }: {
   dag: Agendadag;
@@ -553,6 +559,7 @@ function Dagkop({
   altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
   onPlanSubthema?: (plaatsingId: string) => void;
+  onHaalSubthemaWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
   ruimte: Subthemaruimte;
 }) {
   return (
@@ -571,7 +578,13 @@ function Dagkop({
             onPlanSubthema={onPlanSubthema}
             ruimte={ruimte}
           />
-          <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
+          <Subthemastroken
+            reeksen={reeksen}
+            datum={dag.datum}
+            dicht
+            altijdNaam={altijdNaam}
+            onHaalWeg={onHaalSubthemaWeg}
+          />
         </div>
       )}
     </div>
@@ -594,6 +607,7 @@ function Weekkop({
   vandaagIso,
   onKiesDag,
   onPlanSubthema,
+  onHaalSubthemaWeg,
 }: {
   dagen: Agendadag[];
   reeksenPerDag: Map<string, Subthemareeks[]>;
@@ -602,6 +616,7 @@ function Weekkop({
   vandaagIso: string;
   onKiesDag?: (datum: string) => void;
   onPlanSubthema?: (plaatsingId: string) => void;
+  onHaalSubthemaWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
 }) {
   const reeksenOp = (dag: Agendadag) => (dag.buitenSchooljaar ? LEEG : (reeksenPerDag.get(dag.datum) ?? LEEG));
   const themas = themabalken(dagen, vakken);
@@ -672,7 +687,12 @@ function Weekkop({
       ))}
       {subthemas.rijen.map((rij, r) =>
         rij.map((balk) => (
-          <Subthemabalk key={`${balk.item.subthemaId}-${balk.item.van}-${balk.van}`} balk={balk} rij={eersteSubthemarij + r} />
+          <Subthemabalk
+            key={`${balk.item.subthemaId}-${balk.item.van}-${balk.van}`}
+            balk={balk}
+            rij={eersteSubthemarij + r}
+            onHaalWeg={onHaalSubthemaWeg}
+          />
         )),
       )}
       {subthemas.teveel.map((aantal, i) =>

@@ -995,3 +995,69 @@ describe("Tijdraster, de themabalken van de week (FB-090)", () => {
     expect(gepland).toHaveBeenCalledWith("p2");
   });
 });
+
+describe("Tijdraster, een subthema uit de agenda halen (FB-096)", () => {
+  const reeks: Subthemareeks = {
+    subthemaId: "s1",
+    subthemaNaam: "de speelhoek",
+    themaId: "t1",
+    themaNaam: "Herfst",
+    van: "2026-09-14",
+    tot: "2026-09-16",
+    aantalDagen: 2,
+    periodeId: "v1",
+  };
+
+  function toonDagen(datums: string[], onHaalSubthemaWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void) {
+    return render(
+      <MemoryRouter>
+        <DndContext>
+          <Tijdraster
+            dagen={datums.map((datum) => dag([], { datum }))}
+            fichemomenten={[]}
+            reeksenPerDag={new Map(datums.map((datum) => [datum, [reeks]]))}
+            vakken={[{ plaatsingId: "p1", van: "2026-09-07", tot: "2026-09-30", themas: [{ id: "t1", naam: "Herfst" }] }]}
+            schooluren={undefined}
+            magPlannen={Boolean(onHaalSubthemaWeg)}
+            onVoegToe={() => {}}
+            onOpen={() => {}}
+            onOpenFiche={() => {}}
+            onVanDag={() => {}}
+            onWijzigTijd={() => {}}
+            onHaalSubthemaWeg={onHaalSubthemaWeg}
+          />
+        </DndContext>
+      </MemoryRouter>,
+    );
+  }
+
+  const knopNaam = t("subthemaWeg.knopAria", { naam: "de speelhoek" });
+
+  it("biedt op de weekbalk één knop die het hele subthema meegeeft, bereikbaar met het toetsenbord", () => {
+    const weg = vi.fn();
+    toonDagen(["2026-09-14", "2026-09-15", "2026-09-16"], weg);
+
+    const knop = screen.getByRole("button", { name: knopNaam });
+    expect(knop.tabIndex).toBe(0);
+    expect(knop.className).toMatch(/focus-visible/);
+    // Never the accent: the cross wears the bar's own grey.
+    expect(knop.innerHTML).not.toMatch(/accent/);
+    fireEvent.click(knop);
+    expect(weg).toHaveBeenCalledWith(reeks, knop);
+  });
+
+  it("biedt de knop ook in de dagweergave, naast de strook die het subthema noemt", () => {
+    const weg = vi.fn();
+    toonDagen(["2026-09-15"], weg);
+
+    fireEvent.click(screen.getByRole("button", { name: knopNaam }));
+    expect(weg).toHaveBeenCalledWith(reeks, expect.any(HTMLElement));
+  });
+
+  it("toont de knop niet aan wie de klas alleen mag inkijken", () => {
+    toonDagen(["2026-09-14", "2026-09-15", "2026-09-16"]);
+    expect(screen.queryByRole("button", { name: knopNaam })).toBeNull();
+    // The bar itself still opens the subthema.
+    expect(screen.getByRole("link", { name: t("periode.naarSubthema", { naam: "de speelhoek" }) })).toBeInTheDocument();
+  });
+});

@@ -15,7 +15,17 @@ import {
   IcoonPijlLinks,
   IcoonPijlRechts,
 } from "../../components/Iconen";
-import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
+import {
+  haalSubthemaweghaling,
+  useDagacties,
+  useHaalSubthemaWeg,
+  useJaarplan,
+  usePlaatsSubthemaperiode,
+  useRooster,
+  useWeekplanning,
+  type Subthemaweghaling,
+} from "../../lib/queries";
+import { weghaalzinnen } from "./subthemaweghaling";
 import { useActieveSelectie } from "../../lib/selectie";
 import { isGeenToegang, useRechten } from "../../lib/rechten";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
@@ -85,6 +95,7 @@ import {
   subthemareeksen,
   subthemasInWeek,
   voorstelReeks,
+  type Subthemareeks,
 } from "./subthemareeksen";
 import { themablokken, themaIdsOpDag, themavakken } from "./themavakken";
 import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
@@ -293,6 +304,32 @@ export function Agendascherm() {
     terugNaar: HTMLElement | null;
   } | null>(null);
   const [vanDagOpen, setVanDagOpen] = useState(false);
+
+  // Taking a subthema out of the agenda, from its bar (FB-096). Always after a question, since the window and its
+  // activiteiten go together; the question waits for the server's count of what goes, so it never guesses one. Kept
+  // after it closes, like `vanDagVraag`, so the sheet keeps its text while it slides away.
+  const haalSubthemaWeg = useHaalSubthemaWeg(klasId);
+  const [subthemaVraag, setSubthemaVraag] = useState<{
+    reeks: Subthemareeks;
+    gevolg: Subthemaweghaling | null;
+    fout: string | null;
+    terugNaar: HTMLElement;
+  } | null>(null);
+  const [subthemaVraagOpen, setSubthemaVraagOpen] = useState(false);
+
+  async function vraagSubthemaWeg(reeks: Subthemareeks, knop: HTMLElement) {
+    if (!klasId) return;
+    haalSubthemaWeg.reset();
+    setSubthemaVraag({ reeks, gevolg: null, fout: null, terugNaar: knop });
+    setSubthemaVraagOpen(true);
+    try {
+      const gevolg = await haalSubthemaweghaling(klasId, reeks.subthemaId, reeks.van, reeks.tot);
+      setSubthemaVraag((vraag) => (vraag?.reeks === reeks ? { ...vraag, gevolg } : vraag));
+    } catch (fout) {
+      const reden = fout instanceof ApiError && fout.detail ? fout.detail : t("periode.mislukt");
+      setSubthemaVraag((vraag) => (vraag?.reeks === reeks ? { ...vraag, fout: reden } : vraag));
+    }
+  }
 
   /** Takes one block off its day through its own kind's route. A failure left from an earlier try is cleared first. */
   function haalVanDag(doel: Tijddoel) {
@@ -948,6 +985,7 @@ export function Agendascherm() {
                 onKiesDag={weekweergave ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
                 onPlanSubthema={planSubthema}
+                onHaalSubthemaWeg={magPlannen ? (reeks, knop) => void vraagSubthemaWeg(reeks, knop) : undefined}
               />
               </Weekhoek>
               </>
@@ -1256,6 +1294,35 @@ export function Agendascherm() {
           setVanDagOpen(false);
         }}
         onSluit={() => setVanDagOpen(false)}
+      />
+
+      {/* THE QUESTION BEFORE A SUBTHEMA LEAVES THE AGENDA (FB-096): its days, what goes with it, and the dekking. The
+          yes waits for the count, so she never confirms a number she has not seen. */}
+      <Bevestiging
+        open={subthemaVraagOpen}
+        titel={subthemaVraag ? t("subthemaWeg.titel", { naam: subthemaVraag.reeks.subthemaNaam }) : ""}
+        gevolg={
+          !subthemaVraag
+            ? undefined
+            : subthemaVraag.fout
+              ? t("subthemaWeg.mislukt", { reden: subthemaVraag.fout })
+              : subthemaVraag.gevolg
+                ? weghaalzinnen(subthemaVraag.reeks, subthemaVraag.gevolg, volleDag).join(" ") +
+                  (haalSubthemaWeg.error
+                    ? ` ${t("subthemaWeg.mislukt", { reden: foutTekst(haalSubthemaWeg.error) ?? t("periode.mislukt") })}`
+                    : "")
+                : t("subthemaWeg.laden")
+        }
+        bevestigLabel={t("subthemaWeg.bevestigLabel")}
+        bezig={haalSubthemaWeg.isPending}
+        klaar={Boolean(subthemaVraag?.gevolg)}
+        terugNaar={subthemaVraag?.terugNaar ?? null}
+        onBevestig={() => {
+          if (!subthemaVraag?.gevolg) return;
+          const { subthemaId, van, tot } = subthemaVraag.reeks;
+          haalSubthemaWeg.mutate({ subthemaId, van, tot }, { onSuccess: () => setSubthemaVraagOpen(false) });
+        }}
+        onSluit={() => setSubthemaVraagOpen(false)}
       />
     </>
   );
