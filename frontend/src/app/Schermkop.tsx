@@ -20,6 +20,12 @@ const BREED = "max-w-[104rem]";
  * together, is what a page IS.
  */
 const SMAL = "max-w-[57.5rem]";
+/**
+ * A narrow screen's header stands on the default measure, so Chuck lies where he lies on every other screen, and moves
+ * its title and rows in to the narrow column: by the gap between the two measures' left edges, and no wider than the
+ * column (`SMAL` less its padding). `cqw` is the header's own width, the width the body centres itself in.
+ */
+const SMAL_IN_MAAT = "ml-[calc(max(0px,(100cqw_-_57.5rem)/2)_-_max(0px,(100cqw_-_80rem)/2))] max-w-[54.5rem]";
 
 /**
  * The title row of a screen.
@@ -61,12 +67,17 @@ export function Schermkop({
    */
   meeScrollen?: boolean;
 }) {
-  const meet = breed ? BREED : smal ? SMAL : MAAT;
+  // With Chuck, a narrow screen keeps the default measure's corner for him; only the title and its rows go narrow.
+  const smalMetKat = smal && !zonderKat;
+  const meet = breed ? BREED : smal && !smalMetKat ? SMAL : MAAT;
   const kop = useRef<HTMLElement>(null);
   useSchermtitel(titel);
   useKopruimte(meeScrollen ? null : kop);
   return (
-    <header ref={kop} className={cn(!meeScrollen && "sticky top-0 z-20 bg-vlak/85 backdrop-blur-md")}>
+    <header
+      ref={kop}
+      className={cn(!meeScrollen && "sticky top-0 z-20 bg-vlak/85 backdrop-blur-md", smalMetKat && "@container")}
+    >
       {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
           title and the rows under it, his top level with the title's. On a phone the rows under the title
           need the full width, so there he stays beside the title. */}
@@ -77,12 +88,17 @@ export function Schermkop({
           meet,
         )}
       >
-        <div className="col-start-1 row-start-1 flex min-w-0 items-end justify-between gap-3 self-end">
+        <div
+          className={cn(
+            "col-start-1 row-start-1 flex min-w-0 items-end justify-between gap-3 self-end",
+            smalMetKat && SMAL_IN_MAAT,
+          )}
+        >
           <div className="min-w-0">
             {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
                 deep in a week needs to be told which period those dates belong to. */}
             {kruimelpad ? (
-              <div className="mb-1.5">{kruimelpad}</div>
+              <div className="mb-3">{kruimelpad}</div>
             ) : boven ? (
               <p className="text-micro uppercase text-inkt-zwak">{boven}</p>
             ) : null}
@@ -106,7 +122,15 @@ export function Schermkop({
           </div>
         )}
         {onder ? (
-          <div className={cn("row-start-2 min-w-0", zonderKat ? "col-start-1" : "col-span-2 sm:col-span-1")}>{onder}</div>
+          <div
+            className={cn(
+              "row-start-2 min-w-0",
+              zonderKat ? "col-start-1" : "col-span-2 sm:col-span-1",
+              smalMetKat && SMAL_IN_MAAT,
+            )}
+          >
+            {onder}
+          </div>
         ) : null}
       </div>
     </header>

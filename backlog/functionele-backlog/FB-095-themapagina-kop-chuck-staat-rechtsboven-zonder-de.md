@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:38
+bijgewerkt: 2026-09-23 23:34
 opgepakt-door: claude-fb095
 branch: ticket/FB-095-themakop-chuck
 pr:
@@ -34,11 +34,11 @@ duidelijk van elkaar gescheiden, zodat de kop rustig leest.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een gebruiker met recht om het thema te bewerken, wanneer ze de themapagina opent op een breed scherm (1440px en breder), dan liggen "Bewerken" en het "…"-menu volledig vrij van Chuck en reageren ze op een klik over hun hele oppervlak.
-- [ ] Gegeven de themapagina op een breed scherm, wanneer ze naar de kop kijkt, dan staat Chuck rechtsboven op dezelfde plek als op de andere schermen, niet in het midden van het scherm.
-- [ ] Gegeven de themapagina op een telefoon (~390px), wanneer ze de kop bekijkt, dan bedekt Chuck ook daar geen knop en blijft de titel leesbaar.
-- [ ] Gegeven de themapagina, wanneer ze de kop bekijkt, dan is er zichtbare ruimte tussen het kruimelpad en de titel, en tussen de titel en de rij met de vier cijfers.
-- [ ] Gegeven de andere schermen met Chuck (agenda, dekking, doelen, thema's), wanneer ze die opent, dan staat Chuck daar nog zoals vandaag.
+- [x] Gegeven een gebruiker met recht om het thema te bewerken, wanneer ze de themapagina opent op een breed scherm (1440px en breder), dan liggen "Bewerken" en het "…"-menu volledig vrij van Chuck en reageren ze op een klik over hun hele oppervlak.
+- [x] Gegeven de themapagina op een breed scherm, wanneer ze naar de kop kijkt, dan staat Chuck rechtsboven op dezelfde plek als op de andere schermen, niet in het midden van het scherm.
+- [x] Gegeven de themapagina op een telefoon (~390px), wanneer ze de kop bekijkt, dan bedekt Chuck ook daar geen knop en blijft de titel leesbaar.
+- [x] Gegeven de themapagina, wanneer ze de kop bekijkt, dan is er zichtbare ruimte tussen het kruimelpad en de titel, en tussen de titel en de rij met de vier cijfers.
+- [x] Gegeven de andere schermen met Chuck (agenda, dekking, doelen, thema's), wanneer ze die opent, dan staat Chuck daar nog zoals vandaag.
 
 ## Testscenario's
 
@@ -61,3 +61,5 @@ Geen.
 
 - 2026-09-23 20:36 · Siebeds · aangemaakt (status nieuw)
 - 2026-09-23 20:38 · claude-fb095 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 20:45 · claude-fb095 · Kop ruimer: kruimelpad 12px boven de titel, cijferrij 12px verder; Chuck over de knoppen niet na te bootsen op nepdata (1024-1440px, met en zonder ballon), schermafbeelding gevraagd
+- 2026-09-23 23:34 · claude-fb095 · Chuck op de smalle themapagina op de brede maat gezet, titel en rijen ingesprongen tot de smalle kolom; gemeten op 1920/1280/1024/390px: Chucks rechterrand gelijk aan de themalijst, titel gelijk met de inhoud; lint en 279 tests groen
