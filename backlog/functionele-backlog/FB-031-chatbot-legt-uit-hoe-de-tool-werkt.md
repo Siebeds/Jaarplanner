@@ -2,12 +2,12 @@
 id: FB-031
 titel: Chatbot legt de tool uit en beantwoordt opzoekvragen over doelen, thema's en activiteiten
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-18 17:56
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 10:39
+opgepakt-door: claude-fb031
+branch: ticket/FB-031-kat-chat
 pr:
 geblokkeerd:
 fr: []
@@ -114,3 +114,4 @@ Regels:
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-16 22:46 · claude · opzoekvragen over de eigen inhoud toegevoegd op vraag van de eigenaar (zit doel x in thema y, zit activiteit a in subthema z, waar wordt doel x gebruikt)
 - 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)
+- 2026-09-23 10:39 · claude-fb031 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; open vragen beantwoord (handleiding door de sessie, opzoeking via tool use, ook de agenda)
