@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 09:21
 opgepakt-door: claude-fb087
 branch: ticket/FB-087-subthema-knop
-pr:
+pr: 163
 geblokkeerd:
 fr: [FR-6.3]
 ---
@@ -93,3 +93,4 @@ Geen.
 - 2026-09-23 09:20 · claude-fb087 · Criteria afgevinkt: 1-4 met Vitest (Themastroken- en Agendascherm-tests) en browserpas, 5-6 met browserpas (focusrand, contrast, 390 px).
 - 2026-09-23 09:21 · claude-fb087 · Antagonist: COMPLIANT, geen CRITICAL of MAJOR. MINOR opgelost: commentaar bij onMouseDown. MINOR open: mislukt het laden van de themaperiode, dan blijft de planner laden in plaats van een fout te tonen; maandweergave heeft op telefoonbreedte geen themastrook en dus geen knop (buiten scope); plannerPlaatsingId wordt niet gewist, zonder gevolg.
 - 2026-09-23 09:21 · claude-fb087 · in-uitvoering → te-testen: Knop Subthema inplannen staat in de themastrook (week, werkweek, dag, maand), niet meer in de kop; lint en 1313 tests groen, browserpas 1440/390 px, antagonist COMPLIANT.
+- 2026-09-23 09:21 · claude-fb087 · PR #163
