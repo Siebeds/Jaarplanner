@@ -197,6 +197,34 @@ export function subthemaZin(reeksen: readonly Subthemareeks[]): string {
 }
 
 /**
+ * Whether a day leaves room to plan a subthema in, which is where the thema band offers "+ Subthema" (FB-087).
+ *
+ * `geen` on a closed day, and on a day where a subthema already runs: the owner does not want the button beside a
+ * subthema that is already there. `begint` when the day is free and the teaching day before it on screen was not, so a
+ * free stretch opens mid-row, on a band that prints no name: the button goes there too, or a thema whose first
+ * subthema ends on a Wednesday would offer no way to plan the next one until the Monday after. `vrij` otherwise.
+ *
+ * **The teaching day before, not the calendar day before.** A run ends on a Friday, so the Saturday after it is free
+ * by the calendar, and the month view put the button on a closed weekend. The first day on screen has nothing before
+ * it and is `vrij`; it is the head of its row, which prints the name and carries the button anyway.
+ */
+export type Subthemaruimte = "geen" | "begint" | "vrij";
+
+export function subthemaruimte(
+  dagen: readonly { datum: string; isLesdag: boolean }[],
+  index: number,
+  perDag: ReadonlyMap<string, readonly Subthemareeks[]>,
+): Subthemaruimte {
+  const loopt = (datum: string) => (perDag.get(datum)?.length ?? 0) > 0;
+  const dag = dagen[index];
+  if (!dag.isLesdag || loopt(dag.datum)) return "geen";
+  for (let i = index - 1; i >= 0; i--) {
+    if (dagen[i].isLesdag) return loopt(dagen[i].datum) ? "begint" : "vrij";
+  }
+  return "vrij";
+}
+
+/**
  * Whether this day is where the name gets printed.
  *
  * On the start of every week, and on a day where a run begins. Both views need the same answer and

@@ -3,6 +3,7 @@ import {
   reeksbereik,
   reeksenPerDag,
   subthemareeksen,
+  subthemaruimte,
   subthemasInWeek,
   voorstelReeks,
   type Subthemareeks,
@@ -282,5 +283,35 @@ describe("reeksbereik", () => {
 
   it("leest niets zolang het bereik op het scherm niet bekend is", () => {
     expect(reeksbereik("", "", "2026-09-14", blokken)).toEqual(["", ""]);
+  });
+});
+
+describe("subthemaruimte (FB-087)", () => {
+  // A run from Tuesday 1 to Friday 4 september 2026, then a weekend and a free week.
+  const perDag = reeksenPerDag(subthemareeksen([dag("2026-09-01", "s1"), dag("2026-09-04", "s1")], september));
+  // 31 august is a Monday: the grid 31/8 to 13/9, weekends closed.
+  const gesloten = ["2026-09-05", "2026-09-06", "2026-09-12", "2026-09-13"];
+  const dagen = ["2026-08-31", ...Array.from({ length: 13 }, (_, i) => `2026-09-${String(i + 1).padStart(2, "0")}`)].map(
+    (datum) => ({ datum, isLesdag: !gesloten.includes(datum) }),
+  );
+  const op = (datum: string) => subthemaruimte(dagen, dagen.findIndex((d) => d.datum === datum), perDag);
+
+  it("heeft geen ruimte op een dag waar een subthema loopt", () => {
+    expect(op("2026-09-01")).toBe("geen");
+    expect(op("2026-09-04")).toBe("geen");
+  });
+
+  it("heeft geen ruimte op een gesloten dag, ook niet net na een subthema", () => {
+    expect(op("2026-09-05")).toBe("geen");
+  });
+
+  it("begint op de eerste lesdag na een subthema, over het weekend heen, en is daarna vrij", () => {
+    expect(op("2026-09-07")).toBe("begint");
+    expect(op("2026-09-08")).toBe("vrij");
+  });
+
+  it("is vrij op de eerste dag in beeld en in een thema zonder subthema", () => {
+    expect(op("2026-08-31")).toBe("vrij");
+    expect(subthemaruimte(dagen, 10, new Map())).toBe("vrij");
   });
 });

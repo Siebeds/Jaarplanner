@@ -6,6 +6,7 @@ import { cn } from "../../lib/cn";
 import { themapaginaPad } from "../themas/themapagina";
 import { Themaicoon } from "../themas/Emojikiezer";
 import { IcoonPlus } from "../../components/Iconen";
+import type { Subthemaruimte } from "./subthemareeksen";
 
 /**
  * Which thema this day's themaperiode holds, as a band along the top edge of the day.
@@ -41,6 +42,7 @@ export function Themastroken({
   dicht,
   altijdNaam,
   onPlanSubthema,
+  ruimte = "vrij",
   className,
 }: {
   /** The themaperiode this day sits in, or undefined between two periods, where there is none. */
@@ -61,10 +63,15 @@ export function Themastroken({
    *
    * THE ACTION SITS ON THE THEMA IT PLANS INTO. It used to be a filled accent button in the agenda's header, which came
    * and went as the anchored day entered and left a placement, shifted the header when it did, and named no thema. Here
-   * it is the band's own right end: the same grey, the same height, only on the band that prints the name, so a row
-   * shows it once per thema, and a day without a thema has no band and so no button.
+   * it is the band's own right end: the same grey, the same height, on the band that prints the name or where a free
+   * stretch begins (see `ruimte`), and a day without a thema has no band and so no button.
    */
   onPlanSubthema?: (plaatsingId: string) => void;
+  /**
+   * Whether this day has room for a subthema (`subthemaruimte`). The button stays off a day where one already runs,
+   * and comes onto the blank band where a free stretch begins mid-row. Absent reads as a free day.
+   */
+  ruimte?: Subthemaruimte;
   className?: string;
 }) {
   if (!vak) return null;
@@ -116,8 +123,9 @@ export function Themastroken({
   // A plus alone below 9rem of band, the word beside it from there: the name of the thema keeps the room. Quieter than
   // the name by weight, not by ink: `inkt-zacht` on this grey measures 3.96:1 light and 4.42:1 dark, `inkt` 10.8 and 7.7.
   // Hover underlines and keeps the grey, so the contrast holds there too.
+  // Only where there is room for a subthema: not beside one already running, and once more where a free stretch begins.
   const planknop =
-    onPlanSubthema && genoemd && bereikbaar ? (
+    onPlanSubthema && genoemd && ruimte !== "geen" && (bereikbaar || ruimte === "begint") ? (
       <button
         type="button"
         onClick={() => onPlanSubthema(vak.plaatsingId)}

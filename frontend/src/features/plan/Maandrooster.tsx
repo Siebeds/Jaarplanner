@@ -8,7 +8,7 @@ import { t } from "../../i18n";
 import { Dagplus } from "./Dagplus";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
-import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import { subthemaruimte, subthemaZin, type Subthemareeks, type Subthemaruimte } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
 import { cn } from "../../lib/cn";
@@ -121,6 +121,7 @@ export function Maandrooster({
               onOpen={onOpen}
               onVanDag={onVanDag}
               onPlanSubthema={onPlanSubthema}
+              ruimte={subthemaruimte(dagen, i, reeksenPerDag)}
             />
           </li>
         ))}
@@ -145,6 +146,7 @@ function Maandcel({
   onOpen,
   onVanDag,
   onPlanSubthema,
+  ruimte,
 }: {
   dag: Agendadag;
   buitenMaand: boolean;
@@ -159,6 +161,7 @@ function Maandcel({
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
   onPlanSubthema?: (plaatsingId: string) => void;
+  ruimte: Subthemaruimte;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag || !magPlannen });
 
@@ -226,7 +229,7 @@ function Maandcel({
           letters, and a strip with no room for its name would carry its identity in hue alone. The
           week and day views print it in full, and the day's own button says it out loud. */}
       <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col sm:flex">
-        <Themastroken vak={periode} datum={dag.datum} dicht onPlanSubthema={onPlanSubthema} />
+        <Themastroken vak={periode} datum={dag.datum} dicht onPlanSubthema={onPlanSubthema} ruimte={ruimte} />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
       </div>
 
