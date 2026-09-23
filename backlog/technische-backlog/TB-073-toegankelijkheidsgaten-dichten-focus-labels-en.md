@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 10:22
 opgepakt-door: claude-tb073
 branch: ticket/TB-073-toegankelijkheid
-pr:
+pr: 167
 geblokkeerd:
 fr: []
 ---
@@ -76,3 +76,4 @@ Geen.
 - 2026-09-23 10:20 · claude-tb073 · browserpas (mock, headless Chrome): focusring woordveld licht/donker zichtbaar, Shift+Tab 0 velden onder de kop op 1440 en 390 (tegenproef zonder padding: 4), titels per scherm, Ctrl+klik op Bekijken opent nieuw tabblad
 - 2026-09-23 10:22 · claude-tb073 · antagonist: COMPLIANT; MINOR niet opgelost: Plaatsingkaart deelt één bezig over vier knoppen (aria-busy ook op knoppen die niets startten), useSchermtitel zet de titel niet terug bij unmount, scroll-padding alleen in de browser getest, Ctrl+klik kiest de klas ook in het huidige tabblad
 - 2026-09-23 10:22 · claude-tb073 · in-uitvoering → klaar: gebouwd en getest: alle zes criteria afgevinkt (1, 2, 5, 6 in de browser; 3 en 4 met Vitest), lint en 1321 tests groen
+- 2026-09-23 10:22 · claude-tb073 · PR #167
