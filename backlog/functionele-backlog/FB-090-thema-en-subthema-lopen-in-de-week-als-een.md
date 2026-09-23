@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 11:17
+bijgewerkt: 2026-09-23 11:27
 opgepakt-door: claude-fb090
 branch: ticket/FB-090-doorlopende-themabalk
 pr:
@@ -76,3 +76,4 @@ Geen.
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 11:17 · claude-fb090 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 11:27 · claude-fb090 · doorlopende balken gebouwd in de weekkop (dag- en maandweergave ongewijzigd), tests en lint groen; browsercheck volgt
