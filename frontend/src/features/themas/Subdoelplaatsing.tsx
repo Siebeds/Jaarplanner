@@ -49,7 +49,7 @@ export function Plaatsingsbalk({
         ) : null}
         {magVragen && aantalOpen > 0 ? (
           <AiKnop
-            className="h-9 min-h-9 px-2.5 text-meta"
+            className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
             onClick={() => stelVoor.mutate(leeftijd)}
           >
@@ -100,7 +100,7 @@ export function Beslisknoppen({
   aanvaardLabel?: string;
 }) {
   const knop =
-    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-inkt-zwak transition-colors duration-150 disabled:opacity-45";
+    "inline-flex h-raak w-raak shrink-0 items-center justify-center rounded-md sm:h-7 sm:w-7 text-inkt-zwak transition-colors duration-150 disabled:opacity-45";
   const aanvaard = aanvaardLabel ?? t("plaatsing.aanvaard");
   return (
     <span className="relative z-10 inline-flex shrink-0 items-center">

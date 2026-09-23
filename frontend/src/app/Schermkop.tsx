@@ -33,6 +33,7 @@ export function Schermkop({
   titel,
   icoon,
   boven,
+  kruimelpad,
   rechts,
   onder,
   breed,
@@ -44,6 +45,8 @@ export function Schermkop({
   /** An emoji before the title, decorative (a thema's, FB-060). */
   icoon?: string | null;
   boven?: string;
+  /** Where this screen sits, above the title in place of `boven`: "Thema's / Herfst" (FB-094). */
+  kruimelpad?: ReactNode;
   rechts?: ReactNode;
   onder?: ReactNode;
   breed?: boolean;
@@ -78,7 +81,11 @@ export function Schermkop({
           <div className="min-w-0">
             {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
                 deep in a week needs to be told which period those dates belong to. */}
-            {boven ? <p className="text-micro uppercase text-inkt-zwak">{boven}</p> : null}
+            {kruimelpad ? (
+              <div className="mb-1.5">{kruimelpad}</div>
+            ) : boven ? (
+              <p className="text-micro uppercase text-inkt-zwak">{boven}</p>
+            ) : null}
             <h1 className="font-display text-scherm text-inkt sm:text-[2rem]">
               {icoon ? (
                 <span aria-hidden="true" className="mr-[0.3em]">

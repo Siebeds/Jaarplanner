@@ -54,7 +54,7 @@ export function Bewerkknop({
         "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150",
         omrand
           ? "h-raak w-raak border border-lijn-veld bg-kaart text-inkt-zacht hover:border-inkt hover:text-inkt active:bg-vlak-diep"
-          : "h-9 w-9 text-inkt-zwak hover:bg-vlak-diep hover:text-inkt",
+          : "h-raak w-raak text-inkt-zwak sm:h-9 sm:w-9 hover:bg-vlak-diep hover:text-inkt",
         className,
       )}
     >
@@ -100,7 +100,7 @@ export function Verwijderknop({
         "inline-flex shrink-0 items-center justify-center rounded-veld transition-colors duration-150 disabled:opacity-45",
         omrand
           ? "h-raak w-raak border border-lijn-veld bg-kaart text-inkt-zacht"
-          : "h-9 w-9 text-inkt-zwak",
+          : "h-raak w-raak text-inkt-zwak sm:h-9 sm:w-9",
         // Red on hover and focus at both sizes. Bordered, the border reddens with the icon, which is
         // what keeps the two states one gesture apart rather than two different treatments.
         "hover:bg-gevaar-zacht hover:text-gevaar focus-visible:bg-gevaar-zacht focus-visible:text-gevaar",

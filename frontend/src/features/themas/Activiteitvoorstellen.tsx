@@ -26,7 +26,7 @@ type StelVoor = ReturnType<typeof useStelActiviteitenVoor>;
 export function ActiviteitvoorstelKnop({ stelVoor }: { stelVoor: StelVoor }) {
   return (
     <AiKnop
-      className="h-9 min-h-9 px-2.5 text-meta"
+      className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
       bezig={stelVoor.isPending}
       onClick={() => stelVoor.mutate()}
     >

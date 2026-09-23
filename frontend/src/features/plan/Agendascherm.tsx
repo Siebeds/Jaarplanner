@@ -389,6 +389,8 @@ export function Agendascherm() {
         einde: moment.einde,
         doelen: doelenPerFiche.get(plaatsing.algemeneFicheId),
         tekst: moment.tekst,
+        // The placement carries all its momenten, not just the visible range's, so this counts the whole series.
+        terugkerend: plaatsing.momenten.length > 1,
       })),
     );
   }, [fichePlaatsingen, algemeneFiches]);

@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonChevron, IcoonDoelen } from "../../components/Iconen";
+import { IcoonDoelen } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
-import { cn } from "../../lib/cn";
 import { useThemaDoelenoverzicht } from "../../lib/queries";
 import type { DoelPlaats, LeeftijdDoelen, OverzichtLeerplandoel } from "../../lib/types";
-import { Blok, Doellijst, Kop } from "./Fiche";
+import { Doellijst, Kaart, Vouwpijl } from "./Fiche";
 
 /**
  * The leerplandoelen of a thema per leeftijd (FB-009, TB-048).
@@ -21,9 +20,11 @@ import { Blok, Doellijst, Kop } from "./Fiche";
  * **A decided link outside that list stays visible, apart and uncounted**, with where it hangs, so unlinking a
  * minimumdoel never makes a subdoel or activiteit goal vanish from sight.
  *
- * **One row per leeftijd, shut by default**, the gesture and the default the subthema chapters have (FB-011), with a
- * count a teacher can scan without opening it. Opened, the list uses the page's own list frame, and each row opens the
- * doel's detail in the page's one sheet.
+ * **One row per leeftijd, shut by default**, the gesture and the default the subthema's have (FB-011). Opened, the list
+ * uses the page's own list frame, and each row opens the doel's detail in the page's one sheet.
+ *
+ * **The total stands once, in the thema's summary under its title (FB-094)**, so a row repeats its own count only when
+ * there are several leeftijden, where it says something the total does not.
  *
  * **Nothing at all while there is nothing to list**: an empty block would only announce its own emptiness.
  */
@@ -36,69 +37,46 @@ export function Themadoelenoverzicht({
 }) {
   const { data, isPending, isError } = useThemaDoelenoverzicht(themaId);
 
-  if (isPending) {
-    return (
-      <Blok>
-        <Kop titel={t("thema.overzichtTitel")} icoon={<Icoon />}>
-          <Laadvlak className="h-12" />
-        </Kop>
-      </Blok>
-    );
-  }
+  if (isPending) return <Laadvlak className="h-14" />;
 
   if (isError || !data) {
-    return (
-      <Blok>
-        <Kop titel={t("thema.overzichtTitel")} icoon={<Icoon />}>
-          <p className="text-meta text-inkt-zacht">{t("thema.overzichtFout")}</p>
-        </Kop>
-      </Blok>
-    );
+    return <p className="text-meta text-inkt-zacht">{t("thema.overzichtFout")}</p>;
   }
 
   if (data.leeftijden.length === 0) return null;
 
-  // The margin counts the list only; a code sits at its own jaar/fase there, so it is counted once.
-  const leerplandoelen = new Set(data.leeftijden.flatMap((l) => l.leerplandoelen.map((d) => d.code))).size;
+  const meerdere = data.leeftijden.length > 1;
 
   return (
-    <Blok
-      figuur={leerplandoelen}
-      onder={t(leerplandoelen === 1 ? "thema.overzichtLeerplandoelWoordEen" : "thema.overzichtLeerplandoelWoordMeer")}
-    >
-      <Kop titel={t("thema.overzichtTitel")} icoon={<Icoon />}>
-        <ul className="divide-y divide-lijn overflow-hidden rounded-veld border border-lijn">
-          {data.leeftijden.map((groep) => (
-            <li key={groep.leeftijd}>
-              <Leeftijdrij groep={groep} onToonDoel={onToonDoel} />
-            </li>
-          ))}
-        </ul>
-      </Kop>
-    </Blok>
+    <Kaart>
+      <ul className="divide-y divide-lijn">
+        {data.leeftijden.map((groep) => (
+          <li key={groep.leeftijd}>
+            <Leeftijdrij groep={groep} metAantal={meerdere} onToonDoel={onToonDoel} />
+          </li>
+        ))}
+      </ul>
+    </Kaart>
   );
 }
 
-function Icoon() {
-  return <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />;
-}
-
-/** One leeftijd: its counts on the fold button, and its leerplandoelen once opened. */
+/** One leeftijd: its name and counts on the fold button, and its leerplandoelen once opened. */
 function Leeftijdrij({
   groep,
+  metAantal,
   onToonDoel,
 }: {
   groep: LeeftijdDoelen;
+  /** Several leeftijden: this row's own count says something the total under the title does not. */
+  metAantal: boolean;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
   const [open, setOpen] = useState(false);
   const aantal = groep.leerplandoelen.length;
   const buiten = groep.buitenMinimumdoelen.length;
-  const tellers = [
-    aantal === 0
-      ? t("thema.overzichtGeenLeerplandoelen")
-      : telWoord(aantal, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"),
-  ];
+  const tellers: string[] = [];
+  if (aantal === 0) tellers.push(t("thema.overzichtGeenLeerplandoelen"));
+  else if (metAantal) tellers.push(telWoord(aantal, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
   if (buiten > 0) tellers.push(telWoord(buiten, "thema.overzichtEenBuiten", "thema.overzichtBuiten"));
 
   return (
@@ -107,21 +85,22 @@ function Leeftijdrij({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+        className="flex min-h-raak w-full items-start gap-2 px-3 py-3 text-left transition-colors duration-150 hover:bg-inkt/[0.035] sm:px-4"
       >
-        <span className="w-9 shrink-0 font-display text-sectie text-inkt">{groep.leeftijd}</span>
-        <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{tellers.join(" · ")}</span>
-        <IcoonChevron
-          aria-hidden="true"
-          className={cn(
-            "h-5 w-5 shrink-0 text-inkt-zwak transition-transform duration-200 motion-reduce:transition-none",
-            open && "rotate-180",
-          )}
-        />
+        <Vouwpijl open={open} className="mt-0.5" />
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 font-display text-sectie text-inkt">
+            <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />
+            {t("thema.leerplandoelenVoor", { leeftijd: groep.leeftijd })}
+          </span>
+          {tellers.length > 0 ? (
+            <span className="mt-0.5 block text-meta text-inkt-zacht">{tellers.join(", ")}</span>
+          ) : null}
+        </span>
       </button>
 
       {open ? (
-        <div className="space-y-3 px-3 pb-3">
+        <div className="space-y-3 px-3 pb-3 sm:px-4">
           {aantal > 0 ? (
             <Doellijst>
               {groep.leerplandoelen.map((doel) => (

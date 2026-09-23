@@ -264,6 +264,17 @@ export function IcoonPijlRechts(props: IconProps) {
   );
 }
 
+/** More actions: three dots in a row, the mark every menu of "the rest" wears. Filled, since a stroked dot at 1.6 vanishes. */
+export function IcoonMeer(props: IconProps) {
+  return (
+    <Icoon {...props}>
+      <circle cx="5.5" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.3" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1.3" fill="currentColor" />
+    </Icoon>
+  );
+}
+
 /** Rotated by the caller to point down or up; one shape, so the rotation reads as a state change. */
 export function IcoonChevron(props: IconProps) {
   return (

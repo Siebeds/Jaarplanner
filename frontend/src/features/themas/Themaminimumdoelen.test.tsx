@@ -6,7 +6,6 @@ import { t } from "../../i18n";
 import type { Ik } from "../../lib/aanmelding";
 import type { LeerplandoelDetail, MinimumdoelDetail, MinimumdoelenPagina, ThemaWeergave } from "../../lib/types";
 import { ADMIN, ikMet, metIk } from "../../test/rechten";
-import { LIJSTKNOP } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
 
 /**
@@ -144,9 +143,8 @@ function toon(ik: Ik = ADMIN) {
   );
 }
 
-/** The list of themadoelen starts shut (TB-051); this opens it, then finds the row. */
+/** The themadoelen show at once (FB-094); this finds the row. */
 async function minimumdoelrij() {
-  fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
   return screen.findByRole("button", { name: new RegExp(`K-MV-1.*${MD_TEKST}`) });
 }
 
@@ -199,7 +197,6 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
   it("zegt het wanneer nog geen leerplandoel naar het minimumdoel leidt", async () => {
     thema = { ...THEMA, minimumdoelen: [{ id: "tm-2", minimumdoelRef: "K-MV-2" }] };
     toon();
-    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
     fireEvent.click(await screen.findByRole("button", { name: /K-MV-2/, expanded: false }));
 
     expect(await screen.findByText(t("thema.minimumdoelZonderLeerplandoel"))).toBeInTheDocument();
@@ -307,13 +304,12 @@ describe("ThemadetailScherm: themadoelen zijn minimumdoelen (FB-043)", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("toont het aantal minimumdoelen in de marge, zonder maximum", async () => {
+  it("toont de minimumdoelen meteen, zonder maximum (FB-094)", async () => {
     thema = {
       ...THEMA,
       minimumdoelen: ["A", "B", "C", "D", "E"].map((letter) => ({ id: `tm-${letter}`, minimumdoelRef: `K-MV-1${letter}` })),
     };
     toon();
-    fireEvent.click(await screen.findByRole("button", { name: LIJSTKNOP, expanded: false }));
 
     expect(await screen.findByText("K-MV-1E")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^K-MV-1[A-E]/, expanded: false })).toHaveLength(5);
