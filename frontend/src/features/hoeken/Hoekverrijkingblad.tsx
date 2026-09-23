@@ -34,7 +34,8 @@ export function Hoekverrijkingblad({
   onSluit,
 }: {
   klasId: string;
-  hoek: { id: string; naam: string };
+  /** The hoek, with its description: the sheet is the hoek's fiche, where the panel no longer shows it (FB-098). */
+  hoek: { id: string; naam: string; omschrijving: string | null };
   week: Verrijkingenweek;
   magPlannen: boolean;
   onSluit: () => void;
@@ -101,6 +102,9 @@ export function Hoekverrijkingblad({
       }
     >
       <div className="flex flex-col gap-4">
+        {hoek.omschrijving ? (
+          <p className="whitespace-pre-line text-body text-inkt-zacht">{hoek.omschrijving}</p>
+        ) : null}
         {/* Each branch says only what it knows: "no subthema this week" needs the runs and the windows both read. */}
         {week.status === "laadt" ? (
           <Laadlijst rijen={2} />

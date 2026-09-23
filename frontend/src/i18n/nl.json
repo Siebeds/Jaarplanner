@@ -295,6 +295,7 @@
     "balkAria": "{naam}, {van} tot {tot}"
   },
   "periode": {
+    "voluit": "{van} tot {tot}",
     "titel": "Agenda",
     "periodeLabel": "Periode",
     "weeknummer": "Week {nummer}",
@@ -1440,7 +1441,14 @@
     "activiteitenSluiten": "Activiteiten sluiten",
     "mislukt": "Deze lijst kon niet geladen worden. Probeer het later opnieuw.",
     "verrijkingInvullen": "Verrijking invullen",
-    "geenVerrijking": "Nog niets ingevuld"
+    "geenVerrijking": "Nog niets ingevuld",
+    "verrijkt": "Verrijking:",
+    "nu": "Nu, {periode}",
+    "hierna": "Hierna, vanaf {datum}",
+    "stand": "{aantal} van {totaal}",
+    "standVoluit": "{aantal} van {totaal} hoeken hebben een verrijking",
+    "alVoorbereiden": "Al voorbereiden",
+    "geenSubthemaInWeek": "In deze week loopt geen subthema."
   },
   "activiteitenpaneel": {
     "subthema": "Subthema",

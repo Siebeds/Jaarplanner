@@ -3,12 +3,12 @@ import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
 import { Blad } from "../../components/ui/Blad";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { IcoonActiviteit, IcoonFiche, IcoonHoek, IcoonKruis, IcoonPlus } from "../../components/Iconen";
+import { IcoonActiviteit, IcoonFiche, IcoonHoek, IcoonKruis } from "../../components/Iconen";
 import { useHoekenpaneel, type Paneelsoort } from "../../state/hoekenpaneel";
 import { useMediaQuery, BREED } from "../../lib/scherm";
 import { cn } from "../../lib/cn";
 import { t } from "../../i18n";
-import { useHoeken, useMaakHoek } from "./gegevens";
+import { useHoeken, useMaakHoek, type SubthemaperiodeVerrijkingen } from "./gegevens";
 import { alsInfodoelen, useAlgemeneFiches, useMaakAlgemeneFiche } from "../algemene-fiches/gegevens";
 import { Doelinfo, type Infodoel } from "../plan/Doelinfo";
 import { ALGEMENE_FICHE_VOORVOEGSEL } from "../algemene-fiches/sleepids";
@@ -24,7 +24,9 @@ import {
 } from "../plan/Activiteitensectie";
 import { Toevoegtegel } from "./Toevoegtegel";
 import { Hoekverrijkingblad } from "./Hoekverrijkingblad";
-import { reeksSleutel, verrijkingVan, type Verrijkingenweek } from "./verrijkingenweek";
+import { Hoekenlijst } from "./Hoekenlijst";
+import { Subthemaverrijkingblad } from "./Subthemaverrijkingblad";
+import type { Verrijkingenweek, Verrijkingsreeks, Volgendsubthema } from "./verrijkingenweek";
 
 /**
  * The side panel beside the agenda: the corners this class has, or its algemene fiches, while she plans (owner,
@@ -48,9 +50,9 @@ import { reeksSleutel, verrijkingVan, type Verrijkingenweek } from "./verrijking
  *
  * **An algemene fiche is planned from here; a hoek is not** (ADR-0044). An algemene fiche is dragged onto a day of the
  * agenda, or clicked to plan it from the day the agenda stands on, which is why this component is mounted inside the
- * agenda's `DndContext`. A hoek is never in the agenda: its card shows what it holds while the subthema's of the
- * agenda's week run, and a press opens the sheet that writes it (owner, 2026-09-15, FB-038: "de hoekenverrijking wil ik
- * zien hier in de sidepane"). So the hoeken are for everyone who reads the agenda, as the activiteiten are, and only
+ * agenda's `DndContext`. A hoek is never in the agenda: its row shows what it holds while the subthema's of the
+ * agenda's week run, one block per subthema (FB-098, `Hoekenlijst`), and a press opens the sheet that writes it (owner,
+ * 2026-09-15, FB-038: "de hoekenverrijking wil ik zien hier in de sidepane"). So the hoeken are for everyone who reads the agenda, as the activiteiten are, and only
  * the algemene fiches are for whoever may plan the klas.
  *
  * **The last tile makes a new one** (owner, 2026-09-14, TB-015). A teacher who notices mid-plan that a corner is
@@ -64,6 +66,7 @@ export function Hoekenpaneel({
   magPlannen,
   activiteitenWeek,
   verrijkingenWeek,
+  volgendSubthema,
   onKiesActiviteit,
 }: {
   klasId: string | null;
@@ -82,6 +85,8 @@ export function Hoekenpaneel({
   activiteitenWeek: Activiteitenweek;
   /** What the hoeken hold while the subthema's of that same week run (FB-038), and whether that is known yet. */
   verrijkingenWeek: Verrijkingenweek;
+  /** The klas's subthema after that week, for the hoeken's "Hierna" (FB-098). */
+  volgendSubthema: Volgendsubthema;
   /** An activiteit card was chosen rather than dragged; the agenda asks the day and the hours. */
   onKiesActiviteit: (activiteit: GekozenActiviteit) => void;
 }) {
@@ -103,13 +108,27 @@ export function Hoekenpaneel({
   const [nieuw, setNieuw] = useState<Paneelsoort | null>(null);
   // The activiteit's form needs more than which kind: the subthema it is made in.
   const [nieuweActiviteit, setNieuweActiviteit] = useState<Activiteitbestemming | null>(null);
-  // The hoek whose verrijking sheet is open (FB-038). Its name travels with it: on a phone the list is not read while
-  // the panel's own sheet is closed.
-  const [gekozenHoek, setGekozenHoek] = useState<{ id: string; naam: string } | null>(null);
+  // The hoek whose fiche is open (FB-038), with the row she pressed for focus to return to. Its name and description
+  // travel with it: on a phone the list is not read while the panel's own sheet is closed.
+  const [gekozenHoek, setGekozenHoek] = useState<{
+    id: string;
+    naam: string;
+    omschrijving: string | null;
+    terugId: string;
+  } | null>(null);
+  // The subthema whose corners she prepares ahead, from "Al voorbereiden" (FB-098), with the windows it reads.
+  const [voorbereiden, setVoorbereiden] = useState<{
+    reeks: Verrijkingsreeks;
+    periodes: readonly SubthemaperiodeVerrijkingen[];
+    hoeken: readonly { id: string; naam: string }[];
+  } | null>(null);
   const tegelRef = useRef<HTMLButtonElement>(null);
-  // The cards' ids, so focus can go back to the hoek she pressed once its sheet closes.
+  // The cards' ids, so focus can go back to the card she pressed once its sheet closes.
   const kaartBasis = useId();
   const kaartId = (id: string) => `${kaartBasis}-${id}`;
+  // A hoek stands once per subthema of the week, so its row's id names the block too.
+  const rijId = (blok: string, hoekId: string) => `${kaartBasis}-${blok}-${hoekId}`;
+  const voorbereidenId = `${kaartBasis}-voorbereiden`;
 
   // On a phone this panel is a sheet over the calendar and another sheet is about to open on top of it, so it closes
   // first rather than leaving her two sheets deep. Beside the agenda the column stays.
@@ -132,102 +151,90 @@ export function Hoekenpaneel({
     setNieuweActiviteit(bestemming);
   }
 
-  function openHoek(id: string) {
+  function openHoek(id: string, terugId: string) {
     const hoek = hoeken.data?.find((h) => h.id === id);
     if (!hoek) return;
     if (!breed) zet(false);
-    setGekozenHoek({ id: hoek.id, naam: hoek.naam });
+    setGekozenHoek({ id: hoek.id, naam: hoek.naam, omschrijving: hoek.omschrijving, terugId });
+  }
+
+  function openVoorbereiden(reeks: Verrijkingsreeks, periodes: readonly SubthemaperiodeVerrijkingen[]) {
+    if (!breed) zet(false);
+    setVoorbereiden({ reeks, periodes, hoeken: hoeken.data ?? [] });
   }
 
   /**
    * Closes whichever sheet this panel opened. `Blad` is a Radix dialog without a Radix trigger, so Radix has nothing to
    * return focus to, and a keyboard user who saves would land on <body> and tab in again from the top of the page. So
-   * focus goes back to what she pressed: the tile, or the hoek's card. After a frame, so the sheet has unmounted first.
+   * focus goes back to what she pressed: the tile, the hoek's row, or "Al voorbereiden". After a frame, so the sheet has
+   * unmounted first.
    */
   function sluitBlad() {
-    const hoekId = gekozenHoek?.id;
+    const terugId = gekozenHoek?.terugId ?? (voorbereiden ? voorbereidenId : null);
     setNieuw(null);
     setNieuweActiviteit(null);
     setGekozenHoek(null);
+    setVoorbereiden(null);
     if (!breed) {
       zet(true);
       return;
     }
     requestAnimationFrame(() => {
-      const terug = hoekId ? document.getElementById(kaartId(hoekId)) : tegelRef.current;
+      const terug = terugId ? document.getElementById(terugId) : tegelRef.current;
       terug?.focus();
     });
   }
 
-  // The two fiche lists share one shape; the activiteiten are drawn by their own component, below.
+  // The algemene fiches are a list of cards; the hoeken (FB-098) and the activiteiten are drawn by their own components.
   const lijst: Lijst | null =
-    soort === "hoeken"
+    soort === "algemeen"
       ? {
-          titel: t("hoekenpaneel.titel"),
-          sluiten: t("hoekenpaneel.sluiten"),
-          Icoon: IcoonHoek,
-          fichesoort: "hoek",
-          laadt: klasId !== null && hoeken.isPending,
-          mislukt: hoeken.isError && hoeken.data === undefined,
-          fiches: (hoeken.data ?? []).map((hoek) => ({
-            id: hoek.id,
-            naam: hoek.naam,
-            omschrijving: hoek.omschrijving,
-            // Only once the week is known: while it is out, a card says nothing rather than "nothing written".
-            verrijkingen:
-              verrijkingenWeek.status === "klaar"
-                ? verrijkingenWeek.reeksen.map((reeks) => ({
-                    sleutel: reeksSleutel(reeks),
-                    subthemaNaam: reeks.subthemaNaam,
-                    tekst: verrijkingVan(verrijkingenWeek.periodes, reeks, hoek.id) ?? null,
-                  }))
-                : undefined,
+          titel: t("hoekenpaneel.algemeenTitel"),
+          sluiten: t("hoekenpaneel.algemeenSluiten"),
+          Icoon: IcoonFiche,
+          laadt: klasId !== null && algemeneFiches.isPending,
+          mislukt: algemeneFiches.isError && algemeneFiches.data === undefined,
+          fiches: (algemeneFiches.data ?? []).map((fiche) => ({
+            id: fiche.id,
+            sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
+            naam: fiche.naam,
+            omschrijving: fiche.omschrijving,
+            doelen: alsInfodoelen(fiche.doelen),
           })),
-          leeg: t("hoekenpaneel.geenHoeken"),
-          naarInstellingen: magPlannen ? { pad: "/instellingen/hoeken", label: t("hoekenpaneel.naarInstellingen") } : null,
-          toevoegen: magPlannen ? t("hoeken.toevoegen") : null,
-          sleepbaar: false,
-          leegeVerrijking: magPlannen
-            ? { label: t("hoekenpaneel.verrijkingInvullen"), plus: true }
-            : { label: t("hoekenpaneel.geenVerrijking"), plus: false },
-          onKies: openHoek,
-          onNieuw: () => openNieuw("hoeken"),
+          leeg: t("hoekenpaneel.geenAlgemeneFiches"),
+          naarInstellingen: { pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") },
+          toevoegen: t("algemeneFiches.toevoegen"),
+          onKies: (id) => kies(onKiesAlgemeneFiche, id),
+          onNieuw: () => openNieuw("algemeen"),
         }
-      : soort === "algemeen"
-        ? {
-            titel: t("hoekenpaneel.algemeenTitel"),
-            sluiten: t("hoekenpaneel.algemeenSluiten"),
-            Icoon: IcoonFiche,
-            fichesoort: "algemeen",
-            laadt: klasId !== null && algemeneFiches.isPending,
-            mislukt: algemeneFiches.isError && algemeneFiches.data === undefined,
-            fiches: (algemeneFiches.data ?? []).map((fiche) => ({
-              id: fiche.id,
-              sleepId: `${ALGEMENE_FICHE_VOORVOEGSEL}${fiche.id}`,
-              naam: fiche.naam,
-              omschrijving: fiche.omschrijving,
-              doelen: alsInfodoelen(fiche.doelen),
-            })),
-            leeg: t("hoekenpaneel.geenAlgemeneFiches"),
-            naarInstellingen: { pad: "/instellingen/algemene-fiches", label: t("hoekenpaneel.naarAlgemeneFiches") },
-            toevoegen: t("algemeneFiches.toevoegen"),
-            sleepbaar: true,
-            onKies: (id) => kies(onKiesAlgemeneFiche, id),
-            onNieuw: () => openNieuw("algemeen"),
-          }
-        : null;
+      : null;
 
-  const kop = lijst ?? {
-    titel: t("hoekenpaneel.activiteitenTitel"),
-    sluiten: t("hoekenpaneel.activiteitenSluiten"),
-    Icoon: IcoonActiviteit,
-  };
+  const kop =
+    lijst ??
+    (soort === "hoeken"
+      ? { titel: t("hoekenpaneel.titel"), sluiten: t("hoekenpaneel.sluiten"), Icoon: IcoonHoek }
+      : { titel: t("hoekenpaneel.activiteitenTitel"), sluiten: t("hoekenpaneel.activiteitenSluiten"), Icoon: IcoonActiviteit });
 
   const inhoud =
     klasId === null ? (
       <p className="text-meta text-inkt-zacht">{t("hoekenpaneel.geenKlas")}</p>
     ) : lijst ? (
-      <Fichelijst lijst={lijst} sleepbaar={breed && lijst.sleepbaar} tegelRef={tegelRef} kaartId={kaartId} />
+      <Fichelijst lijst={lijst} sleepbaar={breed} tegelRef={tegelRef} kaartId={kaartId} />
+    ) : soort === "hoeken" ? (
+      <Hoekenlijst
+        laadt={hoeken.isPending}
+        mislukt={hoeken.isError && hoeken.data === undefined}
+        hoeken={hoeken.data ?? []}
+        week={verrijkingenWeek}
+        volgende={volgendSubthema}
+        magPlannen={magPlannen}
+        tegelRef={tegelRef}
+        rijId={rijId}
+        onKiesHoek={openHoek}
+        onVoorbereiden={openVoorbereiden}
+        voorbereidenId={voorbereidenId}
+        onNieuw={() => openNieuw("hoeken")}
+      />
     ) : open ? (
       <Activiteitensectie
         klasId={klasId}
@@ -281,6 +288,14 @@ export function Hoekenpaneel({
         hoek={gekozenHoek}
         week={verrijkingenWeek}
         magPlannen={magPlannen}
+        onSluit={sluitBlad}
+      />
+    ) : voorbereiden && klasId ? (
+      <Subthemaverrijkingblad
+        klasId={klasId}
+        reeks={voorbereiden.reeks}
+        hoeken={voorbereiden.hoeken}
+        periodes={voorbereiden.periodes}
         onSluit={sluitBlad}
       />
     ) : null;
@@ -341,36 +356,22 @@ export function Hoekenpaneel({
   );
 }
 
-/** What one list in the panel needs of a fiche, whichever kind it is. */
+/** What the algemene fiches list needs of a fiche. */
 interface Paneelfiche {
   id: string;
-  /** The prefixed id dnd-kit carries, for a kind that is dragged onto the agenda: an algemene fiche. */
-  sleepId?: string;
+  /** The prefixed id dnd-kit carries: an algemene fiche is dragged onto the agenda. */
+  sleepId: string;
   naam: string;
   omschrijving: string | null;
-  /** The goals, for the card's info icon (FB-018). Absent for a kind with none to show: a hoek, until FB-019. */
-  doelen?: readonly Infodoel[];
-  /** A hoek's verrijking per subthema of the agenda's week (FB-038). Absent while the week is not known. */
-  verrijkingen?: readonly Paneelverrijking[];
+  /** The goals, for the card's info icon (FB-018). */
+  doelen: readonly Infodoel[];
 }
 
-/** What a hoek holds while one subthema runs, as its card shows it; `tekst` is null when nothing is written. */
-interface Paneelverrijking {
-  sleutel: string;
-  subthemaNaam: string;
-  tekst: string | null;
-}
-
-/** The list the panel is showing, with everything that differs between the two kinds. */
+/** The algemene fiches list, with what the panel's head and its empty state say. */
 interface Lijst {
   titel: string;
   sluiten: string;
   Icoon: (props: SVGProps<SVGSVGElement>) => ReactNode;
-  /**
-   * Which kind the list holds. An algemene fiche wears the same wash and the same icon here as the block it becomes in
-   * the agenda (FB-077), so a teacher recognises in the panel what she is about to drag; a hoek is never a block.
-   */
-  fichesoort: "algemeen" | "hoek";
   laadt: boolean;
   /**
    * The request failed AND there is nothing loaded to show. Not the same as an empty list, and the panel must not say
@@ -380,14 +381,10 @@ interface Lijst {
   mislukt: boolean;
   fiches: Paneelfiche[];
   leeg: string;
-  /** Where the list's fiches are set up, for a gebruiker who may make them; null for anyone else. */
-  naarInstellingen: { pad: string; label: string } | null;
-  /** The create tile's label, the words Instellingen's own button uses so one action has one name; null without the right. */
-  toevoegen: string | null;
-  /** Whether the list's fiches are dragged onto the agenda: an algemene fiche is, a hoek is not (ADR-0044). */
-  sleepbaar: boolean;
-  /** What a hoek's card says under a subthema whose verrijking is not written. */
-  leegeVerrijking?: { label: string; plus: boolean };
+  /** Where the list's fiches are set up. */
+  naarInstellingen: { pad: string; label: string };
+  /** The create tile's label, the words Instellingen's own button uses so one action has one name. */
+  toevoegen: string;
   onKies: (id: string) => void;
   onNieuw: () => void;
 }
@@ -424,10 +421,7 @@ function Fichelijst({
   // empty branch into the list branch, React keeps the tile's DOM node and with it the focus `sluitBlad` returned. In a
   // browser the refetch usually lands after that focus, and a remounted tile would then drop it to <body>. The key keeps the node
   // too if the siblings are ever reordered.
-  const tegel =
-    lijst.toevoegen === null ? null : (
-      <Toevoegtegel key="toevoegen" ref={tegelRef} label={lijst.toevoegen} onKies={lijst.onNieuw} />
-    );
+  const tegel = <Toevoegtegel key="toevoegen" ref={tegelRef} label={lijst.toevoegen} onKies={lijst.onNieuw} />;
 
   if (lijst.fiches.length === 0) {
     return (
@@ -435,15 +429,13 @@ function Fichelijst({
         <p className="text-meta text-inkt-zacht">{lijst.leeg}</p>
         {tegel}
         {/* A real destination, not a sentence about one: Instellingen is also where she changes and deletes what
-            she makes here, and, for the hoeken, where she takes corners over from another class. */}
-        {lijst.naarInstellingen ? (
-          <Link
-            to={lijst.naarInstellingen.pad}
-            className="text-meta font-medium text-accent underline-offset-2 hover:underline"
-          >
-            {lijst.naarInstellingen.label}
-          </Link>
-        ) : null}
+            she makes here. */}
+        <Link
+          to={lijst.naarInstellingen.pad}
+          className="text-meta font-medium text-accent underline-offset-2 hover:underline"
+        >
+          {lijst.naarInstellingen.label}
+        </Link>
       </div>
     );
   }
@@ -453,14 +445,7 @@ function Fichelijst({
       <ul className="flex flex-col gap-2">
         {lijst.fiches.map((fiche) => (
           <li key={fiche.id}>
-            <Fiche
-              fiche={fiche}
-              fichesoort={lijst.fichesoort}
-              kaartId={kaartId(fiche.id)}
-              sleepbaar={sleepbaar && fiche.sleepId !== undefined}
-              leegeVerrijking={lijst.leegeVerrijking}
-              onKies={lijst.onKies}
-            />
+            <Fiche fiche={fiche} kaartId={kaartId(fiche.id)} sleepbaar={sleepbaar} onKies={lijst.onKies} />
           </li>
         ))}
       </ul>
@@ -472,38 +457,32 @@ function Fichelijst({
 }
 
 /**
- * One fiche: an algemene fiche a teacher drags onto a day or clicks to plan from the day she is on, or a hoek she
- * presses to write what it holds this week.
+ * One algemene fiche: a teacher drags it onto a day or clicks to plan it from the day she is on.
  *
  * Deliberately quiet: a card in the chrome column, not a card competing with the calendar beside it. The description
  * is clamped to two lines, because the point of the list is seeing the fiches together.
  *
- * **Both gestures on one button, for a fiche that drags.** A press that travels six pixels is a drag (see `sleep.ts`),
- * and dnd-kit swallows the click that follows an activated drag, so a drop does not also open the sheet from the
- * agenda's own day; a press that does not travel is a click. On a keyboard Space picks the fiche up, as on every
- * draggable in this agenda. On a phone, and for a hoek everywhere, the card is only pressed.
+ * **Both gestures on one button.** A press that travels six pixels is a drag (see `sleep.ts`), and dnd-kit swallows the
+ * click that follows an activated drag, so a drop does not also open the sheet from the agenda's own day; a press that
+ * does not travel is a click. On a keyboard Space picks the fiche up, as on every draggable in this agenda. On a phone
+ * the card is only pressed.
  *
  * **Its goals behind an info icon in the corner, beside the button and not in it** (FB-018): pressing the fiche plans
- * it, pressing the icon only shows what it works on. Only for a kind that has goals to show.
+ * it, pressing the icon only shows what it works on.
  */
 function Fiche({
   fiche,
-  fichesoort,
   kaartId,
   sleepbaar,
-  leegeVerrijking,
   onKies,
 }: {
   fiche: Paneelfiche;
-  fichesoort: Lijst["fichesoort"];
   kaartId: string;
   sleepbaar: boolean;
-  leegeVerrijking?: { label: string; plus: boolean };
   onKies: (id: string) => void;
 }) {
-  const algemeen = fichesoort === "algemeen";
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: fiche.sleepId ?? fiche.id,
+    id: fiche.sleepId,
     disabled: !sleepbaar,
   });
 
@@ -517,54 +496,28 @@ function Fiche({
         {...(sleepbaar ? listeners : {})}
         {...(sleepbaar ? attributes : {})}
         className={cn(
-          "w-full rounded-veld border px-3 py-2.5 text-left",
-          // An algemene fiche wears in the panel the wash it will wear as a block (FB-077); a hoek keeps the quiet
-          // card, because it never lands on the agenda at all (ADR-0044).
-          algemeen ? FICHEVLAK : "border-lijn bg-vlak",
+          // The wash it will wear as a block in the agenda (FB-077), so she recognises what she is about to drag.
+          "w-full rounded-veld border px-3 py-2.5 pr-9 text-left",
+          FICHEVLAK,
           "transition-colors duration-150 hover:border-accent",
           // The grabbing hand says this can be picked up (owner, 2026-08-31); `touch-none` so a touch drag lifts the
           // fiche instead of scrolling the panel. Only where it drags.
           sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
-          // Room for the icon, so a long name wraps before it rather than running under it.
-          fiche.doelen && "pr-9",
           isDragging && "opacity-40",
         )}
       >
         {/* The icon stands beside the name here as it does on the block (FB-077), so the wash is never the only thing
             saying what this card is. */}
         <p className="flex items-baseline gap-1.5 text-meta font-medium text-inkt">
-          {algemeen ? (
-            <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 translate-y-px text-inkt-zwak" />
-          ) : null}
+          <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 translate-y-px text-inkt-zwak" />
           <span className="min-w-0">{fiche.naam}</span>
         </p>
         {fiche.omschrijving ? (
           <p className="mt-0.5 line-clamp-2 text-micro leading-snug text-inkt-zacht">{fiche.omschrijving}</p>
         ) : null}
-        {/* What is in the corner this week (FB-038), set off by a rule so it does not read as the corner's own
-            description: that one is there all year, this one only while the subthema runs. Named by the subthema,
-            because a week can hold two. */}
-        {fiche.verrijkingen?.map((verrijking) => (
-          <span
-            key={verrijking.sleutel}
-            className="mt-1.5 block border-l-2 border-lijn-sterk pl-2 text-micro leading-snug"
-          >
-            <span className="block text-inkt-zwak">{verrijking.subthemaNaam}</span>
-            {verrijking.tekst ? (
-              <span className="line-clamp-3 whitespace-pre-line text-inkt">{verrijking.tekst}</span>
-            ) : leegeVerrijking ? (
-              <span className="flex items-center gap-1 text-inkt-zacht">
-                {leegeVerrijking.plus ? <IcoonPlus aria-hidden="true" className="h-3 w-3 shrink-0" /> : null}
-                {leegeVerrijking.label}
-              </span>
-            ) : null}
-          </span>
-        ))}
       </button>
 
-      {fiche.doelen ? (
-        <Doelinfo naam={fiche.naam} doelen={fiche.doelen} className="absolute right-1.5 top-1.5" />
-      ) : null}
+      <Doelinfo naam={fiche.naam} doelen={fiche.doelen} className="absolute right-1.5 top-1.5" />
     </div>
   );
 }
