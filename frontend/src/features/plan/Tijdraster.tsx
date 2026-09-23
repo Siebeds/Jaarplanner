@@ -20,6 +20,8 @@ import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
+import { Subthemabalk, Subthemateveel, Themabalk } from "./Weekbalken";
+import { subthemabalken, themabalken } from "./weekbalkindeling";
 import { subthemaruimte, subthemaZin, type Subthemareeks, type Subthemaruimte } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import type { Agendadag } from "./roosterdagen";
@@ -190,6 +192,9 @@ export function Tijdraster({
     if (scrollvak.current) scrollvak.current.scrollTop = (opening - bereik.van) * PX_PER_MINUUT;
   }, [opening, bereik.van]);
 
+  // More than one column: the thema and subthema run across them as continuous bars (FB-090). The day view keeps its
+  // own per-day bands, which on one column already read as one bar with its name.
+  const week = dagen.length > 1;
   const geenMaandag = !dagen.some((rij) => weekdagIndex(rij.datum) === 0);
   const naamdrager = dagen.some((rij) => weekdagIndex(rij.datum) === 0 && rij.isLesdag)
     ? undefined
@@ -209,6 +214,17 @@ export function Tijdraster({
           that was visible before. With overlay scrollbars both reserve nothing, which is equal too. */}
       <div className="flex overflow-hidden border-b border-lijn [scrollbar-gutter:stable]">
         <div className="w-12 shrink-0 border-r border-lijn sm:w-14" />
+        {week ? (
+          <Weekkop
+            dagen={dagen}
+            reeksenPerDag={reeksenPerDag}
+            vakken={vakken}
+            schooluren={schooluren}
+            vandaagIso={vandaagIso}
+            onKiesDag={onKiesDag}
+            onPlanSubthema={onPlanSubthema}
+          />
+        ) : (
         <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))` }}>
           {dagen.map((dag, i) => (
             <Dagkop
@@ -232,6 +248,7 @@ export function Tijdraster({
             />
           ))}
         </div>
+        )}
       </div>
 
       {/* AT MOST DAGBEGIN..DAGEINDE tall, computed rather than written out, so "default 7u-18u" is one fact in one
@@ -456,17 +473,20 @@ function minutenVanNu(): number {
   return nu.getHours() * 60 + nu.getMinutes();
 }
 
-/** The heading of one day: the date, whether it is today, and what runs on it all day. */
-function Dagkop({
+/**
+ * The date of one day, whether it is today, and, for someone who cannot see the bands, what runs on it.
+ *
+ * WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. A band's link says where it goes, not what runs, and a blank
+ * band is `aria-hidden`: both rely on the day announcing what runs on it, once. Only on a teaching day, which is the
+ * only day the bands are drawn on.
+ */
+function Dagtitel({
   dag,
   isVandaag,
   reeksen,
   vak,
   uren,
-  altijdNaam,
   onKiesDag,
-  onPlanSubthema,
-  ruimte,
 }: {
   dag: Agendadag;
   isVandaag: boolean;
@@ -474,11 +494,7 @@ function Dagkop({
   vak: Themavak | undefined;
   /** The school's hours on this day, for the sentence a screen reader hears; the tint itself is `aria-hidden`. */
   uren: Schooldaguren | undefined;
-  /** No row of days to carry a name instead, so the bands say what they are on this day too. */
-  altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
-  onPlanSubthema?: (plaatsingId: string) => void;
-  ruimte: Subthemaruimte;
 }) {
   const kop = (
     <span className="flex items-baseline justify-center gap-1.5">
@@ -494,40 +510,67 @@ function Dagkop({
     </span>
   );
 
-  // WHAT THE BANDS SAY, FOR SOMEONE WHO CANNOT SEE THEM. A named band's link says where it goes, not what runs, and
-  // the blank bands are `aria-hidden`: both rely on the day announcing what runs on it, once. `Maandrooster` kept that
-  // promise and this grid did not: its day button named only the date, and the day view has no button at all. Only on
-  // a teaching day, which is the only day the bands are drawn on.
   const watErLooptZin = dag.isLesdag ? themaZin(vak) + subthemaZin(reeksen) + urenZin(uren) : "";
 
+  return onKiesDag ? (
+    <button
+      type="button"
+      onClick={() => onKiesDag(dag.datum)}
+      aria-label={t("periode.openDag", { dag: volleDag(dag.datum) }) + watErLooptZin}
+      className="block w-full rounded-veld py-0.5 transition-colors duration-150 hover:bg-vlak-diep"
+    >
+      {kop}
+    </button>
+  ) : (
+    // No button to hang the clause on in the day view, so it is spoken after the date itself. The clauses open with a
+    // comma and expect a subject in front of them, which the heading is.
+    <p className="py-0.5">
+      {kop}
+      {watErLooptZin ? <span className="sr-only">{watErLooptZin}</span> : null}
+    </p>
+  );
+}
+
+/** What a closed day says in place of its bands, rather than in forty repetitions down the column. */
+function Sluiting({ dag }: { dag: Agendadag }) {
+  return (
+    <p className="truncate px-1 pt-1 text-center text-[0.625rem] text-inkt-zacht">
+      {dag.sluitingsnaam ?? t(dag.buitenSchooljaar ? "periode.buitenSchooljaar" : "periode.gesloten")}
+    </p>
+  );
+}
+
+/** The heading of the day view's one day: the date, and what runs on it all day as bands under it. */
+function Dagkop({
+  dag,
+  isVandaag,
+  reeksen,
+  vak,
+  uren,
+  altijdNaam,
+  onKiesDag,
+  onPlanSubthema,
+  ruimte,
+}: {
+  dag: Agendadag;
+  isVandaag: boolean;
+  reeksen: readonly Subthemareeks[];
+  vak: Themavak | undefined;
+  uren: Schooldaguren | undefined;
+  /** No row of days to carry a name instead, so the bands say what they are on this day too. */
+  altijdNaam: boolean;
+  onKiesDag?: (datum: string) => void;
+  onPlanSubthema?: (plaatsingId: string) => void;
+  ruimte: Subthemaruimte;
+}) {
   return (
     <div
       aria-current={isVandaag ? "date" : undefined}
       className={cn("min-w-0 border-l border-lijn px-1 pb-1 pt-2 first:border-l-0", !dag.isLesdag && "bg-vlak-diep/60")}
     >
-      {onKiesDag ? (
-        <button
-          type="button"
-          onClick={() => onKiesDag(dag.datum)}
-          aria-label={t("periode.openDag", { dag: volleDag(dag.datum) }) + watErLooptZin}
-          className="block w-full rounded-veld py-0.5 transition-colors duration-150 hover:bg-vlak-diep"
-        >
-          {kop}
-        </button>
-      ) : (
-        // No button to hang the clause on in the day view, so it is spoken after the date itself. The clauses open
-        // with a comma and expect a subject in front of them, which the heading is.
-        <p className="py-0.5">
-          {kop}
-          {watErLooptZin ? <span className="sr-only">{watErLooptZin}</span> : null}
-        </p>
-      )}
-
-      {/* A closed day says so here rather than in forty repetitions down the column. */}
+      <Dagtitel dag={dag} isVandaag={isVandaag} reeksen={reeksen} vak={vak} uren={uren} onKiesDag={onKiesDag} />
       {!dag.isLesdag ? (
-        <p className="truncate px-1 pt-1 text-center text-[0.625rem] text-inkt-zacht">
-          {dag.sluitingsnaam ?? t(dag.buitenSchooljaar ? "periode.buitenSchooljaar" : "periode.gesloten")}
-        </p>
+        <Sluiting dag={dag} />
       ) : (
         <div className="flex flex-col pt-1">
           <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam}
@@ -536,6 +579,110 @@ function Dagkop({
           />
           <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The headings of several days, with the thema and the subthema's running across them as continuous bars (FB-090).
+ *
+ * ONE GRID FOR THE HEADINGS AND THE BARS, with the same columns as the hours below. Row one holds the dates; each row
+ * after it holds bars, placed over the columns they cover. Each column's divider and closed-day tint is a cell that
+ * spans every row, drawn first, so a bar crossing it hides the divider under it and reads as one piece, and a closed
+ * day, which draws no bars, still shows its tint and its name down the whole band.
+ */
+function Weekkop({
+  dagen,
+  reeksenPerDag,
+  vakken,
+  schooluren,
+  vandaagIso,
+  onKiesDag,
+  onPlanSubthema,
+}: {
+  dagen: Agendadag[];
+  reeksenPerDag: Map<string, Subthemareeks[]>;
+  vakken: readonly Themavak[];
+  schooluren: readonly Schooldaguren[] | undefined;
+  vandaagIso: string;
+  onKiesDag?: (datum: string) => void;
+  onPlanSubthema?: (plaatsingId: string) => void;
+}) {
+  const reeksenOp = (dag: Agendadag) => (dag.buitenSchooljaar ? LEEG : (reeksenPerDag.get(dag.datum) ?? LEEG));
+  const themas = themabalken(dagen, vakken);
+  const subthemas = subthemabalken(dagen, reeksenPerDag);
+  const heeftTeveel = subthemas.teveel.some((aantal) => aantal > 0);
+
+  // The rows, numbered as the grid numbers them: the dates are row 1, the bars start at row 2.
+  const themarij = 2;
+  const eersteSubthemarij = themarij + (themas.length > 0 ? 1 : 0);
+  const teveelrij = eersteSubthemarij + subthemas.rijen.length;
+  // A closed day names itself in the band, so there is a row for it even in a week without a thema.
+  const balkrijen = Math.max(teveelrij + (heeftTeveel ? 1 : 0) - themarij, dagen.some((dag) => !dag.isLesdag) ? 1 : 0);
+
+  return (
+    <div
+      className="grid min-w-0 flex-1"
+      style={{
+        gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))`,
+        // A quarter rem under the last row of bars, where the per-day cell kept its bottom padding.
+        gridTemplateRows: `auto repeat(${balkrijen}, 1.5rem) 0.25rem`,
+      }}
+    >
+      {dagen.map((dag, i) => (
+        <div
+          key={`vlak-${dag.datum}`}
+          aria-hidden="true"
+          className={cn(i > 0 && "border-l border-lijn", !dag.isLesdag && "bg-vlak-diep/60")}
+          style={{ gridColumn: i + 1, gridRow: "1 / -1" }}
+        />
+      ))}
+      {dagen.map((dag, i) => {
+        const isVandaag = dag.datum === vandaagIso;
+        return (
+          <div
+            key={dag.datum}
+            aria-current={isVandaag ? "date" : undefined}
+            className="min-w-0 px-1 pb-1 pt-2"
+            style={{ gridColumn: i + 1, gridRow: 1 }}
+          >
+            <Dagtitel
+              dag={dag}
+              isVandaag={isVandaag}
+              reeksen={reeksenOp(dag)}
+              vak={dag.buitenSchooljaar ? undefined : vakOpDag(vakken, dag.datum)}
+              uren={dag.isLesdag ? urenOp(schooluren, dag.datum) : undefined}
+              onKiesDag={onKiesDag}
+            />
+          </div>
+        );
+      })}
+      {dagen.map((dag, i) =>
+        dag.isLesdag ? null : (
+          <div key={`dicht-${dag.datum}`} className="min-w-0" style={{ gridColumn: i + 1, gridRow: `2 / span ${balkrijen}` }}>
+            <Sluiting dag={dag} />
+          </div>
+        ),
+      )}
+      {themas.map((balk) => (
+        <Themabalk
+          key={`${balk.item.plaatsingId}-${balk.van}`}
+          balk={balk}
+          rij={themarij}
+          // Only where there is room for a subthema: not over a stretch where one already runs on every day (FB-087).
+          onPlanSubthema={
+            dagen.slice(balk.van, balk.tot + 1).some((dag) => reeksenOp(dag).length === 0) ? onPlanSubthema : undefined
+          }
+        />
+      ))}
+      {subthemas.rijen.map((rij, r) =>
+        rij.map((balk) => (
+          <Subthemabalk key={`${balk.item.subthemaId}-${balk.item.van}-${balk.van}`} balk={balk} rij={eersteSubthemarij + r} />
+        )),
+      )}
+      {subthemas.teveel.map((aantal, i) =>
+        aantal > 0 ? <Subthemateveel key={`teveel-${i}`} kolom={i} rij={teveelrij} aantal={aantal} /> : null,
       )}
     </div>
   );
