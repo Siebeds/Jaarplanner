@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 23:35
 opgepakt-door: claude-fb095
 branch: ticket/FB-095-themakop-chuck
-pr:
+pr: 178
 geblokkeerd:
 fr: []
 ---
@@ -65,3 +65,4 @@ Geen.
 - 2026-09-23 23:34 · claude-fb095 · Chuck op de smalle themapagina op de brede maat gezet, titel en rijen ingesprongen tot de smalle kolom; gemeten op 1920/1280/1024/390px: Chucks rechterrand gelijk aan de themalijst, titel gelijk met de inhoud; lint en 279 tests groen
 - 2026-09-23 23:35 · claude-fb095 · Antagonist: COMPLIANT; MINOR over de hand geschreven breedtes met een commentaar verholpen, kruimelpad wordt alleen op de themapagina gebruikt
 - 2026-09-23 23:35 · claude-fb095 · in-uitvoering → te-testen: Chuck staat op de themapagina op de plek van de andere schermen, kop ruimer; lint, 279 tests en browsercontrole groen
+- 2026-09-23 23:35 · claude-fb095 · PR #178
