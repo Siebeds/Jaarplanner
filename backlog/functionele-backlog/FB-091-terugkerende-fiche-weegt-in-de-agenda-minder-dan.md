@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:21
+bijgewerkt: 2026-09-23 20:22
 opgepakt-door: claude-fb091
 branch: ticket/FB-091-stille-fiche
-pr:
+pr: 174
 geblokkeerd:
 fr: []
 ---
@@ -68,3 +68,4 @@ Geen.
 - 2026-09-23 20:20 · claude-fb091 · browser (mock, 1440 en 390px): stille fiche licht tekst 5,65:1 en icoon 4,32:1, donker 8,53:1 en 6,5:1; activiteiten springen eruit in een volle week
 - 2026-09-23 20:21 · claude-fb091 · antagonist: COMPLIANT, twee MINOR (eenmalige fiche draagt nog het terugkeer-icoon, FB-077-scope; randgeval-test niet nodig: 10:15-10:50 dekt het al); criteria afgevinkt op test en browsermeting
 - 2026-09-23 20:21 · claude-fb091 · in-uitvoering → te-testen: terugkerende fiche stiller, beginuur weg op een heel uur; Vitest, lint, browser en antagonist groen
+- 2026-09-23 20:22 · claude-fb091 · PR #174
