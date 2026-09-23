@@ -20,7 +20,7 @@ import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
 import { Subthemastroken } from "./Subthemastroken";
 import { Themastroken } from "./Themastroken";
-import { subthemaZin, type Subthemareeks } from "./subthemareeksen";
+import { subthemaruimte, subthemaZin, type Subthemareeks, type Subthemaruimte } from "./subthemareeksen";
 import { themaZin, vakOpDag, type Themavak } from "./themavakken";
 import type { Agendadag } from "./roosterdagen";
 import type { Schooldaguren } from "../schooluren/gegevens";
@@ -210,7 +210,7 @@ export function Tijdraster({
       <div className="flex overflow-hidden border-b border-lijn [scrollbar-gutter:stable]">
         <div className="w-12 shrink-0 border-r border-lijn sm:w-14" />
         <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${dagen.length}, minmax(0, 1fr))` }}>
-          {dagen.map((dag) => (
+          {dagen.map((dag, i) => (
             <Dagkop
               key={dag.datum}
               dag={dag}
@@ -228,6 +228,7 @@ export function Tijdraster({
               altijdNaam={geenMaandag || dag.datum === naamdrager}
               onKiesDag={onKiesDag}
               onPlanSubthema={onPlanSubthema}
+              ruimte={subthemaruimte(dagen, i, reeksenPerDag)}
             />
           ))}
         </div>
@@ -465,6 +466,7 @@ function Dagkop({
   altijdNaam,
   onKiesDag,
   onPlanSubthema,
+  ruimte,
 }: {
   dag: Agendadag;
   isVandaag: boolean;
@@ -476,6 +478,7 @@ function Dagkop({
   altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
   onPlanSubthema?: (plaatsingId: string) => void;
+  ruimte: Subthemaruimte;
 }) {
   const kop = (
     <span className="flex items-baseline justify-center gap-1.5">
@@ -527,7 +530,10 @@ function Dagkop({
         </p>
       ) : (
         <div className="flex flex-col pt-1">
-          <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam} onPlanSubthema={onPlanSubthema} />
+          <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam}
+            onPlanSubthema={onPlanSubthema}
+            ruimte={ruimte}
+          />
           <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
         </div>
       )}
