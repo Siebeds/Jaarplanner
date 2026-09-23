@@ -61,8 +61,13 @@ import { Activiteitplaatsingblad } from "./Activiteitplaatsingblad";
 import { kaartLanding, leesActiviteitkaartId, type Activiteitkaartdata } from "./activiteitkaart";
 import type { Activiteitenweek, GekozenActiviteit } from "./Activiteitensectie";
 import { Hoekenpaneel } from "../hoeken/Hoekenpaneel";
-import { useHoekverrijkingen } from "../hoeken/gegevens";
-import { reeksenVanWeek, type Verrijkingenweek } from "../hoeken/verrijkingenweek";
+import { useHoekverrijkingen, type SubthemaperiodeVerrijkingen } from "../hoeken/gegevens";
+import {
+  reeksenVanWeek,
+  volgendeReeks,
+  type Verrijkingenweek,
+  type Volgendsubthema,
+} from "../hoeken/verrijkingenweek";
 import { Bevestiging } from "../../components/ui/Bevestiging";
 import { gevolgVanDag } from "./vanDeDag";
 import { Algemeneficheplaatsingblad } from "../algemene-fiches/Algemeneficheplaatsingblad";
@@ -372,6 +377,43 @@ export function Agendascherm() {
       periodes: verrijkingen.data,
     };
   }, [verrijkingen.data, verrijkingen.isError, reeksbron, reeksbronMislukt, reeksen, anker]);
+
+  /**
+   * THE SUBTHEMA AFTER THAT WEEK (FB-098), for the hoeken's "Hierna".
+   *
+   * The runs above cover the thema placements around the week; after them, the klas's stored windows up to the end of
+   * the school year, read only while the hoekenfiches are open. See `volgendeReeks` for what that leaves unseen.
+   */
+  const naReeksen = reeksTot.length > 0 ? verschuif(reeksTot, 1) : "";
+  const jaareinde = rooster?.eind ?? "";
+  const laterTeLezen = naReeksen.length > 0 && jaareinde.length > 0 && naReeksen <= jaareinde;
+  const laterVerrijkingen = useHoekverrijkingen(
+    paneelOpen && paneelSoort === "hoeken" && laterTeLezen ? klasId : null,
+    naReeksen,
+    jaareinde,
+  );
+  const volgendSubthema = useMemo<Volgendsubthema>(() => {
+    if (verrijkingenWeek.status !== "klaar") return verrijkingenWeek;
+    if (!verrijkingen.data || jaareinde.length === 0) return { status: "laadt" };
+    let later: readonly SubthemaperiodeVerrijkingen[] = [];
+    if (laterTeLezen) {
+      if (laterVerrijkingen.isError && !laterVerrijkingen.data) return { status: "mislukt" };
+      if (!laterVerrijkingen.data) return { status: "laadt" };
+      later = laterVerrijkingen.data;
+    }
+    const bekend = new Set(verrijkingen.data.map((periode) => periode.subthemaperiodeId));
+    const alle = [...verrijkingen.data, ...later.filter((periode) => !bekend.has(periode.subthemaperiodeId))];
+    return { status: "klaar", reeks: volgendeReeks(reeksen, later, alle, maandagVan(anker)), periodes: alle };
+  }, [
+    verrijkingenWeek,
+    verrijkingen.data,
+    jaareinde,
+    laterTeLezen,
+    laterVerrijkingen.data,
+    laterVerrijkingen.isError,
+    reeksen,
+    anker,
+  ]);
 
   // The algemene fiches' occurrences, as blocks the time grid can draw: built from the placements' own momenten rather
   // than from their windows, because each is a row she can move alone, and deriving it from the window would draw the
@@ -879,6 +921,7 @@ export function Agendascherm() {
               }}
               activiteitenWeek={activiteitenWeek}
               verrijkingenWeek={verrijkingenWeek}
+              volgendSubthema={volgendSubthema}
               onKiesActiviteit={(activiteit) => {
                 acties.plaats.reset();
                 setGekozenActiviteit({ ...activiteit, datum: anker, begin: null });
