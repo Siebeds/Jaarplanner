@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:24
+bijgewerkt: 2026-09-23 20:25
 opgepakt-door: claude-fb094
 branch: ticket/FB-094-themapagina-opbouw
-pr:
+pr: 175
 geblokkeerd:
 fr: []
 ---
@@ -106,3 +106,4 @@ Geen.
 - 2026-09-23 20:20 · claude-fb094 · pagina herbouwd: kop met kruimelpad, Bewerken en menu, samenvatting met vier cijfers, subthema's voor de doelen; tests en lint groen, bekeken op 1440 en 390 px (licht en donker)
 - 2026-09-23 20:24 · claude-fb094 · antagonist: COMPLIANT; kleine punten opgelost (kopniveaus genest, Radix-pakket vastgepind); criteria afgevinkt op vitest (ThemadetailScherm, Themaminimumdoelen) en de browserpas op 1440 en 390 px
 - 2026-09-23 20:24 · claude-fb094 · in-uitvoering → te-testen: themapagina herbouwd als kop, subthema's, doelen; lint en tests groen, bekeken in de browser
+- 2026-09-23 20:25 · claude-fb094 · PR #175
