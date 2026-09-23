@@ -2,12 +2,12 @@
 id: FB-091
 titel: Terugkerende fiche weegt in de agenda minder dan een geplande activiteit
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 20:10
+opgepakt-door: claude-fb091
+branch: ticket/FB-091-stille-fiche
 pr:
 geblokkeerd:
 fr: []
@@ -63,3 +63,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 20:10 · claude-fb091 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
