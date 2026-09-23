@@ -2,10 +2,10 @@
 id: FB-027
 titel: AI stelt de activiteiten van het subthema voor in de weekagenda
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 20:50
+bijgewerkt: 2026-09-23 20:54
 opgepakt-door: claude-fb027
 branch: ticket/FB-027-weekvoorstel
 pr:
@@ -77,3 +77,4 @@ aanvaardt of weigert.
 - 2026-09-23 20:22 · claude-fb027 · ontwerp vastgelegd in ADR-0067: voorgesteld blok is een activiteitplaatsing met status voorgesteld; AI kiest activiteit, volgorde en dag, de tool het uur; grondwet IV.5 en V.1 aangevuld
 - 2026-09-23 20:43 · claude-fb027 · backend en frontend gebouwd; backend 2350 unit + 613 integratie groen, frontend 277 tests groen, lint groen
 - 2026-09-23 20:50 · claude-fb027 · antagonist: 1 MAJOR (verslepen van andermans voorstel beslist zonder eigenaarscheck) opgelost met test; MINORs: opnieuw vragen laat voorstellen van een collega staan, geen voorstel meer op een voorbij uur vandaag; rest in worklog
+- 2026-09-23 20:54 · claude-fb027 · in-uitvoering → te-testen: gebouwd: AI stelt de week voor, voorstellen als voorgestelde blokken in de agenda, aanvaarden/weigeren per blok of alles; gates groen, antagonist COMPLIANT na 1 ronde
