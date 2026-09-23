@@ -55,7 +55,7 @@ export function Toevoegknop({
   return (
     <Knop
       rang="stil"
-      className="h-9 min-h-9 px-2.5 text-meta"
+      className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
       disabled={disabled}
       aria-label={ariaLabel}
       onClick={onClick}
@@ -89,7 +89,7 @@ export function Toevoegicoon({
       title={label}
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-veld text-inkt-zacht transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45"
+      className="inline-flex h-raak w-raak shrink-0 items-center justify-center rounded-veld text-inkt-zacht sm:h-8 sm:w-8 transition-colors duration-150 hover:bg-vlak-diep hover:text-inkt disabled:opacity-45"
     >
       <IcoonPlus aria-hidden="true" className="h-4 w-4" />
     </button>

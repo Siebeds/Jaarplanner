@@ -224,7 +224,7 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
           })}
           {gepauzeerd ? <span className="ml-2 text-meta text-inkt-zacht">{t("voorstelstapel.gepauzeerd")}</span> : null}
         </p>
-        <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={maakOngedaan}>
+        <Knop rang="rustig" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={maakOngedaan}>
           {t("voorstelstapel.ongedaan")}
         </Knop>
         <span aria-hidden="true" className="h-1 basis-full overflow-hidden rounded-full bg-vlak-diep">
@@ -252,10 +252,10 @@ export function Voorstelstapel({ voorstellen, onBeslis, label }: Eigenschappen) 
     <section ref={stapel} aria-label={label} onKeyDown={opToets} className="flex flex-col gap-2">
       {open.length > 1 ? (
         <div className="flex flex-wrap justify-end gap-1">
-          <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={() => beslisRest("Geweigerd")}>
+          <Knop rang="stil" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={() => beslisRest("Geweigerd")}>
             {t("voorstelstapel.restWeigeren", { aantal: open.length })}
           </Knop>
-          <Knop rang="rustig" className="h-9 min-h-9 px-3 text-meta" onClick={() => beslisRest("Aanvaard")}>
+          <Knop rang="rustig" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={() => beslisRest("Aanvaard")}>
             {t("voorstelstapel.restAanvaarden", { aantal: open.length })}
           </Knop>
         </div>

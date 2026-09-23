@@ -79,7 +79,7 @@ export function Doelkoppelaar({
         fasen={fasen}
       />
       <div className="mt-2">
-        <Knop rang="stil" className="h-9 min-h-9 px-3 text-meta" onClick={() => setOpen(false)}>
+        <Knop rang="stil" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={() => setOpen(false)}>
           {t("themabeheer.annuleer")}
         </Knop>
       </div>

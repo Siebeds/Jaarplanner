@@ -14,7 +14,7 @@ import type {
 } from "../../lib/types";
 import { t, telWoord } from "../../i18n";
 import { ADMIN, ikMet, metIk } from "../../test/rechten";
-import { hoofdstuklijst, openLijsten } from "../../test/lijsten";
+import { ALLE_ACTIVITEITEN, openLijsten } from "../../test/lijsten";
 import { kleurSleutel } from "../activiteiten/kleuren";
 import { STANDAARDDUUR } from "../plan/tijd";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -157,6 +157,15 @@ function toon(
 }
 
 const knop = (naam: string) => screen.queryByRole("button", { name: naam });
+
+/** Opens an "…" menu by keyboard, which is how Radix answers in jsdom, and returns what its items say (FB-094). */
+async function menu(label: string) {
+  fireEvent.keyDown(screen.getByRole("button", { name: label }), { key: "Enter" });
+  return (await screen.findAllByRole("menuitem")).map((item) => item.textContent);
+}
+
+const THEMAMENU = t("themabeheer.menuAria", { naam: "Herfst" });
+const subthemamenu = (naam: string) => t("subthemabeheer.menuAria", { naam });
 
 /** A chapter's fold button, found by the subthema's name; its summary follows the name in the same label. */
 const hoofdstuk = (naam: string, open: boolean) =>
@@ -384,8 +393,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     await openHoofdstukken();
 
     // Not the thema, its themadoelen or the doelsuggesties (R4, R14), nor any subthema (R5, R21) or subdoel (R24).
-    expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).toBeNull();
-    expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
+    expect(knop(t("themabeheer.bewerk"))).toBeNull();
+    expect(knop(t("themabeheer.bewerkThema"))).toBeNull();
+    expect(knop(THEMAMENU)).toBeNull();
     expect(knop(t("thema.suggestiesVragen"))).toBeNull();
     expect(knop(t("doelkiezer.koppel"))).toBeNull();
     expect(knop(t("thema.minimumdoelKoppelen"))).toBeNull();
@@ -395,7 +405,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(screen.getByRole("button", { name: /K-MD-1/, expanded: false })).toBeInTheDocument();
     expect(screen.queryByText("NED-1")).toBeNull();
     expect(knop(t("subthemabeheer.toevoegen"))).toBeNull();
-    expect(knop(t("subthemabeheer.bewerkAria", { naam: "Bladeren" }))).toBeNull();
+    expect(knop(subthemamenu("Bladeren"))).toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Bladeren" }))).toBeNull();
     expect(knop(t("activiteit.ontkoppel", { code: "WIS-1" }))).toBeNull();
 
@@ -416,8 +426,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     await openHoofdstukken();
 
     expect(knop(t("subthemabeheer.toevoegen"))).not.toBeNull();
-    expect(knop(t("subthemabeheer.bewerkAria", { naam: "Bladeren" }))).not.toBeNull();
-    expect(knop(t("subthemabeheer.bewerkAria", { naam: "Rekenen" }))).toBeNull();
+    expect(await menu(subthemamenu("Bladeren"))).toEqual([t("themabeheer.bewerk"), t("themabeheer.verwijder")]);
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(knop(subthemamenu("Rekenen"))).toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Bladeren" }))).not.toBeNull();
     expect(knop(t("thema.koppelAanSubthema", { naam: "Rekenen" }))).toBeNull();
     // The subdoel unlink, on a `Gekoppelddoel` row since TB-016: on the K3 subdoel, not on the L1 one (R24).
@@ -428,7 +439,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("activiteit.verwijderAria", { naam: "Gekoppeld spel" }))).not.toBeNull();
     expect(knop(t("activiteit.verwijderAria", { naam: "Tellen" }))).toBeNull();
     // A hoofdleerkracht edits a thema only with themabeheer.
-    expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).toBeNull();
+    expect(knop(t("themabeheer.bewerk"))).toBeNull();
+    expect(knop(THEMAMENU)).toBeNull();
     expect(knop(t("thema.suggestiesVragen"))).toBeNull();
   });
 
@@ -436,7 +448,7 @@ describe("ThemadetailScherm: wie wat mag", () => {
     toon(ikMet({ heeftThemabeheer: true }));
     await openHoofdstukken();
 
-    expect(knop(t("themabeheer.bewerkAria", { naam: "Herfst" }))).not.toBeNull();
+    expect(knop(t("themabeheer.bewerk"))).not.toBeNull();
     // A themadoel is a minimumdoel (FB-043): linked and unlinked here, and no leerplandoel picker on the thema.
     expect(knop(t("thema.minimumdoelKoppelen"))).not.toBeNull();
     expect(knop(t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }))).not.toBeNull();
@@ -448,8 +460,9 @@ describe("ThemadetailScherm: wie wat mag", () => {
     expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
     expect(knop(t("voorstelstapel.weigerAria", { naam: "K-9.1.1" }))).not.toBeNull();
 
-    // I26 needs a wizard run's state the frontend does not read, so the delete is admin's here.
-    expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).toBeNull();
+    // I26 needs a wizard run's state the frontend does not read, so the delete is admin's here: no "…" at all, since
+    // it would hold nothing.
+    expect(knop(THEMAMENU)).toBeNull();
     // Themabeheer holds nothing on the ordinary subthema and activiteit routes (I22).
     expect(knop(t("subthemabeheer.toevoegen"))).toBeNull();
     expect(knop(t("activiteit.toevoegen"))).toBeNull();
@@ -460,9 +473,30 @@ describe("ThemadetailScherm: wie wat mag", () => {
     toon(ADMIN);
     await openHoofdstukken();
 
-    expect(knop(t("themabeheer.verwijderAria", { naam: "Herfst" }))).not.toBeNull();
-    expect(knop(t("subthemabeheer.bewerkAria", { naam: "Rekenen" }))).not.toBeNull();
+    expect(knop(t("themabeheer.bewerk"))).not.toBeNull();
+    expect(await menu(THEMAMENU)).toEqual([t("themabeheer.verwijder")]);
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+    expect(knop(subthemamenu("Rekenen"))).not.toBeNull();
     expect(knop(t("activiteit.verwijderAria", { naam: "Tellen" }))).not.toBeNull();
+  });
+
+  it("verwijdert het thema via het menu naast Bewerken, na bevestiging zoals voordien (FB-094)", async () => {
+    toon(ADMIN);
+    await screen.findByText("Bladeren");
+    await menu(THEMAMENU);
+    fireEvent.click(screen.getByRole("menuitem", { name: t("themabeheer.verwijder") }));
+
+    expect(await screen.findByRole("dialog", { name: t("themabeheer.verwijderTitel", { naam: "Herfst" }) })).toBeInTheDocument();
+  });
+
+  it("bewerkt een subthema via zijn menu, in het subthemaformulier van voordien (FB-094)", async () => {
+    toon(ADMIN);
+    await screen.findByText("Bladeren");
+    await menu(subthemamenu("Bladeren"));
+    fireEvent.click(screen.getByRole("menuitem", { name: t("themabeheer.bewerk") }));
+
+    const blad = await screen.findByRole("dialog");
+    expect(within(blad).getByDisplayValue("Bladeren")).toBeInTheDocument();
   });
 
   it("noemt bij een activiteit zonder soort geen soort, en begint niet met een scheiding (FB-050)", async () => {
@@ -496,9 +530,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
   it("geeft themabeheer de prullenbak op een leeg thema, zoals de server", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { thema: { ...THEMA, themadoelen: [], subthemas: [] } });
 
-    expect(
-      await screen.findByRole("button", { name: t("themabeheer.verwijderAria", { naam: "Herfst" }) }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: THEMAMENU })).toBeInTheDocument();
+    expect(await menu(THEMAMENU)).toEqual([t("themabeheer.verwijder")]);
   });
 
   // Fix round 1, F4: a form left open with no leeftijd to offer is a Bewaren that can only be refused, and it used to
@@ -523,7 +556,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
 
     await screen.findByText(SUGGESTIE.aiMotivatie);
     expect(screen.getByText("K-9.1.1")).toBeInTheDocument();
-    expect(screen.getByText(t("minimumdoel.mijlpaalK"))).toBeInTheDocument();
+    // Once on the proposal, and once at the themadoelen' heading, which all share it (FB-094).
+    expect(screen.getAllByText(t("minimumdoel.mijlpaalK"))).toHaveLength(2);
     expect(screen.getByText("De kleuters kunnen seizoenen onderscheiden.")).toBeInTheDocument();
     expect(screen.getByText(t("thema.suggesties"))).toBeInTheDocument();
 
@@ -598,27 +632,34 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 
-  it("toont in een opengeklapt subthema de activiteiten en subdoelen ingeklapt, met hun aantal (TB-051)", async () => {
-    toon(ADMIN);
+  it("toont in een opengeklapt subthema de onderzoeksvraag, het woordweb en de activiteiten zonder nog iets uit te klappen (FB-094)", async () => {
+    const metVraag = {
+      ...THEMA,
+      subthemas: [
+        { ...THEMA.subthemas[0], onderzoeksvragen: [{ id: "ov-1", vraag: "Waarom vallen de bladeren?", probleemstelling: null }] },
+        THEMA.subthemas[1],
+      ],
+    } as ThemaWeergave;
+    toon(ADMIN, { thema: metVraag });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
 
-    // The heading is the fold, with the count beside the title.
-    const activiteiten = screen.getByRole("button", { name: `${t("thema.activiteitenTitel")} 3` });
-    expect(activiteiten).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: `${t("thema.subdoelenTitel")} 1` })).toHaveAttribute(
-      "aria-expanded",
-      "false",
-    );
-    // The chapter opens on its woordweb, above the rest.
-    const koppen = screen.getAllByRole("heading", { level: 3 }).map((kop) => kop.textContent ?? "");
+    // In reading order: the question, the woordweb, then the activiteiten, each under a small heading of its own.
+    const koppen = screen.getAllByRole("heading", { level: 4 }).map((kop) => kop.textContent ?? "");
+    const vraag = koppen.indexOf(t("thema.onderzoeksvraagTitel"));
     const woordweb = koppen.indexOf(t("woordweb.titel"));
-    expect(woordweb).toBeGreaterThan(-1);
-    expect(woordweb).toBeLessThan(koppen.findIndex((kop) => kop.startsWith(t("thema.activiteitenTitel"))));
-    expect(screen.queryByText("Eigen spel")).toBeNull();
+    expect(vraag).toBeGreaterThan(-1);
+    expect(woordweb).toBeGreaterThan(vraag);
+    expect(koppen.indexOf(t("thema.activiteitenTitel"))).toBeGreaterThan(woordweb);
+    expect(screen.getByText("Waarom vallen de bladeren?")).toBeInTheDocument();
+    // Three activiteiten: all of them at once, with nothing to fold open and no "Alle ... bekijken".
+    expect(screen.getByText("Eigen spel")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: ALLE_ACTIVITEITEN })).toBeNull();
+    // The subdoelen are one line with a link, shut.
+    expect(screen.getByRole("button", { name: t("thema.subdoelenBekijken"), expanded: false })).toBeInTheDocument();
+    expect(screen.queryByText("WIS-1")).toBeNull();
 
     // Activiteiten by name, whatever order the server sent them in.
-    fireEvent.click(activiteiten);
     const namen = screen
       .getAllByRole("button", { name: /^Activiteit .* (bekijken|bewerken)$/ })
       .map((knop) => knop.getAttribute("aria-label"));
@@ -627,17 +668,30 @@ describe("ThemadetailScherm: subthema's staan ingeklapt (FB-011)", () => {
     );
   });
 
-  it("vindt een activiteit met het zoekicoon zonder de lijst open te klappen (TB-051)", async () => {
-    toon(ADMIN);
+  it("toont de eerste drie activiteiten, en de rest na Alle bekijken (FB-094)", async () => {
+    toon(ADMIN, { thema: { ...THEMA, subthemas: [{ ...THEMA.subthemas[0], activiteiten: [...THEMA.subthemas[0].activiteiten, activiteit("a-vier", "Vierde spel")] }, THEMA.subthemas[1]] } });
+    await screen.findByText("Bladeren");
+    fireEvent.click(hoofdstuk("Bladeren", false));
+
+    expect(screen.getByText("Andermans spel")).toBeInTheDocument();
+    expect(screen.queryByText("Vierde spel")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: t("thema.alleBekijken", { aantal: 4 }), expanded: false }));
+    expect(screen.getByText("Vierde spel")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: t("thema.minderTonen"), expanded: true }));
+    expect(screen.queryByText("Vierde spel")).toBeNull();
+  });
+
+  it("vindt een activiteit met het zoekicoon, ook buiten de eerste drie (TB-051)", async () => {
+    toon(ADMIN, { thema: { ...THEMA, subthemas: [{ ...THEMA.subthemas[0], activiteiten: [...THEMA.subthemas[0].activiteiten, activiteit("a-vier", "Vierde spel")] }, THEMA.subthemas[1]] } });
     await screen.findByText("Bladeren");
     fireEvent.click(hoofdstuk("Bladeren", false));
 
     fireEvent.click(screen.getByRole("button", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }));
     fireEvent.change(screen.getByRole("textbox", { name: t("lijst.zoekIn", { lijst: t("thema.lijstActiviteiten") }) }), {
-      target: { value: "gekoppeld" },
+      target: { value: "vierde" },
     });
 
-    expect(screen.getByText("Gekoppeld spel")).toBeInTheDocument();
+    expect(screen.getByText("Vierde spel")).toBeInTheDocument();
     expect(screen.queryByText("Eigen spel")).toBeNull();
   });
 });
@@ -664,21 +718,23 @@ describe("ThemadetailScherm: subthema's van één leeftijd delen hun leeftijdsla
   /** The leeftijd block a chapter hangs in: the section around its fold, while it is shut. */
   const leeftijdsblok = (naam: string) => hoofdstuk(naam, false).closest("section")!;
 
-  it("zet elke leeftijd één keer in de marge, met haar subthema's samen ernaast", async () => {
+  it("zet elke leeftijd één keer als kop, met haar subthema's samen in één lijst eronder", async () => {
     toon(ADMIN, { thema: DRIE });
     await screen.findByText("Bladeren verzamelen");
 
+    const voorK2 = t("thema.voorLeeftijd", { leeftijd: "K2" });
+    const voorK3 = t("thema.voorLeeftijd", { leeftijd: "K3" });
     const blokK2 = leeftijdsblok("Bladeren verzamelen");
     expect(leeftijdsblok("Bladeren herkennen")).toBe(blokK2);
-    expect(within(blokK2).getAllByText("K2", { exact: true })).toHaveLength(1);
-    expect(within(blokK2).getAllByText(t("subthemabeheer.leeftijd"))).toHaveLength(1);
+    expect(within(blokK2).getAllByRole("heading", { name: voorK2 })).toHaveLength(1);
+    expect(within(blokK2).getAllByRole("list")).toHaveLength(1);
 
     const blokK3 = leeftijdsblok(K3_NAAM);
     expect(blokK3).not.toBe(blokK2);
-    expect(within(blokK3).getAllByText("K3", { exact: true })).toHaveLength(1);
-    expect(within(blokK2).queryByText("K3", { exact: true })).toBeNull();
+    expect(within(blokK3).getAllByRole("heading", { name: voorK3 })).toHaveLength(1);
+    expect(within(blokK2).queryByRole("heading", { name: voorK3 })).toBeNull();
 
-    // Each card keeps its own duration now that the margin no longer carries it.
+    // Each subthema carries its own duration.
     expect(hoofdstuk("Bladeren verzamelen", false)).toHaveTextContent(telWoord(2, "thema.eenWeek", "thema.weken"));
     expect(hoofdstuk("Bladeren herkennen", false)).toHaveTextContent(telWoord(3, "thema.eenWeek", "thema.weken"));
   });
@@ -755,7 +811,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
   };
 
   /** The rows of one Subkop in the open chapter, found by its heading. */
-  const groep = (titel: string) => screen.getByRole("heading", { name: hoofdstuklijst(titel) }).closest("section")!;
+  const groep = (titel: string) => screen.getByRole("heading", { name: titel }).closest("section")!;
   // The doel row's own button: the remove control beside it names the code too, but in an `aria-label`.
   const rij = (sectie: HTMLElement, code: string) => {
     const knoppen = within(sectie).getAllByRole("button", { name: new RegExp(code) });
@@ -836,7 +892,7 @@ describe("ThemadetailScherm: welke subdoelen al een activiteit hebben (FB-010)",
 
     // The chapter is open: its subdoelen are on screen, and only the other group is absent.
     expect(groep(t("thema.subdoelenTitel"))).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: hoofdstuklijst(t("thema.andereDoelenTitel")) })).toBeNull();
+    expect(screen.queryByRole("heading", { name: t("thema.andereDoelenTitel") })).toBeNull();
   });
 
   /** Opens the unlink confirmation of one subdoel and returns it (TB-051). */
@@ -942,9 +998,13 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
     ],
   };
 
-  const leeftijdrij = (leeftijd: string) => screen.findByRole("button", { name: new RegExp(`^${leeftijd}`), expanded: false });
+  const rijnaam = (leeftijd: string) => new RegExp(`^${t("thema.leerplandoelenVoor", { leeftijd })}`);
+  const leeftijdrij = (leeftijd: string) => screen.findByRole("button", { name: rijnaam(leeftijd), expanded: false });
   /** The lists under the K3 row, once opened. */
-  const lijst = () => within(screen.getByRole("button", { name: /^K3/, expanded: true }).closest("li")!);
+  const lijst = () => within(screen.getByRole("button", { name: rijnaam("K3"), expanded: true }).closest("li")!);
+  /** The leerplandoelen figure in the summary under the title (FB-094). */
+  const samenvattingLeerplandoelen = () =>
+    within(screen.getByLabelText(t("thema.samenvatting"))).getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement;
 
   it("telt per leeftijd de leerplandoelen van de minimumdoelen, en de koppelingen erbuiten apart", async () => {
     toon(ADMIN, { overzicht: OVERZICHT });
@@ -955,8 +1015,8 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
     const k3 = await leeftijdrij("K3");
     expect(k3).toHaveTextContent(telWoord(2, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"));
     expect(k3).toHaveTextContent(telWoord(1, "thema.overzichtEenBuiten", "thema.overzichtBuiten"));
-    // The margin counts the list only: three, not four.
-    expect(screen.getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement).toHaveTextContent("3");
+    // The summary counts the list only: three, not four.
+    expect(samenvattingLeerplandoelen()).toHaveTextContent("3");
     expect(screen.queryByRole("button", { name: /WIS-1/ })).toBeNull();
   });
 
@@ -981,7 +1041,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
     expect(k2).not.toHaveTextContent(t("thema.overzichtBuiten", { aantal: 0 }));
     fireEvent.click(k2);
 
-    const lijstK2 = within(screen.getByRole("button", { name: /^K2/, expanded: true }).closest("li")!);
+    const lijstK2 = within(screen.getByRole("button", { name: rijnaam("K2"), expanded: true }).closest("li")!);
     expect(lijstK2.getByRole("button", { name: /WIS-2/ })).toBeInTheDocument();
     expect(lijstK2.queryByRole("heading")).toBeNull();
   });
@@ -996,7 +1056,7 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
 
     const k3 = await leeftijdrij("K3");
     expect(k3).toHaveTextContent(t("thema.overzichtGeenLeerplandoelen"));
-    expect(screen.getByText(t("thema.overzichtLeerplandoelWoordMeer")).parentElement).toHaveTextContent("0");
+    expect(samenvattingLeerplandoelen()).toHaveTextContent("0");
   });
 
   it("vraagt het overzicht opnieuw op na het ontkoppelen van een minimumdoel", async () => {
@@ -1030,8 +1090,8 @@ describe("ThemadetailScherm: doelen per leeftijd, de leerplandoelen van de minim
     await waitFor(() =>
       expect(vi.mocked(fetch).mock.calls.some(([pad]) => String(pad).endsWith("/doelenoverzicht"))).toBe(true),
     );
-    // It shows its heading while loading, so this waits until the answer (no leeftijden) has removed it.
-    await waitFor(() => expect(screen.queryByRole("heading", { name: t("thema.overzichtTitel") })).toBeNull());
+    // It shows a placeholder while loading; the answer (no leeftijden) leaves no row behind.
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Leerplandoelen voor/ })).toBeNull());
   });
 });
 
@@ -1297,13 +1357,14 @@ describe("ThemadetailScherm: de samenvatting telt koppelingen (TB-039)", () => {
     ],
   };
 
-  const samenvatting = async () => (await screen.findByText(t("thema.doelenLabel"))).parentElement as HTMLElement;
+  /** The line under the "Doelen" heading (FB-094). */
+  const samenvatting = async () => screen.findByText(/^Gekoppeld:/);
 
   it("noemt het koppelingen, en telt er twee waar één leerplandoel onder twee subthema's hangt", async () => {
     toon(ADMIN, { thema: DUBBEL });
 
-    // The label has to name the koppeling, because that word is the whole explanation of the figure below it.
-    expect(t("thema.doelenLabel").toLowerCase()).toContain("koppeling");
+    // The line has to name the koppeling, because that word is the whole explanation of its figures.
+    expect(t("thema.gekoppeld", { lijst: "" }).toLowerCase()).toContain("gekoppeld");
     // "2 op subthema's" while the two chapters together show WIS-1 and nothing else.
     expect(await samenvatting()).toHaveTextContent(`2 ${t("thema.doelenOpSubthemas")}`);
     await openHoofdstukken();
@@ -1318,5 +1379,63 @@ describe("ThemadetailScherm: de samenvatting telt koppelingen (TB-039)", () => {
     expect(regel).toHaveTextContent(`1 ${t("thema.doelenOpThema")}`);
     expect(regel).toHaveTextContent(`2 ${t("thema.doelenOpSubthemas")}`);
     expect(regel).toHaveTextContent(`1 ${t("thema.doelenOpActiviteiten")}`);
+  });
+});
+
+describe("ThemadetailScherm: kop, subthema's, dan doelen (FB-094)", () => {
+  const OVERZICHT_K3: ThemaDoelenoverzicht = {
+    themaId: "thema-1",
+    leeftijden: [
+      {
+        leeftijd: "K3",
+        leerplandoelen: [
+          { code: "WIS-1", doelsoort: "Gemeenschappelijk", tekst: "Tellen", nietMeerInOpstap: false, minimumdoelRef: "K-MD-1", plaatsen: [] },
+        ],
+        buitenMinimumdoelen: [],
+      },
+    ],
+  };
+
+  it("zet de vier cijfers één keer onder de titel, en niet nog eens bij de blokken", async () => {
+    toon(ADMIN, { overzicht: OVERZICHT_K3 });
+    await screen.findByText("Bladeren");
+    const samenvatting = await waitFor(() => {
+      const dl = screen.getByLabelText(t("thema.samenvatting"));
+      expect(dl).toHaveTextContent(t("thema.overzichtLeerplandoelWoordEen"));
+      return dl;
+    });
+
+    for (const woord of [
+      t("themas.weekMeer"),
+      t("themas.minimumdoelEen"),
+      t("thema.overzichtLeerplandoelWoordEen"),
+      t("themas.subthemaMeer"),
+    ]) {
+      expect(within(samenvatting).getByText(woord)).toBeInTheDocument();
+      // Nowhere else on the page as a figure's word of its own.
+      expect(screen.getAllByText(woord)).toHaveLength(1);
+    }
+    // With one leeftijd, its row does not repeat the total.
+    expect(screen.getByRole("button", { name: /^Leerplandoelen voor K3/ })).not.toHaveTextContent(
+      telWoord(1, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen"),
+    );
+  });
+
+  it("toont eerst de subthema's en dan de doelen, elk onder een echte kop", async () => {
+    toon(ADMIN);
+    await screen.findByText("Bladeren");
+
+    const koppen = screen.getAllByRole("heading", { level: 2 }).map((kop) => kop.textContent);
+    expect(koppen).toEqual([t("thema.subthemasTitel"), t("thema.doelenTitel")]);
+    // The breadcrumb stands in for the old back button.
+    expect(screen.getByRole("navigation", { name: t("thema.kruimelpad") })).toHaveTextContent("Herfst");
+    expect(screen.getByRole("link", { name: t("themas.titel") })).toHaveAttribute("href", "/themas");
+  });
+
+  it("noemt de mijlpaal één keer bij de themadoelen wanneer ze allemaal dezelfde hebben", async () => {
+    toon(ADMIN, { suggesties: [] });
+    await screen.findByText("Bladeren");
+
+    expect(screen.getAllByText(t("minimumdoel.mijlpaalK"))).toHaveLength(1);
   });
 });

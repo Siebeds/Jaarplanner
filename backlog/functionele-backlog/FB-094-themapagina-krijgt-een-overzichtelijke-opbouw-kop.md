@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 19:57
+bijgewerkt: 2026-09-23 20:20
 opgepakt-door: claude-fb094
 branch: ticket/FB-094-themapagina-opbouw
 pr:
@@ -103,3 +103,4 @@ Geen.
 
 - 2026-09-23 19:55 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 19:57 · claude-fb094 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 20:20 · claude-fb094 · pagina herbouwd: kop met kruimelpad, Bewerken en menu, samenvatting met vier cijfers, subthema's voor de doelen; tests en lint groen, bekeken op 1440 en 390 px (licht en donker)
