@@ -51,7 +51,6 @@ export function Plaatsingsbalk({
           <AiKnop
             className="h-9 min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
-            disabled={stelVoor.isPending}
             onClick={() => stelVoor.mutate(leeftijd)}
           >
             {stelVoor.isPending ? t("plaatsing.vraagBezig") : t("plaatsing.vraag")}
@@ -366,7 +365,7 @@ function Aanpasformulier({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Knop rang="hoofd" type="submit" disabled={bezig}>
+        <Knop rang="hoofd" type="submit" bezig={bezig}>
           {t("plaatsing.maakSubthema")}
         </Knop>
         <Knop rang="rustig" type="button" onClick={onAnnuleer} disabled={bezig}>

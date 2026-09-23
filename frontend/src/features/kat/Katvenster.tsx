@@ -1,7 +1,7 @@
-import { forwardRef, type KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { forwardRef, type KeyboardEvent, type MouseEvent } from "react";
+import { useHref, useNavigate } from "react-router-dom";
 import { IcoonKruis } from "../../components/Iconen";
-import { Knop } from "../../components/ui/Knop";
+import { Knop, Knoplink } from "../../components/ui/Knop";
 import { Statusmerk } from "../../components/ui/Statusmerk";
 import { t, telWoord } from "../../i18n";
 import { cn } from "../../lib/cn";
@@ -126,19 +126,53 @@ function houdFocusBinnen(e: KeyboardEvent<HTMLDivElement>) {
   }
 }
 
-/** Follows a link on the deurmat: the klas it is about first, since a link carries no klas. */
-function useVolg() {
+/**
+ * "Bekijken" on the deurmat: a link, since it goes somewhere, so it gets a middle click, Ctrl+click and a screen reader
+ * that calls it a link. The klas it is about is chosen first, since a link carries no klas; a new tab reads that
+ * choice when it opens. A plain click stays in this tab through the router and closes the window; a click the browser
+ * opens elsewhere leaves the window open.
+ */
+function Bekijklink({
+  verwijzing,
+  klasId,
+  label,
+  onGevolgd,
+  onSluit,
+}: {
+  verwijzing: string;
+  klasId: string | null;
+  label: string;
+  onGevolgd?: () => void;
+  onSluit: () => void;
+}) {
+  const href = useHref(verwijzing);
   const navigate = useNavigate();
   const kiesKlas = useSelectie((s) => s.kiesKlas);
-  return (verwijzing: string, klasId: string | null, onSluit: () => void) => {
+  const gevolgd = () => {
+    onGevolgd?.();
     if (klasId) kiesKlas(klasId);
+  };
+  function opKlik(e: MouseEvent<HTMLAnchorElement>) {
+    gevolgd();
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
     onSluit();
     navigate(verwijzing);
-  };
+  }
+  return (
+    <Knoplink
+      rang="rustig"
+      href={href}
+      aria-label={label}
+      onClick={opKlik}
+      onAuxClick={(e) => e.button === 1 && gevolgd()}
+    >
+      {t("kat.bekijken")}
+    </Knoplink>
+  );
 }
 
 function Signaalitem({ signaal, onSluit }: { signaal: Deurmatsignaal; onSluit: () => void }) {
-  const volg = useVolg();
   const gezien = useSignaalGezien();
   const later = useSignaalLater();
   const zin = signaalzin(signaal);
@@ -148,20 +182,17 @@ function Signaalitem({ signaal, onSluit }: { signaal: Deurmatsignaal; onSluit: (
       <p className="mt-0.5 text-body text-inkt">{zin}</p>
       <div className="mt-2 flex flex-wrap gap-2">
         {signaal.verwijzing ? (
-          <Knop
-            rang="rustig"
-            aria-label={t("kat.bekijkenAria", { wat: zin })}
-            onClick={() => {
-              gezien.mutate(signaal.id);
-              volg(signaal.verwijzing!, signaal.klasId, onSluit);
-            }}
-          >
-            {t("kat.bekijken")}
-          </Knop>
+          <Bekijklink
+            verwijzing={signaal.verwijzing}
+            klasId={signaal.klasId}
+            label={t("kat.bekijkenAria", { wat: zin })}
+            onGevolgd={() => gezien.mutate(signaal.id)}
+            onSluit={onSluit}
+          />
         ) : null}
         <Knop
           rang="stil"
-          disabled={later.isPending}
+          bezig={later.isPending}
           aria-label={t("kat.laterAria", { wat: zin })}
           onClick={() => later.mutate(signaal.id)}
         >
@@ -187,7 +218,6 @@ function Voorstelitem({
   verwijzing: string;
   onSluit: () => void;
 }) {
-  const volg = useVolg();
   const zin = voorstelzin(voorstel);
   return (
     <article className="voorstel-ai rounded-veld px-3 py-2.5">
@@ -198,9 +228,12 @@ function Voorstelitem({
       <p className="mt-1.5 text-body font-medium text-inkt">{zin}</p>
       <p className="mt-1 line-clamp-3 text-meta text-inkt-zacht">{voorstel.aiMotivatie}</p>
       <div className="mt-2">
-        <Knop rang="rustig" aria-label={t("kat.bekijkenAria", { wat: zin })} onClick={() => volg(verwijzing, null, onSluit)}>
-          {t("kat.bekijken")}
-        </Knop>
+        <Bekijklink
+          verwijzing={verwijzing}
+          klasId={null}
+          label={t("kat.bekijkenAria", { wat: zin })}
+          onSluit={onSluit}
+        />
       </div>
     </article>
   );

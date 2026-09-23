@@ -101,7 +101,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
           <AiKnop
             className="h-9 min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
-            disabled={eigen === null || eigenWoorden.length === 0 || stelVoor.isPending}
+            disabled={eigen === null || eigenWoorden.length === 0}
             onClick={() => eigen && stelVoor.mutate(eigen.id)}
           >
             {stelVoor.isPending ? t("woordweb.voorstellenBezig") : t("woordweb.voorstellen")}

@@ -127,11 +127,13 @@ describe("Generatiebalk", () => {
     expect(screen.queryByText(t("plan.generatieNieuw", { aantal: 2 }))).toBeNull();
   });
 
-  it("is uitgeschakeld en zegt dat het bezig is terwijl het genereert", () => {
+  it("wacht, houdt de focus en zegt dat het bezig is terwijl het genereert", () => {
     toon({ bezig: true });
 
     const knop = screen.getByRole("button", { name: t("plan.genereerBezig") });
-    expect((knop as HTMLButtonElement).disabled).toBe(true);
+    // aria-disabled, not disabled: the button keeps the keyboard focus during the run (TB-073).
+    expect((knop as HTMLButtonElement).disabled).toBe(false);
+    expect(knop.getAttribute("aria-disabled")).toBe("true");
     expect(knop.getAttribute("aria-busy")).toBe("true");
   });
 });

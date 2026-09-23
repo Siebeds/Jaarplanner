@@ -97,7 +97,8 @@ export function Schoolcontentimport() {
           <div className="flex flex-wrap items-center gap-2">
             <Knop
               rang="hoofd"
-              disabled={!bestand || bezig !== null}
+              bezig={bezig === "voorbeeld"}
+              disabled={!bestand || (bezig !== null && bezig !== "voorbeeld")}
               onClick={() => voerUit("voorbeeld")}
             >
               {bezig === "voorbeeld" ? t("importeren.bezig") : t("importeren.bekijkVoorbeeld")}
@@ -193,7 +194,8 @@ export function Schoolcontentimport() {
               <div className="flex flex-wrap items-center gap-2">
                 <Knop
                   rang="hoofd"
-                  disabled={!getoond.isBestandGeldig || bezig !== null}
+                  bezig={bezig === "import"}
+                  disabled={!getoond.isBestandGeldig || (bezig !== null && bezig !== "import")}
                   onClick={() => voerUit("import")}
                 >
                   {bezig === "import" ? t("importeren.bezig") : t("importeren.voerUit")}

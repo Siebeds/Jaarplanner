@@ -28,7 +28,6 @@ export function ActiviteitvoorstelKnop({ stelVoor }: { stelVoor: StelVoor }) {
     <AiKnop
       className="h-9 min-h-9 px-2.5 text-meta"
       bezig={stelVoor.isPending}
-      disabled={stelVoor.isPending}
       onClick={() => stelVoor.mutate()}
     >
       {stelVoor.isPending ? t("activiteitvoorstel.vraagBezig") : t("activiteitvoorstel.vraag")}
@@ -260,7 +259,7 @@ function Aanpasformulier({
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
-        <Knop rang="hoofd" type="submit" disabled={bezig}>
+        <Knop rang="hoofd" type="submit" bezig={bezig}>
           {t("activiteitvoorstel.aanvaard")}
         </Knop>
         <Knop rang="rustig" type="button" onClick={onAnnuleer} disabled={bezig}>

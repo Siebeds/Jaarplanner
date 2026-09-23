@@ -229,7 +229,7 @@ function Gradatieformulier({ gradatie, onKlaar }: { gradatie?: Gradatie; onKlaar
       </Veld>
       <Kleurkeuze gekozen={kleur} onKies={setKleur} />
       <div className="flex flex-wrap items-center gap-2">
-        <Knop rang="hoofd" type="submit" disabled={actie.isPending}>
+        <Knop rang="hoofd" type="submit" bezig={actie.isPending}>
           {actie.isPending
             ? t("algemeen.bezig")
             : gradatie

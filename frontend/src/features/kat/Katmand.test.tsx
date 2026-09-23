@@ -112,6 +112,12 @@ describe("Chuck in the header", () => {
     expect((await screen.findAllByText("Ik heb iets voor je klaargezet.")).length).toBeGreaterThan(0);
   });
 
+  it("names the browser tab after the screen (TB-073)", async () => {
+    toon({ zonderKat: true });
+    await screen.findByRole("heading", { name: "Agenda" });
+    expect(document.title).toBe("Agenda · Vizier");
+  });
+
   it("is absent from the ontwikkelingsrapport's screens", async () => {
     toon({ zonderKat: true });
     await screen.findByRole("heading", { name: "Agenda" });
@@ -128,7 +134,7 @@ describe("his window", () => {
     const venster = await screen.findByRole("dialog", { name: "Chuck" }, { timeout: 2000 });
     expect(within(venster).getByText(/Minimumdoel K-2.1.81 raakt niet meer gedekt/)).toBeInTheDocument();
     expect(within(venster).getByText("Voor K3 De Uilen, 19 nov van 10.15 tot 11.00")).toBeInTheDocument();
-    expect(within(venster).getByRole("button", { name: /^Bekijken: Minimumdoel/ })).toBeInTheDocument();
+    expect(within(venster).getByRole("link", { name: /^Bekijken: Minimumdoel/ })).toHaveAttribute("href");
     expect(within(venster).getByRole("button", { name: /^Later: Minimumdoel/ })).toBeInTheDocument();
     expect(within(venster).getByText("Met Chuck praten kan nog niet. Dat komt in een volgende versie.")).toBeInTheDocument();
     expect(within(venster).getByText("Namen en informatie over kinderen horen niet in dit venster.")).toBeInTheDocument();
@@ -156,6 +162,10 @@ describe("his window", () => {
     fireEvent.click(knop);
     await screen.findByRole("dialog", {}, { timeout: 2000 });
     expect(knop).toHaveAttribute("aria-expanded", "true");
+    // The window appears from a timer, outside act, so the dialog can be in the DOM before the effect that focuses its
+    // close button has run. Escape in that gap is a press no person can make, and the late effect then pulled the focus
+    // off the cat on a slow CI runner. Wait for the window to take the focus, as a person does.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sluit het venster van Chuck" })).toHaveFocus());
 
     fireEvent.keyDown(document, { key: "Escape" });
 
@@ -171,6 +181,25 @@ describe("his window", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     const scene = container.querySelector("svg.chuck")!;
     for (const beweging of ["rijst", "uit", "loopt"]) expect(scene).not.toHaveClass(beweging);
+  });
+
+  it("links Bekijken, so Ctrl+click opens it in a new tab and leaves the window open (TB-073)", async () => {
+    deurmat = { signalen: [GEVAAR], voorstellen: [] };
+    toon();
+    fireEvent.click(await mandknop());
+    const link = await screen.findByRole("link", { name: /^Bekijken: Minimumdoel/ }, { timeout: 2000 });
+    expect(link).toHaveAttribute("href", "/dekking");
+
+    // Not prevented: the browser opens the address in a new tab. The signal still counts as seen.
+    expect(fireEvent.click(link, { ctrlKey: true })).toBe(true);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(fetchAanroepen().some(([pad, init]) => pad === "/api/deurmat/signalen/s1/gezien" && init?.method === "POST")).toBe(true),
+    );
+
+    // A plain click stays in this tab: the router follows it and the window closes.
+    expect(fireEvent.click(link)).toBe(false);
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
   it("puts a signal off until later through the deurmat", async () => {

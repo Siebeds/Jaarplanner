@@ -331,7 +331,7 @@ function Koppelactie({
       // does something different has to be the one that is drawn differently.
       rang="rustig"
       className="h-9 min-h-9 shrink-0 px-3 text-meta"
-      disabled={bezig}
+      bezig={bezig}
       aria-label={toelichting}
       onClick={onKoppel}
     >

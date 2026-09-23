@@ -139,7 +139,7 @@ export function Subthemaformulier({
       titel={subthema ? t("subthemabeheer.wijzigTitel") : t("subthemabeheer.nieuwTitel")}
       voet={
         <div className="flex items-center gap-2">
-          <Knop rang="hoofd" vol form={id} type="submit" disabled={bezig} className="@sm:w-auto @sm:px-6">
+          <Knop rang="hoofd" vol form={id} type="submit" bezig={bezig} className="@sm:w-auto @sm:px-6">
             {bezig ? t("themabeheer.bewaarBezig") : t("themabeheer.bewaar")}
           </Knop>
           <Knop rang="stil" type="button" onClick={onSluit} disabled={bezig}>

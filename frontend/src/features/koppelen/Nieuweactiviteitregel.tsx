@@ -179,7 +179,8 @@ export function Nieuweactiviteitregel({
             type="submit"
             rang="hoofd"
             className="h-9 min-h-9 px-3 text-meta"
-            disabled={!naamIngevuld || maak.isPending || klasId === null}
+            bezig={maak.isPending}
+            disabled={!naamIngevuld || klasId === null}
           >
             {maak.isPending ? t("koppelen.bezigMaken") : t("koppelen.maakEnKoppel")}
           </Knop>

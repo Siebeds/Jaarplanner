@@ -115,12 +115,13 @@ export function Woordchips({
       </div>
 
       {/* Clicking the box anywhere lands in the field: the whole rectangle looks like one input, so
-          it has to behave like one. The input itself keeps the focus ring, on itself and not on the
-          box, so what is focused is what receives the next keystroke. */}
+          it has to behave like one. So the focus ring of the input is drawn around the box, where
+          every other field draws it; a chip's own remove button keeps its ring on itself. */}
       <div
         onClick={() => invoer.current?.focus()}
         className={cn(
           "mt-1.5 flex flex-wrap items-center gap-1.5 rounded-veld border border-lijn-veld bg-kaart p-2",
+          "has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-[input:focus-visible]:outline-accent",
           uitgeschakeld && "opacity-45",
         )}
       >

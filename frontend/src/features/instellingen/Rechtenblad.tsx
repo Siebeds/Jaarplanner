@@ -80,7 +80,7 @@ export function Rechtenblad({
             <Knop rang="rustig" onClick={onSluit}>
               {t("gebruikers.klaar")}
             </Knop>
-            <Knop rang="stil" onClick={onVerwijder} disabled={bezig}>
+            <Knop rang="stil" onClick={onVerwijder} bezig={bezig}>
               {t("gebruikers.verwijderen")}
             </Knop>
           </div>
