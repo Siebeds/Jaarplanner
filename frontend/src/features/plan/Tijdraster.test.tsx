@@ -1,5 +1,5 @@
 import { DndContext } from "@dnd-kit/core";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { Tijdraster, type Ficheblokje, type Tijddoel } from "./Tijdraster";
@@ -9,7 +9,7 @@ import type { Schooldaguren } from "../schooluren/gegevens";
 import { STANDAARDBEGIN, toonBereik } from "./tijd";
 import type { Subthemareeks } from "./subthemareeksen";
 import { t } from "../../i18n";
-import { FICHEVLAK } from "../algemene-fiches/merk";
+import { FICHEVLAK, FICHEVLAK_STIL } from "../algemene-fiches/merk";
 
 /**
  * The time grid (ADR-0028).
@@ -52,6 +52,7 @@ const fiche = (begin: string, einde: string): Ficheblokje => ({
   datum: "2026-09-08",
   begin,
   einde,
+  terugkerend: false,
 });
 
 function toon(
@@ -117,6 +118,72 @@ describe("het rechtermuisklikmenu van een blok (TB-030)", () => {
     fireEvent.contextMenu(screen.getByRole("button", { name: /^kringgesprek/ }));
 
     expect(screen.queryByRole("menu")).toBeNull();
+  });
+});
+
+// FB-091: the routine stands back behind what is planned, and a block says no start the hour gutter already says.
+describe("Tijdraster: een terugkerende fiche en het beginuur (FB-091)", () => {
+  /** The block's drawn box: the element that carries its ground and its edge. */
+  const vlak = (knop: HTMLElement) => knop.closest(".rounded-veld") as HTMLElement;
+  /** The block's name as it is printed. */
+  const naamIn = (knop: HTMLElement, naam: string) => within(knop).getByText(naam);
+
+  it("tekent een terugkerende fiche zonder rand en niet vet, en een eenmalige zoals voordien", () => {
+    toon([dag()], {
+      fichemomenten: [
+        { ...fiche("08:00:00", "09:00:00"), naam: "onthaal", terugkerend: true },
+        { ...fiche("13:00:00", "14:00:00"), momentId: "fm-2", naam: "uitstap", terugkerend: false },
+      ],
+    });
+
+    const onthaal = screen.getByRole("button", { name: /^onthaal/ });
+    expect(vlak(onthaal).className).toContain(FICHEVLAK_STIL);
+    expect(vlak(onthaal).className).not.toContain(FICHEVLAK);
+    expect(naamIn(onthaal, "onthaal")).toHaveClass("font-normal");
+    expect(naamIn(onthaal, "onthaal")).not.toHaveClass("font-medium");
+
+    const uitstap = screen.getByRole("button", { name: /^uitstap/ });
+    expect(vlak(uitstap).className).toContain(FICHEVLAK);
+    expect(vlak(uitstap).className).not.toContain(FICHEVLAK_STIL);
+    expect(naamIn(uitstap, "uitstap")).toHaveClass("font-medium");
+  });
+
+  it("houdt een terugkerende fiche herkenbaar aan haar icoon en haar onderschrift, niet aan kleur alleen", () => {
+    toon([dag()], { fichemomenten: [{ ...fiche("08:00:00", "09:00:00"), naam: "onthaal", terugkerend: true }] });
+
+    const onthaal = screen.getByRole("button", { name: /^onthaal/ });
+    expect(onthaal.querySelector("svg")).not.toBeNull();
+    expect(within(onthaal).getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
+  });
+
+  it("laat een activiteit vet en met rand staan naast een terugkerende fiche", () => {
+    toon([dag([activiteit("kringgesprek", "10:00:00", "11:00:00")])], {
+      fichemomenten: [{ ...fiche("08:00:00", "09:00:00"), naam: "onthaal", terugkerend: true }],
+    });
+
+    const kring = screen.getByRole("button", { name: /^kringgesprek/ });
+    expect(vlak(kring)).toHaveClass("border-lijn");
+    expect(naamIn(kring, "kringgesprek")).toHaveClass("font-medium");
+  });
+
+  it("toont geen beginuur in een blok dat op een heel uur begint, wel het einde", () => {
+    toon([dag([activiteit("kringgesprek", "09:00:00", "09:50:00"), activiteit("lezen", "10:00:00", "11:15:00")])]);
+
+    expect(within(screen.getByRole("button", { name: /^kringgesprek/ })).queryByText("9:00")).toBeNull();
+    const lezen = screen.getByRole("button", { name: /^lezen/ });
+    expect(within(lezen).queryByText(toonBereik("10:00:00", "11:15:00"))).toBeNull();
+    expect(within(lezen).getByText(t("tijdraster.tot", { tijd: "11:15" }))).toBeInTheDocument();
+    // The accessible name still says both ends.
+    expect(lezen).toHaveAccessibleName(new RegExp(toonBereik("10:00:00", "11:15:00")));
+  });
+
+  it("toont het beginuur in een blok dat niet op een heel uur begint", () => {
+    toon([dag([activiteit("kringgesprek", "10:15:00", "10:50:00"), activiteit("lezen", "13:15:00", "14:30:00")])]);
+
+    expect(within(screen.getByRole("button", { name: /^kringgesprek/ })).getByText("10:15")).toBeInTheDocument();
+    expect(
+      within(screen.getByRole("button", { name: /^lezen/ })).getByText(toonBereik("13:15:00", "14:30:00")),
+    ).toBeInTheDocument();
   });
 });
 

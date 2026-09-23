@@ -2,13 +2,13 @@
 id: FB-091
 titel: Terugkerende fiche weegt in de agenda minder dan een geplande activiteit
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 20:22
+opgepakt-door: claude-fb091
+branch: ticket/FB-091-stille-fiche
+pr: 174
 geblokkeerd:
 fr: []
 ---
@@ -34,15 +34,15 @@ begint.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week met een dagelijkse fiche "Onthaal" en een geplande activiteit op dezelfde dag, wanneer de
+- [x] Gegeven een week met een dagelijkse fiche "Onthaal" en een geplande activiteit op dezelfde dag, wanneer de
       leerkracht de week opent, dan springt de activiteit meer in het oog dan de fiche.
-- [ ] Gegeven een terugkerende fiche, wanneer ze in de agenda staat, dan is ze nog altijd herkenbaar als algemene
+- [x] Gegeven een terugkerende fiche, wanneer ze in de agenda staat, dan is ze nog altijd herkenbaar als algemene
       fiche en als terugkerend, door een icoon en niet door kleur alleen.
-- [ ] Gegeven een blok dat om 8:00 begint, wanneer het in de week staat, dan staat er geen "8:00" in het blok; een
+- [x] Gegeven een blok dat om 8:00 begint, wanneer het in de week staat, dan staat er geen "8:00" in het blok; een
       blok dat om 8:15 begint, toont "8:15".
-- [ ] Gegeven de stillere fiche, wanneer het contrast gemeten wordt in een echte browser, in lichte en donkere
+- [x] Gegeven de stillere fiche, wanneer het contrast gemeten wordt in een echte browser, in lichte en donkere
       weergave, dan haalt de tekst WCAG 2.2 AA.
-- [ ] Gegeven een fiche die één keer gepland is, wanneer ze in de agenda staat, dan ziet ze eruit zoals voordien.
+- [x] Gegeven een fiche die één keer gepland is, wanneer ze in de agenda staat, dan ziet ze eruit zoals voordien.
 
 ## Testscenario's
 
@@ -63,3 +63,9 @@ Geen.
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 20:10 · claude-fb091 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 20:20 · claude-fb091 · gebouwd: terugkerende fiche (meer dan één moment) half zo diep, zonder rand, niet vet; beginuur weg op een heel uur ('tot 9:00' op lange blokken); Vitest 1352 groen, lint groen
+- 2026-09-23 20:20 · claude-fb091 · browser (mock, 1440 en 390px): stille fiche licht tekst 5,65:1 en icoon 4,32:1, donker 8,53:1 en 6,5:1; activiteiten springen eruit in een volle week
+- 2026-09-23 20:21 · claude-fb091 · antagonist: COMPLIANT, twee MINOR (eenmalige fiche draagt nog het terugkeer-icoon, FB-077-scope; randgeval-test niet nodig: 10:15-10:50 dekt het al); criteria afgevinkt op test en browsermeting
+- 2026-09-23 20:21 · claude-fb091 · in-uitvoering → te-testen: terugkerende fiche stiller, beginuur weg op een heel uur; Vitest, lint, browser en antagonist groen
+- 2026-09-23 20:22 · claude-fb091 · PR #174

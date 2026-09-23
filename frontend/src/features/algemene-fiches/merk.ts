@@ -20,3 +20,15 @@
  * the name is the first thing clipped, and the icon is what survives (TB-060).
  */
 export const FICHEVLAK = "border-fiche-lijn bg-fiche-vlak";
+
+/**
+ * The same paper for a fiche that recurs, half as deep and without its edge (FB-091).
+ *
+ * A daily onthaal drew five identical heavy blocks in the week, and the routine a teacher already knows by heart was
+ * the loudest thing on the grid. A recurring fiche stands back: a wash half-way between the fiche's ground and the
+ * card, no drawn border, and a name that is not set in weight. What it is stays said by `IcoonFiche`, the arrows that
+ * mean "this comes back", and by the "algemene fiche" line wherever the block has the room. A fiche planned once keeps
+ * `FICHEVLAK`. Both grounds mix tokens, so the dark theme follows without a value of its own.
+ */
+export const FICHEVLAK_STIL =
+  "border-transparent bg-[color-mix(in_srgb,var(--color-fiche-vlak)_50%,var(--color-kaart))]";
