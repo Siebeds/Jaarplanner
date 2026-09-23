@@ -76,7 +76,6 @@ export function PlanScherm() {
     <>
       <Schermkop
         titel={t("plan.titel")}
-       
         onder={
           /* The way back. This screen is not the agenda's front door, so it needs one. */
           <Link

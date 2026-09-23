@@ -2,10 +2,10 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 09:14
+bijgewerkt: 2026-09-23 09:23
 opgepakt-door: claude-fb071-kop
 branch: ticket/FB-071-kop
 pr:
@@ -74,10 +74,10 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label
+- [x] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label
   onder hem.
-- [ ] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon onder zijn mandje.
-- [ ] Gegeven de agenda, het jaarplan of de dekking, dan staat er geen knop naast Chuck: de klaskiezer staat op een
+- [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon onder zijn mandje.
+- [x] Gegeven de agenda, het jaarplan of de dekking, dan staat er geen knop naast Chuck: de klaskiezer staat op een
   laptop in de linker zijbalk en op een telefoon bovenaan in Instellingen.
 - [x] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
   bedekken, en zegt hij in een tekstballon welk doel. Er staat nooit meer dan één Chuck op het scherm.
@@ -90,7 +90,7 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 - [x] Gegeven elke houding, dan draagt ze ook tekst, en het contrast haalt WCAG 2.2 AA (zijn silhouet 3:1, tekst 4.5:1),
   gemeten in een echte browser, in licht en in donker.
 - [x] Gegeven een export of een ontwikkelingsrapport, dan staat er geen kat in.
-- [ ] Bekeken in de echte app op desktop en op ongeveer 390px.
+- [x] Bekeken in de echte app op desktop en op ongeveer 390px.
 
 ## Testscenario's
 
@@ -152,3 +152,6 @@ Vastgelegd in de bouw:
 - 2026-09-23 01:07 · claude-fb071 · PR #161
 - 2026-09-23 09:13 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: tekst van Chuck (bv. 'Chuck slaapt') moet onder de kat, niet ernaast; Chuck staat verwarrend tussen de knoppen, dus de klaskiezer verhuist naar de linker zijbalk (telefoon: bovenaan Instellingen); Vandaag blijft staan
 - 2026-09-23 09:14 · claude-fb071-kop · klaar-voor-bouw → in-uitvoering: opgepakt na de test: tekst onder Chuck, klaskiezer naar de zijbalk
+- 2026-09-23 09:21 · claude-fb071-kop · tekst van Chuck staat onder hem; klaskiezer uit de kop naar de zijbalk (rail: icoon) en op telefoon bovenaan Instellingen; bekeken op mockdata op 1440 en 390px; lint en 443 gerelateerde tests groen
+- 2026-09-23 09:23 · claude-fb071-kop · antagonist COMPLIANT; 2 MINOR opgelost (tekst 'bovenaan het scherm' wordt 'Kies eerst een klas.', lege regels), 1 gecontroleerd (alleen Chuck gebruikt de ballon met staart naar boven); 1312 frontendtests groen, lint schoon
+- 2026-09-23 09:23 · claude-fb071-kop · in-uitvoering → te-testen: tekst van Chuck onder hem, klaskiezer in de zijbalk (telefoon: bovenaan Instellingen), Vandaag blijft staan; gates groen

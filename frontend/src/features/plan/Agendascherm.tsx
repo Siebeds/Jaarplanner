@@ -683,7 +683,6 @@ export function Agendascherm() {
       <Schermkop
         breed
         titel={t("periode.titel")}
-       
         onder={
           /* Both rows travel with the sticky header. The range and its arrows used to scroll away
              with the grid, and a month is tall enough that they did: they ended up half behind the

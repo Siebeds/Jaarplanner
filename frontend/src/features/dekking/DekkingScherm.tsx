@@ -139,7 +139,6 @@ export function DekkingScherm() {
     <>
       <Schermkop
         titel={t("dekking.titel")}
-       
         onder={
           <Segment
             label={t("dekking.bereik")}
