@@ -2,10 +2,10 @@
 id: FB-098
 titel: Hoekenfiches tonen per subthema de periode, de stand van de verrijkingen en wat erna komt
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:43
+bijgewerkt: 2026-09-23 23:47
 opgepakt-door: claude-fb098
 branch: ticket/FB-098-hoekenfiches-per-subthema
 pr:
@@ -47,19 +47,19 @@ en wat erna komt"), met de huidige kop "HOEKENFICHES" en zijn icoon behouden.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een klas met zes hoeken en een lopend subthema, wanneer de leerkracht het paneel opent, dan staat de
+- [x] Gegeven een klas met zes hoeken en een lopend subthema, wanneer de leerkracht het paneel opent, dan staat de
       naam van het subthema één keer, met zijn periode, en niet bij elke hoek.
-- [ ] Gegeven één verrijkte hoek van de zes, wanneer het paneel opent, dan staat er "1 van 6", en toont de verrijkte
+- [x] Gegeven één verrijkte hoek van de zes, wanneer het paneel opent, dan staat er "1 van 6", en toont de verrijkte
       hoek zijn verrijking met een vinkje en de andere "+ Verrijking invullen".
-- [ ] Gegeven een hoek met een beschrijving, wanneer het paneel opent, dan staat die beschrijving niet in het paneel,
+- [x] Gegeven een hoek met een beschrijving, wanneer het paneel opent, dan staat die beschrijving niet in het paneel,
       en wie op de naam klikt, ziet ze in de fiche van de hoek.
-- [ ] Gegeven een klas waarvan het volgende subthema al gepland is, wanneer het paneel opent, dan staat onderaan
+- [x] Gegeven een klas waarvan het volgende subthema al gepland is, wanneer het paneel opent, dan staat onderaan
       "Hierna, vanaf <datum>" met de naam van dat subthema en zijn stand, en opent "Al voorbereiden" het invullen
       voor dat subthema.
-- [ ] Gegeven het laatste subthema van het schooljaar, wanneer het paneel opent, dan staat er geen deel "Hierna".
-- [ ] Gegeven een week waarin twee subthema's lopen, wanneer het paneel opent, dan heeft elk zijn eigen blok met zijn
+- [x] Gegeven het laatste subthema van het schooljaar, wanneer het paneel opent, dan staat er geen deel "Hierna".
+- [x] Gegeven een week waarin twee subthema's lopen, wanneer het paneel opent, dan heeft elk zijn eigen blok met zijn
       eigen periode en stand.
-- [ ] Gegeven een laptop van 1440×900 en zes hoeken, wanneer het paneel opent, dan zijn alle zes zichtbaar zonder te
+- [x] Gegeven een laptop van 1440×900 en zes hoeken, wanneer het paneel opent, dan zijn alle zes zichtbaar zonder te
       scrollen.
 
 ## Testscenario's
@@ -91,3 +91,7 @@ overnemen (FB-078).
 - 2026-09-23 23:26 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-23 23:29 · claude-fb098 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 23:43 · claude-fb098 · Gebouwd: blok per subthema met periode en stand, rij per hoek, 'Hierna' met 'Al voorbereiden'; het volgende subthema komt uit de opgeslagen subthemaperiodes tot het einde van het schooljaar, geen API-wijziging nodig. Vitest 1379 groen, lint groen.
+- 2026-09-23 23:47 · claude-fb098 · Criteria afgevinkt: 1-4 met Vitest en browser (mockmodus), 5 en 6 met Vitest (volgendeReeks, twee blokken), 7 in de browser: op 1440x900 passen zes hoeken, Hierna en de tegel zonder scrollen; op 390px opent het paneel als blad zonder horizontaal scrollen.
+- 2026-09-23 23:47 · claude-fb098 · Open vraag beantwoord: het volgende subthema komt uit de ingeladen reeksen en de opgeslagen subthemaperiodes tot het einde van het schooljaar; een later subthema dat alleen uit activiteiten bestaat zonder opgeslagen periode ziet het paneel niet. 'Nu' staat er alleen als vandaag in de periode valt.
+- 2026-09-23 23:47 · claude-fb098 · Antagonist: COMPLIANT, drie MINOR: de beperking hierboven, het blad Al voorbereiden neemt de hoekenlijst van bij het openen, en hoeken hadden nooit een doel-icoon (FB-018 gold alleen voor algemene fiches), dus er viel niets te behouden.
+- 2026-09-23 23:47 · claude-fb098 · in-uitvoering → te-testen: Gebouwd: hoekenfiches per subthema met periode, stand en Hierna/Al voorbereiden; Vitest 1379 groen, lint groen, browser op 1440x900 en 390px, antagonist COMPLIANT.
