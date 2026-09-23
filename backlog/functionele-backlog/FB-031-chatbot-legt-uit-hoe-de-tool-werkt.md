@@ -2,13 +2,13 @@
 id: FB-031
 titel: Chatbot legt de tool uit en beantwoordt opzoekvragen over doelen, thema's en activiteiten
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 11:33
-opgepakt-door: claude-fb031
-branch: ticket/FB-031-kat-chat
-pr: 172
+bijgewerkt: 2026-09-23 20:23
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: []
 ---
@@ -125,3 +125,4 @@ Regels:
 - 2026-09-23 11:32 · claude-fb031 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR opgelost (geweigerde themaplaatsing niet in de agenda, eigen activiteit via de rechtenmatrix, geen gedachtestreepje in een uitleg); open MINOR: een 400 met een Nederlandse zin (prompt te groot) toont de algemene fouttekst; vraag aan de eigenaar: de handleiding uitdrukkelijk in Art. IV.4 noemen
 - 2026-09-23 11:32 · claude-fb031 · in-uitvoering → te-testen: chat van Chuck gebouwd: uitleg uit de handleiding (eerste versie, na te kijken door de eigenaar) en vijf opzoekingen uit de eigen gegevens met de rechten van de gebruiker, ook de agenda; niets bewaard of gelogd (ADR-0066); criteria bewezen met unit-, Postgres- en Vitest-tests en een browserpas op 1440px en 390px; volledige suites, dotnet format en pnpm lint groen
 - 2026-09-23 11:33 · claude-fb031 · PR #172
+- 2026-09-23 20:23 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: (1) terwijl Chuck een antwoord zoekt, overlappen de drie puntjes de tekst 'Chuck denkt na' in de ballon; verwacht een kleine ruimte tussen tekst en puntjes, gezien puntjes over de laatste letter (oorzaak: .ai-puntjes heeft margin-left -4px, index.css). (2) De kat is in het chatvenster niet zichtbaar en het staartje van de ballon wijst naar niets; gewenst: een klein kopje van Chuck (ca. 32px) als chaticoon naast elke ballon van hem, met het staartje ernaartoe, en naast 'Chuck' in de kop van het venster.
