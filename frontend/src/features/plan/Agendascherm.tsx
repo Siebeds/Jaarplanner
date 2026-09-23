@@ -15,7 +15,6 @@ import {
   IcoonHoek,
   IcoonPijlLinks,
   IcoonPijlRechts,
-  IcoonPlus,
 } from "../../components/Iconen";
 import { useDagacties, useJaarplan, usePlaatsSubthemaperiode, useRooster, useWeekplanning } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
@@ -143,6 +142,8 @@ export function Agendascherm() {
   // describes the last thing she tried rather than accumulating.
   const [sleepFout, setSleepFout] = useState<string | null>(null);
   const [plannerOpen, setPlannerOpen] = useState(false);
+  // The placement whose band opened the planner (FB-087). Null until one did: then the anchored day's placement.
+  const [plannerPlaatsingId, setPlannerPlaatsingId] = useState<string | null>(null);
   const [plannerResultaat, setPlannerResultaat] = useState<{ gelukt: number; totaal: number; fouten: string[] } | null>(
     null,
   );
@@ -219,10 +220,16 @@ export function Agendascherm() {
     ga({ datum, weergave: "dag", push: true });
   }
 
-  // Every thema placement as a stretch of days, and the one the anchored day falls in. A day without a thema is a
-  // legitimate place to stand and not an error.
+  // Every thema placement as a stretch of days, and the one the subthema planner plans into: the one whose band
+  // opened it, or else the one the anchored day falls in, so the usual case finds its days already loaded when the
+  // band is pressed. A day without a thema is a legitimate place to stand and not an error.
   const blokken = useMemo(() => themablokken(plan?.plaatsingen ?? []), [plan]);
-  const blok = useMemo(() => blokken.find((b) => valtBinnen(anker, b.start, b.eind)), [blokken, anker]);
+  const blok = useMemo(
+    () =>
+      blokken.find((b) => b.plaatsingId === plannerPlaatsingId) ??
+      blokken.find((b) => valtBinnen(anker, b.start, b.eind)),
+    [blokken, anker, plannerPlaatsingId],
+  );
 
   // The days the werkweek draws. Every other view draws the whole range it reads.
   const werkdagenInBeeld = useMemo(
@@ -426,8 +433,19 @@ export function Agendascherm() {
    */
   const vakken = useMemo(() => themavakken(plan?.plaatsingen ?? []), [plan]);
 
-  // The thema running on the anchored day is what the subthema planner may offer.
+  // The thema of that placement is what the subthema planner may offer.
   const themaIdsInPeriode = useMemo(() => (blok ? [blok.themaId] : []), [blok]);
+
+  // From a thema band (FB-087), and only for whoever may plan this klas: no thema, no band, no planner, since the sheet
+  // spreads a subthema over the days of a thema placement.
+  const planSubthema =
+    rechtenBekend && magPlannen
+      ? (plaatsingId: string) => {
+          setPlannerPlaatsingId(plaatsingId);
+          setPlannerResultaat(null);
+          setPlannerOpen(true);
+        }
+      : undefined;
 
   const bezig = acties.plaats.isPending || acties.verplaats.isPending || acties.verwijder.isPending;
 
@@ -757,22 +775,6 @@ export function Agendascherm() {
                   </button>
                 );
               })}
-
-              {/* No thema, no planner: the sheet spreads a subthema over the days of a thema placement, and on a
-                  day without a thema there are none to spread it over. Nor for anyone who may not plan this klas. */}
-              {blok && magPlannen ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPlannerResultaat(null);
-                    setPlannerOpen(true);
-                  }}
-                  className="ml-auto inline-flex h-9 items-center gap-1.5 rounded-veld bg-accent px-3 text-meta font-medium text-accent-op transition-colors duration-150 hover:bg-accent-diep"
-                >
-                  <IcoonPlus aria-hidden="true" className="h-4 w-4" />
-                  {t("periode.planSubthema")}
-                </button>
-              ) : null}
             </div>
 
             {/* The range, its arrows and the way back to today, together and at heading size. Navigation
@@ -904,6 +906,7 @@ export function Agendascherm() {
                 onVoegToe={(datum) => setKiezer({ datum, begin: STANDAARDBEGIN })}
                 onOpen={(activiteit, datum) => setGeopend({ activiteit, datum })}
                 onVanDag={(activiteit) => haalVanDag({ soort: "activiteit", plaatsingId: activiteit.plaatsingId })}
+                onPlanSubthema={planSubthema}
               />
             ) : (
               <>
@@ -935,6 +938,7 @@ export function Agendascherm() {
                 // In the week a column heading opens that day; in the day view it would go where it already is.
                 onKiesDag={weekweergave ? openDag : undefined}
                 onWijzigTijd={bewaarTijd}
+                onPlanSubthema={planSubthema}
               />
               </Weekhoek>
               </>
@@ -1143,6 +1147,8 @@ export function Agendascherm() {
       />
 
       <Subthemaplanner
+        // A fresh sheet per placement: the window and the subthema chosen for one thema mean nothing in another.
+        key={blok?.plaatsingId ?? "geen"}
         open={plannerOpen}
         klasId={klasId}
         // The sheet's empty state is about THIS klas, so it needs the name and not just the id.
@@ -1150,7 +1156,7 @@ export function Agendascherm() {
         magSubthemaMaken={magSubthemaMaken}
         magPlannen={magPlannen}
         themaIds={themaIdsInPeriode}
-        dagen={heelDePeriode?.dagen ?? []}
+        dagen={blok ? heelDePeriode?.dagen : []}
         bezig={acties.plaats.isPending}
         resultaat={plannerResultaat}
         onSluit={() => setPlannerOpen(false)}

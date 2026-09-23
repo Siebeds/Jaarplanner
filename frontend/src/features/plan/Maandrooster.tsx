@@ -41,6 +41,7 @@ export function Maandrooster({
   onOpen,
   onVanDag,
   onVoegToe,
+  onPlanSubthema,
 }: {
   dagen: Agendadag[];
   ankerMaand: string;
@@ -63,6 +64,8 @@ export function Maandrooster({
   onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
   /** Asked for an activiteit on this day, straight from the month. Lands in lesuur 1. */
   onVoegToe: (datum: string) => void;
+  /** Opens the subthema planner for a thema placement, from its band (FB-087). Left out for whoever may not plan. */
+  onPlanSubthema?: (plaatsingId: string) => void;
 }) {
   if (dagen.length === 0) return null;
 
@@ -117,6 +120,7 @@ export function Maandrooster({
               onVoegToe={onVoegToe}
               onOpen={onOpen}
               onVanDag={onVanDag}
+              onPlanSubthema={onPlanSubthema}
             />
           </li>
         ))}
@@ -140,6 +144,7 @@ function Maandcel({
   onVoegToe,
   onOpen,
   onVanDag,
+  onPlanSubthema,
 }: {
   dag: Agendadag;
   buitenMaand: boolean;
@@ -153,6 +158,7 @@ function Maandcel({
   onVoegToe: (datum: string) => void;
   onOpen: (activiteit: GeplandeActiviteit, datum: string) => void;
   onVanDag: (activiteit: GeplandeActiviteit, datum: string) => void;
+  onPlanSubthema?: (plaatsingId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: dag.datum, disabled: !dag.isLesdag || !magPlannen });
 
@@ -220,7 +226,7 @@ function Maandcel({
           letters, and a strip with no room for its name would carry its identity in hue alone. The
           week and day views print it in full, and the day's own button says it out loud. */}
       <div className="relative z-10 -mx-1.5 -mt-1.5 hidden flex-col sm:flex">
-        <Themastroken vak={periode} datum={dag.datum} dicht />
+        <Themastroken vak={periode} datum={dag.datum} dicht onPlanSubthema={onPlanSubthema} />
         <Subthemastroken reeksen={stroken} datum={dag.datum} dicht />
       </div>
 

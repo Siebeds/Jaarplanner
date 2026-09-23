@@ -388,3 +388,28 @@ describe("Agendascherm: de werkweek (FB-040)", () => {
     expect(kolom(/^Open donderdag 17 september/)).not.toBeNull();
   });
 });
+
+describe("Agendascherm: een subthema inplannen vanuit de themastrook (FB-087)", () => {
+  const knop = () => screen.queryByRole("button", { name: t("periode.planSubthemaIn", { naam: "Ik en mijn klas" }) });
+
+  it("zet de knop in de themastrook in plaats van in de kop, en opent de planner voor dat thema", async () => {
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
+
+    await screen.findByRole("button", { name: /^turnen/ });
+    // The header no longer carries a button of its own.
+    expect(screen.queryByRole("button", { name: t("periode.planSubthema") })).toBeNull();
+
+    fireEvent.click(await screen.findByRole("button", { name: t("periode.planSubthemaIn", { naam: "Ik en mijn klas" }) }));
+    const blad = await screen.findByRole("dialog", { name: t("periode.planSubthema") });
+    // The thema of that placement is what it offers.
+    expect(await within(blad).findByRole("option", { name: /De eekhoorn/ })).toBeInTheDocument();
+  });
+
+  it("toont wie de klas alleen mag inkijken geen knop in de themastrook", async () => {
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-2"] }));
+
+    expect(await screen.findByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) })).toBeInTheDocument();
+    expect(knop()).toBeNull();
+  });
+});

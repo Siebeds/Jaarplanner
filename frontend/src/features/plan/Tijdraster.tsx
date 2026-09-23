@@ -118,6 +118,7 @@ export function Tijdraster({
   onVanDag,
   onKiesDag,
   onWijzigTijd,
+  onPlanSubthema,
 }: {
   /** The days to draw, in order. One for the day view, three on a phone's week, seven on a desktop's. */
   dagen: Agendadag[];
@@ -151,6 +152,8 @@ export function Tijdraster({
   onKiesDag?: (datum: string) => void;
   /** A block was made longer or shorter by its bottom edge. */
   onWijzigTijd: (doel: Tijddoel, datum: string, begin: number, einde: number) => void;
+  /** Opens the subthema planner for a thema placement, from its band (FB-087). Left out for whoever may not plan. */
+  onPlanSubthema?: (plaatsingId: string) => void;
 }) {
   const blokken = useMemo(
     () => bouwBlokken(dagen, fichemomenten),
@@ -224,6 +227,7 @@ export function Tijdraster({
               // teaching day names them, and is the tab stop that takes a keyboard to their pages (FB-039).
               altijdNaam={geenMaandag || dag.datum === naamdrager}
               onKiesDag={onKiesDag}
+              onPlanSubthema={onPlanSubthema}
             />
           ))}
         </div>
@@ -460,6 +464,7 @@ function Dagkop({
   uren,
   altijdNaam,
   onKiesDag,
+  onPlanSubthema,
 }: {
   dag: Agendadag;
   isVandaag: boolean;
@@ -470,6 +475,7 @@ function Dagkop({
   /** No row of days to carry a name instead, so the bands say what they are on this day too. */
   altijdNaam: boolean;
   onKiesDag?: (datum: string) => void;
+  onPlanSubthema?: (plaatsingId: string) => void;
 }) {
   const kop = (
     <span className="flex items-baseline justify-center gap-1.5">
@@ -521,7 +527,7 @@ function Dagkop({
         </p>
       ) : (
         <div className="flex flex-col pt-1">
-          <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam} />
+          <Themastroken vak={vak} datum={dag.datum} dicht altijdNaam={altijdNaam} onPlanSubthema={onPlanSubthema} />
           <Subthemastroken reeksen={reeksen} datum={dag.datum} dicht altijdNaam={altijdNaam} />
         </div>
       )}

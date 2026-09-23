@@ -2,13 +2,13 @@
 id: FB-087
 titel: Subthema inplannen staat in de themastrook van de agenda, bij het thema zelf
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:47
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 09:21
+opgepakt-door: claude-fb087
+branch: ticket/FB-087-subthema-knop
+pr: 163
 geblokkeerd:
 fr: [FR-6.3]
 ---
@@ -45,18 +45,18 @@ Op telefoonbreedte blijft het knopje bereikbaar, desnoods alleen als plusteken m
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht die de planning van de klas mag wijzigen, wanneer ze de agenda opent in een week met een
+- [x] Gegeven een leerkracht die de planning van de klas mag wijzigen, wanneer ze de agenda opent in een week met een
       thema, dan staat er geen knop "Subthema inplannen" meer in de kop, en staat er in de themastrook naast de naam
       van het thema een knopje "+ Subthema".
-- [ ] Gegeven dat knopje, wanneer de leerkracht erop klikt, dan opent de subthemaplanner voor het thema van die strook,
+- [x] Gegeven dat knopje, wanneer de leerkracht erop klikt, dan opent de subthemaplanner voor het thema van die strook,
       en plant hij zoals vandaag.
-- [ ] Gegeven de agenda, wanneer de leerkracht van een week met thema naar een week zonder thema bladert, dan blijven
+- [x] Gegeven de agenda, wanneer de leerkracht van een week met thema naar een week zonder thema bladert, dan blijven
       de weergaveknoppen, de datum, de pijlen en "Vandaag" op dezelfde plaats staan.
-- [ ] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer ze de agenda opent, dan toont de themastrook geen
+- [x] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer ze de agenda opent, dan toont de themastrook geen
       knopje "+ Subthema".
-- [ ] Gegeven het knopje, dan draagt het geen volle accentkleur, is het met het toetsenbord te bereiken en heeft het
+- [x] Gegeven het knopje, dan draagt het geen volle accentkleur, is het met het toetsenbord te bereiken en heeft het
       een zichtbare focusrand en een voorleesbare naam.
-- [ ] Gegeven een scherm van ongeveer 390 pixels breed, wanneer de leerkracht de agenda in een themaweek opent, dan is
+- [x] Gegeven een scherm van ongeveer 390 pixels breed, wanneer de leerkracht de agenda in een themaweek opent, dan is
       het knopje zichtbaar en bruikbaar, en blijft de naam van het thema leesbaar.
 
 ## Testscenario's
@@ -88,3 +88,9 @@ Geen.
 ## Werklog
 
 - 2026-09-23 00:47 · Siebeds · aangemaakt (status nieuw)
+- 2026-09-23 09:05 · claude-fb087 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-23 09:19 · claude-fb087 · Knop verhuisd naar de themastrook (week, werkweek, dag en maand); lint en 1313 frontendtests groen; browserpas op 1440 en 390 px, contrast 10,8:1 licht en 7,7:1 donker.
+- 2026-09-23 09:20 · claude-fb087 · Criteria afgevinkt: 1-4 met Vitest (Themastroken- en Agendascherm-tests) en browserpas, 5-6 met browserpas (focusrand, contrast, 390 px).
+- 2026-09-23 09:21 · claude-fb087 · Antagonist: COMPLIANT, geen CRITICAL of MAJOR. MINOR opgelost: commentaar bij onMouseDown. MINOR open: mislukt het laden van de themaperiode, dan blijft de planner laden in plaats van een fout te tonen; maandweergave heeft op telefoonbreedte geen themastrook en dus geen knop (buiten scope); plannerPlaatsingId wordt niet gewist, zonder gevolg.
+- 2026-09-23 09:21 · claude-fb087 · in-uitvoering → te-testen: Knop Subthema inplannen staat in de themastrook (week, werkweek, dag, maand), niet meer in de kop; lint en 1313 tests groen, browserpas 1440/390 px, antagonist COMPLIANT.
+- 2026-09-23 09:21 · claude-fb087 · PR #163
