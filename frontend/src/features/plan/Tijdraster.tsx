@@ -14,7 +14,7 @@ import { cn } from "../../lib/cn";
 import { dagNummer, vandaag, volleDag, weekdagIndex, weekdagKort } from "../../lib/datum";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { KLEURVLAK, kleurSleutel } from "../activiteiten/kleuren";
-import { FICHEVLAK } from "../algemene-fiches/merk";
+import { FICHEVLAK, FICHEVLAK_STIL } from "../algemene-fiches/merk";
 import { fichemomentSleepId, leesAlgemeneFicheId } from "../algemene-fiches/sleepids";
 import { Blokmenu } from "./Blokmenu";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
@@ -62,6 +62,8 @@ export interface Ficheblokje {
   doelen?: readonly Infodoel[];
   /** What the class does in it that day (FB-022), drawn in the block where there is room. */
   tekst?: string | null;
+  /** Whether its placement has more than this one moment: a recurring fiche is drawn quieter (FB-091). */
+  terugkerend: boolean;
 }
 
 /** What a resize asks the screen to save. The two kinds live behind two endpoints; the grid knows which is which. */
@@ -80,6 +82,8 @@ type Rasterblok = Blokje & {
   doelen?: readonly Infodoel[];
   /** An algemene fiche's day text (FB-022). Absent for every other kind, and for a day nobody wrote about. */
   tekst?: string;
+  /** A recurring algemene fiche, drawn quieter than an activiteit (FB-091). */
+  stil?: boolean;
 };
 
 /**
@@ -437,6 +441,7 @@ function bouwBlokken(dagen: Agendadag[], fichemomenten: readonly Ficheblokje[]):
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
       doelen: moment.doelen,
       tekst: moment.tekst ?? undefined,
+      stil: moment.terugkerend,
     });
   }
 
@@ -1060,6 +1065,10 @@ function Blok({
   const duur = einde - blok.begin;
   const toont = duur >= 60 ? "alles" : duur >= 30 ? "tijd" : "naam";
 
+  // A block that starts on the hour sits against the hour gutter's own label, so printing its start again says nothing
+  // (FB-091): a half-hour block drops the time, a longer one keeps only its end. The accessible name keeps both.
+  const opHeelUur = blok.begin % 60 === 0;
+
   /*
     AN ALGEMENE FICHE'S DAY TEXT, IN WHOLE LINES OF THE ROOM THAT IS LEFT (FB-022). The name line is 18 pixels and the
     time line under it 15.5, after 8 of padding, and the text sets its own 15-pixel leading so this sum holds. A
@@ -1102,8 +1111,11 @@ function Blok({
             ? // The same light grey as before, mixed with the card rather than laid over it, so nothing behind the
               // block shows through its name (FB-058).
               "border-lijn bg-[color-mix(in_srgb,var(--color-vlak-diep)_50%,var(--color-kaart))]"
-            : // A fiche is paper rather than pigment, one plane deeper than any activiteit block (FB-077).
-              FICHEVLAK,
+            : // A fiche is paper rather than pigment, one plane deeper than any activiteit block (FB-077); a recurring
+              // one is half as deep and has no edge, so the routine stands back behind what is planned (FB-091).
+              blok.stil
+              ? FICHEVLAK_STIL
+              : FICHEVLAK,
           blok.activiteit?.valtBuitenThemaperiode && "border-l-2 border-l-attentie",
           isDragging && "opacity-40",
         )}
@@ -1142,14 +1154,21 @@ function Blok({
             {blok.doel.soort === "fiche" ? (
               <IcoonFiche aria-hidden="true" className="h-3 w-3 shrink-0 self-center text-inkt-zwak" />
             ) : null}
-            <span className="min-w-0 flex-1 truncate text-meta font-medium text-inkt">{blok.naam}</span>
+            <span
+              className={cn(
+                "min-w-0 flex-1 truncate text-meta",
+                blok.stil ? "font-normal text-inkt-zacht" : "font-medium text-inkt",
+              )}
+            >
+              {blok.naam}
+            </span>
             {/* Beside the name rather than under it on a half-hour block: stacked, this line is what got clipped.
                 Not on a phone when the block also carries the info icon: a column there is about a hundred pixels,
                 and the name was left one letter wide. What that costs is the start time for a sighted phone user: the
                 hour gutter prints whole hours only, so a block at 9:15 shows its quarter nowhere on the grid. Accepted,
                 because a name one letter wide says nothing at all; the time stays in the block's accessible name and
                 in the sheet it opens. */}
-            {toont === "tijd" ? (
+            {toont === "tijd" && !opHeelUur ? (
               <span className={cn("mono shrink-0 text-[0.625rem] text-inkt-zacht", infodoelen && "max-sm:hidden")}>
                 {toonTijd(blok.begin)}
               </span>
@@ -1159,7 +1178,7 @@ function Blok({
           {toont === "alles" ? (
             <>
               <span className="mono block truncate text-[0.625rem] text-inkt-zacht">
-                {toonBereik(blok.begin, einde)}
+                {opHeelUur ? t("tijdraster.tot", { tijd: toonTijd(einde) }) : toonBereik(blok.begin, einde)}
               </span>
               {tekstregels === 0 ? (
                 <span className="block truncate text-[0.625rem] text-inkt-zacht">{blok.onder}</span>
