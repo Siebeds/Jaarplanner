@@ -40,16 +40,16 @@ aanvaardt of weigert.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een week met schooluren 8:30 tot 15:30, middagpauze 12:00 tot 13:15 en een algemene fiche elke dag van
+- [x] Gegeven een week met schooluren 8:30 tot 15:30, middagpauze 12:00 tot 13:15 en een algemene fiche elke dag van
   13:15 tot 14:00, wanneer de leerkracht een voorstel vraagt, dan valt geen voorgesteld blok buiten de schooluren, in de
   middagpauze of over de fiche.
-- [ ] Gegeven de voorstellen, dan staan ze als voorgesteld in de agenda, en tellen ze pas mee in de dekking als ze
+- [x] Gegeven de voorstellen, dan staan ze als voorgesteld in de agenda, en tellen ze pas mee in de dekking als ze
   aanvaard zijn.
-- [ ] Gegeven een voorgesteld blok, wanneer de leerkracht het weigert, dan verdwijnt het; wanneer ze het aanvaardt, blijft
+- [x] Gegeven een voorgesteld blok, wanneer de leerkracht het weigert, dan verdwijnt het; wanneer ze het aanvaardt, blijft
   het als gewone planning.
-- [ ] Gegeven een activiteit die de AI kiest maar die nergens past, dan meldt de tool dat en plant ze niets.
-- [ ] Gegeven een opnieuw gevraagd voorstel, dan blijven aanvaarde blokken en eerder geplande activiteiten staan.
-- [ ] De logica is getest met een nep-AI-client, en het inpassen ook zonder AI.
+- [x] Gegeven een activiteit die de AI kiest maar die nergens past, dan meldt de tool dat en plant ze niets.
+- [x] Gegeven een opnieuw gevraagd voorstel, dan blijven aanvaarde blokken en eerder geplande activiteiten staan.
+- [x] De logica is getest met een nep-AI-client, en het inpassen ook zonder AI.
 
 ## Testscenario's
 
