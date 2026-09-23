@@ -2,12 +2,12 @@
 id: FB-090
 titel: Thema en subthema lopen in de week als één doorlopende balk
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 11:17
+opgepakt-door: claude-fb090
+branch: ticket/FB-090-doorlopende-themabalk
 pr:
 geblokkeerd:
 fr: []
@@ -75,3 +75,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 10:59 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 11:17 · claude-fb090 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
