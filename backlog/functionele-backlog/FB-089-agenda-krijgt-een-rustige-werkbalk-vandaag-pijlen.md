@@ -2,10 +2,10 @@
 id: FB-089
 titel: Agenda krijgt één rustige werkbalk: vandaag, pijlen, datum en weergavekeuze op één lijn
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:59
+bijgewerkt: 2026-09-23 11:04
 opgepakt-door: claude-fb089
 branch: ticket/FB-089-agenda-werkbalk
 pr:
@@ -62,7 +62,7 @@ Code: `features/plan/Agendascherm.tsx` (de `onder`-rij van `Schermkop`) en `comp
       volgende, dan de weergavekeuze, met een zichtbare focusring.
 - [x] Gegeven een andere keuzebalk in de app die `Segment` gebruikt, wanneer die mee verandert, dan ziet ze er nog
       goed uit op desktop en op ~390px.
-- [ ] Gegeven het jaarplan, wanneer het opent, dan staat dezelfde weergavekeuze erboven met Jaar gekozen en geen
+- [x] Gegeven het jaarplan, wanneer het opent, dan staat dezelfde weergavekeuze erboven met Jaar gekozen en geen
       knop "Agenda"; wanneer de gebruiker Week kiest, dan opent de agenda in de weekweergave.
 
 ## Testscenario's
@@ -98,3 +98,4 @@ in de plaats van de knop "Agenda".
 - 2026-09-23 10:50 · claude-fb089 · PR #168
 - 2026-09-23 10:59 · eigenaar · te-testen → klaar-voor-bouw: bevinding eigenaar: ook op het jaarplan de weergavekeuze tonen (Jaar gekozen), zodat het consistent blijft; de knop Agenda mag daar weg
 - 2026-09-23 10:59 · claude-fb089 · klaar-voor-bouw → in-uitvoering: opnieuw opgepakt voor de bevinding, op dezelfde branch en PR
+- 2026-09-23 11:04 · claude-fb089 · in-uitvoering → te-testen: jaarplan toont dezelfde weergavekeuze met Jaar gekozen, knop Agenda weg; Vitest 1320 groen, lint groen, in de echte app op 1440/1280/390px gemeten; antagonist COMPLIANT op de delta
