@@ -1507,7 +1507,7 @@
     "geenActiviteiten": "Er staan geen activiteiten van dit subthema op die dagen, dus er verdwijnen geen activiteiten mee.",
     "verrijkingenEen": "Ook de hoekverrijking die bij deze periode hoort, verdwijnt.",
     "verrijkingen": "Ook de {aantal} hoekverrijkingen die bij deze periode horen, verdwijnen.",
-    "dekkingWeg": "De doelen van dit subthema tellen via dit subthema niet langer mee voor de dekking van deze klas.",
+    "dekkingWeg": "De doelen van dit subthema tellen dan niet langer mee voor de dekking van deze klas.",
     "dekkingBlijft": "Het subthema staat nog op andere dagen in de agenda, dus zijn doelen blijven meetellen voor de dekking.",
     "mislukt": "Het subthema kon niet uit de agenda gehaald worden: {reden}"
   },

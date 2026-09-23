@@ -5,9 +5,11 @@ import type { Subthemaweghaling } from "../../lib/queries";
  * The sentences the question before taking a subthema out of the agenda says (FB-096), in the order a teacher reads
  * them: which days, which activiteiten go with it, which hoekverrijkingen, and what it does to the dekking.
  *
- * **Each sentence asserts only what the server's counts guarantee.** The dekking sentence is left out for a run drawn
- * from its activiteiten alone: only a stored window makes the goals count (ADR-0047), so removing none changes
- * nothing there. With another window of the subthema staying, it says the goals go on counting instead.
+ * **Each sentence asserts only what the server's counts guarantee.** The dekking sentence speaks of the subthema's own
+ * goals, which count through a stored window (ADR-0047), so it is left out for a run drawn from its activiteiten alone;
+ * with another window of the subthema staying, it says those goals go on counting instead. An own activiteit counts on
+ * its own wherever it is planned (ADR-0049 D7), so taking one off its day can still lower the dekking: that is said by
+ * neither sentence, which is the "say less" side of the rule.
  */
 export function weghaalzinnen(
   reeks: { subthemaNaam: string; van: string; tot: string },

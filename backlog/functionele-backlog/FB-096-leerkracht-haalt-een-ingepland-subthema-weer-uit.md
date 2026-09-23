@@ -2,10 +2,10 @@
 id: FB-096
 titel: Leerkracht haalt een ingepland subthema weer uit de agenda
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 23:50
+bijgewerkt: 2026-09-24 00:06
 opgepakt-door: claude-fb096
 branch: ticket/FB-096-subthema-uit-agenda
 pr:
@@ -48,22 +48,22 @@ Wie de klas alleen mag inkijken, ziet de actie niet en kan ze ook niet langs de 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht die de planning van de klas mag wijzigen, wanneer ze de agenda opent op een dag waar een
+- [x] Gegeven een leerkracht die de planning van de klas mag wijzigen, wanneer ze de agenda opent op een dag waar een
       subthema loopt, dan vindt ze bij de subthemastrook een actie om dat subthema uit de agenda te halen, zonder volle
       accentkleur, met het toetsenbord bereikbaar, met een zichtbare focusrand en een voorleesbare naam.
-- [ ] Gegeven die actie, wanneer ze erop klikt, dan verschijnt een bevestiging die het subthema en zijn dagen noemt,
+- [x] Gegeven die actie, wanneer ze erop klikt, dan verschijnt een bevestiging die het subthema en zijn dagen noemt,
       zegt hoeveel activiteiten van dat subthema mee verdwijnen, en zegt dat de doelen van dat subthema niet langer
       meetellen voor de dekking.
-- [ ] Gegeven de bevestiging, wanneer ze annuleert, dan verandert er niets aan de agenda.
-- [ ] Gegeven de bevestiging, wanneer ze bevestigt, dan is de subthemaperiode weg uit de agenda, zijn de activiteiten
+- [x] Gegeven de bevestiging, wanneer ze annuleert, dan verandert er niets aan de agenda.
+- [x] Gegeven de bevestiging, wanneer ze bevestigt, dan is de subthemaperiode weg uit de agenda, zijn de activiteiten
       van dat subthema op die dagen weg, en staan de activiteiten die niet bij dat subthema horen er nog.
-- [ ] Gegeven een subthema waarvan de doelen enkel via die periode meetelden, wanneer ze het weghaalt, dan toont het
+- [x] Gegeven een subthema waarvan de doelen enkel via die periode meetelden, wanneer ze het weghaalt, dan toont het
       dekkingsoverzicht van die klas die doelen niet langer als gedekt.
-- [ ] Gegeven een subthemaperiode zonder geplande activiteiten, wanneer ze de actie kiest, dan zegt de bevestiging dat
+- [x] Gegeven een subthemaperiode zonder geplande activiteiten, wanneer ze de actie kiest, dan zegt de bevestiging dat
       er geen activiteiten mee verdwijnen.
-- [ ] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer ze de agenda opent op een dag met een subthema,
+- [x] Gegeven een gebruiker die de klas alleen mag inkijken, wanneer ze de agenda opent op een dag met een subthema,
       dan ziet ze de actie niet, en weigert de server het weghalen ook wanneer de oproep rechtstreeks gebeurt.
-- [ ] Gegeven een scherm van ongeveer 390 pixels breed, wanneer ze de agenda opent op een dag met een subthema, dan is
+- [x] Gegeven een scherm van ongeveer 390 pixels breed, wanneer ze de agenda opent op een dag met een subthema, dan is
       de actie zichtbaar en bruikbaar, en blijft de naam van het subthema leesbaar.
 
 ## Testscenario's
@@ -103,3 +103,5 @@ Geen.
 - 2026-09-23 22:07 · Siebeds · aangemaakt (status nieuw)
 - 2026-09-23 23:41 · claude-fb096 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 23:50 · claude-fb096 · backend: GET .../subthemaperiodes/weghaling telt wat meegaat, DELETE haalt periode, activiteiten van dat subthema en hoekverrijkingen samen weg; unit- en Postgres-tests groen
+- 2026-09-24 00:06 · claude-fb096 · browserpas op wegwerpkopie: werkweek, dagweergave en 390 px; annuleren verandert niets, bevestigen haalt periode en 2 activiteiten weg (Auto's blijft), dekking 4 -> 0, inkijker ziet geen knop en krijgt 403; criteria afgevinkt
+- 2026-09-24 00:06 · claude-fb096 · in-uitvoering → te-testen: gebouwd: kruisje op de subthemabalk (week en dag) met bevestiging die dagen, activiteiten, hoekverrijkingen en dekking noemt; tests, dotnet format, pnpm lint groen; antagonist COMPLIANT (3 MINOR, zie worklog)

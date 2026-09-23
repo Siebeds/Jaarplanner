@@ -17,8 +17,9 @@ namespace Jaarplanner.Application.Planning.Weekplanning;
 /// rule for that is "mee weg, met aantal" (2026-09-15).
 /// </param>
 /// <param name="HeeftPeriode">
-/// Whether a stored window goes. Only a window makes a subthema's goals count for the klas's dekking (ADR-0047), so a
-/// run drawn from its activiteiten alone changes nothing there and the confirmation must not say it does.
+/// Whether a stored window goes. Only a window makes a subthema's own goals count for the klas's dekking (ADR-0047), so
+/// for a run drawn from its activiteiten alone the confirmation must not say they stop counting. An own activiteit among
+/// those activiteiten counts on its own wherever it is planned (ADR-0049 D7), so its removal can still lower the dekking.
 /// </param>
 /// <param name="BlijftElders">
 /// Whether another window of the same subthema stays in this klas's plan, which keeps its goals counting.
