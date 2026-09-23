@@ -162,6 +162,10 @@ describe("his window", () => {
     fireEvent.click(knop);
     await screen.findByRole("dialog", {}, { timeout: 2000 });
     expect(knop).toHaveAttribute("aria-expanded", "true");
+    // The window appears from a timer, outside act, so the dialog can be in the DOM before the effect that focuses its
+    // close button has run. Escape in that gap is a press no person can make, and the late effect then pulled the focus
+    // off the cat on a slow CI runner. Wait for the window to take the focus, as a person does.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Sluit het venster van Chuck" })).toHaveFocus());
 
     fireEvent.keyDown(document, { key: "Escape" });
 

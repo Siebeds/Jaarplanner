@@ -5,7 +5,7 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:22
+bijgewerkt: 2026-09-23 10:30
 opgepakt-door: claude-tb073
 branch: ticket/TB-073-toegankelijkheid
 pr: 167
@@ -77,3 +77,4 @@ Geen.
 - 2026-09-23 10:22 · claude-tb073 · antagonist: COMPLIANT; MINOR niet opgelost: Plaatsingkaart deelt één bezig over vier knoppen (aria-busy ook op knoppen die niets startten), useSchermtitel zet de titel niet terug bij unmount, scroll-padding alleen in de browser getest, Ctrl+klik kiest de klas ook in het huidige tabblad
 - 2026-09-23 10:22 · claude-tb073 · in-uitvoering → klaar: gebouwd en getest: alle zes criteria afgevinkt (1, 2, 5, 6 in de browser; 3 en 4 met Vitest), lint en 1321 tests groen
 - 2026-09-23 10:22 · claude-tb073 · PR #167
+- 2026-09-23 10:30 · claude-tb073 · CI: Katmand-test 'closes on Escape' faalde op de PR-run door een bestaande race (Escape vóór het focuseffect); test wacht nu tot het venster de focus heeft
