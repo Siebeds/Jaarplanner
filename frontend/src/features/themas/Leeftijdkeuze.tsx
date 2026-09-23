@@ -44,7 +44,7 @@ export function Leeftijdkeuze({
                 aria-pressed={aan}
                 onClick={() => wissel(fase)}
                 className={cn(
-                  "min-h-7 min-w-9 rounded-[0.5rem] px-2 text-meta font-medium transition-colors duration-150",
+                  "min-h-raak min-w-9 sm:min-h-7 rounded-[0.5rem] px-2 text-meta font-medium transition-colors duration-150",
                   aan
                     ? "border border-inkt-zwak bg-kaart text-inkt shadow-licht"
                     : "border border-transparent text-inkt-zacht hover:text-inkt",

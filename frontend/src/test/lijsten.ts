@@ -1,24 +1,17 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { t } from "../i18n";
 
-/** The fold button of the thema's minimumdoelen: its count and what it counts ("70 minimumdoelen"). */
-export const LIJSTKNOP = /^\d+ minimumdoel(en)?$/;
+/** "Alle 12 bekijken": what shows the rest of an opened subthema's activiteiten (FB-094). */
+export const ALLE_ACTIVITEITEN = /^Alle \d+ bekijken$/;
 
-/** The fold button of a list in a subthema chapter: its heading and its count ("Activiteiten 5"). */
-export const hoofdstuklijst = (titel: string) => new RegExp(`^${titel} \\d+$`);
-
-const vouwknoppen = () => [
-  LIJSTKNOP,
-  hoofdstuklijst(t("thema.activiteitenTitel")),
-  hoofdstuklijst(t("thema.subdoelenTitel")),
-  hoofdstuklijst(t("thema.andereDoelenTitel")),
-];
+const vouwknoppen = () => [ALLE_ACTIVITEITEN, t("thema.subdoelenBekijken")];
 
 /**
- * Opens every shut list on the thema page (TB-051) and pages each one out, for a test that reads the rows.
+ * Shows everything an opened subthema holds (FB-094) and pages every list out, for a test that reads the rows.
  *
- * The lists start shut and show five rows at a time; a test about what a row says or does is not about that, so it
- * opens them all first. Call it once the rows' data is on screen, and again after opening a chapter.
+ * An opened subthema shows its first activiteiten and a link to its subdoelen, and the lists show five rows at a time;
+ * a test about what a row says or does is not about that, so it opens them all first. Call it once the rows' data is on
+ * screen, and again after opening a subthema.
  */
 export function openLijsten() {
   for (const naam of vouwknoppen()) {

@@ -1,4 +1,4 @@
-import type { ThemaWeergave } from "../../lib/types";
+import type { LeeftijdDoelen, ThemaWeergave } from "../../lib/types";
 import { beslist } from "./subthemabalans";
 
 /**
@@ -67,4 +67,9 @@ export function themabalans(thema: ThemaWeergave): Themabalans {
     activiteiten,
     activiteitenZonderDoel,
   };
+}
+
+/** How many leerplandoelen the thema's minimumdoelen lead to, each code once: the figure under the thema's title (FB-094). */
+export function aantalLeerplandoelen(leeftijden: LeeftijdDoelen[]): number {
+  return new Set(leeftijden.flatMap((l) => l.leerplandoelen.map((d) => d.code))).size;
 }
