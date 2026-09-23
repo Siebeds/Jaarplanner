@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-23 10:50
 opgepakt-door: claude-fb089
 branch: ticket/FB-089-agenda-werkbalk
-pr:
+pr: 168
 geblokkeerd:
 fr: []
 ---
@@ -88,3 +88,4 @@ De kalender zelf, de dekkingsbalk en de zijbalk. Het jaarplanscherm zelf verande
 - 2026-09-23 10:48 · claude-fb089 · werkbalk gebouwd; lint en 1317 Vitest-tests groen; browserpas op 1440, 1366, 1280 en 390px (licht), antagonist loopt
 - 2026-09-23 10:49 · claude-fb089 · antagonist COMPLIANT; MINOR niet opgelost: Jaar is een radio die navigeert, en op 1280px in dagweergave schuift de weergavekeuze naar een tweede rij (vanaf 1366px één rij)
 - 2026-09-23 10:50 · claude-fb089 · in-uitvoering → te-testen: werkbalk op één lijn, Jaar in de weergavekeuze, Segment overal 36px; criteria afgevinkt op Vitest (1317 groen), lint en browserpas 1440/1366/1280/390px
+- 2026-09-23 10:50 · claude-fb089 · PR #168
