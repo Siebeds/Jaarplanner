@@ -2,13 +2,13 @@
 id: FB-071
 titel: De kat slaapt rechtsboven in een mandje en opent bij een klik zijn venster
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-18
-bijgewerkt: 2026-09-23 01:07
-opgepakt-door: claude-fb071
-branch: ticket/FB-071-chuck
-pr: 161
+bijgewerkt: 2026-09-23 09:13
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: []
 ---
@@ -39,10 +39,14 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 ## Gewenst gedrag
 
 - Chuck ligt rechtsboven in de kop van de app in een laag mandje, voor de leerkracht, de vervanger en directie. Hij
-  ligt nooit op de gegevens. Er staat altijd precies één Chuck op het scherm.
+  ligt nooit op de gegevens. Er staat altijd precies één Chuck op het scherm. Hij staat alleen rechtsboven: geen
+  knop van het scherm staat naast hem, zodat niemand hem voor een knop tussen de knoppen houdt.
+- De klaskiezer staat niet meer in de kop van een scherm. Op een laptop staat hij in de linker zijbalk, onder het logo;
+  op een telefoon kies je de klas bovenaan in Instellingen. Knoppen die bij het scherm zelf horen, zoals "Vandaag" in
+  de agenda, blijven waar ze staan.
 - Zijn houding toont de toestand, en er staat altijd tekst bij:
   - hij slaapt in zijn mandje, met een stil label: er ligt niets nieuws;
-  - hij ligt met zijn oren recht en zegt in een tekstballon naast zijn mandje "Ik heb iets voor je klaargezet.": er
+  - hij ligt met zijn oren recht en zegt in een tekstballon onder zijn mandje "Ik heb iets voor je klaargezet.": er
     ligt iets klaar (een briefing, voorbereidingen, voorstellen);
   - hij ligt op de hoek van de weekstrook, zijn mandje in de kop is leeg, en hij zegt in een tekstballon naast zich
     welk doel in gevaar komt (FB-069). Hij bedekt nooit de gegevens zelf;
@@ -70,8 +74,11 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 
 ## Acceptatiecriteria
 
-- [x] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label.
-- [x] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon naast zijn mandje.
+- [ ] Gegeven geen open signaal of voorstel, dan slaapt Chuck rechtsboven in zijn mandje, met een zichtbaar label
+  onder hem.
+- [ ] Gegeven iets dat klaarligt, dan staan zijn oren recht en zegt hij het in een tekstballon onder zijn mandje.
+- [ ] Gegeven de agenda, het jaarplan of de dekking, dan staat er geen knop naast Chuck: de klaskiezer staat op een
+  laptop in de linker zijbalk en op een telefoon bovenaan in Instellingen.
 - [x] Gegeven een doel in gevaar, dan is zijn mandje leeg, ligt hij op de hoek van de weekstrook zonder gegevens te
   bedekken, en zegt hij in een tekstballon welk doel. Er staat nooit meer dan één Chuck op het scherm.
 - [x] Gegeven een klik op Chuck, of Enter met de focus op hem, dan stapt hij één poot tegelijk uit zijn mandje, elke
@@ -83,19 +90,21 @@ https://claude.ai/artifact/MLgAot5kDtiPk8sNwcmHVb (privé, bij de eigenaar).
 - [x] Gegeven elke houding, dan draagt ze ook tekst, en het contrast haalt WCAG 2.2 AA (zijn silhouet 3:1, tekst 4.5:1),
   gemeten in een echte browser, in licht en in donker.
 - [x] Gegeven een export of een ontwikkelingsrapport, dan staat er geen kat in.
-- [x] Bekeken in de echte app op desktop en op ongeveer 390px.
+- [ ] Bekeken in de echte app op desktop en op ongeveer 390px.
 
 ## Testscenario's
 
-1. Meld aan als leerkracht zonder open signaal of voorstel. Chuck slaapt rechtsboven in zijn mandje, met een label.
-2. Laat een lesvoorbereiding klaarzetten (FB-068). Zijn oren staan recht en naast zijn mandje staat een tekstballon.
+1. Meld aan als leerkracht zonder open signaal of voorstel. Chuck slaapt rechtsboven in zijn mandje, met een label
+   onder hem, en er staat geen knop naast hem. De klas kies je in de linker zijbalk.
+2. Laat een lesvoorbereiding klaarzetten (FB-068). Zijn oren staan recht en onder zijn mandje staat een tekstballon.
    Klik op hem: hij staat op, stapt pootje per pootje uit zijn mandje, en het venster toont bovenaan de voorbereiding
    met "Bekijken" en "Later".
 3. Druk Escape: de focus staat meteen op de kat, en hij stapt terug in zijn mandje en gaat liggen.
 4. Laat een doel in gevaar komen (FB-069). Het mandje is leeg, Chuck ligt op de hoek van de weekstrook met een
    tekstballon, en de weekstrook blijft leesbaar. Er is maar één kat te zien.
 5. Zet "minder beweging" aan in het besturingssysteem: het venster opent zonder loopje.
-6. Herhaal op telefoonbreedte (ongeveer 390px): het venster vult de breedte en geen ballon ligt over gegevens.
+6. Herhaal op telefoonbreedte (ongeveer 390px): het venster vult de breedte en geen ballon ligt over gegevens. De klas
+   kies je bovenaan in Instellingen.
 7. Herhaal in donkere weergave.
 
 ## Buiten scope
@@ -121,6 +130,12 @@ Beslist door de eigenaar op 2026-09-23:
 - Tot de onderwijsadviseur Chuck goedkeurt, staat hij achter een schoolinstelling die alleen een admin aanzet
   (Instellingen, Chuck). Standaard staat hij uit.
 
+Beslist door de eigenaar op 2026-09-23, na de test:
+
+- Wat Chuck zegt (label of ballon) staat onder hem, niet ernaast.
+- De klaskiezer verhuist uit de kop: op een laptop naar de linker zijbalk, op een telefoon naar de top van
+  Instellingen. "Vandaag" blijft staan.
+
 Vastgelegd in de bouw:
 
 - De gembervacht als uitzondering op "geen merkkleur" staat in ADR-0065 en bovenaan `index.css`. De lichte vacht is
@@ -135,3 +150,4 @@ Vastgelegd in de bouw:
 - 2026-09-23 01:06 · claude-fb071 · antagonist COMPLIANT; 3 van 4 MINOR opgelost (label bij laadfout, klas in spinlabel, focus binnen het telefoonvenster), 1 genoteerd; 2255 unit- en 597 integratietests groen, 1308 frontendtests groen, format en lint schoon
 - 2026-09-23 01:06 · claude-fb071 · in-uitvoering → te-testen: Chuck gebouwd: mandje in de kop, houding uit deurmat en dekking, hoek van de weekstrook bij een doel in gevaar, venster met wat hij meebracht, pootje-per-pootje-loopje uit een geteste choreografie, admin-instelling (standaard uit), ADR-0065; gates groen
 - 2026-09-23 01:07 · claude-fb071 · PR #161
+- 2026-09-23 09:13 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar: tekst van Chuck (bv. 'Chuck slaapt') moet onder de kat, niet ernaast; Chuck staat verwarrend tussen de knoppen, dus de klaskiezer verhuist naar de linker zijbalk (telefoon: bovenaan Instellingen); Vandaag blijft staan
