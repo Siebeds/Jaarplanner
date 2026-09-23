@@ -2,12 +2,12 @@
 id: FB-089
 titel: Agenda krijgt één rustige werkbalk: vandaag, pijlen, datum en weergavekeuze op één lijn
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 10:27
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-23 10:32
+opgepakt-door: claude-fb089
+branch: ticket/FB-089-agenda-werkbalk
 pr:
 geblokkeerd:
 fr: []
@@ -84,3 +84,4 @@ De kalender zelf, de dekkingsbalk en de zijbalk. Het jaarplanscherm zelf verande
 ## Werklog
 
 - 2026-09-23 10:27 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-23 10:32 · claude-fb089 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; Segment overal 36px (eigenaar akkoord met voorstel)
