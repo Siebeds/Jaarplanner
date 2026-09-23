@@ -539,7 +539,7 @@
     background: transparent;
   }
   &::-webkit-scrollbar-thumb {
-    border: 3px solid transparent;
+    border: 2px solid transparent;
     border-radius: 9999px;
     background: var(--color-lijn-veld) padding-box;
   }

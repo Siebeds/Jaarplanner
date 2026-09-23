@@ -2,10 +2,10 @@
 id: FB-092
 titel: Weekraster van de agenda lijnt uit en scrollt maar op één plek
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 11:27
+bijgewerkt: 2026-09-23 11:31
 opgepakt-door: claude-fb092
 branch: ticket/FB-092-weekraster
 pr:
@@ -68,3 +68,5 @@ De themastroken zelf (FB-090), de blokken zelf (FB-091) en de werkbalk boven de 
 - 2026-09-23 11:06 · claude-fb092 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-23 11:13 · claude-fb092 · eigenaar koos: raster vult de rest van het scherm, pagina scrollt op een laptop niet meer, dunne schuifbalk
 - 2026-09-23 11:27 · claude-fb092 · browser 1440x900: strook en blok op dezelfde randen in alle kolommen, pagina 900=900, één dunne schuifbalk, PageDown scrollt het raster; 390x844 geen paginascroll, 390x667 pagina scrollt 115px zonder de kaart onder de onderbalk; vitest 1327 groen, lint schoon
+- 2026-09-23 11:31 · claude-fb092 · antagonist: COMPLIANT; vier MINOR opgelost (ADR-0028 en ADR-0038 aangevuld, commentaar, bredere schuifbalkduim)
+- 2026-09-23 11:31 · claude-fb092 · in-uitvoering → te-testen: gebouwd: raster vult het scherm (flex-kolom over 100dvh), één dunne schuifbalk, strook en blok op dezelfde randen, alleen hele uren met gestippelde schoolgrens; vitest en lint groen

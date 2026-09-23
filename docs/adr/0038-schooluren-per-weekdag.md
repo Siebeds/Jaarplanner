@@ -97,3 +97,16 @@ because the block's half-transparent ground let the stripes through its name.
 Everything under *What does not change* still holds: the tint is `pointer-events-none` under the empty column's
 button. In the compliance trace, "the hatch" now reads "the tint", and never colour alone is also enforced by
 `grenstijden` (`schooluren.test.ts`) and the gutter test in `Tijdraster.test.tsx`.
+
+## Amendment (2026-09-23): whole hours in the gutter, the edge in the column
+
+FB-092 replaces the gutter times of the 2026-09-16 amendment. A boundary at 12:30 written just under "12:00" read as
+a fault, and one gutter serving every column could not say which day a boundary belonged to.
+
+- The hour gutter writes **whole hours only**. `grenstijden` is removed.
+- Each tinted stretch is edged, on the side that faces the school day, by a **dashed line** in `lijn-veld` in that
+  day's own column (3.2:1 on the card in light, 3.4:1 in dark). Dashed, so it never reads as a solid hour line.
+- The day heading still speaks the hours to a screen reader (`urenZin`).
+
+Everything under *What does not change* still holds. In the compliance trace, never colour alone is now enforced by
+the dashed edge of `Schooltijdlagen` and its test in `Tijdraster.test.tsx`, not by `grenstijden`.

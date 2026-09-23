@@ -174,8 +174,8 @@ export function Tijdraster({
   // WHERE THE GRID OPENS. At the whole hour in which the earliest school day on screen begins (FB-023: "openen op het
   // begin van de schooldag"), so a day starting at 8:30 opens at 8:00 with its first half hour shaded above the start.
   // Without school hours, at 7:00, the start of the 7:00-18:00 the owner asked to see by default. How far down the
-  // screen reaches depends on the screen (FB-092); every other hour is drawn and a scroll away, which is what makes an early opvang or a 19:30 oudercontact plannable without
-  // a control that has to be found first.
+  // screen reaches depends on the screen (FB-092); every other hour is drawn and a scroll away, which is what makes
+  // an early opvang or a 19:30 oudercontact plannable without a control that has to be found first.
   //
   // It moves the scroll only when the opening hour itself changes: when the hours first arrive, or when another week
   // starts earlier. A refetch that answers the same hours does not pull a teacher back from where she scrolled.
