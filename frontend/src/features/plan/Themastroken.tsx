@@ -5,6 +5,7 @@ import { weekdagIndex } from "../../lib/datum";
 import { cn } from "../../lib/cn";
 import { themapaginaPad } from "../themas/themapagina";
 import { Themaicoon } from "../themas/Emojikiezer";
+import { IcoonPlus } from "../../components/Iconen";
 
 /**
  * Which thema this day's themaperiode holds, as a band along the top edge of the day.
@@ -39,6 +40,7 @@ export function Themastroken({
   datum,
   dicht,
   altijdNaam,
+  onPlanSubthema,
   className,
 }: {
   /** The themaperiode this day sits in, or undefined between two periods, where there is none. */
@@ -54,6 +56,15 @@ export function Themastroken({
    * draws its bands on when its Monday is closed.
    */
   altijdNaam?: boolean;
+  /**
+   * Opens the subthema planner for this placement (FB-087). Passed only to someone who may plan the klas.
+   *
+   * THE ACTION SITS ON THE THEMA IT PLANS INTO. It used to be a filled accent button in the agenda's header, which came
+   * and went as the anchored day entered and left a placement, shifted the header when it did, and named no thema. Here
+   * it is the band's own right end: the same grey, the same height, only on the band that prints the name, so a row
+   * shows it once per thema, and a day without a thema has no band and so no button.
+   */
+  onPlanSubthema?: (plaatsingId: string) => void;
   className?: string;
 }) {
   if (!vak) return null;
@@ -102,8 +113,33 @@ export function Themastroken({
     </span>
   );
 
+  // A plus alone below 9rem of band, the word beside it from there: the name of the thema keeps the room. Quieter than
+  // the name by weight, not by ink: `inkt-zacht` on this grey measures 3.96:1 light and 4.42:1 dark, `inkt` 10.8 and 7.7.
+  // Hover underlines and keeps the grey, so the contrast holds there too.
+  const planknop =
+    onPlanSubthema && genoemd && bereikbaar ? (
+      <button
+        type="button"
+        onClick={() => onPlanSubthema(vak.plaatsingId)}
+        aria-label={t("periode.planSubthemaIn", { naam: genoemd.naam })}
+        title={t("periode.planSubthema")}
+        onMouseDown={(e) => e.preventDefault()}
+        className="group/plan pointer-events-auto flex h-6 shrink-0 items-start focus-visible:outline-offset-[-2px]"
+      >
+        <span
+          className={cn(
+            "flex h-5 items-center gap-0.5 border-l border-lijn-veld bg-lijn-sterk font-normal leading-none text-inkt underline-offset-2 group-hover/plan:underline",
+            dicht ? "px-1.5 text-[0.625rem]" : "px-2 text-[0.6875rem]",
+          )}
+        >
+          <IcoonPlus aria-hidden="true" className="h-3 w-3" />
+          <span className="hidden @[9rem]:inline">{t("periode.subthemaKnop")}</span>
+        </span>
+      </button>
+    ) : null;
+
   return (
-    <div className={cn("pointer-events-none flex", className)}>
+    <div className={cn("pointer-events-none flex", planknop && "@container", className)}>
       {genoemd ? (
         <Link
           to={themapaginaPad(genoemd.id)}
@@ -131,6 +167,7 @@ export function Themastroken({
           <span className={band}>{tekst}</span>
         </span>
       )}
+      {planknop}
     </div>
   );
 }

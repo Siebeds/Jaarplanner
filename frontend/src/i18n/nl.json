@@ -324,6 +324,8 @@
     "agendaVernieuwen": "Agenda vernieuwen",
     "voegToeOp": "Activiteit toevoegen op {dag}",
     "planSubthema": "Subthema inplannen",
+    "subthemaKnop": "Subthema",
+    "planSubthemaIn": "Subthema inplannen in {naam}",
     "vandaag": "Vandaag",
     "vandaagBuitenSchooljaar": "Vandaag valt buiten dit schooljaar",
     "themaMeer": "{naam} +{aantal}",

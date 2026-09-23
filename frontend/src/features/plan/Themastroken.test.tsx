@@ -99,3 +99,35 @@ describe("Themastroken (FB-037, FB-039)", () => {
     expect(container.querySelector("a")).toBeNull();
   });
 });
+
+describe("Themastroken: subthema inplannen (FB-087)", () => {
+  const herfst = () => vak([{ id: "t-herfst", naam: "De herfst" }]);
+  const naam = t("periode.planSubthemaIn", { naam: "De herfst" });
+  const toonMet = (datum: string, onPlanSubthema?: (id: string) => void, v = herfst()) =>
+    render(
+      <MemoryRouter>
+        <Themastroken vak={v} datum={datum} dicht onPlanSubthema={onPlanSubthema} />
+      </MemoryRouter>,
+    );
+
+  it("zet de knop op de band die de naam draagt, en geeft de plaatsing door", () => {
+    const geklikt: string[] = [];
+    // 14 september 2026 is a Monday: the head of the row prints the name.
+    toonMet("2026-09-14", (id) => geklikt.push(id));
+
+    fireEvent.click(screen.getByRole("button", { name: naam }));
+    expect(geklikt).toEqual(["p1"]);
+  });
+
+  it("zet geen knop midden in de rij, waar de naam wegvalt", () => {
+    toonMet("2026-09-16", () => {});
+    expect(screen.queryByRole("button", { name: naam })).toBeNull();
+  });
+
+  it("zet geen knop zonder callback, en geen in een periode zonder thema", () => {
+    toonMet("2026-09-14");
+    expect(screen.queryByRole("button")).toBeNull();
+    toonMet("2026-09-01", () => {}, vak([]));
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});

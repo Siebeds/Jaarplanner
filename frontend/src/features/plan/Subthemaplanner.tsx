@@ -77,7 +77,8 @@ export function Subthemaplanner({
    */
   magPlannen: boolean;
   themaIds: string[];
-  dagen: Dagweergave[];
+  /** Every day of the thema placement; undefined while they load, which the sheet shows as loading, not as none. */
+  dagen: Dagweergave[] | undefined;
   bezig: boolean;
   resultaat: { gelukt: number; totaal: number; fouten: string[] } | null;
   /**
@@ -90,7 +91,8 @@ export function Subthemaplanner({
   onPlan: (voorstellen: Voorstel[], venster: { subthemaId: string; van: string; tot: string }) => void;
   onSluit: () => void;
 }) {
-  const { themas, laadt } = useThemasVoorKlas(themaIds, klasId);
+  const { themas, laadt: themasLaden } = useThemasVoorKlas(themaIds, klasId);
+  const laadt = themasLaden || dagen === undefined;
   const [subthemaId, setSubthemaId] = useState("");
   const [verdeling, setVerdeling] = useState<Verdeling>("achterElkaar");
   const [startdag, setStartdag] = useState("");
@@ -104,7 +106,7 @@ export function Subthemaplanner({
   // Only teaching days can carry an activiteit; the server refuses a closed one. Vakanties are
   // therefore skipped rather than counted, which is what makes "achter elkaar" mean five school
   // days instead of five calendar days across a holiday.
-  const lesdagen = useMemo(() => dagen.filter((dag) => dag.isLesdag).map((dag) => dag.datum), [dagen]);
+  const lesdagen = useMemo(() => (dagen ?? []).filter((dag) => dag.isLesdag).map((dag) => dag.datum), [dagen]);
 
   /**
    * EVERY subthema of the period, including the ones with no activiteiten yet.
