@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-23 20:54
+bijgewerkt: 2026-09-23 20:55
 opgepakt-door: claude-fb027
 branch: ticket/FB-027-weekvoorstel
-pr:
+pr: 177
 geblokkeerd:
 fr: [FR-6.2, FR-7.1]
 ---
@@ -78,3 +78,4 @@ aanvaardt of weigert.
 - 2026-09-23 20:43 · claude-fb027 · backend en frontend gebouwd; backend 2350 unit + 613 integratie groen, frontend 277 tests groen, lint groen
 - 2026-09-23 20:50 · claude-fb027 · antagonist: 1 MAJOR (verslepen van andermans voorstel beslist zonder eigenaarscheck) opgelost met test; MINORs: opnieuw vragen laat voorstellen van een collega staan, geen voorstel meer op een voorbij uur vandaag; rest in worklog
 - 2026-09-23 20:54 · claude-fb027 · in-uitvoering → te-testen: gebouwd: AI stelt de week voor, voorstellen als voorgestelde blokken in de agenda, aanvaarden/weigeren per blok of alles; gates groen, antagonist COMPLIANT na 1 ronde
+- 2026-09-23 20:55 · claude-fb027 · PR #177
