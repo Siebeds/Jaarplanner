@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 00:06
+bijgewerkt: 2026-09-24 00:07
 opgepakt-door: claude-fb096
 branch: ticket/FB-096-subthema-uit-agenda
-pr:
+pr: 180
 geblokkeerd:
 fr: [FR-7.2, FR-6.5]
 ---
@@ -105,3 +105,4 @@ Geen.
 - 2026-09-23 23:50 · claude-fb096 · backend: GET .../subthemaperiodes/weghaling telt wat meegaat, DELETE haalt periode, activiteiten van dat subthema en hoekverrijkingen samen weg; unit- en Postgres-tests groen
 - 2026-09-24 00:06 · claude-fb096 · browserpas op wegwerpkopie: werkweek, dagweergave en 390 px; annuleren verandert niets, bevestigen haalt periode en 2 activiteiten weg (Auto's blijft), dekking 4 -> 0, inkijker ziet geen knop en krijgt 403; criteria afgevinkt
 - 2026-09-24 00:06 · claude-fb096 · in-uitvoering → te-testen: gebouwd: kruisje op de subthemabalk (week en dag) met bevestiging die dagen, activiteiten, hoekverrijkingen en dekking noemt; tests, dotnet format, pnpm lint groen; antagonist COMPLIANT (3 MINOR, zie worklog)
+- 2026-09-24 00:07 · claude-fb096 · PR #180
