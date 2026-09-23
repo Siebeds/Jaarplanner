@@ -56,6 +56,10 @@ public sealed class ElkeWijzigendeRouteVraagtEenRechtTests : IAsyncLifetime
             "one's own deurmat (ADR-0059 D5): the signal must be addressed to the caller, or it does not exist for her",
         ["POST api/deurmat/signalen/{signaalId:guid}/later"] =
             "one's own deurmat (ADR-0059 D5): the signal must be addressed to the caller, or it does not exist for her",
+        ["POST api/kat/chat"] =
+            "the cat's chat (ADR-0059 D6, ADR-0066): writes nothing, and answers only what the caller may read",
+        ["POST api/kat/chat/opzoeking"] =
+            "the cat's chat (ADR-0059 D6, ADR-0066): writes nothing, and answers only what the caller may read",
     };
 
     /// <summary>

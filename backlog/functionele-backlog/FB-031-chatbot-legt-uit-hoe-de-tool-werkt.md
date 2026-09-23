@@ -2,13 +2,13 @@
 id: FB-031
 titel: Chatbot legt de tool uit en beantwoordt opzoekvragen over doelen, thema's en activiteiten
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-18 17:56
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-23 11:33
+opgepakt-door: claude-fb031
+branch: ticket/FB-031-kat-chat
+pr: 172
 geblokkeerd:
 fr: []
 ---
@@ -60,24 +60,24 @@ Regels:
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de vraag "hoe plan ik een algemene fiche?", dan antwoordt de chatbot met de stappen uit de handleiding.
-- [ ] Gegeven een vraag waarover de handleiding niets zegt, dan zegt de chatbot dat hij het niet weet, en verzint hij
+- [x] Gegeven de vraag "hoe plan ik een algemene fiche?", dan antwoordt de chatbot met de stappen uit de handleiding.
+- [x] Gegeven een vraag waarover de handleiding niets zegt, dan zegt de chatbot dat hij het niet weet, en verzint hij
   niets.
-- [ ] Gegeven de vraag "zit doel <code> in thema <naam>?", dan antwoordt de chatbot ja of nee en zegt hij waar het doel
+- [x] Gegeven de vraag "zit doel <code> in thema <naam>?", dan antwoordt de chatbot ja of nee en zegt hij waar het doel
   in dat thema zit (themadoel, subthema, activiteit), volgens de gegevens van de tool.
-- [ ] Gegeven dezelfde vraag met (een deel van) de naam van het doel in plaats van de code, dan krijg je hetzelfde
+- [x] Gegeven dezelfde vraag met (een deel van) de naam van het doel in plaats van de code, dan krijg je hetzelfde
   antwoord; passen meerdere doelen, dan vraagt de chatbot welk bedoeld is.
-- [ ] Gegeven de vraag "zit activiteit a in subthema z?", dan antwoordt de chatbot juist, en hoort a bij een ander
+- [x] Gegeven de vraag "zit activiteit a in subthema z?", dan antwoordt de chatbot juist, en hoort a bij een ander
   subthema of een andere leeftijd, dan zegt hij waar ze wel hoort.
-- [ ] Gegeven de vraag "waar wordt doel x gebruikt?", dan somt de chatbot de thema's, subthema's, activiteiten en
+- [x] Gegeven de vraag "waar wordt doel x gebruikt?", dan somt de chatbot de thema's, subthema's, activiteiten en
   algemene fiches op waarin het doel vastligt, en noemt hij voorgestelde koppelingen apart.
-- [ ] Gegeven een leerkracht die vraagt naar een klas die ze niet mag inkijken, dan krijgt ze daarover geen gegevens.
-- [ ] Gegeven een vraag over een doel, thema of activiteit die niet bestaat, dan zegt de chatbot dat hij het niet vindt,
+- [x] Gegeven een leerkracht die vraagt naar een klas die ze niet mag inkijken, dan krijgt ze daarover geen gegevens.
+- [x] Gegeven een vraag over een doel, thema of activiteit die niet bestaat, dan zegt de chatbot dat hij het niet vindt,
   en verzint hij niets.
-- [ ] Gegeven een gesprek, dan gaan er geen gegevens over kinderen naar de AI, en de tool bewaart het gesprek niet
+- [x] Gegeven een gesprek, dan gaan er geen gegevens over kinderen naar de AI, en de tool bewaart het gesprek niet
   (zie Open vragen).
-- [ ] Het chatvenster is met het toetsenbord te bedienen en nagekeken in een echte browser op desktop en ~390px.
-- [ ] De logica is getest met een nep-AI-client.
+- [x] Het chatvenster is met het toetsenbord te bedienen en nagekeken in een echte browser op desktop en ~390px.
+- [x] De logica is getest met een nep-AI-client.
 
 ## Testscenario's
 
@@ -100,12 +100,17 @@ Regels:
 
 ## Open vragen
 
-- **De handleiding bestaat nog niet.** Wie schrijft ze, en hoort ze bij dit ticket?
-- **Opzoekvragen en de AI:** vertaalt de AI de vraag naar een vaste opzoeking in de tool (aanbevolen: het antwoord komt
-  dan altijd uit de gegevens en er gaat weinig naar de AI), of krijgt de AI de gegevens zelf mee?
-- Gaat "waar wordt doel x gebruikt?" ook over de agenda (in welke week), of alleen over de inhoud?
-- Wordt dit ticket te groot, splits dan de opzoekvragen af in een eigen ticket.
-- Wordt een gesprek bewaard (bv. om de antwoorden te verbeteren)? **Standaard** niet.
+- ~~**De handleiding bestaat nog niet.** Wie schrijft ze, en hoort ze bij dit ticket?~~ **Beslist door de eigenaar,
+  2026-09-23:** de sessie schrijft een eerste versie als deel van dit ticket, de eigenaar kijkt ze na
+  (`backend/src/Jaarplanner.Application/Kat/Chat/Handleiding.md`).
+- ~~**Opzoekvragen en de AI:** vertaalt de AI de vraag naar een vaste opzoeking in de tool, of krijgt de AI de gegevens
+  zelf mee?~~ **Beslist door de eigenaar, 2026-09-23:** de AI kiest een vaste opzoeking, de tool zoekt het antwoord in
+  haar eigen gegevens ([ADR-0066](../../docs/adr/0066-de-chat-van-de-kat-kiest-een-opzoeking.md)).
+- ~~Gaat "waar wordt doel x gebruikt?" ook over de agenda?~~ **Beslist door de eigenaar, 2026-09-23:** ja, in welke
+  weken, voor de klassen die de gebruiker mag inkijken.
+- Wordt een gesprek bewaard (bv. om de antwoorden te verbeteren)? **Standaard** niet, en zo gebouwd.
+- Elke vraag staat op zichzelf: een vervolgvraag die op het vorige antwoord steunt, begrijpt de kat mogelijk niet
+  (ADR-0066 D1).
 - **AI-omgeving:** er is nog geen werkende AI-omgeving (TB-004 wacht op Azure), en de demo draait zonder AI. Ook de kost
   per vraag moet gemeten worden.
 
@@ -114,3 +119,9 @@ Regels:
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-16 22:46 · claude · opzoekvragen over de eigen inhoud toegevoegd op vraag van de eigenaar (zit doel x in thema y, zit activiteit a in subthema z, waar wordt doel x gebruikt)
 - 2026-09-18 17:56 · kat-sparring · tekst aangevuld: de chatbot is de kat (FB-071), fase 1; prioriteit laag naar middel (eigenaar)
+- 2026-09-23 10:39 · claude-fb031 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten; open vragen beantwoord (handleiding door de sessie, opzoeking via tool use, ook de agenda)
+- 2026-09-23 11:01 · claude-fb031 · backend klaar: één AI-aanroep kiest uitleg uit de handleiding of een vaste opzoeking, de tool antwoordt met de rechten van de gebruiker; eerste versie van de handleiding en ADR-0066; unit- en Postgres-tests groen
+- 2026-09-23 11:24 · claude-fb031 · browserpas op een kopie van de database met Claude Haiku: uitleg, onbekend, ja/nee met plek, niet gevonden, kiezen en opnieuw zoeken werken, op 1440px en 390px, zonder horizontale scroll; lange doelteksten ingekort
+- 2026-09-23 11:32 · claude-fb031 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR opgelost (geweigerde themaplaatsing niet in de agenda, eigen activiteit via de rechtenmatrix, geen gedachtestreepje in een uitleg); open MINOR: een 400 met een Nederlandse zin (prompt te groot) toont de algemene fouttekst; vraag aan de eigenaar: de handleiding uitdrukkelijk in Art. IV.4 noemen
+- 2026-09-23 11:32 · claude-fb031 · in-uitvoering → te-testen: chat van Chuck gebouwd: uitleg uit de handleiding (eerste versie, na te kijken door de eigenaar) en vijf opzoekingen uit de eigen gegevens met de rechten van de gebruiker, ook de agenda; niets bewaard of gelogd (ADR-0066); criteria bewezen met unit-, Postgres- en Vitest-tests en een browserpas op 1440px en 390px; volledige suites, dotnet format en pnpm lint groen
+- 2026-09-23 11:33 · claude-fb031 · PR #172

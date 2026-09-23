@@ -293,6 +293,7 @@
     "periodeLabel": "Periode",
     "weeknummer": "Week {nummer}",
     "weergave": "Weergave",
+    "jaar": "Jaar",
     "maand": "Maand",
     "week": "Week",
     "werkweek": "Werkweek",
@@ -634,8 +635,64 @@
       "laadt": "Chuck kijkt wat hij meebracht.",
       "fout": "Chuck kon niet ophalen wat hij meebracht. Probeer het later opnieuw.",
       "mislukt": "Dat lukte niet. Probeer het opnieuw.",
-      "chatKomt": "Met Chuck praten kan nog niet. Dat komt in een volgende versie.",
       "geenKinderen": "Namen en informatie over kinderen horen niet in dit venster."
+    },
+    "chat": {
+      "label": "Vraag het Chuck",
+      "uitleg": "Hoe iets werkt, of waar een doel, thema of activiteit zit.",
+      "vraag": "Vraag",
+      "bezig": "Chuck denkt na",
+      "gesprek": "Gesprek met Chuck",
+      "jij": "Jij",
+      "chuck": "Chuck",
+      "uitDeHandleiding": "Uit de handleiding: {hoofdstukken}",
+      "onbekend": "Dat weet ik niet. Ik antwoord alleen over hoe Vizier werkt, en over de doelen, thema's en activiteiten van de school.",
+      "mislukt": "Ik begreep mijn eigen antwoord niet. Stel je vraag nog eens, misschien anders verwoord.",
+      "fout": "Ik kon je vraag nu niet beantwoorden. Probeer het later opnieuw.",
+      "nietGevonden": {
+        "Doel": "Ik vind geen doel dat past bij \"{term}\".",
+        "Thema": "Ik vind geen thema dat past bij \"{term}\".",
+        "Subthema": "Ik vind geen subthema dat past bij \"{term}\".",
+        "Activiteit": "Ik vind geen activiteit die past bij \"{term}\"."
+      },
+      "kies": {
+        "Doel": "Meerdere doelen passen bij \"{term}\". Welk bedoel je?",
+        "Thema": "Meerdere thema's passen bij \"{term}\". Welk bedoel je?",
+        "Subthema": "Meerdere subthema's passen bij \"{term}\". Welk bedoel je?",
+        "Activiteit": "Meerdere activiteiten passen bij \"{term}\". Welke bedoel je?"
+      },
+      "kiesAria": "Kies {wat}",
+      "doelInThemaJa": "Ja, {doel} zit in thema {thema}.",
+      "doelInThemaNee": "Nee, {doel} zit niet in thema {thema}.",
+      "doelInThemaNeeVoorstel": "Nee, {doel} ligt nog niet vast in thema {thema}. Er wacht wel een voorstel.",
+      "waarGebruikt": "Hier ligt {doel} vast.",
+      "waarGebruiktNergens": "{doel} ligt nog nergens vast.",
+      "waarGebruiktVoorstel": "{doel} ligt nog nergens vast. Er wachten wel voorstellen.",
+      "doelenVanThema": "Deze doelen liggen vast in thema {thema}.",
+      "doelenVanThemaGeen": "Thema {thema} heeft nog geen vastgelegde doelen.",
+      "activiteitInSubthemaJa": "Ja, {activiteit} zit in subthema {subthema}.",
+      "activiteitInSubthemaNee": "Nee, {activiteit} zit niet in subthema {subthema}. Ze hoort hier:",
+      "subthemaVanActiviteit": "{activiteit} hoort hier:",
+      "voorstellen": "Nog niet beslist",
+      "inDeAgenda": "In de agenda",
+      "nogMeer": "En nog {aantal} andere momenten.",
+      "nogMeerEen": "En nog 1 ander moment.",
+      "plek": {
+        "Themadoel": "Themadoel van {thema}",
+        "Subdoel": "Subdoel van {subthema} ({leeftijd}), thema {thema}",
+        "Activiteit": "{activiteit}, in {subthema} ({leeftijd}), thema {thema}",
+        "AlgemeneFiche": "Algemene fiche {fiche}, {klas}"
+      },
+      "doelplek": {
+        "Themadoel": "Themadoel",
+        "Subdoel": "Subdoel van {subthema} ({leeftijd})"
+      },
+      "agenda": {
+        "Thema": "Thema {naam}",
+        "Subthema": "Subthema {naam}",
+        "Activiteit": "Activiteit {naam}",
+        "AlgemeneFiche": "Algemene fiche {naam}"
+      }
     },
     "instelling": {
       "uitleg": "Chuck, de kat, ligt rechtsboven in de app. Hij toont wat hij voor iemand klaarzette en wanneer een doel van een klas in gevaar komt. Hij beslist niets.",

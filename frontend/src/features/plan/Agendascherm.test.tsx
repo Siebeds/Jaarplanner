@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
 import type { KlasWeergave } from "../../lib/types";
@@ -411,5 +411,65 @@ describe("Agendascherm: een subthema inplannen vanuit de themastrook (FB-087)", 
     expect(await screen.findByText(t("rechten.planningAlleenBekijken", { klas: KLAS.naam }))).toBeInTheDocument();
     expect(await screen.findByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) })).toBeInTheDocument();
     expect(knop()).toBeNull();
+  });
+});
+
+describe("Agendascherm: de werkbalk (FB-089)", () => {
+  const PLANNER = ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] });
+
+  function Jaarplanstub() {
+    const navigeer = useNavigate();
+    return (
+      <button type="button" onClick={() => navigeer(-1)}>
+        terug
+      </button>
+    );
+  }
+
+  it("opent het jaarplan met Jaar, en terug brengt de agenda weer", async () => {
+    const client = metIk(
+      new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }),
+      PLANNER,
+    );
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/agenda/dag/2026-09-08"]}>
+          <Routes>
+            <Route path="agenda/dag/:datum" element={<Agendascherm />} />
+            <Route path="agenda/periodes" element={<Jaarplanstub />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("button", { name: /^Open maandag 7 september/ });
+
+    const jaar = screen.getByRole("radio", { name: t("periode.jaar") });
+    expect(jaar).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(jaar);
+
+    fireEvent.click(await screen.findByRole("button", { name: "terug" }));
+    expect(await screen.findByRole("button", { name: /^Open maandag 7 september/ })).toBeInTheDocument();
+  });
+
+  it("zet Vandaag vooraan, dan vorige en volgende, dan de weergavekeuze", async () => {
+    toon(PLANNER);
+    await screen.findByRole("button", { name: /^Open maandag 7 september/ });
+
+    // Vandaag, or the sentence in its place when the clock stands outside the rooster's school year.
+    const vandaag =
+      screen.queryByRole("button", { name: t("periode.vandaag") }) ??
+      screen.getByText(t("periode.vandaagBuitenSchooljaar"));
+    const volgorde = [
+      vandaag,
+      screen.getByRole("button", { name: t("periode.vorige") }),
+      screen.getByRole("button", { name: t("periode.volgende") }),
+      ...screen.getAllByRole("radio"),
+    ];
+    for (let i = 1; i < volgorde.length; i++) {
+      expect(volgorde[i - 1].compareDocumentPosition(volgorde[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(screen.getAllByRole("radio").map((radio) => radio.textContent)).toEqual(
+      [t("periode.jaar"), t("periode.maand"), t("periode.week"), t("periode.werkweek"), t("periode.dag")],
+    );
   });
 });

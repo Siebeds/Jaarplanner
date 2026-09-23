@@ -126,7 +126,7 @@ describe("Chuck in the header", () => {
 });
 
 describe("his window", () => {
-  it("opens with what he brought, says the chat is not there yet, and takes no input", async () => {
+  it("opens with what he brought, and the chat field under it", async () => {
     deurmat = { signalen: [GEVAAR], voorstellen: [KATVOORSTEL] };
     toon();
     fireEvent.click(await mandknop());
@@ -136,9 +136,9 @@ describe("his window", () => {
     expect(within(venster).getByText("Voor K3 De Uilen, 19 nov van 10.15 tot 11.00")).toBeInTheDocument();
     expect(within(venster).getByRole("link", { name: /^Bekijken: Minimumdoel/ })).toHaveAttribute("href");
     expect(within(venster).getByRole("button", { name: /^Later: Minimumdoel/ })).toBeInTheDocument();
-    expect(within(venster).getByText("Met Chuck praten kan nog niet. Dat komt in een volgende versie.")).toBeInTheDocument();
+    expect(within(venster).getByRole("textbox", { name: "Vraag het Chuck" })).toBeInTheDocument();
     expect(within(venster).getByText("Namen en informatie over kinderen horen niet in dit venster.")).toBeInTheDocument();
-    expect(within(venster).queryByRole("textbox")).not.toBeInTheDocument();
+    expect(within(venster).getByRole("button", { name: "Vraag" })).toBeDisabled();
   });
 
   it("waits about 300 ms for the cat, never for the whole walk, and takes focus on its close button", async () => {

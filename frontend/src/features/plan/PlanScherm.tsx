@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Knop } from "../../components/ui/Knop";
 import { Leegte } from "../../components/ui/Leegte";
@@ -17,6 +17,8 @@ import { Generatiebalk } from "./Generatiebalk";
 import { Jaartijdlijn } from "./Jaartijdlijn";
 import { Plaatsingkaart } from "./Plaatsingkaart";
 import { Themaplaatsingblad } from "./Themaplaatsingblad";
+import { weergaveZoek } from "./weergave";
+import { Weergavekeuze } from "./Weergavekeuze";
 
 /**
  * The year plan of one class: which thema runs from which day to which day, and every change a teacher makes to that
@@ -33,6 +35,7 @@ import { Themaplaatsingblad } from "./Themaplaatsingblad";
  * read the klas (FB-013) reads its plan, with one quiet line that says so.
  */
 export function PlanScherm() {
+  const navigeer = useNavigate();
   const { klasId, schooljaarId, klas } = useActieveSelectie();
   const { mag, bekend: rechtenBekend } = useRechten();
   const magPlannen = mag.klasplanningBewerken(klasId);
@@ -77,13 +80,18 @@ export function PlanScherm() {
       <Schermkop
         titel={t("plan.titel")}
         onder={
-          /* The way back. This screen is not the agenda's front door, so it needs one. */
-          <Link
-            to="/agenda"
-            className="inline-flex h-9 items-center rounded-veld border border-lijn px-3 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:border-accent hover:text-accent"
-          >
-            {t("navigatie.agenda")}
-          </Link>
+          /* The way back to the agenda is the agenda's own view switch, with Jaar chosen, at the right as it stands
+             there (owner, FB-089): one control for moving between the zooms, wherever you are. A view opens the
+             agenda on its default day. */
+          <div className="flex sm:justify-end">
+            <Weergavekeuze
+              waarde="jaar"
+              onKies={(zicht) => {
+                if (zicht !== "jaar") navigeer(`/agenda${weergaveZoek(zicht)}`);
+              }}
+              className="w-full sm:w-auto"
+            />
+          </div>
         }
       />
 

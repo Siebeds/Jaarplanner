@@ -451,30 +451,29 @@ describe("Tijdraster", () => {
     );
   const themaLabels = () => screen.getAllByText(t("periode.themaVervolg", { naam: "Ik en mijn klas" }));
 
-  it("noemt allebei de balken op een rij zonder maandag erin, in de dag en op een telefoonweek", () => {
+  it("noemt allebei de balken in de dagweergave, waar geen rij de naam draagt", () => {
     // One column, a Friday in the middle of both runs: what the owner was looking at.
-    const dagweergave = toonRij(["2026-09-11"]);
+    toonRij(["2026-09-11"]);
     expect(themaLabels()[0].className).not.toMatch(/hidden/);
     expect(screen.getByText(t("periode.subthemaVervolg", { naam: "de speelhoek" })).className).not.toMatch(/hidden/);
-    dagweergave.unmount();
-
-    // The phone's week is three days starting at the anchored one, so an anchor past Monday gives a row with no
-    // Monday in it. Same two nameless bars, and the reason the rule counts Mondays rather than columns.
-    toonRij(["2026-09-10", "2026-09-11", "2026-09-12"]);
-    expect(themaLabels().every((label) => !/hidden/.test(label.className))).toBe(true);
-    expect(screen.getAllByText(t("periode.subthemaVervolg", { naam: "de speelhoek" }))).toHaveLength(3);
   });
 
-  it("laat de rest van een rij mét maandag wel zwijgen", () => {
-    // The rule the week view had, and keeps. Monday carries the name for the row; the Tuesday beside it renders no
-    // subthema strip text at all, and its thema band keeps the class that takes the word away from `xl`.
-    toonRij(["2026-09-14", "2026-09-15"]);
+  it("tekent thema en subthema over de dagen van de week als één balk, met een pijltje waar ze doorlopen", () => {
+    // FB-090. The phone's three working days anchored past Monday, the row that used to draw nameless grey pieces.
+    const { container } = toonRij(["2026-09-10", "2026-09-11", "2026-09-14"]);
 
-    // Monday's own label says "… de speelhoek" too, because the run began the week before: it is the carrier, not
-    // the start. Exactly one, so the Tuesday is the day that went quiet.
-    expect(screen.getAllByText(t("periode.subthemaVervolg", { naam: "de speelhoek" }))).toHaveLength(1);
-    expect(themaLabels()).toHaveLength(1);
-    expect(themaLabels()[0].className).toMatch(/hidden/);
+    // One stop per bar, the name once, and no "…" that read as a cut-off name.
+    expect(screen.getAllByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: t("periode.naarSubthema", { naam: "de speelhoek" }) })).toHaveLength(1);
+    expect(screen.getAllByText("Ik en mijn klas")).toHaveLength(1);
+    expect(screen.getAllByText("de speelhoek")).toHaveLength(1);
+    expect(screen.queryByText(/…/)).toBeNull();
+
+    // Both began before the first column and go on after the last: an arrow on each side of each bar.
+    expect(container.querySelectorAll('[data-doorloop="voor"]')).toHaveLength(2);
+    expect(container.querySelectorAll('[data-doorloop="na"]')).toHaveLength(2);
+    const balk = screen.getByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) }).parentElement;
+    expect(balk?.style.gridColumn).toBe("1 / 4");
   });
 
   it("zegt tegen een schermlezer wat er op de dag loopt, want de balken zijn aria-hidden", () => {
@@ -866,5 +865,66 @@ describe("Tijdraster, de stroken in een week met een gesloten maandag (FB-039)",
     // Tuesday carries the names and the one stop per band; Wednesday's bands are for a pointer only.
     expect(screen.getAllByRole("link", { name: t("periode.naarThema", { naam: "Ik en mijn klas" }) })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: t("periode.naarSubthema", { naam: "de speelhoek" }) })).toHaveLength(1);
+  });
+});
+
+describe("Tijdraster, de themabalken van de week (FB-090)", () => {
+  const reeks: Subthemareeks = {
+    subthemaId: "s1",
+    subthemaNaam: "de speelhoek",
+    themaId: "t1",
+    themaNaam: "Herfst",
+    van: "2026-09-14",
+    tot: "2026-09-16",
+    aantalDagen: 3,
+  };
+  const week = ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"];
+
+  function toonWeek(onPlanSubthema?: (plaatsingId: string) => void) {
+    return render(
+      <MemoryRouter>
+        <DndContext>
+          <Tijdraster
+            dagen={week.map((datum) => dag([], { datum }))}
+            fichemomenten={[]}
+            reeksenPerDag={new Map(week.slice(0, 3).map((datum) => [datum, [reeks]]))}
+            vakken={[
+              { plaatsingId: "p1", van: "2026-09-07", tot: "2026-09-16", themas: [{ id: "t1", naam: "Herfst" }] },
+              { plaatsingId: "p2", van: "2026-09-17", tot: "2026-10-02", themas: [{ id: "t2", naam: "Dieren" }] },
+            ]}
+            schooluren={undefined}
+            magPlannen
+            onVoegToe={() => {}}
+            onOpen={() => {}}
+            onOpenFiche={() => {}}
+            onVanDag={() => {}}
+            onKiesDag={() => {}}
+            onWijzigTijd={() => {}}
+            onPlanSubthema={onPlanSubthema}
+          />
+        </DndContext>
+      </MemoryRouter>,
+    );
+  }
+
+  it("zet twee balken waar het ene thema stopt en het volgende begint, elk met zijn naam", () => {
+    toonWeek();
+
+    const herfst = screen.getByRole("link", { name: t("periode.naarThema", { naam: "Herfst" }) });
+    const dieren = screen.getByRole("link", { name: t("periode.naarThema", { naam: "Dieren" }) });
+    expect(herfst.parentElement?.style.gridColumn).toBe("1 / 4");
+    expect(dieren.parentElement?.style.gridColumn).toBe("4 / 6");
+    expect(screen.getByText("Herfst")).toBeInTheDocument();
+    expect(screen.getByText("Dieren")).toBeInTheDocument();
+  });
+
+  it("biedt Subthema inplannen op de themabalk waar er ruimte is, en niet waar elke dag al een subthema heeft", () => {
+    const gepland = vi.fn();
+    toonWeek(gepland);
+
+    // Herfst has a subthema on each of its three days: no room there. Dieren has none.
+    expect(screen.queryByRole("button", { name: t("periode.planSubthemaIn", { naam: "Herfst" }) })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: t("periode.planSubthemaIn", { naam: "Dieren" }) }));
+    expect(gepland).toHaveBeenCalledWith("p2");
   });
 });

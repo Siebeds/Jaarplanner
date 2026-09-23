@@ -35,8 +35,6 @@ const vak = (themas: Themavak["themas"]): Themavak => ({
 const toon = (props: Partial<Parameters<typeof Dagonderschrift>[0]> = {}) =>
   render(
     <Dagonderschrift
-      weekLabel="Week 37"
-      dagweergave
       datum="2026-09-11"
       schooljaar={schooljaar}
       vakken={[vak([{ id: "t1", naam: "Ik en mijn klas" }])]}
@@ -46,9 +44,8 @@ const toon = (props: Partial<Parameters<typeof Dagonderschrift>[0]> = {}) =>
   );
 
 describe("Dagonderschrift", () => {
-  it("noemt week, periode en thema op een dag in een periode", () => {
+  it("noemt periode en thema op een dag in een periode", () => {
     toon();
-    expect(screen.getByText("Week 37")).toBeInTheDocument();
     expect(screen.getByText(t("periode.themaLoopt"))).toBeInTheDocument();
     expect(screen.getByText(periodeTekst("2026-09-01", "2026-10-01"))).toBeInTheDocument();
     expect(screen.getByText("Ik en mijn klas")).toBeInTheDocument();
@@ -87,10 +84,9 @@ describe("Dagonderschrift", () => {
     expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
   });
 
-  it("zwijgt over periodes voor de eerste periode", () => {
-    toon({ datum: "2026-08-31" });
-    expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
-    expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
+  it("zwijgt over periodes voor de eerste periode, en toont dan niets", () => {
+    const { container } = toon({ datum: "2026-08-31" });
+    expect(container).toBeEmptyDOMElement();
   });
 
   it("zwijgt over periodes na de laatste periode", () => {
@@ -101,20 +97,7 @@ describe("Dagonderschrift", () => {
 
   it("zwijgt over periodes zolang het rooster laadt", () => {
     toon({ schooljaar: undefined, vakken: [] });
-    expect(screen.getByText("Week 37")).toBeInTheDocument();
     expect(screen.queryByText(t("periode.geenThemaOpDag"))).not.toBeInTheDocument();
     expect(screen.queryByText(t("periode.buitenSchooljaar"))).not.toBeInTheDocument();
-  });
-
-  it("toont in de weekweergave alleen het weeknummer", () => {
-    toon({ dagweergave: false });
-    expect(screen.getByText("Week 37")).toBeInTheDocument();
-    expect(screen.queryByText(t("periode.themaLoopt"))).not.toBeInTheDocument();
-    expect(screen.queryByText("Ik en mijn klas")).not.toBeInTheDocument();
-  });
-
-  it("toont niets in de maandweergave", () => {
-    const { container } = toon({ weekLabel: null, dagweergave: false });
-    expect(container).toBeEmptyDOMElement();
   });
 });

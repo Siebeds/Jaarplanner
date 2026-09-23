@@ -11,6 +11,10 @@ import { cn } from "../../lib/cn";
  * WCAG 1.4.11, and the fill (1.18:1 against the track) only supports them. The owner chose this
  * over the outline knowingly: do not bring the outline back as a 1.4.11 fix. Each label
  * reserves the width of its semibold form, so choosing an option does not shift its neighbours.
+ *
+ * **It is exactly as tall as a button (`h-9`) and wears the same `lijn-veld` edge** (FB-089), so it
+ * stands in a toolbar beside plain buttons without a height and a border of its own. The track's
+ * two-pixel inset is what is left for the fill, and the options' radius is the track's minus it.
  */
 export function Segment<T extends string>({
   label,
@@ -29,7 +33,7 @@ export function Segment<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className={cn("inline-flex rounded-veld border border-lijn bg-vlak-diep p-1", className)}
+      className={cn("inline-flex h-9 rounded-veld border border-lijn-veld bg-vlak-diep p-0.5", className)}
     >
       {opties.map((optie) => {
         const gekozen = optie.waarde === waarde;
@@ -41,7 +45,7 @@ export function Segment<T extends string>({
             aria-checked={gekozen}
             onClick={() => onKies(optie.waarde)}
             className={cn(
-              "min-h-9 flex-1 whitespace-nowrap rounded-[0.5rem] px-3 text-meta transition-colors duration-150",
+              "flex-1 whitespace-nowrap rounded-[0.625rem] px-3 text-meta transition-colors duration-150",
               gekozen ? "bg-kaart font-semibold text-inkt" : "font-medium text-inkt-zacht hover:text-inkt",
             )}
           >
