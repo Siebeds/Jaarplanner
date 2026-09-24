@@ -2,12 +2,12 @@
 id: FB-102
 titel: Activiteiten in de zijbalk tonen eerst wat nog in te plannen is, in compacte kaarten
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:20
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 17:53
+opgepakt-door: claude-fb102
+branch: ticket/FB-102-activiteiten-zijbalk
 pr:
 geblokkeerd:
 fr: []
@@ -88,3 +88,4 @@ Geen.
 ## Werklog
 
 - 2026-09-24 17:20 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-24 17:53 · claude-fb102 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
