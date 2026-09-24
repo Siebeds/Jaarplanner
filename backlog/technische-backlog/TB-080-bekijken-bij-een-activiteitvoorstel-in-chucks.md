@@ -2,10 +2,10 @@
 id: TB-080
 titel: Bekijken bij een activiteitvoorstel in Chucks venster opent het subthema
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 11:50
+bijgewerkt: 2026-09-24 11:55
 opgepakt-door: claude-tb-katbekijken
 branch: ticket/TB-kat-bekijken-activiteitvoorstel
 pr:
@@ -28,11 +28,11 @@ Een test legt de link vast.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een activiteitvoorstel zonder klas in Chucks venster, wanneer de deurmat wordt opgehaald, dan is de
+- [x] Gegeven een activiteitvoorstel zonder klas in Chucks venster, wanneer de deurmat wordt opgehaald, dan is de
       verwijzing `/themas/{themaId}?subthema={subthemaId}`.
-- [ ] Gegeven dat voorstel, wanneer de leerkracht op "Bekijken" klikt, dan opent de themapagina met dat subthema
+- [x] Gegeven dat voorstel, wanneer de leerkracht op "Bekijken" klikt, dan opent de themapagina met dat subthema
       opengeklapt en de voorgestelde activiteiten zichtbaar.
-- [ ] Een activiteitvoorstel dat Chuck bij een klas bracht, blijft in het venster zelf beslist (geen verwijzing).
+- [x] Een activiteitvoorstel dat Chuck bij een klas bracht, blijft in het venster zelf beslist (geen verwijzing).
 
 ## Buiten scope
 
@@ -45,3 +45,5 @@ Geen.
 ## Werklog
 
 - 2026-09-24 11:50 · claude-tb-katbekijken · aangemaakt (status in-uitvoering)
+- 2026-09-24 11:55 · claude-tb-katbekijken · Criteria afgevinkt: nieuwe integratietest (link), ThemadetailScherm.test opent ?subthema=, bestaande Aanbodgat-test (geen link bij klas); 17/17 groen
+- 2026-09-24 11:55 · claude-tb-katbekijken · in-uitvoering → klaar: Link wijst naar /themas/{themaId}?subthema={subthemaId}; dotnet format schoon, Deurmat- en Aanbodgat-tests 17/17 groen, antagonist COMPLIANT (2 MINOR, verwerkt in werklog); geen browserpas gedaan, criterium 2 steunt op ThemadetailScherm.test
