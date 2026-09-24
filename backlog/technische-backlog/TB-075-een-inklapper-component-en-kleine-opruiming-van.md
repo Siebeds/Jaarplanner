@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 13:39
+bijgewerkt: 2026-09-24 13:51
 opgepakt-door: claude-tb075
 branch: ticket/TB-075-inklapper
 pr:
@@ -63,3 +63,4 @@ Geen.
 
 - 2026-09-23 09:49 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-24 13:39 · claude-tb075 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orchestrerende sessie)
+- 2026-09-24 13:51 · claude-tb075 · Inklapper gebouwd en op alle tien uitklappers gezet; Schermkop/Schermvlak op maat; forwardRef weg; Fiche had de opmaak-booleans al niet meer. pnpm test (1402) en pnpm lint groen.
