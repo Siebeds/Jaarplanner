@@ -130,6 +130,28 @@ public sealed class EfWeekplanningOpslag : IWeekplanningOpslag
     public Task BewaarAsync(CancellationToken cancellationToken = default) =>
         _context.SaveChangesAsync(cancellationToken);
 
+    /// <inheritdoc />
+    public Task<int> TelHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default) =>
+        _context.Hoekverrijkingen.CountAsync(v => subthemaplaatsingIds.Contains(v.SubthemaplaatsingId), cancellationToken);
+
+    /// <inheritdoc />
+    public async Task VerwijderHoekverrijkingenAsync(
+        IReadOnlyCollection<Guid> subthemaplaatsingIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (subthemaplaatsingIds.Count == 0)
+        {
+            return;
+        }
+
+        _context.Hoekverrijkingen.RemoveRange(
+            await _context.Hoekverrijkingen
+                .Where(v => subthemaplaatsingIds.Contains(v.SubthemaplaatsingId))
+                .ToListAsync(cancellationToken));
+    }
+
     /// <summary>
     /// The one projection both overloads share, so a single-activiteit load and a whole-week load can never disagree
     /// about what an activiteit's content tree is.

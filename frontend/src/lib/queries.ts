@@ -575,6 +575,45 @@ export function usePlaatsSubthemaperiode(klasId: string | null) {
   });
 }
 
+/** What taking a subthema out of the agenda over these days takes with it (FB-096); the confirmation shows it first. */
+export interface Subthemaweghaling {
+  aantalActiviteiten: number;
+  aantalHoekverrijkingen: number;
+  /** A stored window goes: only then do the subthema's goals stop counting for the dekking (ADR-0047). */
+  heeftPeriode: boolean;
+  /** Another window of the subthema stays in this klas's agenda, so its goals go on counting. */
+  blijftElders: boolean;
+}
+
+function weghalingZoek(subthemaId: string, van: string, tot: string) {
+  return new URLSearchParams({ subthemaId, van, tot }).toString();
+}
+
+/** Asks the server what would go, without changing anything (FB-096). */
+export function haalSubthemaweghaling(klasId: string, subthemaId: string, van: string, tot: string) {
+  return get<Subthemaweghaling>(
+    `/api/klassen/${klasId}/jaarplan/subthemaperiodes/weghaling?${weghalingZoek(subthemaId, van, tot)}`,
+  );
+}
+
+/**
+ * Takes a subthema out of the agenda over these days (FB-096): its window, its activiteiten on them and the
+ * hoekverrijkingen of the window. The week, the dekking and the verrijkingen all change with it.
+ */
+export function useHaalSubthemaWeg(klasId: string | null) {
+  const client = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ subthemaId, van, tot }: { subthemaId: string; van: string; tot: string }) =>
+      del<Weekplanning>(`/api/klassen/${klasId}/jaarplan/subthemaperiodes?${weghalingZoek(subthemaId, van, tot)}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["weekplanning"] });
+      void client.invalidateQueries({ queryKey: ["dekking"] });
+      void client.invalidateQueries({ queryKey: ["hoekverrijkingen"] });
+    },
+  });
+}
+
 /**
  * Every subthema at an age this klas teaches, each named with its thema (FB-017): what the agenda's activiteiten list
  * offers to choose from. Under the `thema-bibliotheek` family on purpose: a new, renamed or deleted subthema goes

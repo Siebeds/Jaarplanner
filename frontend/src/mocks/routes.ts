@@ -84,6 +84,26 @@ function klasVan(v: Verzoek) {
   );
 }
 
+/**
+ * What of one subthema stands on the asked days (FB-096): its windows touching them, and its activiteiten on those days
+ * widened to the windows, as `WeekplanningService.SelecteerSubthemaAsync` selects.
+ */
+function subthemaSelectie(v: Verzoek) {
+  const subthemaId = v.query.get("subthemaId") ?? "";
+  const vraagVan = v.query.get("van") ?? "";
+  const vraagTot = v.query.get("tot") ?? "";
+  const vensters = v.s.periodes.filter((p) => p.subthemaId === subthemaId && p.van <= vraagTot && p.tot >= vraagVan);
+  const van = [vraagVan, ...vensters.map((p) => p.van)].reduce((a, b) => (a < b ? a : b));
+  const tot = [vraagTot, ...vensters.map((p) => p.tot)].reduce((a, b) => (a > b ? a : b));
+  const plaatsingen = v.s.dagplaatsingen.filter(
+    (p) => p.datum >= van && p.datum <= tot && t.zoekActiviteit(v.s, p.activiteitId)?.subthema.id === subthemaId,
+  );
+  if (vensters.length === 0 && plaatsingen.length === 0) {
+    throw new Fout(404, "Dit subthema staat op die dagen niet in de agenda.");
+  }
+  return { subthemaId, vensters, plaatsingen, van, tot };
+}
+
 function themaVan(v: Verzoek, id = v.params.themaId) {
   return vind(
     v.s.themas.find((th) => th.id === id),
@@ -877,6 +897,33 @@ const TABEL: [Methode, string, Handler][] = [
       vind(t.zoekSubthema(v.s, subthemaId), "Dit subthema");
       v.s.periodes.push({ id: t.nieuwId(), subthemaId, van, tot });
       return t.weekplanning(v.s, klas, van, tot);
+    },
+  ],
+  // FB-096: the same selection for the count and the delete, as the server's.
+  [
+    "GET",
+    "/api/klassen/:klasId/jaarplan/subthemaperiodes/weghaling",
+    (v) => {
+      klasVan(v);
+      const s = subthemaSelectie(v);
+      return {
+        aantalActiviteiten: s.plaatsingen.length,
+        aantalHoekverrijkingen: s.vensters.reduce((som, p) => som + Object.keys(v.s.verrijkingen[p.id] ?? {}).length, 0),
+        heeftPeriode: s.vensters.length > 0,
+        blijftElders: v.s.periodes.some((p) => p.subthemaId === s.subthemaId && !s.vensters.includes(p)),
+      };
+    },
+  ],
+  [
+    "DELETE",
+    "/api/klassen/:klasId/jaarplan/subthemaperiodes",
+    (v) => {
+      const klas = klasVan(v);
+      const s = subthemaSelectie(v);
+      for (const p of s.vensters) delete v.s.verrijkingen[p.id];
+      v.s.periodes = v.s.periodes.filter((p) => !s.vensters.includes(p));
+      v.s.dagplaatsingen = v.s.dagplaatsingen.filter((p) => !s.plaatsingen.includes(p));
+      return t.weekplanning(v.s, klas, s.van, s.tot);
     },
   ],
 

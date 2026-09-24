@@ -3,6 +3,7 @@ import { naamOpDezeDag, type Subthemareeks } from "./subthemareeksen";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { themapaginaPad } from "../themas/themapagina";
+import { Weghaalknop } from "./Weekbalken";
 
 /**
  * Which subthema is running on this day, as a strip along the top edge of the day.
@@ -32,6 +33,7 @@ export function Subthemastroken({
   datum,
   dicht,
   altijdNaam,
+  onHaalWeg,
   className,
 }: {
   reeksen: readonly Subthemareeks[];
@@ -47,6 +49,11 @@ export function Subthemastroken({
    * week draws its strips on when its Monday is closed.
    */
   altijdNaam?: boolean;
+  /**
+   * Takes a run out of the agenda (FB-096), from the strip that names it: the one a keyboard lands on. Passed only to
+   * whoever may plan, and only where there is room for it (the day view, not the month cell).
+   */
+  onHaalWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
   className?: string;
 }) {
   if (reeksen.length === 0) return null;
@@ -63,15 +70,19 @@ export function Subthemastroken({
   return (
     <div className={cn("pointer-events-none flex flex-col", className)}>
       {zichtbaar.map((reeks) => (
-        <Strook
-          key={reeks.subthemaId + reeks.van}
-          isStart={reeks.van === datum}
-          dicht={dicht}
-          vervolg={!toonNaam}
-          tekst={reeks.van === datum ? reeks.subthemaNaam : t("periode.subthemaVervolg", { naam: reeks.subthemaNaam })}
-          naar={themapaginaPad(reeks.themaId, reeks.subthemaId)}
-          naarNaam={toonNaam ? t("periode.naarSubthema", { naam: reeks.subthemaNaam }) : undefined}
-        />
+        <div key={reeks.subthemaId + reeks.van} className="flex min-w-0">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <Strook
+              isStart={reeks.van === datum}
+              dicht={dicht}
+              vervolg={!toonNaam}
+              tekst={reeks.van === datum ? reeks.subthemaNaam : t("periode.subthemaVervolg", { naam: reeks.subthemaNaam })}
+              naar={themapaginaPad(reeks.themaId, reeks.subthemaId)}
+              naarNaam={toonNaam ? t("periode.naarSubthema", { naam: reeks.subthemaNaam }) : undefined}
+            />
+          </div>
+          {onHaalWeg && toonNaam ? <Weghaalknop reeks={reeks} onHaalWeg={onHaalWeg} dicht={dicht} /> : null}
+        </div>
       ))}
       {rest > 0 ? <Strook isStart={false} dicht={dicht} tekst={t("periode.subthemaMeer", { aantal: rest })} /> : null}
     </div>

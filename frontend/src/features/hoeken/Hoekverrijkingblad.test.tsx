@@ -74,7 +74,7 @@ function toon(opties: Partial<Parameters<typeof Hoekverrijkingblad>[0]> = {}) {
     <QueryClientProvider client={client}>
       <Hoekverrijkingblad
         klasId="k-1"
-        hoek={{ id: "h-boek", naam: "boekenhoek" }}
+        hoek={{ id: "h-boek", naam: "boekenhoek", omschrijving: null }}
         week={klaar()}
         magPlannen
         onSluit={onSluit}

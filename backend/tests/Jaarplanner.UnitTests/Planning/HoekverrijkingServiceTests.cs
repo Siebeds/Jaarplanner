@@ -339,6 +339,14 @@ public sealed class HoekverrijkingServiceTests
             Guid klasId, Guid plaatsingId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
+        public Task<Subthemaweghaling> BekijkSubthemaWeghalingAsync(
+            Guid klasId, Guid subthemaId, DateOnly van, DateOnly tot, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Weekplanningweergave> HaalSubthemaWegAsync(
+            Guid klasId, Guid subthemaId, DateOnly van, DateOnly tot, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
         public Task<Weekplanningweergave> BeslisVoorstelAsync(
             Guid klasId, Guid plaatsingId, bool aanvaard,
             Jaarplanner.Application.Toegang.Rechten? beslisser = null,
