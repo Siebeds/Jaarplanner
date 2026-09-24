@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 11:55
 opgepakt-door: claude-tb-katbekijken
 branch: ticket/TB-kat-bekijken-activiteitvoorstel
-pr:
+pr: 187
 geblokkeerd:
 fr: []
 ---
@@ -47,3 +47,4 @@ Geen.
 - 2026-09-24 11:50 · claude-tb-katbekijken · aangemaakt (status in-uitvoering)
 - 2026-09-24 11:55 · claude-tb-katbekijken · Criteria afgevinkt: nieuwe integratietest (link), ThemadetailScherm.test opent ?subthema=, bestaande Aanbodgat-test (geen link bij klas); 17/17 groen
 - 2026-09-24 11:55 · claude-tb-katbekijken · in-uitvoering → klaar: Link wijst naar /themas/{themaId}?subthema={subthemaId}; dotnet format schoon, Deurmat- en Aanbodgat-tests 17/17 groen, antagonist COMPLIANT (2 MINOR, verwerkt in werklog); geen browserpas gedaan, criterium 2 steunt op ThemadetailScherm.test
+- 2026-09-24 11:55 · claude-tb-katbekijken · PR #187
