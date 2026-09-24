@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
-import type { DoelMatchSuggestie, LeerplandoelDetail, ThemaWeergave } from "../../lib/types";
+import type { DoelKoppelingWeergave, DoelMatchSuggestie, LeerplandoelDetail, ThemaWeergave } from "../../lib/types";
 import { ADMIN, metIk } from "../../test/rechten";
 import { openLijsten } from "../../test/lijsten";
 import { ThemadetailScherm } from "./ThemadetailScherm";
@@ -42,14 +42,20 @@ function doel(code: string, tekst: string): LeerplandoelDetail {
 // Linked as subdoelen: a themadoel is a minimumdoel since FB-043, and the row under test is the subdoel's.
 const THEMADOELTEKST = "De kleuter verkent materialen om iets vorm te geven.";
 const SUBDOELTEKST = "De kleuter luistert naar een verhaal.";
+const ANDERDOELTEKST = "De kleuter speelt een rol.";
 
 const DOELEN: Record<string, LeerplandoelDetail> = {
   "6.5.GK2.3": doel("6.5.GK2.3", THEMADOELTEKST),
   "6.4.GJK.1": doel("6.4.GJK.1", "De kleuter beweegt op muziek."),
   "1.2.GK2.1": doel("1.2.GK2.1", SUBDOELTEKST),
+  "2.1.GK2.4": doel("2.1.GK2.4", ANDERDOELTEKST),
 };
 
-const THEMA: ThemaWeergave = {
+/**
+ * The thema as the server reads it since TB-017: each link carries its doel's text, doelsoort and Op.stap flag. Built
+ * per request, so a test that changes a doel in `DOELEN` sees it in the thema too.
+ */
+const thema = (): ThemaWeergave => ({
   id: "t-1",
   naam: "Carnaval",
   duurWeken: 4,
@@ -74,38 +80,74 @@ const THEMA: ThemaWeergave = {
         {
           id: "sd-1",
           leeftijd: "K2",
-          koppeling: { id: "k-3", leerplandoelCode: "1.2.GK2.1", status: "Aanvaard", aiMotivatie: null },
+          koppeling: metInhoud({ id: "k-3", leerplandoelCode: "1.2.GK2.1", status: "Aanvaard", aiMotivatie: null }),
         },
         {
           id: "sd-2",
           leeftijd: "K2",
-          koppeling: { id: "k-4", leerplandoelCode: "6.5.GK2.3", status: "Manueel", aiMotivatie: null },
+          koppeling: metInhoud({ id: "k-4", leerplandoelCode: "6.5.GK2.3", status: "Manueel", aiMotivatie: null }),
         },
         {
           id: "sd-3",
           leeftijd: "K2",
-          koppeling: { id: "k-5", leerplandoelCode: "6.4.GJK.1", status: "Manueel", aiMotivatie: null },
+          koppeling: metInhoud({ id: "k-5", leerplandoelCode: "6.4.GJK.1", status: "Manueel", aiMotivatie: null }),
         },
       ],
-      activiteiten: [],
+      // An activiteit that carries a doel besides the subdoelen, shown under "Andere doelen in de activiteiten" (FB-010).
+      activiteiten: [
+        {
+          id: "a-1",
+          naam: "Maskers maken",
+          activiteitType: null,
+          hoek: null,
+          verwachteUitkomsten: null,
+          onderzoeksvraagId: null,
+          kleur: null,
+          doelkoppelingen: [
+            metInhoud({ id: "k-6", leerplandoelCode: "2.1.GK2.4", status: "Manueel", aiMotivatie: null }),
+          ],
+        },
+      ],
     },
   ],
-};
+});
+
+/** A link as a thema read carries it: with its doel's text, doelsoort and Op.stap flag (TB-017). */
+function metInhoud(koppeling: DoelKoppelingWeergave): DoelKoppelingWeergave {
+  const inhoud = DOELEN[koppeling.leerplandoelCode]!;
+  return {
+    ...koppeling,
+    tekst: inhoud.tekst,
+    doelsoort: inhoud.doelsoort,
+    nietMeerInOpstap: inhoud.nietMeerInOpstap,
+  };
+}
+
+/** The reads of a doel's detail, the heavy endpoint the rows no longer ask (TB-017). */
+const detailReads = (code?: string) =>
+  fetchMock.mock.calls.filter(
+    ([pad, init]) =>
+      !init?.method &&
+      (code ? pad.endsWith(`/api/leerplandoelen/${code}`) : /\/api\/leerplandoelen\/[^/?]+$/.test(pad)),
+  ).length;
 
 let suggesties: DoelMatchSuggestie[] = [];
 
-const fetchMock = vi.fn((pad: string, init?: RequestInit) => {
+function standaardFetch(pad: string, init?: RequestInit) {
   if (init?.method === "DELETE") return Promise.resolve(new Response(null, { status: 204 }));
   const leerplandoel = /\/api\/leerplandoelen\/([^/?]+)$/.exec(pad);
   if (leerplandoel) return Promise.resolve(antwoord(DOELEN[decodeURIComponent(leerplandoel[1])]));
   if (pad.endsWith("/doelsuggesties")) return Promise.resolve(antwoord(suggesties));
   if (pad.endsWith("/api/jaarfasen")) return Promise.resolve(antwoord(["JK", "K2", "K3"]));
-  if (pad.endsWith("/api/themas/t-1")) return Promise.resolve(antwoord(THEMA));
+  if (pad.endsWith("/api/themas/t-1")) return Promise.resolve(antwoord(thema()));
   return Promise.resolve(new Response("{}", { status: 404 }));
-});
+}
+
+const fetchMock = vi.fn(standaardFetch);
 
 beforeEach(() => {
   fetchMock.mockClear();
+  fetchMock.mockImplementation(standaardFetch);
   suggesties = [];
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -146,6 +188,41 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     expect(screen.getByText("6.5.GK2.3")).toBeInTheDocument();
     expect(screen.getByText(t("thema.geenThemadoelen"))).toBeInTheDocument();
     expect(screen.queryByText("9.9.GK2.9")).not.toBeInTheDocument();
+  });
+
+  it("vraagt geen doeldetail op tot een regel ingedrukt wordt (TB-017)", async () => {
+    toon();
+    await openHoofdstuk();
+
+    // Every row of the open chapter, subdoelen and the other doelen of its activiteiten, reads from the thema.
+    expect(await screen.findByText(SUBDOELTEKST)).toBeInTheDocument();
+    expect(screen.getByText(THEMADOELTEKST)).toBeInTheDocument();
+    expect(screen.getByText(ANDERDOELTEKST)).toBeInTheDocument();
+    expect(detailReads()).toBe(0);
+
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(ANDERDOELTEKST) }));
+    await screen.findByRole("dialog", { name: t("doel.titel") });
+    await waitFor(() => expect(detailReads("2.1.GK2.4")).toBe(1));
+    expect(detailReads()).toBe(1);
+  });
+
+  it("leest het doel zelf voor een koppeling zonder meegestuurde tekst", async () => {
+    // A write's answer carries no text; the row then still says what the doel is.
+    fetchMock.mockImplementation((pad: string, init?: RequestInit) => {
+      if (pad.endsWith("/api/themas/t-1")) {
+        const kaal = thema();
+        const subdoel = kaal.subthemas[0]!.subdoelen[0]!;
+        subdoel.koppeling = { ...subdoel.koppeling, tekst: null, doelsoort: null, nietMeerInOpstap: null };
+        return Promise.resolve(antwoord(kaal));
+      }
+      return standaardFetch(pad, init);
+    });
+    toon();
+    await openHoofdstuk();
+
+    expect(await screen.findByText(SUBDOELTEKST)).toBeInTheDocument();
+    expect(detailReads("1.2.GK2.1")).toBe(1);
+    expect(detailReads()).toBe(1);
   });
 
   it("toont bij een subdoel de doeltekst", async () => {
@@ -240,19 +317,24 @@ describe("ThemadetailScherm: gekoppelde doelen tonen hun tekst (TB-016)", () => 
     expect(fetchMock).not.toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ method: "DELETE" }));
   });
 
-  it("leest de doeldetail opnieuw na een ontkoppeling, zodat Gebruikt in niet achterloopt", async () => {
+  it("leest een al geopende doeldetail opnieuw na een ontkoppeling, zodat Gebruikt in niet achterloopt", async () => {
     toon();
     await openHoofdstuk();
-    await screen.findByText(THEMADOELTEKST);
-    const detailReads = () =>
-      fetchMock.mock.calls.filter(([pad, init]) => pad.endsWith("/api/leerplandoelen/6.5.GK2.3") && !init?.method)
-        .length;
-    const voor = detailReads();
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(SUBDOELTEKST) }));
+    const blad = await screen.findByRole("dialog", { name: t("doel.titel") });
+    await within(blad).findByText("Met klei, verf en papier.");
+    fireEvent.keyDown(blad, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    const voor = detailReads("1.2.GK2.1");
 
     fireEvent.click(screen.getByRole("button", { name: t("activiteit.ontkoppel", { code: "6.5.GK2.3" }) }));
     fireEvent.click(await screen.findByRole("button", { name: t("thema.ontkoppelBevestig") }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    await waitFor(() => expect(detailReads()).toBeGreaterThan(voor));
+    // The write marked the cached detail stale; opening it again reads it fresh.
+    fireEvent.click(screen.getByRole("button", { name: new RegExp(SUBDOELTEKST) }));
+    await screen.findByRole("dialog", { name: t("doel.titel") });
+    await waitFor(() => expect(detailReads("1.2.GK2.1")).toBeGreaterThan(voor));
   });
 
   it("markeert in de rij een doel dat uit Op.stap verdwenen is", async () => {

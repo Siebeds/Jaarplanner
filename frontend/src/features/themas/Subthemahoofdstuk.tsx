@@ -94,16 +94,22 @@ export function Subthemahoofdstuk({
   const subdoelenOpCode = [...subthema.subdoelen].sort((a, b) =>
     opCode(a.koppeling.leerplandoelCode, b.koppeling.leerplandoelCode),
   );
-  // A doel search matches the doel's text too, fetched for every doel only once one of the two doel searches is used.
+  // A doel search matches the doel's text too. The thema read carries it with each link (TB-017); a text it lacks is
+  // fetched only once one of the two doel searches is used.
   const [doelZoekOpen, setDoelZoekOpen] = useState({ subdoelen: false, andere: false });
+  const meegestuurdeTeksten = new Map<string, string>();
+  for (const koppeling of [...subdoelenOpCode.map((s) => s.koppeling), ...balans.andereDoelen.map((d) => d.koppeling)]) {
+    if (typeof koppeling.tekst === "string") meegestuurdeTeksten.set(koppeling.leerplandoelCode, koppeling.tekst);
+  }
   const { teksten: doelteksten, laadt: doeltekstenLaden } = useLeerplandoelTeksten(
     [
       ...subdoelenOpCode.map((s) => s.koppeling.leerplandoelCode),
       ...balans.andereDoelen.map((d) => d.koppeling.leerplandoelCode),
-    ],
+    ].filter((code) => !meegestuurdeTeksten.has(code)),
     doelZoekOpen.subdoelen || doelZoekOpen.andere,
   );
-  const doelZoektekst = (code: string) => `${code} ${doelteksten.get(code) ?? ""}`;
+  const doelZoektekst = (code: string) =>
+    `${code} ${meegestuurdeTeksten.get(code) ?? doelteksten.get(code) ?? ""}`;
   // Local, and deliberately not persisted: shut on every visit (FB-011's default), except the one a link asked for.
   const [open, setOpen] = useState(gevraagd === true);
   const [subdoelenOpen, setSubdoelenOpen] = useState(false);

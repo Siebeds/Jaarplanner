@@ -387,6 +387,13 @@ export interface DoelKoppelingWeergave {
   leerplandoelCode: string;
   status: KoppelingStatus;
   aiMotivatie: string | null;
+  /**
+   * The linked doel's own text, doelsoort and Op.stap flag (TB-017). A thema read fills them; a write's answer, any
+   * other view and a code without a doel leave them null, and a row then reads the doel itself.
+   */
+  tekst?: string | null;
+  doelsoort?: Doelsoort | null;
+  nietMeerInOpstap?: boolean | null;
 }
 
 export interface ThemadoelWeergave {
