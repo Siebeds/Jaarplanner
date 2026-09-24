@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-24 17:46
+bijgewerkt: 2026-09-24 17:47
 opgepakt-door: fb028-sessie
 branch: ticket/FB-028-hoekverrijking-voorstellen
-pr:
+pr: 197
 geblokkeerd:
 fr: [FR-4.1]
 ---
@@ -69,3 +69,4 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 - 2026-09-24 17:04 · fb028-sessie · eigenaar beslist: kleine AI-knop per hoekrij in het paneel, voorstel onder de rij; de klas (wie ze mag plannen, en admin) ziet en beslist; Art. IV.4 krijgt een uitzondering voor de tekst van een hoekverrijking
 - 2026-09-24 17:41 · fb028-sessie · gebouwd en in een echte browser nagelopen (desktop, donker, 390px, echte AI): vragen, weigeren, aanpassen en overnemen werken; contrast 6,5:1 of hoger; tests groen
 - 2026-09-24 17:46 · fb028-sessie · in-uitvoering → te-testen: AI-knop per hoek gebouwd: voorstel vragen, overnemen, aanpassen en weigeren; ADR-0070 en Art. IV.1/IV.4/IV.5 bijgewerkt; tests, lint en browserpas groen; antagonist COMPLIANT
+- 2026-09-24 17:47 · fb028-sessie · PR #197
