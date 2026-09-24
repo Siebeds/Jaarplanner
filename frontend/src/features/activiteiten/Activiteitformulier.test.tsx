@@ -7,7 +7,9 @@ import { doelenSleutels } from "../../lib/queries";
 import type { LeerplandoelDetail, SubdoelWeergave } from "../../lib/types";
 import type { Ik } from "../../lib/aanmelding";
 import { ikMet, metIk } from "../../test/rechten";
-import { Activiteitformulier, type ActiviteitMetKleur } from "./Activiteitformulier";
+import type { ActiviteitMetKleur } from "./Activiteitformulier";
+import { BestaandeActiviteit } from "./BestaandeActiviteit";
+import { NieuweActiviteit } from "./NieuweActiviteit";
 
 /**
  * The activiteit sheet's two rights (E6-02 slice 4, ADR-0030 §3): its content, and its goals.
@@ -57,7 +59,7 @@ function toon(ui: ReactElement, ik?: Ik) {
   return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
 }
 
-describe("Activiteitformulier", () => {
+describe("NieuweActiviteit en BestaandeActiviteit", () => {
   it("toont AI-voorstellen apart van de gekoppelde doelen en beslist ze met vinkje en kruisje (FB-026)", async () => {
     const fetchMock = vi.fn().mockImplementation((url: string) =>
       Promise.resolve(
@@ -80,7 +82,7 @@ describe("Activiteitformulier", () => {
         ],
       };
       toon(
-        <Activiteitformulier
+        <BestaandeActiviteit
           open
           activiteit={activiteit}
           themaId="t-1"
@@ -122,7 +124,7 @@ describe("Activiteitformulier", () => {
 
   it("biedt geen AI-knop aan zonder het koppelrecht (FB-026)", () => {
     toon(
-      <Activiteitformulier open activiteit={ACTIVITEIT} themaId="t-1" onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
+      <BestaandeActiviteit open onKoppel={vi.fn()} onOntkoppel={vi.fn()} activiteit={ACTIVITEIT} themaId="t-1" onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
     );
 
     expect(screen.queryByRole("button", { name: t("doelvoorstel.vraag") })).toBeNull();
@@ -130,7 +132,7 @@ describe("Activiteitformulier", () => {
 
   it("biedt bij een nieuwe activiteit geen doelen aan zonder het koppelrecht, en stuurt er ook geen mee", () => {
     const bewaar = vi.fn();
-    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+    toon(<NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
 
     expect(screen.queryByRole("button", { name: t("doelkiezer.koppel") })).toBeNull();
     expect(screen.queryByText(t("activiteit.doelenBijBewaren"))).toBeNull();
@@ -144,7 +146,7 @@ describe("Activiteitformulier", () => {
 
   it("opent een nieuwe activiteit zonder soort, en bewaart ze zonder soort (FB-050)", () => {
     const bewaar = vi.fn();
-    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+    toon(<NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
 
     const soort = screen.getByLabelText(t("activiteit.soort"));
     expect(soort).toHaveValue("");
@@ -160,7 +162,7 @@ describe("Activiteitformulier", () => {
 
   it("bewaart een gekozen soort (FB-050)", () => {
     const bewaar = vi.fn();
-    toon(<Activiteitformulier open onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
+    toon(<NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />);
 
     fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Bootjes" } });
     fireEvent.change(screen.getByLabelText(t("activiteit.soort")), { target: { value: "Hoek" } });
@@ -173,7 +175,7 @@ describe("Activiteitformulier", () => {
   it("toont bij het bewerken de eigen soort, en laat die weer leeg maken (FB-050)", () => {
     const bewaar = vi.fn();
     toon(
-      <Activiteitformulier open activiteit={ACTIVITEIT} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+      <BestaandeActiviteit open onKoppel={vi.fn()} onOntkoppel={vi.fn()} activiteit={ACTIVITEIT} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
     );
 
     const soort = screen.getByLabelText(t("activiteit.soort"));
@@ -186,7 +188,9 @@ describe("Activiteitformulier", () => {
 
   it("noemt geen soort in de feiten van een activiteit zonder soort (FB-050)", () => {
     toon(
-      <Activiteitformulier
+      <BestaandeActiviteit
+        onKoppel={vi.fn()}
+        onOntkoppel={vi.fn()}
         open
         alleenLezen
         activiteit={{ ...ACTIVITEIT, activiteitType: null }}
@@ -203,14 +207,19 @@ describe("Activiteitformulier", () => {
   });
 
   it("biedt ze wel aan wie op die leeftijd doelen mag koppelen", () => {
-    toon(<Activiteitformulier open magDoelen onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />);
+    toon(
+      <NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
+      ikMet({ hoofdleerkrachtLeeftijden: ["K3"] }),
+    );
 
     expect(screen.getByRole("button", { name: t("doelkiezer.koppel") })).toBeInTheDocument();
   });
 
   it("toont een bestaande activiteit als feiten aan wie haar niet mag aanpassen", () => {
     toon(
-      <Activiteitformulier
+      <BestaandeActiviteit
+        onKoppel={vi.fn()}
+        onOntkoppel={vi.fn()}
         open
         alleenLezen
         activiteit={ACTIVITEIT}
@@ -237,7 +246,7 @@ describe("Activiteitformulier", () => {
 
   it("toont bij een bestaande activiteit de doelen niet als te bewerken zonder het koppelrecht", () => {
     toon(
-      <Activiteitformulier
+      <BestaandeActiviteit
         open
         activiteit={ACTIVITEIT}
         onderzoeksvragen={[]}
@@ -257,7 +266,7 @@ describe("Activiteitformulier", () => {
   it("toont een gekoppeld doel met zijn tekst, en opent er het doeldetail mee (TB-025)", async () => {
     const ontkoppel = vi.fn();
     toon(
-      <Activiteitformulier
+      <BestaandeActiviteit
         open
         magDoelen
         activiteit={ACTIVITEIT}
@@ -284,7 +293,9 @@ describe("Activiteitformulier", () => {
   it("noemt de duur in lesuren, met de minuten eronder (TB-025)", () => {
     const bewaar = vi.fn();
     toon(
-      <Activiteitformulier
+      <BestaandeActiviteit
+        onKoppel={vi.fn()}
+        onOntkoppel={vi.fn()}
         open
         activiteit={ACTIVITEIT}
         onderzoeksvragen={[]}
@@ -318,7 +329,7 @@ describe("Activiteitformulier", () => {
     it("maakt voor een leerkracht zonder keuze een eigen activiteit, met de doelenkiezer", () => {
       const bewaar = vi.fn();
       toon(
-        <Activiteitformulier open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+        <NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
         leerkracht,
       );
 
@@ -330,7 +341,7 @@ describe("Activiteitformulier", () => {
     it("laat wie ook gedeelde mag maken kiezen, standaard alleen voor zichzelf", () => {
       const bewaar = vi.fn();
       toon(
-        <Activiteitformulier open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+        <NieuweActiviteit open leeftijd="K3" onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
         beide,
       );
 
@@ -343,7 +354,9 @@ describe("Activiteitformulier", () => {
     it("toont bij een activiteit van een collega van wie ze is, en biedt Gebruiken", () => {
       const gebruik = vi.fn();
       toon(
-        <Activiteitformulier
+        <BestaandeActiviteit
+          onKoppel={vi.fn()}
+          onOntkoppel={vi.fn()}
           open
           alleenLezen
           activiteit={{ ...ACTIVITEIT, eigenaarId: "ander", eigenaarNaam: "An" }}
@@ -395,7 +408,7 @@ describe("Activiteitformulier", () => {
       metRegister(async () => {
         const bewaar = vi.fn();
         toon(
-          <Activiteitformulier
+          <NieuweActiviteit
             open
             leeftijd="K3"
             subdoelen={[...VIER, subdoel("WO-9", "Voorgesteld")]}
@@ -436,7 +449,7 @@ describe("Activiteitformulier", () => {
       metRegister(async () => {
         const bewaar = vi.fn();
         toon(
-          <Activiteitformulier open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+          <NieuweActiviteit open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
           hoofdleerkracht,
         );
 
@@ -453,7 +466,7 @@ describe("Activiteitformulier", () => {
     it("opent het volledige doel zonder het aan te vinken", () =>
       metRegister(async () => {
         toon(
-          <Activiteitformulier open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
+          <NieuweActiviteit open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
           hoofdleerkracht,
         );
 
@@ -465,7 +478,7 @@ describe("Activiteitformulier", () => {
 
     it("zegt het bij een subthema zonder subdoelen, en laat andere doelen toevoegen", () => {
       toon(
-        <Activiteitformulier open leeftijd="K3" subdoelen={[]} onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
+        <NieuweActiviteit open leeftijd="K3" subdoelen={[]} onderzoeksvragen={[]} onBewaar={vi.fn()} onSluit={vi.fn()} bezig={false} />,
         hoofdleerkracht,
       );
 
@@ -479,7 +492,7 @@ describe("Activiteitformulier", () => {
       // Themabeheer holds no row of R17 or R19 at K3, so the form offers no goal section at all, and sends no codes.
       const bewaar = vi.fn();
       toon(
-        <Activiteitformulier open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
+        <NieuweActiviteit open leeftijd="K3" subdoelen={VIER} onderzoeksvragen={[]} onBewaar={bewaar} onSluit={vi.fn()} bezig={false} />,
         ikMet({ heeftThemabeheer: true, leerkrachtLeeftijden: ["K2"], hoofdleerkrachtLeeftijden: ["K2"] }),
       );
 
@@ -492,13 +505,12 @@ describe("Activiteitformulier", () => {
 
     it("toont de lijst niet bij het bewerken van een bestaande activiteit", () => {
       toon(
-        <Activiteitformulier
+        <BestaandeActiviteit
           open
           activiteit={ACTIVITEIT}
           magDoelen
           onKoppel={vi.fn()}
           onOntkoppel={vi.fn()}
-          subdoelen={VIER}
           onderzoeksvragen={[]}
           onBewaar={vi.fn()}
           onSluit={vi.fn()}

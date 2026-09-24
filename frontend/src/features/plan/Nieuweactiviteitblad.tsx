@@ -7,7 +7,8 @@ import { useThemasVoorKlas } from "../../lib/queries";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import { volleDag } from "../../lib/datum";
 import { t } from "../../i18n";
-import { Activiteitformulier, type ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
+import type { ActiviteitInvoer } from "../activiteiten/Activiteitformulier";
+import { NieuweActiviteit } from "../activiteiten/NieuweActiviteit";
 import { useMaakActiviteit } from "../themas/mutaties";
 import { STANDAARDDUUR } from "./tijd";
 
@@ -19,7 +20,7 @@ import { STANDAARDDUUR } from "./tijd";
  * page, which meant leaving the day, finding the thema, finding the subthema, and coming back to a
  * calendar that had forgotten where you were.
  *
- * **It is the same form as everywhere else.** `Activiteitformulier` owns what an activiteit is; this
+ * **It is the same form as everywhere else.** `NieuweActiviteit` owns what an activiteit is; this
  * file owns only what the agenda adds, which is the subthema it lands in and the day it lands on.
  * That is the lesson `Activiteitblad` was written to record: the agenda once had a second form of its
  * own, and it drifted from the thema page's within one story.
@@ -151,7 +152,7 @@ export function Nieuweactiviteitblad({
   }
 
   return (
-    <Activiteitformulier
+    <NieuweActiviteit
       open
       // The leeftijd decides "voor wie" and the goal picker of the new activiteit (ADR-0049 D1, E3; R19). Keyed on the
       // subthema, so switching to one of another leeftijd starts the choice again.
