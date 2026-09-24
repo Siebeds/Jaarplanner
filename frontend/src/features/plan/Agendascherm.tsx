@@ -803,7 +803,8 @@ export function Agendascherm() {
              centred on the same line; the view switch to the right. Every control is `h-9` with the `lijn-veld`
              edge, `Segment` included. Below `sm` the switch wraps onto a row of its own at full width. */
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {/* The container `kop`: the weekvoorstel shrinks to its wand and a bare count when this row is narrow. */}
+            <div className="@container/kop flex flex-wrap items-center gap-x-4 gap-y-2">
               <div className="flex min-w-0 flex-1 basis-auto items-center gap-3">
                 {/* The button when there is a today to go to, and the reason when there is not, in the same place.
                     Never a dead control: in augustus the school year has not started and no day is today. */}
@@ -848,6 +849,12 @@ export function Agendascherm() {
                     <span className="shrink-0 text-meta tabular-nums text-inkt-zacht">{weekLabel}</span>
                   ) : null}
                 </div>
+
+                {/* The AI proposes the week (FB-027): only in the week views, the unit it proposes, and only for whoever
+                    may plan this klas, who decides it. In the toolbar, so it never pushes the grid down (TB-081). */}
+                {weekweergave && magPlannen && planning && zichtbareDagen.length > 0 ? (
+                  <Weekvoorstel klasId={klasId} datum={anker} dagen={zichtbareDagen} />
+                ) : null}
               </div>
 
               {/* "Jaar" is the jaarplan: another screen, so choosing it navigates there (pushed, so the browser's
@@ -1004,11 +1011,6 @@ export function Agendascherm() {
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
                  a phone. */}
-              {/* The AI proposes the week (FB-027): only in the week views, the unit it proposes, and only for whoever
-                  may plan this klas, who decides it. */}
-              {weekweergave && magPlannen && klasId && zichtbareDagen.length > 0 ? (
-                <Weekvoorstel klasId={klasId} datum={anker} dagen={zichtbareDagen} />
-              ) : null}
               {/* Chuck lies on the corner of the week strip when a goal of this klas is at risk (FB-071). */}
               <Weekhoek klasId={klasId} actief={weekweergave}>
               <Tijdraster

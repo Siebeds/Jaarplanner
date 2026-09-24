@@ -611,6 +611,8 @@
     "eenOpen": "1 voorstel van de AI",
     "open": "{aantal} voorstellen van de AI",
     "allesAanvaarden": "Alles aanvaarden",
+    "eenTeller": "voorstel",
+    "teller": "voorstellen",
     "voorstel": "AI-voorstel"
   },
   "kat": {

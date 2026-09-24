@@ -6,9 +6,14 @@ import type { GeplandeActiviteit } from "../../lib/types";
 import { Weekvoorstel } from "./Weekvoorstel";
 
 /**
- * The weekvoorstel strip (FB-027, ADR-0067): asking, what an open proposal shows, and what accepting, rejecting and
- * accepting all send.
+ * The weekvoorstel in the agenda toolbar (FB-027, ADR-0067, TB-081): asking, the count and the panel behind it, what an
+ * open proposal shows, and what accepting, rejecting and accepting all send.
  */
+
+/** Opens the panel through the count beside the AI button. */
+function openPaneel() {
+  fireEvent.click(screen.getByRole("button", { name: /voorstel$/ }));
+}
 
 function blok(delen: Partial<GeplandeActiviteit>): GeplandeActiviteit {
   return {
@@ -66,18 +71,22 @@ function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVo
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Weekvoorstel", () => {
-  it("vraagt de week van de gekozen dag en zegt wat er voorgesteld is en wat nergens past", async () => {
+  it("vraagt de week van de gekozen dag en opent het paneel met wat er voorgesteld is en wat nergens past", async () => {
     const oproepen = toon([]);
 
     fireEvent.click(screen.getByRole("button", { name: t("weekvoorstel.vraag") }));
 
-    expect(await screen.findByText(/2 activiteiten voorgesteld\./)).toBeInTheDocument();
-    expect(screen.getByText(/Past nergens meer deze week: Kastanjes tellen\./)).toBeInTheDocument();
+    const paneel = await screen.findByRole("dialog");
+    expect(within(paneel).getByText(/2 activiteiten voorgesteld\./)).toBeInTheDocument();
+    expect(within(paneel).getByText(/Past nergens meer deze week: Kastanjes tellen\./)).toBeInTheDocument();
     expect(oproepen).toContainEqual({ methode: "POST", pad: "/api/klassen/k-1/jaarplan/weekvoorstel", lichaam: { datum: "2026-09-28" } });
   });
 
   it("toont een open voorstel met zijn moment en motivatie, en een gepland blok niet", () => {
     toon([blok({}), VOORSTEL]);
+
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    openPaneel();
 
     const lijst = screen.getByRole("list");
     expect(within(lijst).getAllByRole("listitem")).toHaveLength(1);
@@ -90,6 +99,7 @@ describe("Weekvoorstel", () => {
 
   it("aanvaardt en weigert een voorstel per blok", async () => {
     const oproepen = toon([VOORSTEL]);
+    openPaneel();
 
     fireEvent.click(screen.getByRole("button", { name: "Aanvaard: Bladerenrace" }));
     await waitFor(() =>
@@ -112,6 +122,7 @@ describe("Weekvoorstel", () => {
 
   it("aanvaardt alles over de dagen die in beeld zijn", async () => {
     const oproepen = toon([VOORSTEL]);
+    openPaneel();
 
     fireEvent.click(screen.getByRole("button", { name: t("weekvoorstel.allesAanvaarden") }));
 
@@ -124,9 +135,10 @@ describe("Weekvoorstel", () => {
     );
   });
 
-  it("zonder open voorstel is er niets om te aanvaarden", () => {
+  it("zonder open voorstel is er geen teller en niets om te aanvaarden", () => {
     toon([blok({})]);
 
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: t("weekvoorstel.allesAanvaarden") })).not.toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
