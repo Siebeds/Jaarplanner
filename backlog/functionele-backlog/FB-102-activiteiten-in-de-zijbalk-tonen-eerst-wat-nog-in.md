@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:53
+bijgewerkt: 2026-09-24 18:02
 opgepakt-door: claude-fb102
 branch: ticket/FB-102-activiteiten-zijbalk
 pr:
@@ -89,3 +89,4 @@ Geen.
 
 - 2026-09-24 17:20 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-24 17:53 · claude-fb102 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 18:02 · claude-fb102 · paneel gebouwd: twee groepen, compacte kaarten, knop met aantal doelen, keuzelijst loopt door; vitest groen

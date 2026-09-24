@@ -882,9 +882,14 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     expect(open.compareDocumentPosition(gepland) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
     // The day on one line, short, and the full sentence only for a screen reader.
-    const kaart = within(gepland).getByRole("button", { name: /^Weerkaart onderzoeken/ });
+    const knop = within(gepland).getByRole("button", {
+      name: `Weerkaart onderzoeken ${t("activiteitenpaneel.ingeplandOp", { dag: "ma 5 okt" })}`,
+    });
+    const kaart = knop.closest("li") as HTMLElement;
     expect(within(kaart).getByText("ma 5 okt")).toBeInTheDocument();
     expect(within(kaart).getByText(t("activiteitenpaneel.ingeplandOp", { dag: "ma 5 okt" }))).toHaveClass("sr-only");
+    // Once, and short: never the old sentence "Ingepland op …" in view.
+    expect(within(kaart).queryByText(/^Ingepland op/, { ignore: ".sr-only" })).not.toBeInTheDocument();
   });
 
   it("laat een groep zonder activiteiten wegvallen", async () => {

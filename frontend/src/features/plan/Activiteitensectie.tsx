@@ -435,8 +435,10 @@ function doelenVan(activiteit: ActiviteitWeergave): Infodoel[] {
  * The same two gestures on one button as a fiche in the panel (see `Hoekenpaneel`'s `Fiche`), with a grip where it
  * drags. The name and the length travel with the drag, because the agenda does not load this list.
  *
- * **Its goals behind the count in the corner, beside the button and not in it**: a button inside a button is invalid,
- * and as a sibling it starts no drag and plans nothing (FB-018, FB-102).
+ * **The button lies under the whole card, and the text over it lets presses through** (FB-102). The goal count has to
+ * sit in the line beside the date, and a button inside a button is invalid; so the card's words are not the button's
+ * children but its label (`aria-labelledby`), and the count is a sibling that starts no drag and plans nothing. A count
+ * laid over the button instead needs room reserved for it, which in a 240px column broke the date onto two lines.
  */
 function Activiteitkaart({
   activiteit,
@@ -459,28 +461,38 @@ function Activiteitkaart({
     data,
   });
   const doelen = doelenVan(activiteit);
+  const naamId = useId();
+  const wanneerId = useId();
 
   return (
-    <div className="relative">
+    <div
+      className={cn(
+        "relative flex gap-1 rounded-veld border border-lijn bg-kaart py-2 pr-2",
+        "transition-colors duration-150 hover:border-accent",
+        sleepbaar ? "pl-1" : "pl-3",
+        isDragging && "opacity-40",
+      )}
+    >
       <button
         type="button"
         ref={sleepbaar ? setNodeRef : undefined}
+        aria-labelledby={`${naamId} ${wanneerId}`}
         onClick={() => onKies({ id: activiteit.id, naam: activiteit.naam, duur })}
         {...(sleepbaar ? listeners : {})}
         {...(sleepbaar ? attributes : {})}
-        className={cn(
-          "flex w-full gap-1.5 rounded-veld border border-lijn bg-kaart py-2 pr-2.5 text-left",
-          "transition-colors duration-150 hover:border-accent",
-          sleepbaar ? "cursor-grab touch-none pl-1.5 active:cursor-grabbing" : "pl-3",
-          isDragging && "opacity-40",
-        )}
-      >
-        {sleepbaar ? <IcoonGreep className="mt-1 h-4 w-4 shrink-0 text-inkt-zwak" /> : null}
-        <span className="min-w-0 flex-1">
-          <Kaartinhoud naam={activiteit.naam} dag={dag} label={label} ruimteVoorDoelen />
-        </span>
-      </button>
-      <Doelinfo naam={activiteit.naam} doelen={doelen} telling className="absolute bottom-2 right-2.5" />
+        className={cn("absolute inset-0 rounded-veld", sleepbaar && "cursor-grab touch-none active:cursor-grabbing")}
+      />
+      {sleepbaar ? <IcoonGreep className="pointer-events-none relative mt-1 h-4 w-4 shrink-0 text-inkt-zwak" /> : null}
+      <div className="pointer-events-none relative min-w-0 flex-1">
+        <Kaartinhoud
+          naam={activiteit.naam}
+          naamId={naamId}
+          wanneerId={wanneerId}
+          dag={dag}
+          label={label}
+          doelen={<Doelinfo naam={activiteit.naam} doelen={doelen} telling className="pointer-events-auto" />}
+        />
+      </div>
     </div>
   );
 }
@@ -542,44 +554,55 @@ function Leeskaart({
 
 /**
  * What a card says: its name, its kind where that is not said once for all (`gelabeldeSoorten`), and on one line when
- * it is next planned, beside its goals (FB-102). Spans only, because in `Activiteitkaart` it sits inside a button.
+ * it is next planned, beside its goals (FB-102).
+ *
+ * The day is short and on one line ("ma 5 okt"); a screen reader hears the whole sentence instead, which is also what
+ * `wanneerId` names for the card's button.
  */
 function Kaartinhoud({
   naam,
+  naamId,
+  wanneerId,
   dag,
   label,
   doelen,
-  ruimteVoorDoelen = false,
 }: {
   naam: string;
+  /** Ids for the button that `Activiteitkaart` lays under the card, which takes its name from these words. */
+  naamId?: string;
+  wanneerId?: string;
   /**
    * The day it next stands on in this klas's agenda (`ingeplandeDag`); null when it stands nowhere; undefined when
    * that could not be read, and then the card says nothing about it rather than "nog niet ingepland".
    */
   dag: string | null | undefined;
   label: ReactNode;
-  /** The goals, in the line; or absent, and then the line leaves room for them over it (`ruimteVoorDoelen`). */
-  doelen?: ReactNode;
-  ruimteVoorDoelen?: boolean;
+  doelen: ReactNode;
 }) {
   return (
     <>
-      <span className="block text-body font-medium leading-snug text-inkt">{naam}</span>
+      <p id={naamId} className="text-body font-medium leading-snug text-inkt">
+        {naam}
+      </p>
       {label}
-      <span className={cn("mt-1 flex min-h-7 items-center justify-between gap-2", ruimteVoorDoelen && "pr-24")}>
-        <span className="flex min-w-0 items-center gap-1 text-meta text-inkt-zacht">
+      {/* Wraps rather than overlaps: "Nog niet ingepland" beside "Nog geen doel" is wider than the column, and the
+          count then moves to the next line, still on the right. */}
+      <div className="mt-1 flex min-h-7 flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
+        <p className="mr-auto flex items-center gap-1 whitespace-nowrap text-meta text-inkt-zacht">
           {dag ? (
             <>
               <IcoonPlan aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-              <span className="sr-only">{t("activiteitenpaneel.ingeplandOp", { dag })}</span>
+              <span id={wanneerId} className="sr-only">
+                {t("activiteitenpaneel.ingeplandOp", { dag })}
+              </span>
               <span aria-hidden="true">{dag}</span>
             </>
           ) : dag === null ? (
-            t("activiteitenpaneel.nietIngepland")
+            <span id={wanneerId}>{t("activiteitenpaneel.nietIngepland")}</span>
           ) : null}
-        </span>
+        </p>
         {doelen}
-      </span>
+      </div>
     </>
   );
 }

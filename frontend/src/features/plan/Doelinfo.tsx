@@ -88,7 +88,7 @@ export function Doelinfo({
             // The visible count leads the name, so a voice user can say what she sees (WCAG 2.5.3).
             aria-label={t("doelinfo.openMetTelling", { telling: aantalZin, naam })}
             className={cn(
-              "inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-meta font-medium",
+              "inline-flex h-7 shrink-0 items-center rounded-full border px-2 text-meta font-medium",
               "transition-colors duration-150",
               doelen.length === 0
                 ? "border-attentie/40 bg-attentie-zacht text-attentie-inkt hover:border-attentie"
