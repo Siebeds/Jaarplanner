@@ -2,12 +2,12 @@
 id: FB-100
 titel: Bewerkscherm van een ingeplande fiche of activiteit is rustig en consequent
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:18
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 17:20
+opgepakt-door: claude-fb100
+branch: ticket/FB-100-bewerkscherm
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -64,3 +64,4 @@ Geen.
 ## Werklog
 
 - 2026-09-24 17:18 · Siebe · aangemaakt (status nieuw)
+- 2026-09-24 17:20 · claude-fb100 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (akkoord 'maak en bouw' 2026-09-24)
