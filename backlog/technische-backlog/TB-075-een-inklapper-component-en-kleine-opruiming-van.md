@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 13:51
+bijgewerkt: 2026-09-24 14:06
 opgepakt-door: claude-tb075
 branch: ticket/TB-075-inklapper
 pr:
@@ -64,3 +64,4 @@ Geen.
 - 2026-09-23 09:49 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-24 13:39 · claude-tb075 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orchestrerende sessie)
 - 2026-09-24 13:51 · claude-tb075 · Inklapper gebouwd en op alle tien uitklappers gezet; Schermkop/Schermvlak op maat; forwardRef weg; Fiche had de opmaak-booleans al niet meer. pnpm test (1402) en pnpm lint groen.
+- 2026-09-24 14:06 · claude-tb075 · Browserpas op kopie jp_tb075, main (5190) naast deze tak (5191), 1440 en 390px: dekking, leerplandoelen- en minimumdoelenboom, koppelblad, themapagina en inladen hebben dicht en na het openen dezelfde paginahoogte en dezelfde knopposities; Enter en Spatie klappen open en dicht, aria-controls wijst naar bestaande inhoud (op het koppelblad ontbrak het voordien).
