@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 18:02
 opgepakt-door: claude-fb101
 branch: ticket/FB-101-fiche-uur-periode
-pr:
+pr: 200
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -64,3 +64,4 @@ Geen.
 - 2026-09-24 18:02 · claude-fb101 · criteria afgevinkt: 1, 2, 4 via Vitest en de servicetests, 3 via service- en endpointtest (400, niets veranderd), 5 via endpointtest (403) en ElkeWijzigendeRouteVraagtEenRecht; browsercontrole mockmodus 1440 en 390px
 - 2026-09-24 18:02 · claude-fb101 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR opgelost: Bewaren werkt ook vanaf een apart verschoven dag, radio in inkt i.p.v. accent, optienaam tussen aanhalingstekens
 - 2026-09-24 18:02 · claude-fb101 · in-uitvoering → te-testen: gebouwd: uur voor alleen deze dag of voor alle dagen van de periode (nieuw eindpunt, alles of niets); unit-, integratie- en 1423 Vitest-tests groen, lint en dotnet format schoon, antagonist COMPLIANT
+- 2026-09-24 18:02 · claude-fb101 · PR #200
