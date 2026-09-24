@@ -94,7 +94,8 @@ describe("Woordweb", () => {
     const oproepen = toon([]);
 
     const invoer = await screen.findByLabelText(t("woordweb.invoerLabel"));
-    expect(screen.getByRole("button", { name: t("woordweb.voorstellen") })).toBeDisabled();
+    // No AI control that cannot act (FB-094): one quiet sentence until the first word.
+    expect(screen.queryByRole("button", { name: t("woordweb.voorstellen") })).toBeNull();
     expect(screen.getByText(t("woordweb.eerstZelf"))).toBeInTheDocument();
 
     fireEvent.paste(invoer, { clipboardData: { getData: () => "wind, regen\nwolk" } });
