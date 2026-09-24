@@ -124,7 +124,7 @@ describe("het rechtermuisklikmenu van een blok (TB-030)", () => {
 // FB-091: the routine stands back behind what is planned, and a block says no start the hour gutter already says.
 describe("Tijdraster: een terugkerende fiche en het beginuur (FB-091)", () => {
   /** The block's drawn box: the element that carries its ground and its edge. */
-  const vlak = (knop: HTMLElement) => knop.closest(".rounded-veld") as HTMLElement;
+  const vlak = (knop: HTMLElement) => knop.closest('[class*="group/blok"]') as HTMLElement;
   /** The block's name as it is printed. */
   const naamIn = (knop: HTMLElement, naam: string) => within(knop).getByText(naam);
 
