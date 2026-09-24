@@ -2,12 +2,12 @@
 id: FB-085
 titel: Vizier-favicon, tabbladtitel en een app-icoon om de app op een tablet te zetten
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-22 21:49
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 14:30
+opgepakt-door: claude-fb085
+branch: ticket/FB-085-vizier-favicon
 pr:
 geblokkeerd:
 fr: []
@@ -76,3 +76,4 @@ Geen.
 ## Werklog
 
 - 2026-09-22 21:49 · Siebe · aangemaakt (status nieuw)
+- 2026-09-24 14:30 · claude-fb085 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht aan deze sessie)
