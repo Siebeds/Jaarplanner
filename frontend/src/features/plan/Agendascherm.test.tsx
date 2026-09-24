@@ -9,6 +9,13 @@ import { ikMet, metIk } from "../../test/rechten";
 import { zetSchermbreedte } from "../../test/setup";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import { Agendascherm } from "./Agendascherm";
+import { Dekkingsbalk } from "../dekking/Dekkingsbalk";
+
+// Counted, not replaced: a pass-through spy, so the bar draws what it drew before (TB-071).
+vi.mock("../dekking/Dekkingsbalk", async (echt) => {
+  const module = await echt<typeof import("../dekking/Dekkingsbalk")>();
+  return { ...module, Dekkingsbalk: vi.fn(module.Dekkingsbalk) };
+});
 
 /**
  * The agenda's planning controls, as each side of the planning right sees them (E6-02, ADR-0030 §3, R7, R15).
@@ -471,5 +478,36 @@ describe("Agendascherm: de werkbalk (FB-089)", () => {
     expect(screen.getAllByRole("radio").map((radio) => radio.textContent)).toEqual(
       [t("periode.jaar"), t("periode.maand"), t("periode.week"), t("periode.werkweek"), t("periode.dag")],
     );
+  });
+});
+
+/**
+ * What a drag re-renders (TB-071). The name that follows the pointer is the overlay's own state, so picking a block
+ * up and putting it back leaves the rest of the screen alone; the dekkingsbalk stands for everything above the grid.
+ */
+describe("Agendascherm: slepen hertekent het scherm niet", () => {
+  it("toont de naam bij het oppakken en haalt ze weg bij annuleren, zonder de dekkingsbalk te hertekenen", async () => {
+    // jsdom has none, and the drag start asks whether its activator was one (`tijdsleep`).
+    vi.stubGlobal("PointerEvent", class extends MouseEvent {});
+    toon(ikMet({ leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["klas-1"] }));
+    const blok = await screen.findByRole("button", { name: /^turnen/ });
+    // Let every query of the screen answer first, so what is counted below is the drag alone.
+    await waitFor(() => expect(document.querySelector("[aria-busy=true]")).toBeNull());
+    await new Promise((klaar) => setTimeout(klaar, 50));
+    const sleepnamen = () => document.querySelectorAll(".shadow-lg.truncate").length;
+    const balk = vi.mocked(Dekkingsbalk);
+    const voor = balk.mock.calls.length;
+
+    blok.focus();
+    fireEvent.keyDown(blok, { code: "Space", key: " " });
+    await waitFor(() => expect(sleepnamen()).toBe(1));
+    expect(document.querySelector(".shadow-lg.truncate")).toHaveTextContent("turnen");
+
+    // The keyboard sensor listens on the document from the next tick on.
+    await new Promise((klaar) => setTimeout(klaar, 0));
+    fireEvent.keyDown(document, { code: "Escape", key: "Escape" });
+    await waitFor(() => expect(sleepnamen()).toBe(0));
+
+    expect(balk.mock.calls.length).toBe(voor);
   });
 });

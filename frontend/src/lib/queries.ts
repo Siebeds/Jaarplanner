@@ -1,4 +1,11 @@
-import { useInfiniteQuery, useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type UseQueryResult,
+  useInfiniteQuery,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { del, get, naarQuery, post, put } from "./api";
 import type {
   DekkingWeergave,
@@ -644,13 +651,22 @@ export function useThemaVoorKlas(themaId: string, klasId: string | null) {
  * of ONE period, not of the year.
  */
 export function useThemasVoorKlas(themaIds: string[], klasId: string | null) {
-  const resultaten = useQueries({
+  return useQueries({
     queries: themaIds.map((themaId) => ({
       queryKey: ["thema-voor-klas", themaId, klasId],
       queryFn: () => get<ThemaWeergave>(`/api/themas/${themaId}/voor-klas/${klasId}`),
       enabled: Boolean(klasId),
     })),
+    combine: combineerThemasVoorKlas,
   });
+}
+
+/**
+ * Module-level on purpose. TanStack Query reruns `combine` only when a result or the function itself changes, and
+ * shares the combined value structurally, so `themas` keeps its identity across renders while the data stays equal.
+ * Mapping after the hook handed every caller's memo chain (and a `SortableContext`) a new array on each render.
+ */
+function combineerThemasVoorKlas(resultaten: UseQueryResult<ThemaWeergave>[]) {
   return {
     themas: resultaten.map((r) => r.data).filter((t): t is ThemaWeergave => t !== undefined),
     laadt: resultaten.some((r) => r.isPending),

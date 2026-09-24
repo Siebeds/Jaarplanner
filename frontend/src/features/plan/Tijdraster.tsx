@@ -163,8 +163,11 @@ export function Tijdraster({
   /** Takes a subthema run out of the agenda, from its bar (FB-096). Left out for whoever may not plan. */
   onHaalSubthemaWeg?: (reeks: Subthemareeks, knop: HTMLElement) => void;
 }) {
-  const blokken = useMemo(
-    () => bouwBlokken(dagen, fichemomenten),
+  // Grouped per day here, once, so every column gets the same array back until the blocks themselves change. A filter
+  // per column made a new one on every render of the grid, the minute clock's included, and the overlap layout each
+  // column memoises on it was recomputed every time (TB-071).
+  const blokkenPerDag = useMemo(
+    () => perDag(bouwBlokken(dagen, fichemomenten)),
     [dagen, fichemomenten],
   );
   // The whole day, always. What a teacher sees of it is the scroller below; see `HEEL_DE_DAG`. `bereik` is an alias,
@@ -320,7 +323,7 @@ export function Tijdraster({
               <Dagkolom
                 key={dag.datum}
                 dag={dag}
-                blokken={blokken.filter((blok) => blok.datum === dag.datum)}
+                blokken={blokkenPerDag.get(dag.datum) ?? GEEN_BLOKKEN}
                 uren={dag.isLesdag ? urenOp(schooluren, dag.datum) : undefined}
                 bereik={bereik}
                 magPlannen={magPlannen}
@@ -349,6 +352,9 @@ export function Tijdraster({
 
 /** A stable empty list, so a day with nothing running does not hand a new array down every render. */
 const LEEG: Subthemareeks[] = [];
+
+/** The same, for a day without blocks. */
+const GEEN_BLOKKEN: Rasterblok[] = [];
 
 /**
  * The stretches of one day outside the school day and in its middagpauze, in a very light flat tint (FB-023, FB-058,
@@ -450,6 +456,17 @@ function bouwBlokken(dagen: Agendadag[], fichemomenten: readonly Ficheblokje[]):
     });
   }
 
+  return uit;
+}
+
+/** The blocks by the day they are on, each day's in the order `bouwBlokken` made them. */
+function perDag(blokken: Rasterblok[]): Map<string, Rasterblok[]> {
+  const uit = new Map<string, Rasterblok[]>();
+  for (const blok of blokken) {
+    const dag = uit.get(blok.datum);
+    if (dag) dag.push(blok);
+    else uit.set(blok.datum, [blok]);
+  }
   return uit;
 }
 
@@ -835,7 +852,10 @@ function useSleepvoorbeeld(datum: string): { begin: number; einde: number } | nu
       const uitPaneel = leesAlgemeneFicheId(String(active.id)) !== null;
       const duur = uitPaneel ? STANDAARDDUUR : Number(active.data.current?.duur ?? STANDAARDDUUR);
 
-      setVoorbeeld({ begin, einde: begin + duur });
+      // The previous object while the quarter stays the same. The pointer moves far more often than the quarter it
+      // is in, and a new object on every move re-rendered this column and every block in it on each one (TB-071).
+      const einde = begin + duur;
+      setVoorbeeld((vorig) => (vorig?.begin === begin && vorig.einde === einde ? vorig : { begin, einde }));
     },
     onDragEnd: () => setVoorbeeld(null),
     onDragCancel: () => setVoorbeeld(null),
