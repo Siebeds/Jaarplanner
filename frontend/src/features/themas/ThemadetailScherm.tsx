@@ -22,7 +22,9 @@ import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { DoelMatchResultaat, LeeftijdPlaatsing, SubthemaWeergave } from "../../lib/types";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { useAantalHoekverrijkingen } from "../hoeken/gegevens";
-import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
+import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
+import { BestaandeActiviteit } from "../activiteiten/BestaandeActiviteit";
+import { NieuweActiviteit } from "../activiteiten/NieuweActiviteit";
 import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
@@ -797,25 +799,17 @@ export function ThemadetailScherm() {
         }}
       />
 
-      {activiteitBlad && bladSubthema ? (
-        <Activiteitformulier
+      {activiteitBlad && bladSubthema && bladActiviteit ? (
+        <BestaandeActiviteit
           open
           activiteit={bladActiviteit}
           // The facts rather than the form for a gebruiker who may not change this activiteit (a colleague's own one
-          // included, ADR-0049 D4); the goal section for whoever may link its goals (R19, E3). A new one takes its
-          // "voor wie" and its goal picker from the subthema's leeftijd.
-          alleenLezen={
-            bladActiviteit !== undefined &&
-            !mag.activiteitInhoudBewerken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
-          }
-          magDoelen={
-            bladActiviteit !== undefined &&
-            mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
-          }
-          leeftijd={bladActiviteit ? undefined : bladSubthema.leeftijd}
-          themaId={bladActiviteit ? id : undefined}
+          // included, ADR-0049 D4); the goal section for whoever may link its goals (R19, E3).
+          alleenLezen={!mag.activiteitInhoudBewerken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })}
+          magDoelen={mag.activiteitDoelenKoppelen({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })}
+          themaId={id}
           onGebruik={
-            bladActiviteit && mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
+            mag.activiteitGebruiken({ ...bladActiviteit, leeftijd: bladSubthema.leeftijd })
               ? () =>
                   gebruikActiviteit.mutate(bladActiviteit.id, {
                     // Closed rather than switched to the copy: the list has not refetched yet, and a sheet looking
@@ -826,49 +820,48 @@ export function ThemadetailScherm() {
           }
           gebruikBezig={gebruikActiviteit.isPending}
           onderzoeksvragen={bladSubthema.onderzoeksvragen}
-          subdoelen={bladActiviteit ? undefined : bladSubthema.subdoelen}
-          bezig={bladActiviteit ? wijzigActiviteit.isPending : maakActiviteit.isPending}
+          bezig={wijzigActiviteit.isPending}
           fout={
-            bladActiviteit
-              ? wijzigActiviteit.isError
-                ? wijzigActiviteit.error
-                : gebruikActiviteit.isError
-                  ? gebruikActiviteit.error
-                  : undefined
-              : maakActiviteit.isError
-                ? maakActiviteit.error
+            wijzigActiviteit.isError
+              ? wijzigActiviteit.error
+              : gebruikActiviteit.isError
+                ? gebruikActiviteit.error
                 : undefined
           }
           koppelenBezig={koppelActiviteitdoel.isPending || ontkoppelActiviteitdoel.isPending}
-          onKoppel={
-            bladActiviteit
-              ? (code) =>
-                  koppelActiviteitdoel.mutate({
-                    activiteitId: bladActiviteit.id,
-                    leerplandoelCode: code,
-                  })
-              : undefined
+          onKoppel={(code) =>
+            koppelActiviteitdoel.mutate({
+              activiteitId: bladActiviteit.id,
+              leerplandoelCode: code,
+            })
           }
-          onOntkoppel={
-            bladActiviteit
-              ? (koppelingId) =>
-                  ontkoppelActiviteitdoel.mutate({ activiteitId: bladActiviteit.id, koppelingId })
-              : undefined
+          onOntkoppel={(koppelingId) =>
+            ontkoppelActiviteitdoel.mutate({ activiteitId: bladActiviteit.id, koppelingId })
           }
           onSluit={() => setActiviteitBlad(null)}
-          onBewaar={(invoer) => {
-            if (bladActiviteit) {
-              wijzigActiviteit.mutate(
-                { activiteitId: bladActiviteit.id, invoer },
-                { onSuccess: () => setActiviteitBlad(null) },
-              );
-            } else {
-              maakActiviteit.mutate(
-                { subthemaId: bladSubthema.id, invoer },
-                { onSuccess: () => setActiviteitBlad(null) },
-              );
-            }
-          }}
+          onBewaar={(invoer) =>
+            wijzigActiviteit.mutate(
+              { activiteitId: bladActiviteit.id, invoer },
+              { onSuccess: () => setActiviteitBlad(null) },
+            )
+          }
+        />
+      ) : activiteitBlad && bladSubthema ? (
+        // A new one takes its "voor wie" and its goal picker from the subthema's leeftijd.
+        <NieuweActiviteit
+          open
+          leeftijd={bladSubthema.leeftijd}
+          onderzoeksvragen={bladSubthema.onderzoeksvragen}
+          subdoelen={bladSubthema.subdoelen}
+          bezig={maakActiviteit.isPending}
+          fout={maakActiviteit.isError ? maakActiviteit.error : undefined}
+          onSluit={() => setActiviteitBlad(null)}
+          onBewaar={(invoer) =>
+            maakActiviteit.mutate(
+              { subthemaId: bladSubthema.id, invoer },
+              { onSuccess: () => setActiviteitBlad(null) },
+            )
+          }
         />
       ) : null}
 

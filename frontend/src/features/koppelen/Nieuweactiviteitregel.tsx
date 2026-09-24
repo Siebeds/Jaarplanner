@@ -16,7 +16,7 @@ import { useMaakActiviteitMetDoel } from "./mutaties";
  * it, and search the code back. Everything in this component is in service of collapsing that into
  * one field and one button.
  *
- * **Three fields, not the eleven an activiteit can carry.** `Activiteitformulier` is the full
+ * **Three fields, not the eleven an activiteit can carry.** The activiteit sheet is the full
  * editor and it stays the place to write a hoek, verwachte uitkomsten, a colour or an onderzoeksvraag.
  * Here the teacher is mid-thought about a doel, so this asks for what an activiteit cannot exist
  * without and lets the rest be filled in later from the thema screen. Naming the trade in the copy

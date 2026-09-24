@@ -11,7 +11,8 @@ import { useThemaVoorKlas } from "../../lib/queries";
 import { useRechten } from "../../lib/rechten";
 import type { GeplandeActiviteit } from "../../lib/types";
 import { t } from "../../i18n";
-import { Activiteitformulier, type ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
+import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
+import { BestaandeActiviteit } from "../activiteiten/BestaandeActiviteit";
 import {
   useKoppelActiviteitdoel,
   useOntkoppelActiviteitdoel,
@@ -25,7 +26,8 @@ import {
  * its own fields, and the two drifted exactly where you would expect: the agenda offered a Hoek box
  * beside every soort, where a hoek only exists for the soort Hoek, and it printed the raw enum names
  * instead of the catalogue's. A teacher editing the same activiteit from two screens met two sets of
- * rules. `Activiteitformulier` is the one set; this file is only what the agenda adds to it.
+ * rules. `BestaandeActiviteit`, with the fields every activiteit sheet shares, is the one set; this
+ * file is only what the agenda adds to it.
  *
  * What it adds is the DAY, which belongs to the plaatsing and not to the activiteit. It therefore
  * sits in its own section with its own buttons, and deliberately does not ride along on Bewaren: the
@@ -140,12 +142,12 @@ export function Activiteitblad({
   // it is open, and this line is where it is announced. After a refusal the refetched rights take the day section
   // away; the line stays, in the same place in the tree, and says why. It stays the same element, so it is not
   // announced twice, also when the content right goes with the refusal and the form turns into the facts:
-  // `Activiteitformulier` keeps one dialog for both (fix round 3, F8). For a gebruiker without the day section it
+  // `BestaandeActiviteit` keeps one dialog for both (fix round 3, F8). For a gebruiker without the day section it
   // shows only a failure asked from this sheet.
   const dagfout = fout !== null && (magPlannen || gevraagd) ? fout : null;
 
   return (
-    <Activiteitformulier
+    <BestaandeActiviteit
       open
       activiteit={volledig}
       alleenLezen={!mag.activiteitInhoudBewerken({ ...volledig, leeftijd })}

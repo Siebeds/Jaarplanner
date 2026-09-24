@@ -13,7 +13,7 @@ import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import type { ActiviteitWeergave, SubthemaBestemming, SubthemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { Activiteitformulier } from "../activiteiten/Activiteitformulier";
+import { NieuweActiviteit } from "../activiteiten/NieuweActiviteit";
 import { useGebruikActiviteit, useMaakActiviteit } from "../themas/mutaties";
 import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Toevoegtegel } from "../hoeken/Toevoegtegel";
@@ -493,7 +493,7 @@ export function Paneelactiviteitformulier({
   const maak = useMaakActiviteit(bestemming.themaId);
 
   return (
-    <Activiteitformulier
+    <NieuweActiviteit
       open
       // The leeftijd decides "voor wie" and the goal picker of the new activiteit (ADR-0049 D1, E3; R19).
       leeftijd={bestemming.leeftijd}
