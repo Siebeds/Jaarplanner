@@ -70,12 +70,12 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-function toon({ zonderKat = false, hoekKlasId }: { zonderKat?: boolean; hoekKlasId?: string } = {}) {
+function toon({ metKat = true, hoekKlasId }: { metKat?: boolean; hoekKlasId?: string } = {}) {
   const client = metIk(new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } }), ikMet());
   return render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
-        <Schermkop titel="Agenda" zonderKat={zonderKat} />
+        <Schermkop titel="Agenda" metKat={metKat} />
         {hoekKlasId ? (
           <Weekhoek klasId={hoekKlasId} actief>
             <div>weekstrook</div>
@@ -113,13 +113,13 @@ describe("Chuck in the header", () => {
   });
 
   it("names the browser tab after the screen (TB-073)", async () => {
-    toon({ zonderKat: true });
+    toon({ metKat: false });
     await screen.findByRole("heading", { name: "Agenda" });
     expect(document.title).toBe("Agenda · Vizier");
   });
 
-  it("is absent from the ontwikkelingsrapport's screens", async () => {
-    toon({ zonderKat: true });
+  it("is absent from every screen but the agenda (FB-099)", async () => {
+    toon({ metKat: false });
     await screen.findByRole("heading", { name: "Agenda" });
     expect(screen.queryByRole("button", { name: /venster van Chuck/ })).not.toBeInTheDocument();
   });

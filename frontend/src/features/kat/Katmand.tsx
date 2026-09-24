@@ -16,7 +16,7 @@ import { gevaarzin, houdingzin } from "./zinnen";
 const VENSTER_NAAST = "(min-width: 640px)";
 
 /**
- * Chuck in his basket, top right in the header of every screen that draws a `Schermkop` (FB-071, ADR-0059 K4).
+ * Chuck in his basket, top right in the header of the agenda, the one screen that asks for him (FB-071, FB-099, ADR-0059 K4).
  * Nothing when the school has not turned him on (ADR-0065).
  */
 export function Katmand() {

@@ -691,7 +691,7 @@ export function Agendascherm() {
   if (!klasId) {
     return (
       <>
-        <Schermkop titel={t("periode.titel")} />
+        <Schermkop metKat titel={t("periode.titel")} />
         <Schermvlak>
           <Geenklasleegte titel={t("plan.geenKlas")} />
         </Schermvlak>
@@ -713,6 +713,7 @@ export function Agendascherm() {
         style={vultScherm ? { height: "calc(100dvh - var(--onderbalk))" } : undefined}
       >
       <Schermkop
+        metKat
         breed
         meeScrollen={vultScherm}
         titel={t("periode.titel")}

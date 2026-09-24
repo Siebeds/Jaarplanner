@@ -21,14 +21,6 @@ const BREED = "max-w-[104rem]";
  */
 const SMAL = "max-w-[57.5rem]";
 /**
- * A narrow screen's header stands on the default measure, so Chuck lies where he lies on every other screen, and moves
- * its title and rows in to the narrow column: by the gap between the two measures' left edges, and no wider than the
- * column (`SMAL` less its padding). `cqw` is the header's own width, the width the body centres itself in. The widths
- * are `SMAL` and `MAAT` written out, because a Tailwind class cannot be composed at runtime: change them together.
- */
-const SMAL_IN_MAAT = "ml-[calc(max(0px,(100cqw_-_57.5rem)/2)_-_max(0px,(100cqw_-_80rem)/2))] max-w-[54.5rem]";
-
-/**
  * The title row of a screen.
  *
  * Sticky, and the blur is what makes it work: content scrolling under a solid bar looks like it is
@@ -45,7 +37,7 @@ export function Schermkop({
   onder,
   breed,
   smal,
-  zonderKat,
+  metKat,
   meeScrollen,
 }: {
   titel: string;
@@ -59,8 +51,11 @@ export function Schermkop({
   breed?: boolean;
   /** A document measure, centred rather than left aligned. See `SMAL`. */
   smal?: boolean;
-  /** No Chuck on this screen: the ontwikkelingsrapport carries no cat (FB-071, ADR-0059 D7). */
-  zonderKat?: boolean;
+  /**
+   * Chuck on this screen. Only the agenda has him (FB-099): his basket and balloon make a header taller, and on every
+   * screen that carried him the title stood at a different height. Never on the ontwikkelingsrapport (ADR-0059 D7).
+   */
+  metKat?: boolean;
   /**
    * Scrolls away with the page rather than sticking. For a screen that fills the viewport and scrolls inside itself
    * (the agenda's time grid, FB-092): its page scrolls only on a low phone, and there a sticky header would lie over
@@ -68,16 +63,14 @@ export function Schermkop({
    */
   meeScrollen?: boolean;
 }) {
-  // With Chuck, a narrow screen keeps the default measure's corner for him; only the title and its rows go narrow.
-  const smalMetKat = smal && !zonderKat;
-  const meet = breed ? BREED : smal && !smalMetKat ? SMAL : MAAT;
+  const meet = breed ? BREED : smal ? SMAL : MAAT;
   const kop = useRef<HTMLElement>(null);
   useSchermtitel(titel);
   useKopruimte(meeScrollen ? null : kop);
   return (
     <header
       ref={kop}
-      className={cn(!meeScrollen && "sticky top-0 z-20 bg-vlak/85 backdrop-blur-md", smalMetKat && "@container")}
+      className={cn(!meeScrollen && "sticky top-0 z-20 bg-vlak/85 backdrop-blur-md")}
     >
       {/* A grid, so Chuck can stand beside the whole header rather than stick out above it: from `sm` he spans the
           title and the rows under it, his top level with the title's. On a phone the rows under the title
@@ -85,16 +78,13 @@ export function Schermkop({
       <div
         className={cn(
           "mx-auto grid gap-y-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)] sm:px-6 lg:pt-8",
-          zonderKat ? "grid-cols-[minmax(0,1fr)]" : "grid-cols-[minmax(0,1fr)_auto] gap-x-6",
+          metKat ? "grid-cols-[minmax(0,1fr)_auto] gap-x-6" : "grid-cols-[minmax(0,1fr)]",
           meet,
         )}
       >
-        <div
-          className={cn(
-            "col-start-1 row-start-1 flex min-w-0 items-end justify-between gap-3 self-end",
-            smalMetKat && SMAL_IN_MAAT,
-          )}
-        >
+        {/* At least as tall as a button, so the title stands at the same height on every screen, whether or not the
+            screen puts a control beside it (FB-099). */}
+        <div className="col-start-1 row-start-1 flex min-h-raak min-w-0 items-end justify-between gap-3 self-start">
           <div className="min-w-0">
             {/* An eyebrow, not a longer title: "1 sep - 1 okt" says WHEN and not WHAT, and a teacher
                 deep in a week needs to be told which period those dates belong to. */}
@@ -113,30 +103,18 @@ export function Schermkop({
             </h1>
           </div>
           {/* On a phone the screen's control gives up its width before the title does: it truncates, the title stays. */}
-          {rechts ? <div className={cn("flex min-w-0 shrink-[8]", !zonderKat && "pb-1")}>{rechts}</div> : null}
+          {rechts ? <div className={cn("flex min-w-0 shrink-[8]", metKat && "pb-1")}>{rechts}</div> : null}
         </div>
-        {zonderKat ? null : (
+        {metKat ? (
           // Chuck lies at the right, after whatever the screen puts there (FB-071, ADR-0059 K4), with what he says
           // above or under him.
-          <div
-            className={cn(
-              "col-start-2 row-start-1 self-start",
-              onder && "sm:row-span-2",
-              // Where the margin beside the narrow column holds him, his column is only as wide as he is, so the
-              // screen's controls end on the column's edge; a balloon stands above them and may reach over.
-              smalMetKat && "@min-[72rem]:has-[.ballon]:w-[94px] @min-[72rem]:[&_.ballon]:shrink-0",
-            )}
-          >
+          <div className={cn("col-start-2 row-start-1 self-start", onder && "sm:row-span-2")}>
             <Katmand />
           </div>
-        )}
+        ) : null}
         {onder ? (
           <div
-            className={cn(
-              "row-start-2 min-w-0",
-              zonderKat ? "col-start-1" : "col-span-2 sm:col-span-1",
-              smalMetKat && SMAL_IN_MAAT,
-            )}
+            className={cn("row-start-2 min-w-0", metKat ? "col-span-2 sm:col-span-1" : "col-start-1")}
           >
             {onder}
           </div>

@@ -76,7 +76,7 @@ function Rapportinhoud({ leerlingId, moment }: { leerlingId: string; moment: num
 
   return (
     <>
-      <Schermkop titel={t("ontwikkelingsrapport.titel")} smal zonderKat onder={<Rapportwissel />} />
+      <Schermkop titel={t("ontwikkelingsrapport.titel")} smal onder={<Rapportwissel />} />
       <Schermvlak smal>
         <div className="flex flex-col gap-5">
           <Link

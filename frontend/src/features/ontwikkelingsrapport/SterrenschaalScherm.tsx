@@ -65,7 +65,7 @@ export function SterrenschaalScherm() {
 
   return (
     <>
-      <Schermkop titel={t("ontwikkelingsrapport.titel")} smal zonderKat onder={<Rapportwissel />} />
+      <Schermkop titel={t("ontwikkelingsrapport.titel")} smal onder={<Rapportwissel />} />
 
       <Schermvlak smal>
         <section aria-labelledby="schaal-titel" className="flex flex-col gap-4">
