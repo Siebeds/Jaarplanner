@@ -2,10 +2,10 @@
 id: TB-078
 titel: Activiteitsblokken in het tijdraster krijgen minder afgeronde hoeken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 11:21
+bijgewerkt: 2026-09-24 11:25
 opgepakt-door: claude-tb-hoeken
 branch: ticket/TB-activiteit-hoeken
 pr:
@@ -23,9 +23,9 @@ In `frontend/src/features/plan/Tijdraster.tsx` krijgen het blok zelf en het land
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de agenda van een klas, wanneer de leerkracht naar het tijdraster kijkt, dan hebben de blokken (activiteiten en fiches) duidelijk minder afgeronde hoeken dan voorheen.
+- [x] Gegeven de agenda van een klas, wanneer de leerkracht naar het tijdraster kijkt, dan hebben de blokken (activiteiten en fiches) duidelijk minder afgeronde hoeken dan voorheen.
 - [ ] Gegeven een blok dat gesleept wordt, wanneer het landingsvak verschijnt, dan heeft dat dezelfde hoekafronding als het blok.
-- [ ] Gegeven andere velden en kaarten in de app, dan is hun afronding ongewijzigd.
+- [x] Gegeven andere velden en kaarten in de app, dan is hun afronding ongewijzigd.
 
 ## Buiten scope
 
@@ -38,3 +38,5 @@ Geen.
 ## Werklog
 
 - 2026-09-24 11:21 · claude-tb-hoeken · aangemaakt (status in-uitvoering)
+- 2026-09-24 11:25 · claude-tb-hoeken · blok en landingsvak rounded-md; criteria 1 en 3 afgevinkt na screenshot van de mockagenda op 1440 en 390 px, het landingsvak alleen in de code nagekeken
+- 2026-09-24 11:25 · claude-tb-hoeken · in-uitvoering → klaar: gebouwd; plan-tests (291) en pnpm lint groen

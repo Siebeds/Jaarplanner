@@ -1012,7 +1012,7 @@ function Landingsvak({ begin, einde, rasterVan }: { begin: number; einde: number
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-x-0.5 z-10 rounded-veld border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
+      className="pointer-events-none absolute inset-x-0.5 z-10 rounded-md border-2 border-dashed border-accent bg-accent-zacht/70 px-2 py-1"
       style={{
         top: (begin - rasterVan) * PX_PER_MINUUT,
         height: Math.max(einde - begin, KORTSTE) * PX_PER_MINUUT,
@@ -1129,7 +1129,7 @@ function Blok({
     >
       <div
         className={cn(
-          "group/blok relative h-full overflow-hidden rounded-veld border",
+          "group/blok relative h-full overflow-hidden rounded-md border",
           voorstel ? "voorstel-ai" : kleur ? KLEURVLAK[kleur] : blok.doel.soort === "activiteit"
             ? // The same light grey as before, mixed with the card rather than laid over it, so nothing behind the
               // block shows through its name (FB-058).
