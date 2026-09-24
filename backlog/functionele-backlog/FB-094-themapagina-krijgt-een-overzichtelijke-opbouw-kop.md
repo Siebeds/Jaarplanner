@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-24 11:26
 opgepakt-door: claude-fb094b
 branch: ticket/FB-094-subthema-openklappen
-pr:
+pr: 185
 geblokkeerd:
 fr: []
 ---
@@ -112,3 +112,4 @@ Geen.
 - 2026-09-24 11:23 · claude-fb094b · opengeklapt subthema herwerkt naar de bevindingen: eerste stap Begin met de subdoelen, koppelvak over de volle breedte, geen AI-knop die niets kan, links in één stijl; 1393 vitest groen, lint groen, bekeken op 1440 en 390 px
 - 2026-09-24 11:25 · claude-fb094b · antagonist: COMPLIANT; twee kleine punten opgelost (focus na het eerste subdoel, zoekveld sluit mee met de lijst), één gelaten: een subdoel dat niet meer in Op.stap staat telt vooraan mee, de server weigert dan met zijn bestaande melding
 - 2026-09-24 11:26 · claude-fb094b · in-uitvoering → te-testen: opengeklapt subthema herwerkt naar de bevindingen van de eigenaar; vitest en lint groen, bekeken op 1440 en 390 px
+- 2026-09-24 11:26 · claude-fb094b · PR #185
