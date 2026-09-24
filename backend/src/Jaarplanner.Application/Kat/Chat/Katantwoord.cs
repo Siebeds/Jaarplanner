@@ -33,6 +33,9 @@ public enum Katantwoordsoort
 
     /// <summary>The answer to a <see cref="Katvraag.SubthemaVanActiviteit"/>.</summary>
     SubthemaVanActiviteit,
+
+    /// <summary>The answer to a <see cref="Katvraag.DoelenVanSubthema"/>.</summary>
+    DoelenVanSubthema,
 }
 
 /// <summary>What a term names.</summary>
@@ -170,6 +173,12 @@ public sealed record Katantwoord
 
     /// <summary>How many agenda placements there are in all; more than <see cref="Agenda"/> holds when over the maximum.</summary>
     public int AgendaTotaal { get; init; }
+
+    /// <summary>
+    /// This question and answer as a sealed turn (FB-093, ADR-0069): the browser sends it back with the next questions
+    /// of the conversation, and the server checks its seal. Null for a lookup run again without the turn's question.
+    /// </summary>
+    public Katbeurt? Beurt { get; init; }
 
     public static Katantwoord Van(Katantwoordsoort soort) => new() { Soort = soort };
 

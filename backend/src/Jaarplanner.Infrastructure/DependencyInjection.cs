@@ -333,6 +333,9 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatopzoekbron, Jaarplanner.Infrastructure.Kat.EfKatopzoekbron>();
         services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatchatService, Jaarplanner.Application.Kat.Chat.KatchatService>();
 
+        // One key per process seals the chat's turns (FB-093, ADR-0069): a conversation does not outlive a restart.
+        services.AddSingleton<Jaarplanner.Application.Kat.Chat.Katbeurtzegel>();
+
         // The one task, and the one place the cat calls the AI unasked (FB-070, ADR-0060, Art. IV.8). It runs for a
         // finding the round has just noticed for the first time, so a tick over an unchanged state costs no call.
         services.AddScoped<Jaarplanner.Application.Kat.IKattaak, Jaarplanner.Infrastructure.Kat.AanbodgatTaak>();

@@ -4,11 +4,12 @@ namespace Jaarplanner.Application.Kat.Chat;
 
 /// <summary>
 /// Builds the one request a chat question makes (FB-031, ADR-0066). The model is sent the fixed instructions, the
-/// handleiding and the question as typed (Art. IV.4), and nothing of the school's content: it answers a question about
-/// the tool from the handleiding, and for a question about the content it only picks the lookup the tool then runs.
+/// handleiding, the last turns of the conversation and the question as typed (Art. IV.4). Of the school's content it
+/// sees only the names and codes an earlier lookup found (FB-093, ADR-0069): it answers a question about the tool from
+/// the handleiding, and for a question about the content it only picks the lookup the tool then runs.
 /// <para>
 /// The system prompt and the handleiding are the stable prefix of every chat request, so a provider can serve them
-/// from its cache (TB-043); only the question differs. A pure function, snapshot-testable.
+/// from its cache (TB-043); only the conversation and the question differ. A pure function, snapshot-testable.
 /// </para>
 /// </summary>
 public static class KatchatPromptBuilder
@@ -18,6 +19,12 @@ public static class KatchatPromptBuilder
 
     /// <summary>The longest explanation the parser accepts.</summary>
     public const int MaxUitlegLengte = 1500;
+
+    /// <summary>
+    /// How many earlier turns of a conversation go along with a question (FB-093, ADR-0069 D1). With the question and the
+    /// explanation capped, this keeps the cost of a question bounded.
+    /// </summary>
+    public const int MaxBeurten = 10;
 
     private const string Nl = "\n";
 
@@ -39,6 +46,7 @@ public static class KatchatPromptBuilder
         "   - \"doelenVanThema\" met \"thema\": welke doelen horen bij thema y?" + Nl +
         "   - \"activiteitInSubthema\" met \"activiteit\" en \"subthema\": zit activiteit a in subthema z?" + Nl +
         "   - \"subthemaVanActiviteit\" met \"activiteit\": bij welk subthema of thema hoort activiteit a?" + Nl +
+        "   - \"doelenVanSubthema\" met \"subthema\": welke doelen horen bij subthema z?" + Nl +
         "3. \"onbekend\": de handleiding zegt er niets over, de vraag heeft niets met de app te maken, of het is een " +
         "vraag die geen van de opzoekingen beantwoordt, zoals of een doel gedekt is of hoeveel procent van de doelen " +
         "gedekt is." + Nl +
@@ -49,6 +57,11 @@ public static class KatchatPromptBuilder
         "- Neem bij een opzoeking de woorden van de gebruiker over zoals ze ze schreef: een doelcode, of (een deel " +
         "van) de naam van het doel, het thema, het subthema of de activiteit. Laat woorden als \"doel\", \"thema\" of " +
         "\"activiteit\" en aanhalingstekens weg. Vul alleen de velden in die de opzoeking nodig heeft." + Nl +
+        "- De vraag kan verder bouwen op de eerdere beurten van dit gesprek, die vóór de vraag staan. Bij een " +
+        "opzoeking staat onder \"gevonden\" welke doelcode en welke namen de app toen vond; dat veld schrijf jij " +
+        "nooit. Verwijst de vraag naar iets uit een eerdere beurt (\"en in thema Water?\", \"dat subthema\", \"ze\"), " +
+        "vul dan de ontbrekende velden van de opzoeking in met de code of de naam uit die beurt, of antwoord met de " +
+        "uitleg waar de vraag op verder bouwt. Weet je niet waarnaar de vraag verwijst, kies dan \"onbekend\"." + Nl +
         "- Een uitleg is kort: hoogstens 120 woorden, in gewoon, volwassen Nederlands, in de ik-vorm, nooit " +
         "kindertaal. Een werkwijze schrijf je als genummerde stappen, elke stap op een eigen regel. Gebruik geen " +
         "gedachtestreepjes." + Nl +
@@ -60,17 +73,28 @@ public static class KatchatPromptBuilder
         "\"subthema\": \"<...>\", \"activiteit\": \"<...>\"}}" + Nl +
         "  {\"soort\": \"onbekend\"}";
 
-    /// <summary>The request for one question, over <paramref name="handleiding"/>.</summary>
-    public static AiRequest Bouw(string vraag, Handleiding handleiding)
+    /// <summary>The request for one question with no conversation before it, over <paramref name="handleiding"/>.</summary>
+    public static AiRequest Bouw(string vraag, Handleiding handleiding) => Bouw(vraag, [], handleiding);
+
+    /// <summary>
+    /// The request for one question after the turns of <paramref name="gesprek"/> (FB-093, ADR-0069). Only the last
+    /// <see cref="MaxBeurten"/> go along, oldest first; what falls out, the model no longer knows. They sit after the
+    /// stable prefix, so the prefix stays cacheable.
+    /// </summary>
+    public static AiRequest Bouw(string vraag, IReadOnlyList<Katbeurt> gesprek, Handleiding handleiding)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(vraag);
+        ArgumentNullException.ThrowIfNull(gesprek);
         ArgumentNullException.ThrowIfNull(handleiding);
 
         return new AiRequest
         {
             SystemPrompt = SystemPrompt,
             VasteContext = "# Handleiding" + Nl + Nl + handleiding.Tekst.Trim() + Nl,
-            UserPrompt = "# Vraag van de gebruiker" + Nl + Nl + vraag.Trim() + Nl,
+            Gesprek = gesprek.TakeLast(MaxBeurten).Select(b => new AiBeurt(Vraagtekst(b.Vraag), b.Antwoord)).ToList(),
+            UserPrompt = Vraagtekst(vraag),
         };
     }
+
+    private static string Vraagtekst(string vraag) => "# Vraag van de gebruiker" + Nl + Nl + vraag.Trim() + Nl;
 }

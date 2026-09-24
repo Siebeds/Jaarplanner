@@ -16,7 +16,8 @@ namespace Jaarplanner.Infrastructure.Ai;
 /// structured-JSON contract is a separate concern (E2-03).
 /// <para>
 /// <b>Prompt order (TB-043).</b> The system message is the system prompt followed by the stable context
-/// (<see cref="AiRequest.VasteContext"/>), the user message the user prompt. The service caches an identical prefix on
+/// (<see cref="AiRequest.VasteContext"/>), the last user message the user prompt, after the earlier turns of a
+/// conversation (<see cref="AiRequest.Gesprek"/>, FB-093). The service caches an identical prefix on
 /// its own, so the order is all it needs. An answer cut off at <c>max_completion_tokens</c>
 /// (<c>finish_reason</c> <c>length</c>) becomes an <see cref="AiAntwoordAfgekaptFout"/>.
 /// </para>
@@ -81,11 +82,12 @@ public sealed class AzureAiFoundryClient : IAiClient
         var payload = new Dictionary<string, object>
         {
             ["model"] = _options.Deployment!.Trim(),
-            ["messages"] = new[]
-            {
-                new { role = "system", content = Systeembericht(request) },
-                new { role = "user", content = request.UserPrompt },
-            },
+            // The earlier turns of a conversation sit between the system message and the user prompt (FB-093).
+            ["messages"] = request.Gesprek
+                .SelectMany(b => new[] { new { role = "user", content = b.Vraag }, new { role = "assistant", content = b.Antwoord } })
+                .Prepend(new { role = "system", content = Systeembericht(request) })
+                .Append(new { role = "user", content = request.UserPrompt })
+                .ToArray(),
             // Always ask the model for structured JSON (Art. IV.5); it is validated downstream (E2-03).
             ["response_format"] = new { type = "json_object" },
         };

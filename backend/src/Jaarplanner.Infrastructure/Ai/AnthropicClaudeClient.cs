@@ -13,7 +13,8 @@ namespace Jaarplanner.Infrastructure.Ai;
 /// It sends the caller's prompt parts unchanged and returns the model's <b>raw</b> text: the JSON contract (Art. IV.5)
 /// is asked for in each prompt and validated by each caller's parser, which also strips a markdown fence. The system
 /// prompt and the stable context (<see cref="AiRequest.VasteContext"/>) go as system blocks, the stable context marked
-/// for the prompt cache, and the user prompt as the one user message (TB-043). An answer cut off at <c>max_tokens</c>
+/// for the prompt cache, and the user prompt as the last user message, after the earlier turns of a conversation
+/// (<see cref="AiRequest.Gesprek"/>) (TB-043, FB-093). An answer cut off at <c>max_tokens</c>
 /// becomes an <see cref="AiAntwoordAfgekaptFout"/>, and a refusal an <see cref="InvalidOperationException"/>. The key is set on the SDK client here and nowhere else, and never reaches the frontend (Art. VI.4).
 /// Incomplete configuration fails loudly on first use and sends nothing, so a host that never calls AI starts without
 /// any AI configuration.
@@ -56,7 +57,7 @@ public sealed class AnthropicClaudeClient : IAiClient
             Model = _options.Model!.Trim(),
             MaxTokens = _options.MaxTokens,
             System = BouwSysteem(request),
-            Messages = [new() { Role = Role.User, Content = request.UserPrompt }],
+            Messages = BouwBerichten(request),
             OutputConfig = ParseEffort(_options.Effort) is { } effort ? new OutputConfig { Effort = effort } : null,
         };
 
@@ -94,6 +95,20 @@ public sealed class AnthropicClaudeClient : IAiClient
             new() { Text = request.SystemPrompt },
             new() { Text = request.VasteContext, CacheControl = new CacheControlEphemeral() },
         };
+    }
+
+    // The earlier turns of a conversation as alternating user and assistant messages, then the user prompt (FB-093).
+    private static List<MessageParam> BouwBerichten(AiRequest request)
+    {
+        var berichten = new List<MessageParam>();
+        foreach (var beurt in request.Gesprek)
+        {
+            berichten.Add(new() { Role = Role.User, Content = beurt.Vraag });
+            berichten.Add(new() { Role = Role.Assistant, Content = beurt.Antwoord });
+        }
+
+        berichten.Add(new() { Role = Role.User, Content = request.UserPrompt });
+        return berichten;
     }
 
     // The provider's own count, for measuring cost (TB-004). Cache writes and cache reads are billed as input, so they

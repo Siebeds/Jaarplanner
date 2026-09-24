@@ -35,6 +35,12 @@ public sealed class PromptbegrenzingTests
             Promptbegrenzing.SchatTokens(new AiRequest { SystemPrompt = "abcd", VasteContext = "efgh", UserPrompt = "ijkl" }));
 
     [Fact]
+    public void Telt_het_gesprek_mee() =>
+        Assert.Equal(
+            4,
+            Promptbegrenzing.SchatTokens(new AiRequest { SystemPrompt = "abcd", UserPrompt = "efgh", Gesprek = [new AiBeurt("ijkl", "mnop")] }));
+
+    [Fact]
     public void De_standaardgrens_is_50000() => Assert.Equal(50_000, new Promptbegrenzing().MaxTokens);
 
     [Fact]

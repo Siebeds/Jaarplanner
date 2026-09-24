@@ -178,6 +178,23 @@ public sealed class AnthropicClaudeClientTests
         Assert.Equal("de schoolcontent", bericht.GetProperty("content").GetString());
     }
 
+    /// <summary>FB-093: the earlier turns of a conversation go as user and assistant messages before the user prompt.</summary>
+    [Fact]
+    public async Task Het_gesprek_gaat_als_afwisselende_berichten_voor_de_vraag()
+    {
+        var handler = new StubHandler(Envelop([Tekst("{}")]));
+
+        await Client(handler).CompleteAsync(EenRequest() with { Gesprek = [new AiBeurt("vraag 1", "antwoord 1"), new AiBeurt("vraag 2", "antwoord 2")] });
+
+        using var body = JsonDocument.Parse(handler.LaatsteBody!);
+        var berichten = body.RootElement.GetProperty("messages").EnumerateArray()
+            .Select(b => (b.GetProperty("role").GetString(), b.GetProperty("content").GetString()))
+            .ToArray();
+        Assert.Equal(
+            [("user", "vraag 1"), ("assistant", "antwoord 1"), ("user", "vraag 2"), ("assistant", "antwoord 2"), ("user", "de schoolcontent")],
+            berichten);
+    }
+
     [Fact]
     public async Task Het_tokenverbruik_komt_in_usage_met_cachelezen_en_cacheschrijven_apart()
     {
