@@ -2,10 +2,10 @@
 id: TB-068
 titel: Lokale database luistert alleen op deze pc, en settings.local.json staat in de .gitignore
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 12:12
+bijgewerkt: 2026-09-24 12:45
 opgepakt-door: claude-tb068
 branch: ticket/TB-068-db-poort-localhost
 pr:
@@ -32,10 +32,10 @@ Gevonden bij de securityscan van 2026-09-23.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de databank gestart met `docker compose up -d db`, wanneer een ander toestel op het netwerk poort 5433 van
+- [x] Gegeven de databank gestart met `docker compose up -d db`, wanneer een ander toestel op het netwerk poort 5433 van
   deze pc probeert, dan krijgt het geen verbinding; vanaf deze pc werkt de verbinding zoals vandaag.
-- [ ] Gegeven een nieuw bestand `.claude/settings.local.json`, dan toont `git status` het niet.
-- [ ] Gegeven de backendtests en de CI, dan slagen ze zoals vandaag.
+- [x] Gegeven een nieuw bestand `.claude/settings.local.json`, dan toont `git status` het niet.
+- [x] Gegeven de backendtests en de CI, dan slagen ze zoals vandaag.
 
 ## Buiten scope
 
@@ -49,3 +49,6 @@ Geen.
 
 - 2026-09-23 00:22 · claude-securityscan · aangemaakt (status nieuw)
 - 2026-09-24 12:12 · claude-tb068 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 12:45 · claude-tb068 · Poort op 127.0.0.1 gezet; proefcontainer uit dezelfde compose: 127.0.0.1 en localhost verbinden, het LAN-adres 192.168.0.183 wordt geweigerd (de huidige container op 0.0.0.0 antwoordt daar wel). settings.local.json negeert git nu via de repo-.gitignore.
+- 2026-09-24 12:45 · claude-tb068 · Gates: unittests 2357 groen; integratietests via Host=localhost tegen de proefcontainer 613 groen, 3 GebruikerbeheerEndpointsTests ('intussen verwijderd') faalden onder load en slagen apart (44/44), los van deze wijziging; dotnet format schoon. CI gebruikt een eigen service-container en raakt docker-compose.yml niet. Geen antagonist: alleen config.
+- 2026-09-24 12:45 · claude-tb068 · in-uitvoering → klaar: DB-poort alleen op 127.0.0.1, settings.local.json in .gitignore; gates groen. Bestaande container eenmalig herstarten met docker compose up -d db.

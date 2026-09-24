@@ -34,7 +34,8 @@ Run these from the `backend/` directory.
 
 2. Set the Postgres connection string (key **`ConnectionStrings:Postgres`**, consistent with
    E0-04). The password must match `POSTGRES_PASSWORD` from your local, gitignored `.env`
-   (see `.env.example`; the port is `DB_HOST_PORT`, default `5433`):
+   (see `.env.example`; the port is `DB_HOST_PORT`, default `5433`, published on `127.0.0.1` only,
+   so connect via `localhost` from this machine):
 
    ```bash
    dotnet user-secrets set "ConnectionStrings:Postgres" \
