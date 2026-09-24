@@ -2,10 +2,10 @@
 id: TB-074
 titel: Activiteitformulier splitsen in aanmaken en bewerken
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 13:16
+bijgewerkt: 2026-09-24 13:37
 opgepakt-door: claude-tb074
 branch: ticket/TB-074-activiteitformulier-splitsen
 pr:
@@ -32,11 +32,11 @@ combinatie meegeeft, en `features/themas/ThemadetailScherm.tsx` herhaalt voor el
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de code, wanneer je de twee componenten bekijkt, dan heeft geen van beide een prop die alleen in de
+- [x] Gegeven de code, wanneer je de twee componenten bekijkt, dan heeft geen van beide een prop die alleen in de
       andere modus betekenis heeft, en leidt geen van beide zijn modus af uit ontbrekende props.
-- [ ] Gegeven de vier plekken waar een activiteit aangemaakt of bewerkt wordt, wanneer een leerkracht dat doet, dan
+- [x] Gegeven de vier plekken waar een activiteit aangemaakt of bewerkt wordt, wanneer een leerkracht dat doet, dan
       werkt het zoals voordien, ook alleen-lezend voor wie de activiteit niet mag bewerken.
-- [ ] Gegeven de bestaande tests van het formulier en de bladen, aangepast aan de nieuwe namen, wanneer ze draaien,
+- [x] Gegeven de bestaande tests van het formulier en de bladen, aangepast aan de nieuwe namen, wanneer ze draaien,
       dan slagen ze.
 
 ## Buiten scope
@@ -51,3 +51,7 @@ Geen.
 
 - 2026-09-23 09:49 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-24 13:16 · claude-tb074 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orchestrerende sessie)
+- 2026-09-24 13:24 · claude-tb074 · Formulier gesplitst in NieuweActiviteit en BestaandeActiviteit met gedeelde onderdelen; pnpm test (1394) en pnpm lint groen.
+- 2026-09-24 13:37 · claude-tb074 · Browsercheck op wegwerpkopie (desktop en 390px): aanmaken en bewerken op de themapagina, nieuw en bestaand in de agenda, nieuw vanuit het activiteitenpaneel, en alleen-lezend met Gebruiken voor een leerkracht; alles zoals voordien. Criteria afgevinkt op basis daarvan en van de tests.
+- 2026-09-24 13:37 · claude-tb074 · Antagonist: COMPLIANT, geen blokkerende bevindingen; twee MINOR (verouderd commentaar, testnotitie) opgelost, twee MINOR bewust gelaten (overlappende test, bestandsnaam Activiteitformulier.tsx voor de gedeelde onderdelen).
+- 2026-09-24 13:37 · claude-tb074 · in-uitvoering → klaar: Gesplitst in NieuweActiviteit en BestaandeActiviteit met gedeelde onderdelen, gedrag ongewijzigd; pnpm test (1394) en pnpm lint groen, browsercheck en antagonist in orde.

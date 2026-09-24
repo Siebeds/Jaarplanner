@@ -504,6 +504,7 @@ describe("NieuweActiviteit en BestaandeActiviteit", () => {
     });
 
     it("toont de lijst niet bij het bewerken van een bestaande activiteit", () => {
+      // BestaandeActiviteit takes no subdoelen at all (TB-074), so this guards the rendered result, not a prop.
       toon(
         <BestaandeActiviteit
           open
