@@ -2,12 +2,12 @@
 id: TB-069
 titel: Tekening-herwerker wacht asynchroon in plaats van een thread te blokkeren
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:22
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 12:46
+opgepakt-door: claude-tb069
+branch: ticket/TB-069-tekening-herwerker-async
 pr:
 geblokkeerd:
 fr: []
@@ -45,3 +45,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 00:22 · claude-securityscan · aangemaakt (status nieuw)
+- 2026-09-24 12:46 · claude-tb069 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via zijn sessie)
