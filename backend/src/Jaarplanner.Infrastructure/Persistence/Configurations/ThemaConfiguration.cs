@@ -29,6 +29,11 @@ public sealed class ThemaConfiguration : IEntityTypeConfiguration<Thema>
         builder.PrimitiveCollection(t => t.RijkeWoordenschat)
             .HasField("_rijkeWoordenschat");
 
+        // The leeftijden the thema is meant for (FB-012, ADR-0069), text[] like the vocabulary. The migration fills
+        // every existing row with all nine, so nothing disappears from a klas's choices.
+        builder.PrimitiveCollection(t => t.Leeftijden)
+            .HasField("_leeftijden");
+
         // School-scoped themadoelen that link a leerplandoel — related collection, accessed via backing field.
         builder.HasMany(t => t.Themadoelen)
             .WithOne()

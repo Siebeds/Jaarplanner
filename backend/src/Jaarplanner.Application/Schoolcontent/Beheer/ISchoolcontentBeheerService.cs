@@ -43,7 +43,12 @@ public interface ISchoolcontentBeheerService
     /// Art. IX.2 / Gap A.5). This is the admin/team view of the shared library; the school-wide content
     /// is edited only via the thema-level operations above, never as a side effect of class-level work.
     /// </summary>
-    Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default);
+    /// <param name="klasId">
+    /// When given, only the thema's meant for that klas's leeftijd (FB-012, ADR-0069 D2): what the jaarplan offers. A missing
+    /// klas is refused.
+    /// </param>
+    /// <param name="cancellationToken">Cancels the read.</param>
+    Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(Guid? klasId = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets a thema <b>as derived for a given klas</b>: the shared thema (its school-wide naam/duur/themadoelen/

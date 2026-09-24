@@ -1,4 +1,5 @@
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 
@@ -92,6 +93,10 @@ public sealed class JaarplanService : IJaarplanLezer
         var kalender = new Themakalender(schooljaar);
         var themas = await _opslag.LaadThemasAsync(cancellationToken);
         var thema = VindThema(themas, themaId);
+        if (!thema.GeldtVoor(Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase)))
+        {
+            throw OngeldigePlaatsingFout.NietVoorKlas(thema.Naam, klas.Naam, thema.Leeftijden);
+        }
 
         var bestaand = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
         var einde = tot ?? Voorstel(kalender, schooljaar, themas, bestaand, thema, van).Tot;

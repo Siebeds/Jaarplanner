@@ -45,6 +45,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         {
             thema = new Thema(creatie.Naam, creatie.DuurWeken, creatie.Invalshoeken);
             thema.WijzigIcoon(creatie.Icoon);
+            if (creatie.Leeftijden is not null)
+            {
+                thema.StelLeeftijdenIn(creatie.Leeftijden);
+            }
         }
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
@@ -88,8 +92,20 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
 
-    public async Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ThemaBibliotheekItem>> HaalThemaBibliotheekOpAsync(Guid? klasId = null, CancellationToken cancellationToken = default)
     {
+        IReadOnlyList<string>? klasleeftijden = null;
+        if (klasId is { } id)
+        {
+            var leeftijden = await Klasleeftijden.VoorKlasAsync(_context, id, cancellationToken);
+            if (!leeftijden.Bestaat)
+            {
+                throw new SchoolcontentValidatieFout("Die klas bestaat niet meer. Kies een klas uit de lijst.");
+            }
+
+            klasleeftijden = leeftijden.Waarden;
+        }
+
         // The bibliotheek view is the school-wide layer ONLY: themadoelen + woordenschat, no subthema's.
         // We deliberately do NOT Include the subthema's so their content never leaks into the shared-library
         // view (Art. IX.2 / Gap A.5). AantalAfgeleideLeeftijden is a distinct-AGE count over the subthema's,
@@ -127,7 +143,10 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             })
             .ToListAsync(cancellationToken);
 
+        // Filtered after the read: the leeftijden are a text[] and the list is a school's few dozen thema's. Without a klas
+        // every thema, as before; with one whose leeftijd cannot be derived, every thema as well (ADR-0069 D2).
         return themas
+            .Where(x => klasId is null || x.Thema.GeldtVoor(klasleeftijden))
             .Select(x => MapBibliotheekItem(
                 x.Thema,
                 x.AantalAfgeleideLeeftijden,
@@ -188,6 +207,11 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         catch (Exception ex) when (ex is ArgumentException or ArgumentOutOfRangeException)
         {
             throw new SchoolcontentValidatieFout(ex.Message);
+        }
+
+        if (wijziging.Leeftijden is not null)
+        {
+            await StelLeeftijdenInAsync(thema, wijziging.Leeftijden, cancellationToken);
         }
 
         if (wijziging.Kernwoordenschat is not null)
@@ -270,6 +294,92 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var plannen = await _context.Jaarplannen.AsNoTracking().ToListAsync(cancellationToken);
 
         return plannen.Sum(plan => plan.Plaatsingen.Count(p => p.ThemaId == themaId));
+    }
+
+    /// <summary>
+    /// Limits a thema to <paramref name="leeftijden"/> (FB-012, ADR-0069 D4). A leeftijd is not removed while a klas of
+    /// that leeftijd holds the thema in its jaarplan or a subthema of the thema has it: the refusal names both, so the
+    /// person knows what to move first. Nothing is cleaned up on their behalf. <paramref name="thema"/> is loaded with its
+    /// subthema's (<see cref="LaadThemaAsync"/>).
+    /// </summary>
+    private async Task StelLeeftijdenInAsync(Thema thema, IReadOnlyList<string> leeftijden, CancellationToken cancellationToken)
+    {
+        var blijven = leeftijden.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToHashSet(StringComparer.Ordinal);
+        var weg = Jaarfasen.Alle.Where(l => thema.HoudtLeeftijd(l) && !blijven.Contains(l)).ToList();
+
+        // An empty or unknown choice is the domain's refusal to give; only a valid one is checked for what is in use.
+        if (weg.Count > 0 && blijven.Count > 0 && blijven.All(Jaarfasen.IsBekend))
+        {
+            var subthemas = thema.Subthemas
+                .Select(s => (s.Naam, Leeftijd: Jaarfasen.Normaliseer(s.Leeftijd)))
+                .Where(s => weg.Contains(s.Leeftijd, StringComparer.Ordinal))
+                .OrderBy(s => s.Naam, StringComparer.CurrentCulture)
+                .ToList();
+            var klassen = await KlassenDieHetThemaVerliezenAsync(thema.Id, blijven, cancellationToken);
+            var redenen = new List<string>();
+            if (klassen.Count > 0)
+            {
+                redenen.Add($"het thema staat in het jaarplan van {string.Join(", ", klassen.Select(k => k.Naam))}");
+            }
+
+            if (subthemas.Count > 0)
+            {
+                redenen.Add(
+                    $"deze subthema's hebben die leeftijd: {string.Join(", ", subthemas.Select(s => $"{s.Naam} ({s.Leeftijd})"))}");
+            }
+
+            if (redenen.Count > 0)
+            {
+                // Only the leeftijden something still uses: the others may go, and naming them would send the person
+                // looking for a jaarplan that is not there.
+                var inGebruik = weg
+                    .Where(l => subthemas.Any(s => s.Leeftijd == l) || klassen.Any(k => k.Leeftijden.Contains(l)))
+                    .ToList();
+                // The advice names only what stands in the way, so it never sends anyone after a subthema that is not there.
+                var advies = (klassen.Count > 0, subthemas.Count > 0) switch
+                {
+                    (true, true) => "Haal het thema eerst uit die jaarplannen en verplaats of verwijder die subthema's.",
+                    (true, false) => "Haal het thema eerst uit die jaarplannen.",
+                    _ => "Verplaats of verwijder die subthema's eerst.",
+                };
+                throw new SchoolcontentValidatieFout(
+                    $"{string.Join(" en ", inGebruik)} kan niet weg bij thema '{thema.Naam}': {string.Join("; ", redenen)}. {advies}");
+            }
+        }
+
+        try
+        {
+            thema.StelLeeftijdenIn(leeftijden);
+        }
+        catch (ArgumentException ex)
+        {
+            throw new SchoolcontentValidatieFout(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// The klassen that hold the thema in their jaarplan and would no longer be offered it once it keeps only
+    /// <paramref name="blijven"/>, with the leeftijden they teach, in name order. Loaded in memory for the reason
+    /// <see cref="AantalThemaplaatsingenAsync"/> gives. A klas whose leeftijd cannot be derived is offered every thema
+    /// (ADR-0069 D2), so it never stands in the way.
+    /// </summary>
+    private async Task<IReadOnlyList<(string Naam, IReadOnlyList<string> Leeftijden)>> KlassenDieHetThemaVerliezenAsync(
+        Guid themaId, IReadOnlySet<string> blijven, CancellationToken cancellationToken)
+    {
+        var plannen = await _context.Jaarplannen.AsNoTracking().ToListAsync(cancellationToken);
+        var klasIds = plannen.Where(p => p.Plaatsingen.Any(pl => pl.ThemaId == themaId)).Select(p => p.KlasId).ToList();
+        if (klasIds.Count == 0)
+        {
+            return [];
+        }
+
+        var klassen = await _context.Klassen.AsNoTracking().Where(k => klasIds.Contains(k.Id)).ToListAsync(cancellationToken);
+        return klassen
+            .Select(k => (k.Naam, Leeftijden: Jaarfasen.VoorKlas(k.Leerjaar, k.Jaarfase)))
+            .Where(k => k.Leeftijden is { } codes && !codes.Any(blijven.Contains))
+            .Select(k => (k.Naam, k.Leeftijden!))
+            .OrderBy(k => k.Naam, StringComparer.CurrentCulture)
+            .ToList();
     }
 
     // --- Themadoel (school-scoped). A themadoel a person adds is a minimumdoel (FB-043). ---
@@ -367,6 +477,17 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         var leeftijd = wijziging.Leeftijd ?? string.Empty;
         VereisLeeftijd(leeftijd);
         var vorigeLeeftijd = subthema.Leeftijd;
+
+        // A subthema moves only to a leeftijd its thema holds (ADR-0069 D3). Checked on a change only: the leeftijd it has
+        // already met the rule when it was set.
+        if (!string.Equals(vorigeLeeftijd, leeftijd.Trim(), StringComparison.Ordinal))
+        {
+            var thema = await _context.Themas.AsNoTracking().FirstAsync(t => t.Id == subthema.ThemaId, cancellationToken);
+            if (!thema.HoudtLeeftijd(leeftijd))
+            {
+                throw new SchoolcontentValidatieFout(thema.NietVoorLeeftijd(leeftijd));
+            }
+        }
 
         try
         {
@@ -1088,6 +1209,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         thema.Themadoelen.Select(MapThemadoel).ToList(),
         thema.Minimumdoelen.Select(MapMinimumdoel).ToList(),
         thema.Subthemas.Select(s => MapSubthema(s, lezer)).ToList(),
+        thema.Leeftijden.ToList(),
         thema.Icoon);
 
     private static ThemaBibliotheekItem MapBibliotheekItem(
@@ -1109,6 +1231,7 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
         aantalSubthemas,
         aantalActiviteiten,
         aantalDoelkoppelingen,
+        thema.Leeftijden.ToList(),
         thema.Icoon);
 
     private static ThemadoelWeergave MapThemadoel(Themadoel themadoel) =>

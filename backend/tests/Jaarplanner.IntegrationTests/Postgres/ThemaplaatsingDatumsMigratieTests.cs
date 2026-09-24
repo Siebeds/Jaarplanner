@@ -1,4 +1,3 @@
-using System.Reflection;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 using Microsoft.EntityFrameworkCore;
@@ -176,24 +175,27 @@ public sealed class ThemaplaatsingDatumsMigratieTests : IAsyncLifetime
         var klasA = schooljaar.VoegKlasToe("FB-035 klas A", "L3");
         var klasB = schooljaar.VoegKlasToe("FB-035 klas B", "L3");
         context.Schooljaren.Add(schooljaar);
-
-        context.Themas.AddRange(
-            MetId(new Thema("Vijf weken", duurWeken: 5), Vijfde),
-            MetId(new Thema("Twee weken", duurWeken: 2), Eerste),
-            MetId(new Thema("Drie weken", duurWeken: 3), Tweede),
-            MetId(new Thema("Eén week", duurWeken: 1), Derde),
-            MetId(new Thema("Lang", duurWeken: 5), Lang));
-
         await context.SaveChangesAsync();
 
+        // In SQL, in the columns the themas table has at VorigeMigratie: the current model writes columns a later
+        // migration added (FB-012's Leeftijden), which this schema does not have yet.
+        foreach (var (id, naam, duurWeken) in new[]
+        {
+            (Vijfde, "Vijf weken", 5),
+            (Eerste, "Twee weken", 2),
+            (Tweede, "Drie weken", 3),
+            (Derde, "Eén week", 1),
+            (Lang, "Lang", 5),
+        })
+        {
+            await context.Database.ExecuteSqlAsync(
+                $"""
+                INSERT INTO themas ("Id", "Naam", "DuurWeken", "Kernwoordenschat", "RijkeWoordenschat")
+                VALUES ({id}, {naam}, {duurWeken}, {Array.Empty<string>()}, {Array.Empty<string>()})
+                """);
+        }
+
         return (klasA.Id, klasB.Id);
-    }
-
-    private static Thema MetId(Thema thema, Guid id)
-    {
-        typeof(Thema).GetProperty(nameof(Thema.Id), BindingFlags.Public | BindingFlags.Instance)!.SetValue(thema, id);
-
-        return thema;
     }
 
     private async Task<Guid> MaakJaarplanAsync(Guid klasId)

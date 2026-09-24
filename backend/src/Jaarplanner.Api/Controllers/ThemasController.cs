@@ -58,9 +58,12 @@ public sealed class ThemasController : ControllerBase
     /// The shared thema-bibliotheek (E1-11, FR-3.3 resolved per-level, Art. IX.2): school-wide themadoelen +
     /// woordenschat per thema, without any class's subthema's.
     /// </summary>
+    /// <remarks>With <paramref name="klasId"/>, only the thema's meant for that klas's leeftijd (FB-012, ADR-0069).</remarks>
     [HttpGet("bibliotheek")]
-    public async Task<ActionResult<IReadOnlyList<ThemaBibliotheekItem>>> Bibliotheek(CancellationToken cancellationToken) =>
-        Ok(await _service.HaalThemaBibliotheekOpAsync(cancellationToken));
+    public async Task<ActionResult<IReadOnlyList<ThemaBibliotheekItem>>> Bibliotheek(
+        [FromQuery] Guid? klasId,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.HaalThemaBibliotheekOpAsync(klasId, cancellationToken));
 
     /// <summary>
     /// A thema as derived for a given klas (E1-11, Art. IX.2): the shared thema plus only that klas's

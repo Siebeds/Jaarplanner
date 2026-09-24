@@ -63,6 +63,7 @@ const thema = (): ThemaWeergave => ({
   kernwoordenschat: [],
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
+  leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   // An older leerplandoel themadoel, as the FR-1 import may still write one: the page no longer shows it (FB-043).
   themadoelen: [
     { id: "td-1", koppeling: { id: "k-1", leerplandoelCode: "9.9.GK2.9", status: "Manueel", aiMotivatie: null } },

@@ -1,3 +1,5 @@
+using Jaarplanner.Domain.Curriculum;
+
 namespace Jaarplanner.Domain.Schoolcontent;
 
 /// <summary>
@@ -21,6 +23,7 @@ public sealed class Thema
     private readonly List<Minimumdoelsuggestie> _doelsuggesties = [];
     private readonly List<string> _kernwoordenschat = [];
     private readonly List<string> _rijkeWoordenschat = [];
+    private readonly List<string> _leeftijden = [.. Jaarfasen.Alle];
 
     // EF Core materialisation only.
     private Thema()
@@ -56,6 +59,67 @@ public sealed class Thema
     /// <see cref="ThemaIcoon"/> for what counts as one emoji.
     /// </summary>
     public string? Icoon { get; private set; }
+
+    /// <summary>
+    /// The leeftijden (jaar/fase codes) this thema is meant for (FB-012, ADR-0069), in <see cref="Jaarfasen.Alle"/> order:
+    /// never empty, and all nine unless someone limited it. A klas is offered the thema only when it teaches one of them,
+    /// and every subthema holds one of them.
+    /// </summary>
+    public IReadOnlyList<string> Leeftijden => _leeftijden;
+
+    /// <summary>
+    /// Whether a klas that teaches <paramref name="klasleeftijden"/> is offered this thema (ADR-0069 D2). <c>null</c>, a
+    /// klas whose leeftijd cannot be derived, widens to every thema rather than narrowing to none.
+    /// </summary>
+    public bool GeldtVoor(IEnumerable<string>? klasleeftijden) =>
+        klasleeftijden is null || klasleeftijden.Any(l => _leeftijden.Contains(l, StringComparer.Ordinal));
+
+    /// <summary>
+    /// Whether <paramref name="leeftijd"/> is one of this thema's <see cref="Leeftijden"/>, read through
+    /// <see cref="Jaarfasen.Normaliseer"/> so a subthema stored as <c>3K</c> counts as <c>K3</c>.
+    /// </summary>
+    public bool HoudtLeeftijd(string? leeftijd) =>
+        leeftijd is not null && _leeftijden.Contains(Jaarfasen.Normaliseer(leeftijd), StringComparer.Ordinal);
+
+    /// <summary>
+    /// Limits the thema to <paramref name="leeftijden"/> (ADR-0069 D1). Duplicates collapse and the order follows
+    /// <see cref="Jaarfasen.Alle"/>. That no klas of a removed leeftijd holds the thema in its jaarplan is the
+    /// application layer's check, which also names what stands in the way; this aggregate refuses a removed leeftijd a
+    /// loaded subthema still has.
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The set is empty, holds an unknown code, or drops a leeftijd a subthema has. The message is Dutch and carries no
+    /// parameter name, because it reaches the screen.
+    /// </exception>
+    public void StelLeeftijdenIn(IEnumerable<string> leeftijden)
+    {
+        ArgumentNullException.ThrowIfNull(leeftijden);
+        var gekozen = leeftijden.Where(l => !string.IsNullOrWhiteSpace(l)).Select(l => l.Trim()).ToList();
+        var onbekend = gekozen.FirstOrDefault(l => !Jaarfasen.IsBekend(l));
+        if (onbekend is not null)
+        {
+            throw new ArgumentException($"'{onbekend}' is geen bekende leeftijd. Kies uit JK, K2, K3 en L1 tot L6.");
+        }
+
+        var nieuw = Jaarfasen.Alle.Where(l => gekozen.Contains(l, StringComparer.Ordinal)).ToList();
+        if (nieuw.Count == 0)
+        {
+            throw new ArgumentException("Een thema geldt voor minstens één leeftijd.");
+        }
+
+        var inDeWeg = _subthemas
+            .Where(s => !nieuw.Contains(Jaarfasen.Normaliseer(s.Leeftijd), StringComparer.Ordinal))
+            .Select(s => $"{s.Naam} ({s.Leeftijd})")
+            .ToList();
+        if (inDeWeg.Count > 0)
+        {
+            throw new ArgumentException(
+                $"Deze leeftijden kunnen niet weg, want deze subthema's gebruiken ze nog: {string.Join(", ", inDeWeg)}.");
+        }
+
+        _leeftijden.Clear();
+        _leeftijden.AddRange(nieuw);
+    }
 
     /// <summary>Kernwoordenschat (basiswoorden) — school-wide; two-tier with <see cref="RijkeWoordenschat"/>.</summary>
     public IReadOnlyList<string> Kernwoordenschat => _kernwoordenschat;
@@ -293,10 +357,19 @@ public sealed class Thema
 
     /// <summary>
     /// Adds an age-scoped subthema to this thema. The subthema must name its <paramref name="leeftijd"/> —
-    /// scoping is structural (Art. IX.2) — and it holds for every klas that teaches that age.
+    /// scoping is structural (Art. IX.2) — and it holds for every klas that teaches that age. The leeftijd must be one of
+    /// the thema's <see cref="Leeftijden"/> (ADR-0069 D3).
     /// </summary>
+    /// <exception cref="ArgumentException">The leeftijd is not one of the thema's; the message is Dutch.</exception>
     public Subthema VoegSubthemaToe(string naam, int duurWeken, string leeftijd)
     {
+        // A code outside the nine is the application layer's refusal to give (VereisLeeftijd), as it was before FB-012;
+        // this aggregate refuses a known leeftijd the thema does not hold.
+        if (!string.IsNullOrWhiteSpace(leeftijd) && Jaarfasen.IsBekend(Jaarfasen.Normaliseer(leeftijd)) && !HoudtLeeftijd(leeftijd))
+        {
+            throw new ArgumentException(NietVoorLeeftijd(leeftijd));
+        }
+
         var subthema = new Subthema(Id, naam, duurWeken, leeftijd);
         _subthemas.Add(subthema);
         return subthema;
@@ -307,6 +380,12 @@ public sealed class Thema
 
     /// <summary>The pedagogically expected minimum number of themadoelen per thema (Art. IX.2), advisory.</summary>
     public const int MinThemadoelen = 2;
+
+    /// <summary>
+    /// The Dutch refusal for a subthema at a leeftijd this thema does not hold (ADR-0069 D3), naming the ones it does.
+    /// </summary>
+    public string NietVoorLeeftijd(string leeftijd) =>
+        $"Thema '{Naam}' geldt niet voor {leeftijd.Trim()}. Kies een leeftijd waarvoor het thema geldt: {string.Join(", ", _leeftijden)}.";
 
     private static void Replace(List<string> target, IEnumerable<string> source)
     {

@@ -2,13 +2,13 @@
 id: FB-012
 titel: Thema kan beperkt worden tot bepaalde leeftijden
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:09
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-24 17:53
+opgepakt-door: thema-leeftijden
+branch: ticket/FB-012-thema-leeftijden
+pr: 198
 geblokkeerd:
 fr: [FR-3.3]
 ---
@@ -34,12 +34,12 @@ leeftijden**. Een thema per klas of een persoonlijk thema is niet gevraagd.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema beperkt tot K2 en K3, wanneer een JK-klas een thema in haar jaarplan wil zetten, dan staat dit
+- [x] Gegeven een thema beperkt tot K2 en K3, wanneer een JK-klas een thema in haar jaarplan wil zetten, dan staat dit
   thema niet in de keuze, en een K3-klas ziet het wel.
-- [ ] Gegeven dat thema, wanneer het jaarplan van een JK-klas gegenereerd wordt, dan plaatst de generatie het niet.
-- [ ] Gegeven dat thema, wanneer een hoofdleerkracht een subthema wil maken, dan kan ze alleen K2 of K3 kiezen.
-- [ ] Gegeven een bestaand thema, dan geldt het na deze wijziging voor alle leeftijden, zodat niets verdwijnt.
-- [ ] Gegeven een thema dat al in het jaarplan van een JK-klas staat of een JK-subthema heeft, wanneer iemand JK uit
+- [x] Gegeven dat thema, wanneer het jaarplan van een JK-klas gegenereerd wordt, dan plaatst de generatie het niet.
+- [x] Gegeven dat thema, wanneer een hoofdleerkracht een subthema wil maken, dan kan ze alleen K2 of K3 kiezen.
+- [x] Gegeven een bestaand thema, dan geldt het na deze wijziging voor alle leeftijden, zodat niets verdwijnt.
+- [x] Gegeven een thema dat al in het jaarplan van een JK-klas staat of een JK-subthema heeft, wanneer iemand JK uit
   zijn leeftijden haalt, dan weigert de tool met een Nederlandse melding die zegt welke klassen en subthema's in de weg
   staan.
 
@@ -68,3 +68,9 @@ leeftijden**. Een thema per klas of een persoonlijk thema is niet gevraagd.
 ## Werklog
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-24 16:48 · thema-leeftijden · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 16:58 · thema-leeftijden · Grondwet Art. IX.2 gewijzigd en ADR-0069 vastgelegd; een gebruikte leeftijd weghalen wordt geweigerd (standaard uit het ticket).
+- 2026-09-24 17:50 · thema-leeftijden · Antagonist: COMPLIANT, geen CRITICAL of MAJOR; de MINOR over het formulier zonder geladen jaarfasen is opgelost, de rest staat in backlog/worklogs/FB-012/antagonist.md.
+- 2026-09-24 17:51 · thema-leeftijden · Browserpas op een wegwerpkopie, desktop en 390px: alle vijf criteria gezien; de weigering raadt nu alleen aan wat echt in de weg staat.
+- 2026-09-24 17:52 · thema-leeftijden · in-uitvoering → te-testen: Gebouwd: thema met leeftijden (standaard alle), keuze per klas bij plaatsen en genereren, subthema binnen de leeftijden, weigering met namen. Unit 2378, frontend 1417, lint en format groen; de laatste volledige Postgres-run werd gestopt wegens geheugentekort.
+- 2026-09-24 17:53 · thema-leeftijden · PR #198

@@ -20,6 +20,7 @@ const HERFST: ThemaBibliotheekItem = {
   kernwoordenschat: [],
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
+  leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   themadoelen: [],
   minimumdoelen: [],
 };
@@ -37,7 +38,8 @@ const VOORSTEL: Eindvoorstel = {
 
 function toon(fout: string | null = null) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
-  qc.setQueryData(themaSleutels.bibliotheek(), [HERFST]);
+  // The klas's own list (FB-012): the sheet asks for the thema's of its leeftijd only.
+  qc.setQueryData(themaSleutels.bibliotheekVoorKlas("klas-1"), [HERFST]);
   qc.setQueryData(jaarplanSleutels.voorstel("klas-1", "t-herfst", "2026-10-19"), VOORSTEL);
   const onPlaats = vi.fn();
 

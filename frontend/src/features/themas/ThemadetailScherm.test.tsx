@@ -54,6 +54,7 @@ const THEMA: ThemaWeergave = {
   kernwoordenschat: [],
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
+  leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   themadoelen: [{ id: "td-1", koppeling: koppeling("NED-1") }],
   minimumdoelen: [{ id: "tm-1", minimumdoelRef: "K-MD-1" }],
   subthemas: [

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Ik } from "../../lib/aanmelding";
@@ -62,6 +62,7 @@ describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
               kernwoordenschat: [],
               rijkeWoordenschat: [],
               heeftVoldoendeThemadoelen: true,
+              leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
               themadoelen: [],
               minimumdoelen: ["K-1.1.1", "K-1.1.2", "K-1.1.3"].map((ref, i) => ({ id: `m-${i}`, minimumdoelRef: ref })),
               aantalAfgeleideLeeftijden: 3,
@@ -96,6 +97,7 @@ describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
               kernwoordenschat: [],
               rijkeWoordenschat: [],
               heeftVoldoendeThemadoelen: false,
+              leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
               themadoelen: [],
               minimumdoelen: [{ id: "m-0", minimumdoelRef: "K-1.1.1" }],
               aantalAfgeleideLeeftijden: 0,
@@ -113,6 +115,42 @@ describe("ThemasScherm: de kaart van een thema (TB-051)", () => {
     const kaart = await screen.findByRole("link", { name: /Lente/ });
     expect(kaart).toHaveTextContent(`1 ${t("themas.minimumdoelEen")}`);
     expect(kaart).not.toHaveTextContent(/themadoelen/i);
+  });
+});
+
+describe("ThemasScherm: de leeftijden van een thema (FB-012)", () => {
+  it("zegt bij een beperkt thema voor welke leeftijden het geldt, en zwijgt bij een thema voor iedereen", async () => {
+    const alle = ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"];
+    const thema = (id: string, naam: string, leeftijden: string[]) => ({
+      id,
+      naam,
+      duurWeken: 4,
+      invalshoeken: null,
+      kernwoordenschat: [],
+      rijkeWoordenschat: [],
+      heeftVoldoendeThemadoelen: false,
+      leeftijden,
+      themadoelen: [],
+      minimumdoelen: [],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) =>
+        new Response(
+          JSON.stringify(
+            String(url).includes("/api/jaarfasen")
+              ? alle
+              : [thema("t-1", "Herfst", ["K2", "K3"]), thema("t-2", "Water", alle)],
+          ),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      ),
+    );
+    toon("themas", LEERKRACHT);
+
+    const herfst = await screen.findByRole("link", { name: /Herfst/ });
+    await waitFor(() => expect(herfst).toHaveTextContent(t("themas.voorLeeftijden", { leeftijden: "K2, K3" })));
+    expect(screen.getByRole("link", { name: /Water/ })).not.toHaveTextContent(/Voor /);
   });
 });
 

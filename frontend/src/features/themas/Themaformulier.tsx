@@ -10,13 +10,16 @@ import { cn } from "../../lib/cn";
 import type { ThemaWeergave } from "../../lib/types";
 import type { ThemaInvoer } from "./mutaties";
 import { Emojikiezer } from "./Emojikiezer";
+import { Leeftijdkeuze } from "./Leeftijdkeuze";
+import { useJaarfasen } from "../../lib/queries";
 
 /**
  * Making or changing a school-wide thema (FR-3.1).
  *
- * **No klas and no leeftijd field, deliberately.** A thema belongs to the school; only its subthema's
- * are per class (Art. IX.2). A scope field here would offer a choice the server rejects, so the level
- * rule is visible in the shape of the form rather than only in a validation message.
+ * **No klas field, deliberately.** A thema belongs to the school; only its planning is per class (Art. IX.2). It
+ * does hold the leeftijden it is meant for (FB-012, ADR-0069): all nine for a new thema, so limiting it is a choice
+ * and never a step to forget. A leeftijd a jaarplan or a subthema still uses is refused by the server, which names
+ * them; the form shows that sentence rather than guessing it.
  *
  * **One column, in the order a thema is thought up** (FB-061): naam, duur, invalshoeken, then the
  * woordenschat, whose two lists sit side by side once the sheet is wide enough. The owner rejected a
@@ -59,7 +62,14 @@ export function Themaformulier({
     invalshoeken: thema?.invalshoeken ?? "",
     kern: thema?.kernwoordenschat ?? [],
     rijk: thema?.rijkeWoordenschat ?? [],
+    leeftijden: thema?.leeftijden ?? null,
   }));
+  const { data: jaarfasen } = useJaarfasen();
+  // A new thema starts with every leeftijd once the codes are known. Until then it sends none, which the server reads
+  // as all nine, so a slow or failed /api/jaarfasen never asks for a choice the form cannot show.
+  const [eigenLeeftijden, setLeeftijden] = useState<string[] | null>(begin.leeftijden);
+  const leeftijden = eigenLeeftijden ?? jaarfasen ?? null;
+  const [leeftijdFout, setLeeftijdFout] = useState(false);
   const [naam, setNaam] = useState(begin.naam);
   const [icoon, setIcoon] = useState<string | null>(begin.icoon);
   const [duur, setDuur] = useState(begin.duur);
@@ -84,6 +94,7 @@ export function Themaformulier({
     invalshoeken: invalshoeken.trim() !== begin.invalshoeken.trim(),
     kern: !zelfdeLijst(kern, begin.kern),
     rijk: !zelfdeLijst(rijk, begin.rijk),
+    leeftijden: begin.leeftijden !== null && !zelfdeLijst(leeftijden ?? [], begin.leeftijden),
   };
   const vuil = Object.values(gewijzigd).some(Boolean);
 
@@ -100,9 +111,11 @@ export function Themaformulier({
     // worse experience than a sentence under the field. The server stays the authority.
     const naamLeeg = naam.trim().length === 0;
     const duurOngeldig = !Number.isFinite(weken) || weken < 1;
+    const geenLeeftijd = leeftijden !== null && leeftijden.length === 0;
     setNaamFout(naamLeeg);
     setDuurFout(duurOngeldig);
-    if (naamLeeg || duurOngeldig) return;
+    setLeeftijdFout(geenLeeftijd);
+    if (naamLeeg || duurOngeldig || geenLeeftijd) return;
 
     setSluitVraag(false);
     onBewaar({
@@ -112,6 +125,7 @@ export function Themaformulier({
       kernwoordenschat: kern,
       rijkeWoordenschat: rijk,
       icoon,
+      leeftijden,
     });
   }
 
@@ -250,6 +264,31 @@ export function Themaformulier({
           {duurFout ? (
             <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
               {t("themabeheer.duurOngeldig")}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <fieldset>
+          <legend className="flex items-baseline gap-2 text-meta font-medium text-inkt">
+            {t("themabeheer.leeftijden")}
+            {!nieuw && gewijzigd.leeftijden ? <Gewijzigd /> : null}
+          </legend>
+          <p className="mt-0.5 text-meta text-inkt-zacht">{t("themabeheer.leeftijdenUitleg")}</p>
+          <div className="mt-1.5">
+            <Leeftijdkeuze
+              jaarfasen={jaarfasen ?? []}
+              gekozen={leeftijden ?? []}
+              label={null}
+              uitgeschakeld={bezig}
+              onWijzig={(gekozen) => {
+                setLeeftijden(gekozen);
+                if (leeftijdFout) setLeeftijdFout(false);
+              }}
+            />
+          </div>
+          {leeftijdFout ? (
+            <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
+              {t("themabeheer.leeftijdVerplicht")}
             </p>
           ) : null}
         </fieldset>
