@@ -1176,8 +1176,8 @@ function Blok({
           ref={setNodeRef}
           type="button"
           onClick={open}
-          // The kind is spoken for a fiche: it carries no colour, so the word under the name is the only thing that
-          // tells it from an activiteit, and a short block does not print it.
+          // The kind is spoken for a fiche: the block shows it by its plane and icon, and prints no word for it (FB-100),
+          // so the accessible name is where a screen reader learns it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
             blok.doel.soort === "activiteit" ? "" : `, ${t("tijdraster.algemeneFiche")}`
           }${voorstel ? `, ${t("weekvoorstel.voorstel")}` : ""}${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
