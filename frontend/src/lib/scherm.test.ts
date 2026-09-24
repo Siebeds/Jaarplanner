@@ -1,5 +1,5 @@
 import { renderHook } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { BREED, useMediaQuery } from "./scherm";
 import { zetSchermbreedte } from "../test/setup";
 
@@ -24,5 +24,21 @@ describe("useMediaQuery in tests", () => {
   it("laat een andere query met rust", () => {
     zetSchermbreedte(true);
     expect(renderHook(() => useMediaQuery("(prefers-color-scheme: dark)")).result.current).toBe(false);
+  });
+});
+
+describe("useMediaQuery en herteken (TB-071)", () => {
+  it("schrijft zich één keer in op de mediaquery, niet bij elke render opnieuw", () => {
+    const echt = window.matchMedia;
+    const inschrijvingen = vi.fn();
+    window.matchMedia = (query: string) => ({ ...echt(query), addEventListener: inschrijvingen }) as MediaQueryList;
+    try {
+      const { rerender } = renderHook(() => useMediaQuery(BREED));
+      rerender();
+      rerender();
+      expect(inschrijvingen).toHaveBeenCalledTimes(1);
+    } finally {
+      window.matchMedia = echt;
+    }
   });
 });

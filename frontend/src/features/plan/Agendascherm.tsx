@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { DndContext, DragOverlay, closestCenter } from "@dnd-kit/core";
+import { DndContext, DragOverlay, closestCenter, useDndMonitor } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { Weergavekeuze } from "./Weergavekeuze";
@@ -153,7 +153,6 @@ export function Agendascherm() {
   const [geopend, setGeopend] = useState<{ activiteit: GeplandeActiviteit; datum: string } | null>(null);
   // Making an activiteit that does not exist yet, for the day and the hour (or the stretch) the picker was on.
   const [nieuw, setNieuw] = useState<Gevraagdeplek | null>(null);
-  const [sleepNaam, setSleepNaam] = useState<string | null>(null);
   // Why a drop was refused before any request went out. Cleared at the start of the next drag, so it
   // describes the last thing she tried rather than accumulating.
   const [sleepFout, setSleepFout] = useState<string | null>(null);
@@ -621,7 +620,6 @@ export function Agendascherm() {
   }
 
   function begin(gebeurtenis: DragStartEvent) {
-    setSleepNaam(sleepnaam(String(gebeurtenis.active.id), gebeurtenis.active.data.current) ?? null);
     // Starts following the pointer, which is the only thing a fiche from the panel and a block in the grid have in
     // common; see `tijdsleep`. Ended in both `laatLos` and the cancel handler, so the listener never outlives a drag.
     beginSleep(gebeurtenis);
@@ -684,10 +682,11 @@ export function Agendascherm() {
   }
 
   function laatLos({ active, over }: DragEndEvent) {
-    setSleepNaam(null);
-    setSleepFout(null);
-    acties.verplaats.reset();
-    verplaatsFichemoment.reset();
+    // Each only when there is something to clear. Resetting an idle mutation still hands its hook a new result, and
+    // that re-rendered this whole screen at the end of every drag, a cancelled one and a no-op drop included (TB-071).
+    if (sleepFout !== null) setSleepFout(null);
+    if (!acties.verplaats.isIdle) acties.verplaats.reset();
+    if (!verplaatsFichemoment.isIdle) verplaatsFichemoment.reset();
 
     const sleepId = String(active.id);
     // Two kinds of target. A column of the time grid names a day AND, through the pointer, an hour; a month cell
@@ -953,10 +952,7 @@ export function Agendascherm() {
           }}
           onDragStart={begin}
           onDragEnd={laatLos}
-          onDragCancel={() => {
-            setSleepNaam(null);
-            eindigSleep();
-          }}
+          onDragCancel={eindigSleep}
         >
           {/* INSIDE the context, and it has to be: an algemene fiche or an activiteit card is dragged FROM here ONTO
               the grid below, and dnd-kit registers a draggable through React context rather than through the DOM. The
@@ -1045,15 +1041,7 @@ export function Agendascherm() {
             )}
           </div>
 
-          {/* An overlay rather than a transform on the card itself: a month cell clips its overflow,
-              so the original would be dragged behind the walls of the day it started in. */}
-          <DragOverlay dropAnimation={null}>
-            {sleepNaam ? (
-              <span className="block max-w-56 truncate rounded-veld border-l-2 border-accent bg-kaart px-2.5 py-2 text-meta font-medium text-inkt shadow-lg">
-                {sleepNaam}
-              </span>
-            ) : null}
-          </DragOverlay>
+          <Sleepoverlay naamVan={sleepnaam} />
         </DndContext>
 
         {/* ONE STRIP FOR EVERYTHING A DRAG CAN GO WRONG WITH, because from the teacher side they are one
@@ -1378,5 +1366,35 @@ export function Agendascherm() {
         onSluit={() => setSubthemaVraagOpen(false)}
       />
     </>
+  );
+}
+
+/**
+ * What follows the pointer during a drag: the dragged thing's name on a card.
+ *
+ * An overlay rather than a transform on the card itself: a month cell clips its overflow, so the original would be
+ * dragged behind the walls of the day it started in.
+ *
+ * ITS OWN STATE, through `useDndMonitor`, so the name appearing and going away re-renders this card and nothing else
+ * (TB-071). Held by the screen, the start and the end of every drag re-rendered the heading, the dekkingsbalk, the
+ * hoekenpaneel and every column and block of the grid.
+ */
+function Sleepoverlay({ naamVan }: { naamVan: (sleepId: string, data?: unknown) => string | undefined }) {
+  const [naam, setNaam] = useState<string | null>(null);
+
+  useDndMonitor({
+    onDragStart: ({ active }) => setNaam(naamVan(String(active.id), active.data.current) ?? null),
+    onDragEnd: () => setNaam(null),
+    onDragCancel: () => setNaam(null),
+  });
+
+  return (
+    <DragOverlay dropAnimation={null}>
+      {naam ? (
+        <span className="block max-w-56 truncate rounded-veld border-l-2 border-accent bg-kaart px-2.5 py-2 text-meta font-medium text-inkt shadow-lg">
+          {naam}
+        </span>
+      ) : null}
+    </DragOverlay>
   );
 }
