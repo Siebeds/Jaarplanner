@@ -11,8 +11,9 @@
     <link rel="apple-touch-icon" href="/merk/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- The colour the browser gives its own chrome: --color-vlak, light then dark, from src/index.css
-         (src/app/browserset.test.ts pins both). The device's setting picks one through media; an explicit choice
-         under Instellingen is applied by the script below, and src/state/weergave.ts keeps both in step after. -->
+         (src/app/browserset.test.ts pins both). Before any script, the device's setting picks one through media; an
+         explicit choice under Instellingen is applied by the script below. Once the app runs, src/state/weergave.ts
+         gives both the colour the page shows, and updates them when the choice or the device changes. -->
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15181e" />
     <!-- Runs before the first paint, so a teacher who chose a theme in this browser never sees the

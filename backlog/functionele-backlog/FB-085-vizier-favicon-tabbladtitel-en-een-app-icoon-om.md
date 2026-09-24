@@ -2,10 +2,10 @@
 id: FB-085
 titel: Vizier-favicon, tabbladtitel en een app-icoon om de app op een tablet te zetten
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-24 14:37
+bijgewerkt: 2026-09-24 14:39
 opgepakt-door: claude-fb085
 branch: ticket/FB-085-vizier-favicon
 pr:
@@ -78,3 +78,5 @@ Geen.
 - 2026-09-22 21:49 · Siebe · aangemaakt (status nieuw)
 - 2026-09-24 14:30 · claude-fb085 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht aan deze sessie)
 - 2026-09-24 14:37 · claude-fb085 · Gebouwd: favicon (ico+svg), apple-touch-icon, manifest.webmanifest (Vizier, standalone, iconen 192/512), titel Vizier, theme-color per weergave, merk.svg weg. Criteria afgevinkt op browserset.test.ts, SpaHostingTests (manifest als application/manifest+json zonder sessie) en een browserpas: Chrome meldt het manifest foutloos en de app installeerbaar, theme-color licht #f6f7f9 en donker #15181e, ook bij een expliciete keuze tegen het toestel in; een echte tablet is niet getest.
+- 2026-09-24 14:39 · claude-fb085 · Antagonist: COMPLIANT, vier MINOR. Opgelost: commentaar over theme-color in index.html, opruimen in de weergavetest. Open: het manifest kent maar één achtergrondkleur (licht papier), dus een toestel in donkere weergave toont bij het openen vanaf het startscherm even een licht opstartscherm; een echte tablet is niet getest.
+- 2026-09-24 14:39 · claude-fb085 · in-uitvoering → te-testen: Favicon, titel Vizier, manifest met app-icoon en theme-color per weergave gebouwd; merk.svg weg. pnpm test/lint/build, dotnet test/format groen, browserpas in Chrome, antagonist COMPLIANT.

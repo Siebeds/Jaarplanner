@@ -92,12 +92,12 @@ describe("de kleur van de browserrand", () => {
     window.getComputedStyle = () => ({ backgroundColor: "rgb(21, 24, 30)" }) as CSSStyleDeclaration;
     try {
       useWeergave.getState().kies("donker");
+      const kleuren = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((m) => m.content);
+      expect(kleuren).toEqual(["rgb(21, 24, 30)", "rgb(21, 24, 30)"]);
     } finally {
       window.getComputedStyle = echt;
+      useWeergave.getState().kies("systeem");
+      document.head.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
     }
-
-    const kleuren = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((m) => m.content);
-    expect(kleuren).toEqual(["rgb(21, 24, 30)", "rgb(21, 24, 30)"]);
-    document.head.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
   });
 });
