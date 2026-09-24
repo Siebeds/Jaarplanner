@@ -2,12 +2,12 @@
 id: FB-028
 titel: AI stelt hoekenverrijkingen voor bij het lopende subthema
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 21:12
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 16:49
+opgepakt-door: fb028-sessie
+branch: ticket/FB-028-hoekverrijking-voorstellen
 pr:
 geblokkeerd:
 fr: [FR-4.1]
@@ -62,3 +62,4 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 21:12 · wensen-hoeken · tekst bijgewerkt na FB-038: invullen gebeurt in het zijpaneel Hoekenfiches; plaats van de knop als open vraag
+- 2026-09-24 16:49 · fb028-sessie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
