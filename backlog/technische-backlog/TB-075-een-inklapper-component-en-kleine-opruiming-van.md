@@ -2,12 +2,12 @@
 id: TB-075
 titel: Eén Inklapper-component en kleine opruiming van component-API's
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:49
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 13:39
+opgepakt-door: claude-tb075
+branch: ticket/TB-075-inklapper
 pr:
 geblokkeerd:
 fr: []
@@ -62,3 +62,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 09:49 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-24 13:39 · claude-tb075 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orchestrerende sessie)
