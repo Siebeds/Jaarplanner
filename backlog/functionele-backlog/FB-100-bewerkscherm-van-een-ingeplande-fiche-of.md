@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 17:46
 opgepakt-door: claude-fb100
 branch: ticket/FB-100-bewerkscherm
-pr:
+pr: 196
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -69,3 +69,4 @@ Geen.
 - 2026-09-24 17:45 · claude-fb100 · criteria afgevinkt: 1, 3, 5 via Vitest (Tijdraster, Algemenefichedetailblad), 2 en 4 via browsercontrole in mockmodus op 1440 en 390px (velden op één rij, niets afgeknipt)
 - 2026-09-24 17:46 · claude-fb100 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; verouderd commentaar in Tijdraster rechtgezet; vraag voor de eigenaar: de prullenbak van de fiche staat op de kop Periode (wat hij weghaalt), die van de activiteit op de kop In de agenda
 - 2026-09-24 17:46 · claude-fb100 · in-uitvoering → te-testen: gebouwd: geen 'algemene fiche' meer in het blok, dag/van/tot op één rij in beide schermen, één Bewaren in het fichescherm, prullenbakicoon; lint groen, 1417 tests groen, browsercontrole, antagonist COMPLIANT
+- 2026-09-24 17:46 · claude-fb100 · PR #196
