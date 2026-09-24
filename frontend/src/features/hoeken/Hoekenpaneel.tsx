@@ -222,6 +222,7 @@ export function Hoekenpaneel({
       <Fichelijst lijst={lijst} sleepbaar={breed} tegelRef={tegelRef} kaartId={kaartId} />
     ) : soort === "hoeken" ? (
       <Hoekenlijst
+        klasId={klasId}
         laadt={hoeken.isPending}
         mislukt={hoeken.isError && hoeken.data === undefined}
         hoeken={hoeken.data ?? []}

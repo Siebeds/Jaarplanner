@@ -12,7 +12,7 @@ namespace Jaarplanner.IntegrationTests.Postgres;
 /// </summary>
 public sealed class ThemaLeeftijdenMigratieTests : IAsyncLifetime
 {
-    private const string VorigeMigratie = "20260923182940_ActiviteitplaatsingAiMotivatie";
+    private const string VorigeMigratie = "20260924150933_Hoekverrijkingsvoorstellen";
 
     private PostgresTestDatabase _db = null!;
 

@@ -129,7 +129,7 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     const verplaats = vi.fn();
     const { rerender } = render(<Blad qc={qc} magPlannen fout={null} onVerplaats={verplaats} />);
 
-    fireEvent.change(screen.getByLabelText(t("periode.opDag")), { target: { value: "2026-10-07" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.dag")), { target: { value: "2026-10-07" } });
     fireEvent.click(screen.getByRole("button", { name: t("periode.verplaats") }));
     expect(verplaats).toHaveBeenCalledWith("2026-10-07", "09:00:00", "09:50:00");
 
@@ -150,7 +150,7 @@ describe("Activiteitblad na een geweigerde dagactie", () => {
     const { rerender } = render(<Blad qc={qc} magPlannen fout={null} />);
     expect(screen.getByRole("button", { name: t("themabeheer.bewaar") })).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(t("periode.opDag")), { target: { value: "2026-10-07" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.dag")), { target: { value: "2026-10-07" } });
     fireEvent.click(screen.getByRole("button", { name: t("periode.verplaats") }));
     rerender(<Blad qc={qc} magPlannen fout={WEIGERING} />);
     const dialoog = screen.getByRole("dialog");
