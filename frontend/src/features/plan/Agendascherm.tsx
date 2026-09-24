@@ -803,8 +803,10 @@ export function Agendascherm() {
              centred on the same line; the view switch to the right. Every control is `h-9` with the `lijn-veld`
              edge, `Segment` included. Below `sm` the switch wraps onto a row of its own at full width. */
           <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <div className="flex min-w-0 flex-1 basis-auto items-center gap-3">
+            {/* The container `kop`: the weekvoorstel shrinks to its wand when this row is narrow. */}
+            <div className="@container/kop flex flex-wrap items-center gap-x-4 gap-y-2">
+              {/* `basis-0` on a phone, so the wand fits beside it and the date wraps instead. */}
+              <div className="flex min-w-0 flex-1 basis-auto items-center gap-3 max-sm:basis-0">
                 {/* The button when there is a today to go to, and the reason when there is not, in the same place.
                     Never a dead control: in augustus the school year has not started and no day is today. */}
                 {vandaagBereikbaar ? (
@@ -850,13 +852,25 @@ export function Agendascherm() {
                 </div>
               </div>
 
-              {/* "Jaar" is the jaarplan: another screen, so choosing it navigates there (pushed, so the browser's
-                  back button returns here), and it is never the checked option on this one. */}
-              <Weergavekeuze
-                waarde={weergave}
-                onKies={(zicht) => (zicht === "jaar" ? navigeer("/agenda/periodes") : ga({ weergave: zicht }))}
-                className="w-full sm:w-auto"
-              />
+              {/* The left half navigates, the right half is about the view: the AI's weekvoorstel stands before the
+                  switch. Below `sm` this group dissolves into the row, so the wand joins the date's row and the switch
+                  keeps a full row of its own, where all five options fit. */}
+              <div className="flex items-center gap-3 max-sm:contents">
+                {/* The AI proposes the week (FB-027): only in the week views, the unit it proposes, and only for
+                    whoever may plan this klas, who decides it. In the toolbar, so it never pushes the grid down
+                    (TB-081); it does not wait for the week to load, so it does not blink while paging. */}
+                {weekweergave && magPlannen ? (
+                  <Weekvoorstel klasId={klasId} datum={anker} dagen={zichtbareDagen} />
+                ) : null}
+
+                {/* "Jaar" is the jaarplan: another screen, so choosing it navigates there (pushed, so the browser's
+                    back button returns here), and it is never the checked option on this one. */}
+                <Weergavekeuze
+                  waarde={weergave}
+                  onKies={(zicht) => (zicht === "jaar" ? navigeer("/agenda/periodes") : ga({ weergave: zicht }))}
+                  className="max-sm:w-full"
+                />
+              </div>
             </div>
 
             {weergave === "dag" ? (
@@ -1004,11 +1018,6 @@ export function Agendascherm() {
                  lesuren and a row of day cards, and the same Tuesday looked like two different plans depending on
                  which button a teacher had pressed. The week is the same grid with more columns, three of them on
                  a phone. */}
-              {/* The AI proposes the week (FB-027): only in the week views, the unit it proposes, and only for whoever
-                  may plan this klas, who decides it. */}
-              {weekweergave && magPlannen && klasId && zichtbareDagen.length > 0 ? (
-                <Weekvoorstel klasId={klasId} datum={anker} dagen={zichtbareDagen} />
-              ) : null}
               {/* Chuck lies on the corner of the week strip when a goal of this klas is at risk (FB-071). */}
               <Weekhoek klasId={klasId} actief={weekweergave}>
               <Tijdraster

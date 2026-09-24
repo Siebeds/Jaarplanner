@@ -6,9 +6,14 @@ import type { GeplandeActiviteit } from "../../lib/types";
 import { Weekvoorstel } from "./Weekvoorstel";
 
 /**
- * The weekvoorstel strip (FB-027, ADR-0067): asking, what an open proposal shows, and what accepting, rejecting and
- * accepting all send.
+ * The weekvoorstel in the agenda toolbar (FB-027, ADR-0067, TB-081): asking, the count and the panel behind it, what an
+ * open proposal shows, and what accepting, rejecting and accepting all send.
  */
+
+/** Opens the panel through the count on the AI button's corner. */
+function openPaneel() {
+  fireEvent.click(screen.getByRole("button", { name: /van de AI$/ }));
+}
 
 function blok(delen: Partial<GeplandeActiviteit>): GeplandeActiviteit {
   return {
@@ -35,7 +40,12 @@ const VOORSTEL = blok({ plaatsingId: "p-2", activiteitNaam: "Bladerenrace", stat
 
 type Oproep = { methode: string; pad: string; lichaam: unknown };
 
-function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVoorgesteld: 2, pastNiet: ["Kastanjes tellen"], aantalOvergeslagen: 0 }) {
+function toon(
+  activiteiten: GeplandeActiviteit[],
+  antwoord: unknown = { aantalVoorgesteld: 2, pastNiet: ["Kastanjes tellen"], aantalOvergeslagen: 0 },
+  /** A problem detail that refuses every decision, as the server does for a stale proposal. */
+  beslisWeigering?: string,
+) {
   const oproepen: Oproep[] = [];
   vi.stubGlobal(
     "fetch",
@@ -44,6 +54,12 @@ function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVo
       const methode = init?.method ?? "GET";
       oproepen.push({ methode, pad, lichaam: init?.body ? JSON.parse(String(init.body)) : undefined });
       if (pad.endsWith("/weekvoorstel")) return new Response(JSON.stringify(antwoord), { status: 200 });
+      if (beslisWeigering && pad.endsWith("/beslissing")) {
+        return new Response(JSON.stringify({ detail: beslisWeigering }), {
+          status: 400,
+          headers: { "Content-Type": "application/problem+json" },
+        });
+      }
       return new Response(JSON.stringify({ dagen: [] }), { status: 200 });
     }),
   );
@@ -66,18 +82,22 @@ function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVo
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Weekvoorstel", () => {
-  it("vraagt de week van de gekozen dag en zegt wat er voorgesteld is en wat nergens past", async () => {
+  it("vraagt de week van de gekozen dag en opent het paneel met wat er voorgesteld is en wat nergens past", async () => {
     const oproepen = toon([]);
 
     fireEvent.click(screen.getByRole("button", { name: t("weekvoorstel.vraag") }));
 
-    expect(await screen.findByText(/2 activiteiten voorgesteld\./)).toBeInTheDocument();
-    expect(screen.getByText(/Past nergens meer deze week: Kastanjes tellen\./)).toBeInTheDocument();
+    const paneel = await screen.findByRole("dialog");
+    expect(within(paneel).getByText(/2 activiteiten voorgesteld\./)).toBeInTheDocument();
+    expect(within(paneel).getByText(/Past nergens meer deze week: Kastanjes tellen\./)).toBeInTheDocument();
     expect(oproepen).toContainEqual({ methode: "POST", pad: "/api/klassen/k-1/jaarplan/weekvoorstel", lichaam: { datum: "2026-09-28" } });
   });
 
   it("toont een open voorstel met zijn moment en motivatie, en een gepland blok niet", () => {
     toon([blok({}), VOORSTEL]);
+
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    openPaneel();
 
     const lijst = screen.getByRole("list");
     expect(within(lijst).getAllByRole("listitem")).toHaveLength(1);
@@ -90,6 +110,7 @@ describe("Weekvoorstel", () => {
 
   it("aanvaardt en weigert een voorstel per blok", async () => {
     const oproepen = toon([VOORSTEL]);
+    openPaneel();
 
     fireEvent.click(screen.getByRole("button", { name: "Aanvaard: Bladerenrace" }));
     await waitFor(() =>
@@ -110,8 +131,21 @@ describe("Weekvoorstel", () => {
     );
   });
 
+  it("een geweigerde beslissing staat in het paneel en wordt voorgelezen", async () => {
+    toon([VOORSTEL], undefined, "Dit voorstel is al beslist.");
+    openPaneel();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aanvaard: Bladerenrace" }));
+
+    await waitFor(() =>
+      expect(document.querySelector("[aria-live=polite]")).toHaveTextContent("Dit voorstel is al beslist."),
+    );
+    expect(within(screen.getByRole("dialog")).getByText("Dit voorstel is al beslist.")).toBeInTheDocument();
+  });
+
   it("aanvaardt alles over de dagen die in beeld zijn", async () => {
     const oproepen = toon([VOORSTEL]);
+    openPaneel();
 
     fireEvent.click(screen.getByRole("button", { name: t("weekvoorstel.allesAanvaarden") }));
 
@@ -124,9 +158,10 @@ describe("Weekvoorstel", () => {
     );
   });
 
-  it("zonder open voorstel is er niets om te aanvaarden", () => {
+  it("zonder open voorstel is er geen teller en niets om te aanvaarden", () => {
     toon([blok({})]);
 
+    expect(screen.getAllByRole("button")).toHaveLength(1);
     expect(screen.queryByRole("button", { name: t("weekvoorstel.allesAanvaarden") })).not.toBeInTheDocument();
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
