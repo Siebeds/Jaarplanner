@@ -126,6 +126,13 @@ public sealed class Promptbegrenzing
         Bewaak(request, omschrijving, ServerRaad);
     }
 
+    /// <summary>
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for a hoekverrijkingsvoorstel (FB-028): one corner
+    /// and one subthema. Nothing on the screen makes it smaller, so the advice is the server setting.
+    /// </summary>
+    /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
+    public void BewaakHoekverrijking(AiRequest request) => Bewaak(request, "de hoek en het subthema", ServerRaad);
+
     // "Beheer" is the admin's right in this app, and the ceiling is no in-app setting, so this advice names whoever
     // runs the server rather than sending admin to look for a setting it cannot find.
     private const string ServerRaad =
