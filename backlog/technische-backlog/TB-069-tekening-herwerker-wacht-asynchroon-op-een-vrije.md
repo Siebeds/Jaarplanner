@@ -2,13 +2,13 @@
 id: TB-069
 titel: Tekening-herwerker wacht asynchroon in plaats van een thread te blokkeren
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:22
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-24 12:57
+opgepakt-door: claude-tb069
+branch: ticket/TB-069-tekening-herwerker-async
+pr: 190
 geblokkeerd:
 fr: []
 ---
@@ -29,10 +29,10 @@ wachten. Bij genoeg gelijktijdige uploads raakt de threadpool op en wordt de hel
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de tekening-herwerker, dan wacht hij op een vrije plaats zonder een thread te blokkeren: er staat geen
+- [x] Gegeven de tekening-herwerker, dan wacht hij op een vrije plaats zonder een thread te blokkeren: er staat geen
   `.Wait()` of `.Result` meer in dat pad.
-- [ ] Gegeven een wachtend verzoek dat de browser afbreekt, dan stopt het wachten.
-- [ ] Gegeven een gewone upload van een tekening, dan werkt ze zoals vandaag en slagen de bestaande tests.
+- [x] Gegeven een wachtend verzoek dat de browser afbreekt, dan stopt het wachten.
+- [x] Gegeven een gewone upload van een tekening, dan werkt ze zoals vandaag en slagen de bestaande tests.
 
 ## Buiten scope
 
@@ -45,3 +45,8 @@ Geen.
 ## Werklog
 
 - 2026-09-23 00:22 · claude-securityscan · aangemaakt (status nieuw)
+- 2026-09-24 12:46 · claude-tb069 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via zijn sessie)
+- 2026-09-24 12:56 · claude-tb069 · criteria afgevinkt: geen Wait()/Result meer in het pad (grep), unit tests wachten-zonder-blokkeren en afbreken-tijdens-wachten, bestaande tekeningtests groen
+- 2026-09-24 12:56 · claude-tb069 · antagonist: COMPLIANT, 1 MINOR open (default-token op de interface, enige aanroeper geeft hem mee)
+- 2026-09-24 12:56 · claude-tb069 · in-uitvoering → klaar: HerwerkAsync wacht met WaitAsync(token), async tot de controller; dotnet test (unit 2359, integratie 616 tegen Postgres) en dotnet format groen
+- 2026-09-24 12:57 · claude-tb069 · PR #190

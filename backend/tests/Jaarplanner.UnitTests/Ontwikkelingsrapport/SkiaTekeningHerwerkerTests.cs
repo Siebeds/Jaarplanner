@@ -19,13 +19,13 @@ public sealed class SkiaTekeningHerwerkerTests
     private readonly SkiaTekeningHerwerker _herwerker = new();
 
     [Fact]
-    public void Een_JPEG_verliest_EXIF_met_GPS_XMP_en_commentaar()
+    public async Task Een_JPEG_verliest_EXIF_met_GPS_XMP_en_commentaar()
     {
         var bron = Testbeelden.JpegMetMetagegevens();
         Assert.Contains((byte)0xE1, Testbeelden.JpegMarkers(bron));
         Assert.True(Testbeelden.Bevat(bron, Testbeelden.Camera));
 
-        var uit = _herwerker.Herwerk(bron);
+        var uit = await _herwerker.HerwerkAsync(bron);
 
         Assert.Equal((Beeldformaat.Jpeg, 40, 20), (uit.Formaat, uit.Breedte, uit.Hoogte));
         var markers = Testbeelden.JpegMarkers(uit.Inhoud);
@@ -41,12 +41,12 @@ public sealed class SkiaTekeningHerwerkerTests
     }
 
     [Fact]
-    public void Een_PNG_verliest_tekst_EXIF_en_tijd_en_houdt_alleen_zijn_beeld()
+    public async Task Een_PNG_verliest_tekst_EXIF_en_tijd_en_houdt_alleen_zijn_beeld()
     {
         var bron = Testbeelden.PngMetMetagegevens();
         Assert.Contains("tEXt", Testbeelden.PngChunks(bron));
 
-        var uit = _herwerker.Herwerk(bron);
+        var uit = await _herwerker.HerwerkAsync(bron);
 
         Assert.Equal((Beeldformaat.Png, 40, 20), (uit.Formaat, uit.Breedte, uit.Hoogte));
         // Only the chunks that draw the picture. sBIT says how many bits per channel are significant: a property of the
@@ -59,9 +59,9 @@ public sealed class SkiaTekeningHerwerkerTests
     }
 
     [Fact]
-    public void Een_PNG_met_transparantie_blijft_een_PNG_met_transparantie()
+    public async Task Een_PNG_met_transparantie_blijft_een_PNG_met_transparantie()
     {
-        var uit = _herwerker.Herwerk(Testbeelden.Png(40, 20, transparant: true));
+        var uit = await _herwerker.HerwerkAsync(Testbeelden.Png(40, 20, transparant: true));
 
         using var gelezen = SKBitmap.Decode(uit.Inhoud);
         Assert.Equal(Beeldformaat.Png, uit.Formaat);
@@ -74,9 +74,9 @@ public sealed class SkiaTekeningHerwerkerTests
     [InlineData((ushort)3, 40, 20, "rechts rood")]
     [InlineData((ushort)6, 20, 40, "boven rood")]
     [InlineData((ushort)8, 20, 40, "onder rood")]
-    public void Een_foto_komt_rechtop_zoals_de_telefoon_ze_bedoelde(ushort orientatie, int breedte, int hoogte, string waar)
+    public async Task Een_foto_komt_rechtop_zoals_de_telefoon_ze_bedoelde(ushort orientatie, int breedte, int hoogte, string waar)
     {
-        var uit = _herwerker.Herwerk(Testbeelden.JpegMetMetagegevens(40, 20, orientatie));
+        var uit = await _herwerker.HerwerkAsync(Testbeelden.JpegMetMetagegevens(40, 20, orientatie));
 
         Assert.Equal((breedte, hoogte), (uit.Breedte, uit.Hoogte));
         using var gelezen = SKBitmap.Decode(uit.Inhoud);
@@ -95,11 +95,11 @@ public sealed class SkiaTekeningHerwerkerTests
     [InlineData("jpeg", 3000, 1500, 2400, 1200)]
     [InlineData("png", 2600, 100, 2400, 92)]
     [InlineData("jpeg", 1200, 2400, 1200, 2400)]
-    public void Een_grote_foto_wordt_verkleind_tot_de_langste_zijde_2400_is(string soort, int breedte, int hoogte, int naarBreedte, int naarHoogte)
+    public async Task Een_grote_foto_wordt_verkleind_tot_de_langste_zijde_2400_is(string soort, int breedte, int hoogte, int naarBreedte, int naarHoogte)
     {
         var bron = soort == "png" ? Testbeelden.Png(breedte, hoogte) : Testbeelden.Jpeg(breedte, hoogte);
 
-        var uit = _herwerker.Herwerk(bron);
+        var uit = await _herwerker.HerwerkAsync(bron);
 
         Assert.Equal((naarBreedte, naarHoogte), (uit.Breedte, uit.Hoogte));
         using var gelezen = SKBitmap.Decode(uit.Inhoud);
@@ -107,18 +107,18 @@ public sealed class SkiaTekeningHerwerkerTests
     }
 
     [Fact]
-    public void Een_beeld_met_te_veel_pixels_wordt_geweigerd_op_zijn_kop_alleen()
+    public async Task Een_beeld_met_te_veel_pixels_wordt_geweigerd_op_zijn_kop_alleen()
     {
         // 8000 × 6000 is 48 million pixels, in a file of a few dozen bytes: nothing to decode, only a header to read.
-        var fout = Assert.Throws<TekeningGeweigerdFout>(() => _herwerker.Herwerk(Testbeelden.PngMetKop(8000, 6000)));
+        var fout = await Assert.ThrowsAsync<TekeningGeweigerdFout>(() => _herwerker.HerwerkAsync(Testbeelden.PngMetKop(8000, 6000)));
         Assert.Equal(Tekeningweigering.TeVeelPixels, fout.Reden);
     }
 
     [Fact]
-    public void Een_beeld_op_de_pixelgrens_wordt_niet_om_zijn_pixels_geweigerd()
+    public async Task Een_beeld_op_de_pixelgrens_wordt_niet_om_zijn_pixels_geweigerd()
     {
         // Exactly 40 million pixels passes the header check, and then fails on its one byte of pixel data.
-        var fout = Assert.Throws<TekeningGeweigerdFout>(() => _herwerker.Herwerk(Testbeelden.PngMetKop(8000, 5000)));
+        var fout = await Assert.ThrowsAsync<TekeningGeweigerdFout>(() => _herwerker.HerwerkAsync(Testbeelden.PngMetKop(8000, 5000)));
         Assert.Equal(Tekeningweigering.GeenJpegOfPng, fout.Reden);
     }
 
@@ -134,10 +134,49 @@ public sealed class SkiaTekeningHerwerkerTests
 
     [Theory]
     [MemberData(nameof(GeenJpegOfPng))]
-    public void Wat_geen_leesbare_JPEG_of_PNG_is_wordt_geweigerd(string soort, byte[] bron)
+    public async Task Wat_geen_leesbare_JPEG_of_PNG_is_wordt_geweigerd(string soort, byte[] bron)
     {
-        var fout = Assert.Throws<TekeningGeweigerdFout>(() => _herwerker.Herwerk(bron));
+        var fout = await Assert.ThrowsAsync<TekeningGeweigerdFout>(() => _herwerker.HerwerkAsync(bron));
         Assert.Equal(Tekeningweigering.GeenJpegOfPng, fout.Reden);
         Assert.DoesNotContain(soort, fout.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Een_verzoek_wacht_op_een_vrije_plaats_zonder_een_thread_vast_te_houden()
+    {
+        // Every place taken: a blocking wait would not return from the call at all.
+        using var plaatsen = new SemaphoreSlim(0, 2);
+        var herwerker = new SkiaTekeningHerwerker(plaatsen);
+
+        var wacht = herwerker.HerwerkAsync(Testbeelden.Jpeg(40, 20));
+        Assert.False(wacht.IsCompleted);
+
+        plaatsen.Release();
+        var uit = await wacht.WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal((Beeldformaat.Jpeg, 40, 20), (uit.Formaat, uit.Breedte, uit.Hoogte));
+        Assert.Equal(1, plaatsen.CurrentCount);
+    }
+
+    [Fact]
+    public async Task Een_wachtend_verzoek_dat_afgebroken_wordt_stopt_met_wachten_en_neemt_geen_plaats()
+    {
+        using var plaatsen = new SemaphoreSlim(0, 2);
+        var herwerker = new SkiaTekeningHerwerker(plaatsen);
+        using var afbreken = new CancellationTokenSource();
+
+        var wacht = herwerker.HerwerkAsync(Testbeelden.Jpeg(40, 20), afbreken.Token);
+        Assert.False(wacht.IsCompleted);
+
+        await afbreken.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => wacht.WaitAsync(TimeSpan.FromSeconds(30)));
+        Assert.Equal(0, plaatsen.CurrentCount);
+
+        // The place it never took is still there for the next one.
+        plaatsen.Release();
+        var uit = await herwerker.HerwerkAsync(Testbeelden.Jpeg(40, 20));
+        Assert.Equal(Beeldformaat.Jpeg, uit.Formaat);
+        Assert.Equal(1, plaatsen.CurrentCount);
     }
 }
