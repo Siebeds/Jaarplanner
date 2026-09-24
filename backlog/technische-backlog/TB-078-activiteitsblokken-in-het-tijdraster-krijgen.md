@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 11:25
 opgepakt-door: claude-tb-hoeken
 branch: ticket/TB-activiteit-hoeken
-pr:
+pr: 184
 geblokkeerd:
 fr: []
 ---
@@ -40,3 +40,4 @@ Geen.
 - 2026-09-24 11:21 · claude-tb-hoeken · aangemaakt (status in-uitvoering)
 - 2026-09-24 11:25 · claude-tb-hoeken · blok en landingsvak rounded-md; criteria 1 en 3 afgevinkt na screenshot van de mockagenda op 1440 en 390 px, het landingsvak alleen in de code nagekeken
 - 2026-09-24 11:25 · claude-tb-hoeken · in-uitvoering → klaar: gebouwd; plan-tests (291) en pnpm lint groen
+- 2026-09-24 11:25 · claude-tb-hoeken · PR #184
