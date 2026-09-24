@@ -490,23 +490,16 @@
     "volgendWoord": "Nog een woord",
     "haalWeg": "{woord} weghalen"
   },
-  "voorstelstapel": {
+  "voorstellijst": {
     "woordenLabel": "Woordvoorstellen van de AI",
     "doelenLabel": "Doelsuggesties van de AI",
-    "teller": "{nummer} van {totaal}",
-    "aanvaard": "Aanvaard",
-    "weiger": "Weiger",
-    "aanvaardAria": "{naam} aanvaarden",
-    "weigerAria": "{naam} weigeren",
-    "aanvaardToets": "A",
-    "weigerToets": "W",
+    "aiVoorstel": "AI-voorstel",
     "gepauzeerd": "Gepauzeerd zolang je hier bent.",
-    "restAanvaarden": "Alle {aantal} aanvaarden",
-    "restWeigeren": "Alle {aantal} weigeren",
-    "restWordtAanvaard": "{aantal} voorstellen worden aanvaard.",
-    "restWordtGeweigerd": "{aantal} voorstellen worden geweigerd.",
-    "ongedaan": "Ongedaan maken",
-    "klaar": "Alles beoordeeld: {aanvaard} aanvaard, {geweigerd} geweigerd."
+    "alleAanvaarden": "Alle {aantal} aanvaarden",
+    "alleWeigeren": "Alle {aantal} weigeren",
+    "alleWordtAanvaard": "{aantal} voorstellen worden aanvaard.",
+    "alleWordtGeweigerd": "{aantal} voorstellen worden geweigerd.",
+    "ongedaan": "Ongedaan maken"
   },
   "woordweb": {
     "titel": "Woordweb",

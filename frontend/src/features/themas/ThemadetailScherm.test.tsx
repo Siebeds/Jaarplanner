@@ -457,8 +457,8 @@ describe("ThemadetailScherm: wie wat mag", () => {
     // It calls the model, so it wears the AI ring (ADR-0039).
     expect(knop(t("thema.suggestiesVragen"))).toHaveClass("knop-ai");
     expect(await screen.findByText(SUGGESTIE.aiMotivatie)).toBeInTheDocument();
-    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
-    expect(knop(t("voorstelstapel.weigerAria", { naam: "K-9.1.1" }))).not.toBeNull();
+    expect(knop(`${t("plaatsing.aanvaard")}: K-9.1.1`)).not.toBeNull();
+    expect(knop(`${t("plaatsing.weiger")}: K-9.1.1`)).not.toBeNull();
 
     // I26 needs a wizard run's state the frontend does not read, so the delete is admin's here: no "…" at all, since
     // it would hold nothing.
@@ -567,13 +567,13 @@ describe("ThemadetailScherm: wie wat mag", () => {
         .filter(([pad, init]) => init?.method === "PUT" && pad.endsWith("/doelsuggesties/sug-1/status"))
         .map(([, init]) => JSON.parse(String(init!.body)));
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
+    fireEvent.click(screen.getByRole("button", { name: `${t("plaatsing.aanvaard")}: K-9.1.1` }));
     await waitFor(() => expect(beslissingen()).toEqual([{ status: "Aanvaard" }]));
   });
 
   it("toont de voorstellen in de volgorde van de server, het best passende eerst", async () => {
     // Owner ruling 2026-09-16: the model's order, which the server keeps as a rank. Not sorted by code here, and the
-    // stack shows the first one on top.
+    // list shows the first one on top.
     toon(ikMet({ heeftThemabeheer: true }), {
       suggesties: [
         { ...SUGGESTIE, id: "sug-b", minimumdoelRef: "K-9.9.9", aiMotivatie: "Past het best." },
@@ -583,22 +583,29 @@ describe("ThemadetailScherm: wie wat mag", () => {
     });
 
     expect(await screen.findByText("Past het best.")).toBeInTheDocument();
-    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 1, totaal: 2 }))).toBeInTheDocument();
-    expect(screen.queryByText("Past ook.")).toBeNull();
+    const lijst = screen.getByRole("region", { name: t("voorstellijst.doelenLabel") });
+    expect(within(lijst).getAllByRole("listitem").map((rij) => rij.textContent)).toEqual([
+      expect.stringContaining("Past het best."),
+      expect.stringContaining("Past ook."),
+    ]);
+    // Right under the AI button, above the themadoelen (TB-076), so a new batch is not below the fold.
+    const themadoel = knop(t("thema.minimumdoelOntkoppel", { ref: "K-MD-1" }))!;
+    expect(lijst.compareDocumentPosition(themadoel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.weigerAria", { naam: "K-9.9.9" }) }));
-    expect(await screen.findByText("Past ook.")).toBeInTheDocument();
-    // A decided proposal is never on the stack.
+    fireEvent.click(screen.getByRole("button", { name: `${t("plaatsing.weiger")}: K-9.9.9` }));
+    await waitFor(() => expect(screen.queryByText("Past het best.")).toBeNull());
+    expect(screen.getByText("Past ook.")).toBeInTheDocument();
+    // A decided proposal is never in the list.
     expect(screen.queryByText("Beslist.")).toBeNull();
   });
 
   it("zegt het wanneer de server een oordeel over een doelsuggestie weigert", async () => {
     toon(ikMet({ heeftThemabeheer: true }), { weiger: true });
-    fireEvent.click(await screen.findByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }) }));
+    fireEvent.click(await screen.findByRole("button", { name: `${t("plaatsing.aanvaard")}: K-9.1.1` }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Je hebt geen toegang tot deze actie.");
-    // The refused suggestion is back on the stack, still waiting for a decision.
-    expect(knop(t("voorstelstapel.aanvaardAria", { naam: "K-9.1.1" }))).not.toBeNull();
+    // The refused suggestion is back in the list, still waiting for a decision.
+    expect(knop(`${t("plaatsing.aanvaard")}: K-9.1.1`)).not.toBeNull();
   });
 });
 

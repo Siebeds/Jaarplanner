@@ -131,7 +131,7 @@ describe("Woordweb", () => {
     const oproepen = toon([EIGEN]);
 
     expect(await screen.findByText("Wolken brengen regen.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam: "wolk" }) }));
+    fireEvent.click(screen.getByRole("button", { name: `${t("plaatsing.aanvaard")}: wolk` }));
 
     await waitFor(() => expect(schrijfOproepen(oproepen)).toHaveLength(1));
     const [oproep] = schrijfOproepen(oproepen);

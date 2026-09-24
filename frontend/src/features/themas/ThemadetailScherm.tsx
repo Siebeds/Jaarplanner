@@ -3,7 +3,6 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { SUBTHEMA_PARAMETER } from "./themapagina";
 import { Schermkop, Schermvlak } from "../../app/Schermkop";
 import { AiKnop, Knop } from "../../components/ui/Knop";
-import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadvlak, Laadlijst } from "../../components/ui/Laadvlak";
 import { Bevestiging } from "../../components/ui/Bevestiging";
@@ -28,6 +27,7 @@ import { Themaformulier } from "./Themaformulier";
 import { Subthemaformulier } from "./Subthemaformulier";
 import { Subthemahoofdstuk } from "./Subthemahoofdstuk";
 import { Plaatsingsbalk, Subthemavoorstelkaart } from "./Subdoelplaatsing";
+import { Voorstellijst } from "./Voorstellijst";
 import { beslisFout, useBeslisSubdoelvoorstel, useSubdoelplaatsing } from "./plaatsingen";
 import { Kaart, Sectie } from "./Fiche";
 import { Leeftijdkeuze } from "./Leeftijdkeuze";
@@ -548,6 +548,55 @@ export function ThemadetailScherm() {
               <p id="doelsuggesties-kies-leeftijd" className="mt-2 text-meta text-inkt-zacht">{t("thema.kiesLeeftijd")}</p>
             ) : null}
 
+            {/* A refusal's own Dutch sentence where the server wrote one. A 422 is a bad model answer and its detail is
+                an English operator diagnostic (Art. II.3), so the catalogue line stands in for it. */}
+            {genereer.isError ? (
+              <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
+                {genereer.error instanceof ApiError && genereer.error.status !== 422 && genereer.error.detail
+                  ? genereer.error.detail
+                  : t("thema.suggestiesMislukt")}
+              </p>
+            ) : null}
+
+            {/* Mounted before any run, with only its text swapped: several screen readers do not announce a live region
+                that appears with its content already in it (WCAG 4.1.3). */}
+            <p role="status" className={genereer.isSuccess ? "mt-3 text-meta text-inkt-zacht" : "sr-only"}>
+              {genereer.isSuccess ? resultaatZin(genereer.data) : null}
+            </p>
+
+            {/* Open suggestions, as one list under the AI button and above the themadoelen (TB-076), only for whoever may
+                decide them (R14: admin and themabeheer; owner, 2026-09-14: kept hidden from everyone else). */}
+            {mag.doelsuggestiesBeoordelen && openSuggesties.length > 0 ? (
+              <>
+                <h4 className="mt-4 text-meta font-semibold text-inkt-zacht">{t("thema.suggesties")}</h4>
+                <div className="mt-2">
+                  <Voorstellijst
+                    label={t("voorstellijst.doelenLabel")}
+                    voorstellen={openSuggesties.map((suggestie) => ({
+                      id: suggestie.id,
+                      naam: suggestie.minimumdoelRef,
+                      // The MD chip the themadoel rows wear, and the mijlpaal (FB-053): the goal it would become.
+                      kop: (
+                        <>
+                          <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                            {suggestie.minimumdoelRef}
+                          </span>
+                          {suggestie.mijlpaal ? (
+                            <span className="text-meta text-inkt-zacht">
+                              {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
+                            </span>
+                          ) : null}
+                        </>
+                      ),
+                      inhoud: suggestie.omschrijving ?? suggestie.minimumdoelRef,
+                      motivatie: suggestie.aiMotivatie,
+                    }))}
+                    onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
+                  />
+                </div>
+              </>
+            ) : null}
+
             <div className="mt-3">
               {thema.minimumdoelen.length === 0 ? (
                 <p className="text-meta text-inkt-zacht">{t("thema.geenThemadoelen")}</p>
@@ -579,54 +628,6 @@ export function ThemadetailScherm() {
               </p>
             ) : null}
 
-            {/* A refusal's own Dutch sentence where the server wrote one. A 422 is a bad model answer and its detail is
-                an English operator diagnostic (Art. II.3), so the catalogue line stands in for it. */}
-            {genereer.isError ? (
-              <p className="mt-3 rounded-veld bg-attentie-zacht px-3 py-2 text-meta font-medium text-attentie-inkt">
-                {genereer.error instanceof ApiError && genereer.error.status !== 422 && genereer.error.detail
-                  ? genereer.error.detail
-                  : t("thema.suggestiesMislukt")}
-              </p>
-            ) : null}
-
-            {/* Mounted before any run, with only its text swapped: several screen readers do not announce a live region
-                that appears with its content already in it (WCAG 4.1.3). */}
-            <p role="status" className={genereer.isSuccess ? "mt-3 text-meta text-inkt-zacht" : "sr-only"}>
-              {genereer.isSuccess ? resultaatZin(genereer.data) : null}
-            </p>
-
-            {/* Open suggestions, one at a time (TB-045), only for whoever may decide them (R14: admin and themabeheer;
-                owner, 2026-09-14: kept hidden from everyone else). */}
-            {mag.doelsuggestiesBeoordelen && openSuggesties.length > 0 ? (
-              <>
-                <h4 className="mt-5 text-meta font-semibold text-inkt-zacht">{t("thema.suggesties")}</h4>
-                <div className="mt-2">
-                  <Voorstelstapel
-                    label={t("voorstelstapel.doelenLabel")}
-                    voorstellen={openSuggesties.map((suggestie) => ({
-                      id: suggestie.id,
-                      naam: suggestie.minimumdoelRef,
-                      // The MD chip the themadoel rows wear, and the mijlpaal (FB-053): the goal it would become.
-                      kop: (
-                        <>
-                          <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
-                            {suggestie.minimumdoelRef}
-                          </span>
-                          {suggestie.mijlpaal ? (
-                            <span className="text-meta text-inkt-zacht">
-                              {MIJLPAAL[suggestie.mijlpaal] ? t(MIJLPAAL[suggestie.mijlpaal]) : suggestie.mijlpaal}
-                            </span>
-                          ) : null}
-                        </>
-                      ),
-                      inhoud: suggestie.omschrijving ?? suggestie.minimumdoelRef,
-                      motivatie: suggestie.aiMotivatie,
-                    }))}
-                    onBeslis={(suggestieId, status) => beoordeel.mutateAsync({ suggestieId, status })}
-                  />
-                </div>
-              </>
-            ) : null}
           </Kaart>
 
           {/* THE LEERPLANDOELEN PER LEEFTIJD (FB-009), shut, under the themadoelen they are the concordance of. */}

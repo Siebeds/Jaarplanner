@@ -2,7 +2,7 @@ import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { IcoonKruis } from "../../components/Iconen";
 import { AiKnop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { Voorstelstapel } from "../../components/ui/Voorstelstapel";
+import { Voorstellijst } from "./Voorstellijst";
 import { ApiError } from "../../lib/api";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { WoordwebWeergave, WoordwebWoord } from "../../lib/types";
@@ -25,8 +25,8 @@ const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord
  * **Every write saves at once**, so there is no Bewaren: a word is typed and Enter, a comma or a paste of a list sends
  * it. The field keeps what was typed until the server took it.
  *
- * **The AI's proposals wait below the web, one at a time with its reason**, in the same `Voorstelstapel` as the
- * doelsuggesties on this screen (TB-045), so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1
+ * **The AI's proposals wait below the web as one list, each with its reason**, in the same `Voorstellijst` as the
+ * doelsuggesties on this screen (TB-076), so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1
  * to IV.3). Only the owner's web gets them, and the AI control stays disabled, with the one sentence that says why,
  * until the web holds a word of her own (W5).
  *
@@ -127,8 +127,8 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
 
       {eigen !== null && voorstellen.length > 0 ? (
         <div className="mt-3">
-          <Voorstelstapel
-            label={t("voorstelstapel.woordenLabel")}
+          <Voorstellijst
+            label={t("voorstellijst.woordenLabel")}
             voorstellen={voorstellen.map((voorstel) => ({
               id: voorstel.id,
               naam: voorstel.woord,

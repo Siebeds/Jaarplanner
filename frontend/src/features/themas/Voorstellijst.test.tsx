@@ -1,7 +1,7 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { t } from "../../i18n";
-import { UITSTEL_MS, Voorstelstapel, type Besluit, type Voorstel } from "./Voorstelstapel";
+import { UITSTEL_MS, Voorstellijst, type Besluit, type Voorstel } from "./Voorstellijst";
 
 const VOORSTELLEN: Voorstel[] = [
   { id: "v-1", naam: "wolk", inhoud: "wolk", motivatie: "Wolken brengen regen." },
@@ -9,11 +9,11 @@ const VOORSTELLEN: Voorstel[] = [
   { id: "v-3", naam: "donder", inhoud: "donder", motivatie: "Hoort bij onweer." },
 ];
 
-const aanvaard = (naam: string) => screen.queryByRole("button", { name: t("voorstelstapel.aanvaardAria", { naam }) });
-const weiger = (naam: string) => screen.queryByRole("button", { name: t("voorstelstapel.weigerAria", { naam }) });
+const aanvaard = (naam: string) => screen.queryByRole("button", { name: `${t("plaatsing.aanvaard")}: ${naam}` });
+const weiger = (naam: string) => screen.queryByRole("button", { name: `${t("plaatsing.weiger")}: ${naam}` });
 
 function toon(onBeslis = vi.fn<(id: string, besluit: Besluit) => Promise<unknown>>(async () => undefined)) {
-  const gevolg = render(<Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN} onBeslis={onBeslis} />);
+  const gevolg = render(<Voorstellijst label="Voorstellen" voorstellen={VOORSTELLEN} onBeslis={onBeslis} />);
   return { onBeslis, ...gevolg };
 }
 
@@ -27,30 +27,29 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe("Voorstelstapel", () => {
-  it("toont één voorstel tegelijk, met zijn motivatie en de teller", () => {
+describe("Voorstellijst", () => {
+  it("toont alle voorstellen tegelijk in één lijst, elk met zijn motivatie, het AI-merk en de beslisknoppen", () => {
     toon();
 
-    expect(screen.getByText("Wolken brengen regen.")).toBeInTheDocument();
-    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 1, totaal: 3 }))).toBeInTheDocument();
-    expect(aanvaard("wolk")).not.toBeNull();
-    expect(aanvaard("plas")).toBeNull();
-    expect(screen.queryByText("Na de regen.")).toBeNull();
+    const rijen = within(screen.getByRole("region", { name: "Voorstellen" })).getAllByRole("listitem");
+    expect(rijen).toHaveLength(3);
+    for (const [i, rij] of rijen.entries()) {
+      expect(rij).toHaveClass("voorstel-ai");
+      expect(within(rij).getByText(t("voorstellijst.aiVoorstel"))).toBeInTheDocument();
+      expect(within(rij).getByText(VOORSTELLEN[i].motivatie!)).toBeInTheDocument();
+    }
+    expect(aanvaard("plas")).not.toBeNull();
+    expect(weiger("donder")).not.toBeNull();
   });
 
-  it("bewaart een beslissing meteen en toont het volgende voorstel, ook met de sneltoetsen", async () => {
+  it("bewaart een beslissing meteen en haalt de rij weg", () => {
     const { onBeslis } = toon();
 
-    fireEvent.click(aanvaard("wolk")!);
-    expect(onBeslis).toHaveBeenCalledWith("v-1", "Aanvaard");
-    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 2, totaal: 3 }))).toBeInTheDocument();
+    fireEvent.click(weiger("plas")!);
 
-    fireEvent.keyDown(weiger("plas")!, { key: "w" });
     expect(onBeslis).toHaveBeenCalledWith("v-2", "Geweigerd");
-
-    fireEvent.keyDown(aanvaard("donder")!, { key: "A" });
-    expect(onBeslis).toHaveBeenCalledWith("v-3", "Aanvaard");
-    expect(await screen.findByText(t("voorstelstapel.klaar", { aanvaard: 2, geweigerd: 1 }))).toBeInTheDocument();
+    expect(screen.queryByText("Na de regen.")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
   });
 
   it("zet een voorstel terug wanneer het bewaren mislukt", async () => {
@@ -66,9 +65,9 @@ describe("Voorstelstapel", () => {
     vi.useFakeTimers();
     const { onBeslis } = toon();
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.restAanvaarden", { aantal: 3 }) }));
+    fireEvent.click(screen.getByRole("button", { name: t("voorstellijst.alleAanvaarden", { aantal: 3 }) }));
 
-    expect(screen.getByRole("status")).toHaveTextContent(t("voorstelstapel.restWordtAanvaard", { aantal: 3 }));
+    expect(screen.getByRole("status")).toHaveTextContent(t("voorstellijst.alleWordtAanvaard", { aantal: 3 }));
     expect(onBeslis).not.toHaveBeenCalled();
     gaVerder();
 
@@ -87,14 +86,15 @@ describe("Voorstelstapel", () => {
     vi.useFakeTimers();
     const { onBeslis } = toon();
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.restWeigeren", { aantal: 3 }) }));
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.ongedaan") }));
+    fireEvent.click(screen.getByRole("button", { name: t("voorstellijst.alleWeigeren", { aantal: 3 }) }));
+    fireEvent.click(screen.getByRole("button", { name: t("voorstellijst.ongedaan") }));
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(UITSTEL_MS * 2);
     });
 
     expect(onBeslis).not.toHaveBeenCalled();
+    expect(screen.getAllByRole("listitem")).toHaveLength(3);
     expect(aanvaard("wolk")).toHaveFocus();
   });
 
@@ -102,13 +102,13 @@ describe("Voorstelstapel", () => {
     vi.useFakeTimers();
     const { onBeslis } = toon();
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.restAanvaarden", { aantal: 3 }) }));
-    const ongedaan = screen.getByRole("button", { name: t("voorstelstapel.ongedaan") });
+    fireEvent.click(screen.getByRole("button", { name: t("voorstellijst.alleAanvaarden", { aantal: 3 }) }));
+    const ongedaan = screen.getByRole("button", { name: t("voorstellijst.ongedaan") });
     expect(ongedaan).toHaveFocus();
     gaVerder();
 
     fireEvent.pointerEnter(screen.getByRole("status"));
-    expect(screen.getByText(t("voorstelstapel.gepauzeerd"))).toBeInTheDocument();
+    expect(screen.getByText(t("voorstellijst.gepauzeerd"))).toBeInTheDocument();
     await act(async () => {
       await vi.advanceTimersByTimeAsync(UITSTEL_MS * 3);
     });
@@ -121,41 +121,41 @@ describe("Voorstelstapel", () => {
     expect(onBeslis).toHaveBeenCalledTimes(3);
   });
 
-  it("zet een nieuwe reeks voorstellen niet in de plaats van beslissingen die nog bewaard worden", async () => {
+  it("toont een nieuwe reeks voorstellen naast een beslissing die nog bewaard wordt", async () => {
     let klaar: () => void = () => {};
     const onBeslis = vi.fn(() => new Promise<void>((los) => (klaar = los)));
     const { rerender } = render(
-      <Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN.slice(0, 1)} onBeslis={onBeslis} />,
+      <Voorstellijst label="Voorstellen" voorstellen={VOORSTELLEN.slice(0, 1)} onBeslis={onBeslis} />,
     );
     fireEvent.click(aanvaard("wolk")!);
 
     // The server has not answered yet, and a new AI run brings two more.
-    rerender(<Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN} onBeslis={onBeslis} />);
+    rerender(<Voorstellijst label="Voorstellen" voorstellen={VOORSTELLEN} onBeslis={onBeslis} />);
 
     expect(aanvaard("wolk")).toBeNull();
     expect(aanvaard("plas")).not.toBeNull();
-    expect(screen.getByText(t("voorstelstapel.teller", { nummer: 2, totaal: 3 }))).toBeInTheDocument();
+    expect(aanvaard("donder")).not.toBeNull();
     await act(async () => klaar());
   });
 
-  it("schrijft een wachtende beslissing meteen wanneer de stapel verdwijnt", () => {
+  it("schrijft een wachtende beslissing meteen wanneer de lijst verdwijnt", () => {
     const { onBeslis, unmount } = toon();
 
-    fireEvent.click(screen.getByRole("button", { name: t("voorstelstapel.restWeigeren", { aantal: 3 }) }));
+    fireEvent.click(screen.getByRole("button", { name: t("voorstellijst.alleWeigeren", { aantal: 3 }) }));
     unmount();
 
     expect(onBeslis).toHaveBeenCalledWith("v-1", "Geweigerd");
   });
 
   it("biedt Alle aanvaarden niet aan voor één voorstel", () => {
-    render(<Voorstelstapel label="Voorstellen" voorstellen={VOORSTELLEN.slice(0, 1)} onBeslis={async () => undefined} />);
+    render(<Voorstellijst label="Voorstellen" voorstellen={VOORSTELLEN.slice(0, 1)} onBeslis={async () => undefined} />);
 
     expect(aanvaard("wolk")).not.toBeNull();
-    expect(screen.queryByRole("button", { name: t("voorstelstapel.restAanvaarden", { aantal: 1 }) })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("voorstellijst.alleAanvaarden", { aantal: 1 }) })).toBeNull();
   });
 
   it("toont niets zonder voorstellen", () => {
-    const { container } = render(<Voorstelstapel label="Voorstellen" voorstellen={[]} onBeslis={async () => undefined} />);
+    const { container } = render(<Voorstellijst label="Voorstellen" voorstellen={[]} onBeslis={async () => undefined} />);
 
     expect(container).toBeEmptyDOMElement();
   });
