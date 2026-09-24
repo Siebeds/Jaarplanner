@@ -4,7 +4,13 @@ import { Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPlus, IcoonVink } from "../../components/Iconen";
 import { dagMaandVoluit, periodeVoluit, valtBinnen, vandaag } from "../../lib/datum";
 import { t } from "../../i18n";
-import type { HoekWeergave, SubthemaperiodeVerrijkingen } from "./gegevens";
+import {
+  useHoekverrijkingsvoorstellen,
+  type HoekWeergave,
+  type HoekverrijkingsvoorstelWeergave,
+  type SubthemaperiodeVerrijkingen,
+} from "./gegevens";
+import { Hoekvoorstel } from "./Hoekvoorstel";
 import { Toevoegtegel } from "./Toevoegtegel";
 import {
   aantalVerrijkt,
@@ -30,6 +36,7 @@ import {
  * for whoever may plan the klas. Absent when nothing is planned after it, and while that is not known.
  */
 export function Hoekenlijst({
+  klasId,
   laadt,
   mislukt,
   hoeken,
@@ -43,6 +50,8 @@ export function Hoekenlijst({
   voorbereidenId,
   onNieuw,
 }: {
+  /** The klas, for the AI proposals of whoever may plan it (FB-028). */
+  klasId: string;
   laadt: boolean;
   /** The corners' read failed and nothing is loaded. Not the same as a klas without corners (antagonist, E10-03). */
   mislukt: boolean;
@@ -59,6 +68,9 @@ export function Hoekenlijst({
   voorbereidenId: string;
   onNieuw: () => void;
 }) {
+  // Only for whoever may plan the klas: the server refuses anyone else, and a reader sees no proposal (ADR-0070 D8).
+  const voorstellen = useHoekverrijkingsvoorstellen(magPlannen ? klasId : null);
+
   if (laadt) return <Laadlijst rijen={3} />;
 
   if (mislukt) {
@@ -126,6 +138,7 @@ export function Hoekenlijst({
               onKiesHoek={onKiesHoek}
               verrijking={(hoekId) => verrijkingVan(week.periodes, reeks, hoekId) ?? null}
               magPlannen={magPlannen}
+              ai={magPlannen ? { klasId, reeks, voorstellen: voorstellen.data ?? [] } : undefined}
             />
           </Subthemablok>
         ))
@@ -202,6 +215,7 @@ function Hoekrijen({
   onKiesHoek,
   verrijking,
   magPlannen = false,
+  ai,
 }: {
   hoeken: readonly HoekWeergave[];
   blok: string;
@@ -209,14 +223,15 @@ function Hoekrijen({
   onKiesHoek: (hoekId: string, terugId: string) => void;
   verrijking?: (hoekId: string) => string | null;
   magPlannen?: boolean;
+  /** In a subthema block, for whoever may plan the klas: the AI beside each row and its open proposal (FB-028). */
+  ai?: { klasId: string; reeks: Verrijkingsreeks; voorstellen: readonly HoekverrijkingsvoorstelWeergave[] };
 }) {
   return (
     <ul className="mt-1">
       {hoeken.map((hoek) => {
         const id = rijId(blok, hoek.id);
         const tekst = verrijking?.(hoek.id);
-        return (
-          <li key={hoek.id} className="border-t border-lijn first:border-t-0">
+        const rij = (
             <button
               id={id}
               type="button"
@@ -239,6 +254,20 @@ function Hoekrijen({
                 </span>
               )}
             </button>
+        );
+        return (
+          <li key={hoek.id} className="border-t border-lijn first:border-t-0">
+            {ai ? (
+              <Hoekvoorstel
+                klasId={ai.klasId}
+                hoek={hoek}
+                reeks={ai.reeks}
+                voorstel={ai.voorstellen.find((v) => v.hoekId === hoek.id && v.subthemaId === ai.reeks.subthemaId) ?? null}
+                rij={rij}
+              />
+            ) : (
+              rij
+            )}
           </li>
         );
       })}
