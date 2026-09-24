@@ -5,7 +5,7 @@ soort: functioneel
 status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 17:55
+bijgewerkt: 2026-09-24 23:39
 opgepakt-door: claude-fb093
 branch: ticket/FB-093-chuck-onthoudt-gesprek
 pr: 199
@@ -115,3 +115,4 @@ mee; prioriteit hoog.
 - 2026-09-24 17:50 · claude-fb093 · browserpas met echte AI op een wegwerpkopie: scenario 1, 2, 3, 4, 5 en 7 (390px) werken; scenario 6 gedekt door de integratietest; geen vraag in het API-log
 - 2026-09-24 17:55 · claude-fb093 · in-uitvoering → te-testen: gebouwd: verzegelde beurten, de laatste tien gaan mee, vervalst = 409 zonder AI, opzoeking doelenVanSubthema, ADR-0069; criteria afgevinkt op unit-, integratie- en vitesttests en de browserpas; antagonist COMPLIANT, MINOR-punten opgelost; gates groen
 - 2026-09-24 17:55 · claude-fb093 · PR #199
+- 2026-09-24 23:39 · claude-fb093 · main gemerged; de ADR van dit ticket heet nu ADR-0071 (0069 en 0070 waren intussen op main genomen); tests en lint opnieuw groen
