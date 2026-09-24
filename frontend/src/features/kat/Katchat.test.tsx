@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useSelectie } from "../../state/selectie";
@@ -7,6 +7,11 @@ import type { Katantwoord } from "./chat";
 import { uitlegblokken } from "./chatzinnen";
 import { Gesprek, Vraagveld } from "./Katchat";
 import { useKatchat } from "./useKatchat";
+
+/** A sealed turn as the server sends it; the browser only sends it back (FB-093). */
+function beurt(n: number) {
+  return { vraag: `vraag ${n}`, antwoord: `{"soort":"onbekend","n":${n}}`, zegel: `zegel-${n}` };
+}
 
 /**
  * FB-031: the chat in Chuck's window. What it sends, and how each kind of answer reads. The server is faked; what the
@@ -62,6 +67,11 @@ function toon(onSluit = vi.fn()) {
   return onSluit;
 }
 
+/** Waits until Chuck has said he does not know this many times. */
+async function aantalAntwoorden(aantal: number) {
+  await waitFor(() => expect(screen.getAllByText(/^Dat weet ik niet\./)).toHaveLength(aantal));
+}
+
 function vraag(tekst: string) {
   fireEvent.change(screen.getByRole("textbox", { name: "Vraag het Chuck" }), { target: { value: tekst } });
   fireEvent.click(screen.getByRole("button", { name: "Vraag" }));
@@ -92,7 +102,7 @@ describe("de chat van Chuck", () => {
     expect(stap.tagName).toBe("LI");
     expect(stap.closest("ol")?.children).toHaveLength(2);
     expect(within(gesprek).getByText("Uit de handleiding: Een algemene fiche plannen")).toBeInTheDocument();
-    expect(verzoeken[0]).toEqual({ pad: "/api/kat/chat", lichaam: { vraag: "Hoe plan ik een algemene fiche?", schooljaarId: null } });
+    expect(verzoeken[0]).toEqual({ pad: "/api/kat/chat", lichaam: { vraag: "Hoe plan ik een algemene fiche?", schooljaarId: null, gesprek: [] } });
     expect(screen.getByRole("textbox", { name: "Vraag het Chuck" })).toHaveValue("");
   });
 
@@ -142,7 +152,7 @@ describe("de chat van Chuck", () => {
     expect(await screen.findByText("Ja, G-WI-03 zit in thema Herfst.")).toBeInTheDocument();
     expect(verzoeken[1]).toEqual({
       pad: "/api/kat/chat/opzoeking",
-      lichaam: { opzoeking: { ...opzoeking, doel: "G-WI-03" }, schooljaarId: null },
+      lichaam: { opzoeking: { ...opzoeking, doel: "G-WI-03" }, schooljaarId: null, vraag: "G-WI-03" },
     });
     expect(screen.getByRole("link", { name: "Subdoel van Bladeren (K3), thema Herfst" })).toHaveAttribute(
       "href",
@@ -194,6 +204,84 @@ describe("de chat van Chuck", () => {
     vraag("Hoe werkt de agenda?");
 
     expect(await screen.findByText("Ik kon je vraag nu niet beantwoorden. Probeer het later opnieuw.")).toBeInTheDocument();
+  });
+});
+
+describe("het gesprek met Chuck (FB-093)", () => {
+  it("stuurt bij een vervolgvraag de verzegelde beurten van het gesprek onveranderd mee", async () => {
+    antwoorden = [
+      { ...LEEG, soort: "Onbekend", beurt: beurt(1) },
+      { ...LEEG, soort: "Onbekend", beurt: beurt(2) },
+    ];
+    toon();
+    vraag("Zit K-1.5.2 in thema Herfst?");
+    expect(await screen.findByText(/^Dat weet ik niet\./)).toBeInTheDocument();
+    vraag("En in thema Water?");
+
+    await aantalAntwoorden(2);
+    expect(verzoeken[1].lichaam).toEqual({ vraag: "En in thema Water?", schooljaarId: null, gesprek: [beurt(1)] });
+  });
+
+  it("stuurt alleen de laatste tien beurten mee", async () => {
+    antwoorden = Array.from({ length: 13 }, (_, i) => ({ ...LEEG, soort: "Onbekend" as const, beurt: beurt(i + 1) }));
+    toon();
+    for (let i = 1; i <= 12; i++) {
+      vraag(`vraag ${i}`);
+      await aantalAntwoorden(i);
+    }
+    vraag("Wat vroeg ik eerst?");
+
+    await aantalAntwoorden(13);
+    const gesprek = (verzoeken[12].lichaam as { gesprek: unknown[] }).gesprek;
+    expect(gesprek).toHaveLength(10);
+    expect(gesprek[0]).toEqual(beurt(3));
+    expect(gesprek[9]).toEqual(beurt(12));
+  });
+
+  it("begint opnieuw als de server het gesprek niet meer herkent", async () => {
+    antwoorden = [{ ...LEEG, soort: "Onbekend", beurt: beurt(1) }];
+    toon();
+    vraag("Hoe werkt de agenda?");
+    expect(await screen.findByText(/^Dat weet ik niet\./)).toBeInTheDocument();
+
+    status = 409;
+    vraag("En verder?");
+    expect(await screen.findByText("Ik ben de draad van ons gesprek kwijt, dus ik begin opnieuw. Stel je vraag nog eens.")).toBeInTheDocument();
+    expect((verzoeken[1].lichaam as { gesprek: unknown[] }).gesprek).toEqual([beurt(1)]);
+
+    status = 200;
+    antwoorden = [{ ...LEEG, soort: "Onbekend", beurt: beurt(3) }];
+    vraag("En verder?");
+    await aantalAntwoorden(2);
+    expect((verzoeken[2].lichaam as { gesprek: unknown[] }).gesprek).toEqual([]);
+  });
+
+  it("noemt de doelen van een subthema met hun leeftijd", async () => {
+    antwoorden = [
+      {
+        ...LEEG,
+        soort: "DoelenVanSubthema",
+        subthema: "Bladeren",
+        plekken: [
+          {
+            soort: "Subdoel",
+            themaId: "t1",
+            thema: "Herfst",
+            subthemaId: "s1",
+            subthema: "Bladeren",
+            leeftijd: "K3",
+            doel: { code: "G-WO-01", soort: "Leerplandoel", tekst: "Voorwerpen sorteren." },
+            verwijzing: "/themas/t1?subthema=s1",
+          },
+        ],
+      },
+    ];
+    toon();
+    vraag("Welke doelen heeft dat subthema?");
+
+    expect(await screen.findByText("Deze doelen liggen vast in subthema Bladeren.")).toBeInTheDocument();
+    expect(screen.getByText("G-WO-01")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Subdoel van Bladeren (K3)" })).toHaveAttribute("href", "/themas/t1?subthema=s1");
   });
 });
 

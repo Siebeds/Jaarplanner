@@ -49,7 +49,7 @@ public sealed class Katopzoeker
             Katvraag.ActiviteitInSubthema => ActiviteitInSubthema(opzoeking, inhoud),
             Katvraag.SubthemaVanActiviteit => SubthemaVanActiviteit(opzoeking, inhoud),
             Katvraag.DoelenVanSubthema => await DoelenVanSubthemaAsync(opzoeking, inhoud, cancellationToken),
-            _ =>Katantwoord.Van(Katantwoordsoort.Mislukt),
+            _ => Katantwoord.Van(Katantwoordsoort.Mislukt),
         };
     }
 

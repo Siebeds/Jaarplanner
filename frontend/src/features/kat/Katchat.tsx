@@ -8,7 +8,7 @@ import { cn } from "../../lib/cn";
 import { useSelectie } from "../../state/selectie";
 import { Ballon } from "./Ballon";
 import { Kopje } from "./Tekening";
-import { MAX_VRAAG, type Katantwoord, type Katopzoeking, type Katplek } from "./chat";
+import { MAX_VRAAG, type Katantwoord, type Katantwoordsoort, type Katopzoeking, type Katplek } from "./chat";
 import type { Katchat } from "./useKatchat";
 import { agendazin, antwoordzin, doelplekzin, perKlas, plekzin, uitlegblokken } from "./chatzinnen";
 
@@ -20,6 +20,9 @@ import { agendazin, antwoordzin, doelplekzin, perKlas, plekzin, uitlegblokken } 
 
 /** A link in an answer: ink, underlined, so it reads as a link without the accent colour. */
 const LINK = "inline-flex min-h-6 items-center text-inkt underline decoration-inkt-zwak underline-offset-4 transition-colors duration-150 hover:decoration-inkt";
+
+/** The answers that are a list of goals, each under its code and text. */
+const DOELLIJST = new Set<Katantwoordsoort>(["DoelenVanThema", "DoelenVanSubthema"]);
 
 const TERM: Record<string, keyof Katopzoeking> = { Doel: "doel", Thema: "thema", Subthema: "subthema", Activiteit: "activiteit" };
 
@@ -86,7 +89,7 @@ function Antwoord({ antwoord, chat, onSluit }: { antwoord: Katantwoord; chat: Ka
         <p className="text-body text-inkt">{antwoordzin(antwoord)}</p>
       )}
 
-      {antwoord.doel && antwoord.soort !== "DoelenVanThema" ? (
+      {antwoord.doel && !DOELLIJST.has(antwoord.soort) ? (
         <p className="line-clamp-3 text-meta text-inkt-zacht">{antwoord.doel.tekst}</p>
       ) : null}
 
@@ -109,7 +112,7 @@ function Antwoord({ antwoord, chat, onSluit }: { antwoord: Katantwoord; chat: Ka
         </ul>
       ) : null}
 
-      {antwoord.soort === "DoelenVanThema" ? (
+      {DOELLIJST.has(antwoord.soort) ? (
         <Doellijst plekken={antwoord.plekken} volg={volg} />
       ) : (
         <Pleklijst plekken={antwoord.plekken} volg={volg} />
@@ -117,7 +120,7 @@ function Antwoord({ antwoord, chat, onSluit }: { antwoord: Katantwoord; chat: Ka
 
       {antwoord.voorstellen.length > 0 ? (
         <Deel kop={t("kat.chat.voorstellen")} merk>
-          {antwoord.soort === "DoelenVanThema" ? (
+          {DOELLIJST.has(antwoord.soort) ? (
             <Doellijst plekken={antwoord.voorstellen} volg={volg} />
           ) : (
             <Pleklijst plekken={antwoord.voorstellen} volg={volg} />

@@ -4,7 +4,8 @@ import { post } from "../../lib/api";
 /**
  * The cat's chat (FB-031, ADR-0066). The server answers a question with an explanation from the handleiding or with
  * the result of a lookup over the school's content; this side composes the sentences (`chatzinnen.ts`). Nothing is
- * cached: a question is a mutation, and the conversation lives only in the open window.
+ * cached: a question is a mutation, and the conversation lives only in the open window, whose last turns go along with
+ * each question (FB-093).
  */
 
 export type Katvraag =
@@ -12,7 +13,8 @@ export type Katvraag =
   | "WaarGebruikt"
   | "DoelenVanThema"
   | "ActiviteitInSubthema"
-  | "SubthemaVanActiviteit";
+  | "SubthemaVanActiviteit"
+  | "DoelenVanSubthema";
 
 /** Mirrors `Katopzoeking`: sent back as is, with one term replaced by the picked candidate. */
 export interface Katopzoeking {
@@ -72,6 +74,16 @@ export interface Katkandidaat {
   detail?: string | null;
 }
 
+/**
+ * One turn as the server sealed it (FB-093, ADR-0069): sent back unchanged with the next questions of the conversation.
+ * The browser never reads or builds one; a changed turn is refused.
+ */
+export interface Katbeurt {
+  vraag: string;
+  antwoord: string;
+  zegel: string;
+}
+
 /** Mirrors `Katantwoord`. */
 export interface Katantwoord {
   soort: Katantwoordsoort;
@@ -89,23 +101,30 @@ export interface Katantwoord {
   voorstellen: Katplek[];
   agenda: Katagendaplek[];
   agendaTotaal: number;
+  beurt?: Katbeurt | null;
 }
 
 /** The longest question the server accepts; the field stops there. */
 export const MAX_VRAAG = 500;
 
-/** Asks Chuck a question. The schooljaar decides which klassen the agenda part of an answer covers. */
+/** How many earlier turns go along with a question; the server takes no more (FB-093). */
+export const MAX_BEURTEN = 10;
+
+/**
+ * Asks Chuck a question after the turns of the conversation so far, oldest first. The schooljaar decides which klassen
+ * the agenda part of an answer covers.
+ */
 export function useVraagChuck() {
   return useMutation({
-    mutationFn: ({ vraag, schooljaarId }: { vraag: string; schooljaarId: string | null }) =>
-      post<Katantwoord>("/api/kat/chat", { vraag, schooljaarId }),
+    mutationFn: ({ vraag, schooljaarId, gesprek }: { vraag: string; schooljaarId: string | null; gesprek: Katbeurt[] }) =>
+      post<Katantwoord>("/api/kat/chat", { vraag, schooljaarId, gesprek }),
   });
 }
 
-/** Runs a lookup again with the candidate she picked; the model is not asked. */
+/** Runs a lookup again with the candidate she picked, whose label is her turn; the model is not asked. */
 export function useZoekOpnieuw() {
   return useMutation({
-    mutationFn: ({ opzoeking, schooljaarId }: { opzoeking: Katopzoeking; schooljaarId: string | null }) =>
-      post<Katantwoord>("/api/kat/chat/opzoeking", { opzoeking, schooljaarId }),
+    mutationFn: ({ opzoeking, schooljaarId, vraag }: { opzoeking: Katopzoeking; schooljaarId: string | null; vraag: string }) =>
+      post<Katantwoord>("/api/kat/chat/opzoeking", { opzoeking, schooljaarId, vraag }),
   });
 }
