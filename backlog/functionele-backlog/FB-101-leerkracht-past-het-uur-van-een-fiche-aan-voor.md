@@ -2,10 +2,10 @@
 id: FB-101
 titel: Leerkracht past het uur van een fiche aan voor één dag of voor de hele periode
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:59
+bijgewerkt: 2026-09-24 18:02
 opgepakt-door: claude-fb101
 branch: ticket/FB-101-fiche-uur-periode
 pr:
@@ -32,11 +32,11 @@ aanpassen. Voor hoeken kan het uur van de hele periode al wel.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een fiche op elke maandag van een periode, wanneer de leerkracht op één maandag het uur wijzigt met "alleen deze dag", dan verandert enkel die maandag.
-- [ ] Gegeven dezelfde fiche, wanneer ze het uur wijzigt met "alle dagen van deze periode", dan hebben alle dagen van die periode het nieuwe uur, en blijven de dagen en de dagteksten ongewijzigd.
-- [ ] Gegeven een uur dat de server weigert (bv. einde voor begin), dan verandert geen enkele dag en toont het scherm de reden.
-- [ ] Gegeven "alle dagen van deze periode" gekozen, dan kan de dag in hetzelfde scherm niet tegelijk verzet worden, en zegt het scherm dat een andere dag enkel met "alleen deze dag" kan.
-- [ ] Gegeven een gebruiker zonder planningsrecht op de klas, dan kan ze het uur van de periode niet aanpassen, ook niet rechtstreeks via de server.
+- [x] Gegeven een fiche op elke maandag van een periode, wanneer de leerkracht op één maandag het uur wijzigt met "alleen deze dag", dan verandert enkel die maandag.
+- [x] Gegeven dezelfde fiche, wanneer ze het uur wijzigt met "alle dagen van deze periode", dan hebben alle dagen van die periode het nieuwe uur, en blijven de dagen en de dagteksten ongewijzigd.
+- [x] Gegeven een uur dat de server weigert (bv. einde voor begin), dan verandert geen enkele dag en toont het scherm de reden.
+- [x] Gegeven "alle dagen van deze periode" gekozen, dan kan de dag in hetzelfde scherm niet tegelijk verzet worden, en zegt het scherm dat een andere dag enkel met "alleen deze dag" kan.
+- [x] Gegeven een gebruiker zonder planningsrecht op de klas, dan kan ze het uur van de periode niet aanpassen, ook niet rechtstreeks via de server.
 
 ## Testscenario's
 
@@ -61,3 +61,6 @@ Geen.
 - 2026-09-24 17:18 · Siebe · aangemaakt (status nieuw)
 - 2026-09-24 17:44 · claude-fb101 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (akkoord 'maak en bouw' 2026-09-24); gebouwd bovenop FB-100 omdat beide hetzelfde fichescherm raken
 - 2026-09-24 17:59 · claude-fb101 · gebouwd: PUT /api/algemene-ficheplaatsingen/{id}/uren (alles of niets, dubbele dag geweigerd met de dag erbij) en in het fichescherm de keuze Alleen deze dag / Alle dagen van deze periode; unit-, integratie- en Vitest-tests groen, browsercontrole mockmodus 1440 en 390px
+- 2026-09-24 18:02 · claude-fb101 · criteria afgevinkt: 1, 2, 4 via Vitest en de servicetests, 3 via service- en endpointtest (400, niets veranderd), 5 via endpointtest (403) en ElkeWijzigendeRouteVraagtEenRecht; browsercontrole mockmodus 1440 en 390px
+- 2026-09-24 18:02 · claude-fb101 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; drie MINOR opgelost: Bewaren werkt ook vanaf een apart verschoven dag, radio in inkt i.p.v. accent, optienaam tussen aanhalingstekens
+- 2026-09-24 18:02 · claude-fb101 · in-uitvoering → te-testen: gebouwd: uur voor alleen deze dag of voor alle dagen van de periode (nieuw eindpunt, alles of niets); unit-, integratie- en 1423 Vitest-tests groen, lint en dotnet format schoon, antagonist COMPLIANT

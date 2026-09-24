@@ -359,6 +359,22 @@ describe("Algemenefichedetailblad: uur voor één dag of de hele periode", () =>
     expect(JSON.parse(init.body)).toEqual({ begin: "13:00:00", einde: "13:50:00" });
   });
 
+  it("zet vanaf een apart verschoven dag diens uur voor de hele periode, zonder dat uur eerst te wijzigen", async () => {
+    // The fourth Monday already runs 13:00 to 13:50; the other three do not.
+    toon({ momentId: "m-4" });
+
+    const bewaar = screen.getByRole("button", { name: t("fichedetail.bewaren") });
+    expect(bewaar).toBeDisabled();
+    fireEvent.click(screen.getByRole("radio", { name: t("fichedetail.helePeriode") }));
+    expect(bewaar).toBeEnabled();
+    fireEvent.click(bewaar);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [pad, init] = fetchMock.mock.calls[0];
+    expect(pad).toBe("/api/algemene-ficheplaatsingen/p-1/uren");
+    expect(JSON.parse(init.body)).toEqual({ begin: "13:00:00", einde: "13:50:00" });
+  });
+
   it("zet de dag terug en vergrendelt hem wanneer ze de hele periode kiest", () => {
     toon({ momentId: "m-2" });
 

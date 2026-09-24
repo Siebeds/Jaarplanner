@@ -86,7 +86,7 @@ export function Algemenefichedetailblad({
   const aantalTeksten = plaatsing.momenten.filter((m) => m.tekst !== null).length;
 
   const bewerkt = moment !== undefined && !alleenLezen;
-  const dag = useDagvorm(plaatsing.id, moment, bezig, onSluit);
+  const dag = useDagvorm(plaatsing.id, plaatsing.momenten, moment, bezig, onSluit);
 
   return (
     <Blad
@@ -156,7 +156,7 @@ export function Algemenefichedetailblad({
                           checked={dag.bereik === keuze}
                           disabled={dag.bezig || bezig}
                           onChange={() => dag.zetBereik(keuze)}
-                          className="h-4 w-4 accent-accent"
+                          className="h-4 w-4 accent-inkt"
                         />
                         {keuze === "dag" ? t("fichedetail.alleenDezeDag") : t("fichedetail.helePeriode")}
                       </label>
@@ -302,6 +302,8 @@ export function Algemenefichedetailblad({
  */
 function useDagvorm(
   plaatsingId: string,
+  /** Every occurrence of the run, to know whether the hours for the whole period change anything. */
+  momenten: readonly AlgemeneFichemomentWeergave[],
   moment: AlgemeneFichemomentWeergave | undefined,
   /** The period is being taken out; nothing else should start. */
   vergrendeld: boolean,
@@ -319,9 +321,13 @@ function useDagvorm(
   // `HH:mm` sorts as it reads, so comparing the strings is comparing the times.
   const urenOngeldig = begin === "" || einde === "" || einde <= begin;
   const weekend = datum !== "" && weekdagIndex(datum) >= 5;
+  // For the whole period the question is whether ANY day differs from the chosen hours, not only the opened one: she
+  // may open the day she already moved to 14:00 to put every other day there too (antagonist, FB-101).
   const momentGewijzigd =
     moment !== undefined &&
-    (datum !== moment.datum || begin !== moment.begin.slice(0, 5) || einde !== moment.einde.slice(0, 5));
+    (bereik === "periode"
+      ? momenten.some((m) => m.begin.slice(0, 5) !== begin || m.einde.slice(0, 5) !== einde)
+      : datum !== moment.datum || begin !== moment.begin.slice(0, 5) || einde !== moment.einde.slice(0, 5));
   const tekstGewijzigd = moment !== undefined && tekst.trim() !== (moment.tekst ?? "");
   const bezig = verplaats.isPending || uren.isPending || zet.isPending;
   const kanBewaren =
