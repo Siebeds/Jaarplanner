@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-24 17:52
+bijgewerkt: 2026-09-24 17:53
 opgepakt-door: thema-leeftijden
 branch: ticket/FB-012-thema-leeftijden
-pr:
+pr: 198
 geblokkeerd:
 fr: [FR-3.3]
 ---
@@ -73,3 +73,4 @@ leeftijden**. Een thema per klas of een persoonlijk thema is niet gevraagd.
 - 2026-09-24 17:50 · thema-leeftijden · Antagonist: COMPLIANT, geen CRITICAL of MAJOR; de MINOR over het formulier zonder geladen jaarfasen is opgelost, de rest staat in backlog/worklogs/FB-012/antagonist.md.
 - 2026-09-24 17:51 · thema-leeftijden · Browserpas op een wegwerpkopie, desktop en 390px: alle vijf criteria gezien; de weigering raadt nu alleen aan wat echt in de weg staat.
 - 2026-09-24 17:52 · thema-leeftijden · in-uitvoering → te-testen: Gebouwd: thema met leeftijden (standaard alle), keuze per klas bij plaatsen en genereren, subthema binnen de leeftijden, weigering met namen. Unit 2378, frontend 1417, lint en format groen; de laatste volledige Postgres-run werd gestopt wegens geheugentekort.
+- 2026-09-24 17:53 · thema-leeftijden · PR #198
