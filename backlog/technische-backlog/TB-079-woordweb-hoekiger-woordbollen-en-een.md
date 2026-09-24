@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 11:48
+bijgewerkt: 2026-09-24 11:49
 opgepakt-door: claude-tb-woordweb-bollen
 branch: ticket/TB-woordweb-bollen
-pr:
+pr: 186
 geblokkeerd:
 fr: []
 ---
@@ -51,3 +51,4 @@ Geen.
 - 2026-09-24 11:43 · claude-tb-woordweb-bollen · aangemaakt (status in-uitvoering)
 - 2026-09-24 11:48 · claude-tb-woordweb-bollen · chips, kern en invoerveld rounded-md; AiKnop disabled met aria-describedby tot het eerste woord; vitest themas+i18n 188/188, pnpm lint groen, bekeken in mockmodus op 1280 en 390px
 - 2026-09-24 11:48 · claude-tb-woordweb-bollen · in-uitvoering → klaar: antagonist COMPLIANT; 2 MINOR niet opgelost: zin keert terug als alle eigen woorden weg zijn terwijl voorstellen wachten (volgt W5), en ticketnummer in codecommentaar
+- 2026-09-24 11:49 · claude-tb-woordweb-bollen · PR #186
