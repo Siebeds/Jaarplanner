@@ -21,9 +21,8 @@ cost. The drop row is one run each way and was not investigated further: the dro
 screen before and after this change alike. Both runs moved the block to the same place.
 
 Behaviour in the same runs, identical before and after: the dragged block (8:30-9:20) dropped 69px lower landed at
-9:45-10:35; Escape put the block back and removed the overlay; the name followed the pointer during the drag; a month
-card dragged one cell right moved to that day; the now-line label went from one minute to the next; the week at 390px
-renders its three days.
+9:45-10:35; Escape put the block back and removed the overlay; the name followed the pointer during the drag; the now-line label went from one minute to the next; the week at 390px
+renders its three days. On this branch only: a month card dragged one cell right moved to that day.
 
 ## Antagonist
 

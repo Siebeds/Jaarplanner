@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 14:28
+bijgewerkt: 2026-09-24 14:29
 opgepakt-door: claude-tb071
 branch: ticket/TB-071-slepen-hertekent-minder
-pr:
+pr: 194
 geblokkeerd:
 fr: []
 ---
@@ -75,3 +75,4 @@ Geen.
 - 2026-09-24 14:26 · claude-tb071 · Vijf plekken aangepast; meting voor/na in backlog/worklogs/TB-071/meting.md: slepen binnen een kwartier hertekent geen dagkolom meer, begin en annuleren van een sleep hertekenen kop, dekkingsbalk en hoekenpaneel niet meer; pnpm test (1402) en pnpm lint groen, browsercheck week/maand/klok/390px in orde
 - 2026-09-24 14:28 · claude-tb071 · Criteria afgevinkt: 1-3 met de meting en Tijdraster.herteken.test, 4 met queries.test (stabiele themas-lijst), 5 met de bestaande kalendertests, een toetsenbordsleep in Agendascherm.test en de muissleep in de browser; aanraking gebruikt dezelfde sensoren, ongewijzigd. Antagonist: COMPLIANT, drie MINOR open (zie meting.md)
 - 2026-09-24 14:28 · claude-tb071 · in-uitvoering → klaar: Gebouwd: slepen hertekent alleen wat verandert (vijf plekken); gates groen: pnpm test 1400/1400, pnpm lint, browser week/maand/klok/390px
+- 2026-09-24 14:29 · claude-tb071 · PR #194
