@@ -45,11 +45,19 @@ export interface Infodoel {
 export function Doelinfo({
   naam,
   doelen,
+  telling = false,
   className,
 }: {
   /** The block's or card's own name: it labels the icon and titles the window. */
   naam: string;
   doelen: readonly Infodoel[];
+  /**
+   * The count as the button's text ("3 doelen") instead of the icon: an activiteitkaart in the side panel, where the
+   * count is the one fact about its goals a teacher scans the list for, and a second mark saying it would be a
+   * repetition (FB-102). None is a knelpunt and wears `attentie`, as `Doelmerk` does: such an activiteit counts for
+   * the dekking nowhere.
+   */
+  telling?: boolean;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -61,6 +69,8 @@ export function Doelinfo({
   // Set for the one close a goal caused: focus then belongs to the detail that is opening, not to this icon.
   const naarDetail = useRef(false);
   const titelId = useId();
+  const aantalZin =
+    doelen.length === 0 ? t("activiteit.geenDoel") : telWoord(doelen.length, "doelinfo.eenDoel", "doelinfo.aantalDoelen");
 
   function kies(code: string) {
     naarDetail.current = true;
@@ -72,19 +82,37 @@ export function Doelinfo({
   return (
     <>
       <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger
-          ref={setKnop}
-          aria-label={t("doelinfo.open", { naam })}
-          className={cn(
-            // 24 by 24: the smallest target WCAG 2.2 AA (2.5.8) accepts, and what fits in a half-hour block.
-            "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-veld text-inkt-zacht",
-            "transition-colors duration-150 hover:bg-inkt/[0.07] hover:text-inkt",
-            open && "bg-inkt/[0.07] text-inkt",
-            className,
-          )}
-        >
-          <IcoonInfo className="h-4 w-4" />
-        </Popover.Trigger>
+        {telling ? (
+          <Popover.Trigger
+            ref={setKnop}
+            // The visible count leads the name, so a voice user can say what she sees (WCAG 2.5.3).
+            aria-label={t("doelinfo.openMetTelling", { telling: aantalZin, naam })}
+            className={cn(
+              "inline-flex h-7 shrink-0 items-center rounded-full border px-2.5 text-meta font-medium",
+              "transition-colors duration-150",
+              doelen.length === 0
+                ? "border-attentie/40 bg-attentie-zacht text-attentie-inkt hover:border-attentie"
+                : cn("border-lijn bg-kaart text-inkt hover:border-lijn-sterk hover:bg-vlak", open && "border-lijn-sterk bg-vlak"),
+              className,
+            )}
+          >
+            {aantalZin}
+          </Popover.Trigger>
+        ) : (
+          <Popover.Trigger
+            ref={setKnop}
+            aria-label={t("doelinfo.open", { naam })}
+            className={cn(
+              // 24 by 24: the smallest target WCAG 2.2 AA (2.5.8) accepts, and what fits in a half-hour block.
+              "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-veld text-inkt-zacht",
+              "transition-colors duration-150 hover:bg-inkt/[0.07] hover:text-inkt",
+              open && "bg-inkt/[0.07] text-inkt",
+              className,
+            )}
+          >
+            <IcoonInfo className="h-4 w-4" />
+          </Popover.Trigger>
+        )}
 
         <Popover.Portal>
           <Popover.Content

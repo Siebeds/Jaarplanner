@@ -746,6 +746,7 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     id, naam, activiteitType: "Kring", hoek: null, verwachteUitkomsten: null, onderzoeksvraagId: null, kleur: null,
     lengteInLesuren, doelkoppelingen,
   });
+  const eigen = <T extends object>(a: T) => ({ ...a, eigenaarId: "u-1", eigenaarNaam: "Juf Test" });
   const koppeling = (code: string, status: string) => ({ id: `k-${code}`, leerplandoelCode: code, status, aiMotivatie: null });
   const subthema = (id: string, themaId: string, naam: string, activiteiten: unknown[]) => ({
     id, themaId, naam, duurWeken: 2, leeftijd: "K3", onderzoeksvragen: [], subdoelen: [], activiteiten,
@@ -763,7 +764,26 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
       ]),
     ]),
     "t-2": thema("t-2", "Sinterklaas", [subthema("s-3", "t-2", "De stoomboot", [])]),
+    "t-3": thema("t-3", "Het weer", [
+      subthema("s-4", "t-3", "Het weer in de herfst en de wolken aan de hemel", [
+        eigen(activiteit("a-3", "Waarneming van de boom", 1, [koppeling("WO.1.1", "Manueel")])),
+        eigen(activiteit("a-4", "Weerkaart onderzoeken", 1)),
+        eigen(activiteit("a-5", "Wolkenvormen herkennen", 1)),
+      ]),
+      subthema("s-5", "t-3", "Regen", [
+        activiteit("a-6", "Regen meten", 1),
+        eigen(activiteit("a-7", "Plassen springen", 1)),
+        eigen(activiteit("a-8", "Regenboog tekenen", 1)),
+      ]),
+    ]),
   };
+
+  const IK = ikMet({ id: "u-1", leerkrachtLeeftijden: ["K3"], eigenKlasIds: ["k-1"] });
+  const MET_HET_WEER = [
+    ...BESTEMMINGEN,
+    { id: "s-4", naam: "Het weer in de herfst en de wolken aan de hemel", leeftijd: "K3", themaId: "t-3", themaNaam: "Het weer" },
+    { id: "s-5", naam: "Regen", leeftijd: "K3", themaId: "t-3", themaNaam: "Het weer" },
+  ];
 
   /**
    * @param plaatsingen What the FB-076 read answers. A 404 by default, which is also what the other tests here run
@@ -841,37 +861,88 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     expect(screen.queryByText("Eikels rapen")).not.toBeInTheDocument();
   });
 
-  it("markeert een activiteit die al in de agenda van de klas staat, met de dag erbij (FB-076)", async () => {
-    stubAntwoorden(BESTEMMINGEN, [{ activiteitId: "a-2", datums: ["2026-10-13"] }]);
-    toonActiviteiten({ lopend: ["s-2"] });
+  const groep = (titel: string) => screen.getByRole("region", { name: titel });
 
-    const gemarkeerd = (await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ })) as HTMLElement;
-    expect(within(gemarkeerd).getByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }))).toBeInTheDocument();
-    expect(gemarkeerd.className).toContain("border-l-inkt-zwak");
+  // FB-102: what is still to plan first, what is planned below it, each with its count.
+  it("zet de activiteiten die nog in te plannen zijn boven de ingeplande, met hun aantal", async () => {
+    stubAntwoorden(MET_HET_WEER, [
+      { activiteitId: "a-4", datums: ["2026-10-05"] },
+      { activiteitId: "a-5", datums: ["2026-10-05", "2026-11-09"] },
+    ]);
+    toonActiviteiten({ lopend: ["s-4"], ik: IK });
 
-    // An activiteit that stands nowhere says nothing at all: no rule, no sentence.
-    fireEvent.change(keuzelijst(), { target: { value: "s-1" } });
-    const kaal = (await screen.findByRole("button", { name: /^Eikels rapen/ })) as HTMLElement;
-    expect(kaal.className).not.toContain("border-l-inkt-zwak");
-    expect(within(kaal).queryByText(/Ingepland/)).not.toBeInTheDocument();
+    await screen.findByRole("button", { name: /^Waarneming van de boom/ });
+    const open = groep(t("activiteitenpaneel.nogInTePlannen", { aantal: 1 }));
+    const gepland = groep(t("activiteitenpaneel.ingepland", { aantal: 2 }));
+    expect(within(open).getByRole("button", { name: /^Waarneming van de boom/ })).toBeInTheDocument();
+    expect(within(open).getByText(t("activiteitenpaneel.nietIngepland"))).toBeInTheDocument();
+    expect(within(open).getByText(t("activiteitenpaneel.sleepHint"))).toBeInTheDocument();
+    expect(within(gepland).getAllByRole("listitem")).toHaveLength(2);
+    // Still to plan comes first in the panel.
+    expect(open.compareDocumentPosition(gepland) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // The day on one line, short, and the full sentence only for a screen reader.
+    const kaart = within(gepland).getByRole("button", { name: /^Weerkaart onderzoeken/ });
+    expect(within(kaart).getByText("ma 5 okt")).toBeInTheDocument();
+    expect(within(kaart).getByText(t("activiteitenpaneel.ingeplandOp", { dag: "ma 5 okt" }))).toHaveClass("sr-only");
   });
 
-  it("laat de markering los zodra de activiteit uit de agenda gehaald is, zonder herladen (FB-076)", async () => {
-    stubAntwoorden(BESTEMMINGEN, [{ activiteitId: "a-2", datums: ["2026-10-13"] }]);
-    const { client } = toonActiviteiten({ lopend: ["s-2"] });
-    await screen.findByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }));
+  it("laat een groep zonder activiteiten wegvallen", async () => {
+    stubAntwoorden(MET_HET_WEER, []);
+    toonActiviteiten({ lopend: ["s-4"], ik: IK });
 
-    // Exactly what taking it off a day does: the placement is gone, and `useDagacties` invalidates the whole
-    // weekplanning family. This read hangs under that family on purpose, so it is refetched without knowing about it.
+    expect(await screen.findByRole("region", { name: t("activiteitenpaneel.nogInTePlannen", { aantal: 3 }) })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /^Ingepland/ })).not.toBeInTheDocument();
+  });
+
+  it("zegt één keer onderaan dat ze allemaal eigen zijn, en op geen enkele kaart", async () => {
+    stubAntwoorden(MET_HET_WEER, []);
+    toonActiviteiten({ lopend: ["s-4"], ik: IK });
+
+    expect(await screen.findByText("Alle drie zijn je eigen activiteiten.")).toBeInTheDocument();
+    expect(screen.queryByText(t("activiteit.eigen"))).not.toBeInTheDocument();
+  });
+
+  it("zet bij eigen en gedeelde door elkaar alleen een label op de kleinste groep", async () => {
+    stubAntwoorden(MET_HET_WEER, []);
+    // For another gebruiker the three own activiteiten are a colleague's; here one of the four is shared.
+    useHoekenpaneel.setState({ subthemaKeuze: { subthemaId: "s-5", klasId: "k-1", week: WEEK } });
+    toonActiviteiten({ ik: IK });
+
+    await screen.findByRole("button", { name: /^Regen meten/ });
+    expect(screen.getAllByText(t("activiteit.gedeeld"))).toHaveLength(1);
+    expect(screen.queryByText(t("activiteit.eigen"))).not.toBeInTheDocument();
+    expect(screen.queryByText(/zijn je eigen activiteiten/)).not.toBeInTheDocument();
+  });
+
+  it("laat een activiteit bij het slepen in de agenda naar de groep Ingepland verhuizen (FB-076, FB-102)", async () => {
     stubAntwoorden(BESTEMMINGEN, []);
+    const { client } = toonActiviteiten({ lopend: ["s-2"] });
+    await screen.findByRole("region", { name: t("activiteitenpaneel.nogInTePlannen", { aantal: 1 }) });
+
+    // Exactly what planning it does: the placement is there, and the mutation invalidates the whole weekplanning
+    // family. This read hangs under that family on purpose, so it is refetched without knowing about it.
+    stubAntwoorden(BESTEMMINGEN, [{ activiteitId: "a-2", datums: ["2026-10-13"] }]);
     await client.invalidateQueries({ queryKey: ["weekplanning"] });
 
-    await waitFor(() =>
-      expect(screen.queryByText(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }))).not.toBeInTheDocument(),
-    );
-    expect((screen.getByRole("button", { name: /^Paddenstoelen tekenen/ }) as HTMLElement).className).not.toContain(
-      "border-l-inkt-zwak",
-    );
+    const gepland = await screen.findByRole("region", { name: t("activiteitenpaneel.ingepland", { aantal: 1 }) });
+    expect(within(gepland).getByText("di 13 okt")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /^Nog in te plannen/ })).not.toBeInTheDocument();
+
+    // And back, when it is taken off the agenda again.
+    stubAntwoorden(BESTEMMINGEN, []);
+    await client.invalidateQueries({ queryKey: ["weekplanning"] });
+    expect(await screen.findByRole("region", { name: t("activiteitenpaneel.nogInTePlannen", { aantal: 1 }) })).toBeInTheDocument();
+  });
+
+  it("zegt bij een mislukte lezing van de plaatsingen niet dat alles nog in te plannen is", async () => {
+    // The default stub answers the placements with a 404.
+    toonActiviteiten({ lopend: ["s-2"] });
+
+    await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
+    expect(screen.getByText(t("activiteitenpaneel.plaatsingenMislukt"))).toBeInTheDocument();
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+    expect(screen.queryByText(t("activiteitenpaneel.nietIngepland"))).not.toBeInTheDocument();
   });
 
   it("laat een ander subthema kiezen, gegroepeerd per thema, en toont dan diens activiteiten", async () => {
@@ -985,23 +1056,39 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     expect(screen.queryByRole("button", { name: t("activiteit.toevoegen") })).not.toBeInTheDocument();
     fireEvent.click(screen.getByText("Paddenstoelen tekenen"));
     expect(onKiesActiviteit).not.toHaveBeenCalled();
-    // Reading a card's goals is reading, so the info icon stays.
-    expect(screen.getByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) })).toBeInTheDocument();
+    // Reading a card's goals is reading, so the count stays.
+    expect(screen.getByRole("button", { name: doelenKnop("1 doel", "Paddenstoelen tekenen") })).toBeInTheDocument();
   });
 
-  // FB-018 (owner, 2026-09-15): the activiteitkaarten get the goals' info icon from whichever ticket merges second.
-  it("toont de doelen van een kaart achter een info-icoon, alleen de aanvaarde en manuele", async () => {
+  const doelenKnop = (telling: string, naam: string) => t("doelinfo.openMetTelling", { telling, naam });
+
+  // FB-018, FB-102: the goals behind one button that says how many there are, and no separate icon.
+  it("toont de doelen van een kaart achter de knop met hun aantal, alleen de aanvaarde en manuele", async () => {
     const { onKiesActiviteit } = toonActiviteiten({ lopend: ["s-2"] });
 
-    const kaartje = await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
-    // One manual link and one proposal: a suggestion is not a goal of the card, so the mark says one.
-    expect(within(kaartje).getByText(t("activiteit.eenDoel"))).toBeInTheDocument();
+    await screen.findByRole("button", { name: /^Paddenstoelen tekenen/ });
+    // One manual link and one proposal: a suggestion is not a goal of the card, so the button says one.
+    const knop = screen.getByRole("button", { name: doelenKnop("1 doel", "Paddenstoelen tekenen") });
+    expect(knop).toHaveTextContent("1 doel");
+    expect(screen.queryByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) })).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: t("doelinfo.open", { naam: "Paddenstoelen tekenen" }) }));
+    fireEvent.click(knop);
     expect(await screen.findByText("MUZ.1.1")).toBeInTheDocument();
     expect(screen.queryByText("MUZ.2.2")).not.toBeInTheDocument();
-    // The icon shows the goals; it plans nothing.
+    // The button shows the goals; it plans nothing.
     expect(onKiesActiviteit).not.toHaveBeenCalled();
+  });
+
+  it("toont de hele naam van het gekozen subthema, ook een lange", async () => {
+    stubAntwoorden(MET_HET_WEER, []);
+    toonActiviteiten({ lopend: ["s-4"], ik: IK });
+
+    await screen.findByRole("button", { name: /^Waarneming van de boom/ });
+    expect(keuzelijst()).toHaveValue("s-4");
+    // The name is shown in a text of its own, which wraps, rather than in the select's own box, which cuts it off.
+    const getoond = screen.getAllByText("Het weer in de herfst en de wolken aan de hemel").find((el) => el.tagName === "SPAN");
+    expect(getoond).toBeDefined();
+    expect(getoond).not.toHaveClass("truncate");
   });
 
   it("toont wie de klas niet mag plannen geen algemene fiches", () => {

@@ -1,31 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { ingeplandZin } from "./ingepland";
-import { t } from "../../i18n";
+import { ingeplandeDag } from "./ingepland";
 
-/**
- * FB-076: what the side panel says under an activiteit that already stands in this klas's agenda.
- *
- * The three shapes are a layout decision (a 240px column fits two dates and not five), so what is pinned here is the
- * boundary between them, and that nothing is said at all about an activiteit that stands nowhere.
- */
-describe("ingeplandZin", () => {
-  it("zegt niets over een activiteit die nergens staat", () => {
-    expect(ingeplandZin([])).toBeNull();
+/** FB-076, FB-102: the one day a card names for an activiteit that already stands in this klas's agenda. */
+describe("ingeplandeDag", () => {
+  const VANDAAG = "2026-10-14";
+
+  it("noemt geen dag voor een activiteit die nergens staat", () => {
+    expect(ingeplandeDag([], VANDAAG)).toBeNull();
   });
 
-  it("noemt de dag van een activiteit die één keer ingepland is", () => {
-    expect(ingeplandZin(["2026-10-13"])).toBe(t("activiteitenpaneel.ingeplandOp", { dag: "di 13 okt" }));
+  it("noemt de dag kort, als in de rest van de app", () => {
+    expect(ingeplandeDag(["2026-10-15"], VANDAAG)).toBe("do 15 okt");
   });
 
-  it("noemt beide dagen van een activiteit die twee keer ingepland is", () => {
-    expect(ingeplandZin(["2026-10-13", "2026-10-15"])).toBe(
-      t("activiteitenpaneel.ingeplandOpTwee", { eerste: "di 13 okt", tweede: "do 15 okt" }),
-    );
+  it("noemt van meerdere dagen de eerste die nog komt, vandaag inbegrepen", () => {
+    expect(ingeplandeDag(["2026-11-03", "2026-10-13", "2026-10-15"], VANDAAG)).toBe("do 15 okt");
+    expect(ingeplandeDag(["2026-10-13", "2026-10-14"], VANDAAG)).toBe("wo 14 okt");
   });
 
-  it("noemt vanaf drie dagen het aantal en de eerste dag", () => {
-    expect(ingeplandZin(["2026-10-13", "2026-10-15", "2026-11-03"])).toBe(
-      t("activiteitenpaneel.ingeplandOpMeer", { aantal: 3, eerste: "di 13 okt" }),
-    );
+  it("noemt de laatste dag wanneer ze alleen in het verleden staat", () => {
+    expect(ingeplandeDag(["2026-09-22", "2026-10-06"], VANDAAG)).toBe("di 6 okt");
   });
 });

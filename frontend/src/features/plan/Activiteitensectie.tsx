@@ -1,17 +1,16 @@
-import { useId, useMemo, type Ref } from "react";
+import { useId, useMemo, type ReactNode, type Ref } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Link } from "react-router-dom";
-import { Keuze } from "../../components/ui/Veld";
 import { Laadlijst } from "../../components/ui/Laadvlak";
-import { Doelmerk } from "../../components/ui/Doelmerk";
-import { IcoonPlan } from "../../components/Iconen";
+import { IcoonChevron, IcoonGreep, IcoonPlan } from "../../components/Iconen";
+import { vandaag } from "../../lib/datum";
 import { useActiviteitplaatsingen, useSubthemaBestemmingen, useThemaVoorKlas } from "../../lib/queries";
 import { geenToegangZin, isEigenVan, useRechten } from "../../lib/rechten";
 import { useIk } from "../../lib/aanmelding";
 import { Knop } from "../../components/ui/Knop";
 import { useHoekenpaneel } from "../../state/hoekenpaneel";
 import type { ActiviteitWeergave, SubthemaBestemming, SubthemaWeergave } from "../../lib/types";
-import { t } from "../../i18n";
+import { t, type Vertaalsleutel } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { NieuweActiviteit } from "../activiteiten/NieuweActiviteit";
 import { useGebruikActiviteit, useMaakActiviteit } from "../themas/mutaties";
@@ -20,7 +19,7 @@ import { Toevoegtegel } from "../hoeken/Toevoegtegel";
 import { STANDAARDDUUR } from "./tijd";
 import { ACTIVITEIT_VOORVOEGSEL, type Activiteitkaartdata } from "./activiteitkaart";
 import { Doelinfo, type Infodoel } from "./Doelinfo";
-import { ingeplandZin } from "./ingepland";
+import { ingeplandeDag } from "./ingepland";
 
 /** An activiteit chosen from the panel: what the agenda needs to plan it. */
 export interface GekozenActiviteit {
@@ -73,8 +72,8 @@ export interface Activiteitenweek {
  * no create tile. A card then is not a control at all, so it is drawn as a plain block rather than as a disabled
  * button.
  *
- * A card shows the activiteit's name and whether it has doelen (`Doelmerk`), the one fact about an activiteit a
- * teacher scans a list for: one without doelen cannot count for the dekking wherever it is planned.
+ * A card shows the activiteit's name, when it is next planned, and how many doelen it has, the one fact about its
+ * goals a teacher scans a list for: one without doelen cannot count for the dekking wherever it is planned (FB-102).
  */
 export function Activiteitensectie({
   klasId,
@@ -121,6 +120,8 @@ export function Activiteitensectie({
   }, [lijst]);
   // A klas teaching one age needs no age on every option; a graadklas does, or two "de speelhoek" look the same.
   const meerdereLeeftijden = new Set(lijst.map((b) => b.leeftijd)).size > 1;
+  const optieNaam = (b: SubthemaBestemming) =>
+    meerdereLeeftijden ? t("activiteitenpaneel.subthemaLeeftijd", { naam: b.naam, leeftijd: b.leeftijd }) : b.naam;
 
   if (bestemmingen.isPending) return <Laadlijst rijen={3} />;
 
@@ -162,35 +163,48 @@ export function Activiteitensectie({
         <label htmlFor={`${id}-subthema`} className="text-meta font-medium text-inkt">
           {t("activiteitenpaneel.subthema")}
         </label>
-        <Keuze
-          id={`${id}-subthema`}
-          value={actief?.id ?? ""}
-          onChange={(e) =>
-            kiesSubthema(e.target.value === "" ? null : { subthemaId: e.target.value, klasId, week: week.maandag })
-          }
-          className="mt-1.5"
-        >
-          {actief ? null : (
-            <option value="" disabled>
-              {t("activiteitenpaneel.kiesSubthema")}
-            </option>
+        {/* A native select that shows its choice in a text of its own, so a long name wraps to a second line instead
+            of being cut off (FB-102). The select lies over the whole field, invisible, and is what is pressed, read
+            and focused: the keyboard, the phone's own picker and a screen reader get the real control. */}
+        <div
+          className={cn(
+            "relative mt-1.5 flex min-h-raak items-center rounded-veld border border-lijn-veld bg-kaart py-2 pl-3 pr-10",
+            "transition-colors duration-150 hover:border-inkt-zacht",
+            "has-[select:focus-visible]:outline-2 has-[select:focus-visible]:outline-offset-2 has-[select:focus-visible]:outline-accent",
           )}
-          {groepen.map(([themaId, groep]) => (
-            <optgroup key={themaId} label={groep.themaNaam}>
-              {groep.subthemas.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {meerdereLeeftijden ? t("activiteitenpaneel.subthemaLeeftijd", { naam: b.naam, leeftijd: b.leeftijd }) : b.naam}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </Keuze>
+        >
+          <span aria-hidden="true" className={cn("text-body leading-snug", actief ? "text-inkt" : "text-inkt-zacht")}>
+            {actief ? optieNaam(actief) : t("activiteitenpaneel.kiesSubthema")}
+          </span>
+          <select
+            id={`${id}-subthema`}
+            value={actief?.id ?? ""}
+            onChange={(e) =>
+              kiesSubthema(e.target.value === "" ? null : { subthemaId: e.target.value, klasId, week: week.maandag })
+            }
+            className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0"
+          >
+            {actief ? null : (
+              <option value="" disabled>
+                {t("activiteitenpaneel.kiesSubthema")}
+              </option>
+            )}
+            {groepen.map(([themaId, groep]) => (
+              <optgroup key={themaId} label={groep.themaNaam}>
+                {groep.subthemas.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {optieNaam(b)}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <IcoonChevron className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-inkt-zwak" />
+        </div>
 
         {/* Only when it is true: the chosen subthema is one of the runs touching that week. */}
         {actief && lopend?.includes(actief.id) ? (
-          <p className="mt-1.5 text-micro text-inkt-zacht">
-            {t("activiteitenpaneel.looptInWeek", { nummer: week.nummer })}
-          </p>
+          <p className="mt-1.5 text-meta text-inkt-zacht">{t("activiteitenpaneel.looptInWeek", { nummer: week.nummer })}</p>
         ) : null}
       </div>
 
@@ -209,7 +223,20 @@ export function Activiteitensectie({
   );
 }
 
-/** The activiteiten of one subthema as cards, or the reason there are none, and after either the create tile. */
+/** Whose an activiteit is (ADR-0049): the school's, the gebruiker's own, or a colleague's own. */
+type Soort = "gedeeld" | "eigen" | "collega";
+
+/**
+ * The activiteiten of one subthema in two groups, what is still to plan above what is planned, or the reason there are
+ * none; and after either the create tile.
+ *
+ * **Still to plan first** (FB-102): that is what a teacher opens this panel for. A group without activiteiten drops
+ * away, and the hint how to plan stands once, over the group it is about, rather than on every card.
+ *
+ * **The groups need the read of where they stand.** "Nog in te plannen" is a claim, so the list waits for that read,
+ * and when it failed it shows one list without groups and says what it could not read, rather than filing every
+ * activiteit under "nog in te plannen".
+ */
 function Activiteitenlijst({
   klasId,
   bestemming,
@@ -232,20 +259,14 @@ function Activiteitenlijst({
   const { data: ik } = useIk();
   const subthema = thema.data?.subthemas.find((sub) => sub.id === bestemming.id);
 
-  // Where each of them already stands in this klas's year (FB-076).
-  //
-  // A failed or pending read leaves the map empty, and an unmarked card is then indistinguishable from one that is
-  // really planned nowhere. That is the one thing this feature cannot say honestly, and it is accepted rather than
-  // solved: the alternative is a per-card "niet gelezen" line on every activiteit while the read is in flight, which
-  // is noise on the ordinary path for a case a retry fixes. The absent-versus-empty distinction the payload keeps is
-  // therefore real on the wire and invisible on screen (antagonist FB-076).
+  // Where each of them already stands in this klas's year (FB-076); null when that could not be read.
   const plaatsingen = useActiviteitplaatsingen(klasId);
   const dagenPer = useMemo(
-    () => new Map((plaatsingen.data?.activiteiten ?? []).map((a) => [a.activiteitId, a.datums])),
+    () => (plaatsingen.data ? new Map(plaatsingen.data.activiteiten.map((a) => [a.activiteitId, a.datums])) : null),
     [plaatsingen.data],
   );
 
-  if (thema.isPending) return <Laadlijst rijen={3} />;
+  if (thema.isPending || plaatsingen.isPending) return <Laadlijst rijen={3} />;
 
   // A failed request is not an empty subthema, so it says only what it knows, and offers no tile: a list it could not
   // read is no ground for offering to add to it (the rule `Hoekenpaneel` follows).
@@ -258,7 +279,6 @@ function Activiteitenlijst({
   }
 
   const activiteiten = subthema?.activiteiten ?? [];
-  const isVanCollega = (activiteit: ActiviteitWeergave) => activiteit.eigenaarId != null && !isEigenVan(ik, activiteit);
   // Making one from here is part of planning (owner, 2026-09-15: no tile for whoever only reads the klas), and needs the
   // content right at the subthema's leeftijd too (R17, R23), and the subthema itself for its onderzoeksvragen and subdoelen.
   const tegel =
@@ -290,56 +310,118 @@ function Activiteitenlijst({
     );
   }
 
+  const soortVan = (activiteit: ActiviteitWeergave): Soort =>
+    activiteit.eigenaarId == null ? "gedeeld" : isEigenVan(ik, activiteit) ? "eigen" : "collega";
+  const soorten = activiteiten.map(soortVan);
+  const gelabeld = gelabeldeSoorten(soorten);
+  const eenSoort = soorten.every((soort) => soort === soorten[0]) && soorten[0] !== "collega" ? soorten[0] : null;
+  // A colleague's own activiteit is not planned as it is (ADR-0049 D6): it is used first, as an own copy.
+  const plant = (activiteit: ActiviteitWeergave) => magPlannen && soortVan(activiteit) !== "collega";
+  const nu = vandaag();
+
+  const kaart = (activiteit: ActiviteitWeergave) => {
+    const soort = soortVan(activiteit);
+    const dag = dagenPer ? ingeplandeDag(dagenPer.get(activiteit.id) ?? [], nu) : undefined;
+    const label = gelabeld.has(soort) ? <Soortlabel activiteit={activiteit} soort={soort} /> : null;
+    return (
+      <li key={activiteit.id}>
+        {plant(activiteit) ? (
+          <Activiteitkaart activiteit={activiteit} dag={dag} label={label} sleepbaar={sleepbaar} onKies={onKies} />
+        ) : (
+          <Leeskaart
+            activiteit={activiteit}
+            dag={dag}
+            label={label}
+            gebruik={
+              magPlannen && mag.activiteitGebruiken({ ...activiteit, leeftijd: bestemming.leeftijd }) ? activiteit : undefined
+            }
+            themaId={bestemming.themaId}
+          />
+        )}
+      </li>
+    );
+  };
+
+  const open = dagenPer ? activiteiten.filter((a) => (dagenPer.get(a.id) ?? []).length === 0) : [];
+  const gepland = dagenPer ? activiteiten.filter((a) => (dagenPer.get(a.id) ?? []).length > 0) : [];
+  // Only over a group holding a card this gebruiker can plan, and naming the gesture this width offers.
+  const hint = open.some(plant) ? t(sleepbaar ? "activiteitenpaneel.sleepHint" : "activiteitenpaneel.tikHint") : null;
+
   return (
-    <div className="flex flex-col gap-2">
-      <ul className="flex flex-col gap-2">
-        {activiteiten.map((activiteit) => (
-          <li key={activiteit.id}>
-            {/* A colleague's own activiteit is not planned as it is (ADR-0049 D6): it is used first, as an own copy. */}
-            {magPlannen && isVanCollega(activiteit) ? (
-              <Leeskaart
-                activiteit={activiteit}
-                dagen={dagenPer.get(activiteit.id) ?? []}
-                gebruik={mag.activiteitGebruiken({ ...activiteit, leeftijd: bestemming.leeftijd }) ? activiteit : undefined}
-                themaId={bestemming.themaId}
-              />
-            ) : magPlannen ? (
-              <Activiteitkaart
-                activiteit={activiteit}
-                dagen={dagenPer.get(activiteit.id) ?? []}
-                sleepbaar={sleepbaar}
-                onKies={onKies}
-              />
-            ) : (
-              <Leeskaart activiteit={activiteit} dagen={dagenPer.get(activiteit.id) ?? []} />
-            )}
-          </li>
-        ))}
-      </ul>
+    <div className="flex flex-col gap-4">
+      {dagenPer === null ? (
+        <div>
+          <p className="mb-2 text-meta text-inkt-zacht">{t("activiteitenpaneel.plaatsingenMislukt")}</p>
+          <ul className="flex flex-col gap-1.5">{activiteiten.map(kaart)}</ul>
+        </div>
+      ) : (
+        <>
+          {open.length > 0 ? (
+            <Groep titel={t("activiteitenpaneel.nogInTePlannen", { aantal: open.length })} hint={hint}>
+              {open.map(kaart)}
+            </Groep>
+          ) : null}
+          {gepland.length > 0 ? (
+            <Groep titel={t("activiteitenpaneel.ingepland", { aantal: gepland.length })}>{gepland.map(kaart)}</Groep>
+          ) : null}
+        </>
+      )}
       {tegel}
+      {eenSoort ? <p className="text-meta text-inkt-zacht">{soortZin(eenSoort, activiteiten.length)}</p> : null}
     </div>
   );
 }
 
-/**
- * The left rule on a card whose activiteit already stands somewhere in this klas's year (FB-076).
- *
- * **Achromatic, and that is the decision rather than a shortage of hues.** The ticket asks for a "kleurstreep", and
- * every hue on this card is spoken for: `Doelmerk` wears `attentie` when an activiteit has no doelen, the doelsoorten,
- * the suggestiestatussen and the dekking hold the rest, and the accent is rationed to five uses none of which is a
- * list row (Art. XII, `index.css`). A seventh hue invented here would be read as one of those. So the rule is ink at
- * the weight the card's own muted text uses, and the sentence under the name carries the meaning
- * (see `ingepland.ts`). It is the same answer the owner chose for the algemene fiche in FB-077.
- *
- * Never colour alone (Art. XII): the rule is never the only mark. The sentence and its calendar icon say what it means
- * and on which day, and they are what a screen reader gets.
- */
-const MARKERING = (dagen: readonly string[]) => (dagen.length > 0 ? "border-l-2 border-l-inkt-zwak" : null);
+/** One group of cards under its heading, the count in the heading (FB-102). */
+function Groep({ titel, hint, children }: { titel: string; hint?: string | null; children: ReactNode }) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id}>
+      <h3 id={id} className="text-meta font-semibold text-inkt-zacht">
+        {titel}
+      </h3>
+      {hint ? <p className="text-meta text-inkt-zacht">{hint}</p> : null}
+      <ul className="mt-2 flex flex-col gap-1.5">{children}</ul>
+    </section>
+  );
+}
 
 /**
- * The goals an activiteit works on, as the info icon and the mark count them: its accepted and manual links, which is
- * what the server counts for the weekplanning's `Doelcodes` (FB-018). A suggestion is never a goal of the card, and
- * the mark and the window it opens cannot disagree, because both read this one list.
+ * Which kinds of activiteit carry their kind on the card (FB-102).
+ *
+ * What holds for every card is said once, under the list (`soortZin`), and not on each of them. Where the gebruiker's
+ * own and shared ones stand mixed, only the smaller group is marked, and the rest reads as the other kind. A
+ * colleague's activiteit always says whose it is: that is what its "Gebruiken" is about. When a colleague's stand
+ * beside only one other kind, that kind is marked too, because unmarked it could be either.
+ */
+function gelabeldeSoorten(soorten: readonly Soort[]): ReadonlySet<Soort> {
+  const eigen = soorten.filter((soort) => soort === "eigen").length;
+  const gedeeld = soorten.filter((soort) => soort === "gedeeld").length;
+  const collega = soorten.length - eigen - gedeeld;
+
+  if (collega === 0 && (eigen === 0 || gedeeld === 0)) return new Set();
+  if (eigen > 0 && gedeeld > 0) return new Set<Soort>(["collega", eigen <= gedeeld ? "eigen" : "gedeeld"]);
+  return new Set<Soort>(["collega", "eigen", "gedeeld"]);
+}
+
+/** "Alle drie zijn je eigen activiteiten.": said once under a list of one kind only. */
+function soortZin(soort: "eigen" | "gedeeld", aantal: number): string {
+  const eigen = soort === "eigen";
+  if (aantal === 1) return t(eigen ? "activiteitenpaneel.alleEigenEen" : "activiteitenpaneel.alleGedeeldEen");
+  if (aantal === 2) return t(eigen ? "activiteitenpaneel.alleEigenTwee" : "activiteitenpaneel.alleGedeeldTwee");
+  const woord = aantal <= 12 ? t(`telwoord.${aantal}` as Vertaalsleutel) : String(aantal);
+  return t(eigen ? "activiteitenpaneel.alleEigen" : "activiteitenpaneel.alleGedeeld", { aantal: woord });
+}
+
+function Soortlabel({ activiteit, soort }: { activiteit: ActiviteitWeergave; soort: Soort }) {
+  if (soort === "gedeeld") return <span className="mt-0.5 block text-meta text-inkt-zacht">{t("activiteit.gedeeld")}</span>;
+  return <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />;
+}
+
+/**
+ * The goals an activiteit works on, as the button counts them: its accepted and manual links, which is what the server
+ * counts for the weekplanning's `Doelcodes` (FB-018). A suggestion is never a goal of the card, and the count and the
+ * window it opens cannot disagree, because both read this one list.
  */
 function doelenVan(activiteit: ActiviteitWeergave): Infodoel[] {
   return activiteit.doelkoppelingen
@@ -350,21 +432,23 @@ function doelenVan(activiteit: ActiviteitWeergave): Infodoel[] {
 /**
  * One activiteit: dragged onto an hour of the agenda, or clicked to plan it from a sheet.
  *
- * The same card as a fiche in the panel, and the same two gestures on one button (see `Hoekenpaneel`'s `Fiche`). The
- * name and the length travel with the drag, because the agenda does not load this list.
+ * The same two gestures on one button as a fiche in the panel (see `Hoekenpaneel`'s `Fiche`), with a grip where it
+ * drags. The name and the length travel with the drag, because the agenda does not load this list.
  *
- * **Its goals behind the info icon in the corner, beside the button and not in it**, as on every card in this panel
- * (FB-018; owner, 2026-09-15: the activiteitkaarten get the icon from whichever of the two tickets merges second).
+ * **Its goals behind the count in the corner, beside the button and not in it**: a button inside a button is invalid,
+ * and as a sibling it starts no drag and plans nothing (FB-018, FB-102).
  */
 function Activiteitkaart({
   activiteit,
-  dagen,
+  dag,
+  label,
   sleepbaar,
   onKies,
 }: {
   activiteit: ActiviteitWeergave;
-  /** The days of this klas's year it already stands on; empty when it stands nowhere (FB-076). */
-  dagen: readonly string[];
+  /** See `Kaartinhoud`. */
+  dag: string | null | undefined;
+  label: ReactNode;
   sleepbaar: boolean;
   onKies: (activiteit: GekozenActiviteit) => void;
 }) {
@@ -385,37 +469,40 @@ function Activiteitkaart({
         {...(sleepbaar ? listeners : {})}
         {...(sleepbaar ? attributes : {})}
         className={cn(
-          // Room for the icon, so a long name wraps before it rather than running under it.
-          "w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9 text-left",
+          "flex w-full gap-1.5 rounded-veld border border-lijn bg-kaart py-2 pr-2.5 text-left",
           "transition-colors duration-150 hover:border-accent",
-          MARKERING(dagen),
-          sleepbaar ? "cursor-grab touch-none active:cursor-grabbing" : null,
+          sleepbaar ? "cursor-grab touch-none pl-1.5 active:cursor-grabbing" : "pl-3",
           isDragging && "opacity-40",
         )}
       >
-        <Kaartinhoud activiteit={activiteit} doelen={doelen} dagen={dagen} />
+        {sleepbaar ? <IcoonGreep className="mt-1 h-4 w-4 shrink-0 text-inkt-zwak" /> : null}
+        <span className="min-w-0 flex-1">
+          <Kaartinhoud naam={activiteit.naam} dag={dag} label={label} ruimteVoorDoelen />
+        </span>
       </button>
-      <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
+      <Doelinfo naam={activiteit.naam} doelen={doelen} telling className="absolute bottom-2 right-2.5" />
     </div>
   );
 }
 
 /**
  * The same card for whoever may only read the klas, and for a colleague's own activiteit: what it says, and nothing it
- * plans. The info icon stays, because reading an activiteit's goals is reading, not planning.
+ * plans. The goals stay, because reading an activiteit's goals is reading, not planning.
  *
  * **A colleague's own activiteit carries "Gebruiken"** when the gebruiker may take a copy (ADR-0049 D5). The copy then
  * lands in this same list as her own card, ready to drag, which is the one gesture the original does not offer.
  */
 function Leeskaart({
   activiteit,
-  dagen,
+  dag,
+  label,
   gebruik,
   themaId,
 }: {
   activiteit: ActiviteitWeergave;
-  /** The days of this klas's year it already stands on; empty when it stands nowhere (FB-076). */
-  dagen: readonly string[];
+  /** See `Kaartinhoud`. */
+  dag: string | null | undefined;
+  label: ReactNode;
   /** The activiteit to copy on "Gebruiken"; absent without that right. */
   gebruik?: ActiviteitWeergave;
   themaId?: string;
@@ -423,58 +510,76 @@ function Leeskaart({
   const doelen = doelenVan(activiteit);
   const kopie = useGebruikActiviteit(themaId);
   return (
-    <div className="relative">
-      <div className={cn("w-full rounded-veld border border-lijn bg-vlak py-2.5 pl-3 pr-9", MARKERING(dagen))}>
-        <Kaartinhoud activiteit={activiteit} doelen={doelen} dagen={dagen} />
-        {gebruik ? (
-          <Knop
-            rang="rustig"
-            className="mt-2 h-9 min-h-9 px-3 text-meta"
-            bezig={kopie.isPending}
-            aria-label={t("activiteit.gebruikAria", {
-              naam: activiteit.naam,
-              eigenaar: activiteit.eigenaarNaam ?? t("activiteit.vanEenCollega"),
-            })}
-            onClick={() => kopie.mutate(gebruik.id)}
-          >
-            {kopie.isPending ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
-          </Knop>
-        ) : null}
-        {kopie.isError ? (
-          <p role="alert" className="mt-1.5 text-meta text-attentie-inkt">
-            {geenToegangZin(kopie.error) ?? t("activiteit.gebruikMislukt")}
-          </p>
-        ) : null}
-      </div>
-      <Doelinfo naam={activiteit.naam} doelen={doelen} className="absolute right-1.5 top-1.5" />
+    <div className="w-full rounded-veld border border-lijn bg-kaart py-2 pl-3 pr-2.5">
+      <Kaartinhoud
+        naam={activiteit.naam}
+        dag={dag}
+        label={label}
+        doelen={<Doelinfo naam={activiteit.naam} doelen={doelen} telling />}
+      />
+      {gebruik ? (
+        <Knop
+          rang="rustig"
+          className="mt-2 h-9 min-h-9 px-3 text-meta"
+          bezig={kopie.isPending}
+          aria-label={t("activiteit.gebruikAria", {
+            naam: activiteit.naam,
+            eigenaar: activiteit.eigenaarNaam ?? t("activiteit.vanEenCollega"),
+          })}
+          onClick={() => kopie.mutate(gebruik.id)}
+        >
+          {kopie.isPending ? t("activiteit.gebruikBezig") : t("activiteit.gebruik")}
+        </Knop>
+      ) : null}
+      {kopie.isError ? (
+        <p role="alert" className="mt-1.5 text-meta text-attentie-inkt">
+          {geenToegangZin(kopie.error) ?? t("activiteit.gebruikMislukt")}
+        </p>
+      ) : null}
     </div>
   );
 }
 
+/**
+ * What a card says: its name, its kind where that is not said once for all (`gelabeldeSoorten`), and on one line when
+ * it is next planned, beside its goals (FB-102). Spans only, because in `Activiteitkaart` it sits inside a button.
+ */
 function Kaartinhoud({
-  activiteit,
+  naam,
+  dag,
+  label,
   doelen,
-  dagen,
+  ruimteVoorDoelen = false,
 }: {
-  activiteit: ActiviteitWeergave;
-  doelen: readonly Infodoel[];
-  dagen: readonly string[];
+  naam: string;
+  /**
+   * The day it next stands on in this klas's agenda (`ingeplandeDag`); null when it stands nowhere; undefined when
+   * that could not be read, and then the card says nothing about it rather than "nog niet ingepland".
+   */
+  dag: string | null | undefined;
+  label: ReactNode;
+  /** The goals, in the line; or absent, and then the line leaves room for them over it (`ruimteVoorDoelen`). */
+  doelen?: ReactNode;
+  ruimteVoorDoelen?: boolean;
 }) {
-  const ingepland = ingeplandZin(dagen);
-
   return (
     <>
-      <p className="text-meta font-medium text-inkt">{activiteit.naam}</p>
-      <Eigenaarmerk activiteit={activiteit} className="mt-0.5 flex" />
-      {/* Where it already stands in this klas's year (FB-076). Above the Doelmerk, because it is the thing that
-          changes what she does next: a doel count tells her whether it can count, this tells her she has used it. */}
-      {ingepland ? (
-        <span className="mt-0.5 flex items-center gap-1 text-meta text-inkt-zacht">
-          <IcoonPlan aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-          {ingepland}
+      <span className="block text-body font-medium leading-snug text-inkt">{naam}</span>
+      {label}
+      <span className={cn("mt-1 flex min-h-7 items-center justify-between gap-2", ruimteVoorDoelen && "pr-24")}>
+        <span className="flex min-w-0 items-center gap-1 text-meta text-inkt-zacht">
+          {dag ? (
+            <>
+              <IcoonPlan aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+              <span className="sr-only">{t("activiteitenpaneel.ingeplandOp", { dag })}</span>
+              <span aria-hidden="true">{dag}</span>
+            </>
+          ) : dag === null ? (
+            t("activiteitenpaneel.nietIngepland")
+          ) : null}
         </span>
-      ) : null}
-      <Doelmerk aantal={doelen.length} className="mt-1.5" />
+        {doelen}
+      </span>
     </>
   );
 }
