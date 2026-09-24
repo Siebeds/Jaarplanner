@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-24 14:08
 opgepakt-door: claude-tb075
 branch: ticket/TB-075-inklapper
-pr:
+pr: 193
 geblokkeerd:
 fr: []
 ---
@@ -68,3 +68,4 @@ Geen.
 - 2026-09-24 14:08 · claude-tb075 · Antagonist: COMPLIANT. Open MINOR: onOpenChange in Inklaplijst, Subthemahoofdstuk en DekkingScherm wisselt de eigen state in plaats van de meegegeven waarde te nemen (werkt, want Root geeft altijd !open); Knop kent geen preventDefault op onClick om het uitklappen te stoppen (geen gebruiker heeft dat nodig). Bewust gelaten: aria-expanded op de Katmand-popover, de zoekknoppen van Inklaplijst en 'Alle bekijken' (geen uitklappers), en smal in Navigatie/Aanmeldregel (de zijbalk, niet Schermkop). Het Scherm-omhulsel dat de maat één keer doorgeeft is niet gebouwd, om de diff klein te houden.
 - 2026-09-24 14:08 · claude-tb075 · in-uitvoering → klaar: Inklapper op alle tien uitklappers, Schermkop/Schermvlak met maat, forwardRef weg; pnpm test, pnpm lint en browserpas groen, antagonist COMPLIANT.
 - 2026-09-24 14:08 · claude-tb075 · Criteria afgevinkt: grep (aria-expanded alleen nog in Inklapper, Katmand-popover, zoekknoppen en 'Alle bekijken'; forwardRef en de Schermkop-booleans weg, smal blijft alleen als zijbalkstand in Navigatie/Aanmeldregel), Inklapper.test.tsx en de browserpas.
+- 2026-09-24 14:08 · claude-tb075 · PR #193
