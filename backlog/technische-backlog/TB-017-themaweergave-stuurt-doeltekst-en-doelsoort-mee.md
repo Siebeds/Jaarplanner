@@ -2,13 +2,13 @@
 id: TB-017
 titel: Themaweergave stuurt doeltekst en doelsoort mee voor thema- en subdoelen
 soort: technisch
-status: nieuw
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 15:27
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-24 13:15
+opgepakt-door: tb017-sessie
+branch: ticket/TB-017-themaweergave-doeltekst
+pr: 191
 geblokkeerd:
 fr: []
 ---
@@ -41,15 +41,15 @@ volgorde, geen open beslissing; of het ticket tot dan geblokkeerd moet staan, be
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een thema met themadoelen en subdoelen, wanneer de themapagina opent, dan doet de frontend geen
+- [x] Gegeven een thema met themadoelen en subdoelen, wanneer de themapagina opent, dan doet de frontend geen
   verzoek naar `/api/leerplandoelen/{code}` tot de leerkracht op een regel klikt.
-- [ ] Gegeven een thema, wanneer de themaweergave wordt opgevraagd, dan bevat elke thema- en subdoelkoppeling de
+- [x] Gegeven een thema, wanneer de themaweergave wordt opgevraagd, dan bevat elke thema- en subdoelkoppeling de
   tekst, de doelsoort en of het doel uit Op.stap verdwenen is (integratietest tegen PostgreSQL).
-- [ ] De themapagina toont na de wijziging dezelfde regels als na TB-016 (browsercontrole op desktop en 390 px).
+- [x] De themapagina toont na de wijziging dezelfde regels als na TB-016 (browsercontrole op desktop en 390 px).
 
 ## Buiten scope
 
-- De doelcodes bij activiteiten.
+- De doelcodes bij activiteiten buiten de themaweergave (het activiteitformulier, de agenda). Binnen de themaweergave krijgen ook de activiteitskoppelingen de velden mee: de FB-010-groep "Andere doelen in de activiteiten" toont ze met `Gekoppelddoel`, en zonder die velden haalt AC1 het niet.
 - Het detailendpoint zelf lichter maken.
 
 ## Open vragen
@@ -61,3 +61,9 @@ Geen.
 - 2026-09-14 16:31 · themadoel-tekst · aangemaakt (status nieuw)
 - 2026-09-15 15:07 · themapagina · FB-011 (2026-09-15) laat elk subthemahoofdstuk standaard dicht staan: de detailverzoeken per subdoel vallen nu pas bij het openklappen, niet meer bij het laden van de pagina; meet tegen dat gedrag
 - 2026-09-15 15:27 · themapagina · FB-010 (2026-09-15) toont bij een open subthema ook de groep 'Andere doelen in de activiteiten': dat zijn activiteitscodes die via Gekoppelddoel hun detail ophalen, dus AC1 kan pas gehaald worden als de scope ook die rijen omvat (nu staan 'de doelcodes bij activiteiten' onder Buiten scope)
+- 2026-09-24 12:58 · tb017-sessie · nieuw → in-uitvoering: opgepakt: sessie kreeg de opdracht TB-017 uit te voeren; E6-02 staat op main
+- 2026-09-24 13:13 · tb017-sessie · gebouwd: de themalezingen geven per koppeling tekst, doelsoort en nietMeerInOpstap mee (één query per verzoek, ook voor de activiteitskoppelingen zodat de FB-010-rijen 'Andere doelen in de activiteiten' geen detail meer vragen); Gekoppelddoel haalt de detail pas bij een klik; gates groen (dotnet test 2357+620, pnpm test 1396, lint, format)
+- 2026-09-24 13:13 · tb017-sessie · browsercontrole op een wegwerpkopie (thema 'Ik en mijn klas', alle hoofdstukken open): 0 verzoeken naar /api/leerplandoelen/{code} op 1440 en 390 px, 104 regels met tekst, 1 verzoek na een klik, geen horizontale scroll op 390
+- 2026-09-24 13:14 · tb017-sessie · antagonist: COMPLIANT, geen CRITICAL of MAJOR; MINOR 'Buiten scope' klopte niet meer: aangepast. Open MINOR: geen test dat de doelzoekfunctie de meegestuurde teksten gebruikt zonder ze op te halen; geen integratietest voor een code zonder leerplandoelrij (de FK Restrict laat die in PostgreSQL niet toe)
+- 2026-09-24 13:14 · tb017-sessie · in-uitvoering → klaar: klaar: themalezingen geven doeltekst, doelsoort en Op.stap-vlag per koppeling mee; Gekoppelddoel vraagt de detail pas bij een klik; gates en browsercontrole groen
+- 2026-09-24 13:15 · tb017-sessie · PR #191

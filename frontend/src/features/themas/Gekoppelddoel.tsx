@@ -19,11 +19,10 @@ import { Ontkoppel } from "./Fiche";
  * list of three themadoelen that each take a paragraph stops being a list a teacher can scan. The
  * whole sentence is one press away: the row opens the doel's detail.
  *
- * **The text is fetched per row**, from the same endpoint the detail reads, so opening the detail is
- * served from the cache. That is a heavy read for two fields: the detail endpoint runs up to seven
- * queries, once per linked doel on the page (up to three themadoelen, plus the subdoelen and, since
- * FB-010, the other activiteit doelen of every open subthema chapter), and again after every write on this screen. It is accepted for now because the
- * thema's own read view, where the text belongs, is being reworked by E6-02; TB-017 moves it there.
+ * **The text comes with the link** (TB-017): a thema read carries each link's text, doelsoort and Op.stap
+ * flag, so the row asks the server nothing and the doel's detail, a heavy read of up to seven queries, is
+ * fetched only when the row is pressed. A link without them (a write's answer, or a code a form holds
+ * before Bewaren) still reads the doel itself, from the endpoint the detail uses.
  *
  * **The whole row is the button, and the remove control sits above it.** A stretched `::after` on the
  * button covers the row, so the empty space beside the text opens the detail too; the remove
@@ -45,7 +44,8 @@ export function Gekoppelddoel({
   voet,
 }: {
   /** Without `status` while the doel is only held by a form that has not been saved. */
-  koppeling: Pick<DoelKoppelingWeergave, "leerplandoelCode"> & Partial<Pick<DoelKoppelingWeergave, "status">>;
+  koppeling: Pick<DoelKoppelingWeergave, "leerplandoelCode"> &
+    Partial<Pick<DoelKoppelingWeergave, "status" | "tekst" | "doelsoort" | "nietMeerInOpstap">>;
   /** A line under the text, such as the activiteiten that carry this doel (FB-010). Phrasing content only. */
   voet?: ReactNode;
   ontkoppelLabel: string;
@@ -56,7 +56,14 @@ export function Gekoppelddoel({
   onToon: (leerplandoelCode: string, knop: HTMLElement) => void;
 }) {
   const code = koppeling.leerplandoelCode;
-  const { data, isPending } = useLeerplandoel(code);
+  // All three fields or none: a thema read fills them together (TB-017), and only then is the row's own read skipped.
+  const meegestuurd =
+    typeof koppeling.tekst === "string" && koppeling.doelsoort != null && typeof koppeling.nietMeerInOpstap === "boolean"
+      ? { tekst: koppeling.tekst, doelsoort: koppeling.doelsoort, nietMeerInOpstap: koppeling.nietMeerInOpstap }
+      : null;
+  const gelezen = useLeerplandoel(meegestuurd ? null : code);
+  const data = meegestuurd ?? gelezen.data;
+  const isPending = meegestuurd ? false : gelezen.isPending;
 
   return (
     <li className="relative flex items-start gap-2 px-3 py-2.5 transition-colors duration-150 hover:bg-inkt/[0.035]">

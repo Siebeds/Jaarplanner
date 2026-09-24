@@ -76,13 +76,14 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             .ToListAsync(cancellationToken);
 
         var metLezer = await LezerAsync(lezer, themas, cancellationToken);
-        return themas.Select(t => MapThema(t, metLezer)).ToList();
+        return await MetDoelinhoudAsync(themas.Select(t => MapThema(t, metLezer)).ToList(), cancellationToken);
     }
 
     public async Task<ThemaWeergave> HaalThemaOpAsync(Guid themaId, Rechten? lezer = null, CancellationToken cancellationToken = default)
     {
         var thema = await LaadThemaAsync(themaId, cancellationToken);
-        return MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
+        var weergave = MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
+        return (await MetDoelinhoudAsync([weergave], cancellationToken))[0];
     }
 
     // --- Gedeelde thema-bibliotheek + per-klas afleiding (E1-11, FR-3.3 resolved per-level, Art. IX.2). ---
@@ -169,7 +170,8 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
             throw new SchoolcontentNietGevondenFout("Dit thema bestaat niet meer. Iemand anders heeft het verwijderd.");
         }
 
-        return MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
+        var weergave = MapThema(thema, await LezerAsync(lezer, [thema], cancellationToken));
+        return (await MetDoelinhoudAsync([weergave], cancellationToken))[0];
     }
 
     public async Task<ThemaWeergave> WijzigThemaAsync(Guid themaId, ThemaWijziging wijziging, CancellationToken cancellationToken = default)
@@ -1169,4 +1171,56 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
 
     private static DoelKoppelingWeergave MapKoppeling(DoelKoppeling koppeling) =>
         new(koppeling.Id, koppeling.LeerplandoelCode, koppeling.Status, koppeling.AiMotivatie);
+
+    /// <summary>
+    /// Fills in what every linked doel in the mapped thema's says: its text, doelsoort and whether Op.stap dropped it
+    /// (TB-017), so the thema page shows its rows without asking the doel detail endpoint once per code.
+    /// <para>
+    /// <b>One query per request</b>, for the distinct codes of what was mapped: the themadoelen, the subdoelen and the
+    /// goal links of the activiteiten the reader may see. The codes come from the read views and not from the loaded
+    /// entities, so an own activiteit the reader may not see adds nothing to the query. A code without a leerplandoel
+    /// row keeps its fields null and the client reads the doel itself, as before.
+    /// </para>
+    /// </summary>
+    private async Task<IReadOnlyList<ThemaWeergave>> MetDoelinhoudAsync(
+        IReadOnlyList<ThemaWeergave> themas,
+        CancellationToken cancellationToken)
+    {
+        var codes = themas
+            .SelectMany(t => t.Themadoelen.Select(td => td.Koppeling)
+                .Concat(t.Subthemas.SelectMany(s => s.Subdoelen.Select(sd => sd.Koppeling)
+                    .Concat(s.Activiteiten.SelectMany(a => a.Doelkoppelingen)))))
+            .Select(k => k.LeerplandoelCode)
+            .Distinct()
+            .ToList();
+        if (codes.Count == 0)
+        {
+            return themas;
+        }
+
+        var doelen = await _context.Leerplandoelen
+            .AsNoTracking()
+            .Where(l => codes.Contains(l.Code))
+            .Select(l => new { l.Code, l.Tekst, l.Doelsoort, l.NietMeerInOpstap })
+            .ToDictionaryAsync(l => l.Code, cancellationToken);
+
+        DoelKoppelingWeergave Vul(DoelKoppelingWeergave koppeling) =>
+            doelen.TryGetValue(koppeling.LeerplandoelCode, out var doel)
+                ? koppeling with { Tekst = doel.Tekst, Doelsoort = doel.Doelsoort, NietMeerInOpstap = doel.NietMeerInOpstap }
+                : koppeling;
+
+        return themas
+            .Select(t => t with
+            {
+                Themadoelen = t.Themadoelen.Select(td => td with { Koppeling = Vul(td.Koppeling) }).ToList(),
+                Subthemas = t.Subthemas.Select(s => s with
+                {
+                    Subdoelen = s.Subdoelen.Select(sd => sd with { Koppeling = Vul(sd.Koppeling) }).ToList(),
+                    Activiteiten = s.Activiteiten
+                        .Select(a => a with { Doelkoppelingen = a.Doelkoppelingen.Select(Vul).ToList() })
+                        .ToList(),
+                }).ToList(),
+            })
+            .ToList();
+    }
 }

@@ -1,3 +1,4 @@
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Schoolcontent;
 
 namespace Jaarplanner.Application.Schoolcontent.Beheer;
@@ -118,8 +119,23 @@ public sealed record ActiviteitVerplaatsingInvoer(Guid DoelSubthemaId);
 
 // --- Read models (returned by the queries; flattened views with the goal-link status surfaced). ---
 
-/// <summary>Read view of a goal link (Art. IV.2 — status + AI motivation surfaced).</summary>
-public sealed record DoelKoppelingWeergave(Guid Id, string LeerplandoelCode, KoppelingStatus Status, string? AiMotivatie);
+/// <summary>
+/// Read view of a goal link (Art. IV.2 — status + AI motivation surfaced).
+/// <para>
+/// <see cref="Tekst"/>, <see cref="Doelsoort"/> and <see cref="NietMeerInOpstap"/> are the linked leerplandoel's own
+/// fields, carried so a row can say what the doel is without reading the doel's heavy detail (TB-017). The thema
+/// reads fill them with one query per request for every code in the tree. A write's answer and every other view
+/// leave them null, as does a code without a leerplandoel row; a client then reads the doel itself.
+/// </para>
+/// </summary>
+public sealed record DoelKoppelingWeergave(
+    Guid Id,
+    string LeerplandoelCode,
+    KoppelingStatus Status,
+    string? AiMotivatie,
+    string? Tekst = null,
+    Doelsoort? Doelsoort = null,
+    bool? NietMeerInOpstap = null);
 
 /// <summary>Read view of a themadoel (school-scoped; owns one goal link).</summary>
 public sealed record ThemadoelWeergave(Guid Id, DoelKoppelingWeergave Koppeling);
