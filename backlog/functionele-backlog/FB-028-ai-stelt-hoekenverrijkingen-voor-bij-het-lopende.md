@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-24 16:49
+bijgewerkt: 2026-09-24 17:04
 opgepakt-door: fb028-sessie
 branch: ticket/FB-028-hoekverrijking-voorstellen
 pr:
@@ -52,14 +52,18 @@ Met FB-020 vult een leerkracht per hoek een verrijking in voor het lopende subth
 
 ## Open vragen
 
-- **Waar staat de knop?** Sinds FB-038 vult de leerkracht een verrijking in via een blad per hoek, vanuit het zijpaneel
-  Hoekenfiches. De knop kan bovenaan het paneel staan (een voorstel voor alle hoeken van het lopende subthema samen), of
-  in het blad van één hoek (een voorstel voor die hoek). Te beslissen in de ontwerpstap.
-- **AI-omgeving:** er is nog geen werkende AI-omgeving (TB-004 wacht op Azure), en de demo draait zonder AI.
-- Hangt af van FB-020.
+- ~~**Waar staat de knop?**~~ Beslist door de eigenaar (2026-09-24): een kleine AI-knop op de rij van elke hoek in het
+  zijpaneel Hoekenfiches, per subthemablok. Het voorstel verschijnt onder die rij, met overnemen, aanpassen en weigeren.
+- ~~**Wie beslist?**~~ Beslist door de eigenaar (2026-09-24): een voorstel hoort bij de klas. Wie de klas mag plannen, en
+  een admin, ziet en beslist het.
+- ~~**Art. IV.4**~~ Beslist door de eigenaar (2026-09-24): de AI mag de tekst van een hoekverrijking uit eigen kennis
+  verzinnen. Vastgelegd in een ADR.
+- ~~**AI-omgeving**~~ Achterhaald: de Claude-provider (ADR-0048) werkt.
+- ~~Hangt af van FB-020.~~ FB-020 is klaar.
 
 ## Werklog
 
 - 2026-09-15 14:10 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-15 21:12 · wensen-hoeken · tekst bijgewerkt na FB-038: invullen gebeurt in het zijpaneel Hoekenfiches; plaats van de knop als open vraag
 - 2026-09-24 16:49 · fb028-sessie · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 17:04 · fb028-sessie · eigenaar beslist: kleine AI-knop per hoekrij in het paneel, voorstel onder de rij; de klas (wie ze mag plannen, en admin) ziet en beslist; Art. IV.4 krijgt een uitzondering voor de tekst van een hoekverrijking
