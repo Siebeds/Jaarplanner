@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 10:52
 opgepakt-door: tb-bezig-puntjes
 branch: ticket/TB-ai-bezig-puntjes
-pr:
+pr: 183
 geblokkeerd:
 fr: []
 ---
@@ -42,3 +42,4 @@ Geen.
 
 - 2026-09-24 10:48 · tb-bezig-puntjes · aangemaakt (status in-uitvoering)
 - 2026-09-24 10:52 · tb-bezig-puntjes · in-uitvoering → klaar: "…" weg uit zeven AiKnop-bezig-labels, bewaking in catalogus.test.ts (faalt op de oude catalogus); vitest 1388/1389 (DoelenScherm-test flaky, slaagt los), lint groen; criteria afgevinkt op testbewijs, geen browserpas
+- 2026-09-24 10:52 · tb-bezig-puntjes · PR #183
