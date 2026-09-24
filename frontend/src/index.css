@@ -920,17 +920,10 @@
 }
 
 /*
- * The proposal stack (TB-045): the next card slides in from the right, the way the decided one left, and the line of a
- * waiting "rest" decision runs down its wait. Both answer a press. Reduced motion puts each on its last frame.
+ * The line of a waiting "Alle n" decision on a list of AI proposals (TB-076) runs down its wait. Reduced motion puts it
+ * on its last frame.
  */
-@keyframes stapel-in {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
-}
-
-@keyframes stapel-aftellen {
+@keyframes voorstel-aftellen {
   from {
     transform: scaleX(1);
   }
