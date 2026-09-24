@@ -191,6 +191,7 @@ public sealed class DeurmatService : IDeurmatService
                     voorstel.KlasId,
                     subthema.Leeftijd,
                     voorstel.SubthemaId,
+                    subthema.ThemaId,
                     voorstel.Datum,
                     voorstel.Begin,
                     voorstel.Einde,
@@ -214,8 +215,9 @@ public sealed class DeurmatService : IDeurmatService
                 k.Id,
                 k.Naam,
                 // One the cat brought is decided where the cat shows it (FB-071): it belongs to a klas and a day, not
-                // to the per-subthema screen, which would show it without either.
-                k.KlasId is null ? $"/subthemas/{k.SubthemaId}/activiteitvoorstellen" : null,
+                // to its subthema, which would show it without either. A subthema is a chapter of its thema's page,
+                // opened by the query.
+                k.KlasId is null ? $"/themas/{k.ThemaId}?subthema={k.SubthemaId}" : null,
                 k.AiMotivatie,
                 k.KlasId is { } klasId ? klasnamen.GetValueOrDefault(klasId) : null,
                 k.KlasId is null ? null : k.Datum,
