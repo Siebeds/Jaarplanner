@@ -116,6 +116,20 @@ export function Subthemahoofdstuk({
     setKoppelOpen(false);
     window.setTimeout(() => (stapvak.current ?? koppelplus.current)?.querySelector("button")?.focus(), 0);
   };
+  // Folding the list closes its search too, so it does not reopen half-used.
+  const wisselSubdoelen = () => {
+    if (subdoelenOpen) setKoppelOpen(false);
+    setSubdoelenOpen(!subdoelenOpen);
+  };
+  // After the first subdoel the first step is gone; the focus goes to the line that now counts it.
+  const subdoelenlink = useRef<HTMLButtonElement>(null);
+  const eersteGekoppeld = useRef(false);
+  const aantalSubdoelen = subthema.subdoelen.length;
+  useEffect(() => {
+    if (!eersteGekoppeld.current || aantalSubdoelen === 0) return;
+    eersteGekoppeld.current = false;
+    subdoelenlink.current?.focus();
+  }, [aantalSubdoelen]);
   const vouwknop = useRef<HTMLButtonElement>(null);
   // Into view, with focus on its fold, so a keyboard or screen-reader user lands where the link pointed.
   useEffect(() => {
@@ -222,7 +236,10 @@ export function Subthemahoofdstuk({
             koppelOpen ? (
               <Subdoelkoppelvak
                 titel={t("thema.subdoelKoppelen")}
-                onKies={onKoppelSubdoel}
+                onKies={(code) => {
+                  eersteGekoppeld.current = true;
+                  onKoppelSubdoel(code);
+                }}
                 bezig={koppelenBezig}
                 alGekozen={[]}
                 onSluit={sluitKoppelen}
@@ -319,8 +336,9 @@ export function Subthemahoofdstuk({
                   <span>{subdoelenZin}.</span>
                   <button
                     type="button"
+                    ref={subdoelenlink}
                     aria-expanded={subdoelenOpen}
-                    onClick={() => setSubdoelenOpen(!subdoelenOpen)}
+                    onClick={() => wisselSubdoelen()}
                     className={TEKSTLINK}
                   >
                     {t(subdoelenOpen ? "thema.subdoelenVerbergen" : "thema.subdoelenBekijken")}
@@ -333,7 +351,7 @@ export function Subthemahoofdstuk({
                     <button
                       type="button"
                       aria-expanded={subdoelenOpen}
-                      onClick={() => setSubdoelenOpen(!subdoelenOpen)}
+                      onClick={() => wisselSubdoelen()}
                       className={TEKSTLINK}
                     >
                       {t(subdoelenOpen ? "thema.andereDoelenVerbergen" : "thema.andereDoelenBekijken")}
