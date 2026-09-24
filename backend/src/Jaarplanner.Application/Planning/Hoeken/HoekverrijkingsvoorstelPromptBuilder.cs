@@ -1,6 +1,6 @@
 using System.Text;
 using Jaarplanner.Application.Ai;
-using Jaarplanner.Domain.Planning;
+
 
 namespace Jaarplanner.Application.Planning.Hoeken;
 
@@ -52,7 +52,6 @@ public static class HoekverrijkingsvoorstelPromptBuilder
         "- Stel één verrijking voor deze ene hoek voor, in het Nederlands." + Nl +
         "- Hou ze kort en concreet, zoals een leerkracht het op een fiche noteert: wat er in de hoek komt te liggen of " +
         "te gebeuren, in één korte zin of een korte opsomming, samen hoogstens 200 tekens. Schrijf geen les uit." + Nl +
-        $"- Hoogstens {Hoekverrijkingsvoorstel.MaxTekstlengte} tekens." + Nl +
         "- Laat ze passen bij het subthema, zijn onderzoeksvragen en subdoelen, bij de leeftijd en bij wat de hoek is." + Nl +
         "- Herhaal de huidige verrijking niet en stel geen geweigerde verrijking opnieuw voor." + Nl +
         "- Geef een korte motivatie in het Nederlands, één korte zin: waarom past dit hier?" + Nl +
