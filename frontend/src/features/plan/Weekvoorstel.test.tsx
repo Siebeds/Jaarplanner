@@ -40,7 +40,12 @@ const VOORSTEL = blok({ plaatsingId: "p-2", activiteitNaam: "Bladerenrace", stat
 
 type Oproep = { methode: string; pad: string; lichaam: unknown };
 
-function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVoorgesteld: 2, pastNiet: ["Kastanjes tellen"], aantalOvergeslagen: 0 }) {
+function toon(
+  activiteiten: GeplandeActiviteit[],
+  antwoord: unknown = { aantalVoorgesteld: 2, pastNiet: ["Kastanjes tellen"], aantalOvergeslagen: 0 },
+  /** A problem detail that refuses every decision, as the server does for a stale proposal. */
+  beslisWeigering?: string,
+) {
   const oproepen: Oproep[] = [];
   vi.stubGlobal(
     "fetch",
@@ -49,6 +54,12 @@ function toon(activiteiten: GeplandeActiviteit[], antwoord: unknown = { aantalVo
       const methode = init?.method ?? "GET";
       oproepen.push({ methode, pad, lichaam: init?.body ? JSON.parse(String(init.body)) : undefined });
       if (pad.endsWith("/weekvoorstel")) return new Response(JSON.stringify(antwoord), { status: 200 });
+      if (beslisWeigering && pad.endsWith("/beslissing")) {
+        return new Response(JSON.stringify({ detail: beslisWeigering }), {
+          status: 400,
+          headers: { "Content-Type": "application/problem+json" },
+        });
+      }
       return new Response(JSON.stringify({ dagen: [] }), { status: 200 });
     }),
   );
@@ -118,6 +129,18 @@ describe("Weekvoorstel", () => {
         lichaam: { aanvaard: false },
       }),
     );
+  });
+
+  it("een geweigerde beslissing staat in het paneel en wordt voorgelezen", async () => {
+    toon([VOORSTEL], undefined, "Dit voorstel is al beslist.");
+    openPaneel();
+
+    fireEvent.click(screen.getByRole("button", { name: "Aanvaard: Bladerenrace" }));
+
+    await waitFor(() =>
+      expect(document.querySelector("[aria-live=polite]")).toHaveTextContent("Dit voorstel is al beslist."),
+    );
+    expect(within(screen.getByRole("dialog")).getByText("Dit voorstel is al beslist.")).toBeInTheDocument();
   });
 
   it("aanvaardt alles over de dagen die in beeld zijn", async () => {

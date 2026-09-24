@@ -58,7 +58,8 @@ export function Weekvoorstel({
         (stelVoor.data.pastNiet.length > 0 ? ` ${t("weekvoorstel.pastNiet", { namen: stelVoor.data.pastNiet.join(", ") })}` : "")
       : null;
   const vraagfout = stelVoor.isError ? weekvoorstelFout(stelVoor.error) : null;
-  // The panel only opens on something to show: once the last proposal is decided and nothing else is left, it closes.
+  // The panel only opens on something to show. After a request its outcome stays in the panel, also once every
+  // proposal is decided; without one, deciding the last proposal closes it.
   const heeftInhoud = voorstellen.length > 0 || uitkomst !== null || vraagfout !== null || beslisfout !== null;
 
   return (
@@ -85,7 +86,10 @@ export function Weekvoorstel({
           </AiKnop>
 
           {voorstellen.length > 0 ? (
-            <Popover.Trigger className={cn(knopklassen("stil"), "gap-1 px-2 text-meta sm:h-9 sm:min-h-9")}>
+            <Popover.Trigger
+              title={telWoord(voorstellen.length, "weekvoorstel.eenOpen", "weekvoorstel.open")}
+              className={cn(knopklassen("stil"), "gap-1 px-2 text-meta sm:h-9 sm:min-h-9")}
+            >
               <span className="tabular-nums">{voorstellen.length}</span>
               <span className="sr-only @min-[68rem]/kop:not-sr-only">
                 {voorstellen.length === 1 ? t("weekvoorstel.eenTeller") : t("weekvoorstel.teller")}
@@ -96,9 +100,9 @@ export function Weekvoorstel({
         </div>
       </Popover.Anchor>
 
-      {/* Heard where the button is, whatever the panel does. */}
+      {/* Heard where the button is, whatever the panel does: the request's outcome and a refused decision alike. */}
       <p className="sr-only" aria-live="polite">
-        {vraagfout ?? uitkomst ?? ""}
+        {vraagfout ?? (beslisfout ? weekbeslisFout(beslisfout) : null) ?? uitkomst ?? ""}
       </p>
 
       <Popover.Portal>
