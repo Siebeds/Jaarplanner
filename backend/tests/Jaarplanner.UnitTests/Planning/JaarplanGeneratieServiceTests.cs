@@ -295,6 +295,39 @@ public sealed class JaarplanGeneratieServiceTests
         Assert.Equal((opzet.Herfst.Id, D(9, 7)), (herfst.ThemaId, herfst.Van));
     }
 
+    /// <summary>
+    /// FB-012 (ADR-0069 D2): a thema not meant for the klas's leeftijd is not sent to the model, and a name the model
+    /// returns for it anyway is an unknown thema.
+    /// </summary>
+    [Fact]
+    public async Task Een_thema_voor_een_andere_leeftijd_wordt_niet_aangeboden_en_niet_geplaatst()
+    {
+        var opzet = new Opzet(Antwoord(("Winter", "2027-01-04"), ("Water", "2026-09-07")));
+        opzet.Winter.StelLeeftijdenIn(["JK", "K2", "K3"]);
+
+        var resultaat = await opzet.GenereerAsync();
+
+        Assert.DoesNotContain("Winter", opzet.Ai.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Contains("Water", opzet.Ai.LaatsteRequest!.UserPrompt, StringComparison.Ordinal);
+        Assert.Equal([new NietGeplaatstThema("Winter", NietGeplaatstThema.OnbekendThema)], resultaat.NietGeplaatst);
+        Assert.Equal(opzet.Water.Id, Assert.Single(opzet.Opslag.Jaarplan!.Plaatsingen).ThemaId);
+    }
+
+    [Fact]
+    public async Task Zonder_thema_voor_de_leeftijd_van_de_klas_wordt_niet_gegenereerd()
+    {
+        var opzet = new Opzet(Antwoord(("Water", "2026-09-07")));
+        foreach (var thema in new[] { opzet.Herfst, opzet.Water, opzet.Winter })
+        {
+            thema.StelLeeftijdenIn(["K3"]);
+        }
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(opzet.GenereerAsync);
+
+        Assert.Equal("De school heeft nog geen thema's voor de leeftijd van deze klas.", fout.Message);
+        Assert.Null(opzet.Ai.LaatsteRequest);
+    }
+
     /// <summary>A startweek on another weekday than Monday names the week it falls in.</summary>
     [Fact]
     public async Task Een_startdatum_midden_in_de_week_noemt_die_week()

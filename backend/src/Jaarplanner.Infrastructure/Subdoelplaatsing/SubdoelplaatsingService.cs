@@ -269,6 +269,13 @@ public sealed class SubdoelplaatsingService : ISubdoelplaatsingService
         }
 
         var thema = await LaadThemaAsync(voorstel.ThemaId, tracking: true, cancellationToken);
+
+        // The thema may have been limited since the proposal was made (ADR-0069 D3).
+        if (!thema.HoudtLeeftijd(voorstel.Leeftijd))
+        {
+            throw new SchoolcontentValidatieFout(thema.NietVoorLeeftijd(voorstel.Leeftijd));
+        }
+
         var vanLeeftijd = thema.Subthemas.Where(s => Jaarfasen.Normaliseer(s.Leeftijd) == voorstel.Leeftijd).ToList();
         if (vanLeeftijd.Any(s => string.Equals(s.Naam.Trim(), naam.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
