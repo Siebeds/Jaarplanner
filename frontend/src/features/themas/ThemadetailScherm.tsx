@@ -720,10 +720,14 @@ export function ThemadetailScherm() {
           open
           subthema={subthemaBlad.subthema}
           // A new subthema at any leeftijd this gebruiker holds; an existing one only to a leeftijd where they hold the
-          // right too, since a re-scope needs it at both ends (I13).
+          // right too, since a re-scope needs it at both ends (I13). Either way only a leeftijd the thema holds (FB-012).
           magLeeftijd={(leeftijd) => {
             const huidige = subthemaBlad.subthema?.leeftijd;
-            return huidige === undefined ? mag.subthemaBeheren(leeftijd) : mag.subthemaHerschikken(huidige, leeftijd);
+            const binnenThema = !thema || leeftijd === huidige || thema.leeftijden.includes(leeftijd);
+            return (
+              binnenThema &&
+              (huidige === undefined ? mag.subthemaBeheren(leeftijd) : mag.subthemaHerschikken(huidige, leeftijd))
+            );
           }}
           bezig={subthemaBlad.subthema ? wijzigSubthema.isPending : maakSubthema.isPending}
           fout={

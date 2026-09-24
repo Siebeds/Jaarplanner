@@ -1,3 +1,4 @@
+import { renderMetJaarfasen } from "../../test/jaarfasen";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -152,6 +153,7 @@ const THEMA: ThemaWeergave = {
   kernwoordenschat: [],
   rijkeWoordenschat: [],
   heeftVoldoendeThemadoelen: false,
+  leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   themadoelen: [],
   minimumdoelen: [],
   subthemas: [],
@@ -161,7 +163,7 @@ const THEMA: ThemaWeergave = {
 describe("Themaformulier", () => {
   it("toont het emoji van het thema in het vakje, en een ander emoji alleen is al een wijziging om te bewaren", () => {
     const onBewaar = vi.fn();
-    render(<Themaformulier open thema={THEMA} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
+    renderMetJaarfasen(<Themaformulier open thema={THEMA} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
 
     const bewaar = screen.getByRole("button", { name: t("themabeheer.bewaar") });
     expect(bewaar).toBeDisabled();
@@ -173,7 +175,7 @@ describe("Themaformulier", () => {
 
   it("stuurt null mee voor een thema zonder emoji", () => {
     const onBewaar = vi.fn();
-    render(<Themaformulier open thema={{ ...THEMA, icoon: null }} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
+    renderMetJaarfasen(<Themaformulier open thema={{ ...THEMA, icoon: null }} onBewaar={onBewaar} onSluit={vi.fn()} bezig={false} />);
 
     fireEvent.change(screen.getByLabelText(t("themabeheer.naam")), { target: { value: "Herfstbos" } });
     fireEvent.click(screen.getByRole("button", { name: t("themabeheer.bewaar") }));

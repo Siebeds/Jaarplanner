@@ -43,7 +43,8 @@ export function Themaplaatsingblad({
   onPlaats: (keuze: { themaId: string; van: string; tot: string }) => void;
   onSluit: () => void;
 }) {
-  const { data: themas, isPending } = useThemabibliotheek();
+  // Only the thema's meant for this klas's leeftijd (FB-012); the server refuses any other.
+  const { data: themas, isPending } = useThemabibliotheek(klasId);
   const [themaId, setThemaId] = useState("");
   const [van, setVan] = useState(beginVoorstel ?? "");
   // The end the teacher typed herself, or null while the proposal fills it.

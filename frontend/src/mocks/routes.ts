@@ -309,6 +309,7 @@ function maakThema(invoer: ThemaInvoer): ThemaWeergave {
     themadoelen: [],
     minimumdoelen: [],
     subthemas: [],
+    leeftijden: invoer.leeftijden,
   };
 }
 
@@ -471,7 +472,15 @@ const TABEL: [Methode, string, Handler][] = [
   ["GET", "/api/minimumdoelen/:ref", (v) => vind(t.minimumdoelDetail(v.params.ref), "Dit minimumdoel")],
 
   // Thema's
-  ["GET", "/api/themas/bibliotheek", ({ s }) => t.bibliotheek(s)],
+  [
+    "GET",
+    "/api/themas/bibliotheek",
+    ({ s, query }) => {
+      // With a klas, only the thema's meant for its leeftijd (FB-012), as the server filters.
+      const klas = s.klassen.find((k) => k.id === query.get("klasId"));
+      return t.bibliotheek(s).filter((thema) => !klas || thema.leeftijden.includes(klas.jaarfase));
+    },
+  ],
   [
     "POST",
     "/api/themas",
@@ -487,8 +496,8 @@ const TABEL: [Methode, string, Handler][] = [
     "/api/themas/:themaId",
     (v) => {
       const thema = themaVan(v);
-      const { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat } = v.body as ThemaInvoer;
-      Object.assign(thema, { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat });
+      const { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat, leeftijden } = v.body as ThemaInvoer;
+      Object.assign(thema, { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat, leeftijden });
       return t.themaWeergave(thema);
     },
   ],

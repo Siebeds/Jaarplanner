@@ -498,6 +498,8 @@ export interface ThemaWeergave {
   /** The themadoelen a teacher sees: the minimumdoelen the thema aims at (FB-043). */
   minimumdoelen: ThemaMinimumdoelWeergave[];
   subthemas: SubthemaWeergave[];
+  /** The leeftijden the thema is meant for (FB-012), in the order of /api/jaarfasen; all nine unless limited. */
+  leeftijden: string[];
   /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
   icoon?: string | null;
 }
@@ -561,6 +563,8 @@ export interface ThemaBibliotheekItem {
   heeftVoldoendeThemadoelen: boolean;
   themadoelen: ThemadoelWeergave[];
   minimumdoelen: ThemaMinimumdoelWeergave[];
+  /** The leeftijden the thema is meant for (FB-012); all nine unless limited. */
+  leeftijden: string[];
   /** The thema's emoji, shown beside its naam (FB-060). Null or absent when it has none. */
   icoon?: string | null;
 }

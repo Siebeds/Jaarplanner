@@ -18,10 +18,18 @@ export function Leeftijdkeuze({
   jaarfasen,
   gekozen,
   onWijzig,
+  label = t("thema.leeftijdenLabel"),
+  uitgeschakeld = false,
 }: {
   jaarfasen: string[];
   gekozen: string[];
   onWijzig: (gekozen: string[]) => void;
+  /**
+   * The group's accessible name; the doelsuggestie scope by default. `null` inside a fieldset whose legend already
+   * names it, so a screen reader does not hear the name twice.
+   */
+  label?: string | null;
+  uitgeschakeld?: boolean;
 }) {
   const sporen = [jaarfasen.filter((fase) => !fase.startsWith("L")), jaarfasen.filter((fase) => fase.startsWith("L"))]
     .filter((spoor) => spoor.length > 0);
@@ -32,7 +40,7 @@ export function Leeftijdkeuze({
     onWijzig(jaarfasen.filter((f) => (f === fase ? !gekozen.includes(f) : gekozen.includes(f))));
 
   return (
-    <div role="group" aria-label={t("thema.leeftijdenLabel")} className="flex flex-wrap items-center gap-1.5">
+    <div role="group" aria-label={label ?? undefined} className="flex flex-wrap items-center gap-1.5">
       {sporen.map((spoor) => (
         <div key={spoor[0]} className="inline-flex rounded-veld border border-lijn bg-vlak-diep p-1">
           {spoor.map((fase) => {
@@ -42,6 +50,7 @@ export function Leeftijdkeuze({
                 key={fase}
                 type="button"
                 aria-pressed={aan}
+                disabled={uitgeschakeld}
                 onClick={() => wissel(fase)}
                 className={cn(
                   "min-h-raak min-w-9 sm:min-h-7 rounded-[0.5rem] px-2 text-meta font-medium transition-colors duration-150",

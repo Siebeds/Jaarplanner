@@ -304,14 +304,24 @@ export function useWijzigKlas() {
 
 export const themaSleutels = {
   bibliotheek: () => ["thema-bibliotheek"] as const,
+  /** Under the bibliotheek's key, so what refreshes the list refreshes this one too. */
+  bibliotheekVoorKlas: (klasId: string) => ["thema-bibliotheek", klasId] as const,
   detail: (id: string) => ["thema", id] as const,
   suggesties: (id: string) => ["doelsuggesties", id] as const,
 };
 
-export function useThemabibliotheek() {
+/**
+ * The shared thema-bibliotheek. With a `klasId`, only the thema's meant for that klas's leeftijd (FB-012): the server
+ * decides, so the klas-to-leeftijd rule stays in one place. Its key sits under the bibliotheek's, so every mutation that
+ * refreshes the list refreshes this one too.
+ */
+export function useThemabibliotheek(klasId?: string) {
   return useQuery({
-    queryKey: themaSleutels.bibliotheek(),
-    queryFn: () => get<ThemaBibliotheekItem[]>("/api/themas/bibliotheek"),
+    queryKey: klasId ? themaSleutels.bibliotheekVoorKlas(klasId) : themaSleutels.bibliotheek(),
+    queryFn: () =>
+      get<ThemaBibliotheekItem[]>(
+        klasId ? `/api/themas/bibliotheek?klasId=${encodeURIComponent(klasId)}` : "/api/themas/bibliotheek",
+      ),
   });
 }
 

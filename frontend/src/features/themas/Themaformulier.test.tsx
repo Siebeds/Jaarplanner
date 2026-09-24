@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { ALLE_JAARFASEN, renderMetJaarfasen } from "../../test/jaarfasen";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { ThemaWeergave } from "../../lib/types";
 import { t } from "../../i18n";
@@ -17,6 +18,7 @@ const BOERDERIJ: ThemaWeergave = {
   kernwoordenschat: ["koe", "kip"],
   rijkeWoordenschat: ["hooi"],
   heeftVoldoendeThemadoelen: false,
+  leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   themadoelen: [],
   minimumdoelen: [],
   subthemas: [],
@@ -25,7 +27,7 @@ const BOERDERIJ: ThemaWeergave = {
 function toon(thema?: ThemaWeergave) {
   const onBewaar = vi.fn();
   const onSluit = vi.fn();
-  render(<Themaformulier open thema={thema} onBewaar={onBewaar} onSluit={onSluit} bezig={false} />);
+  renderMetJaarfasen(<Themaformulier open thema={thema} onBewaar={onBewaar} onSluit={onSluit} bezig={false} />);
   return { onBewaar, onSluit, blad: screen.getByRole("dialog") };
 }
 
@@ -54,8 +56,27 @@ describe("Themaformulier: een nieuw thema", () => {
       kernwoordenschat: [],
       rijkeWoordenschat: [],
       icoon: null,
+      leeftijden: ALLE_JAARFASEN,
     });
     expect(within(blad).queryByRole("button", { name: t("themabeheer.bewaar") })).toBeNull();
+  });
+
+  it("beperkt het thema tot de gekozen leeftijden, en weigert het zonder leeftijd (FB-012)", () => {
+    const { blad, onBewaar } = toon();
+    fireEvent.change(within(blad).getByLabelText(t("themabeheer.naam")), { target: { value: "Herfst" } });
+    const groep = within(blad).getByRole("group", { name: t("themabeheer.leeftijden") });
+
+    for (const fase of ALLE_JAARFASEN) {
+      fireEvent.click(within(groep).getByRole("button", { name: fase }));
+    }
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.aanmaken") }));
+    expect(onBewaar).not.toHaveBeenCalled();
+    expect(within(blad).getByText(t("themabeheer.leeftijdVerplicht"))).toBeInTheDocument();
+
+    fireEvent.click(within(groep).getByRole("button", { name: "K3" }));
+    fireEvent.click(within(groep).getByRole("button", { name: "K2" }));
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.aanmaken") }));
+    expect(onBewaar).toHaveBeenCalledWith(expect.objectContaining({ leeftijden: ["K2", "K3"] }));
   });
 
   it("sluit meteen zonder ingevulde velden", () => {
@@ -99,6 +120,19 @@ describe("Themaformulier: een thema bewerken", () => {
     fireEvent.click(within(blad).getByRole("button", { name: "5" }));
     expect(gewijzigd()).toHaveLength(0);
     expect(bewaar).toBeDisabled();
+  });
+
+  it("markeert gewijzigde leeftijden en stuurt ze mee (FB-012)", () => {
+    const { blad, onBewaar } = toon({ ...BOERDERIJ, leeftijden: ["K2", "K3"] });
+    const groep = within(blad).getByRole("group", { name: t("themabeheer.leeftijden") });
+    expect(within(groep).getByRole("button", { name: "K3" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(groep).getByRole("button", { name: "JK" })).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(within(groep).getByRole("button", { name: "JK" }));
+    expect(gewijzigd()).toHaveLength(1);
+    fireEvent.click(within(blad).getByRole("button", { name: t("themabeheer.bewaar") }));
+
+    expect(onBewaar).toHaveBeenCalledWith(expect.objectContaining({ leeftijden: ["JK", "K2", "K3"] }));
   });
 
   it("markeert een gewijzigde woordenlijst", () => {

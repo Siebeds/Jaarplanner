@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-24 16:48
+bijgewerkt: 2026-09-24 16:58
 opgepakt-door: thema-leeftijden
 branch: ticket/FB-012-thema-leeftijden
 pr:
@@ -69,3 +69,4 @@ leeftijden**. Een thema per klas of een persoonlijk thema is niet gevraagd.
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
 - 2026-09-24 16:48 · thema-leeftijden · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 16:58 · thema-leeftijden · Grondwet Art. IX.2 gewijzigd en ADR-0069 vastgelegd; een gebruikte leeftijd weghalen wordt geweigerd (standaard uit het ticket).
