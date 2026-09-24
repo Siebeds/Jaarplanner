@@ -2,12 +2,12 @@
 id: TB-071
 titel: Slepen in de agenda hertekent alleen wat verandert
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 09:48
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 14:10
+opgepakt-door: claude-tb071
+branch: ticket/TB-071-slepen-hertekent-minder
 pr:
 geblokkeerd:
 fr: []
@@ -71,3 +71,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 09:48 · claude-vercelanalyse · aangemaakt (status nieuw)
+- 2026-09-24 14:10 · claude-tb071 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orkestrerende sessie)
