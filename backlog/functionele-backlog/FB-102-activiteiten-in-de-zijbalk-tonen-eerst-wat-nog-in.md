@@ -2,10 +2,10 @@
 id: FB-102
 titel: Activiteiten in de zijbalk tonen eerst wat nog in te plannen is, in compacte kaarten
 soort: functioneel
-status: in-uitvoering
+status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 18:02
+bijgewerkt: 2026-09-24 18:18
 opgepakt-door: claude-fb102
 branch: ticket/FB-102-activiteiten-zijbalk
 pr:
@@ -50,19 +50,19 @@ zijbalk" (bord "Activiteiten, voorstel", met "Activiteiten, nu" ernaast).
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een subthema met één niet ingeplande en twee ingeplande activiteiten, wanneer de leerkracht het paneel
+- [x] Gegeven een subthema met één niet ingeplande en twee ingeplande activiteiten, wanneer de leerkracht het paneel
       opent, dan staat de niet ingeplande onder "Nog in te plannen, 1" en de andere twee onder "Ingepland, 2".
-- [ ] Gegeven een ingeplande activiteit, wanneer het paneel opent, dan toont haar kaart de datum op één regel, en
+- [x] Gegeven een ingeplande activiteit, wanneer het paneel opent, dan toont haar kaart de datum op één regel, en
       staat "Ingepland op" niet voluit op de kaart.
-- [ ] Gegeven een kaart, wanneer de leerkracht op de knop "3 doelen" klikt, dan opent de doelinfo zoals nu via het
+- [x] Gegeven een kaart, wanneer de leerkracht op de knop "3 doelen" klikt, dan opent de doelinfo zoals nu via het
       doel-icoon, en er staat geen apart doel-icoon meer op de kaart.
-- [ ] Gegeven drie eigen activiteiten, wanneer het paneel opent, dan staat "Eigen" op geen enkele kaart, en één keer
+- [x] Gegeven drie eigen activiteiten, wanneer het paneel opent, dan staat "Eigen" op geen enkele kaart, en één keer
       onderaan dat ze allemaal eigen zijn.
-- [ ] Gegeven een subthema met een lange naam, wanneer het paneel opent, dan staat de hele naam in de keuzelijst,
+- [x] Gegeven een subthema met een lange naam, wanneer het paneel opent, dan staat de hele naam in de keuzelijst,
       zo nodig op twee regels.
-- [ ] Gegeven een kaart, wanneer de leerkracht ze naar de agenda sleept, dan wordt de activiteit ingepland zoals nu,
+- [x] Gegeven een kaart, wanneer de leerkracht ze naar de agenda sleept, dan wordt de activiteit ingepland zoals nu,
       en verhuist de kaart naar de groep "Ingepland".
-- [ ] Gegeven een laptop van 1440×900, wanneer het paneel zes activiteiten heeft, dan zijn ze alle zes zichtbaar
+- [x] Gegeven een laptop van 1440×900, wanneer het paneel zes activiteiten heeft, dan zijn ze alle zes zichtbaar
       zonder te scrollen.
 
 ## Testscenario's
@@ -90,3 +90,5 @@ Geen.
 - 2026-09-24 17:20 · claude-vercelanalyse · aangemaakt (status nieuw)
 - 2026-09-24 17:53 · claude-fb102 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
 - 2026-09-24 18:02 · claude-fb102 · paneel gebouwd: twee groepen, compacte kaarten, knop met aantal doelen, keuzelijst loopt door; vitest groen
+- 2026-09-24 18:18 · claude-fb102 · antagonist: COMPLIANT, MINOR 1 opgelost (eigenaarlabel in de naam van de kaartknop), overige MINOR in backlog/worklogs/FB-102
+- 2026-09-24 18:18 · claude-fb102 · in-uitvoering → te-testen: gebouwd: twee groepen, compacte kaarten met datum op een regel en knop met aantal doelen, eigenaar een keer onderaan, keuzelijst loopt door; lint en vitest groen, browserpas 1440x900 en 390px

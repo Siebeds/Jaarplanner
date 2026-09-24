@@ -463,6 +463,7 @@ function Activiteitkaart({
   const doelen = doelenVan(activiteit);
   const naamId = useId();
   const wanneerId = useId();
+  const soortId = useId();
 
   return (
     <div
@@ -476,7 +477,7 @@ function Activiteitkaart({
       <button
         type="button"
         ref={sleepbaar ? setNodeRef : undefined}
-        aria-labelledby={`${naamId} ${wanneerId}`}
+        aria-labelledby={`${naamId} ${soortId} ${wanneerId}`}
         onClick={() => onKies({ id: activiteit.id, naam: activiteit.naam, duur })}
         {...(sleepbaar ? listeners : {})}
         {...(sleepbaar ? attributes : {})}
@@ -488,6 +489,7 @@ function Activiteitkaart({
           naam={activiteit.naam}
           naamId={naamId}
           wanneerId={wanneerId}
+          soortId={soortId}
           dag={dag}
           label={label}
           doelen={<Doelinfo naam={activiteit.naam} doelen={doelen} telling className="pointer-events-auto" />}
@@ -563,6 +565,7 @@ function Kaartinhoud({
   naam,
   naamId,
   wanneerId,
+  soortId,
   dag,
   label,
   doelen,
@@ -571,6 +574,7 @@ function Kaartinhoud({
   /** Ids for the button that `Activiteitkaart` lays under the card, which takes its name from these words. */
   naamId?: string;
   wanneerId?: string;
+  soortId?: string;
   /**
    * The day it next stands on in this klas's agenda (`ingeplandeDag`); null when it stands nowhere; undefined when
    * that could not be read, and then the card says nothing about it rather than "nog niet ingepland".
@@ -584,7 +588,7 @@ function Kaartinhoud({
       <p id={naamId} className="text-body font-medium leading-snug text-inkt">
         {naam}
       </p>
-      {label}
+      {label ? <div id={soortId}>{label}</div> : null}
       {/* Wraps rather than overlaps: "Nog niet ingepland" beside "Nog geen doel" is wider than the column, and the
           count then moves to the next line, still on the right. */}
       <div className="mt-1 flex min-h-7 flex-wrap items-center justify-end gap-x-1.5 gap-y-1">

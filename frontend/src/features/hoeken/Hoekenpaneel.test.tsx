@@ -914,7 +914,8 @@ describe("Hoekenpaneel: de activiteiten (FB-017)", () => {
     useHoekenpaneel.setState({ subthemaKeuze: { subthemaId: "s-5", klasId: "k-1", week: WEEK } });
     toonActiviteiten({ ik: IK });
 
-    await screen.findByRole("button", { name: /^Regen meten/ });
+    // The label is part of the card button's name too, so a screen reader hears whose it is (antagonist FB-102).
+    await screen.findByRole("button", { name: `Regen meten ${t("activiteit.gedeeld")} ${t("activiteitenpaneel.nietIngepland")}` });
     expect(screen.getAllByText(t("activiteit.gedeeld"))).toHaveLength(1);
     expect(screen.queryByText(t("activiteit.eigen"))).not.toBeInTheDocument();
     expect(screen.queryByText(/zijn je eigen activiteiten/)).not.toBeInTheDocument();
