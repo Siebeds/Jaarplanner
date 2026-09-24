@@ -809,6 +809,20 @@ const TABEL: [Methode, string, Handler][] = [
     },
   ],
 
+  // Where each activiteit stands in the klas's year (FB-076); the mock holds one klas, so every dagplaatsing is its.
+  [
+    "GET",
+    "/api/klassen/:klasId/jaarplan/activiteitplaatsingen",
+    (v) => {
+      klasVan(v);
+      const dagen = new Map<string, Set<string>>();
+      for (const p of v.s.dagplaatsingen) dagen.set(p.activiteitId, (dagen.get(p.activiteitId) ?? new Set()).add(p.datum));
+      return {
+        activiteiten: [...dagen].map(([activiteitId, datums]) => ({ activiteitId, datums: [...datums].sort() })),
+      };
+    },
+  ],
+
   // Weekplanning
   [
     "GET",
