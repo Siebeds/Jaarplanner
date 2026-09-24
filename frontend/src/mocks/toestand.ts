@@ -198,6 +198,8 @@ function naarThemaWeergave(thema: inhoud.MockThema): ThemaWeergave {
     heeftVoldoendeThemadoelen: true,
     themadoelen: [],
     minimumdoelen: thema.minimumdoelen.map((ref) => ({ id: nieuwId(), minimumdoelRef: ref })),
+    // Every seeded thema holds all nine leeftijden, as every thema did before FB-012.
+    leeftijden: [...inhoud.JAARFASEN],
     subthemas: thema.subthemas.map((sub) => ({
       id: sub.id,
       themaId: thema.id,

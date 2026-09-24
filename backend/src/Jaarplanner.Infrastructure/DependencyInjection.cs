@@ -157,6 +157,9 @@ public static class DependencyInjection
         // which the placement above has nothing to do with.
         services.AddScoped<IHoekverrijkingService, HoekverrijkingService>();
 
+        // The AI's proposal of a verrijking per hoek (FB-028, ADR-0070); accepting saves through the service above.
+        services.AddScoped<IHoekverrijkingsvoorstelService, HoekverrijkingsvoorstelService>();
+
         // The algemene fiches (owner, 2026-09-11): the hoek's sibling for recurring activities, with the same split
         // between the class's own list and its planning, and the planning kept out of the jaarplan for the same reason.
         services.AddScoped<IAlgemeneFicheBeheerService, AlgemeneFicheBeheerService>();
@@ -333,7 +336,7 @@ public static class DependencyInjection
         services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatopzoekbron, Jaarplanner.Infrastructure.Kat.EfKatopzoekbron>();
         services.AddScoped<Jaarplanner.Application.Kat.Chat.IKatchatService, Jaarplanner.Application.Kat.Chat.KatchatService>();
 
-        // One key per process seals the chat's turns (FB-093, ADR-0069): a conversation does not outlive a restart.
+        // One key per process seals the chat's turns (FB-093, ADR-0071): a conversation does not outlive a restart.
         services.AddSingleton<Jaarplanner.Application.Kat.Chat.Katbeurtzegel>();
 
         // The one task, and the one place the cat calls the AI unasked (FB-070, ADR-0060, Art. IV.8). It runs for a

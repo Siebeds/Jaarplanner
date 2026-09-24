@@ -29,7 +29,7 @@ public interface IKatchatService
 
 /// <summary>
 /// One model call per question, and none for a lookup run again (ADR-0066). The question goes as typed (Art. IV.4),
-/// with the last turns of the conversation, each checked against the server's seal first (FB-093, ADR-0069); of the
+/// with the last turns of the conversation, each checked against the server's seal first (FB-093, ADR-0071); of the
 /// school's content the model sees only the names and codes an earlier lookup found, so an answer about it cannot be
 /// invented. Nothing is persisted and nothing of the question, the conversation or the answer is logged
 /// (ADR-0059 D6): this class has no logger on purpose.

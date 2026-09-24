@@ -299,6 +299,17 @@ public sealed class SchoolcontentImportService : ISchoolcontentImportService
                 continue;
             }
 
+            // A thema limited to certain leeftijden takes no subthema at another one (ADR-0069 D3). A thema the import
+            // creates holds all nine, so only an existing, limited one can refuse.
+            if (!doelThema.HoudtLeeftijd(sleutel.Leeftijd))
+            {
+                opmerkingen.Add(
+                    $"Subthema '{sleutel.Naam}' is overgeslagen: thema '{themaNaam}' geldt niet voor {sleutel.Leeftijd}, " +
+                    $"alleen voor {string.Join(", ", doelThema.Leeftijden)}. Voeg {sleutel.Leeftijd} toe aan het thema " +
+                    "of kies een andere leeftijd in het bestand.");
+                continue;
+            }
+
             var bestaandSubthema = bestaandeThema?.Subthemas.FirstOrDefault(s =>
                 KeyComparer.Equals(s.Naam, sleutel.Naam) &&
                 KeyComparer.Equals(s.Leeftijd, sleutel.Leeftijd));

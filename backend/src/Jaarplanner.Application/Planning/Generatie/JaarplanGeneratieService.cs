@@ -1,6 +1,7 @@
 using Jaarplanner.Application.Ai;
 using Jaarplanner.Application.Planning.Generatie.Response;
 using Jaarplanner.Application.Schoolcontent.Beheer;
+using Jaarplanner.Domain.Curriculum;
 using Jaarplanner.Domain.Planning;
 using Jaarplanner.Domain.Schoolcontent;
 
@@ -50,13 +51,22 @@ public sealed class JaarplanGeneratieService
         var (klas, schooljaar) = await _opslag.LaadKlasMetSchooljaarAsync(klasId, cancellationToken)
             ?? throw new SchoolcontentNietGevondenFout($"Klas {klasId} is niet gevonden.");
         var kalender = new Themakalender(schooljaar);
-        var themas = await _opslag.LaadThemasAsync(cancellationToken);
-        if (themas.Count == 0)
+        var alleThemas = await _opslag.LaadThemasAsync(cancellationToken);
+        if (alleThemas.Count == 0)
         {
             throw new SchoolcontentValidatieFout("De school heeft nog geen thema's om in te plannen.");
         }
 
-        var themaPerId = themas.ToDictionary(t => t.Id);
+        // Only the thema's meant for the klas's leeftijd are sent and can be picked (FB-012, ADR-0069 D2): a name the
+        // model returns outside them is an unknown thema. The names of placements already in the plan come from every
+        // thema, since the plan may hold one that is not offered any more.
+        var themas = alleThemas.Where(t => t.GeldtVoor(Jaarfasen.VoorKlas(klas.Leerjaar, klas.Jaarfase))).ToList();
+        if (themas.Count == 0)
+        {
+            throw new SchoolcontentValidatieFout("De school heeft nog geen thema's voor de leeftijd van deze klas.");
+        }
+
+        var themaPerId = alleThemas.ToDictionary(t => t.Id);
         var bestaand = await _opslag.LaadJaarplanAsync(klasId, cancellationToken);
         var vervangbaar = Vervangbaar(bestaand, kalender);
         var blijvend = bestaand?.Plaatsingen.Where(p => !vervangbaar.Contains(p.Id)).ToList() ?? [];

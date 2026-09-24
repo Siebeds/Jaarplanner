@@ -309,6 +309,7 @@ function maakThema(invoer: ThemaInvoer): ThemaWeergave {
     themadoelen: [],
     minimumdoelen: [],
     subthemas: [],
+    leeftijden: invoer.leeftijden ?? ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   };
 }
 
@@ -471,7 +472,15 @@ const TABEL: [Methode, string, Handler][] = [
   ["GET", "/api/minimumdoelen/:ref", (v) => vind(t.minimumdoelDetail(v.params.ref), "Dit minimumdoel")],
 
   // Thema's
-  ["GET", "/api/themas/bibliotheek", ({ s }) => t.bibliotheek(s)],
+  [
+    "GET",
+    "/api/themas/bibliotheek",
+    ({ s, query }) => {
+      // With a klas, only the thema's meant for its leeftijd (FB-012), as the server filters.
+      const klas = s.klassen.find((k) => k.id === query.get("klasId"));
+      return t.bibliotheek(s).filter((thema) => !klas || thema.leeftijden.includes(klas.jaarfase));
+    },
+  ],
   [
     "POST",
     "/api/themas",
@@ -487,8 +496,9 @@ const TABEL: [Methode, string, Handler][] = [
     "/api/themas/:themaId",
     (v) => {
       const thema = themaVan(v);
-      const { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat } = v.body as ThemaInvoer;
+      const { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat, leeftijden } = v.body as ThemaInvoer;
       Object.assign(thema, { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat });
+      if (leeftijden) thema.leeftijden = leeftijden;
       return t.themaWeergave(thema);
     },
   ],
@@ -806,6 +816,20 @@ const TABEL: [Methode, string, Handler][] = [
       klasVan(v);
       v.s.plaatsingen = v.s.plaatsingen.filter((p) => p.id !== v.params.plaatsingId);
       return leeg;
+    },
+  ],
+
+  // Where each activiteit stands in the klas's year (FB-076); the mock holds one klas, so every dagplaatsing is its.
+  [
+    "GET",
+    "/api/klassen/:klasId/jaarplan/activiteitplaatsingen",
+    (v) => {
+      klasVan(v);
+      const dagen = new Map<string, Set<string>>();
+      for (const p of v.s.dagplaatsingen) dagen.set(p.activiteitId, (dagen.get(p.activiteitId) ?? new Set()).add(p.datum));
+      return {
+        activiteiten: [...dagen].map(([activiteitId, datums]) => ({ activiteitId, datums: [...datums].sort() })),
+      };
     },
   ],
 

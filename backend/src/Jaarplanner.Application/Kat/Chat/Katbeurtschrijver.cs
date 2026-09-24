@@ -7,7 +7,7 @@ namespace Jaarplanner.Application.Kat.Chat;
 
 /// <summary>
 /// Writes the cat's answer as the model is sent it again in a later question of the same conversation (FB-093,
-/// ADR-0069): the JSON of the chat's own contract (Art. IV.5), so the model reads its earlier turns in the form it
+/// ADR-0071): the JSON of the chat's own contract (Art. IV.5), so the model reads its earlier turns in the form it
 /// answers in.
 /// <list type="bullet">
 /// <item>An explanation goes as it was: the model wrote it from the handleiding.</item>

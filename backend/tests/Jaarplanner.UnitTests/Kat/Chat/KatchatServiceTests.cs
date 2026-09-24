@@ -136,7 +136,7 @@ public sealed class KatchatServiceTests
         new Promptbegrenzing().BewaakChat(verzoek);
     }
 
-    // ---- The conversation (FB-093, ADR-0069) ----
+    // ---- The conversation (FB-093, ADR-0071) ----
 
     [Fact]
     public async Task Een_vervolgvraag_krijgt_de_vorige_beurt_mee_en_het_antwoord_komt_uit_de_gegevens_van_de_tool()

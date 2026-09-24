@@ -19,23 +19,31 @@ public sealed record OnderzoeksvraagWeergave(
     string Vraag,
     string? Probleemstelling);
 
-/// <summary>Create payload for a school-wide <see cref="Thema"/> (Art. IX.2 — no klas/leeftijd; scope is school-wide).</summary>
+/// <summary>
+/// Create payload for a school-wide <see cref="Thema"/> (Art. IX.2 — no klas; shared school-wide). <see cref="Leeftijden"/>
+/// limits it to certain leeftijden (ADR-0069); <c>null</c> means all nine.
+/// </summary>
 public sealed record ThemaCreatie(
     string Naam,
     int DuurWeken,
     string? Invalshoeken = null,
     IReadOnlyList<string>? Kernwoordenschat = null,
     IReadOnlyList<string>? RijkeWoordenschat = null,
-    string? Icoon = null);
+    string? Icoon = null,
+    IReadOnlyList<string>? Leeftijden = null);
 
-/// <summary>Update payload for a school-wide <see cref="Thema"/>.</summary>
+/// <summary>
+/// Update payload for a school-wide <see cref="Thema"/>. A <c>null</c> list leaves that list unchanged, the
+/// <see cref="Leeftijden"/> included (ADR-0069).
+/// </summary>
 public sealed record ThemaWijziging(
     string Naam,
     int DuurWeken,
     string? Invalshoeken = null,
     IReadOnlyList<string>? Kernwoordenschat = null,
     IReadOnlyList<string>? RijkeWoordenschat = null,
-    string? Icoon = null);
+    string? Icoon = null,
+    IReadOnlyList<string>? Leeftijden = null);
 
 /// <summary>
 /// Create payload for an age-scoped <see cref="Subthema"/> (Art. IX.2, amended 2026-08-30).
@@ -209,6 +217,7 @@ public sealed record ThemaWeergave(
     IReadOnlyList<ThemadoelWeergave> Themadoelen,
     IReadOnlyList<ThemaMinimumdoelWeergave> Minimumdoelen,
     IReadOnlyList<SubthemaWeergave> Subthemas,
+    IReadOnlyList<string> Leeftijden,
     string? Icoon = null);
 
 /// <summary>
@@ -238,4 +247,5 @@ public sealed record ThemaBibliotheekItem(
     int AantalSubthemas,
     int AantalActiviteiten,
     int AantalDoelkoppelingen,
+    IReadOnlyList<string> Leeftijden,
     string? Icoon = null);

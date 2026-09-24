@@ -4,7 +4,7 @@ using System.Text;
 namespace Jaarplanner.Application.Kat.Chat;
 
 /// <summary>
-/// One turn of a conversation with the cat, as the server wrote it (FB-093, ADR-0069): what she asked, what Chuck
+/// One turn of a conversation with the cat, as the server wrote it (FB-093, ADR-0071): what she asked, what Chuck
 /// answered in the form the model is sent again (<see cref="Katbeurtschrijver"/>), and the server's seal over both. The
 /// tool keeps no conversation (ADR-0059 D6), so the browser holds the turns and sends the last ones back with a new
 /// question; the seal is how the server knows a turn is its own and unchanged.
@@ -16,7 +16,7 @@ public sealed record Katbeurt(string Vraag, string Antwoord, string Zegel)
 }
 
 /// <summary>
-/// Seals the cat's turns and checks a turn sent back (FB-093, ADR-0069). A turn that comes from the browser could be
+/// Seals the cat's turns and checks a turn sent back (FB-093, ADR-0071). A turn that comes from the browser could be
 /// forged, and a forged answer of the cat's would steer the model; the seal is an HMAC-SHA256 over the gebruiker, the
 /// question and the answer, so a turn changed on the way, invented, or taken from another gebruiker does not check.
 /// <para>

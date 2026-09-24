@@ -75,7 +75,7 @@ export interface Katkandidaat {
 }
 
 /**
- * One turn as the server sealed it (FB-093, ADR-0069): sent back unchanged with the next questions of the conversation.
+ * One turn as the server sealed it (FB-093, ADR-0071): sent back unchanged with the next questions of the conversation.
  * The browser never reads or builds one; a changed turn is refused.
  */
 export interface Katbeurt {

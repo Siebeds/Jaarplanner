@@ -175,7 +175,7 @@ public sealed record Katantwoord
     public int AgendaTotaal { get; init; }
 
     /// <summary>
-    /// This question and answer as a sealed turn (FB-093, ADR-0069): the browser sends it back with the next questions
+    /// This question and answer as a sealed turn (FB-093, ADR-0071): the browser sends it back with the next questions
     /// of the conversation, and the server checks its seal. Null for a lookup run again without the turn's question.
     /// </summary>
     public Katbeurt? Beurt { get; init; }

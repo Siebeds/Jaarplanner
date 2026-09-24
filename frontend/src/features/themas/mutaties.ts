@@ -75,6 +75,11 @@ export interface ThemaInvoer {
   rijkeWoordenschat: string[];
   /** One emoji or null (FB-060). Always sent: a missing field clears it on the server. */
   icoon: string | null;
+  /**
+   * The leeftijden the thema is meant for (FB-012), never empty. Null leaves them as they are, which for a new thema is
+   * all nine: the form sends it only while the jaarfasen have not loaded.
+   */
+  leeftijden: string[] | null;
 }
 
 export function useMaakThema() {

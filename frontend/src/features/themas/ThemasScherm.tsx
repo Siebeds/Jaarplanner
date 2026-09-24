@@ -5,7 +5,7 @@ import { cn } from "../../lib/cn";
 import { Leegte } from "../../components/ui/Leegte";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { IcoonPijlRechts } from "../../components/Iconen";
-import { useThemabibliotheek } from "../../lib/queries";
+import { useJaarfasen, useThemabibliotheek } from "../../lib/queries";
 import { Knop } from "../../components/ui/Knop";
 import { IcoonPlus } from "../../components/Iconen";
 import { Themaformulier } from "./Themaformulier";
@@ -30,6 +30,7 @@ import { Themaicoon } from "./Emojikiezer";
  */
 export function ThemasScherm() {
   const { data, isPending, isError } = useThemabibliotheek();
+  const { data: jaarfasen } = useJaarfasen();
   const [nieuwOpen, setNieuwOpen] = useState(false);
   const maak = useMaakThema();
   const { mag } = useRechten();
@@ -103,6 +104,14 @@ export function ThemasScherm() {
                         className="mt-0.5 h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-150 group-hover:translate-x-0.5"
                       />
                     </div>
+
+                    {/* Only a limited thema says for whom (FB-012): "alle leeftijden" on every card would repeat
+                        itself down the list and bury the few that differ. */}
+                    {jaarfasen && thema.leeftijden.length < jaarfasen.length ? (
+                      <p className="text-meta font-medium text-inkt">
+                        {t("themas.voorLeeftijden", { leeftijden: thema.leeftijden.join(", ") })}
+                      </p>
+                    ) : null}
 
                     {thema.invalshoeken ? (
                       <p className="line-clamp-2 text-meta text-inkt-zacht">{thema.invalshoeken}</p>

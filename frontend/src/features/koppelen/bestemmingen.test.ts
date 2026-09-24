@@ -57,6 +57,7 @@ function thema(naam: string, subthemas: SubthemaWeergave[], codes: string[] = []
     kernwoordenschat: [],
     rijkeWoordenschat: [],
     heeftVoldoendeThemadoelen: codes.length >= 2,
+    leeftijden: ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
     themadoelen: codes.map((code, i) => ({
       id: `themadoel-${naam}-${i}`,
       koppeling: { id: `k-${naam}-${i}`, leerplandoelCode: code, status: "Manueel" as const, aiMotivatie: null },

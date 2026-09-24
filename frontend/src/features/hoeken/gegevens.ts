@@ -189,3 +189,73 @@ export function useAantalHoekverrijkingen(subthemaId: string | null) {
     enabled: subthemaId !== null,
   });
 }
+
+/* ------------------------------------------------------------------------------------------------
+   WHAT THE AI PROPOSES FOR A CORNER (FB-028, ADR-0070)
+
+   One open proposal per hoek and subthema, the klas's and not one person's: read, asked and decided
+   only by whoever may plan the klas. Accepting writes the verrijking through the same save the sheet uses.
+   ------------------------------------------------------------------------------------------------ */
+
+/** An open proposal. Mirrors the server's record. */
+export interface HoekverrijkingsvoorstelWeergave {
+  id: string;
+  hoekId: string;
+  subthemaId: string;
+  tekst: string;
+  aiMotivatie: string;
+}
+
+/** What asking did: the proposal it stored, or none when the AI had nothing new to say. */
+export interface HoekverrijkingsvoorstelResultaat {
+  isGeslaagd: boolean;
+  voorstel: HoekverrijkingsvoorstelWeergave | null;
+}
+
+/**
+ * A decision. Taking it over names the window as a save does: its id, or the subthema's days as the agenda draws them.
+ * `tekst` is the changed text, or absent for the proposal as it is.
+ */
+export type Hoekverrijkingsbeslissing =
+  | { status: "Geweigerd" }
+  | ({ status: "Aanvaard"; tekst?: string } & ({ subthemaperiodeId: string } | { van: string; tot: string }));
+
+const voorstelsleutel = (klasId: string | null) => ["hoekverrijkingsvoorstellen", klasId] as const;
+
+/** The klas's open proposals. Only for whoever may plan it: the server refuses anyone else. */
+export function useHoekverrijkingsvoorstellen(klasId: string | null) {
+  return useQuery({
+    queryKey: voorstelsleutel(klasId),
+    queryFn: () => get<HoekverrijkingsvoorstelWeergave[]>(`/api/klassen/${klasId}/hoekverrijkingsvoorstellen`),
+    enabled: klasId !== null,
+  });
+}
+
+/** Asks the AI for one corner and one subthema; the new proposal replaces the open one for that pair. */
+export function useVraagHoekverrijkingsvoorstel(klasId: string | null) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ hoekId, subthemaId }: { hoekId: string; subthemaId: string }) =>
+      post<HoekverrijkingsvoorstelResultaat>(`/api/klassen/${klasId}/hoeken/${hoekId}/verrijkingsvoorstel`, { subthemaId }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: voorstelsleutel(klasId) }),
+  });
+}
+
+/** Takes a proposal over, changed or not, or rejects it. Taking over writes the verrijking, and may store its window. */
+export function useBeslisHoekverrijkingsvoorstel(klasId: string | null) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ voorstelId, beslissing }: { voorstelId: string; beslissing: Hoekverrijkingsbeslissing }) =>
+      put<unknown>(`/api/klassen/${klasId}/hoekverrijkingsvoorstellen/${voorstelId}/beslissing`, beslissing),
+    onSuccess: (_, { beslissing }) => {
+      void qc.invalidateQueries({ queryKey: voorstelsleutel(klasId) });
+      if (beslissing.status === "Aanvaard") {
+        void qc.invalidateQueries({ queryKey: ["hoekverrijkingen"] });
+        void qc.invalidateQueries({ queryKey: ["weekplanning"] });
+        void qc.invalidateQueries({ queryKey: sleutel(klasId) });
+      }
+    },
+  });
+}

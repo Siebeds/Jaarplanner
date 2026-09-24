@@ -686,6 +686,46 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.ToTable("hoekverrijkingen", (string)null);
                 });
 
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekverrijkingsvoorstel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AiMotivatie")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("HoekId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("SubthemaId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Tekst")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubthemaId");
+
+                    b.HasIndex("HoekId", "SubthemaId");
+
+                    b.ToTable("hoekverrijkingsvoorstellen", (string)null);
+                });
+
             modelBuilder.Entity("Jaarplanner.Domain.Planning.Jaarplan", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1242,6 +1282,10 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text[]");
 
+                    b.PrimitiveCollection<string[]>("Leeftijden")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
                     b.Property<string>("Naam")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1681,6 +1725,21 @@ namespace Jaarplanner.Infrastructure.Persistence.Migrations
                     b.HasOne("Jaarplanner.Domain.Planning.Subthemaplaatsing", null)
                         .WithMany()
                         .HasForeignKey("SubthemaplaatsingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Jaarplanner.Domain.Planning.Hoekverrijkingsvoorstel", b =>
+                {
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Hoek", null)
+                        .WithMany()
+                        .HasForeignKey("HoekId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Jaarplanner.Domain.Schoolcontent.Subthema", null)
+                        .WithMany()
+                        .HasForeignKey("SubthemaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

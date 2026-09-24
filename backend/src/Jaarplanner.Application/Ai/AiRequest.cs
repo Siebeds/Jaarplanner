@@ -41,7 +41,7 @@ public sealed record AiRequest
 
     /// <summary>
     /// The earlier turns of a conversation, oldest first, sent as alternating user and assistant messages after the
-    /// stable prefix and before the <see cref="UserPrompt"/> (FB-093, ADR-0069). Empty for every flow but the cat's chat:
+    /// stable prefix and before the <see cref="UserPrompt"/> (FB-093, ADR-0071). Empty for every flow but the cat's chat:
     /// a model remembers nothing, so a conversation is its turns sent again with each question.
     /// </summary>
     public IReadOnlyList<AiBeurt> Gesprek { get; init; } = [];

@@ -5,7 +5,7 @@ namespace Jaarplanner.Application.Kat.Chat;
 /// <summary>
 /// Builds the one request a chat question makes (FB-031, ADR-0066). The model is sent the fixed instructions, the
 /// handleiding, the last turns of the conversation and the question as typed (Art. IV.4). Of the school's content it
-/// sees only the names and codes an earlier lookup found (FB-093, ADR-0069): it answers a question about the tool from
+/// sees only the names and codes an earlier lookup found (FB-093, ADR-0071): it answers a question about the tool from
 /// the handleiding, and for a question about the content it only picks the lookup the tool then runs.
 /// <para>
 /// The system prompt and the handleiding are the stable prefix of every chat request, so a provider can serve them
@@ -21,7 +21,7 @@ public static class KatchatPromptBuilder
     public const int MaxUitlegLengte = 1500;
 
     /// <summary>
-    /// How many earlier turns of a conversation go along with a question (FB-093, ADR-0069 D1). With the question and the
+    /// How many earlier turns of a conversation go along with a question (FB-093, ADR-0071 D1). With the question and the
     /// explanation capped, this keeps the cost of a question bounded.
     /// </summary>
     public const int MaxBeurten = 10;
@@ -77,7 +77,7 @@ public static class KatchatPromptBuilder
     public static AiRequest Bouw(string vraag, Handleiding handleiding) => Bouw(vraag, [], handleiding);
 
     /// <summary>
-    /// The request for one question after the turns of <paramref name="gesprek"/> (FB-093, ADR-0069). Only the last
+    /// The request for one question after the turns of <paramref name="gesprek"/> (FB-093, ADR-0071). Only the last
     /// <see cref="MaxBeurten"/> go along, oldest first; what falls out, the model no longer knows. They sit after the
     /// stable prefix, so the prefix stays cacheable.
     /// </summary>

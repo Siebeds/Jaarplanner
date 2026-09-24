@@ -210,8 +210,8 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
 
     const blad = await openTurnen();
     expect(within(blad).getByText("turnen")).toBeInTheDocument();
-    expect(within(blad).queryByRole("button", { name: t("fichedetail.verwijder") })).toBeNull();
-    expect(within(blad).queryByLabelText(t("fichedetail.dag"))).toBeNull();
+    expect(within(blad).queryByRole("button", { name: t("fichedetail.verwijderAria", { naam: "turnen" }) })).toBeNull();
+    expect(within(blad).queryByLabelText(t("dagvelden.dag"))).toBeNull();
   });
 
   it("geeft wie de klas mag plannen de twee chips, het zijpaneel en het blad om te wijzigen", async () => {
@@ -234,8 +234,8 @@ describe("Agendascherm: de planning van een klas die je alleen mag bekijken", ()
     expect(gevraagd.some((pad) => pad.includes("hoekplaatsingen"))).toBe(false);
 
     const blad = await openTurnen();
-    expect(within(blad).getByRole("button", { name: t("fichedetail.verwijder") })).toBeInTheDocument();
-    expect(within(blad).getByLabelText(t("fichedetail.dag"))).toBeInTheDocument();
+    expect(within(blad).getByRole("button", { name: t("fichedetail.verwijderAria", { naam: "turnen" }) })).toBeInTheDocument();
+    expect(within(blad).getByLabelText(t("dagvelden.dag"))).toBeInTheDocument();
   });
 });
 

@@ -135,6 +135,9 @@ public class AppDbContext : DbContext, IDataProtectionKeyContext
     /// </summary>
     public DbSet<Hoekverrijking> Hoekverrijkingen => Set<Hoekverrijking>();
 
+    /// <summary>What the AI proposes for a corner while a subthema runs, and the klas's decision on it (FB-028, ADR-0070).</summary>
+    public DbSet<Hoekverrijkingsvoorstel> Hoekverrijkingsvoorstellen => Set<Hoekverrijkingsvoorstel>();
+
     /// <summary>
     /// Where each placed hoek appears in the timetable, one row per day it takes a lesuur on. A set of its own
     /// because the day and week views read a date range across every placement, which is not a question the

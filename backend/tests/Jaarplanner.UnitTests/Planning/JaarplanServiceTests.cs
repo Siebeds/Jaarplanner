@@ -331,6 +331,26 @@ public sealed class JaarplanServiceTests
     }
 
     [Fact]
+    public async Task Een_thema_voor_een_andere_leeftijd_wordt_niet_geplaatst()
+    {
+        var o = Maak();
+        o.Water.StelLeeftijdenIn(["K2", "K3"]);
+
+        var fout = await Assert.ThrowsAsync<OngeldigePlaatsingFout>(
+            () => o.Service.PlaatsThemaAsync(o.Klas.Id, o.Water.Id, D(2026, 9, 7), D(2026, 9, 18)));
+
+        Assert.Equal(
+            "Het thema 'Water' is niet bedoeld voor de leeftijd van L3 — derde leerjaar. Het geldt voor K2, K3.",
+            fout.Message);
+        Assert.Null(o.Opslag.Jaarplan);
+
+        // The klas's own leeftijd is enough.
+        o.Water.StelLeeftijdenIn(["L3", "L4"]);
+        await o.Service.PlaatsThemaAsync(o.Klas.Id, o.Water.Id, D(2026, 9, 7), D(2026, 9, 18));
+        Assert.Single(o.Opslag.Jaarplan!.Plaatsingen);
+    }
+
+    [Fact]
     public async Task Plaatsen_over_een_vakantie_bewaart_twee_manuele_delen()
     {
         var o = Maak();

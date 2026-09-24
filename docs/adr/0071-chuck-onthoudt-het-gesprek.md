@@ -1,4 +1,4 @@
-# ADR-0069 — The cat's chat is a conversation: the browser holds the turns, the server seals them
+# ADR-0071 — The cat's chat is a conversation: the browser holds the turns, the server seals them
 
 - **Status:** Accepted
 - **Date:** 2026-09-24

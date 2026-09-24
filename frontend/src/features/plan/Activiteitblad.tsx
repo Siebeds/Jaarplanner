@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Blad } from "../../components/ui/Blad";
 import { Knop } from "../../components/ui/Knop";
-import { Invoer } from "../../components/ui/Veld";
+import { Dagvelden } from "./Dagvelden";
 import { Laadlijst } from "../../components/ui/Laadvlak";
 import { useInBeeld } from "../../components/ui/inBeeld";
 import { Leegte } from "../../components/ui/Leegte";
@@ -274,58 +274,29 @@ function Dagsectie({
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-end gap-2">
-        <div className="min-w-40 flex-1">
-          <label htmlFor="agenda-dag" className="text-meta font-medium text-inkt">
-            {t("periode.opDag")}
-          </label>
-          <Invoer
-            id="agenda-dag"
-            type="date"
-            min={vroegste}
-            max={laatste}
-            value={nieuweDag}
-            disabled={bezig}
-            onChange={(e) => setNieuweDag(e.target.value)}
-            className="mt-1.5"
-          />
-        </div>
-        <div className="min-w-24 flex-1">
-          <label htmlFor="agenda-begin" className="text-meta font-medium text-inkt">
-            {t("activiteitplaatsing.van")}
-          </label>
-          <Invoer
-            id="agenda-begin"
-            type="time"
-            step={900}
-            value={nieuwBegin}
-            disabled={bezig}
-            onChange={(e) => setNieuwBegin(e.target.value)}
-            className="mt-1.5"
-          />
-        </div>
-        <div className="min-w-24 flex-1">
-          <label htmlFor="agenda-einde" className="text-meta font-medium text-inkt">
-            {t("activiteitplaatsing.tot")}
-          </label>
-          <Invoer
-            id="agenda-einde"
-            type="time"
-            step={900}
-            value={nieuwEinde}
-            disabled={bezig}
-            onChange={(e) => setNieuwEinde(e.target.value)}
-            className="mt-1.5"
-          />
-        </div>
-        <Knop
-          rang="rustig"
-          bezig={bezig}
-          disabled={!gewijzigd || ongeldig}
-          onClick={() => onVerplaats(nieuweDag, `${nieuwBegin}:00`, `${nieuwEinde}:00`)}
-        >
-          {t("periode.verplaats")}
-        </Knop>
+      <div className="mt-2">
+        <Dagvelden
+          id="agenda"
+          datum={nieuweDag}
+          begin={nieuwBegin}
+          einde={nieuwEinde}
+          vroegste={vroegste}
+          laatste={laatste}
+          disabled={bezig}
+          onDatum={setNieuweDag}
+          onBegin={setNieuwBegin}
+          onEinde={setNieuwEinde}
+          actie={
+            <Knop
+              rang="rustig"
+              bezig={bezig}
+              disabled={!gewijzigd || ongeldig}
+              onClick={() => onVerplaats(nieuweDag, `${nieuwBegin}:00`, `${nieuwEinde}:00`)}
+            >
+              {t("periode.verplaats")}
+            </Knop>
+          }
+        />
       </div>
 
       {ongeldig && nieuwBegin !== "" && nieuwEinde !== "" ? (

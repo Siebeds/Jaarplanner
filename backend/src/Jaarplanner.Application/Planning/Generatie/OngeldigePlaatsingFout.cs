@@ -23,6 +23,13 @@ public sealed class OngeldigePlaatsingFout : Exception
     public static OngeldigePlaatsingFout GeenSchooldag(DateOnly datum) =>
         new($"Op {Dagnotatie.Formatteer(datum)} is er geen school. Kies een schooldag als begin.");
 
+    /// <summary>
+    /// The thema is not meant for the klas's leeftijd (FB-012, ADR-0069 D2). The screen does not offer it; this answers a
+    /// request that names it anyway.
+    /// </summary>
+    public static OngeldigePlaatsingFout NietVoorKlas(string themaNaam, string klasNaam, IEnumerable<string> leeftijden) =>
+        new($"Het thema '{themaNaam}' is niet bedoeld voor de leeftijd van {klasNaam}. Het geldt voor {string.Join(", ", leeftijden)}.");
+
     /// <summary>The end lies before the begin.</summary>
     public static OngeldigePlaatsingFout EindeVoorBegin() =>
         new("De einddatum ligt vóór de begindatum. Kies een latere einddatum.");

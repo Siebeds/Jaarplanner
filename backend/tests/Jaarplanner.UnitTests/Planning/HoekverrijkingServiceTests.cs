@@ -296,7 +296,7 @@ public sealed class HoekverrijkingServiceTests
     /// Stores a window the way the planner route would, minus its rules, and counts how often it was asked. Only
     /// <see cref="PlaatsSubthemaAsync"/> is reachable from <see cref="HoekverrijkingService"/>.
     /// </summary>
-    private sealed class VensterWeekplanning(DbContextOptions<AppDbContext> options) : IWeekplanningService
+    internal sealed class VensterWeekplanning(DbContextOptions<AppDbContext> options) : IWeekplanningService
     {
         public int Aanroepen { get; private set; }
 
