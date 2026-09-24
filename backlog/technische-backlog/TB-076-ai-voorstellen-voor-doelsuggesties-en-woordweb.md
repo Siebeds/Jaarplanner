@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 10:51
 opgepakt-door: claude-ai-voorstellen-lijst
 branch: ticket/TB-ai-voorstellen-lijst
-pr:
+pr: 182
 geblokkeerd:
 fr: []
 ---
@@ -53,3 +53,4 @@ Geen.
 - 2026-09-24 10:49 · claude-ai-voorstellen-lijst · Voorstellijst vervangt Voorstelstapel voor doelsuggesties en woordweb; doelsuggesties boven de themadoelen; Vitest (1388) en lint groen, browserpas 1440 en 390 met ingespoten doelsuggesties
 - 2026-09-24 10:50 · claude-ai-voorstellen-lijst · Antagonist: COMPLIANT. MINOR opgelost: plaats van Voorstellijst in de tekst rechtgezet, donkere modus nagekeken in de browser
 - 2026-09-24 10:51 · claude-ai-voorstellen-lijst · in-uitvoering → klaar: Klaar: doelsuggesties en woordwebvoorstellen als platte lijst (ADR-0051), doelsuggesties boven de themadoelen; criteria afgevinkt op Voorstellijst.test.tsx, ThemadetailScherm.test.tsx en browserpas (1440, 390, donker); Vitest en lint groen
+- 2026-09-24 10:51 · claude-ai-voorstellen-lijst · PR #182
