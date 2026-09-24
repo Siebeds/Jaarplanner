@@ -1,4 +1,4 @@
-import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
+import { useId, useState, type ClipboardEvent, type KeyboardEvent } from "react";
 import { IcoonKruis } from "../../components/Iconen";
 import { AiKnop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
@@ -27,8 +27,8 @@ const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord
  *
  * **The AI's proposals wait below the web as one list, each with its reason**, in the same `Voorstellijst` as the
  * doelsuggesties on this screen (TB-076), so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1
- * to IV.3). Only the owner's web gets them, and until it holds a word of her own (W5) there is no AI control at all,
- * only the sentence that says it comes after her first word (FB-094).
+ * to IV.3). Only the owner's web gets them, and until it holds a word of her own (W5) the AI control is shown
+ * disabled, above the sentence that says it works after her first word (TB-079).
  *
  * **A colleague's web is read-only**: her name and her words, outlined rather than filled, so the two kinds of web never
  * look alike. Admin may take a word out of any web (D3); nobody else sees a control there. A colleague's open
@@ -41,6 +41,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
   const verwijder = useVerwijderWoord(subthemaId);
   const beslis = useBeslisWoord(subthemaId);
   const stelVoor = useStelWoordenVoor(subthemaId);
+  const eerstZelfId = useId();
 
   if (isPending) {
     return (
@@ -63,6 +64,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
   const voorstellen = eigen?.woorden.filter((woord) => woord.status === "Voorgesteld") ?? [];
   const collegas = webs.filter((web) => !web.isEigen && web.woorden.some(staatInWeb));
   const helft = Math.ceil(eigenWoorden.length / 2);
+  const leegWeb = eigen === null || eigenWoorden.length === 0;
 
   const haalWeg = (web: WoordwebWeergave, woord: WoordwebWoord) =>
     verwijder.mutate({ woordwebId: web.id, woordId: woord.id });
@@ -82,7 +84,7 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
         {eigenWoorden.slice(0, helft).map((woord) => (
           <Woordchip key={woord.id} woord={woord.woord} onHaalWeg={eigen ? () => haalWeg(eigen, woord) : undefined} />
         ))}
-        <span className="rounded-full bg-inkt px-3.5 py-1.5 text-body font-medium text-kaart">{naam}</span>
+        <span className="rounded-md bg-inkt px-3.5 py-1.5 text-body font-medium text-kaart">{naam}</span>
         {eigenWoorden.slice(helft).map((woord) => (
           <Woordchip key={woord.id} woord={woord.woord} onHaalWeg={eigen ? () => haalWeg(eigen, woord) : undefined} />
         ))}
@@ -96,20 +98,25 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
         ) : null}
       </div>
 
-      {/* No AI control that cannot act (FB-094): until her web holds a word, one quiet sentence says when it comes. */}
-      {!bekend ? null : eigen === null || eigenWoorden.length === 0 ? (
-        <p className="mt-2 text-meta text-inkt-zacht">{t("woordweb.eerstZelf")}</p>
-      ) : (
+      {/* Until her web holds a word the AI control stays in view but disabled, and the sentence under it says why (TB-079). */}
+      {bekend ? (
         <div className="mt-3">
           <AiKnop
             className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
-            onClick={() => stelVoor.mutate(eigen.id)}
+            disabled={leegWeb}
+            aria-describedby={leegWeb ? eerstZelfId : undefined}
+            onClick={() => eigen && stelVoor.mutate(eigen.id)}
           >
             {stelVoor.isPending ? t("woordweb.voorstellenBezig") : t("woordweb.voorstellen")}
           </AiKnop>
+          {leegWeb ? (
+            <p id={eerstZelfId} className="mt-2 text-meta text-inkt-zacht">
+              {t("woordweb.eerstZelf")}
+            </p>
+          ) : null}
         </div>
-      )}
+      ) : null}
 
       <div aria-live="polite">
         {stelVoor.isError ? (
@@ -187,8 +194,8 @@ function Woordchip({ woord, omlijnd, onHaalWeg }: { woord: string; omlijnd?: boo
     <span
       className={
         omlijnd
-          ? "inline-flex items-center gap-1 rounded-full border border-lijn py-1 pl-2.5 pr-2.5 text-meta text-inkt-zacht has-[button]:pr-1"
-          : "inline-flex items-center gap-1 rounded-full bg-vlak-diep py-1 pl-2.5 pr-2.5 text-meta font-medium text-inkt has-[button]:pr-1"
+          ? "inline-flex items-center gap-1 rounded-md border border-lijn py-1 pl-2.5 pr-2.5 text-meta text-inkt-zacht has-[button]:pr-1"
+          : "inline-flex items-center gap-1 rounded-md bg-vlak-diep py-1 pl-2.5 pr-2.5 text-meta font-medium text-inkt has-[button]:pr-1"
       }
     >
       {woord}
@@ -197,7 +204,7 @@ function Woordchip({ woord, omlijnd, onHaalWeg }: { woord: string; omlijnd?: boo
           type="button"
           aria-label={t("woordweb.haalWeg", { woord })}
           onClick={onHaalWeg}
-          className="inline-flex h-raak w-9 shrink-0 items-center justify-center rounded-full text-inkt-zwak sm:h-6 sm:w-6 transition-colors duration-150 hover:bg-kaart hover:text-inkt"
+          className="inline-flex h-raak w-9 shrink-0 items-center justify-center rounded text-inkt-zwak sm:h-6 sm:w-6 transition-colors duration-150 hover:bg-kaart hover:text-inkt"
         >
           <IcoonKruis aria-hidden="true" className="h-3.5 w-3.5" />
         </button>
@@ -252,7 +259,7 @@ function WoordInvoer({
       onChange={(e) => setTekst(e.target.value)}
       onKeyDown={opToets}
       onPaste={opPlakken}
-      className="min-h-raak w-36 rounded-full sm:min-h-8 border border-dashed border-lijn-veld bg-transparent px-3 text-meta text-inkt outline-none placeholder:text-inkt-zacht focus-visible:border-solid focus-visible:ring-2 focus-visible:ring-inkt/30"
+      className="min-h-raak w-36 rounded-md sm:min-h-8 border border-dashed border-lijn-veld bg-transparent px-3 text-meta text-inkt outline-none placeholder:text-inkt-zacht focus-visible:border-solid focus-visible:ring-2 focus-visible:ring-inkt/30"
     />
   );
 }

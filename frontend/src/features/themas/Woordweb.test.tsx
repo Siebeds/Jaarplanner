@@ -94,9 +94,10 @@ describe("Woordweb", () => {
     const oproepen = toon([]);
 
     const invoer = await screen.findByLabelText(t("woordweb.invoerLabel"));
-    // No AI control that cannot act (FB-094): one quiet sentence until the first word.
-    expect(screen.queryByRole("button", { name: t("woordweb.voorstellen") })).toBeNull();
-    expect(screen.getByText(t("woordweb.eerstZelf"))).toBeInTheDocument();
+    // The AI control is there but disabled until the first word, and the sentence under it says why (TB-079).
+    const knop = screen.getByRole("button", { name: t("woordweb.voorstellen") });
+    expect(knop).toBeDisabled();
+    expect(knop).toHaveAccessibleDescription(t("woordweb.eerstZelf"));
 
     fireEvent.paste(invoer, { clipboardData: { getData: () => "wind, regen\nwolk" } });
 

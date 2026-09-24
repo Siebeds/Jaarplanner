@@ -5,7 +5,7 @@ soort: technisch
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 11:43
+bijgewerkt: 2026-09-24 11:48
 opgepakt-door: claude-tb-woordweb-bollen
 branch: ticket/TB-woordweb-bollen
 pr:
@@ -49,3 +49,4 @@ Geen.
 ## Werklog
 
 - 2026-09-24 11:43 · claude-tb-woordweb-bollen · aangemaakt (status in-uitvoering)
+- 2026-09-24 11:48 · claude-tb-woordweb-bollen · chips, kern en invoerveld rounded-md; AiKnop disabled met aria-describedby tot het eerste woord; vitest themas+i18n 188/188, pnpm lint groen, bekeken in mockmodus op 1280 en 390px
