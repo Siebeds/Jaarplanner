@@ -10,9 +10,9 @@ import { Weekvoorstel } from "./Weekvoorstel";
  * open proposal shows, and what accepting, rejecting and accepting all send.
  */
 
-/** Opens the panel through the count beside the AI button. */
+/** Opens the panel through the count on the AI button's corner. */
 function openPaneel() {
-  fireEvent.click(screen.getByRole("button", { name: /voorstel$/ }));
+  fireEvent.click(screen.getByRole("button", { name: /van de AI$/ }));
 }
 
 function blok(delen: Partial<GeplandeActiviteit>): GeplandeActiviteit {
