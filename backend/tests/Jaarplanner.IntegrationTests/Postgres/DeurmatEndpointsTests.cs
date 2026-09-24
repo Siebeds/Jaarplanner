@@ -223,6 +223,29 @@ public sealed class DeurmatEndpointsTests : IAsyncLifetime
         Assert.Equal(1, await context.Signalen.CountAsync());
     }
 
+    [PostgresFact]
+    public async Task Een_activiteitvoorstel_zonder_klas_verwijst_naar_zijn_subthema_op_de_themapagina()
+    {
+        // TB-080: a subthema has no page of its own, so the link opens its chapter on the thema's page.
+        var themaId = await Opzet.ThemaAsync();
+        var subthemaId = await Opzet.SubthemaAsync("K3", themaId);
+        var eigenaarId = await Opzet.GebruikerAsync(admin: true);
+        var voorstel = new Jaarplanner.Domain.Schoolcontent.Activiteitvoorstel(
+            subthemaId, eigenaarId, "Plassen", null, "Stampen in plassen.", 1, null, [], "Reden.");
+        await using (var context = _db.MaakContext())
+        {
+            context.Activiteitvoorstellen.Add(voorstel);
+            context.Entry(voorstel).Property<int>("Volgnummer").CurrentValue = 1;
+            await context.SaveChangesAsync();
+        }
+
+        using var client = Opzet.Als(eigenaarId);
+        var deurmat = await client.GetFromJsonAsync<Deurmat>("/api/deurmat", Json);
+
+        var item = Assert.Single(deurmat!.Voorstellen, v => v.Id == voorstel.Id);
+        Assert.Equal($"/themas/{themaId}?subthema={subthemaId}", item.Verwijzing);
+    }
+
     private static Signaalvondst Vondst(Guid klasId, string sleutel) =>
         new(Signaalsoort.MinimumdoelInGevaar, klasId, sleutel, [], new Dictionary<string, object> { ["doelRef"] = sleutel }, $"/klassen/{klasId}/agenda");
 
