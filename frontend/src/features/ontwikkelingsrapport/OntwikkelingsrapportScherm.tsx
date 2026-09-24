@@ -62,7 +62,7 @@ export function OntwikkelingsrapportScherm() {
     <>
       <Schermkop
         titel={t("ontwikkelingsrapport.titel")}
-        smal
+        maat="smal"
         onder={
           <div className="flex flex-col gap-3">
             <Rapportwissel />
@@ -101,7 +101,7 @@ export function OntwikkelingsrapportScherm() {
         }
       />
 
-      <Schermvlak smal>
+      <Schermvlak maat="smal">
         {rechtenLaden || (toegang && laadt) ? (
           <Laadlijst rijen={4} />
         ) : !bekend ? (

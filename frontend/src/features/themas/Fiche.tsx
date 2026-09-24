@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { IcoonChevron } from "../../components/Iconen";
 import { cn } from "../../lib/cn";
 
 /**
@@ -80,23 +79,6 @@ export function Subkop({
       </div>
       <div className="mt-2">{children}</div>
     </section>
-  );
-}
-
-/**
- * The fold arrow, LEFT of what it opens, everywhere on the page (FB-094): pointing right while shut, down once open.
- * Decorative: the button around it carries `aria-expanded`, which is what a screen reader announces.
- */
-export function Vouwpijl({ open, className }: { open: boolean; className?: string }) {
-  return (
-    <IcoonChevron
-      aria-hidden="true"
-      className={cn(
-        "h-5 w-5 shrink-0 text-inkt-zacht transition-transform duration-200 motion-reduce:transition-none",
-        !open && "-rotate-90",
-        className,
-      )}
-    />
   );
 }
 

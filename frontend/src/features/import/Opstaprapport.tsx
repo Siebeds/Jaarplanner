@@ -1,5 +1,4 @@
-import { useId, useState } from "react";
-import { IcoonChevron } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { t, telWoord, type Vertaalsleutel } from "../../i18n";
 import { cn } from "../../lib/cn";
 import { datumVanTijdstip } from "../../lib/datum";
@@ -385,36 +384,24 @@ function Probleemtelling({ aantal, een, meer }: { aantal: number; een: Vertaalsl
  * region is focusable because it scrolls, and a keyboard user must be able to scroll it.
  */
 function Wijzigingslog({ versie, tekst }: { versie: string; tekst: string }) {
-  const [open, setOpen] = useState(false);
-  const id = useId();
   const label = t("importeren.kov.wijzigingslog", { versie });
 
   return (
-    <div className="border-t border-lijn pt-2">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={open ? id : undefined}
-        onClick={() => setOpen((o) => !o)}
-        className="flex min-h-raak w-full items-center justify-between gap-3 text-left text-meta font-medium text-inkt transition-colors duration-150 hover:text-inkt-zacht"
-      >
-        <span>{label}</span>
-        <IcoonChevron
-          aria-hidden="true"
-          className={cn("h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-200", open && "rotate-180")}
-        />
-      </button>
-      {open ? (
-        <div
-          id={id}
+    <Inklapper.Root>
+      <div className="border-t border-lijn pt-2">
+        <Inklapper.Knop className="flex min-h-raak w-full items-center justify-between gap-3 text-left text-meta font-medium text-inkt transition-colors duration-150 hover:text-inkt-zacht">
+          <span>{label}</span>
+          <Inklapper.Pijl className="h-4 w-4 text-inkt-zwak" />
+        </Inklapper.Knop>
+        <Inklapper.Inhoud
           role="region"
           aria-label={label}
           tabIndex={0}
           className="mt-1 max-h-96 overflow-y-auto whitespace-pre-line rounded-veld border border-lijn bg-vlak/70 p-3 text-meta text-inkt"
         >
           {tekst}
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }

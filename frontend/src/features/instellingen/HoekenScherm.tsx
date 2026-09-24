@@ -15,8 +15,8 @@ export function HoekenScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.hoeken")} smal onder={<Onderdeelwissel />} />
-      <Schermvlak smal>
+      <Schermkop titel={t("instellingen.hoeken")} maat="smal" onder={<Onderdeelwissel />} />
+      <Schermvlak maat="smal">
         <Hoekensectie klassen={klassen} laadt={laadt} />
       </Schermvlak>
     </>

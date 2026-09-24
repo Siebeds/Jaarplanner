@@ -6,7 +6,8 @@ import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Leegte } from "../../components/ui/Leegte";
 import { Geenklasleegte } from "../../app/Geenklasleegte";
 import { Laadlijst, Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonChevron, IcoonPijlRechts } from "../../components/Iconen";
+import { IcoonPijlRechts } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { useDekking } from "../../lib/queries";
 import { useActieveSelectie } from "../../lib/selectie";
 import { useRechten } from "../../lib/rechten";
@@ -583,38 +584,25 @@ function Groepkaart({
   telling: ReactNode;
   children: ReactNode;
 }) {
-  const inhoudId = useId();
-
   return (
-    <section className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
-      <h2>
-        <button
-          type="button"
-          aria-expanded={open}
-          aria-controls={open ? inhoudId : undefined}
-          onClick={onWissel}
-          className="flex min-h-raak w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-vlak"
-        >
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn("h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-150", open ? "" : "-rotate-90")}
-          />
-          {/* Two lines on a phone, one from sm up. Measured at 390px: side by side, the figures leave a discipline
-              like "Lichamelijke opvoeding en motoriek" four words on four lines, and a title that cannot shrink
-              further overruns them. */}
-          <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-            <span className="font-display text-sectie text-inkt">{titel}</span>
-            {telling}
-          </span>
-        </button>
-      </h2>
+    <Inklapper.Root open={open} onOpenChange={onWissel}>
+      <section className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
+        <h2>
+          <Inklapper.Knop className="flex min-h-raak w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 hover:bg-vlak">
+            <Inklapper.Pijl className="h-4 w-4 text-inkt-zwak" />
+            {/* Two lines on a phone, one from sm up. Measured at 390px: side by side, the figures leave a discipline
+                like "Lichamelijke opvoeding en motoriek" four words on four lines, and a title that cannot shrink
+                further overruns them. */}
+            <span className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+              <span className="font-display text-sectie text-inkt">{titel}</span>
+              {telling}
+            </span>
+          </Inklapper.Knop>
+        </h2>
 
-      {open ? (
-        <div id={inhoudId} className="border-t border-lijn">
-          {children}
-        </div>
-      ) : null}
-    </section>
+        <Inklapper.Inhoud className="border-t border-lijn">{children}</Inklapper.Inhoud>
+      </section>
+    </Inklapper.Root>
   );
 }
 

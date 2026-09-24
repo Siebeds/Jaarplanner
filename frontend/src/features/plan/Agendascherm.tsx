@@ -793,7 +793,7 @@ export function Agendascherm() {
       >
       <Schermkop
         metKat
-        breed
+        maat="breed"
         meeScrollen={vultScherm}
         titel={t("periode.titel")}
         onder={
@@ -933,7 +933,7 @@ export function Agendascherm() {
         }
       />
 
-      <Schermvlak breed className={cn(vultScherm && "flex min-h-0 w-full flex-auto flex-col pb-4")}>
+      <Schermvlak maat="breed" className={cn(vultScherm && "flex min-h-0 w-full flex-auto flex-col pb-4")}>
         {/* Once, above everything, and only when it is true: the rights have answered and this gebruiker holds no
             planning right on the klas the picker shows. It names the klas, because the picker is what changed. */}
         {rechtenBekend && !magPlannen && klas ? (

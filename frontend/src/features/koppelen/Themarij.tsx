@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { Knop } from "../../components/ui/Knop";
-import { IcoonChevron, IcoonPlus, IcoonVink } from "../../components/Iconen";
+import { IcoonPlus, IcoonVink } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { t, telWoord } from "../../i18n";
-import { cn } from "../../lib/cn";
 import { geenToegangZin, useRechten } from "../../lib/rechten";
 import type { Subthemabestemming, Themabestemming } from "./bestemmingen";
 import { useKoppelDoelAanActiviteit, useKoppelDoelAanSubthema } from "./mutaties";
@@ -38,37 +37,27 @@ export function Themarij({
   klasId: string | null;
   standaardOpen: boolean;
 }) {
-  const [open, setOpen] = useState(standaardOpen);
-
   const aantalSubthemas = tak.thema.subthemas.length;
 
   return (
-    <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
-      <div className="flex items-start gap-2 p-3">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded-veld text-left"
-        >
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn("mt-0.5 h-4 w-4 shrink-0 text-inkt-zwak transition-transform duration-200", open && "rotate-180")}
-          />
-          <span className="min-w-0">
-            <span className="block truncate text-sectie text-inkt">{tak.thema.naam}</span>
-            <span className="mt-0.5 block text-meta text-inkt-zacht">
-              {telWoord(aantalSubthemas, "koppelen.eenSubthema", "koppelen.aantalSubthemas")}
+    <Inklapper.Root standaardOpen={standaardOpen}>
+      <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart">
+        <div className="flex items-start gap-2 p-3">
+          <Inklapper.Knop className="flex min-w-0 flex-1 items-start gap-2 rounded-veld text-left">
+            <Inklapper.Pijl className="mt-0.5 h-4 w-4 text-inkt-zwak" />
+            <span className="min-w-0">
+              <span className="block truncate text-sectie text-inkt">{tak.thema.naam}</span>
+              <span className="mt-0.5 block text-meta text-inkt-zacht">
+                {telWoord(aantalSubthemas, "koppelen.eenSubthema", "koppelen.aantalSubthemas")}
+              </span>
             </span>
-          </span>
-        </button>
+          </Inklapper.Knop>
 
-        {/* Closed, a thema row states what is inside it and nothing else. */}
-        {tak.alGekoppeld ? <Gekoppeldmerk /> : null}
-      </div>
+          {/* Closed, a thema row states what is inside it and nothing else. */}
+          {tak.alGekoppeld ? <Gekoppeldmerk /> : null}
+        </div>
 
-      {open ? (
-        <div className="border-t border-lijn bg-vlak/50 p-2">
+        <Inklapper.Inhoud className="border-t border-lijn bg-vlak/50 p-2">
           {tak.subthemas.length === 0 ? (
             // Not a dead end dressed as one: a thema without subthema's for this class is a normal
             // state, and the sentence says what would have to happen rather than only what is absent.
@@ -82,9 +71,9 @@ export function Themarij({
               ))}
             </ul>
           )}
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 
@@ -99,7 +88,6 @@ function Subthemarij({
   klasId: string | null;
   standaardOpen: boolean;
 }) {
-  const [open, setOpen] = useState(standaardOpen);
   const koppelSubthema = useKoppelDoelAanSubthema();
   const { mag } = useRechten();
   const leeftijd = subtak.subthema.leeftijd;
@@ -109,51 +97,43 @@ function Subthemarij({
   const magNieuwMetDoel = magEigenMaken || (mag.gedeeldeActiviteitMaken(leeftijd) && mag.doelenKoppelen(leeftijd));
 
   return (
-    <div className="rounded-veld border border-lijn bg-kaart">
-      <div className="flex items-start gap-2 p-2.5">
-        <button
-          type="button"
-          onClick={() => setOpen(!open)}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 items-start gap-2 rounded-veld text-left"
-        >
-          <IcoonChevron
-            aria-hidden="true"
-            className={cn("mt-0.5 h-3.5 w-3.5 shrink-0 text-inkt-zwak transition-transform duration-200", open && "rotate-180")}
-          />
-          <span className="min-w-0">
-            <span className="block truncate text-body font-medium text-inkt">{subtak.subthema.naam}</span>
-            <span className="mt-0.5 block text-meta text-inkt-zacht">
-              {[
-                // Labelled, because the value is free text the school types: the demo data holds "6"
-                // and "5-6" where this screen was written expecting "K3". Beside a count of
-                // activiteiten, a bare "6" reads as a second count. The label is neutral enough to
-                // stay true whichever of the three the school wrote.
-                t("koppelen.leeftijd", { leeftijd: subtak.subthema.leeftijd }),
-                telWoord(subtak.subthema.activiteiten.length, "koppelen.eenActiviteit", "koppelen.aantalActiviteiten"),
-              ].join(" · ")}
+    <Inklapper.Root standaardOpen={standaardOpen}>
+      <div className="rounded-veld border border-lijn bg-kaart">
+        <div className="flex items-start gap-2 p-2.5">
+          <Inklapper.Knop className="flex min-w-0 flex-1 items-start gap-2 rounded-veld text-left">
+            <Inklapper.Pijl className="mt-0.5 h-3.5 w-3.5 text-inkt-zwak" />
+            <span className="min-w-0">
+              <span className="block truncate text-body font-medium text-inkt">{subtak.subthema.naam}</span>
+              <span className="mt-0.5 block text-meta text-inkt-zacht">
+                {[
+                  // Labelled, because the value is free text the school types: the demo data holds "6"
+                  // and "5-6" where this screen was written expecting "K3". Beside a count of
+                  // activiteiten, a bare "6" reads as a second count. The label is neutral enough to
+                  // stay true whichever of the three the school wrote.
+                  t("koppelen.leeftijd", { leeftijd: subtak.subthema.leeftijd }),
+                  telWoord(subtak.subthema.activiteiten.length, "koppelen.eenActiviteit", "koppelen.aantalActiviteiten"),
+                ].join(" · ")}
+              </span>
             </span>
-          </span>
-        </button>
+          </Inklapper.Knop>
 
-        {/* A subdoel (R24). The mark stays for everyone, since it says where the doel already sits. */}
-        {mag.subdoelenBeheren(leeftijd) ? (
-          <Koppelactie
-            alGekoppeld={subtak.alGekoppeld}
-            label={t("koppelen.koppelAanSubthema")}
-            toelichting={t("koppelen.koppelAanSubthemaUitleg", { subthema: subtak.subthema.naam })}
-            bezig={koppelSubthema.isPending}
-            onKoppel={() => koppelSubthema.mutate({ subthemaId: subtak.subthema.id, leerplandoelCode: code })}
-          />
-        ) : subtak.alGekoppeld ? (
-          <Gekoppeldmerk />
-        ) : null}
-      </div>
+          {/* A subdoel (R24). The mark stays for everyone, since it says where the doel already sits. */}
+          {mag.subdoelenBeheren(leeftijd) ? (
+            <Koppelactie
+              alGekoppeld={subtak.alGekoppeld}
+              label={t("koppelen.koppelAanSubthema")}
+              toelichting={t("koppelen.koppelAanSubthemaUitleg", { subthema: subtak.subthema.naam })}
+              bezig={koppelSubthema.isPending}
+              onKoppel={() => koppelSubthema.mutate({ subthemaId: subtak.subthema.id, leerplandoelCode: code })}
+            />
+          ) : subtak.alGekoppeld ? (
+            <Gekoppeldmerk />
+          ) : null}
+        </div>
 
-      <Koppelfout zichtbaar={koppelSubthema.isError} fout={koppelSubthema.error} />
+        <Koppelfout zichtbaar={koppelSubthema.isError} fout={koppelSubthema.error} />
 
-      {open ? (
-        <div className="border-t border-lijn px-2.5 py-2">
+        <Inklapper.Inhoud className="border-t border-lijn px-2.5 py-2">
           <ul className="flex flex-col gap-1">
             {subtak.activiteiten.map(({ activiteit, alGekoppeld }) => (
               <li key={activiteit.id}>
@@ -180,9 +160,9 @@ function Subthemarij({
             magMaken={magNieuwMetDoel}
             gedeeld={!magEigenMaken}
           />
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 

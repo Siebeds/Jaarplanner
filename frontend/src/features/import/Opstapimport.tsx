@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { IcoonChevron } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Knop } from "../../components/ui/Knop";
 import { Laadvlak } from "../../components/ui/Laadvlak";
-import { cn } from "../../lib/cn";
 import { datumVanTijdstip } from "../../lib/datum";
 import { t } from "../../i18n";
 import { Foutvlak, Vak } from "./Meldingen";
@@ -53,7 +52,6 @@ export function Opstapimport() {
   /** The leerplandoelen cannot be previewed yet: no minimumdoel is stored. */
   const [lpWacht, setLpWacht] = useState(false);
   const [bezig, setBezig] = useState<"ophalen" | "doorvoeren" | null>(null);
-  const [excelOpen, setExcelOpen] = useState(false);
 
   async function ophalen() {
     if (!stand.data) return;
@@ -185,25 +183,17 @@ export function Opstapimport() {
 
       {stand.data ? (
         stand.data.laatsteVersie === null ? (
-          <div>
-            <button
-              type="button"
-              aria-expanded={excelOpen}
-              onClick={() => setExcelOpen((open) => !open)}
-              className="flex min-h-raak items-center gap-2 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:text-inkt"
-            >
-              <IcoonChevron
-                aria-hidden="true"
-                className={cn("h-4 w-4 shrink-0 transition-transform duration-200", excelOpen && "rotate-180")}
-              />
-              {t("importeren.opstap.excelTonen")}
-            </button>
-            {excelOpen ? (
-              <div className="mt-2">
+          <Inklapper.Root>
+            <div>
+              <Inklapper.Knop className="flex min-h-raak items-center gap-2 text-meta font-medium text-inkt-zacht transition-colors duration-150 hover:text-inkt">
+                <Inklapper.Pijl className="h-4 w-4" />
+                {t("importeren.opstap.excelTonen")}
+              </Inklapper.Knop>
+              <Inklapper.Inhoud className="mt-2">
                 <Opstapbestand />
-              </div>
-            ) : null}
-          </div>
+              </Inklapper.Inhoud>
+            </div>
+          </Inklapper.Root>
         ) : (
           <p className="text-meta text-inkt-zacht">{t("importeren.opstap.excelNietMeer")}</p>
         )

@@ -36,9 +36,9 @@ export function SchoolurenScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.schooluren")} smal onder={<Onderdeelwissel />} />
+      <Schermkop titel={t("instellingen.schooluren")} maat="smal" onder={<Onderdeelwissel />} />
 
-      <Schermvlak smal>
+      <Schermvlak maat="smal">
         <div className="flex flex-col gap-4">
           <p className="text-body text-inkt-zacht">{t("schooluren.uitleg")}</p>
 

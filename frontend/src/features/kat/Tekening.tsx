@@ -1,4 +1,4 @@
-import { forwardRef, useId, type CSSProperties } from "react";
+import { useId, type CSSProperties, type Ref } from "react";
 import { cn } from "../../lib/cn";
 import { BENEN, KAT_X, SCENE, knie, type Poot } from "./rig";
 import "./chuck-keyframes.css";
@@ -195,10 +195,15 @@ function StaandeVorm() {
  *
  * The component only draws. What he does (`uit`, `loopt`, `in`, ...) is set on the element by `useLoopje`.
  */
-export const Mandscene = forwardRef<SVGSVGElement, { className?: string; style?: CSSProperties }>(function Mandscene(
-  { className, style },
+export function Mandscene({
+  className,
+  style,
   ref,
-) {
+}: {
+  className?: string;
+  style?: CSSProperties;
+  ref?: Ref<SVGSVGElement>;
+}) {
   const rand = useSvgId("chuck-mandrand");
   return (
     <svg
@@ -246,16 +251,16 @@ export const Mandscene = forwardRef<SVGSVGElement, { className?: string; style?:
       </g>
     </svg>
   );
-});
+}
 
 /** Chuck lying on his own, without a basket: on the corner of the week strip. */
-export const LiggendeKat = forwardRef<SVGSVGElement, { className?: string }>(function LiggendeKat({ className }, ref) {
+export function LiggendeKat({ className, ref }: { className?: string; ref?: Ref<SVGSVGElement> }) {
   return (
     <svg ref={ref} className={cn("chuck", className)} viewBox="0 0 240 176" aria-hidden="true" focusable="false">
       <LiggendeVorm />
     </svg>
   );
-});
+}
 
 /**
  * Chuck's head on its own, ears up and eyes open: beside each of his balloons in the chat and beside his name in the
