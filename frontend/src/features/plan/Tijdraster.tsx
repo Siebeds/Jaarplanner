@@ -75,7 +75,11 @@ export type Tijddoel =
 type Rasterblok = Blokje & {
   datum: string;
   naam: string;
-  onder: string;
+  /**
+   * The line under the name: an activiteit's subthema. An algemene fiche has none, since its plane and its icon already
+   * say its kind and the word only crowded the agenda (FB-100); its accessible name still says it.
+   */
+  onder?: string;
   doel: Tijddoel;
   activiteit?: GeplandeActiviteit;
   /** The goals the block works on, for its info icon (FB-018). */
@@ -448,7 +452,6 @@ function bouwBlokken(dagen: Agendadag[], fichemomenten: readonly Ficheblokje[]):
       begin: minuten(moment.begin),
       einde: minuten(moment.einde),
       naam: moment.naam,
-      onder: t("tijdraster.algemeneFiche"),
       doel: { soort: "fiche", plaatsingId: moment.plaatsingId, momentId: moment.momentId },
       doelen: moment.doelen,
       tekst: moment.tekst ?? undefined,
@@ -1116,8 +1119,7 @@ function Blok({
     AN ALGEMENE FICHE'S DAY TEXT, IN WHOLE LINES OF THE ROOM THAT IS LEFT (FB-022). The name line is 18 pixels and the
     time line under it 15.5, after 8 of padding, and the text sets its own 15-pixel leading so this sum holds. A
     45-minute block (42 pixels) has room for one line under the name-and-time line; an hour or more gives the text what
-    is left under the time, in place of the "Algemene fiche" line, since the glyph and the accessible name still say
-    the kind. Whole lines, so no line is drawn cut in half; the rest of the text is in the sheet the block opens.
+    is left under the time; the glyph and the accessible name say the kind. Whole lines, so no line is drawn cut in half; the rest of the text is in the sheet the block opens.
   */
   const hoogte = duur * PX_PER_MINUUT;
   const tekstregels = !blok.tekst
@@ -1177,7 +1179,7 @@ function Blok({
           // The kind is spoken for a fiche: it carries no colour, so the word under the name is the only thing that
           // tells it from an activiteit, and a short block does not print it.
           aria-label={`${blok.naam}, ${toonBereik(blok.begin, einde)}${
-            blok.doel.soort === "activiteit" ? "" : `, ${blok.onder}`
+            blok.doel.soort === "activiteit" ? "" : `, ${t("tijdraster.algemeneFiche")}`
           }${voorstel ? `, ${t("weekvoorstel.voorstel")}` : ""}${kleur ? `, ${t(kleurSleutel(kleur))}` : ""}${
             blok.activiteit?.valtBuitenThemaperiode ? `, ${t("periode.buitenPeriode")}` : ""
           }${blok.tekst ? `, ${blok.tekst}` : ""}`}
@@ -1225,7 +1227,7 @@ function Blok({
               <span className="mono block truncate text-[0.625rem] text-inkt-zacht">
                 {opHeelUur ? t("tijdraster.tot", { tijd: toonTijd(einde) }) : toonBereik(blok.begin, einde)}
               </span>
-              {tekstregels === 0 ? (
+              {tekstregels === 0 && blok.onder ? (
                 <span className="block truncate text-[0.625rem] text-inkt-zacht">{blok.onder}</span>
               ) : null}
             </>

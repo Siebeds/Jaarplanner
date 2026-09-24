@@ -148,12 +148,12 @@ describe("Tijdraster: een terugkerende fiche en het beginuur (FB-091)", () => {
     expect(naamIn(uitstap, "uitstap")).toHaveClass("font-medium");
   });
 
-  it("houdt een terugkerende fiche herkenbaar aan haar icoon en haar onderschrift, niet aan kleur alleen", () => {
+  it("houdt een terugkerende fiche herkenbaar aan haar icoon en haar toegankelijke naam, niet aan kleur alleen", () => {
     toon([dag()], { fichemomenten: [{ ...fiche("08:00:00", "09:00:00"), naam: "onthaal", terugkerend: true }] });
 
     const onthaal = screen.getByRole("button", { name: /^onthaal/ });
     expect(onthaal.querySelector("svg")).not.toBeNull();
-    expect(within(onthaal).getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
+    expect(onthaal.getAttribute("aria-label")).toContain(t("tijdraster.algemeneFiche"));
   });
 
   it("laat een activiteit vet en met rand staan naast een terugkerende fiche", () => {
@@ -279,14 +279,16 @@ describe("Tijdraster", () => {
     expect(geopend).toHaveBeenCalledWith("fp-1", "fm-1");
   });
 
-  it("tekent een algemene fiche als blok met haar eigen onderschrift, en opent dat ene moment", () => {
+  it("tekent een algemene fiche als blok zonder het woord 'algemene fiche', en opent dat ene moment", () => {
     const geopend = vi.fn();
     toon([dag()], { fichemomenten: [fiche("10:30:00", "11:30:00")], onOpenFiche: geopend });
 
     const knop = screen.getByRole("button", { name: /^turnen/ });
     expect(plaats(knop).top).toBe(`${630 * (56 / 60)}px`);
-    // Told apart from an activiteit by a word, not by a hue (Art. XII): an hour is tall enough to print it.
-    expect(screen.getByText(t("tijdraster.algemeneFiche"))).toBeInTheDocument();
+    // FB-100: the word no longer crowds the block, even where an hour has room for it. Its plane and its icon say the
+    // kind to the eye, and its accessible name to a screen reader.
+    expect(screen.queryByText(t("tijdraster.algemeneFiche"))).toBeNull();
+    expect(knop.getAttribute("aria-label")).toContain(t("tijdraster.algemeneFiche"));
 
     // The occurrence travels with the placement: its sheet offers that one day's hours without a drag.
     fireEvent.click(knop);
