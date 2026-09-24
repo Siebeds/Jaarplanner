@@ -1,4 +1,4 @@
----
+﻿---
 id: TB-079
 titel: Woordweb: hoekiger woordbollen en een uitgeschakelde AI-knop voor het eerste woord
 soort: technisch
@@ -32,11 +32,11 @@ In `frontend/src/features/themas/Woordweb.tsx`:
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een woordweb met woorden, wanneer ik het bekijk, dan hebben de woordchips, de naam en het invoerveld
+- [x] Gegeven een woordweb met woorden, wanneer ik het bekijk, dan hebben de woordchips, de naam en het invoerveld
   licht afgeronde hoeken in plaats van pilvormige.
-- [ ] Gegeven een leeg eigen woordweb, wanneer ik het bekijk, dan zie ik de knop "Stel woorden voor" uitgeschakeld
+- [x] Gegeven een leeg eigen woordweb, wanneer ik het bekijk, dan zie ik de knop "Stel woorden voor" uitgeschakeld
   (grijs, niet klikbaar), met de zin dat de AI na het eerste woord meer kan voorstellen.
-- [ ] Gegeven een leeg eigen woordweb, wanneer ik een eerste woord toevoeg, dan wordt de knop actief en verdwijnt de zin.
+- [x] Gegeven een leeg eigen woordweb, wanneer ik een eerste woord toevoeg, dan wordt de knop actief en verdwijnt de zin.
 
 ## Buiten scope
 
