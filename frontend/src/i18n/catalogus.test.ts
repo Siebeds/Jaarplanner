@@ -195,6 +195,25 @@ describe("de componenten", () => {
     expect(overtredingen).toEqual([]);
   });
 
+  it("geven een AiKnop geen label dat op een beletselteken eindigt (TB-077)", () => {
+    // AiKnop draws its own three bouncing dots after the label during a run (TB-044), so a label
+    // ending in "…" shows the dots twice.
+    const waarde = new Map(SLEUTELS);
+    const knop = /<AiKnop\b[\s\S]*?<\/AiKnop>/g;
+    const overtredingen: string[] = [];
+
+    for (const pad of BESTANDEN.filter((bestand) => bestand.endsWith(".tsx"))) {
+      const inhoud = readFileSync(pad, "utf8");
+      for (const [blok] of inhoud.matchAll(knop)) {
+        for (const [, sleutel] of blok.matchAll(/\bt\("([^"]+)"/g)) {
+          if (waarde.get(sleutel)?.endsWith("…")) overtredingen.push(`${relative(SRC, pad)}: ${sleutel}`);
+        }
+      }
+    }
+
+    expect(overtredingen).toEqual([]);
+  });
+
   it("bevatten geen em dash in de bron", () => {
     const fout = BESTANDEN.filter((pad) => readFileSync(pad, "utf8").includes("—"));
     expect(fout.map((pad) => relative(SRC, pad))).toEqual([]);
