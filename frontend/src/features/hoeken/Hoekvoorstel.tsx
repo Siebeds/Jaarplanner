@@ -99,18 +99,22 @@ export function Hoekvoorstel({
 
       {voorstel ? (
         <div className="voorstel-ai mb-2 rounded-veld px-3 py-2.5">
-          <div className="flex items-center gap-2">
+          {/* Wraps in the panel's narrow column: the mark and the status on one line, the quiet buttons at the right,
+              on the next line when they do not fit beside them. */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <Aimerk label={t("plaatsing.aiVoorstel")} />
-            <Statusmerk status="Voorgesteld" className="ml-auto" />
+            <Statusmerk status="Voorgesteld" />
             {bewerkt === null ? (
-              <Beslisknoppen
-                naam={hoek.naam}
-                bezig={beslis.isPending}
-                aanvaardLabel={t("hoekvoorstel.overnemen")}
-                onAanvaard={() => neemOver()}
-                onPasAan={() => setBewerkt(voorstel.tekst)}
-                onWeiger={() => neemBeslissing({ status: "Geweigerd" })}
-              />
+              <span className="ml-auto">
+                <Beslisknoppen
+                  naam={hoek.naam}
+                  bezig={beslis.isPending}
+                  aanvaardLabel={t("hoekvoorstel.overnemen")}
+                  onAanvaard={() => neemOver()}
+                  onPasAan={() => setBewerkt(voorstel.tekst)}
+                  onWeiger={() => neemBeslissing({ status: "Geweigerd" })}
+                />
+              </span>
             ) : null}
           </div>
 
@@ -124,7 +128,7 @@ export function Hoekvoorstel({
               <Tekstvlak
                 id={veldId}
                 value={bewerkt}
-                rows={3}
+                rows={4}
                 maxLength={MAXIMAAL_VOORSTEL}
                 disabled={beslis.isPending}
                 autoFocus

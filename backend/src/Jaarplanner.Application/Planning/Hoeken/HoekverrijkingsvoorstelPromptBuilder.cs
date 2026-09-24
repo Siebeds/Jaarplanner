@@ -50,12 +50,12 @@ public static class HoekverrijkingsvoorstelPromptBuilder
         Nl +
         "Regels:" + Nl +
         "- Stel één verrijking voor deze ene hoek voor, in het Nederlands." + Nl +
-        "- Hou ze kort en concreet: één tot drie zinnen of een korte opsomming, wat er in de hoek komt te liggen of " +
-        "te gebeuren. Schrijf geen les uit." + Nl +
+        "- Hou ze kort en concreet, zoals een leerkracht het op een fiche noteert: wat er in de hoek komt te liggen of " +
+        "te gebeuren, in één korte zin of een korte opsomming, samen hoogstens 200 tekens. Schrijf geen les uit." + Nl +
         $"- Hoogstens {Hoekverrijkingsvoorstel.MaxTekstlengte} tekens." + Nl +
         "- Laat ze passen bij het subthema, zijn onderzoeksvragen en subdoelen, bij de leeftijd en bij wat de hoek is." + Nl +
         "- Herhaal de huidige verrijking niet en stel geen geweigerde verrijking opnieuw voor." + Nl +
-        "- Geef een korte motivatie in het Nederlands, één zin: waarom past dit hier?" + Nl +
+        "- Geef een korte motivatie in het Nederlands, één korte zin: waarom past dit hier?" + Nl +
         "- Noem geen leerplandoelen, codes of uitspraken over het leerplan." + Nl +
         "- Noem geen personen en geen kinderen." + Nl +
         "- Je stelt enkel voor; de leerkracht beslist." + Nl +
