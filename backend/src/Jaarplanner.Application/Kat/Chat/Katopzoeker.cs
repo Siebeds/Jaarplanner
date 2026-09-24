@@ -48,6 +48,7 @@ public sealed class Katopzoeker
             Katvraag.DoelenVanThema => await DoelenVanThemaAsync(opzoeking, inhoud, cancellationToken),
             Katvraag.ActiviteitInSubthema => ActiviteitInSubthema(opzoeking, inhoud),
             Katvraag.SubthemaVanActiviteit => SubthemaVanActiviteit(opzoeking, inhoud),
+            Katvraag.DoelenVanSubthema => await DoelenVanSubthemaAsync(opzoeking, inhoud, cancellationToken),
             _ => Katantwoord.Van(Katantwoordsoort.Mislukt),
         };
     }
@@ -119,23 +120,63 @@ public sealed class Katopzoeker
             return themaAntwoord;
         }
 
-        var (plekken, voorstellen) = inhoud.DoelplekkenVan(thema.Waarde!);
-        var codes = plekken.Concat(voorstellen).Select(p => p.Doel!.Code).Distinct(StringComparer.Ordinal).ToList();
-        var doelen = (await _bron.HaalDoelenAsync(codes, cancellationToken))
-            .ToDictionary(d => d.Code, StringComparer.Ordinal);
-
-        // A link whose goal left the catalogue keeps its code, with the text the catalogue no longer has.
-        Katplek MetTekst(Katplek plek) =>
-            doelen.TryGetValue(plek.Doel!.Code, out var doel) ? plek with { Doel = doel } : plek;
-
+        var (plekken, voorstellen) = await MetTekstAsync(inhoud.DoelplekkenVan(thema.Waarde!.Id, null), cancellationToken);
         return new Katantwoord
         {
             Soort = Katantwoordsoort.DoelenVanThema,
             Opzoeking = opzoeking,
             Thema = new Katnaam(thema.Waarde!.Id, thema.Waarde.Naam),
-            Plekken = plekken.Select(MetTekst).ToList(),
-            Voorstellen = voorstellen.Select(MetTekst).ToList(),
+            Plekken = plekken,
+            Voorstellen = voorstellen,
         };
+    }
+
+    /// <summary>
+    /// The subdoelen of the subthema a term names. Several subthema's with that very name are one subthema at different
+    /// leeftijden or in different thema's, and the answer names the goals of each, with its leeftijd; several names ask
+    /// which one.
+    /// </summary>
+    private async Task<Katantwoord> DoelenVanSubthemaAsync(Katopzoeking opzoeking, Zicht inhoud, CancellationToken cancellationToken)
+    {
+        var subthemas = Naamzoeker.Vind(opzoeking.Subthema!, inhoud.Subthemas, s => s.Id, s => s.Naam);
+        if (subthemas.Count == 0)
+        {
+            return NietGevonden(opzoeking, Katonderwerp.Subthema, opzoeking.Subthema!);
+        }
+
+        if (subthemas.Select(s => Naamzoeker.Normaal(s.Naam)).Distinct(StringComparer.Ordinal).Count() > 1)
+        {
+            return Kies(opzoeking, Katonderwerp.Subthema, opzoeking.Subthema!, subthemas
+                .Select(s => new Katkandidaat(s.Naam, s.Naam, inhoud.ThemaVan(s)?.Naam))
+                .DistinctBy(k => Naamzoeker.Normaal(k.Label)));
+        }
+
+        var ids = subthemas.Select(s => s.Id).ToHashSet();
+        var (plekken, voorstellen) = await MetTekstAsync(inhoud.DoelplekkenVan(null, ids), cancellationToken);
+        return new Katantwoord
+        {
+            Soort = Katantwoordsoort.DoelenVanSubthema,
+            Opzoeking = opzoeking,
+            Subthema = subthemas[0].Naam,
+            Plekken = plekken,
+            Voorstellen = voorstellen,
+        };
+    }
+
+    // The goals' texts from the catalogue. A link whose goal left the catalogue keeps its code, with the text the
+    // catalogue no longer has.
+    private async Task<(List<Katplek> Plekken, List<Katplek> Voorstellen)> MetTekstAsync(
+        (List<Katplek> Plekken, List<Katplek> Voorstellen) gevonden,
+        CancellationToken cancellationToken)
+    {
+        var codes = gevonden.Plekken.Concat(gevonden.Voorstellen).Select(p => p.Doel!.Code).Distinct(StringComparer.Ordinal).ToList();
+        var doelen = (await _bron.HaalDoelenAsync(codes, cancellationToken))
+            .ToDictionary(d => d.Code, StringComparer.Ordinal);
+
+        Katplek MetTekst(Katplek plek) =>
+            doelen.TryGetValue(plek.Doel!.Code, out var doel) ? plek with { Doel = doel } : plek;
+
+        return (gevonden.Plekken.Select(MetTekst).ToList(), gevonden.Voorstellen.Select(MetTekst).ToList());
     }
 
     private static Katantwoord ActiviteitInSubthema(Katopzoeking opzoeking, Zicht inhoud)
@@ -345,8 +386,11 @@ public sealed class Katopzoeker
             return (Geordend(plekken), Geordend(voorstellen));
         }
 
-        /// <summary>The goals of a thema: its themadoelen and the subdoelen of its subthema's, each with its code.</summary>
-        public (List<Katplek> Plekken, List<Katplek> Voorstellen) DoelplekkenVan(Chatthema thema)
+        /// <summary>
+        /// The goals of a thema (its themadoelen and the subdoelen of its subthema's) or, given
+        /// <paramref name="subthemaIds"/>, the subdoelen of those subthema's; each with its code.
+        /// </summary>
+        public (List<Katplek> Plekken, List<Katplek> Voorstellen) DoelplekkenVan(Guid? themaId, IReadOnlySet<Guid>? subthemaIds)
         {
             var plekken = new List<Katplek>();
             var voorstellen = new List<Katplek>();
@@ -357,8 +401,10 @@ public sealed class Katopzoeker
                     continue;
                 }
 
-                var plek = PlekVan(koppeling);
-                if (plek is null || plek.ThemaId != thema.Id)
+                var hoort = subthemaIds is null
+                    || (koppeling.Houder == Kathouder.Subthema && subthemaIds.Contains(koppeling.HouderId));
+                var plek = hoort ? PlekVan(koppeling) : null;
+                if (plek is null || (themaId is { } id && plek.ThemaId != id))
                 {
                     continue;
                 }

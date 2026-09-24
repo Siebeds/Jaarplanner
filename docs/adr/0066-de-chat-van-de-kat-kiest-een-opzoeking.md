@@ -1,6 +1,6 @@
 # ADR-0066 — The cat's chat: the model picks a lookup, the tool answers it
 
-- **Status:** Accepted
+- **Status:** Accepted. **D1 superseded, and C1 and C2 in part, by [ADR-0071](0071-chuck-onthoudt-het-gesprek.md)**: a question carries the last sealed turns of its conversation, with the names and codes an earlier lookup found, and a sixth lookup names a subthema's goals. The text below is left as written.
 - **Date:** 2026-09-23
 - **Deciders:** Project owner, answering FB-031's open questions on 2026-09-23. Directie has not been asked.
 - **Relates to:** [ADR-0059](0059-de-kat-proactieve-agent.md) (the cat; D6: the chat stores nothing),

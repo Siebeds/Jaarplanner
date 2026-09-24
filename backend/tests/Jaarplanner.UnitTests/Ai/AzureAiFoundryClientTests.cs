@@ -280,6 +280,24 @@ public sealed class AzureAiFoundryClientTests
         Assert.Equal("de schoolcontent", messages[1].GetProperty("content").GetString());
     }
 
+    /// <summary>FB-093: the earlier turns of a conversation sit between the system message and the user prompt.</summary>
+    [Fact]
+    public async Task Het_gesprek_staat_tussen_het_systeembericht_en_de_vraag()
+    {
+        var handler = new StubHandler(AzureEnvelop("{}"));
+        var client = new AzureAiFoundryClient(new HttpClient(handler), Options.Create(Opties()));
+
+        await client.CompleteAsync(EenRequest() with { Gesprek = [new AiBeurt("vraag 1", "antwoord 1")] });
+
+        using var payload = JsonDocument.Parse(handler.LaatsteBody!);
+        var berichten = payload.RootElement.GetProperty("messages").EnumerateArray()
+            .Select(b => (b.GetProperty("role").GetString(), b.GetProperty("content").GetString()))
+            .ToArray();
+        Assert.Equal(
+            [("system", "systeeminstructies"), ("user", "vraag 1"), ("assistant", "antwoord 1"), ("user", "de schoolcontent")],
+            berichten);
+    }
+
     /// <summary>TB-043: an answer cut off at <c>max_completion_tokens</c> is incomplete, so it never reaches a parser.</summary>
     [Fact]
     public async Task Een_antwoord_dat_op_de_lengtegrens_stopt_wordt_een_afgekapt_fout()

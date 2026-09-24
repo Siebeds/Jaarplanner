@@ -36,14 +36,15 @@ public sealed class Promptbegrenzing
     public int MaxTokens { get; }
 
     /// <summary>
-    /// The estimated tokens of the whole request, rounded up: the system prompt, the stable context and the user prompt.
-    /// A stable context the provider serves from its cache still counts in full: the ceiling guards the model's context
-    /// as well as cost.
+    /// The estimated tokens of the whole request, rounded up: the system prompt, the stable context, the earlier turns
+    /// of a conversation and the user prompt. A stable context the provider serves from its cache still counts in full:
+    /// the ceiling guards the model's context as well as cost.
     /// </summary>
     public static int SchatTokens(AiRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        var tekens = (long)request.SystemPrompt.Length + request.VasteContext.Length + request.UserPrompt.Length;
+        var tekens = (long)request.SystemPrompt.Length + request.VasteContext.Length + request.UserPrompt.Length
+            + request.Gesprek.Sum(b => (long)b.Vraag.Length + b.Antwoord.Length);
         return (int)((tekens + TekensPerToken - 1) / TekensPerToken);
     }
 
@@ -106,11 +107,12 @@ public sealed class Promptbegrenzing
     }
 
     /// <summary>
-    /// Refuses <paramref name="request"/> when it is over the ceiling, for the cat's chat (FB-031): the handleiding and
-    /// one question, whose length the chat already caps, so only the server setting helps.
+    /// Refuses <paramref name="request"/> when it is over the ceiling, for the cat's chat (FB-031, FB-093): the
+    /// handleiding, the last turns of the conversation and one question, whose lengths the chat already caps, so only the
+    /// server setting helps.
     /// </summary>
     /// <exception cref="PromptTeGrootFout">The request is over the ceiling.</exception>
-    public void BewaakChat(AiRequest request) => Bewaak(request, "de handleiding en je vraag", ServerRaad);
+    public void BewaakChat(AiRequest request) => Bewaak(request, "de handleiding, het gesprek en je vraag", ServerRaad);
 
     /// <summary>
     /// Refuses <paramref name="request"/> when it is over the ceiling, for a weekvoorstel (FB-027): the activiteiten of

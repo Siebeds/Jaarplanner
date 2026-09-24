@@ -73,6 +73,10 @@ export function antwoordzin(antwoord: Katantwoord): string {
         : t("kat.chat.activiteitInSubthemaNee", { activiteit, subthema: antwoord.subthema ?? "" });
     case "SubthemaVanActiviteit":
       return t("kat.chat.subthemaVanActiviteit", { activiteit });
+    case "DoelenVanSubthema":
+      return antwoord.plekken.length > 0
+        ? t("kat.chat.doelenVanSubthema", { subthema: antwoord.subthema ?? "" })
+        : t("kat.chat.doelenVanSubthemaGeen", { subthema: antwoord.subthema ?? "" });
     default:
       return t("kat.chat.mislukt");
   }

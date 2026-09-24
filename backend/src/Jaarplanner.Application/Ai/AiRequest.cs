@@ -6,7 +6,8 @@ namespace Jaarplanner.Application.Ai;
 /// the Application layer: the seam an <see cref="IAiClient"/> speaks.
 /// <para>
 /// <b>Three parts, in this order</b> (TB-043): <see cref="SystemPrompt"/>, then <see cref="VasteContext"/>, then
-/// <see cref="UserPrompt"/>. The first two are the stable prefix, identical across requests of the same kind, which a
+/// <see cref="UserPrompt"/>, with the earlier turns of a conversation (<see cref="Gesprek"/>, the cat's chat only) between
+/// the last two. The first two are the stable prefix, identical across requests of the same kind, which a
 /// provider can serve from its prompt cache; everything that differs per request, the school's own content above all,
 /// goes in the last. A cache only matches an identical beginning, so a builder that puts anything volatile in the first
 /// two parts silently makes every request pay the full price.
@@ -37,4 +38,18 @@ public sealed record AiRequest
     /// goals not to propose). Contains only what Art. IV.4 allows the flow.
     /// </summary>
     public required string UserPrompt { get; init; }
+
+    /// <summary>
+    /// The earlier turns of a conversation, oldest first, sent as alternating user and assistant messages after the
+    /// stable prefix and before the <see cref="UserPrompt"/> (FB-093, ADR-0071). Empty for every flow but the cat's chat:
+    /// a model remembers nothing, so a conversation is its turns sent again with each question.
+    /// </summary>
+    public IReadOnlyList<AiBeurt> Gesprek { get; init; } = [];
+}
+
+/// <summary>One earlier turn of a conversation: what the user asked, and what the assistant answered.</summary>
+public sealed record AiBeurt(string Vraag, string Antwoord)
+{
+    /// <summary>Only the kind: a turn of the cat's chat stays out of every log (ADR-0059 D6).</summary>
+    public override string ToString() => nameof(AiBeurt);
 }

@@ -21,6 +21,9 @@ public enum Katvraag
 
     /// <summary>"Bij welk subthema hoort activiteit a?": needs <see cref="Katopzoeking.Activiteit"/>.</summary>
     SubthemaVanActiviteit,
+
+    /// <summary>"Welke doelen horen bij subthema z?": needs <see cref="Katopzoeking.Subthema"/> (FB-093).</summary>
+    DoelenVanSubthema,
 }
 
 /// <summary>
@@ -47,6 +50,7 @@ public sealed record Katopzoeking(
             Katvraag.DoelenVanThema => Ingevuld(Thema),
             Katvraag.ActiviteitInSubthema => Ingevuld(Activiteit) && Ingevuld(Subthema),
             Katvraag.SubthemaVanActiviteit => Ingevuld(Activiteit),
+            Katvraag.DoelenVanSubthema => Ingevuld(Subthema),
             _ => false,
         }
         && new[] { Doel, Thema, Subthema, Activiteit }.All(t => t is null || t.Length <= MaxTermLengte);

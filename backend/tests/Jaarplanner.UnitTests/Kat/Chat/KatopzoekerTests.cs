@@ -205,6 +205,38 @@ public sealed class KatopzoekerTests
     }
 
     [Fact]
+    public async Task De_doelen_van_een_subthema_zijn_zijn_subdoelen_op_elke_leeftijd_met_die_naam()
+    {
+        var antwoord = await Zoek(new Katopzoeking(Katvraag.DoelenVanSubthema, Subthema: "bladeren"));
+
+        Assert.Equal(Katantwoordsoort.DoelenVanSubthema, antwoord.Soort);
+        Assert.Equal("Bladeren", antwoord.Subthema);
+        var plek = Assert.Single(antwoord.Plekken);
+        Assert.Equal((Katpleksoort.Subdoel, "K3", Sorteren), (plek.Soort, plek.Leeftijd, plek.Doel!));
+        var voorstel = Assert.Single(antwoord.Voorstellen);
+        Assert.Equal(("K2", Meten), (voorstel.Leeftijd, voorstel.Doel!));
+    }
+
+    [Fact]
+    public async Task Een_geweigerd_subdoel_hoort_niet_bij_de_doelen_van_het_subthema()
+    {
+        var antwoord = await Zoek(new Katopzoeking(Katvraag.DoelenVanSubthema, Subthema: "Regen"));
+
+        Assert.Equal(Katantwoordsoort.DoelenVanSubthema, antwoord.Soort);
+        Assert.Empty(antwoord.Plekken);
+        Assert.Empty(antwoord.Voorstellen);
+    }
+
+    [Fact]
+    public async Task Een_subthema_dat_niet_bestaat_wordt_niet_gevonden()
+    {
+        var antwoord = await Zoek(new Katopzoeking(Katvraag.DoelenVanSubthema, Subthema: "Sneeuw"));
+
+        Assert.Equal(Katantwoordsoort.NietGevonden, antwoord.Soort);
+        Assert.Equal(new Katniets(Katonderwerp.Subthema, "Sneeuw"), antwoord.NietGevonden);
+    }
+
+    [Fact]
     public async Task Een_activiteit_in_een_ander_subthema_is_nee_en_hij_zegt_waar_ze_wel_hoort()
     {
         var antwoord = await Zoek(new Katopzoeking(Katvraag.ActiviteitInSubthema, Activiteit: "bladeren sorteren", Subthema: "Regen"));

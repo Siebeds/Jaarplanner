@@ -2,13 +2,13 @@
 id: FB-093
 titel: Chuck onthoudt het gesprek, zodat een vervolgvraag op de vorige vraag kan steunen
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 12:19
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-24 23:39
+opgepakt-door: claude-fb093
+branch: ticket/FB-093-chuck-onthoudt-gesprek
+pr: 199
 geblokkeerd:
 fr: [FR-14.10]
 ---
@@ -60,17 +60,17 @@ mee; prioriteit hoog.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een gesprek waarin gevraagd werd "zit K-1.5.2 in thema Herfst?", wanneer de gebruiker daarna vraagt "en
+- [x] Gegeven een gesprek waarin gevraagd werd "zit K-1.5.2 in thema Herfst?", wanneer de gebruiker daarna vraagt "en
   in thema Water?", dan antwoordt Chuck over K-1.5.2 en thema Water, uit de gegevens van de tool.
-- [ ] Gegeven een uitleg over het plannen van een algemene fiche, wanneer de gebruiker vraagt "en hoe haal ik ze weer
+- [x] Gegeven een uitleg over het plannen van een algemene fiche, wanneer de gebruiker vraagt "en hoe haal ik ze weer
   weg?", dan antwoordt Chuck over het weghalen van een algemene fiche, uit de handleiding.
-- [ ] Gegeven een gesprek dat langer is dan de grens, dan krijgt de AI alleen de laatste beurten binnen de grens mee,
+- [x] Gegeven een gesprek dat langer is dan de grens, dan krijgt de AI alleen de laatste beurten binnen de grens mee,
   en blijft de kost per vraag begrensd.
-- [ ] Gegeven een gesprek waarin een antwoord van Chuck gewijzigd of verzonnen werd, dan weigert de server het en
+- [x] Gegeven een gesprek waarin een antwoord van Chuck gewijzigd of verzonnen werd, dan weigert de server het en
   krijgt de gebruiker een duidelijke melding, zonder dat de AI het vervalste antwoord te zien krijgt.
-- [ ] Gegeven een gesprek, dan gaat er van een opzoeking alleen de soort en de gevonden namen en codes naar de AI, de
+- [x] Gegeven een gesprek, dan gaat er van een opzoeking alleen de soort en de gevonden namen en codes naar de AI, de
   tool bewaart niets en er komt geen vraag, antwoord of beurt in een logregel.
-- [ ] Gegeven een leerkracht die in een vervolgvraag naar een klas vraagt die ze niet mag inkijken, dan krijgt ze
+- [x] Gegeven een leerkracht die in een vervolgvraag naar een klas vraagt die ze niet mag inkijken, dan krijgt ze
   daarover geen gegevens, ook niet via een eerdere beurt.
 
 ## Testscenario's
@@ -110,3 +110,9 @@ mee; prioriteit hoog.
 ## Werklog
 
 - 2026-09-23 12:19 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-24 16:47 · claude-fb093 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 17:00 · claude-fb093 · backend klaar: de server verzegelt elke beurt (HMAC per serverproces), de laatste tien beurten gaan als echte gespreksbeurten naar beide AI-providers, een vervalste beurt geeft 409 zonder AI; zesde opzoeking doelenVanSubthema; unit- en integratietests groen
+- 2026-09-24 17:50 · claude-fb093 · browserpas met echte AI op een wegwerpkopie: scenario 1, 2, 3, 4, 5 en 7 (390px) werken; scenario 6 gedekt door de integratietest; geen vraag in het API-log
+- 2026-09-24 17:55 · claude-fb093 · in-uitvoering → te-testen: gebouwd: verzegelde beurten, de laatste tien gaan mee, vervalst = 409 zonder AI, opzoeking doelenVanSubthema, ADR-0069; criteria afgevinkt op unit-, integratie- en vitesttests en de browserpas; antagonist COMPLIANT, MINOR-punten opgelost; gates groen
+- 2026-09-24 17:55 · claude-fb093 · PR #199
+- 2026-09-24 23:39 · claude-fb093 · main gemerged; de ADR van dit ticket heet nu ADR-0071 (0069 en 0070 waren intussen op main genomen); tests en lint opnieuw groen

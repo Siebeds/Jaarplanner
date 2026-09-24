@@ -672,6 +672,7 @@
       "onbekend": "Dat weet ik niet. Ik antwoord alleen over hoe Vizier werkt, en over de doelen, thema's en activiteiten van de school.",
       "mislukt": "Ik begreep mijn eigen antwoord niet. Stel je vraag nog eens, misschien anders verwoord.",
       "fout": "Ik kon je vraag nu niet beantwoorden. Probeer het later opnieuw.",
+      "draadKwijt": "Ik ben de draad van ons gesprek kwijt, dus ik begin opnieuw. Stel je vraag nog eens.",
       "nietGevonden": {
         "Doel": "Ik vind geen doel dat past bij \"{term}\".",
         "Thema": "Ik vind geen thema dat past bij \"{term}\".",
@@ -693,6 +694,8 @@
       "waarGebruiktVoorstel": "{doel} ligt nog nergens vast. Er wachten wel voorstellen.",
       "doelenVanThema": "Deze doelen liggen vast in thema {thema}.",
       "doelenVanThemaGeen": "Thema {thema} heeft nog geen vastgelegde doelen.",
+      "doelenVanSubthema": "Deze doelen liggen vast in subthema {subthema}.",
+      "doelenVanSubthemaGeen": "Subthema {subthema} heeft nog geen vastgelegde doelen.",
       "activiteitInSubthemaJa": "Ja, {activiteit} zit in subthema {subthema}.",
       "activiteitInSubthemaNee": "Nee, {activiteit} zit niet in subthema {subthema}. Ze hoort hier:",
       "subthemaVanActiviteit": "{activiteit} hoort hier:",

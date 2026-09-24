@@ -9,17 +9,21 @@ using Microsoft.AspNetCore.Mvc;
 namespace Jaarplanner.Api.Controllers;
 
 /// <summary>
-/// A question to the cat, and the schooljaar the gebruiker is looking at, whose klassen the agenda answer covers. Its
-/// text never leaves through <see cref="ToString"/>: the framework writes an action's arguments to its trace log that
-/// way, and no chat content may reach a log (ADR-0059 D6).
+/// A question to the cat, the schooljaar the gebruiker is looking at, whose klassen the agenda answer covers, and the
+/// sealed turns of the conversation so far, oldest first (FB-093). Its text never leaves through
+/// <see cref="ToString"/>: the framework writes an action's arguments to its trace log that way, and no chat content may
+/// reach a log (ADR-0059 D6).
 /// </summary>
-public sealed record Katchatvraag(string Vraag, Guid? SchooljaarId)
+public sealed record Katchatvraag(string Vraag, Guid? SchooljaarId, IReadOnlyList<Katbeurt>? Gesprek = null)
 {
     public override string ToString() => nameof(Katchatvraag);
 }
 
-/// <summary>A lookup run again with the candidate the gebruiker picked; its terms stay out of a log like a question.</summary>
-public sealed record Katchatopzoeking(Katopzoeking Opzoeking, Guid? SchooljaarId)
+/// <summary>
+/// A lookup run again with the candidate the gebruiker picked, and <see cref="Vraag"/>, what her turn shows for it, so
+/// the answer can carry a sealed turn. Its terms stay out of a log like a question.
+/// </summary>
+public sealed record Katchatopzoeking(Katopzoeking Opzoeking, Guid? SchooljaarId, string? Vraag = null)
 {
     public override string ToString() => nameof(Katchatopzoeking);
 }
@@ -69,7 +73,16 @@ public sealed class KatchatController : ControllerBase
             return Forbid();
         }
 
-        return Ok(await _chat.BeantwoordAsync(vraag.Vraag, lezer, cancellationToken));
+        try
+        {
+            return Ok(await _chat.BeantwoordAsync(vraag.Vraag, lezer, vraag.Gesprek, cancellationToken));
+        }
+        catch (GesprekKloptNietFout fout)
+        {
+            // A forged or changed turn, or one sealed before a restart: the model saw nothing, and the frontend starts
+            // the conversation again with its own sentence.
+            return Problem(statusCode: StatusCodes.Status409Conflict, detail: fout.Message);
+        }
     }
 
     /// <summary>Runs a lookup again with the picked candidate. The model is not called.</summary>
@@ -86,7 +99,7 @@ public sealed class KatchatController : ControllerBase
             return Forbid();
         }
 
-        return Ok(await _chat.ZoekOpAsync(opzoeking.Opzoeking, lezer, cancellationToken));
+        return Ok(await _chat.ZoekOpAsync(opzoeking.Opzoeking, lezer, opzoeking.Vraag, cancellationToken));
     }
 
     // Her rights, and the klassen of the schooljaar she is looking at whose planning she may read. Without a schooljaar,

@@ -364,7 +364,9 @@ Klik op Chuck om zijn venster te openen. Bovenaan staat wat hij meebracht:
 Onder in zijn venster kan je Chuck een vraag stellen in gewone taal. Hij beantwoordt twee soorten vragen:
 
 - **Hoe de tool werkt**, bijvoorbeeld "Hoe plan ik een algemene fiche?" of "Waarom is dit doel niet gedekt?". Hij antwoordt alleen uit deze handleiding. Staat het er niet in, dan zegt hij dat hij het niet weet.
-- **Opzoekvragen** over de doelen, thema's en activiteiten van de school, bijvoorbeeld "Zit doel ... in thema ...?" of "Waar wordt doel ... gebruikt?". Het antwoord komt uit de gegevens van de tool. Je vindt een doel op zijn code of op een deel van zijn tekst; passen er meerdere, dan vraagt hij welk je bedoelt. Een voorgestelde koppeling noemt hij apart als voorstel.
+- **Opzoekvragen** over de doelen, thema's en activiteiten van de school, bijvoorbeeld "Zit doel ... in thema ...?", "Waar wordt doel ... gebruikt?" of "Welke doelen heeft subthema ...?". Het antwoord komt uit de gegevens van de tool. Je vindt een doel op zijn code of op een deel van zijn tekst; passen er meerdere, dan vraagt hij welk je bedoelt. Een voorgestelde koppeling noemt hij apart als voorstel.
+
+Zolang zijn venster open is, onthoudt Chuck het gesprek: je kan verder vragen op wat je net vroeg, bijvoorbeeld "En in thema Water?" of "Welke doelen heeft dat subthema?". Hij onthoudt de laatste tien vragen; wat daarvoor kwam, weet hij niet meer. Sluit je het venster, dan begin je een nieuw gesprek.
 
 Chuck wijzigt niets, en het gesprek wordt niet bewaard. Hij toont alleen wat je ook op het scherm mag zien. Namen en informatie over kinderen horen niet in dit venster, en over het ontwikkelingsrapport beantwoordt hij geen opzoekvragen.
 
