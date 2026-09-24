@@ -5,10 +5,10 @@ soort: technisch
 status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 13:37
+bijgewerkt: 2026-09-24 13:38
 opgepakt-door: claude-tb074
 branch: ticket/TB-074-activiteitformulier-splitsen
-pr:
+pr: 192
 geblokkeerd:
 fr: []
 ---
@@ -55,3 +55,4 @@ Geen.
 - 2026-09-24 13:37 · claude-tb074 · Browsercheck op wegwerpkopie (desktop en 390px): aanmaken en bewerken op de themapagina, nieuw en bestaand in de agenda, nieuw vanuit het activiteitenpaneel, en alleen-lezend met Gebruiken voor een leerkracht; alles zoals voordien. Criteria afgevinkt op basis daarvan en van de tests.
 - 2026-09-24 13:37 · claude-tb074 · Antagonist: COMPLIANT, geen blokkerende bevindingen; twee MINOR (verouderd commentaar, testnotitie) opgelost, twee MINOR bewust gelaten (overlappende test, bestandsnaam Activiteitformulier.tsx voor de gedeelde onderdelen).
 - 2026-09-24 13:37 · claude-tb074 · in-uitvoering → klaar: Gesplitst in NieuweActiviteit en BestaandeActiviteit met gedeelde onderdelen, gedrag ongewijzigd; pnpm test (1394) en pnpm lint groen, browsercheck en antagonist in orde.
+- 2026-09-24 13:38 · claude-tb074 · PR #192
