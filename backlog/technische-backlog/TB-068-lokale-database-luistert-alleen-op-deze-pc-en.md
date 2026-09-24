@@ -8,7 +8,7 @@ aangemaakt: 2026-09-23
 bijgewerkt: 2026-09-24 12:45
 opgepakt-door: claude-tb068
 branch: ticket/TB-068-db-poort-localhost
-pr:
+pr: 189
 geblokkeerd:
 fr: []
 ---
@@ -52,3 +52,4 @@ Geen.
 - 2026-09-24 12:45 · claude-tb068 · Poort op 127.0.0.1 gezet; proefcontainer uit dezelfde compose: 127.0.0.1 en localhost verbinden, het LAN-adres 192.168.0.183 wordt geweigerd (de huidige container op 0.0.0.0 antwoordt daar wel). settings.local.json negeert git nu via de repo-.gitignore.
 - 2026-09-24 12:45 · claude-tb068 · Gates: unittests 2357 groen; integratietests via Host=localhost tegen de proefcontainer 613 groen, 3 GebruikerbeheerEndpointsTests ('intussen verwijderd') faalden onder load en slagen apart (44/44), los van deze wijziging; dotnet format schoon. CI gebruikt een eigen service-container en raakt docker-compose.yml niet. Geen antagonist: alleen config.
 - 2026-09-24 12:45 · claude-tb068 · in-uitvoering → klaar: DB-poort alleen op 127.0.0.1, settings.local.json in .gitignore; gates groen. Bestaande container eenmalig herstarten met docker compose up -d db.
+- 2026-09-24 12:45 · claude-tb068 · PR #189
