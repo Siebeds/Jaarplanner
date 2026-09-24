@@ -2,10 +2,10 @@
 id: TB-075
 titel: Eén Inklapper-component en kleine opruiming van component-API's
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 14:06
+bijgewerkt: 2026-09-24 14:08
 opgepakt-door: claude-tb075
 branch: ticket/TB-075-inklapper
 pr:
@@ -65,3 +65,5 @@ Geen.
 - 2026-09-24 13:39 · claude-tb075 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht via orchestrerende sessie)
 - 2026-09-24 13:51 · claude-tb075 · Inklapper gebouwd en op alle tien uitklappers gezet; Schermkop/Schermvlak op maat; forwardRef weg; Fiche had de opmaak-booleans al niet meer. pnpm test (1402) en pnpm lint groen.
 - 2026-09-24 14:06 · claude-tb075 · Browserpas op kopie jp_tb075, main (5190) naast deze tak (5191), 1440 en 390px: dekking, leerplandoelen- en minimumdoelenboom, koppelblad, themapagina en inladen hebben dicht en na het openen dezelfde paginahoogte en dezelfde knopposities; Enter en Spatie klappen open en dicht, aria-controls wijst naar bestaande inhoud (op het koppelblad ontbrak het voordien).
+- 2026-09-24 14:08 · claude-tb075 · Antagonist: COMPLIANT. Open MINOR: onOpenChange in Inklaplijst, Subthemahoofdstuk en DekkingScherm wisselt de eigen state in plaats van de meegegeven waarde te nemen (werkt, want Root geeft altijd !open); Knop kent geen preventDefault op onClick om het uitklappen te stoppen (geen gebruiker heeft dat nodig). Bewust gelaten: aria-expanded op de Katmand-popover, de zoekknoppen van Inklaplijst en 'Alle bekijken' (geen uitklappers), en smal in Navigatie/Aanmeldregel (de zijbalk, niet Schermkop). Het Scherm-omhulsel dat de maat één keer doorgeeft is niet gebouwd, om de diff klein te houden.
+- 2026-09-24 14:08 · claude-tb075 · in-uitvoering → klaar: Inklapper op alle tien uitklappers, Schermkop/Schermvlak met maat, forwardRef weg; pnpm test, pnpm lint en browserpas groen, antagonist COMPLIANT.
