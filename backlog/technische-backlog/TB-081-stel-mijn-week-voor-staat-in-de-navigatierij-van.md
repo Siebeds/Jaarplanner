@@ -2,10 +2,10 @@
 id: TB-081
 titel: Stel mijn week voor staat in de navigatierij van de agenda
 soort: technisch
-status: in-uitvoering
+status: klaar
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 12:20
+bijgewerkt: 2026-09-24 12:21
 opgepakt-door: sessie-weekvoorstel-kop
 branch: ticket/TB-weekvoorstel-in-kop
 pr:
@@ -46,3 +46,4 @@ Geen.
 - 2026-09-24 12:01 · sessie-weekvoorstel-kop · aangemaakt (status in-uitvoering)
 - 2026-09-24 12:18 · sessie-weekvoorstel-kop · Knop en tellerknop in de navigatierij, voorstellen in een Radix-popover; eigenaar koos inkrimpen via container query onder 68rem. Browserpas (mock) op 1627/1440/1280/390px: agenda direct onder de dekkingsbalk, rij springt niet bij voorstellen, geen horizontale scroll op gsm; Weekvoorstel.test.tsx en pnpm lint groen (1393 tests).
 - 2026-09-24 12:20 · sessie-weekvoorstel-kop · Antagonist ronde 1: 1 MAJOR (geweigerde beslissing niet meer in de live region), opgelost met test; MINOR tooltip op de teller en commentaar over het paneel opgelost; niet opgelost: donkere modus niet gemeten (bestaande tokens), dubbele voorlezing na een vraag niet met NVDA gecontroleerd.
+- 2026-09-24 12:21 · sessie-weekvoorstel-kop · in-uitvoering → klaar: Gebouwd: weekvoorstel in de navigatierij met teller en uitklapvak, inkrimpen onder 68rem. Gates groen (vitest, pnpm lint, browserpas 1627/1440/1280/390px), antagonist compliant na 1 herkeuring.
