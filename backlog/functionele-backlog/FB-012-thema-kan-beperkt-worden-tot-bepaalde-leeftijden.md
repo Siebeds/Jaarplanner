@@ -2,12 +2,12 @@
 id: FB-012
 titel: Thema kan beperkt worden tot bepaalde leeftijden
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-15
-bijgewerkt: 2026-09-15 14:09
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 16:48
+opgepakt-door: thema-leeftijden
+branch: ticket/FB-012-thema-leeftijden
 pr:
 geblokkeerd:
 fr: [FR-3.3]
@@ -68,3 +68,4 @@ leeftijden**. Een thema per klas of een persoonlijk thema is niet gevraagd.
 ## Werklog
 
 - 2026-09-15 14:09 · wensen-tickets · aangemaakt (status nieuw)
+- 2026-09-24 16:48 · thema-leeftijden · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
