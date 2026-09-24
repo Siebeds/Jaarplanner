@@ -5,10 +5,10 @@ soort: functioneel
 status: te-testen
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 10:17
+bijgewerkt: 2026-09-24 10:19
 opgepakt-door: claude-fb099
 branch: ticket/FB-099-chuck-enkel-agenda
-pr:
+pr: 181
 geblokkeerd:
 fr: []
 ---
@@ -57,3 +57,4 @@ Geen.
 - 2026-09-24 10:16 · claude-fb099 · Vitest volledig groen (1364 tests), browserpas desktop en 390px op mockdata.
 - 2026-09-24 10:17 · claude-fb099 · Antagonist COMPLIANT; MINORs opgelost (ADR-0068, uitlegtekst Chuck-instelling). Criteria afgevinkt op browsermeting (titel 42px/35px, Chuck enkel op agenda) en Katmand-tests (venster opent).
 - 2026-09-24 10:17 · claude-fb099 · in-uitvoering → te-testen: Chuck staat enkel nog op de agenda; elke titel op dezelfde hoogte. Lint, Vitest (1364) en browserpas groen.
+- 2026-09-24 10:19 · claude-fb099 · PR #181
