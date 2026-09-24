@@ -335,9 +335,15 @@ public sealed class SchoolcontentBeheerService : ISchoolcontentBeheerService
                 var inGebruik = weg
                     .Where(l => subthemas.Any(s => s.Leeftijd == l) || klassen.Any(k => k.Leeftijden.Contains(l)))
                     .ToList();
+                // The advice names only what stands in the way, so it never sends anyone after a subthema that is not there.
+                var advies = (klassen.Count > 0, subthemas.Count > 0) switch
+                {
+                    (true, true) => "Haal het thema eerst uit die jaarplannen en verplaats of verwijder die subthema's.",
+                    (true, false) => "Haal het thema eerst uit die jaarplannen.",
+                    _ => "Verplaats of verwijder die subthema's eerst.",
+                };
                 throw new SchoolcontentValidatieFout(
-                    $"{string.Join(" en ", inGebruik)} kan niet weg bij thema '{thema.Naam}': {string.Join("; ", redenen)}. "
-                    + "Haal het thema eerst uit die jaarplannen en verplaats of verwijder die subthema's.");
+                    $"{string.Join(" en ", inGebruik)} kan niet weg bij thema '{thema.Naam}': {string.Join("; ", redenen)}. {advies}");
             }
         }
 

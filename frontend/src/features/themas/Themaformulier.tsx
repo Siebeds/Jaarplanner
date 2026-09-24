@@ -65,9 +65,10 @@ export function Themaformulier({
     leeftijden: thema?.leeftijden ?? null,
   }));
   const { data: jaarfasen } = useJaarfasen();
-  // A new thema starts with every leeftijd, once the codes are known.
+  // A new thema starts with every leeftijd once the codes are known. Until then it sends none, which the server reads
+  // as all nine, so a slow or failed /api/jaarfasen never asks for a choice the form cannot show.
   const [eigenLeeftijden, setLeeftijden] = useState<string[] | null>(begin.leeftijden);
-  const leeftijden = eigenLeeftijden ?? jaarfasen ?? [];
+  const leeftijden = eigenLeeftijden ?? jaarfasen ?? null;
   const [leeftijdFout, setLeeftijdFout] = useState(false);
   const [naam, setNaam] = useState(begin.naam);
   const [icoon, setIcoon] = useState<string | null>(begin.icoon);
@@ -93,7 +94,7 @@ export function Themaformulier({
     invalshoeken: invalshoeken.trim() !== begin.invalshoeken.trim(),
     kern: !zelfdeLijst(kern, begin.kern),
     rijk: !zelfdeLijst(rijk, begin.rijk),
-    leeftijden: begin.leeftijden !== null && !zelfdeLijst(leeftijden, begin.leeftijden),
+    leeftijden: begin.leeftijden !== null && !zelfdeLijst(leeftijden ?? [], begin.leeftijden),
   };
   const vuil = Object.values(gewijzigd).some(Boolean);
 
@@ -110,7 +111,7 @@ export function Themaformulier({
     // worse experience than a sentence under the field. The server stays the authority.
     const naamLeeg = naam.trim().length === 0;
     const duurOngeldig = !Number.isFinite(weken) || weken < 1;
-    const geenLeeftijd = leeftijden.length === 0;
+    const geenLeeftijd = leeftijden !== null && leeftijden.length === 0;
     setNaamFout(naamLeeg);
     setDuurFout(duurOngeldig);
     setLeeftijdFout(geenLeeftijd);
@@ -276,7 +277,7 @@ export function Themaformulier({
           <div className="mt-1.5">
             <Leeftijdkeuze
               jaarfasen={jaarfasen ?? []}
-              gekozen={leeftijden}
+              gekozen={leeftijden ?? []}
               label={null}
               uitgeschakeld={bezig}
               onWijzig={(gekozen) => {

@@ -309,7 +309,7 @@ function maakThema(invoer: ThemaInvoer): ThemaWeergave {
     themadoelen: [],
     minimumdoelen: [],
     subthemas: [],
-    leeftijden: invoer.leeftijden,
+    leeftijden: invoer.leeftijden ?? ["JK", "K2", "K3", "L1", "L2", "L3", "L4", "L5", "L6"],
   };
 }
 
@@ -497,7 +497,8 @@ const TABEL: [Methode, string, Handler][] = [
     (v) => {
       const thema = themaVan(v);
       const { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat, leeftijden } = v.body as ThemaInvoer;
-      Object.assign(thema, { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat, leeftijden });
+      Object.assign(thema, { naam, duurWeken, invalshoeken, kernwoordenschat, rijkeWoordenschat });
+      if (leeftijden) thema.leeftijden = leeftijden;
       return t.themaWeergave(thema);
     },
   ],

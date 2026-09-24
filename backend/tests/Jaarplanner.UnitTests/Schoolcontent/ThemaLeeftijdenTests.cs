@@ -187,6 +187,21 @@ public sealed class ThemaLeeftijdenTests : IDisposable
     }
 
     [Fact]
+    public async Task De_melding_raadt_alleen_aan_wat_in_de_weg_staat()
+    {
+        var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Herfst", 4));
+        await PlaatsAsync(_jk.Id, thema.Id);
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => NieuweService().WijzigThemaAsync(thema.Id, new ThemaWijziging("Herfst", 4, Leeftijden: ["K3"])));
+
+        Assert.Equal(
+            "JK kan niet weg bij thema 'Herfst': het thema staat in het jaarplan van De Egeltjes. "
+            + "Haal het thema eerst uit die jaarplannen.",
+            fout.Message);
+    }
+
+    [Fact]
     public async Task Een_jaarplan_van_een_andere_leeftijd_staat_niet_in_de_weg()
     {
         var thema = await NieuweService().MaakThemaAsync(new ThemaCreatie("Herfst", 4));
