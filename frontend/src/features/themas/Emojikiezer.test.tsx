@@ -185,7 +185,7 @@ describe("Themaformulier", () => {
 describe("het emoji naast de naam", () => {
   it("staat voor de titel van de themapagina, zonder dat een schermlezer het in de titel hoort", () => {
     // Without a QueryClient: Chuck, who reads the school setting, has no part in how the title is set.
-    render(<Schermkop titel="Herfst" icoon="🍂" zonderKat />);
+    render(<Schermkop titel="Herfst" icoon="🍂" />);
 
     const kop = screen.getByRole("heading", { level: 1, name: "Herfst" });
     expect(kop).toHaveTextContent("🍂Herfst");
