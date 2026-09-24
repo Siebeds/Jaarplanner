@@ -2,12 +2,12 @@
 id: TB-068
 titel: Lokale database luistert alleen op deze pc, en settings.local.json staat in de .gitignore
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 00:22
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 12:12
+opgepakt-door: claude-tb068
+branch: ticket/TB-068-db-poort-localhost
 pr:
 geblokkeerd:
 fr: []
@@ -48,3 +48,4 @@ Geen.
 ## Werklog
 
 - 2026-09-23 00:22 · claude-securityscan · aangemaakt (status nieuw)
+- 2026-09-24 12:12 · claude-tb068 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
