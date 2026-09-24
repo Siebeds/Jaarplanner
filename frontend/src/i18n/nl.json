@@ -1451,6 +1451,16 @@
     "alVoorbereiden": "Al voorbereiden",
     "geenSubthemaInWeek": "In deze week loopt geen subthema."
   },
+  "hoekvoorstel": {
+    "vraag": "Stel een verrijking voor: {hoek}",
+    "vraagKort": "Stel een verrijking voor",
+    "bezig": "De AI zoekt een verrijking voor {hoek}",
+    "nietsNieuws": "De AI vond niets nieuws voor deze hoek.",
+    "mislukt": "Een verrijking voorstellen lukte niet.",
+    "overnemen": "Overnemen",
+    "annuleren": "Annuleren",
+    "tekstVoor": "Verrijking voor {hoek}"
+  },
   "activiteitenpaneel": {
     "subthema": "Subthema",
     "kiesSubthema": "Kies een subthema",
