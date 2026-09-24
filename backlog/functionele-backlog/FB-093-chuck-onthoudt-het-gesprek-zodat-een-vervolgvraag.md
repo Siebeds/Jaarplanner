@@ -2,12 +2,12 @@
 id: FB-093
 titel: Chuck onthoudt het gesprek, zodat een vervolgvraag op de vorige vraag kan steunen
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 12:19
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 16:47
+opgepakt-door: claude-fb093
+branch: ticket/FB-093-chuck-onthoudt-gesprek
 pr:
 geblokkeerd:
 fr: [FR-14.10]
@@ -110,3 +110,4 @@ mee; prioriteit hoog.
 ## Werklog
 
 - 2026-09-23 12:19 · eigenaar · aangemaakt (status nieuw)
+- 2026-09-24 16:47 · claude-fb093 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
