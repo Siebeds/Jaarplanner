@@ -32,3 +32,11 @@ export function knopklassen(rang: Rang = "rustig", vol?: boolean): string {
     vol && "w-full",
   );
 }
+
+/**
+ * A text link that does something on the page (shows more, widens a search): ink with a quiet underline, never the
+ * accent, which is spent elsewhere. One class, so "Subdoelen bekijken", "Alle … bekijken" and "Toon alle jaren" read
+ * as the same kind of control (FB-094).
+ */
+export const TEKSTLINK =
+  "inline-flex min-h-raak items-center rounded-veld px-1 text-meta font-medium text-inkt underline decoration-lijn-veld underline-offset-4 transition-colors duration-150 hover:decoration-inkt disabled:opacity-60 sm:min-h-8";

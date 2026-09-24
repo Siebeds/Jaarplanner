@@ -27,8 +27,8 @@ const staatInWeb = (woord: WoordwebWoord) => woord.status === "Manueel" || woord
  *
  * **The AI's proposals wait below the web as one list, each with its reason**, in the same `Voorstellijst` as the
  * doelsuggesties on this screen (TB-076), so a teacher meets one shape for "the AI proposes, you decide" (Art. IV.1
- * to IV.3). Only the owner's web gets them, and the AI control stays disabled, with the one sentence that says why,
- * until the web holds a word of her own (W5).
+ * to IV.3). Only the owner's web gets them, and until it holds a word of her own (W5) there is no AI control at all,
+ * only the sentence that says it comes after her first word (FB-094).
  *
  * **A colleague's web is read-only**: her name and her words, outlined rather than filled, so the two kinds of web never
  * look alike. Admin may take a word out of any web (D3); nobody else sees a control there. A colleague's open
@@ -96,19 +96,20 @@ export function Woordweb({ subthemaId, naam }: { subthemaId: string; naam: strin
         ) : null}
       </div>
 
-      {bekend ? (
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* No AI control that cannot act (FB-094): until her web holds a word, one quiet sentence says when it comes. */}
+      {!bekend ? null : eigen === null || eigenWoorden.length === 0 ? (
+        <p className="mt-2 text-meta text-inkt-zacht">{t("woordweb.eerstZelf")}</p>
+      ) : (
+        <div className="mt-3">
           <AiKnop
             className="sm:h-9 sm:min-h-9 px-2.5 text-meta"
             bezig={stelVoor.isPending}
-            disabled={eigen === null || eigenWoorden.length === 0}
-            onClick={() => eigen && stelVoor.mutate(eigen.id)}
+            onClick={() => stelVoor.mutate(eigen.id)}
           >
             {stelVoor.isPending ? t("woordweb.voorstellenBezig") : t("woordweb.voorstellen")}
           </AiKnop>
-          {eigenWoorden.length === 0 ? <p className="text-meta text-inkt-zacht">{t("woordweb.eerstZelf")}</p> : null}
         </div>
-      ) : null}
+      )}
 
       <div aria-live="polite">
         {stelVoor.isError ? (

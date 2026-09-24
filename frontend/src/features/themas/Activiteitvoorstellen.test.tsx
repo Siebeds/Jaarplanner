@@ -36,7 +36,13 @@ const SUBTHEMA: SubthemaWeergave = {
   duurWeken: 2,
   leeftijd: "K3",
   onderzoeksvragen: [],
-  subdoelen: [],
+  subdoelen: [
+    {
+      id: "sd-1",
+      leeftijd: "K3",
+      koppeling: { id: "k-1", leerplandoelCode: "WO-K3-01", status: "Manueel", aiMotivatie: null },
+    },
+  ],
   activiteiten: [],
 };
 
@@ -61,7 +67,7 @@ const VOORSTEL: ActiviteitvoorstelWeergave = {
 
 type Oproep = { methode: string; pad: string; lichaam: unknown };
 
-function toon(gebruiker: Ik, voorstellen: ActiviteitvoorstelWeergave[] = [VOORSTEL]) {
+function toon(gebruiker: Ik, voorstellen: ActiviteitvoorstelWeergave[] = [VOORSTEL], subthema: SubthemaWeergave = SUBTHEMA) {
   const oproepen: Oproep[] = [];
   vi.stubGlobal(
     "fetch",
@@ -82,7 +88,7 @@ function toon(gebruiker: Ik, voorstellen: ActiviteitvoorstelWeergave[] = [VOORST
   render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
       <Subthemahoofdstuk
-        subthema={SUBTHEMA}
+        subthema={subthema}
         gevraagd
         mag={magVoor(gebruiker)}
         onBewerk={leeg}
@@ -185,5 +191,62 @@ describe("Activiteitvoorstellen", () => {
     expect(await screen.findByText(t("thema.activiteitenTitel"))).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: t("activiteitvoorstel.vraag") })).not.toBeInTheDocument();
     expect(oproepen.some((o) => o.pad.endsWith("/activiteitvoorstellen"))).toBe(false);
+  });
+});
+
+describe("Subthemahoofdstuk: een opengeklapt subthema zonder subdoelen (FB-094)", () => {
+  const ZONDER: SubthemaWeergave = { ...SUBTHEMA, subdoelen: [] };
+
+  it("toont geen AI-knop die niets kan, maar een rustige zin, en noemt de subdoelen één keer", async () => {
+    toon(ik(), [], ZONDER);
+
+    expect(await screen.findByText(t("activiteitvoorstel.naSubdoelen"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("activiteitvoorstel.vraag") })).toBeNull();
+    // A leerkracht may not link a subdoel: no first step, one line that says there are none, and nothing to hide.
+    expect(screen.queryByRole("heading", { name: t("thema.beginSubdoelenTitel") })).toBeNull();
+    expect(screen.getByText(t("thema.geenSubdoelen"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("thema.subdoelenBekijken") })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("thema.subdoelenVerbergen") })).toBeNull();
+    expect(screen.queryByText(t("thema.subdoelenTitel"))).toBeNull();
+  });
+
+  it("zet voor wie subdoelen mag koppelen de eerste stap bovenaan, en opent daar het zoekveld over de volle breedte", async () => {
+    toon(ik({ hoofdleerkrachtLeeftijden: ["K3"] }), [], ZONDER);
+
+    const stap = await screen.findByRole("region", { name: t("thema.beginSubdoelenTitel") });
+    // The step says it once; no second "no subdoelen" line under the activiteiten.
+    expect(screen.queryByText(t("thema.geenSubdoelen"))).toBeNull();
+    fireEvent.click(within(stap).getByRole("button", { name: t("thema.subdoelKoppelenAan", { naam: "Drijven en zinken" }) }));
+
+    const vak = screen.getByRole("region", { name: t("thema.subdoelKoppelen") });
+    expect(within(vak).getByRole("textbox", { name: t("doelkiezer.zoek") })).toHaveFocus();
+    expect(screen.queryByRole("region", { name: t("thema.beginSubdoelenTitel") })).toBeNull();
+
+    fireEvent.click(within(vak).getByRole("button", { name: t("themabeheer.annuleer") }));
+    expect(await screen.findByRole("region", { name: t("thema.beginSubdoelenTitel") })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: t("thema.subdoelKoppelen") })).toBeNull();
+  });
+
+  it("zegt bij enkel een onbeslist subdoel dat de AI wacht op een aanvaard subdoel", async () => {
+    toon(ik(), [], {
+      ...SUBTHEMA,
+      subdoelen: [{ ...SUBTHEMA.subdoelen[0], koppeling: { ...SUBTHEMA.subdoelen[0].koppeling, status: "Voorgesteld" } }],
+    });
+
+    expect(await screen.findByText(t("activiteitvoorstel.naBeslistSubdoel"))).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: t("activiteitvoorstel.vraag") })).toBeNull();
+    expect(screen.getByRole("button", { name: t("thema.subdoelenBekijken"), expanded: false })).toBeInTheDocument();
+  });
+
+  it("opent met subdoelen het zoekveld onder de kop Subdoelen, met Annuleren in die kop", async () => {
+    toon(ik({ hoofdleerkrachtLeeftijden: ["K3"] }), []);
+
+    fireEvent.click(await screen.findByRole("button", { name: t("thema.subdoelenBekijken") }));
+    fireEvent.click(screen.getByRole("button", { name: t("thema.koppelAanSubthema", { naam: "Drijven en zinken" }) }));
+
+    const lijst = screen.getByRole("heading", { name: t("thema.subdoelenTitel") }).closest("section")!;
+    expect(within(lijst).getByRole("textbox", { name: t("doelkiezer.zoek") })).toHaveFocus();
+    fireEvent.click(within(lijst).getByRole("button", { name: t("themabeheer.annuleer") }));
+    expect(within(lijst).queryByRole("textbox", { name: t("doelkiezer.zoek") })).toBeNull();
   });
 });

@@ -1,8 +1,10 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { Actiemenu } from "../../components/ui/Actiemenu";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Verwijderknop } from "../../components/ui/Rijknoppen";
-import { Toevoegknop } from "../../components/ui/Toevoegknop";
+import { Knop } from "../../components/ui/Knop";
+import { TEKSTLINK } from "../../components/ui/knopklassen";
+import { Toevoegicoon, Toevoegknop } from "../../components/ui/Toevoegknop";
 import { Invoer } from "../../components/ui/Veld";
 import { IcoonDoelen, IcoonKruis, IcoonZoek } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
@@ -12,7 +14,7 @@ import type { Mag } from "../../lib/rechten";
 import type { SubdoelvoorstelWeergave, SubthemaWeergave } from "../../lib/types";
 import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/kleuren";
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
-import { Doelkoppelaar } from "../activiteiten/Doelkoppelaar";
+import { Doelkiezer } from "../activiteiten/Doelkiezer";
 import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
 import { Subkop, Vouwpijl } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
@@ -105,6 +107,15 @@ export function Subthemahoofdstuk({
   // Local, and deliberately not persisted: shut on every visit (FB-011's default), except the one a link asked for.
   const [open, setOpen] = useState(gevraagd === true);
   const [subdoelenOpen, setSubdoelenOpen] = useState(false);
+  // The subdoel search, opened from the first step (no subdoelen yet) or from the plus on the list's heading.
+  const [koppelOpen, setKoppelOpen] = useState(false);
+  const stapvak = useRef<HTMLElement>(null);
+  const koppelplus = useRef<HTMLSpanElement>(null);
+  // Closing hands the focus back to the control that opened the search, once it is drawn again.
+  const sluitKoppelen = () => {
+    setKoppelOpen(false);
+    window.setTimeout(() => (stapvak.current ?? koppelplus.current)?.querySelector("button")?.focus(), 0);
+  };
   const vouwknop = useRef<HTMLButtonElement>(null);
   // Into view, with focus on its fold, so a keyboard or screen-reader user lands where the link pointed.
   useEffect(() => {
@@ -119,6 +130,9 @@ export function Subthemahoofdstuk({
   // A new activiteit is the gebruiker's own, or for a hoofdleerkracht a shared one by choice (ADR-0049 D1, D2).
   const magActiviteit = mag.activiteitMaken(leeftijd);
   const magSubdoelen = mag.subdoelenBeheren(leeftijd);
+  const geenSubdoelen = subthema.subdoelen.length === 0;
+  // What the AI's activiteiten work out: the decided subdoelen, as the server counts them (ADR-0056).
+  const besliteSubdoelen = subthema.subdoelen.filter((s) => beslist(s.koppeling.status)).length;
   // AI activiteiten (FB-025): whoever may make an own activiteit here, since an accepted one becomes hers (ADR-0056 D1).
   // The open proposals are fetched only while the subthema is open.
   const magVoorstellen = mag.eigenActiviteitMaken(leeftijd);
@@ -202,6 +216,44 @@ export function Subthemahoofdstuk({
 
       {open ? (
         <div className="px-2 pb-4 pt-2 sm:pl-9 sm:pr-3">
+          {/* WITHOUT SUBDOELEN, THE FIRST STEP COMES FIRST, over both columns: linking them is what the rest of the
+              subthema, and the AI's activiteiten, wait for. Its search replaces it in place, at full width. */}
+          {geenSubdoelen && magSubdoelen ? (
+            koppelOpen ? (
+              <Subdoelkoppelvak
+                titel={t("thema.subdoelKoppelen")}
+                onKies={onKoppelSubdoel}
+                bezig={koppelenBezig}
+                alGekozen={[]}
+                onSluit={sluitKoppelen}
+              />
+            ) : (
+              <section
+                ref={stapvak}
+                aria-labelledby={`${subthema.id}-begin`}
+                className="mb-6 flex flex-col gap-3 rounded-veld border border-lijn bg-vlak px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+              >
+                <div className="flex items-start gap-3">
+                  <IcoonDoelen aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-inkt-zacht" />
+                  <div>
+                    <h5 id={`${subthema.id}-begin`} className="text-body font-semibold text-inkt">
+                      {t("thema.beginSubdoelenTitel")}
+                    </h5>
+                    <p className="mt-0.5 text-meta text-inkt-zacht">{t("thema.beginSubdoelenUitleg")}</p>
+                  </div>
+                </div>
+                <div className="shrink-0">
+                  <Toevoegknop
+                    label={t("thema.subdoelKoppelen")}
+                    aria-label={t("thema.subdoelKoppelenAan", { naam: subthema.naam })}
+                    disabled={koppelenBezig}
+                    onClick={() => setKoppelOpen(true)}
+                  />
+                </div>
+              </section>
+            )
+          ) : null}
+
           <div className="grid gap-6 md:grid-cols-2 md:gap-8">
             <div className="flex min-w-0 flex-col gap-6">
               {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is driven by
@@ -249,9 +301,45 @@ export function Subthemahoofdstuk({
                   {magActiviteit ? (
                     <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />
                   ) : null}
-                  {/* The AI's activiteit proposals (FB-025). */}
-                  {magVoorstellen ? <ActiviteitvoorstelKnop stelVoor={stelVoor} /> : null}
+                  {/* The AI's activiteit proposals (FB-025), only once there is a decided subdoel for them to work
+                      out: the server refuses the request before that, and a control that cannot act is not drawn. */}
+                  {magVoorstellen && besliteSubdoelen > 0 ? <ActiviteitvoorstelKnop stelVoor={stelVoor} /> : null}
                 </div>
+              ) : null}
+              {magVoorstellen && besliteSubdoelen === 0 ? (
+                <p className="text-meta text-inkt-zacht">
+                  {t(geenSubdoelen ? "activiteitvoorstel.naSubdoelen" : "activiteitvoorstel.naBeslistSubdoel")}
+                </p>
+              ) : null}
+              {/* THE SUBDOELEN AS ONE LINE, with a link that shows them: the accounting on top of the work above. The
+                  link is there only when there is something to show; without subdoelen the first step above says it,
+                  and a reader who may not link one gets the one line. */}
+              {!geenSubdoelen ? (
+                <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
+                  <span>{subdoelenZin}.</span>
+                  <button
+                    type="button"
+                    aria-expanded={subdoelenOpen}
+                    onClick={() => setSubdoelenOpen(!subdoelenOpen)}
+                    className={TEKSTLINK}
+                  >
+                    {t(subdoelenOpen ? "thema.subdoelenVerbergen" : "thema.subdoelenBekijken")}
+                  </button>
+                </p>
+              ) : !magSubdoelen || balans.andereDoelen.length > 0 ? (
+                <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
+                  {magSubdoelen ? null : <span>{t("thema.geenSubdoelen")}</span>}
+                  {balans.andereDoelen.length > 0 ? (
+                    <button
+                      type="button"
+                      aria-expanded={subdoelenOpen}
+                      onClick={() => setSubdoelenOpen(!subdoelenOpen)}
+                      className={TEKSTLINK}
+                    >
+                      {t(subdoelenOpen ? "thema.andereDoelenVerbergen" : "thema.andereDoelenBekijken")}
+                    </button>
+                  ) : null}
+                </p>
               ) : null}
               {magVoorstellen ? (
                 <>
@@ -266,41 +354,41 @@ export function Subthemahoofdstuk({
             </div>
           </div>
 
-          {/* THE SUBDOELEN AS ONE LINE, with a link that shows them: the accounting on top of the work above. */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-lijn pt-3">
-            <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />
-            <span className="text-meta text-inkt-zacht">{subdoelenZin}.</span>
-            {subthema.subdoelen.length > 0 || balans.andereDoelen.length > 0 || magSubdoelen ? (
-              <button
-                type="button"
-                aria-expanded={subdoelenOpen}
-                onClick={() => setSubdoelenOpen(!subdoelenOpen)}
-                className="inline-flex min-h-raak items-center rounded-veld px-1.5 text-meta font-medium text-inkt underline decoration-lijn-veld underline-offset-4 hover:decoration-inkt sm:min-h-8"
-              >
-                {t(subdoelenOpen ? "thema.subdoelenVerbergen" : "thema.subdoelenBekijken")}
-              </button>
-            ) : null}
-          </div>
-
           {subdoelenOpen ? (
-            <div className="mt-2 flex flex-col gap-4">
-              <Subkop
-                titel={t("thema.subdoelenTitel")}
-                acties={
-                  magSubdoelen ? (
-                    <Doelkoppelaar
-                      klein
-                      onKies={onKoppelSubdoel}
-                      bezig={koppelenBezig}
-                      alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
-                      toelichting={t("thema.koppelAanSubthema", { naam: subthema.naam })}
-                    />
-                  ) : undefined
-                }
-              >
-                {subdoelenOpCode.length === 0 ? (
-                  <p className="text-meta text-inkt-zacht">{t("thema.geenSubdoelen")}</p>
-                ) : (
+            <div className="mt-6 flex flex-col gap-4 border-t border-lijn pt-4">
+              {geenSubdoelen ? null : (
+                <Subkop
+                  titel={t("thema.subdoelenTitel")}
+                  acties={
+                    !magSubdoelen ? undefined : koppelOpen ? (
+                      <Knop rang="stil" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={sluitKoppelen}>
+                        {t("themabeheer.annuleer")}
+                      </Knop>
+                    ) : (
+                      <span ref={koppelplus}>
+                        <Toevoegicoon
+                          label={t("thema.koppelAanSubthema", { naam: subthema.naam })}
+                          disabled={koppelenBezig}
+                          onClick={() => setKoppelOpen(true)}
+                        />
+                      </span>
+                    )
+                  }
+                >
+                  {/* The search under the heading, at the list's full width, its results above the list they add to. */}
+                  {magSubdoelen && koppelOpen ? (
+                    <div className="mb-3">
+                      <Doelkiezer
+                        autoFocus
+                        onKies={(code) => {
+                          onKoppelSubdoel(code);
+                          sluitKoppelen();
+                        }}
+                        bezig={koppelenBezig}
+                        alGekozen={subthema.subdoelen.map((s) => s.koppeling.leerplandoelCode)}
+                      />
+                    </div>
+                  ) : null}
                   <Inklaplijst
                     altijdOpen
                     items={subdoelenOpCode}
@@ -324,8 +412,8 @@ export function Subthemahoofdstuk({
                       />
                     )}
                   />
-                )}
-              </Subkop>
+                </Subkop>
+              )}
 
               {/* WHAT THE ACTIVITEITEN OFFER BESIDES THE SUBDOELEN (FB-010), apart, so "a doel of this subthema" and "a
                   doel one of its activiteiten happens to carry" are never one list. Read only. */}
@@ -360,6 +448,49 @@ export function Subthemahoofdstuk({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Linking the first subdoel (FB-094): the search in its own section, at full width, with Annuleren in its heading and
+ * the results under the field. It closes after a pick; the subdoel then shows in the line under the activiteiten.
+ */
+function Subdoelkoppelvak({
+  titel,
+  onKies,
+  bezig,
+  alGekozen,
+  onSluit,
+}: {
+  titel: string;
+  onKies: (leerplandoelCode: string) => void;
+  bezig?: boolean;
+  alGekozen: string[];
+  onSluit: () => void;
+}) {
+  const id = useId();
+  return (
+    <section aria-labelledby={id} className="mb-6 rounded-veld border border-lijn px-4 py-3.5">
+      <div className="flex items-center justify-between gap-3">
+        <h5 id={id} className="text-body font-semibold text-inkt">
+          {titel}
+        </h5>
+        <Knop rang="stil" className="sm:h-9 sm:min-h-9 px-3 text-meta" onClick={onSluit}>
+          {t("themabeheer.annuleer")}
+        </Knop>
+      </div>
+      <div className="mt-2">
+        <Doelkiezer
+          autoFocus
+          onKies={(code) => {
+            onKies(code);
+            onSluit();
+          }}
+          bezig={bezig}
+          alGekozen={alGekozen}
+        />
+      </div>
+    </section>
   );
 }
 
@@ -419,12 +550,7 @@ function Activiteitenlijst({
                 <IcoonZoek aria-hidden="true" className="h-4 w-4" />
               </button>
             )}
-            <button
-              type="button"
-              aria-expanded={alle}
-              onClick={() => setAlle(!alle)}
-              className="inline-flex min-h-raak items-center rounded-veld px-1.5 text-meta font-medium text-inkt underline decoration-lijn-veld underline-offset-4 hover:decoration-inkt sm:min-h-8"
-            >
+            <button type="button" aria-expanded={alle} onClick={() => setAlle(!alle)} className={TEKSTLINK}>
               {alle ? t("thema.minderTonen") : t("thema.alleBekijken", { aantal: activiteiten.length })}
             </button>
           </>

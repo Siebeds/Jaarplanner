@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { TEKSTLINK } from "../../components/ui/knopklassen";
 import { Invoer } from "../../components/ui/Veld";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { IcoonPlus, IcoonZoek } from "../../components/Iconen";
@@ -26,6 +27,7 @@ export function Doelkiezer({
   bezig,
   alGekozen,
   fasen: gegevenFasen,
+  autoFocus,
 }: {
   onKies: (leerplandoelCode: string) => void;
   bezig?: boolean;
@@ -38,6 +40,8 @@ export function Doelkiezer({
    * keeps the behaviour below.
    */
   fasen?: string[];
+  /** For a picker that opens on request, so the field that was asked for has the focus. */
+  autoFocus?: boolean;
 }) {
   const [zoek, setZoek] = useState("");
   const [alleJaren, setAlleJaren] = useState(false);
@@ -75,6 +79,7 @@ export function Doelkiezer({
           className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-inkt-zwak"
         />
         <Invoer
+          autoFocus={autoFocus}
           value={zoek}
           disabled={bezig}
           onChange={(e) => setZoek(e.target.value)}
@@ -95,7 +100,7 @@ export function Doelkiezer({
             type="button"
             disabled={bezig}
             onClick={() => setAlleJaren(!alleJaren)}
-            className="font-medium text-accent underline decoration-dotted underline-offset-2 transition-colors duration-150 hover:text-accent-diep"
+            className={TEKSTLINK}
           >
             {scoped ? t("doelkiezer.toonAlle") : t("doelkiezer.beperkWeer", { fasen: fasen.join(", ") })}
           </button>

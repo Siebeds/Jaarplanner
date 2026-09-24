@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 11:12
+bijgewerkt: 2026-09-24 11:23
 opgepakt-door: claude-fb094b
 branch: ticket/FB-094-subthema-openklappen
 pr:
@@ -109,3 +109,4 @@ Geen.
 - 2026-09-23 20:25 · claude-fb094 · PR #175
 - 2026-09-24 11:08 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar, bij een opengeklapt subthema zonder subdoelen: (1) het koppelformulier voor een subdoel opent rechts in het actievak van de kop Subdoelen, waardoor de kop los in het midden hangt en er een lege vlakte ontstaat; verwacht: het zoekveld onder de kop, over de volle breedte, met Annuleren in die kop en de resultaten eronder. (2) '0 subdoelen.', de kop 'Subdoelen' en 'Nog geen doelen op dit subthema' zeggen drie keer hetzelfde, en de link heet 'Subdoelen verbergen' terwijl er niets te verbergen is. (3) 'Stel activiteiten voor' staat actief terwijl een oranje attentieblok zegt dat het zonder subdoelen niet kan; verwacht: geen actieve AI-knop die niets kan, maar een rustige zin, zonder attentiekleur; hetzelfde voor 'Stel woorden voor' zolang er geen woord is. (4) Zonder subdoelen hoort 'Begin met de subdoelen' met de knop 'Subdoel koppelen' bovenaan als eerste stap, over beide kolommen; met subdoelen blijft de ene regel in de kolom Activiteiten. (5) Links in dezelfde stijl ('Subdoelen bekijken' en 'Toon alle jaren'). Ontwerp: https://claude.ai/artifact/KPS276EjBdvKYwoPKY7KfN, rij 'Een subthema openklappen: nu en voorstel'.
 - 2026-09-24 11:12 · claude-fb094b · klaar-voor-bouw → in-uitvoering: opgepakt: bevindingen van de eigenaar bij een opengeklapt subthema
+- 2026-09-24 11:23 · claude-fb094b · opengeklapt subthema herwerkt naar de bevindingen: eerste stap Begin met de subdoelen, koppelvak over de volle breedte, geen AI-knop die niets kan, links in één stijl; 1393 vitest groen, lint groen, bekeken op 1440 en 390 px
