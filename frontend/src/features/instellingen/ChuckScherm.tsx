@@ -18,8 +18,8 @@ export function ChuckScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.chuck")} smal onder={<Onderdeelwissel />} />
-      <Schermvlak smal>
+      <Schermkop titel={t("instellingen.chuck")} maat="smal" onder={<Onderdeelwissel />} />
+      <Schermvlak maat="smal">
         <div className="flex flex-col gap-4">
           <p className="max-w-[62ch] text-body text-inkt-zacht">{t("kat.instelling.uitleg")}</p>
           {isPending ? (

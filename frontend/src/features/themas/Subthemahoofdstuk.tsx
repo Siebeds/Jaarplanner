@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Actiemenu } from "../../components/ui/Actiemenu";
 import { Doelmerk } from "../../components/ui/Doelmerk";
 import { Verwijderknop } from "../../components/ui/Rijknoppen";
@@ -16,7 +17,7 @@ import { KLEURSTAAL, kleurSleutel, type Activiteitkleur } from "../activiteiten/
 import type { ActiviteitMetKleur } from "../activiteiten/Activiteitformulier";
 import { Doelkiezer } from "../activiteiten/Doelkiezer";
 import { Eigenaarmerk } from "../activiteiten/Eigenaarmerk";
-import { Subkop, Vouwpijl } from "./Fiche";
+import { Subkop } from "./Fiche";
 import { Gekoppelddoel } from "./Gekoppelddoel";
 import { ActiviteitvoorstelKnop, ActiviteitvoorstelMelding, Activiteitvoorstellen } from "./Activiteitvoorstellen";
 import { Inklaplijst } from "./Inklaplijst";
@@ -191,195 +192,181 @@ export function Subthemahoofdstuk({
   }
 
   return (
-    <div className="px-1 py-1 sm:px-2">
-      <div className="flex items-start gap-1">
-        <h4 className="min-w-0 flex-1">
-          <button
-            ref={vouwknop}
-            type="button"
-            onClick={() => setOpen(!open)}
-            aria-expanded={open}
-            className="flex min-h-raak w-full scroll-mt-6 items-start gap-2 rounded-veld px-2 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
-          >
-            <Vouwpijl open={open} className="mt-0.5" />
-            <span className="min-w-0">
-              <span className="block font-display text-sectie text-inkt">
-                {subthema.naam}
-                {/* The group's heading says the leeftijd once, which a screen reader moving from heading to heading
-                    may skip; so each fold names it too (FB-047). */}
-                <span className="sr-only">{t("thema.subthemaLeeftijd", { leeftijd })}</span>
+    <Inklapper.Root open={open} onOpenChange={setOpen}>
+      <div className="px-1 py-1 sm:px-2">
+        <div className="flex items-start gap-1">
+          <h4 className="min-w-0 flex-1">
+            <Inklapper.Knop
+              ref={vouwknop}
+              className="flex min-h-raak w-full scroll-mt-6 items-start gap-2 rounded-veld px-2 py-2.5 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
+            >
+              <Inklapper.Pijl className="mt-0.5 h-5 w-5 text-inkt-zacht" />
+              <span className="min-w-0">
+                <span className="block font-display text-sectie text-inkt">
+                  {subthema.naam}
+                  {/* The group's heading says the leeftijd once, which a screen reader moving from heading to heading
+                      may skip; so each fold names it too (FB-047). */}
+                  <span className="sr-only">{t("thema.subthemaLeeftijd", { leeftijd })}</span>
+                </span>
+                <span className="mt-0.5 block text-meta text-inkt-zacht">
+                  {feiten.map((feit, i) => (
+                    <Fragment key={i}>
+                      {i > 0 ? ", " : null}
+                      <span>{feit}</span>
+                    </Fragment>
+                  ))}
+                </span>
               </span>
-              <span className="mt-0.5 block text-meta text-inkt-zacht">
-                {feiten.map((feit, i) => (
-                  <Fragment key={i}>
-                    {i > 0 ? ", " : null}
-                    <span>{feit}</span>
-                  </Fragment>
-                ))}
-              </span>
-            </span>
-          </button>
-        </h4>
-        <Actiemenu
-          className="mt-0.5"
-          label={t("subthemabeheer.menuAria", { naam: subthema.naam })}
-          acties={
-            magSubthema
-              ? [
-                  { label: t("themabeheer.bewerk"), soort: "bewerk", onSelect: onBewerk },
-                  { label: t("themabeheer.verwijder"), soort: "verwijder", onSelect: onVerwijder },
-                ]
-              : []
-          }
-        />
-      </div>
+            </Inklapper.Knop>
+          </h4>
+          <Actiemenu
+            className="mt-0.5"
+            label={t("subthemabeheer.menuAria", { naam: subthema.naam })}
+            acties={
+              magSubthema
+                ? [
+                    { label: t("themabeheer.bewerk"), soort: "bewerk", onSelect: onBewerk },
+                    { label: t("themabeheer.verwijder"), soort: "verwijder", onSelect: onVerwijder },
+                  ]
+                : []
+            }
+          />
+        </div>
 
-      {open ? (
-        <div className="px-2 pb-4 pt-2 sm:pl-9 sm:pr-3">
-          {/* WITHOUT SUBDOELEN, THE FIRST STEP COMES FIRST, over both columns: linking them is what the rest of the
-              subthema, and the AI's activiteiten, wait for. Its search replaces it in place, at full width. */}
-          {geenSubdoelen && magSubdoelen ? (
-            koppelOpen ? (
-              <Subdoelkoppelvak
-                titel={t("thema.subdoelKoppelen")}
-                onKies={(code) => {
-                  eersteGekoppeld.current = true;
-                  onKoppelSubdoel(code);
-                }}
-                bezig={koppelenBezig}
-                alGekozen={[]}
-                onSluit={sluitKoppelen}
-              />
-            ) : (
-              <section
-                ref={stapvak}
-                aria-labelledby={`${subthema.id}-begin`}
-                className="mb-6 flex flex-col gap-3 rounded-veld border border-lijn bg-vlak px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
-              >
-                <div className="flex items-start gap-3">
-                  <IcoonDoelen aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-inkt-zacht" />
-                  <div>
-                    <h5 id={`${subthema.id}-begin`} className="text-body font-semibold text-inkt">
-                      {t("thema.beginSubdoelenTitel")}
-                    </h5>
-                    <p className="mt-0.5 text-meta text-inkt-zacht">{t("thema.beginSubdoelenUitleg")}</p>
-                  </div>
-                </div>
-                <div className="shrink-0">
-                  <Toevoegknop
-                    label={t("thema.subdoelKoppelen")}
-                    aria-label={t("thema.subdoelKoppelenAan", { naam: subthema.naam })}
-                    disabled={koppelenBezig}
-                    onClick={() => setKoppelOpen(true)}
-                  />
-                </div>
-              </section>
-            )
-          ) : null}
-
-          <div className="grid gap-6 md:grid-cols-2 md:gap-8">
-            <div className="flex min-w-0 flex-col gap-6">
-              {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is driven by
-                  a question (Art. IX), so it is set at reading size, with its probleemstelling smaller under it. */}
-              {subthema.onderzoeksvragen.length > 0 ? (
-                <Subkop
-                  titel={t(
-                    subthema.onderzoeksvragen.length === 1 ? "thema.onderzoeksvraagTitel" : "thema.onderzoeksvragenTitel",
-                  )}
+        <Inklapper.Inhoud className="px-2 pb-4 pt-2 sm:pl-9 sm:pr-3">
+          <Inklapper.Root open={subdoelenOpen} onOpenChange={wisselSubdoelen}>
+            {/* WITHOUT SUBDOELEN, THE FIRST STEP COMES FIRST, over both columns: linking them is what the rest of the
+                subthema, and the AI's activiteiten, wait for. Its search replaces it in place, at full width. */}
+            {geenSubdoelen && magSubdoelen ? (
+              koppelOpen ? (
+                <Subdoelkoppelvak
+                  titel={t("thema.subdoelKoppelen")}
+                  onKies={(code) => {
+                    eersteGekoppeld.current = true;
+                    onKoppelSubdoel(code);
+                  }}
+                  bezig={koppelenBezig}
+                  alGekozen={[]}
+                  onSluit={sluitKoppelen}
+                />
+              ) : (
+                <section
+                  ref={stapvak}
+                  aria-labelledby={`${subthema.id}-begin`}
+                  className="mb-6 flex flex-col gap-3 rounded-veld border border-lijn bg-vlak px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
                 >
-                  <ul className="flex flex-col gap-2.5">
-                    {subthema.onderzoeksvragen.map((vraag) => (
-                      <li key={vraag.id}>
-                        <p className="text-sectie text-inkt">{vraag.vraag}</p>
-                        {vraag.probleemstelling ? (
-                          <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </Subkop>
-              ) : null}
-              {/* Mounted only while open, so a folded page asks for no woordwebs at all. */}
-              <Woordweb subthemaId={subthema.id} naam={subthema.naam} />
-            </div>
+                  <div className="flex items-start gap-3">
+                    <IcoonDoelen aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-inkt-zacht" />
+                    <div>
+                      <h5 id={`${subthema.id}-begin`} className="text-body font-semibold text-inkt">
+                        {t("thema.beginSubdoelenTitel")}
+                      </h5>
+                      <p className="mt-0.5 text-meta text-inkt-zacht">{t("thema.beginSubdoelenUitleg")}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0">
+                    <Toevoegknop
+                      label={t("thema.subdoelKoppelen")}
+                      aria-label={t("thema.subdoelKoppelenAan", { naam: subthema.naam })}
+                      disabled={koppelenBezig}
+                      onClick={() => setKoppelOpen(true)}
+                    />
+                  </div>
+                </section>
+              )
+            ) : null}
 
-            <div className="flex min-w-0 flex-col gap-3">
-              <Activiteitenlijst
-                activiteiten={activiteitenOpNaam}
-                render={(activiteit) => (
-                  <Activiteitregel
-                    activiteit={activiteit}
-                    magBewerken={mag.activiteitInhoudBewerken({ ...activiteit, leeftijd })}
-                    onBewerk={() => onBewerkActiviteit(activiteit)}
-                    onVerwijder={
-                      mag.activiteitVerwijderen({ ...activiteit, leeftijd })
-                        ? () => onVerwijderActiviteit(activiteit)
-                        : undefined
-                    }
-                  />
-                )}
-              />
-              {magActiviteit || magVoorstellen ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {magActiviteit ? (
-                    <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />
-                  ) : null}
-                  {/* The AI's activiteit proposals (FB-025), only once there is a decided subdoel for them to work
-                      out: the server refuses the request before that, and a control that cannot act is not drawn. */}
-                  {magVoorstellen && besliteSubdoelen > 0 ? <ActiviteitvoorstelKnop stelVoor={stelVoor} /> : null}
-                </div>
-              ) : null}
-              {magVoorstellen && besliteSubdoelen === 0 ? (
-                <p className="text-meta text-inkt-zacht">
-                  {t(geenSubdoelen ? "activiteitvoorstel.naSubdoelen" : "activiteitvoorstel.naBeslistSubdoel")}
-                </p>
-              ) : null}
-              {/* THE SUBDOELEN AS ONE LINE, with a link that shows them: the accounting on top of the work above. The
-                  link is there only when there is something to show; without subdoelen the first step above says it,
-                  and a reader who may not link one gets the one line. */}
-              {!geenSubdoelen ? (
-                <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
-                  <span>{subdoelenZin}.</span>
-                  <button
-                    type="button"
-                    ref={subdoelenlink}
-                    aria-expanded={subdoelenOpen}
-                    onClick={() => wisselSubdoelen()}
-                    className={TEKSTLINK}
+            <div className="grid gap-6 md:grid-cols-2 md:gap-8">
+              <div className="flex min-w-0 flex-col gap-6">
+                {/* The onderzoeksvraag is the most characteristic object in this domain: a kennisrijk thema is driven by
+                    a question (Art. IX), so it is set at reading size, with its probleemstelling smaller under it. */}
+                {subthema.onderzoeksvragen.length > 0 ? (
+                  <Subkop
+                    titel={t(
+                      subthema.onderzoeksvragen.length === 1 ? "thema.onderzoeksvraagTitel" : "thema.onderzoeksvragenTitel",
+                    )}
                   >
-                    {t(subdoelenOpen ? "thema.subdoelenVerbergen" : "thema.subdoelenBekijken")}
-                  </button>
-                </p>
-              ) : !magSubdoelen || balans.andereDoelen.length > 0 ? (
-                <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
-                  {magSubdoelen ? null : <span>{t("thema.geenSubdoelen")}</span>}
-                  {balans.andereDoelen.length > 0 ? (
-                    <button
-                      type="button"
-                      aria-expanded={subdoelenOpen}
-                      onClick={() => wisselSubdoelen()}
-                      className={TEKSTLINK}
-                    >
-                      {t(subdoelenOpen ? "thema.andereDoelenVerbergen" : "thema.andereDoelenBekijken")}
-                    </button>
-                  ) : null}
-                </p>
-              ) : null}
-              {magVoorstellen ? (
-                <>
-                  <ActiviteitvoorstelMelding stelVoor={stelVoor} />
-                  <Activiteitvoorstellen
-                    subthemaId={subthema.id}
-                    voorstellen={activiteitvoorstellen.data ?? []}
-                    onToon={onToonDoel}
-                  />
-                </>
-              ) : null}
-            </div>
-          </div>
+                    <ul className="flex flex-col gap-2.5">
+                      {subthema.onderzoeksvragen.map((vraag) => (
+                        <li key={vraag.id}>
+                          <p className="text-sectie text-inkt">{vraag.vraag}</p>
+                          {vraag.probleemstelling ? (
+                            <p className="mt-0.5 text-meta text-inkt-zacht">{vraag.probleemstelling}</p>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  </Subkop>
+                ) : null}
+                {/* Mounted only while open, so a folded page asks for no woordwebs at all. */}
+                <Woordweb subthemaId={subthema.id} naam={subthema.naam} />
+              </div>
 
-          {subdoelenOpen ? (
-            <div className="mt-6 flex flex-col gap-4 border-t border-lijn pt-4">
+              <div className="flex min-w-0 flex-col gap-3">
+                <Activiteitenlijst
+                  activiteiten={activiteitenOpNaam}
+                  render={(activiteit) => (
+                    <Activiteitregel
+                      activiteit={activiteit}
+                      magBewerken={mag.activiteitInhoudBewerken({ ...activiteit, leeftijd })}
+                      onBewerk={() => onBewerkActiviteit(activiteit)}
+                      onVerwijder={
+                        mag.activiteitVerwijderen({ ...activiteit, leeftijd })
+                          ? () => onVerwijderActiviteit(activiteit)
+                          : undefined
+                      }
+                    />
+                  )}
+                />
+                {magActiviteit || magVoorstellen ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {magActiviteit ? (
+                      <Toevoegknop label={t("activiteit.toevoegen")} onClick={onNieuweActiviteit} />
+                    ) : null}
+                    {/* The AI's activiteit proposals (FB-025), only once there is a decided subdoel for them to work
+                        out: the server refuses the request before that, and a control that cannot act is not drawn. */}
+                    {magVoorstellen && besliteSubdoelen > 0 ? <ActiviteitvoorstelKnop stelVoor={stelVoor} /> : null}
+                  </div>
+                ) : null}
+                {magVoorstellen && besliteSubdoelen === 0 ? (
+                  <p className="text-meta text-inkt-zacht">
+                    {t(geenSubdoelen ? "activiteitvoorstel.naSubdoelen" : "activiteitvoorstel.naBeslistSubdoel")}
+                  </p>
+                ) : null}
+                {/* THE SUBDOELEN AS ONE LINE, with a link that shows them: the accounting on top of the work above. The
+                    link is there only when there is something to show; without subdoelen the first step above says it,
+                    and a reader who may not link one gets the one line. */}
+                {!geenSubdoelen ? (
+                  <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
+                    <span>{subdoelenZin}.</span>
+                    <Inklapper.Knop ref={subdoelenlink} className={TEKSTLINK}>
+                      {t(subdoelenOpen ? "thema.subdoelenVerbergen" : "thema.subdoelenBekijken")}
+                    </Inklapper.Knop>
+                  </p>
+                ) : !magSubdoelen || balans.andereDoelen.length > 0 ? (
+                  <p className="flex flex-wrap items-center gap-x-1 text-meta text-inkt-zacht">
+                    {magSubdoelen ? null : <span>{t("thema.geenSubdoelen")}</span>}
+                    {balans.andereDoelen.length > 0 ? (
+                      <Inklapper.Knop className={TEKSTLINK}>
+                        {t(subdoelenOpen ? "thema.andereDoelenVerbergen" : "thema.andereDoelenBekijken")}
+                      </Inklapper.Knop>
+                    ) : null}
+                  </p>
+                ) : null}
+                {magVoorstellen ? (
+                  <>
+                    <ActiviteitvoorstelMelding stelVoor={stelVoor} />
+                    <Activiteitvoorstellen
+                      subthemaId={subthema.id}
+                      voorstellen={activiteitvoorstellen.data ?? []}
+                      onToon={onToonDoel}
+                    />
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            <Inklapper.Inhoud className="mt-6 flex flex-col gap-4 border-t border-lijn pt-4">
               {geenSubdoelen ? null : (
                 <Subkop
                   titel={t("thema.subdoelenTitel")}
@@ -463,15 +450,15 @@ export function Subthemahoofdstuk({
                   />
                 </Subkop>
               ) : null}
-            </div>
-          ) : null}
+            </Inklapper.Inhoud>
 
-          {/* The AI's open subdoel proposals (FB-057), outside the link: a proposal waiting for a decision is never
-              hidden. */}
-          <Subdoelvoorstellen voorstellen={voorstellen} bezig={beslisBezig} onBeslis={onBeslisVoorstel} onToon={onToonDoel} />
-        </div>
-      ) : null}
-    </div>
+            {/* The AI's open subdoel proposals (FB-057), outside the link: a proposal waiting for a decision is never
+                hidden. */}
+            <Subdoelvoorstellen voorstellen={voorstellen} bezig={beslisBezig} onBeslis={onBeslisVoorstel} onToon={onToonDoel} />
+          </Inklapper.Root>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 

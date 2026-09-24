@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MINIMUMDOELEN_PAGINA, useMinimumdoelenPaginas, useMinimumdoelFacetten } from "../../lib/queries";
 import type { LeergebiedFacet, MinimumdoelFilterQuery, MinimumdoelRegel, RubriekFacet } from "../../lib/types";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Knop } from "../../components/ui/Knop";
 import { knopklassen } from "../../components/ui/knopklassen";
 import { Laadlijst } from "../../components/ui/Laadvlak";
@@ -97,22 +97,18 @@ function Leergebiedkaart({
   filter,
   ...gedeeld
 }: Gedeeld & { leergebied: LeergebiedFacet; filter: MinimumdoelFilterQuery }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
-      <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
-        aantal={leergebied.aantal}
-        className="px-4 py-3.5"
-        naamKlasse="font-display text-sectie text-inkt"
-      >
-        {leergebied.naam}
-      </Rij>
+    <Inklapper.Root>
+      <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
+        <Rij
+          aantal={leergebied.aantal}
+          className="px-4 py-3.5"
+          naamKlasse="font-display text-sectie text-inkt"
+        >
+          {leergebied.naam}
+        </Rij>
 
-      {open ? (
-        <div className="border-t border-lijn bg-vlak/60 py-1">
+        <Inklapper.Inhoud className="border-t border-lijn bg-vlak/60 py-1">
           <ul className="ml-4 flex flex-col border-l border-lijn-sterk pl-1">
             {leergebied.rubrieken.map((rubriek) => (
               <li key={rubriek.naam}>
@@ -124,9 +120,9 @@ function Leergebiedkaart({
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 
@@ -135,13 +131,9 @@ function Rubriek({
   filter,
   ...gedeeld
 }: Gedeeld & { rubriek: RubriekFacet; filter: MinimumdoelFilterQuery }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
+    <Inklapper.Root>
       <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
         aantal={rubriek.aantal}
         className="px-3 py-2.5"
         naamKlasse="text-body font-medium text-inkt"
@@ -149,29 +141,27 @@ function Rubriek({
         {rubriek.naam}
       </Rij>
 
-      {open ? (
-        <div className="ml-3 flex flex-col border-l border-lijn pl-1">
-          {/* A rubriek the decree gives no third level holds its minimumdoelen directly. */}
-          {rubriek.aantalZonderSubrubriek > 0 ? (
-            <div className="pb-1.5 pl-1 pr-1">
-              <Bladeren filter={{ ...filter, zonderSubrubriek: true }} aantal={rubriek.aantalZonderSubrubriek} {...gedeeld} />
-            </div>
-          ) : null}
-          <ul className="flex flex-col">
-            {rubriek.subrubrieken.map((sub) => (
-              <li key={sub.naam}>
-                <Subrubriek
-                  naam={sub.naam}
-                  aantal={sub.aantal}
-                  filter={{ ...filter, subrubriek: sub.naam }}
-                  {...gedeeld}
-                />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-    </>
+      <Inklapper.Inhoud className="ml-3 flex flex-col border-l border-lijn pl-1">
+        {/* A rubriek the decree gives no third level holds its minimumdoelen directly. */}
+        {rubriek.aantalZonderSubrubriek > 0 ? (
+          <div className="pb-1.5 pl-1 pr-1">
+            <Bladeren filter={{ ...filter, zonderSubrubriek: true }} aantal={rubriek.aantalZonderSubrubriek} {...gedeeld} />
+          </div>
+        ) : null}
+        <ul className="flex flex-col">
+          {rubriek.subrubrieken.map((sub) => (
+            <li key={sub.naam}>
+              <Subrubriek
+                naam={sub.naam}
+                aantal={sub.aantal}
+                filter={{ ...filter, subrubriek: sub.naam }}
+                {...gedeeld}
+              />
+            </li>
+          ))}
+        </ul>
+      </Inklapper.Inhoud>
+    </Inklapper.Root>
   );
 }
 
@@ -181,25 +171,19 @@ function Subrubriek({
   filter,
   ...gedeeld
 }: Gedeeld & { naam: string; aantal: number; filter: MinimumdoelFilterQuery }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <>
+    <Inklapper.Root>
       <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
         aantal={aantal}
         className="px-3 py-2"
         naamKlasse="text-meta text-inkt-zacht"
       >
         {naam}
       </Rij>
-      {open ? (
-        <div className="pb-1.5 pl-1 pr-1">
-          <Bladeren filter={filter} aantal={aantal} {...gedeeld} />
-        </div>
-      ) : null}
-    </>
+      <Inklapper.Inhoud className="pb-1.5 pl-1 pr-1">
+        <Bladeren filter={filter} aantal={aantal} {...gedeeld} />
+      </Inklapper.Inhoud>
+    </Inklapper.Root>
   );
 }
 
@@ -213,28 +197,24 @@ function ZonderOrdening({
   filter,
   ...gedeeld
 }: Gedeeld & { aantal: number; filter: MinimumdoelFilterQuery }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
-      <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
-        aantal={aantal}
-        className="px-4 py-3.5"
-        naamKlasse="font-display text-sectie text-inkt"
-      >
-        {t("doelen.zonderOrdening")}
-      </Rij>
-      {open ? (
-        <div className="border-t border-lijn bg-vlak/60 px-2 pb-1.5 pt-2.5">
+    <Inklapper.Root>
+      <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
+        <Rij
+          aantal={aantal}
+          className="px-4 py-3.5"
+          naamKlasse="font-display text-sectie text-inkt"
+        >
+          {t("doelen.zonderOrdening")}
+        </Rij>
+        <Inklapper.Inhoud className="border-t border-lijn bg-vlak/60 px-2 pb-1.5 pt-2.5">
           <p className="mb-2 max-w-[60ch] px-2 text-meta text-inkt-zacht">
             {aantal === 1 ? t("doelen.zonderOrdeningEen") : t("doelen.zonderOrdeningMeer")}
           </p>
           <Bladeren filter={{ ...filter, zonderOrdening: true }} aantal={aantal} {...gedeeld} />
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 

@@ -60,9 +60,9 @@ export function GebruikersScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.gebruikers")} smal onder={<Onderdeelwissel />} />
+      <Schermkop titel={t("instellingen.gebruikers")} maat="smal" onder={<Onderdeelwissel />} />
 
-      <Schermvlak smal>
+      <Schermvlak maat="smal">
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label className="flex flex-wrap items-center gap-2 text-meta text-inkt-zacht">

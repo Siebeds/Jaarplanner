@@ -14,8 +14,8 @@ import { Onderdeelwissel } from "./Instellingenindeling";
 export function WeergaveScherm() {
   return (
     <>
-      <Schermkop titel={t("weergave.titel")} smal onder={<Onderdeelwissel />} />
-      <Schermvlak smal>
+      <Schermkop titel={t("weergave.titel")} maat="smal" onder={<Onderdeelwissel />} />
+      <Schermvlak maat="smal">
         <Weergavesectie />
       </Schermvlak>
     </>

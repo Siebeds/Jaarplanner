@@ -3,7 +3,7 @@ import { useLeerplandoelen, useLeerplandoelFacetten } from "../../lib/queries";
 import type { DomeinFacet, LeerplandoelFilterQuery, LeerplandoelRegel } from "../../lib/types";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Laadlijst, Laadvlak } from "../../components/ui/Laadvlak";
-import { IcoonChevron } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
 
@@ -71,31 +71,27 @@ function Disciplinekaart({
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
-      <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
-        aantal={aantal}
-        className="px-4 py-3.5"
-        naamKlasse="font-display text-sectie text-inkt"
-      >
-        {naam}
-      </Rij>
+    <Inklapper.Root>
+      <div className="overflow-hidden rounded-kaart border border-lijn bg-kaart shadow-licht">
+        <Rij
+          aantal={aantal}
+          className="px-4 py-3.5"
+          naamKlasse="font-display text-sectie text-inkt"
+        >
+          {naam}
+        </Rij>
 
-      {open ? (
-        <div className="border-t border-lijn bg-vlak/60 py-1">
+        <Inklapper.Inhoud className="border-t border-lijn bg-vlak/60 py-1">
           <Domeinen
             discipline={nummer}
             basisFilter={basisFilter}
             gekozenCode={gekozenCode}
             onKies={onKies}
           />
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 
@@ -154,14 +150,11 @@ function Domein({
   gekozenCode: string | null;
   onKies: (code: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const subdomeinen = domein.subdomeinen.filter((s) => s.aantal > 0);
 
   return (
-    <>
+    <Inklapper.Root>
       <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
         aantal={domein.aantal}
         className="px-3 py-2.5"
         naamKlasse="text-body font-medium text-inkt"
@@ -169,22 +162,20 @@ function Domein({
         {domein.domein}
       </Rij>
 
-      {open ? (
-        <ul className="ml-3 flex flex-col border-l border-lijn pl-1">
-          {subdomeinen.map((sub) => (
-            <li key={sub.subdomein}>
-              <Subdomein
-                subdomein={sub.subdomein}
-                aantal={sub.aantal}
-                filter={{ ...basisFilter, discipline, domein: domein.domein, subdomein: sub.subdomein }}
-                gekozenCode={gekozenCode}
-                onKies={onKies}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </>
+      <Inklapper.Inhoud als="ul" className="ml-3 flex flex-col border-l border-lijn pl-1">
+        {subdomeinen.map((sub) => (
+          <li key={sub.subdomein}>
+            <Subdomein
+              subdomein={sub.subdomein}
+              aantal={sub.aantal}
+              filter={{ ...basisFilter, discipline, domein: domein.domein, subdomein: sub.subdomein }}
+              gekozenCode={gekozenCode}
+              onKies={onKies}
+            />
+          </li>
+        ))}
+      </Inklapper.Inhoud>
+    </Inklapper.Root>
   );
 }
 
@@ -208,10 +199,8 @@ function Subdomein({
   const { data, isPending } = useLeerplandoelen({ ...filter, aantal: Math.min(aantal, 200) }, { enabled: open });
 
   return (
-    <>
+    <Inklapper.Root open={open} onOpenChange={setOpen}>
       <Rij
-        open={open}
-        onToggle={() => setOpen((o) => !o)}
         aantal={aantal}
         className="px-3 py-2"
         naamKlasse="text-meta text-inkt-zacht"
@@ -219,22 +208,20 @@ function Subdomein({
         {subdomein}
       </Rij>
 
-      {open ? (
-        <div className="pb-1.5 pl-1 pr-1">
-          {isPending ? (
-            <Laadlijst rijen={Math.min(aantal, 3)} />
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {(data?.regels ?? []).map((regel) => (
-                <li key={regel.code}>
-                  <Doelrij regel={regel} gekozen={regel.code === gekozenCode} onKies={onKies} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      ) : null}
-    </>
+      <Inklapper.Inhoud className="pb-1.5 pl-1 pr-1">
+        {isPending ? (
+          <Laadlijst rijen={Math.min(aantal, 3)} />
+        ) : (
+          <ul className="flex flex-col gap-1">
+            {(data?.regels ?? []).map((regel) => (
+              <li key={regel.code}>
+                <Doelrij regel={regel} gekozen={regel.code === gekozenCode} onKies={onKies} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </Inklapper.Inhoud>
+    </Inklapper.Root>
   );
 }
 
@@ -243,25 +230,18 @@ function Subdomein({
  * minimumdoelen tree (TB-010), so the two registers open and read the same way.
  */
 export function Rij({
-  open,
-  onToggle,
   aantal,
   children,
   className,
   naamKlasse,
 }: {
-  open: boolean;
-  onToggle: () => void;
   aantal: number;
   children: string;
   className: string;
   naamKlasse: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
+    <Inklapper.Knop
       className={cn(
         "flex w-full items-center justify-between gap-3 text-left transition-colors duration-150 hover:bg-vlak-diep/60",
         className,
@@ -270,12 +250,9 @@ export function Rij({
       <span className={cn("min-w-0 truncate", naamKlasse)}>{children}</span>
       <span className="flex shrink-0 items-center gap-2">
         <span className="mono text-meta text-inkt-zwak">{aantal}</span>
-        <IcoonChevron
-          aria-hidden="true"
-          className={cn("h-4 w-4 text-inkt-zwak transition-transform duration-200", open && "rotate-180")}
-        />
+        <Inklapper.Pijl className="h-4 w-4 text-inkt-zwak" />
       </span>
-    </button>
+    </Inklapper.Knop>
   );
 }
 

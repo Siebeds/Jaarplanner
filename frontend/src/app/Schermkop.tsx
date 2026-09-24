@@ -3,7 +3,7 @@ import { Katmand } from "../features/kat/Katmand";
 import { cn } from "../lib/cn";
 import { useSchermtitel } from "../lib/useSchermtitel";
 
-const MAAT = "max-w-[80rem]";
+const NORMAAL = "max-w-[80rem]";
 const BREED = "max-w-[104rem]";
 /**
  * A document measure, for a screen whose content is prose and lists rather than columns.
@@ -20,6 +20,14 @@ const BREED = "max-w-[104rem]";
  * together, is what a page IS.
  */
 const SMAL = "max-w-[57.5rem]";
+
+/**
+ * A screen's measure, set to the same value on its `Schermkop` and its `Schermvlak`. `breed` for a screen whose reading
+ * unit is a column (the agenda's week), `smal` for a document (see `SMAL`), `normaal` for the rest.
+ */
+export type Schermmaat = "normaal" | "breed" | "smal";
+
+const MATEN: Record<Schermmaat, string> = { normaal: NORMAAL, breed: BREED, smal: SMAL };
 /**
  * The title row of a screen.
  *
@@ -35,8 +43,7 @@ export function Schermkop({
   kruimelpad,
   rechts,
   onder,
-  breed,
-  smal,
+  maat = "normaal",
   metKat,
   meeScrollen,
 }: {
@@ -48,9 +55,7 @@ export function Schermkop({
   kruimelpad?: ReactNode;
   rechts?: ReactNode;
   onder?: ReactNode;
-  breed?: boolean;
-  /** A document measure, centred rather than left aligned. See `SMAL`. */
-  smal?: boolean;
+  maat?: Schermmaat;
   /**
    * Chuck on this screen. Only the agenda has him (FB-099): his basket and balloon make a header taller, and on every
    * screen that carried him the title stood at a different height. Never on the ontwikkelingsrapport (ADR-0059 D7).
@@ -63,7 +68,6 @@ export function Schermkop({
    */
   meeScrollen?: boolean;
 }) {
-  const meet = breed ? BREED : smal ? SMAL : MAAT;
   const kop = useRef<HTMLElement>(null);
   useSchermtitel(titel);
   useKopruimte(meeScrollen ? null : kop);
@@ -79,7 +83,7 @@ export function Schermkop({
         className={cn(
           "mx-auto grid gap-y-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top)+1.25rem)] sm:px-6 lg:pt-8",
           metKat ? "grid-cols-[minmax(0,1fr)_auto] gap-x-6" : "grid-cols-[minmax(0,1fr)]",
-          meet,
+          MATEN[maat],
         )}
       >
         {/* At least as tall as a button, so the title stands at the same height on every screen, whether or not the
@@ -156,25 +160,22 @@ function useKopruimte(kop: RefObject<HTMLElement | null> | null) {
 /**
  * The body of a screen, on the same measure as the header above it.
  *
- * `breed` widens both. The default measure keeps prose and lists readable; a week of seven day
+ * `maat="breed"` widens both. The default measure keeps prose and lists readable; a week of seven day
  * columns is the opposite problem, where the reading unit is the column and the leftover margin on a
  * wide screen is width the calendar could have used.
  */
 export function Schermvlak({
   children,
-  breed,
-  smal,
+  maat = "normaal",
   className,
 }: {
   children: ReactNode;
-  breed?: boolean;
-  /** A document measure, centred rather than left aligned. See `SMAL`. */
-  smal?: boolean;
+  maat?: Schermmaat;
   /** Extra layout for the body, such as the agenda's column that fills the viewport (FB-092). */
   className?: string;
 }) {
   return (
-    <div className={cn("mx-auto px-4 pb-16 sm:px-6", breed ? BREED : smal ? SMAL : MAAT, className)}>
+    <div className={cn("mx-auto px-4 pb-16 sm:px-6", MATEN[maat], className)}>
       {children}
     </div>
   );

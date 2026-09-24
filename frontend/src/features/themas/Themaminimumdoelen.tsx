@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Knop } from "../../components/ui/Knop";
 import { Toevoegknop } from "../../components/ui/Toevoegknop";
 import { Invoer } from "../../components/ui/Veld";
@@ -7,7 +8,7 @@ import { t, telWoord } from "../../i18n";
 import { useMinimumdoel, useMinimumdoelen, useMinimumdoelTeksten } from "../../lib/queries";
 import type { GeconcordeerdLeerplandoel, ThemaMinimumdoelWeergave } from "../../lib/types";
 import { MIJLPAAL } from "../doelen/mijlpaal";
-import { Doellijst, Ontkoppel, Vouwpijl } from "./Fiche";
+import { Doellijst, Ontkoppel } from "./Fiche";
 import { Inklaplijst } from "./Inklaplijst";
 import { opMinimumdoelRef } from "./opCode";
 
@@ -86,59 +87,53 @@ function Minimumdoelrij({
   onOntkoppel?: () => void;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const { data, isPending, isError } = useMinimumdoel(minimumdoelRef);
   // Every jaar/fase comes back, most of them empty; only those with a leerplandoel are a leeftijd of this minimumdoel.
   const leeftijden = (data?.jaarFasen ?? []).filter((fase) => fase.leerplandoelen.length > 0);
 
   return (
-    <li>
-      <div className="flex items-start gap-2 px-3 py-2.5 transition-colors duration-150 hover:bg-inkt/[0.035]">
-        <button
-          type="button"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-          className="flex min-w-0 flex-1 items-start gap-2 text-left"
-        >
-          <Vouwpijl open={open} className="mt-0.5" />
-          <span className="min-w-0 flex-1">
-            <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              {/* The ref in the minimumdoel hue, as in the doelen per leeftijd: it IS the MD doelsoort (Art. XII). */}
-              <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
-                {minimumdoelRef}
+    <Inklapper.Root>
+      <li>
+        <div className="flex items-start gap-2 px-3 py-2.5 transition-colors duration-150 hover:bg-inkt/[0.035]">
+          <Inklapper.Knop className="flex min-w-0 flex-1 items-start gap-2 text-left">
+            <Inklapper.Pijl className="mt-0.5 h-5 w-5 text-inkt-zacht" />
+            <span className="min-w-0 flex-1">
+              <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {/* The ref in the minimumdoel hue, as in the doelen per leeftijd: it IS the MD doelsoort (Art. XII). */}
+                <span className="mono inline-block rounded bg-doelsoort-md px-1.5 py-0.5 text-[0.6875rem] font-medium text-doelsoort-md-op">
+                  {minimumdoelRef}
+                </span>
+                {data && toonMijlpaal ? (
+                  <span className="text-meta text-inkt-zacht">
+                    {MIJLPAAL[data.leeftijd] ? t(MIJLPAAL[data.leeftijd]) : data.leeftijd}
+                  </span>
+                ) : null}
+                {data?.nietMeerInOpstap ? (
+                  <span className="rounded bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-medium text-attentie-inkt">
+                    {t("doel.vervallen")}
+                  </span>
+                ) : null}
               </span>
-              {data && toonMijlpaal ? (
-                <span className="text-meta text-inkt-zacht">
-                  {MIJLPAAL[data.leeftijd] ? t(MIJLPAAL[data.leeftijd]) : data.leeftijd}
-                </span>
-              ) : null}
-              {data?.nietMeerInOpstap ? (
-                <span className="rounded bg-attentie-zacht px-2 py-0.5 text-[0.6875rem] font-medium text-attentie-inkt">
-                  {t("doel.vervallen")}
-                </span>
+              {data ? (
+                <span className="mt-1 line-clamp-2 whitespace-pre-line text-body text-inkt">{data.omschrijving}</span>
+              ) : isPending ? (
+                <span aria-hidden="true" className="mt-1.5 block h-4 w-3/4 animate-pulse rounded-veld bg-vlak-diep" />
               ) : null}
             </span>
-            {data ? (
-              <span className="mt-1 line-clamp-2 whitespace-pre-line text-body text-inkt">{data.omschrijving}</span>
-            ) : isPending ? (
-              <span aria-hidden="true" className="mt-1.5 block h-4 w-3/4 animate-pulse rounded-veld bg-vlak-diep" />
-            ) : null}
-          </span>
-        </button>
+          </Inklapper.Knop>
 
-        {onOntkoppel ? (
-          <span className="-my-1.5 flex">
-            <Ontkoppel
-              label={t("thema.minimumdoelOntkoppel", { ref: minimumdoelRef })}
-              bezig={ontkoppelBezig}
-              onClick={onOntkoppel}
-            />
-          </span>
-        ) : null}
-      </div>
+          {onOntkoppel ? (
+            <span className="-my-1.5 flex">
+              <Ontkoppel
+                label={t("thema.minimumdoelOntkoppel", { ref: minimumdoelRef })}
+                bezig={ontkoppelBezig}
+                onClick={onOntkoppel}
+              />
+            </span>
+          ) : null}
+        </div>
 
-      {open ? (
-        <div className="px-3 pb-3 pl-10">
+        <Inklapper.Inhoud className="px-3 pb-3 pl-10">
           {isError ? (
             <p className="text-meta text-inkt-zacht">{t("thema.minimumdoelNietGeladen")}</p>
           ) : !data ? (
@@ -157,9 +152,9 @@ function Minimumdoelrij({
               ))}
             </Doellijst>
           )}
-        </div>
-      ) : null}
-    </li>
+        </Inklapper.Inhoud>
+      </li>
+    </Inklapper.Root>
   );
 }
 
@@ -173,25 +168,18 @@ function Leeftijdrij({
   leerplandoelen: GeconcordeerdLeerplandoel[];
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
-  const [open, setOpen] = useState(false);
-
   return (
-    <li>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
-      >
-        <Vouwpijl open={open} />
-        <span className="w-9 shrink-0 font-display text-sectie text-inkt">{leeftijd}</span>
-        <span className="min-w-0 flex-1 text-meta text-inkt-zacht">
-          {telWoord(leerplandoelen.length, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen")}
-        </span>
-      </button>
+    <Inklapper.Root>
+      <li>
+        <Inklapper.Knop className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]">
+          <Inklapper.Pijl className="h-5 w-5 text-inkt-zacht" />
+          <span className="w-9 shrink-0 font-display text-sectie text-inkt">{leeftijd}</span>
+          <span className="min-w-0 flex-1 text-meta text-inkt-zacht">
+            {telWoord(leerplandoelen.length, "thema.overzichtEenLeerplandoel", "thema.overzichtLeerplandoelen")}
+          </span>
+        </Inklapper.Knop>
 
-      {open ? (
-        <ul className="divide-y divide-lijn border-t border-lijn">
+        <Inklapper.Inhoud als="ul" className="divide-y divide-lijn border-t border-lijn">
           {leerplandoelen.map((doel) => (
             <li key={doel.code}>
               <button
@@ -211,9 +199,9 @@ function Leeftijdrij({
               </button>
             </li>
           ))}
-        </ul>
-      ) : null}
-    </li>
+        </Inklapper.Inhoud>
+      </li>
+    </Inklapper.Root>
   );
 }
 

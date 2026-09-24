@@ -66,9 +66,9 @@ export function KlassenScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.klassen")} smal onder={<Onderdeelwissel />} />
+      <Schermkop titel={t("instellingen.klassen")} maat="smal" onder={<Onderdeelwissel />} />
 
-      <Schermvlak smal>
+      <Schermvlak maat="smal">
         <div className="flex flex-col gap-3">
           {/* The context on the left and the action on the right, the same row Hoeken opens with.
               Once above the list, never per row: which school year these classes belong to is the

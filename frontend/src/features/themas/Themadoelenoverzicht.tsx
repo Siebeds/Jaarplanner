@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Doelsoortmerk } from "../../components/ui/Doelsoortmerk";
 import { Laadvlak } from "../../components/ui/Laadvlak";
 import { IcoonDoelen } from "../../components/Iconen";
 import { t, telWoord } from "../../i18n";
 import { useThemaDoelenoverzicht } from "../../lib/queries";
 import type { DoelPlaats, LeeftijdDoelen, OverzichtLeerplandoel } from "../../lib/types";
-import { Doellijst, Kaart, Vouwpijl } from "./Fiche";
+import { Doellijst, Kaart } from "./Fiche";
 
 /**
  * The leerplandoelen of a thema per leeftijd (FB-009, TB-048).
@@ -71,7 +71,6 @@ function Leeftijdrij({
   metAantal: boolean;
   onToonDoel: (code: string, knop: HTMLElement) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const aantal = groep.leerplandoelen.length;
   const buiten = groep.buitenMinimumdoelen.length;
   const tellers: string[] = [];
@@ -80,27 +79,22 @@ function Leeftijdrij({
   if (buiten > 0) tellers.push(telWoord(buiten, "thema.overzichtEenBuiten", "thema.overzichtBuiten"));
 
   return (
-    <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen(!open)}
-        className="flex min-h-raak w-full items-start gap-2 px-3 py-3 text-left transition-colors duration-150 hover:bg-inkt/[0.035] sm:px-4"
-      >
-        <Vouwpijl open={open} className="mt-0.5" />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 font-display text-sectie text-inkt">
-            <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />
-            {t("thema.leerplandoelenVoor", { leeftijd: groep.leeftijd })}
+    <Inklapper.Root>
+      <div>
+        <Inklapper.Knop className="flex min-h-raak w-full items-start gap-2 px-3 py-3 text-left transition-colors duration-150 hover:bg-inkt/[0.035] sm:px-4">
+          <Inklapper.Pijl className="mt-0.5 h-5 w-5 text-inkt-zacht" />
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5 font-display text-sectie text-inkt">
+              <IcoonDoelen aria-hidden="true" className="h-4 w-4 shrink-0 text-inkt-zacht" />
+              {t("thema.leerplandoelenVoor", { leeftijd: groep.leeftijd })}
+            </span>
+            {tellers.length > 0 ? (
+              <span className="mt-0.5 block text-meta text-inkt-zacht">{tellers.join(", ")}</span>
+            ) : null}
           </span>
-          {tellers.length > 0 ? (
-            <span className="mt-0.5 block text-meta text-inkt-zacht">{tellers.join(", ")}</span>
-          ) : null}
-        </span>
-      </button>
+        </Inklapper.Knop>
 
-      {open ? (
-        <div className="space-y-3 px-3 pb-3 sm:px-4">
+        <Inklapper.Inhoud className="space-y-3 px-3 pb-3 sm:px-4">
           {aantal > 0 ? (
             <Doellijst>
               {groep.leerplandoelen.map((doel) => (
@@ -118,9 +112,9 @@ function Leeftijdrij({
               </Doellijst>
             </div>
           ) : null}
-        </div>
-      ) : null}
-    </div>
+        </Inklapper.Inhoud>
+      </div>
+    </Inklapper.Root>
   );
 }
 

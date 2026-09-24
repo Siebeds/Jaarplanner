@@ -1,4 +1,4 @@
-import { forwardRef, type KeyboardEvent, type MouseEvent } from "react";
+import type { KeyboardEvent, MouseEvent, Ref } from "react";
 import { useHref, useNavigate } from "react-router-dom";
 import { IcoonKruis } from "../../components/Iconen";
 import { Knop, Knoplink } from "../../components/ui/Knop";
@@ -28,10 +28,21 @@ import { katvoorstelMoment, signaalzin, voorstelzin } from "./zinnen";
  * It decides nothing itself except what the cat brought for a klas: those proposals have no other screen (ADR-0060),
  * so they are accepted or rejected here, through the route every activiteitvoorstel is decided by.
  */
-export const Katvenster = forwardRef<
-  HTMLDivElement,
-  { id: string; chuck: Chuck; komt: boolean; naast: boolean; onSluit: () => void }
->(function Katvenster({ id, chuck, komt, naast, onSluit }, ref) {
+export function Katvenster({
+  id,
+  chuck,
+  komt,
+  naast,
+  onSluit,
+  ref,
+}: {
+  id: string;
+  chuck: Chuck;
+  komt: boolean;
+  naast: boolean;
+  onSluit: () => void;
+  ref?: Ref<HTMLDivElement>;
+}) {
   const { deurmat, houding } = chuck;
   const titelId = `${id}-titel`;
   const aantal = houding.aantal;
@@ -112,7 +123,7 @@ export const Katvenster = forwardRef<
       </p>
     </div>
   );
-});
+}
 
 /**
  * On a phone the window is a screen of its own over everything else (`aria-modal`), so Tab stays inside it: focus that

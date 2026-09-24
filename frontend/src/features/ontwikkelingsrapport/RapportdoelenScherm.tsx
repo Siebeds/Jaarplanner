@@ -68,9 +68,9 @@ export function RapportdoelenScherm() {
 
   return (
     <>
-      <Schermkop titel={t("ontwikkelingsrapport.titel")} smal onder={<Rapportwissel />} />
+      <Schermkop titel={t("ontwikkelingsrapport.titel")} maat="smal" onder={<Rapportwissel />} />
 
-      <Schermvlak smal>
+      <Schermvlak maat="smal">
         <section aria-labelledby="set-titel" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex min-w-0 flex-col gap-1">

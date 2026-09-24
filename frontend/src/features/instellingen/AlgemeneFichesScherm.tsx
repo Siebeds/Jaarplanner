@@ -17,8 +17,8 @@ export function AlgemeneFichesScherm() {
 
   return (
     <>
-      <Schermkop titel={t("instellingen.algemeneFiches")} smal onder={<Onderdeelwissel />} />
-      <Schermvlak smal>
+      <Schermkop titel={t("instellingen.algemeneFiches")} maat="smal" onder={<Onderdeelwissel />} />
+      <Schermvlak maat="smal">
         <Algemenefichesectie klassen={klassen} laadt={laadt} />
       </Schermvlak>
     </>

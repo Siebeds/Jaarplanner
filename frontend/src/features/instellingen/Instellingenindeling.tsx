@@ -119,7 +119,7 @@ export function Instellingenindeling() {
           `lg` the sidebar carries it instead, so a viewport never offers two ways out. In a
           `Schermvlak` of its own so it takes the page's gutter and measure. */}
       <div className="lg:hidden">
-        <Schermvlak smal>
+        <Schermvlak maat="smal">
           {/* The klas and the schooljaar on a phone (owner, 2026-09-23, FB-071, "Via Instellingen"), at the foot with
               the sign-in row: a teacher rarely changes klas. From `lg` the sidebar carries both. */}
           <div className="flex flex-col gap-2 border-t border-lijn pt-4">

@@ -1,9 +1,9 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { IcoonKruis, IcoonZoek } from "../../components/Iconen";
+import { Inklapper } from "../../components/ui/Inklapper";
 import { Invoer } from "../../components/ui/Veld";
 import { t } from "../../i18n";
 import { cn } from "../../lib/cn";
-import { Vouwpijl } from "./Fiche";
 
 /** How many rows one press shows. */
 export const PAGINA = 5;
@@ -248,34 +248,33 @@ export function Inklaplijst<T>({
     // list opening inside the same frame. The search icon is laid over the fold button, which covers the whole row, so
     // the two stay separate controls.
     return (
-      <div className="overflow-hidden rounded-veld border border-lijn">
-        <div className="relative">
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={vouw}
-            className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]"
-          >
-            <Vouwpijl open={open} />
-            <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{aantalTekst}</span>
-            {/* Room for the search icon. */}
-            <span aria-hidden="true" className="w-11 shrink-0 sm:w-8" />
-          </button>
-          <span className="absolute right-2 top-1/2 flex -translate-y-1/2">
-            {zoekOpen ? zoekknopDicht : zoekknopOpen}
-          </span>
-        </div>
-
-        {zoekOpen ? (
-          <div className="border-t border-lijn px-3 py-2">
-            <div className="flex sm:w-72">{zoekveld}</div>
-            {status}
+      <Inklapper.Root open={open} onOpenChange={vouw}>
+        <div className="overflow-hidden rounded-veld border border-lijn">
+          <div className="relative">
+            <Inklapper.Knop className="flex min-h-raak w-full items-center gap-2 px-3 py-2 text-left transition-colors duration-150 hover:bg-inkt/[0.035]">
+              <Inklapper.Pijl className="h-5 w-5 text-inkt-zacht" />
+              <span className="min-w-0 flex-1 text-meta text-inkt-zacht">{aantalTekst}</span>
+              {/* Room for the search icon. */}
+              <span aria-hidden="true" className="w-11 shrink-0 sm:w-8" />
+            </Inklapper.Knop>
+            <span className="absolute right-2 top-1/2 flex -translate-y-1/2">
+              {zoekOpen ? zoekknopDicht : zoekknopOpen}
+            </span>
           </div>
-        ) : null}
 
-        {rijen("border-t border-lijn")}
-        {laadMeer("flex w-full border-t border-lijn px-3 py-2.5 text-left")}
-      </div>
+          {zoekOpen ? (
+            <div className="border-t border-lijn px-3 py-2">
+              <div className="flex sm:w-72">{zoekveld}</div>
+              {status}
+            </div>
+          ) : null}
+
+          <Inklapper.Inhoud zichtbaar={toont}>
+            {rijen("border-t border-lijn")}
+            {laadMeer("flex w-full border-t border-lijn px-3 py-2.5 text-left")}
+          </Inklapper.Inhoud>
+        </div>
+      </Inklapper.Root>
     );
   }
 
@@ -283,48 +282,47 @@ export function Inklaplijst<T>({
   // room than a word or a code (owner, 2026-09-16: "de zoekbalk is te groot"). On a phone it takes a line of its own,
   // together with its close button.
   return (
-    <section className="mt-4">
-      <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2">
-        <h3 className="min-w-0">
-          {leeg ? (
-            <span className="inline-flex min-h-raak items-center gap-1.5 text-meta font-semibold text-inkt-zacht sm:min-h-8">
-              {kop.icoon}
-              {kop.titel}
-            </span>
-          ) : (
-            <button
-              type="button"
-              aria-expanded={open}
-              onClick={vouw}
-              className="-ml-1.5 inline-flex min-h-raak items-center gap-1.5 rounded-veld px-1.5 text-meta font-semibold text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt sm:min-h-8"
-            >
-              <Vouwpijl open={open} className="h-4 w-4" />
-              {kop.icoon}
-              {kop.titel}
-              {/* A space in the text too, so the name reads "Activiteiten 5" and not "Activiteiten5". */}{" "}
-              <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium text-inkt">
-                {items.length}
+    <Inklapper.Root open={open} onOpenChange={vouw}>
+      <section className="mt-4">
+        <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2">
+          <h3 className="min-w-0">
+            {leeg ? (
+              <span className="inline-flex min-h-raak items-center gap-1.5 text-meta font-semibold text-inkt-zacht sm:min-h-8">
+                {kop.icoon}
+                {kop.titel}
               </span>
-            </button>
+            ) : (
+              <Inklapper.Knop className="-ml-1.5 inline-flex min-h-raak items-center gap-1.5 rounded-veld px-1.5 text-meta font-semibold text-inkt-zacht transition-colors duration-150 hover:bg-inkt/[0.035] hover:text-inkt sm:min-h-8">
+                <Inklapper.Pijl className="h-4 w-4 text-inkt-zacht" />
+                {kop.icoon}
+                {kop.titel}
+                {/* A space in the text too, so the name reads "Activiteiten 5" and not "Activiteiten5". */}{" "}
+                <span className="mono rounded-full bg-vlak-diep px-1.5 text-[0.6875rem] font-medium text-inkt">
+                  {items.length}
+                </span>
+              </Inklapper.Knop>
+            )}
+          </h3>
+          {kop.acties}
+
+          {leeg ? null : zoekOpen ? (
+            <div className="order-last flex min-w-0 basis-full items-center gap-0.5 sm:order-none sm:ml-1 sm:basis-auto">
+              <div className="flex min-w-0 flex-1 sm:w-56 sm:flex-none">{zoekveld}</div>
+              {zoekknopDicht}
+            </div>
+          ) : (
+            zoekknopOpen
           )}
-        </h3>
-        {kop.acties}
+        </div>
 
-        {leeg ? null : zoekOpen ? (
-          <div className="order-last flex min-w-0 basis-full items-center gap-0.5 sm:order-none sm:ml-1 sm:basis-auto">
-            <div className="flex min-w-0 flex-1 sm:w-56 sm:flex-none">{zoekveld}</div>
-            {zoekknopDicht}
-          </div>
-        ) : (
-          zoekknopOpen
-        )}
-      </div>
-
-      {leeg ? <p className="mt-1 text-meta text-inkt-zacht">{kop.leeg}</p> : null}
-      {status}
-      {rijen("mt-2 overflow-hidden rounded-veld border border-lijn")}
-      {laadMeer("mt-2 inline-flex rounded-veld px-2")}
-    </section>
+        {leeg ? <p className="mt-1 text-meta text-inkt-zacht">{kop.leeg}</p> : null}
+        {status}
+        <Inklapper.Inhoud zichtbaar={toont}>
+          {rijen("mt-2 overflow-hidden rounded-veld border border-lijn")}
+          {laadMeer("mt-2 inline-flex rounded-veld px-2")}
+        </Inklapper.Inhoud>
+      </section>
+    </Inklapper.Root>
   );
 }
 
