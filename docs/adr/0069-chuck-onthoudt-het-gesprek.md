@@ -25,7 +25,10 @@ a turn that comes from the browser can be forged: a gebruiker could insert an an
   question and the answer (`Katbeurtzegel`). The browser sends the turns back unchanged with the next question. The
   server checks every turn that goes along before it builds a prompt; one that does not check stops the question with
   a 409 and the model is not called. The frontend then says it lost the thread and starts again from the next
-  question. A turn sealed for one gebruiker does not check for another.
+  question. A turn sealed for one gebruiker does not check for another. The seal proves a turn is the server's own and
+  unchanged; it is not bound to one conversation, so while the process lives she can send her own earlier turns again,
+  which is harmless under G5. A turn can carry text she chose herself: the question, and a term that found nothing or
+  several (at most 200 characters), which sits in the cat's reply as what the tool did not find.
 - **G2. The seal's key lives only in the process.** It is drawn at random when the API starts and kept nowhere, so a
   conversation over a restart starts again, and several instances would each refuse the others' turns (the demo runs
   one). Nothing about a conversation outlives the process that answered it.
@@ -59,8 +62,9 @@ a turn that comes from the browser can be forged: a gebruiker could insert an an
 
 ## Consequences
 
-**Positive:** follow-up questions work in the words a teacher uses; the stable prefix stays cacheable; a forged turn
-never reaches the model.
+**Positive:** follow-up questions work in the words a teacher uses; the stable prefix stays cacheable; a changed or
+invented turn never reaches the model. What she can still put in a turn is her own text (G1), which steers nothing
+beyond a lookup run with her rights or an explanation only she sees.
 
 **Negative / trade-offs:** each question costs its conversation's tokens again, up to ten turns; a restart or a second
 instance ends every open conversation; the eleventh turn back is forgotten.

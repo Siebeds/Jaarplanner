@@ -48,4 +48,8 @@ public sealed record AiRequest
 }
 
 /// <summary>One earlier turn of a conversation: what the user asked, and what the assistant answered.</summary>
-public sealed record AiBeurt(string Vraag, string Antwoord);
+public sealed record AiBeurt(string Vraag, string Antwoord)
+{
+    /// <summary>Only the kind: a turn of the cat's chat stays out of every log (ADR-0059 D6).</summary>
+    public override string ToString() => nameof(AiBeurt);
+}
