@@ -328,6 +328,91 @@ describe("Algemenefichedetailblad: één Bewaren", () => {
 });
 
 /*
+  FB-101: the hours for this day only, or for every day of the period in one request. The day stays where it is.
+*/
+describe("Algemenefichedetailblad: uur voor één dag of de hele periode", () => {
+  it("past standaard alleen deze dag aan", async () => {
+    toon({ momentId: "m-2" });
+
+    expect(screen.getByRole("radio", { name: t("fichedetail.alleenDezeDag") })).toBeChecked();
+    fireEvent.change(screen.getByLabelText(t("dagvelden.van")), { target: { value: "13:00" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "13:50" } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/algemene-ficheplaatsingen/p-1/momenten/m-2");
+  });
+
+  it("geeft met alle dagen van de periode elke dag het nieuwe uur in één verzoek", async () => {
+    toon({ momentId: "m-2" });
+
+    fireEvent.click(screen.getByRole("radio", { name: t("fichedetail.helePeriode") }));
+    expect(screen.getByText(t("fichedetail.periodeUitleg"))).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(t("dagvelden.van")), { target: { value: "13:00" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "13:50" } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [pad, init] = fetchMock.mock.calls[0];
+    expect(pad).toBe("/api/algemene-ficheplaatsingen/p-1/uren");
+    expect(init.method).toBe("PUT");
+    expect(JSON.parse(init.body)).toEqual({ begin: "13:00:00", einde: "13:50:00" });
+  });
+
+  it("zet vanaf een apart verschoven dag diens uur voor de hele periode, zonder dat uur eerst te wijzigen", async () => {
+    // The fourth Monday already runs 13:00 to 13:50; the other three do not.
+    toon({ momentId: "m-4" });
+
+    const bewaar = screen.getByRole("button", { name: t("fichedetail.bewaren") });
+    expect(bewaar).toBeDisabled();
+    fireEvent.click(screen.getByRole("radio", { name: t("fichedetail.helePeriode") }));
+    expect(bewaar).toBeEnabled();
+    fireEvent.click(bewaar);
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    const [pad, init] = fetchMock.mock.calls[0];
+    expect(pad).toBe("/api/algemene-ficheplaatsingen/p-1/uren");
+    expect(JSON.parse(init.body)).toEqual({ begin: "13:00:00", einde: "13:50:00" });
+  });
+
+  it("zet de dag terug en vergrendelt hem wanneer ze de hele periode kiest", () => {
+    toon({ momentId: "m-2" });
+
+    const dagveld = screen.getByLabelText(t("dagvelden.dag"));
+    fireEvent.change(dagveld, { target: { value: "2026-09-15" } });
+    fireEvent.click(screen.getByRole("radio", { name: t("fichedetail.helePeriode") }));
+
+    expect(dagveld).toHaveValue("2026-09-14");
+    expect(dagveld).toBeDisabled();
+  });
+
+  it("toont de weigering van de server en laat het blad open", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Op maandag 14 september staat deze fiche meer dan één keer." }), {
+        status: 400,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    const onSluit = vi.fn();
+    toon({ momentId: "m-2", onSluit });
+
+    fireEvent.click(screen.getByRole("radio", { name: t("fichedetail.helePeriode") }));
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "11:50" } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+
+    expect(await screen.findByText(t("fichedetail.urenMislukt"))).toBeInTheDocument();
+    expect(screen.getByText("Op maandag 14 september staat deze fiche meer dan één keer.")).toBeInTheDocument();
+    expect(onSluit).not.toHaveBeenCalled();
+  });
+
+  it("biedt de keuze niet aan wie de klas alleen mag bekijken", () => {
+    toon({ momentId: "m-2", alleenLezen: true });
+
+    expect(screen.queryByRole("radio")).toBeNull();
+  });
+});
+
+/*
   FB-018: the fiche's goals in its own sheet. A block too short to hold the info icon keeps them here, so this is the one
   place they are reachable from every block.
 */

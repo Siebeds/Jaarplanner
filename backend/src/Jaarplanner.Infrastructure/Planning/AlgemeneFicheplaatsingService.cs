@@ -183,6 +183,31 @@ public sealed class AlgemeneFicheplaatsingService : IAlgemeneFicheplaatsingServi
         return Weergave(plaatsing, await FicheNaamAsync(plaatsing, cancellationToken));
     }
 
+    public async Task<AlgemeneFicheplaatsingWeergave> ZetUrenAsync(
+        Guid plaatsingId,
+        TimeOnly begin,
+        TimeOnly einde,
+        CancellationToken cancellationToken = default)
+    {
+        var plaatsing = await _db.AlgemeneFicheplaatsingen
+            .Include(p => p.Momenten)
+            .FirstOrDefaultAsync(p => p.Id == plaatsingId, cancellationToken)
+            ?? throw new SchoolcontentNietGevondenFout($"Plaatsing {plaatsingId} is niet gevonden.");
+
+        try
+        {
+            plaatsing.ZetUren(begin, einde);
+        }
+        catch (ArgumentException fout)
+        {
+            throw new SchoolcontentValidatieFout(fout.Message);
+        }
+
+        await _db.SaveChangesAsync(cancellationToken);
+
+        return Weergave(plaatsing, await FicheNaamAsync(plaatsing, cancellationToken));
+    }
+
     public async Task<AlgemeneFicheplaatsingWeergave> ZetMomenttekstAsync(
         Guid plaatsingId,
         Guid momentId,

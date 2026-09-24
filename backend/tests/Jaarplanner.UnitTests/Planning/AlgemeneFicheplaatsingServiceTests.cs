@@ -232,4 +232,47 @@ public sealed class AlgemeneFicheplaatsingServiceTests
         await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() =>
             Service().VerplaatsMomentAsync(plaatsing.Id, Guid.NewGuid(), new DateOnly(2026, 9, 1), later, laterEinde));
     }
+
+    // FB-101: the hours of the whole period in one call, the days and their texts left alone (owner, 2026-09-24).
+    [Fact]
+    public async Task Uren_van_de_hele_periode_gelden_voor_elke_dag_ook_een_apart_verschoven_dag_en_de_teksten_blijven()
+    {
+        var plaatsing = await Service().PlaatsAsync(_klasId, Invoer(_ficheId, Start, new DateOnly(2026, 9, 30), [1]));
+        var eerste = plaatsing.Momenten.OrderBy(m => m.Datum).First();
+        await Service().ZetMomenttekstAsync(plaatsing.Id, eerste.Id, "Kapla");
+        // One Monday moved to the Tuesday afternoon by hand: it keeps its Tuesday and gets the new hours.
+        await Service().VerplaatsMomentAsync(plaatsing.Id, eerste.Id, eerste.Datum.AddDays(1), new TimeOnly(14, 0), new TimeOnly(14, 50));
+        var dagenVoor = plaatsing.Momenten.Select(m => m.Id == eerste.Id ? eerste.Datum.AddDays(1) : m.Datum).OrderBy(d => d).ToList();
+
+        var na = await Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(13, 0), new TimeOnly(13, 50));
+
+        Assert.Equal(4, na.Momenten.Count);
+        Assert.All(na.Momenten, m => Assert.Equal((new TimeOnly(13, 0), new TimeOnly(13, 50)), (m.Begin, m.Einde)));
+        Assert.Equal(dagenVoor, na.Momenten.Select(m => m.Datum).OrderBy(d => d).ToList());
+        Assert.Equal("Kapla", na.Momenten.Single(m => m.Id == eerste.Id).Tekst);
+
+        // Saved, not only answered: a fresh context reads the same.
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, Start, new DateOnly(2026, 9, 30));
+        Assert.All(Assert.Single(gelezen).Momenten, m => Assert.Equal(new TimeOnly(13, 50), m.Einde));
+    }
+
+    [Fact]
+    public async Task Uren_van_de_hele_periode_weigeren_een_einde_voor_het_begin_en_een_dubbele_dag_en_laten_alles_staan()
+    {
+        var plaatsing = await Service().PlaatsAsync(_klasId, Invoer(_ficheId, Start, new DateOnly(2026, 9, 30), [1]));
+
+        await Assert.ThrowsAsync<SchoolcontentValidatieFout>(() => Service().ZetUrenAsync(plaatsing.Id, Einde, Begin));
+
+        // The first Monday dragged onto the second one, at another hour: that Monday now holds the run twice.
+        var maandagen = plaatsing.Momenten.OrderBy(m => m.Datum).ToList();
+        await Service().VerplaatsMomentAsync(plaatsing.Id, maandagen[0].Id, maandagen[1].Datum, new TimeOnly(14, 0), new TimeOnly(14, 50));
+
+        var fout = await Assert.ThrowsAsync<SchoolcontentValidatieFout>(
+            () => Service().ZetUrenAsync(plaatsing.Id, new TimeOnly(9, 0), new TimeOnly(9, 50)));
+        Assert.Contains("maandag 14 september", fout.Message);
+
+        var gelezen = await Service().HaalVoorBereikAsync(_klasId, Start, new DateOnly(2026, 9, 30));
+        Assert.DoesNotContain(Assert.Single(gelezen).Momenten, m => m.Begin == new TimeOnly(9, 0));
+        await Assert.ThrowsAsync<SchoolcontentNietGevondenFout>(() => Service().ZetUrenAsync(Guid.NewGuid(), Begin, Einde));
+    }
 }

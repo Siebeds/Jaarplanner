@@ -204,6 +204,54 @@ public sealed class AlgemeneFicheEndpointsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NotFound, vreemd.StatusCode);
     }
 
+    /// <summary>
+    /// FB-101 end to end: the hours of the whole period in one PUT, every day keeping its own date and text, and a
+    /// refusal that leaves every day as it was. A leerkracht of another klas is refused with the authorisation's 403.
+    /// </summary>
+    [PostgresFact]
+    public async Task De_uren_van_de_hele_periode_gelden_voor_elke_dag_en_een_weigering_verandert_niets()
+    {
+        var opzet = new RechtenTestOpzet(_db, _factory);
+        var school = await opzet.SchoolAsync();
+        var admin = opzet.Admin();
+        var vandaag = DateOnly.FromDateTime(DateTime.UtcNow);
+        var (van, tot) = (vandaag.ToString("yyyy-MM-dd"), vandaag.AddDays(13).ToString("yyyy-MM-dd"));
+
+        var fiche = (await (await admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-fiches", new { naam = "Turnen" }))
+            .Content.ReadFromJsonAsync<FicheDto>())!;
+        var plaatsing = (await (await admin.PostAsJsonAsync($"/api/klassen/{school.K3Blauw}/algemene-ficheplaatsingen", new
+        {
+            algemeneFicheId = fiche.Id,
+            van,
+            tot,
+            weekdagen = new[] { 1, 4 },
+            begin = "10:30:00",
+            einde = "11:20:00",
+        })).Content.ReadFromJsonAsync<PlaatsingDto>())!;
+        var eerste = plaatsing.Momenten.First();
+        (await admin.PutAsJsonAsync(
+            $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/momenten/{eerste.Id}/tekst", new { tekst = "Bal" })).EnsureSuccessStatusCode();
+        var urenpad = $"/api/algemene-ficheplaatsingen/{plaatsing.Id}/uren";
+
+        using var eigen = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Blauw]));
+        using var ander = opzet.Als(await opzet.GebruikerAsync(school, klassen: [school.K3Groen]));
+
+        var geweigerd = await ander.PutAsJsonAsync(urenpad, new { begin = "13:00:00", einde = "13:50:00" });
+        Assert.Equal(HttpStatusCode.Forbidden, geweigerd.StatusCode);
+
+        var verkeerd = await eigen.PutAsJsonAsync(urenpad, new { begin = "13:50:00", einde = "13:00:00" });
+        Assert.Equal(HttpStatusCode.BadRequest, verkeerd.StatusCode);
+
+        var na = (await (await eigen.PutAsJsonAsync(urenpad, new { begin = "13:00:00", einde = "13:50:00" }))
+            .EnsureSuccessStatusCode().Content.ReadFromJsonAsync<PlaatsingDto>())!;
+        Assert.Equal(plaatsing.Momenten.Count, na.Momenten.Count);
+        Assert.All(na.Momenten, m => Assert.Equal("13:00:00", m.Begin));
+        Assert.Equal(
+            plaatsing.Momenten.Select(m => m.Datum).Order(),
+            na.Momenten.Select(m => m.Datum).Order());
+        Assert.Equal("Bal", na.Momenten.Single(m => m.Id == eerste.Id).Tekst);
+    }
+
     private static async Task<List<MomentDto>> WeekAsync(HttpClient client, Guid klasId) =>
         (await client.GetFromJsonAsync<List<PlaatsingDto>>(
             $"/api/klassen/{klasId}/algemene-ficheplaatsingen?van=2026-09-07&tot=2026-09-11"))!.Single().Momenten;

@@ -56,6 +56,21 @@ public interface IAlgemeneFicheplaatsingService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gives every occurrence of the run the same hours, each on the day it is already on (FB-101). One call rather than
+    /// one <see cref="VerplaatsMomentAsync"/> per day, so a run never ends up half at the old hours because the eighth
+    /// of fifteen requests failed.
+    /// </summary>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentNietGevondenFout">No such placement.</exception>
+    /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">
+    /// The end is not after the start, or a day holds the run twice. Nothing changed.
+    /// </exception>
+    Task<AlgemeneFicheplaatsingWeergave> ZetUrenAsync(
+        Guid plaatsingId,
+        TimeOnly begin,
+        TimeOnly einde,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Sets what the class does in ONE occurrence that day, or clears it with an empty text (FB-022).
     /// </summary>
     /// <exception cref="Jaarplanner.Application.Schoolcontent.Beheer.SchoolcontentValidatieFout">The text is too long.</exception>

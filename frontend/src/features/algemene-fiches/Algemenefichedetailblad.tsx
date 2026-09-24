@@ -14,6 +14,7 @@ import { t, telWoord } from "../../i18n";
 import {
   MAX_DAGTEKST,
   useVerplaatsFichemoment,
+  useZetFicheuren,
   useZetFichemomenttekst,
   type AlgemeneFichemomentWeergave,
   type AlgemeneFicheplaatsingWeergave,
@@ -33,8 +34,10 @@ import {
  * each bin sits on the heading of what it removes. It asks first when day texts would go with it, with the count, since
  * the texts of the other days are not on this sheet.
  *
- * **No "uren van de hele periode"** yet: the server has no verb for it, and fifteen single-day requests of which the
- * eighth fails is the half-saved run `useZetHoekuren` exists to avoid.
+ * **The hours for this day or for the whole period** (FB-101, owner 2026-09-24). "Alleen deze dag" is the default and
+ * changes this one occurrence. "Alle dagen van deze periode" gives every occurrence the new hours in one request, each
+ * on the day it is on, the ones already past and the ones moved by hand included; the day field is then locked to the
+ * opened day, because a whole run cannot move to one date, and the hint says where a different day is chosen.
  *
  * **The delete says what it costs, and only where it is true.** When this is the fiche's only placement and the fiche
  * carries goals, taking it out stops the fiche counting for dekking (Art. V.1), and the sheet says so. It says nothing
@@ -83,7 +86,7 @@ export function Algemenefichedetailblad({
   const aantalTeksten = plaatsing.momenten.filter((m) => m.tekst !== null).length;
 
   const bewerkt = moment !== undefined && !alleenLezen;
-  const dag = useDagvorm(plaatsing.id, moment, bezig, onSluit);
+  const dag = useDagvorm(plaatsing.id, plaatsing.momenten, moment, bezig, onSluit);
 
   return (
     <Blad
@@ -134,12 +137,35 @@ export function Algemenefichedetailblad({
                     vroegste={plaatsing.van}
                     laatste={plaatsing.tot}
                     disabled={dag.bezig || bezig}
+                    datumVergrendeld={dag.bereik === "periode"}
                     onDatum={dag.zetDatum}
                     onBegin={dag.zetBegin}
                     onEinde={dag.zetEinde}
                   />
                 </div>
-                <p className="mt-1.5 text-micro text-inkt-zacht">{t("fichedetail.momentUitleg")}</p>
+
+                <fieldset className="mt-3">
+                  <legend className="text-micro text-inkt-zacht">{t("fichedetail.uurVoor")}</legend>
+                  <div className="mt-1 flex flex-wrap gap-x-5 gap-y-1">
+                    {(["dag", "periode"] as const).map((keuze) => (
+                      <label key={keuze} className="inline-flex min-h-9 items-center gap-2 text-meta text-inkt">
+                        <input
+                          type="radio"
+                          name={`${id}-bereik`}
+                          value={keuze}
+                          checked={dag.bereik === keuze}
+                          disabled={dag.bezig || bezig}
+                          onChange={() => dag.zetBereik(keuze)}
+                          className="h-4 w-4 accent-inkt"
+                        />
+                        {keuze === "dag" ? t("fichedetail.alleenDezeDag") : t("fichedetail.helePeriode")}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p className="mt-1 text-micro text-inkt-zacht">
+                  {dag.bereik === "dag" ? t("fichedetail.momentUitleg") : t("fichedetail.periodeUitleg")}
+                </p>
 
                 {dag.weekend ? (
                   <p role="alert" className="mt-1.5 text-meta font-medium text-attentie-inkt">
@@ -276,13 +302,17 @@ export function Algemenefichedetailblad({
  */
 function useDagvorm(
   plaatsingId: string,
+  /** Every occurrence of the run, to know whether the hours for the whole period change anything. */
+  momenten: readonly AlgemeneFichemomentWeergave[],
   moment: AlgemeneFichemomentWeergave | undefined,
   /** The period is being taken out; nothing else should start. */
   vergrendeld: boolean,
   onKlaar: () => void,
 ) {
   const verplaats = useVerplaatsFichemoment();
+  const uren = useZetFicheuren();
   const zet = useZetFichemomenttekst();
+  const [bereik, setBereik] = useState<"dag" | "periode">("dag");
   const [datum, setDatum] = useState(moment?.datum ?? "");
   const [begin, setBegin] = useState(moment?.begin.slice(0, 5) ?? "");
   const [einde, setEinde] = useState(moment?.einde.slice(0, 5) ?? "");
@@ -291,11 +321,15 @@ function useDagvorm(
   // `HH:mm` sorts as it reads, so comparing the strings is comparing the times.
   const urenOngeldig = begin === "" || einde === "" || einde <= begin;
   const weekend = datum !== "" && weekdagIndex(datum) >= 5;
+  // For the whole period the question is whether ANY day differs from the chosen hours, not only the opened one: she
+  // may open the day she already moved to 14:00 to put every other day there too (antagonist, FB-101).
   const momentGewijzigd =
     moment !== undefined &&
-    (datum !== moment.datum || begin !== moment.begin.slice(0, 5) || einde !== moment.einde.slice(0, 5));
+    (bereik === "periode"
+      ? momenten.some((m) => m.begin.slice(0, 5) !== begin || m.einde.slice(0, 5) !== einde)
+      : datum !== moment.datum || begin !== moment.begin.slice(0, 5) || einde !== moment.einde.slice(0, 5));
   const tekstGewijzigd = moment !== undefined && tekst.trim() !== (moment.tekst ?? "");
-  const bezig = verplaats.isPending || zet.isPending;
+  const bezig = verplaats.isPending || uren.isPending || zet.isPending;
   const kanBewaren =
     !bezig &&
     !vergrendeld &&
@@ -305,15 +339,26 @@ function useDagvorm(
   function wijzig(zetter: (waarde: string) => void) {
     return (waarde: string) => {
       verplaats.reset();
+      uren.reset();
       zet.reset();
       zetter(waarde);
     };
   }
 
+  function zetBereik(keuze: "dag" | "periode") {
+    verplaats.reset();
+    uren.reset();
+    // The whole run keeps its days, so a date picked for this one day would be sent nowhere: it goes back.
+    if (keuze === "periode" && moment) setDatum(moment.datum);
+    setBereik(keuze);
+  }
+
   async function bewaar() {
     if (!moment || !kanBewaren) return;
     try {
-      if (momentGewijzigd) {
+      if (momentGewijzigd && bereik === "periode") {
+        await uren.mutateAsync({ plaatsingId, begin: `${begin}:00`, einde: `${einde}:00` });
+      } else if (momentGewijzigd) {
         await verplaats.mutateAsync({
           plaatsingId,
           momentId: moment.id,
@@ -336,6 +381,12 @@ function useDagvorm(
       detail: verplaats.error instanceof ApiError ? verplaats.error.detail : undefined,
     });
   }
+  if (uren.isError) {
+    fouten.push({
+      titel: t("fichedetail.urenMislukt"),
+      detail: uren.error instanceof ApiError ? uren.error.detail : undefined,
+    });
+  }
   if (zet.isError) {
     fouten.push({
       titel: t("fichedetail.dagtekstMislukt"),
@@ -348,6 +399,8 @@ function useDagvorm(
     begin,
     einde,
     tekst,
+    bereik,
+    zetBereik,
     zetDatum: wijzig(setDatum),
     zetBegin: wijzig(setBegin),
     zetEinde: wijzig(setEinde),

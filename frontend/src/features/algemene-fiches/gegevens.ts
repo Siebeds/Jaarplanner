@@ -277,3 +277,17 @@ export function useZetFichemomenttekst() {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] }),
   });
 }
+
+/**
+ * Gives every occurrence of ONE placement the same hours, each on its own day (FB-101). One request, so the run is
+ * never half at the old hours; the server refuses a day that holds the run twice, and she sees that sentence.
+ */
+export function useZetFicheuren() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ plaatsingId, begin, einde }: { plaatsingId: string; begin: string; einde: string }) =>
+      put<AlgemeneFicheplaatsingWeergave>(`/api/algemene-ficheplaatsingen/${plaatsingId}/uren`, { begin, einde }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["algemene-ficheplaatsingen"] }),
+  });
+}
