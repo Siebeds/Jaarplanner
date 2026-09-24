@@ -76,3 +76,28 @@ describe("de donkere tokens", () => {
     expect(onbekend).toEqual([]);
   });
 });
+
+describe("de kleur van de browserrand", () => {
+  it("geeft beide theme-color-metas de kleur die de pagina toont", () => {
+    // index.html has one meta per device setting (FB-085). jsdom computes no colour, so the page's
+    // background is stubbed; what is under test is that neither meta keeps the other weergave's colour.
+    for (const media of ["(prefers-color-scheme: light)", "(prefers-color-scheme: dark)"]) {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.media = media;
+      meta.content = "#ffffff";
+      document.head.append(meta);
+    }
+    const echt = window.getComputedStyle;
+    window.getComputedStyle = () => ({ backgroundColor: "rgb(21, 24, 30)" }) as CSSStyleDeclaration;
+    try {
+      useWeergave.getState().kies("donker");
+    } finally {
+      window.getComputedStyle = echt;
+    }
+
+    const kleuren = [...document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')].map((m) => m.content);
+    expect(kleuren).toEqual(["rgb(21, 24, 30)", "rgb(21, 24, 30)"]);
+    document.head.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove());
+  });
+});

@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-22
-bijgewerkt: 2026-09-24 14:30
+bijgewerkt: 2026-09-24 14:37
 opgepakt-door: claude-fb085
 branch: ticket/FB-085-vizier-favicon
 pr:
@@ -38,17 +38,17 @@ lossen.
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een leerkracht met de app open, wanneer ze naar haar tabbladen kijkt, dan draagt het tabblad
+- [x] Gegeven een leerkracht met de app open, wanneer ze naar haar tabbladen kijkt, dan draagt het tabblad
       het Vizier-beeldmerk en de titel "Vizier".
-- [ ] Gegeven een leerkracht op een tablet, wanneer ze de app aan het startscherm toevoegt, dan staat daar
+- [x] Gegeven een leerkracht op een tablet, wanneer ze de app aan het startscherm toevoegt, dan staat daar
       het Vizier-app-icoon met de naam Vizier.
-- [ ] Gegeven diezelfde leerkracht, wanneer ze de app vanaf het startscherm opent, dan opent ze zonder
+- [x] Gegeven diezelfde leerkracht, wanneer ze de app vanaf het startscherm opent, dan opent ze zonder
       adresbalk, op het aanmeldscherm of op de app zelf.
-- [ ] Gegeven donkere weergave, wanneer de app opent, dan is de rand die de browser zelf kleurt donker en
+- [x] Gegeven donkere weergave, wanneer de app opent, dan is de rand die de browser zelf kleurt donker en
       niet het lichte papier.
-- [ ] Gegeven de iconen in `frontend/public/merk/`, wanneer je ze vervangt door bestanden met dezelfde
+- [x] Gegeven de iconen in `frontend/public/merk/`, wanneer je ze vervangt door bestanden met dezelfde
       namen, dan draagt de app het nieuwe icoon zonder dat er code wijzigt.
-- [ ] `frontend/public/merk.svg` bestaat niet meer en wordt nergens meer opgevraagd.
+- [x] `frontend/public/merk.svg` bestaat niet meer en wordt nergens meer opgevraagd.
 
 ## Testscenario's
 
@@ -77,3 +77,4 @@ Geen.
 
 - 2026-09-22 21:49 · Siebe · aangemaakt (status nieuw)
 - 2026-09-24 14:30 · claude-fb085 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (opdracht aan deze sessie)
+- 2026-09-24 14:37 · claude-fb085 · Gebouwd: favicon (ico+svg), apple-touch-icon, manifest.webmanifest (Vizier, standalone, iconen 192/512), titel Vizier, theme-color per weergave, merk.svg weg. Criteria afgevinkt op browserset.test.ts, SpaHostingTests (manifest als application/manifest+json zonder sessie) en een browserpas: Chrome meldt het manifest foutloos en de app installeerbaar, theme-color licht #f6f7f9 en donker #15181e, ook bij een expliciete keuze tegen het toestel in; een echte tablet is niet getest.

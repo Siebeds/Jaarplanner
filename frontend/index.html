@@ -2,10 +2,19 @@
 <html lang="nl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/merk.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f5f6f8" />
-    <title>Jaarplanner</title>
+    <title>Vizier</title>
+    <!-- The brand's browser set (FB-085), loaded by fixed name from public/merk/, so a new logo is a copy of files
+         and not a code change (ADR-0063). The .ico for a browser without SVG favicons, the SVG for every other. -->
+    <link rel="icon" href="/merk/favicon.ico" sizes="32x32" />
+    <link rel="icon" type="image/svg+xml" href="/merk/favicon.svg" />
+    <link rel="apple-touch-icon" href="/merk/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- The colour the browser gives its own chrome: --color-vlak, light then dark, from src/index.css
+         (src/app/browserset.test.ts pins both). The device's setting picks one through media; an explicit choice
+         under Instellingen is applied by the script below, and src/state/weergave.ts keeps both in step after. -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f6f7f9" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15181e" />
     <!-- Runs before the first paint, so a teacher who chose a theme in this browser never sees the
          other one flash first. Only an explicit choice is read: "zoals het toestel" needs no script,
          the stylesheet's media query answers it. The key and shape belong to src/state/weergave.ts,
@@ -14,7 +23,13 @@
       try {
         var bewaard = JSON.parse(localStorage.getItem("jaarplanner-weergave") || "null");
         var keuze = bewaard && bewaard.state && bewaard.state.keuze;
-        if (keuze === "licht" || keuze === "donker") document.documentElement.setAttribute("data-weergave", keuze);
+        if (keuze === "licht" || keuze === "donker") {
+          document.documentElement.setAttribute("data-weergave", keuze);
+          // Both theme-color metas take the chosen one's colour, whatever the device prefers.
+          var kleuren = document.querySelectorAll('meta[name="theme-color"]');
+          var gekozen = kleuren[keuze === "donker" ? 1 : 0].content;
+          for (var i = 0; i < kleuren.length; i++) kleuren[i].content = gekozen;
+        }
       } catch (e) {}
     </script>
     <!-- Hides the tussenpagina below until the stylesheet has arrived, which defines the variable. -->
