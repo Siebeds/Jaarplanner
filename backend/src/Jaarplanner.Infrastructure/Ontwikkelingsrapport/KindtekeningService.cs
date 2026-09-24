@@ -59,7 +59,7 @@ public sealed class KindtekeningService : IKindtekeningService
         HerwerkteTekening beeld;
         try
         {
-            beeld = _herwerker.Herwerk(bron);
+            beeld = await _herwerker.HerwerkAsync(bron, cancellationToken);
         }
         catch (TekeningGeweigerdFout fout)
         {

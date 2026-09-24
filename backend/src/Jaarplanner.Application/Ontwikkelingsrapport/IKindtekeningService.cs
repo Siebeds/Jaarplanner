@@ -89,7 +89,8 @@ public interface ITekeningHerwerker
     /// own format (JPEG stays JPEG, PNG stays PNG), carrying no metadata.
     /// </summary>
     /// <exception cref="TekeningGeweigerdFout">It is not a readable JPEG or PNG, or it has too many pixels.</exception>
-    HerwerkteTekening Herwerk(byte[] bron);
+    /// <exception cref="OperationCanceledException">The request was aborted while it waited for a free place.</exception>
+    Task<HerwerkteTekening> HerwerkAsync(byte[] bron, CancellationToken cancellationToken = default);
 }
 
 /// <summary>What a re-encode produced.</summary>

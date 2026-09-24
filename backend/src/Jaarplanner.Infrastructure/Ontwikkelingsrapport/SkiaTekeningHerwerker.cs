@@ -36,7 +36,18 @@ public sealed class SkiaTekeningHerwerker : ITekeningHerwerker
 
     private static readonly SKSamplingOptions Schalen = new(SKCubicResampler.Mitchell);
 
-    public HerwerkteTekening Herwerk(byte[] bron)
+    private readonly SemaphoreSlim _gelijktijdig;
+
+    public SkiaTekeningHerwerker()
+        : this(Gelijktijdig)
+    {
+    }
+
+    /// <summary>With its own limit instead of the app-wide one, so a test can hold every place.</summary>
+    internal SkiaTekeningHerwerker(SemaphoreSlim gelijktijdig) =>
+        _gelijktijdig = gelijktijdig ?? throw new ArgumentNullException(nameof(gelijktijdig));
+
+    public async Task<HerwerkteTekening> HerwerkAsync(byte[] bron, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(bron);
 
@@ -61,14 +72,15 @@ public sealed class SkiaTekeningHerwerker : ITekeningHerwerker
             throw new TekeningGeweigerdFout(Tekeningweigering.TeVeelPixels);
         }
 
-        Gelijktijdig.Wait();
+        // Waits for a free place without holding a thread, and stops waiting when the request is aborted.
+        await _gelijktijdig.WaitAsync(cancellationToken);
         try
         {
             return Herwerk(codec, formaat);
         }
         finally
         {
-            Gelijktijdig.Release();
+            _gelijktijdig.Release();
         }
     }
 
