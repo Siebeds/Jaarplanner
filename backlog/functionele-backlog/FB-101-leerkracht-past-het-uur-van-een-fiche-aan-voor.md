@@ -2,12 +2,12 @@
 id: FB-101
 titel: Leerkracht past het uur van een fiche aan voor één dag of voor de hele periode
 soort: functioneel
-status: nieuw
+status: in-uitvoering
 prioriteit: middel
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:18
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 17:44
+opgepakt-door: claude-fb101
+branch: ticket/FB-101-fiche-uur-periode
 pr:
 geblokkeerd:
 fr: [FR-6.1]
@@ -59,3 +59,4 @@ Geen.
 ## Werklog
 
 - 2026-09-24 17:18 · Siebe · aangemaakt (status nieuw)
+- 2026-09-24 17:44 · claude-fb101 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (akkoord 'maak en bouw' 2026-09-24); gebouwd bovenop FB-100 omdat beide hetzelfde fichescherm raken
