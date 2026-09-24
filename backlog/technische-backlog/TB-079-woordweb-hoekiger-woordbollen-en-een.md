@@ -1,4 +1,4 @@
-﻿---
+---
 id: TB-079
 titel: Woordweb: hoekiger woordbollen en een uitgeschakelde AI-knop voor het eerste woord
 soort: technisch
