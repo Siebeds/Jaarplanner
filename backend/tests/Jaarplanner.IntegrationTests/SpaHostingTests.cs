@@ -15,6 +15,7 @@ public sealed class SpaHostingTests : IDisposable
 {
     private const string Pagina = "<!doctype html><title>jaarplanner-spa-test</title>";
     private const string Script = "console.log('jaarplanner-spa-test');";
+    private const string Manifest = """{ "name": "jaarplanner-spa-test" }""";
 
     private readonly DirectoryInfo _webroot = Directory.CreateTempSubdirectory("jaarplanner-webroot-");
     private readonly MetWebroot _factory;
@@ -24,6 +25,7 @@ public sealed class SpaHostingTests : IDisposable
         File.WriteAllText(Path.Combine(_webroot.FullName, "index.html"), Pagina);
         Directory.CreateDirectory(Path.Combine(_webroot.FullName, "assets"));
         File.WriteAllText(Path.Combine(_webroot.FullName, "assets", "app.js"), Script);
+        File.WriteAllText(Path.Combine(_webroot.FullName, "manifest.webmanifest"), Manifest);
         _factory = new MetWebroot(_webroot.FullName);
     }
 
@@ -52,6 +54,20 @@ public sealed class SpaHostingTests : IDisposable
 
         Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
         Assert.Equal(Script, await antwoord.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task Het_web_app_manifest_wordt_zonder_sessie_en_als_manifest_geserveerd()
+    {
+        // FB-085: a browser adding the app to a home screen fetches the manifest without credentials, and only reads
+        // it when it arrives as a manifest, not as the page the fallback would send.
+        using var client = _factory.MaakAnoniemeClient();
+
+        using var antwoord = await client.GetAsync("/manifest.webmanifest");
+
+        Assert.Equal(HttpStatusCode.OK, antwoord.StatusCode);
+        Assert.Equal("application/manifest+json", antwoord.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(Manifest, await antwoord.Content.ReadAsStringAsync());
     }
 
     [Fact]

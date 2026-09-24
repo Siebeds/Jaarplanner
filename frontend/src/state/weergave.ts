@@ -41,11 +41,13 @@ function pasToe(keuze: Weergave) {
   else html.dataset.weergave = keuze;
 
   // The browser's own chrome (the address bar on a phone, the task switcher on a tablet) takes its
-  // colour from this meta. Read back from the page rather than written here, so the one place a
-  // colour is defined stays `index.css`.
-  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  // colour from these metas. Read back from the page rather than written here, so the one place a
+  // colour is defined stays `index.css`. `index.html` has two, one per device setting (FB-085);
+  // both get the colour the page shows, so whichever the browser picks is right.
   const vlak = getComputedStyle(document.body).backgroundColor;
-  if (meta && vlak) meta.content = vlak;
+  // Empty in jsdom, transparent before the stylesheet applies: the static values then stand.
+  if (!vlak || vlak === "rgba(0, 0, 0, 0)") return;
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) meta.content = vlak;
 }
 
 pasToe(useWeergave.getState().keuze);

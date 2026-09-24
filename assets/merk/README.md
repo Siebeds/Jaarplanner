@@ -48,9 +48,10 @@ different logo in the app, replace these files, keeping the names:
 | `apple-touch-icon.png`          | an iPad home screen       | `favicon/`                                |
 | `icon-192.png`, `icon-512.png`  | the web app manifest      | `favicon/`                                |
 
-Two things do not travel with the files, and are the whole of the code change a rebrand still needs: the
+Three things do not travel with the files, and are the whole of the code change a rebrand still needs: the
 product name in `frontend/src/i18n/nl.json` (`app.naam`, and the sentences under `aanmelding` that name
-the product), and `<title>` plus the static tussenpagina copy in `frontend/index.html`.
+the product), `<title>` plus the static tussenpagina copy in `frontend/index.html`, and `name` and
+`short_name` in `frontend/public/manifest.webmanifest` (the name under the home-screen icon).
 
 A logo with different proportions may need its box adjusted in `frontend/src/app/Merk.tsx`; a logo in
 other colours needs its hues checked against Art. XII before it goes in, since the palette has no room
