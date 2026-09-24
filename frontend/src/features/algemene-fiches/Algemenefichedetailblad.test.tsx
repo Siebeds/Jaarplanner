@@ -66,6 +66,7 @@ function toon({
   doelen,
   plaatsing = turnen,
   onVerwijder = () => {},
+  onSluit = () => {},
 }: {
   momentId?: string | null;
   enige?: boolean;
@@ -73,6 +74,7 @@ function toon({
   doelen?: readonly Infodoel[];
   plaatsing?: AlgemeneFicheplaatsingWeergave;
   onVerwijder?: () => void;
+  onSluit?: () => void;
 } = {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
   return render(
@@ -86,11 +88,13 @@ function toon({
         alleenLezen={alleenLezen}
         bezig={false}
         onVerwijder={onVerwijder}
-        onSluit={() => {}}
+        onSluit={onSluit}
       />
     </QueryClientProvider>,
   );
 }
+
+const verwijderNaam = t("fichedetail.verwijderAria", { naam: "turnen" });
 
 const opUur = (begin: string, einde: string, dagen: string) =>
   t("fichedetail.opUur", { periode: toonBereik(begin, einde), dagen });
@@ -107,10 +111,10 @@ describe("Algemenefichedetailblad voor wie de klas alleen mag bekijken", () => {
     expect(
       screen.getByText(opUur("10:30:00", "11:20:00", t("fichedetail.aantalSchooldagen", { aantal: 3 }))),
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: t("fichedetail.verwijder") })).toBeNull();
-    expect(screen.queryByLabelText(t("fichedetail.dag"))).toBeNull();
-    expect(screen.queryByLabelText(t("fichedetail.van"))).toBeNull();
-    expect(screen.queryByLabelText(t("fichedetail.tot"))).toBeNull();
+    expect(screen.queryByRole("button", { name: verwijderNaam })).toBeNull();
+    expect(screen.queryByLabelText(t("dagvelden.dag"))).toBeNull();
+    expect(screen.queryByLabelText(t("dagvelden.van"))).toBeNull();
+    expect(screen.queryByLabelText(t("dagvelden.tot"))).toBeNull();
     expect(screen.queryByRole("button", { name: t("fichedetail.bewaren") })).toBeNull();
     // The cost of a delete she cannot make is not hers to weigh.
     expect(screen.queryByText(t("fichedetail.laatstePeriode"))).toBeNull();
@@ -130,12 +134,12 @@ describe("Algemenefichedetailblad", () => {
   it("past zonder slepen alleen de dag aan waarop ze het blad opende", async () => {
     toon({ momentId: "m-2" });
 
-    expect(screen.getByText(t("fichedetail.ditMoment", { dag: volleDag("2026-09-14") }))).toBeInTheDocument();
+    expect(screen.getByText(t("fichedetail.opDag", { dag: volleDag("2026-09-14") }))).toBeInTheDocument();
     const bewaar = screen.getByRole("button", { name: t("fichedetail.bewaren") });
     // Nothing changed yet, so there is nothing to save.
     expect(bewaar).toBeDisabled();
 
-    fireEvent.change(screen.getByLabelText(t("fichedetail.tot")), { target: { value: "11:50" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "11:50" } });
     fireEvent.click(bewaar);
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
@@ -149,7 +153,7 @@ describe("Algemenefichedetailblad", () => {
     toon({ momentId: "m-2" });
 
     // Saturday 19 September: inside the window, but no school. A vakantie is the server's to refuse.
-    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-09-19" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.dag")), { target: { value: "2026-09-19" } });
 
     expect(screen.getByText(t("fichedetail.geenSchooldag"))).toBeInTheDocument();
     // The literal as well as the key: the server refuses a vakantie with this same sentence
@@ -168,17 +172,17 @@ describe("Algemenefichedetailblad", () => {
     );
     toon({ momentId: "m-2" });
 
-    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-11-04" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.dag")), { target: { value: "2026-11-04" } });
     fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
     expect(await screen.findByText(t("fichedetail.momentMislukt"))).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText(t("fichedetail.dag")), { target: { value: "2026-09-15" } });
+    fireEvent.change(screen.getByLabelText(t("dagvelden.dag")), { target: { value: "2026-09-15" } });
     await waitFor(() => expect(screen.queryByText(t("fichedetail.momentMislukt"))).not.toBeInTheDocument());
   });
 
   it("biedt geen dagvelden aan wanneer het blad een hele periode toont", () => {
     toon({ momentId: null });
-    expect(screen.queryByLabelText(t("fichedetail.dag"))).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(t("dagvelden.dag"))).not.toBeInTheDocument();
     // Nor a day text: there is no particular day.
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
@@ -199,7 +203,6 @@ describe("Algemenefichedetailblad", () => {
   be lost with it.
 */
 describe("Algemenefichedetailblad: tekst per dag", () => {
-  const dagtekstLabel = (datum: string) => t("fichedetail.dagtekst", { dag: volleDag(datum) });
   const metTekst: AlgemeneFicheplaatsingWeergave = {
     ...turnen,
     momenten: [
@@ -212,8 +215,8 @@ describe("Algemenefichedetailblad: tekst per dag", () => {
   it("bewaart de tekst voor alleen de dag waarop ze het blad opende", async () => {
     toon({ momentId: "m-2" });
 
-    const veld = screen.getByLabelText(dagtekstLabel("2026-09-14"));
-    const bewaar = screen.getByRole("button", { name: t("fichedetail.dagtekstBewaren") });
+    const veld = screen.getByLabelText(t("fichedetail.dagtekst"));
+    const bewaar = screen.getByRole("button", { name: t("fichedetail.bewaren") });
     expect(bewaar).toBeDisabled();
 
     fireEvent.change(veld, { target: { value: "  We bouwen een toren met kapla.  " } });
@@ -229,7 +232,7 @@ describe("Algemenefichedetailblad: tekst per dag", () => {
   it("vult het veld met de bewaarde tekst van die dag", () => {
     toon({ momentId: "m-1", plaatsing: metTekst });
 
-    expect(screen.getByLabelText(dagtekstLabel("2026-09-07"))).toHaveValue("Kapla: een toren bouwen.");
+    expect(screen.getByLabelText(t("fichedetail.dagtekst"))).toHaveValue("Kapla: een toren bouwen.");
   });
 
   it("toont de tekst aan wie de klas alleen mag bekijken, zonder veld", () => {
@@ -237,7 +240,7 @@ describe("Algemenefichedetailblad: tekst per dag", () => {
 
     expect(screen.getByText("Kapla: een toren bouwen.")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.queryByRole("button", { name: t("fichedetail.dagtekstBewaren") })).toBeNull();
+    expect(screen.queryByRole("button", { name: t("fichedetail.bewaren") })).toBeNull();
   });
 
   it("zegt aan wie alleen mag bekijken dat er voor die dag nog niets staat", () => {
@@ -250,7 +253,7 @@ describe("Algemenefichedetailblad: tekst per dag", () => {
     const onVerwijder = vi.fn();
     toon({ momentId: "m-3", plaatsing: metTekst, onVerwijder });
 
-    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.verwijder") }));
+    fireEvent.click(screen.getByRole("button", { name: verwijderNaam }));
 
     expect(screen.getByRole("dialog", { name: t("fichedetail.bevestigTitel") })).toBeInTheDocument();
     expect(screen.getByText(t("fichedetail.bevestigTeksten", { aantal: 2 }))).toBeInTheDocument();
@@ -264,10 +267,63 @@ describe("Algemenefichedetailblad: tekst per dag", () => {
     const onVerwijder = vi.fn();
     toon({ onVerwijder });
 
-    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.verwijder") }));
+    fireEvent.click(screen.getByRole("button", { name: verwijderNaam }));
 
     expect(onVerwijder).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog", { name: t("fichedetail.bevestigTitel") })).toBeNull();
+  });
+});
+
+/*
+  FB-100: one Bewaren for the opened day, whatever of it she changed, and the period's bin on its own heading.
+*/
+describe("Algemenefichedetailblad: één Bewaren", () => {
+  it("bewaart een gewijzigd uur en een gewijzigde tekst met één druk, en sluit dan", async () => {
+    // A fresh answer per request: a Response's body can be read once, and this press sends two.
+    fetchMock.mockImplementation(
+      async () => new Response(JSON.stringify(turnen), { status: 200, headers: { "Content-Type": "application/json" } }),
+    );
+    const onSluit = vi.fn();
+    toon({ momentId: "m-2", onSluit });
+
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "11:50" } });
+    fireEvent.change(screen.getByLabelText(t("fichedetail.dagtekst")), { target: { value: "Bal gooien." } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+
+    await waitFor(() => expect(onSluit).toHaveBeenCalledTimes(1));
+    const paden = fetchMock.mock.calls.map(([pad]) => pad);
+    expect(paden).toEqual([
+      "/api/algemene-ficheplaatsingen/p-1/momenten/m-2",
+      "/api/algemene-ficheplaatsingen/p-1/momenten/m-2/tekst",
+    ]);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ tekst: "Bal gooien." });
+  });
+
+  it("blijft open en zegt welk deel niet lukte", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ detail: "Op die dag is er geen school. Kies een schooldag." }), {
+        status: 400,
+        headers: { "Content-Type": "application/problem+json" },
+      }),
+    );
+    const onSluit = vi.fn();
+    toon({ momentId: "m-2", onSluit });
+
+    fireEvent.change(screen.getByLabelText(t("dagvelden.tot")), { target: { value: "11:50" } });
+    fireEvent.change(screen.getByLabelText(t("fichedetail.dagtekst")), { target: { value: "Bal gooien." } });
+    fireEvent.click(screen.getByRole("button", { name: t("fichedetail.bewaren") }));
+
+    expect(await screen.findByText(t("fichedetail.momentMislukt"))).toBeInTheDocument();
+    // The text waits for the move: nothing half-said about a day that did not move.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(onSluit).not.toHaveBeenCalled();
+  });
+
+  it("biedt zonder geopende dag geen Bewaren aan, wel het weghalen van de periode", () => {
+    toon({ momentId: null });
+
+    expect(screen.queryByRole("button", { name: t("fichedetail.bewaren") })).toBeNull();
+    expect(screen.getByRole("button", { name: verwijderNaam })).toBeInTheDocument();
   });
 });
 

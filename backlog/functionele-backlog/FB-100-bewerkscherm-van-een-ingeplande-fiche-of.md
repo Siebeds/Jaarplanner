@@ -2,13 +2,13 @@
 id: FB-100
 titel: Bewerkscherm van een ingeplande fiche of activiteit is rustig en consequent
 soort: functioneel
-status: nieuw
+status: te-testen
 prioriteit: hoog
 aangemaakt: 2026-09-24
-bijgewerkt: 2026-09-24 17:18
-opgepakt-door:
-branch:
-pr:
+bijgewerkt: 2026-09-24 17:46
+opgepakt-door: claude-fb100
+branch: ticket/FB-100-bewerkscherm
+pr: 196
 geblokkeerd:
 fr: [FR-6.1]
 ---
@@ -37,11 +37,11 @@ De eigenaar (2026-09-24): "de activiteiten in de kalender bewerken moet beter". 
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven een algemene fiche in de agenda, wanneer het blok hoog genoeg is voor een tweede regel, dan staat daar niet "algemene fiche", en een schermlezer kondigt het blok nog steeds als algemene fiche aan.
-- [ ] Gegeven het bewerkscherm van een ingeplande fiche of activiteit op desktop, dan staan dag, van en tot op één rij; op ~390px staat geen van de drie alleen op een volle rij terwijl de andere twee samen staan.
-- [ ] Gegeven een gewijzigde dagtekst en een gewijzigd uur bij een fiche, wanneer de leerkracht één keer op Bewaren drukt, dan zijn beide bewaard.
-- [ ] Gegeven het bewerkscherm, dan is weghalen een icoonknop met een toegankelijke naam, geen gevulde zwarte knop, en is het in het fichescherm en het activiteitscherm dezelfde knop op dezelfde plek.
-- [ ] Gegeven een fiche met dagteksten, wanneer de leerkracht op het prullenbakicoon drukt, dan vraagt de app eerst een bevestiging, zoals vandaag.
+- [x] Gegeven een algemene fiche in de agenda, wanneer het blok hoog genoeg is voor een tweede regel, dan staat daar niet "algemene fiche", en een schermlezer kondigt het blok nog steeds als algemene fiche aan.
+- [x] Gegeven het bewerkscherm van een ingeplande fiche of activiteit op desktop, dan staan dag, van en tot op één rij; op ~390px staat geen van de drie alleen op een volle rij terwijl de andere twee samen staan.
+- [x] Gegeven een gewijzigde dagtekst en een gewijzigd uur bij een fiche, wanneer de leerkracht één keer op Bewaren drukt, dan zijn beide bewaard.
+- [x] Gegeven het bewerkscherm, dan is weghalen een icoonknop met een toegankelijke naam, geen gevulde zwarte knop, en is het in het fichescherm en het activiteitscherm dezelfde knop op dezelfde plek.
+- [x] Gegeven een fiche met dagteksten, wanneer de leerkracht op het prullenbakicoon drukt, dan vraagt de app eerst een bevestiging, zoals vandaag.
 
 ## Testscenario's
 
@@ -64,3 +64,9 @@ Geen.
 ## Werklog
 
 - 2026-09-24 17:18 · Siebe · aangemaakt (status nieuw)
+- 2026-09-24 17:20 · claude-fb100 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten (akkoord 'maak en bouw' 2026-09-24)
+- 2026-09-24 17:43 · claude-fb100 · gebouwd: fiche-onderregel weg (schermlezernaam houdt het), gedeelde rij Dagvelden voor fiche en activiteit, één Bewaren in het fichescherm, prullenbakicoon op de kop Periode; browsercontrole mockmodus 1440 en 390px
+- 2026-09-24 17:45 · claude-fb100 · criteria afgevinkt: 1, 3, 5 via Vitest (Tijdraster, Algemenefichedetailblad), 2 en 4 via browsercontrole in mockmodus op 1440 en 390px (velden op één rij, niets afgeknipt)
+- 2026-09-24 17:46 · claude-fb100 · antagonist: COMPLIANT, geen CRITICAL of MAJOR; verouderd commentaar in Tijdraster rechtgezet; vraag voor de eigenaar: de prullenbak van de fiche staat op de kop Periode (wat hij weghaalt), die van de activiteit op de kop In de agenda
+- 2026-09-24 17:46 · claude-fb100 · in-uitvoering → te-testen: gebouwd: geen 'algemene fiche' meer in het blok, dag/van/tot op één rij in beide schermen, één Bewaren in het fichescherm, prullenbakicoon; lint groen, 1417 tests groen, browsercontrole, antagonist COMPLIANT
+- 2026-09-24 17:46 · claude-fb100 · PR #196
