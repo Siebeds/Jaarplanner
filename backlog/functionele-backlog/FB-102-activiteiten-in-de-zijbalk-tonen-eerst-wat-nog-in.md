@@ -8,7 +8,7 @@ aangemaakt: 2026-09-24
 bijgewerkt: 2026-09-24 18:18
 opgepakt-door: claude-fb102
 branch: ticket/FB-102-activiteiten-zijbalk
-pr:
+pr: 201
 geblokkeerd:
 fr: []
 ---
@@ -92,3 +92,4 @@ Geen.
 - 2026-09-24 18:02 · claude-fb102 · paneel gebouwd: twee groepen, compacte kaarten, knop met aantal doelen, keuzelijst loopt door; vitest groen
 - 2026-09-24 18:18 · claude-fb102 · antagonist: COMPLIANT, MINOR 1 opgelost (eigenaarlabel in de naam van de kaartknop), overige MINOR in backlog/worklogs/FB-102
 - 2026-09-24 18:18 · claude-fb102 · in-uitvoering → te-testen: gebouwd: twee groepen, compacte kaarten met datum op een regel en knop met aantal doelen, eigenaar een keer onderaan, keuzelijst loopt door; lint en vitest groen, browserpas 1440x900 en 390px
+- 2026-09-24 18:18 · claude-fb102 · PR #201
