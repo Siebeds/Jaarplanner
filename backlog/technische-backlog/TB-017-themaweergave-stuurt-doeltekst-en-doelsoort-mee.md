@@ -2,12 +2,12 @@
 id: TB-017
 titel: Themaweergave stuurt doeltekst en doelsoort mee voor thema- en subdoelen
 soort: technisch
-status: nieuw
+status: in-uitvoering
 prioriteit: laag
 aangemaakt: 2026-09-14
-bijgewerkt: 2026-09-15 15:27
-opgepakt-door:
-branch:
+bijgewerkt: 2026-09-24 12:58
+opgepakt-door: tb017-sessie
+branch: ticket/TB-017-themaweergave-doeltekst
 pr:
 geblokkeerd:
 fr: []
@@ -61,3 +61,4 @@ Geen.
 - 2026-09-14 16:31 · themadoel-tekst · aangemaakt (status nieuw)
 - 2026-09-15 15:07 · themapagina · FB-011 (2026-09-15) laat elk subthemahoofdstuk standaard dicht staan: de detailverzoeken per subdoel vallen nu pas bij het openklappen, niet meer bij het laden van de pagina; meet tegen dat gedrag
 - 2026-09-15 15:27 · themapagina · FB-010 (2026-09-15) toont bij een open subthema ook de groep 'Andere doelen in de activiteiten': dat zijn activiteitscodes die via Gekoppelddoel hun detail ophalen, dus AC1 kan pas gehaald worden als de scope ook die rijen omvat (nu staan 'de doelcodes bij activiteiten' onder Buiten scope)
+- 2026-09-24 12:58 · tb017-sessie · nieuw → in-uitvoering: opgepakt: sessie kreeg de opdracht TB-017 uit te voeren; E6-02 staat op main
