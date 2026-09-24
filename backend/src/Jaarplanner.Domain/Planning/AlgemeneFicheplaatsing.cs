@@ -172,6 +172,46 @@ public sealed class AlgemeneFicheplaatsing
     }
 
     /// <summary>
+    /// Gives every occurrence of the run the same hours, each on the day it is already on (FB-101): turnen moves to
+    /// half past one for the whole period. All of them, the ones moved by hand and the ones already past included, by
+    /// the owner's ruling of 2026-09-24. The days and their texts stay.
+    /// <para>
+    /// <b>A day that holds this run twice is refused, with the day named</b>, as <see cref="Hoekplaatsing.ZetUren"/>
+    /// does: at the same hours the two would start at the same time, which <see cref="BewaakDag"/> refuses, and folding
+    /// them into one would quietly remove an occurrence she placed. She drags the extra one elsewhere first.
+    /// </para>
+    /// </summary>
+    /// <exception cref="ArgumentException">
+    /// The end is not after the start, or a day holds this run more than once. Either way nothing changed. Dutch,
+    /// because she can act on both.
+    /// </exception>
+    public void ZetUren(TimeOnly begin, TimeOnly einde)
+    {
+        // Both checks come before anything is touched, so a refusal leaves the run exactly as it was.
+        AlgemeneFichemoment.RequireTijden(begin, einde);
+
+        var dubbel = _momenten
+            .GroupBy(m => m.Datum)
+            .Where(dag => dag.Count() > 1)
+            .OrderBy(dag => dag.Key)
+            .Select(dag => dag.Key.ToString("dddd d MMMM", Nederlands))
+            .ToList();
+        if (dubbel.Count > 0)
+        {
+            var dagen = dubbel.Count == 1 ? dubbel[0] : $"{string.Join(", ", dubbel[..^1])} en {dubbel[^1]}";
+            throw new ArgumentException(
+                $"Op {dagen} staat deze fiche meer dan één keer. Sleep er eerst één naar een andere dag, tot geen dag de fiche meer dan één keer heeft. Dan kan je de uren van de hele periode aanpassen.");
+        }
+
+        foreach (var moment in _momenten)
+        {
+            moment.Verplaats(moment.Datum, begin, einde);
+        }
+    }
+
+    private static readonly System.Globalization.CultureInfo Nederlands = new("nl-BE");
+
+    /// <summary>
     /// Sets or clears what the class does in ONE occurrence (FB-022). Only that day's row changes: the other days of the
     /// run stay empty until they are filled in themselves.
     /// </summary>

@@ -22,6 +22,7 @@ export function Dagvelden({
   vroegste,
   laatste,
   disabled,
+  datumVergrendeld,
   onDatum,
   onBegin,
   onEinde,
@@ -36,6 +37,8 @@ export function Dagvelden({
   vroegste?: string;
   laatste?: string;
   disabled?: boolean;
+  /** The day cannot change while the other two can: an algemene fiche's hours set for its whole period (FB-101). */
+  datumVergrendeld?: boolean;
   onDatum: (waarde: string) => void;
   onBegin: (waarde: string) => void;
   onEinde: (waarde: string) => void;
@@ -56,7 +59,7 @@ export function Dagvelden({
           min={vroegste}
           max={laatste}
           value={datum}
-          disabled={disabled}
+          disabled={disabled || datumVergrendeld}
           onChange={(e) => onDatum(e.target.value)}
           className="mt-1 px-2"
         />

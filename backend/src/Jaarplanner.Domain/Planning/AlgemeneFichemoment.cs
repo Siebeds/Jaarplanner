@@ -97,7 +97,7 @@ public sealed class AlgemeneFichemoment
         Datum = datum;
     }
 
-    private static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
+    internal static (TimeOnly Begin, TimeOnly Einde) RequireTijden(TimeOnly begin, TimeOnly einde) =>
         einde > begin
             ? (begin, einde)
             : throw new ArgumentException("Het einde van de fiche moet na het begin liggen. Kies een later einduur.");

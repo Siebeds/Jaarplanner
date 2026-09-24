@@ -88,6 +88,23 @@ public sealed class AlgemeneFicheplaatsingenController : ControllerBase
         CancellationToken cancellationToken) =>
         Ok(await _service.ZetMomenttekstAsync(plaatsingId, momentId, invoer.Tekst, cancellationToken));
 
+    /// <summary>
+    /// Gives every occurrence of a planned fiche the same hours (FB-101). Each stays on its own day; moving the run to
+    /// other days is not this route.
+    /// </summary>
+    [HttpPut("/api/algemene-ficheplaatsingen/{plaatsingId:guid}/uren")]
+    [RechtOp(Rechtenmatrix.Beleid.KlasplanningBewerken, Rechtbron.AlgemeneFicheplaatsing, "plaatsingId")]
+    public async Task<ActionResult<AlgemeneFicheplaatsingWeergave>> ZetUren(
+        Guid plaatsingId,
+        [FromBody] Ficheuren invoer,
+        CancellationToken cancellationToken) =>
+        Ok(await _service.ZetUrenAsync(plaatsingId, invoer.Begin, invoer.Einde, cancellationToken));
+
+    /// <summary>The hours every day of a run should have.</summary>
+    /// <param name="Begin">When it starts, as <c>HH:mm:ss</c>.</param>
+    /// <param name="Einde">When it ends. Must lie after <paramref name="Begin"/>.</param>
+    public sealed record Ficheuren(TimeOnly Begin, TimeOnly Einde);
+
     /// <summary>One day's text.</summary>
     /// <param name="Tekst">What the class does in the block that day. Empty or <c>null</c> clears it.</param>
     public sealed record FichemomentTekst(string? Tekst);
