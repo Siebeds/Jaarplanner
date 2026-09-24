@@ -8,6 +8,9 @@
 # groepschat, retired by ADR-0037.)
 .claude/coordination/
 
+# Personal Claude Code settings (permissions, local paths). This repository is public.
+.claude/settings.local.json
+
 # Local data of the AI eval runner (TB-004): real evalsets hold a school's own subthema's and gold links, and the
 # reports quote them. This repository is public, so none of it may be committed. Only the fictional
 # backend/tools/Jaarplanner.Eval/voorbeeld-evalset.json is tracked.
