@@ -2,13 +2,13 @@
 id: FB-094
 titel: Themapagina krijgt een overzichtelijke opbouw: kop, subthema's, dan doelen
 soort: functioneel
-status: te-testen
+status: klaar-voor-bouw
 prioriteit: middel
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-23 20:25
-opgepakt-door: claude-fb094
-branch: ticket/FB-094-themapagina-opbouw
-pr: 175
+bijgewerkt: 2026-09-24 11:08
+opgepakt-door:
+branch:
+pr:
 geblokkeerd:
 fr: []
 ---
@@ -107,3 +107,4 @@ Geen.
 - 2026-09-23 20:24 · claude-fb094 · antagonist: COMPLIANT; kleine punten opgelost (kopniveaus genest, Radix-pakket vastgepind); criteria afgevinkt op vitest (ThemadetailScherm, Themaminimumdoelen) en de browserpas op 1440 en 390 px
 - 2026-09-23 20:24 · claude-fb094 · in-uitvoering → te-testen: themapagina herbouwd als kop, subthema's, doelen; lint en tests groen, bekeken in de browser
 - 2026-09-23 20:25 · claude-fb094 · PR #175
+- 2026-09-24 11:08 · eigenaar · te-testen → klaar-voor-bouw: Bevinding van de eigenaar, bij een opengeklapt subthema zonder subdoelen: (1) het koppelformulier voor een subdoel opent rechts in het actievak van de kop Subdoelen, waardoor de kop los in het midden hangt en er een lege vlakte ontstaat; verwacht: het zoekveld onder de kop, over de volle breedte, met Annuleren in die kop en de resultaten eronder. (2) '0 subdoelen.', de kop 'Subdoelen' en 'Nog geen doelen op dit subthema' zeggen drie keer hetzelfde, en de link heet 'Subdoelen verbergen' terwijl er niets te verbergen is. (3) 'Stel activiteiten voor' staat actief terwijl een oranje attentieblok zegt dat het zonder subdoelen niet kan; verwacht: geen actieve AI-knop die niets kan, maar een rustige zin, zonder attentiekleur; hetzelfde voor 'Stel woorden voor' zolang er geen woord is. (4) Zonder subdoelen hoort 'Begin met de subdoelen' met de knop 'Subdoel koppelen' bovenaan als eerste stap, over beide kolommen; met subdoelen blijft de ene regel in de kolom Activiteiten. (5) Links in dezelfde stijl ('Subdoelen bekijken' en 'Toon alle jaren'). Ontwerp: https://claude.ai/artifact/KPS276EjBdvKYwoPKY7KfN, rij 'Een subthema openklappen: nu en voorstel'.
