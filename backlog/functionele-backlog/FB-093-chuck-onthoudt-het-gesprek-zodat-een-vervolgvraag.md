@@ -5,7 +5,7 @@ soort: functioneel
 status: in-uitvoering
 prioriteit: hoog
 aangemaakt: 2026-09-23
-bijgewerkt: 2026-09-24 16:47
+bijgewerkt: 2026-09-24 17:00
 opgepakt-door: claude-fb093
 branch: ticket/FB-093-chuck-onthoudt-gesprek
 pr:
@@ -111,3 +111,4 @@ mee; prioriteit hoog.
 
 - 2026-09-23 12:19 · eigenaar · aangemaakt (status nieuw)
 - 2026-09-24 16:47 · claude-fb093 · nieuw → in-uitvoering: opgepakt: eigenaar wil starten
+- 2026-09-24 17:00 · claude-fb093 · backend klaar: de server verzegelt elke beurt (HMAC per serverproces), de laatste tien beurten gaan als echte gespreksbeurten naar beide AI-providers, een vervalste beurt geeft 409 zonder AI; zesde opzoeking doelenVanSubthema; unit- en integratietests groen
