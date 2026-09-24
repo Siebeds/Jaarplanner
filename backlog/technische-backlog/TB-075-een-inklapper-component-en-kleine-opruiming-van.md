@@ -42,13 +42,13 @@ Een toetsing tegen de Vercel-compositiepatronen vond herhaalde en onhandige comp
 
 ## Acceptatiecriteria
 
-- [ ] Gegeven de code, wanneer je zoekt naar `aria-expanded`, dan staat het alleen nog in `Inklapper` en in
+- [x] Gegeven de code, wanneer je zoekt naar `aria-expanded`, dan staat het alleen nog in `Inklapper` en in
       componenten die geen uitklapper zijn, zoals menu's.
-- [ ] Gegeven elke uitklapper in de app, wanneer een schermlezer de knop voorleest, dan meldt hij open of dicht en
+- [x] Gegeven elke uitklapper in de app, wanneer een schermlezer de knop voorleest, dan meldt hij open of dicht en
       verwijst `aria-controls` naar de inhoud.
-- [ ] Gegeven de code, wanneer je zoekt naar `forwardRef` of naar de props `breed`, `smal`, `kaal`, `strak` en
+- [x] Gegeven de code, wanneer je zoekt naar `forwardRef` of naar de props `breed`, `smal`, `kaal`, `strak` en
       `stapel`, dan vind je niets meer.
-- [ ] Gegeven elk gewijzigd scherm, wanneer je het op desktop en op ~390px bekijkt, dan ziet het eruit zoals
+- [x] Gegeven elk gewijzigd scherm, wanneer je het op desktop en op ~390px bekijkt, dan ziet het eruit zoals
       voordien, op één consistente draairichting van de pijl na.
 
 ## Buiten scope
@@ -67,3 +67,4 @@ Geen.
 - 2026-09-24 14:06 · claude-tb075 · Browserpas op kopie jp_tb075, main (5190) naast deze tak (5191), 1440 en 390px: dekking, leerplandoelen- en minimumdoelenboom, koppelblad, themapagina en inladen hebben dicht en na het openen dezelfde paginahoogte en dezelfde knopposities; Enter en Spatie klappen open en dicht, aria-controls wijst naar bestaande inhoud (op het koppelblad ontbrak het voordien).
 - 2026-09-24 14:08 · claude-tb075 · Antagonist: COMPLIANT. Open MINOR: onOpenChange in Inklaplijst, Subthemahoofdstuk en DekkingScherm wisselt de eigen state in plaats van de meegegeven waarde te nemen (werkt, want Root geeft altijd !open); Knop kent geen preventDefault op onClick om het uitklappen te stoppen (geen gebruiker heeft dat nodig). Bewust gelaten: aria-expanded op de Katmand-popover, de zoekknoppen van Inklaplijst en 'Alle bekijken' (geen uitklappers), en smal in Navigatie/Aanmeldregel (de zijbalk, niet Schermkop). Het Scherm-omhulsel dat de maat één keer doorgeeft is niet gebouwd, om de diff klein te houden.
 - 2026-09-24 14:08 · claude-tb075 · in-uitvoering → klaar: Inklapper op alle tien uitklappers, Schermkop/Schermvlak met maat, forwardRef weg; pnpm test, pnpm lint en browserpas groen, antagonist COMPLIANT.
+- 2026-09-24 14:08 · claude-tb075 · Criteria afgevinkt: grep (aria-expanded alleen nog in Inklapper, Katmand-popover, zoekknoppen en 'Alle bekijken'; forwardRef en de Schermkop-booleans weg, smal blijft alleen als zijbalkstand in Navigatie/Aanmeldregel), Inklapper.test.tsx en de browserpas.
